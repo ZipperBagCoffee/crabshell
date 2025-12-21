@@ -10,7 +10,7 @@
   "plugins": [
     {
       "name": "memory-keeper",
-      "source": "../",
+      "source": "./",
       "description": "Automatic background session memory - saves context periodically, loads on session start",
       "version": "2.0.0",
       "author": {
