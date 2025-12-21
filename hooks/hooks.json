@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cat | node \"${CLAUDE_PLUGIN_ROOT}/scripts/counter.js\" check"
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/counter.js\" check"
           }
         ]
       }
@@ -28,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cat | node \"${CLAUDE_PLUGIN_ROOT}/scripts/counter.js\" final"
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/counter.js\" final"
           }
         ]
       }

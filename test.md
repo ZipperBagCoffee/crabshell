@@ -1,3 +1,3 @@
-# Test File - 2회차 생성
+# Test File
 
-테스트용 파일입니다.
+This is a test file.
