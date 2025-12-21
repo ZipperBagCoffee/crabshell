@@ -134,11 +134,11 @@ Facts are automatically extracted from these sections.
 [your-project]/
 └── .claude/
     └── memory/
-        ├── memory.md              # Rolling summary
-        ├── project.md             # Project overview (v7.0.0+)
-        ├── architecture.md        # Architecture decisions (v7.0.0+)
-        ├── conventions.md         # Coding conventions (v7.0.0+)
-        ├── facts.json             # Structured facts + concepts index
+        ├── memory.md              # Rolling summary (auto-created)
+        ├── project.md             # Project overview (optional, create with memory-set)
+        ├── architecture.md        # Architecture decisions (optional, create with memory-set)
+        ├── conventions.md         # Coding conventions (optional, create with memory-set)
+        ├── facts.json             # Structured facts + concepts index (auto-created)
         ├── config.json            # Settings (optional)
         └── sessions/
             ├── 2025-12-21_0300.md      # Session summary
@@ -147,14 +147,32 @@ Facts are automatically extracted from these sections.
                 └── 2025-12.md          # Monthly archive
 ```
 
+**Note:** `memory.md` and `facts.json` are auto-created. Hierarchical files (`project.md`, `architecture.md`, `conventions.md`) are **optional** - create them with `memory-set` command when needed.
+
 ## Hierarchical Memory (v7.0.0)
 
-| File | Purpose | When to Update |
-|------|---------|----------------|
-| `project.md` | Project overview, goals, tech stack | Project start/changes |
-| `architecture.md` | Architecture decisions, diagrams | Structure changes |
-| `conventions.md` | Coding style, naming rules | Rule additions |
-| `memory.md` | Session summaries (rolling) | Every session |
+Hierarchical memory files are **optional**. Create them when you want Claude to have persistent project context:
+
+```bash
+# Create/update hierarchical memory files
+node scripts/counter.js memory-set project "Your project description"
+node scripts/counter.js memory-set architecture "Architecture decisions"
+node scripts/counter.js memory-set conventions "Coding conventions"
+
+# View content
+node scripts/counter.js memory-get project
+node scripts/counter.js memory-get           # View all
+
+# Check which files exist
+node scripts/counter.js memory-list
+```
+
+| File | Purpose | Creation | Auto-updated? |
+|------|---------|----------|---------------|
+| `project.md` | Project overview, goals, tech stack | `memory-set project` | No |
+| `architecture.md` | Architecture decisions, diagrams | `memory-set architecture` | No |
+| `conventions.md` | Coding style, naming rules | `memory-set conventions` | No |
+| `memory.md` | Session summaries (rolling) | Auto-created | Yes |
 
 ## Searching Memory
 
@@ -219,6 +237,7 @@ Output:
 
 | Version | Claude Code | Node.js |
 |---------|-------------|---------|
+| 7.0.1 | 1.0+ | 18+ |
 | 7.0.0 | 1.0+ | 18+ |
 | 6.5.0 | 1.0+ | 18+ |
 | 6.4.0 | 1.0+ | 18+ |

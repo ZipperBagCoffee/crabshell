@@ -51,16 +51,23 @@ Session Start ──> Load memory.md + facts.json
 
 ```
 .claude/memory/
-├── memory.md              # Rolling summary
-├── project.md             # Project overview (v7.0.0+)
-├── architecture.md        # Architecture decisions (v7.0.0+)
-├── conventions.md         # Coding conventions (v7.0.0+)
-├── facts.json             # Structured facts + counter + concepts index
+├── memory.md              # Rolling summary (auto-created)
+├── project.md             # Project overview (optional, create with memory-set)
+├── architecture.md        # Architecture decisions (optional, create with memory-set)
+├── conventions.md         # Coding conventions (optional, create with memory-set)
+├── facts.json             # Structured facts + counter + concepts index (auto-created)
 └── sessions/
     ├── YYYY-MM-DD_HHMM.md      # Session summary
-    ├── YYYY-MM-DD_HHMM.raw.jsonl # Raw transcript
+    ├── YYYY-MM-DD_HHMM.raw.jsonl # Raw transcript (saved on session end)
     └── archive/
-        └── YYYY-MM.md          # Monthly archive
+        └── YYYY-MM.md          # Monthly archive (created by compress)
+```
+
+**Note:** Hierarchical files (`project.md`, `architecture.md`, `conventions.md`) are **optional**. Create them with:
+```bash
+node scripts/counter.js memory-set project "Your project description"
+node scripts/counter.js memory-set architecture "Your architecture notes"
+node scripts/counter.js memory-set conventions "Your coding conventions"
 ```
 
 ## Commands
@@ -131,6 +138,7 @@ Implemented feature X.
 
 | Version | Changes |
 |---------|---------|
+| 7.0.1 | clearFacts() bug fix, added missing slash command skills |
 | 7.0.0 | Hierarchical memory (project/architecture/conventions.md) |
 | 6.5.0 | File references + concept tagging |
 | 6.4.0 | Observation types + privacy tags |

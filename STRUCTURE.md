@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin 프로젝트 구조
 
-**버전**: 7.0.0 | **작성자**: TaWa | **라이선스**: MIT
+**버전**: 7.0.1 | **작성자**: TaWa | **라이선스**: MIT
 
 ## 개요
 Memory Keeper는 Claude Code 플러그인으로, 세션 메모리를 자동 저장하고 관리합니다. 백그라운드 에이전트 요약, 구조화된 facts 저장, 계층형 아카이빙, 계층형 메모리 구조(v7.0.0)를 지원합니다.
@@ -12,10 +12,10 @@ memory-keeper-plugin/
 ├── .claude/                          # Claude Code 로컬 저장소
 │   ├── settings.local.json           # 로컬 플러그인 설정
 │   └── memory/                       # 프로젝트 메모리 저장
-│       ├── memory.md                 # 롤링 세션 요약
-│       ├── project.md                # 프로젝트 개요 (v7.0.0+)
-│       ├── architecture.md           # 아키텍처 결정 (v7.0.0+)
-│       ├── conventions.md            # 코딩 컨벤션 (v7.0.0+)
+│       ├── memory.md                 # 롤링 세션 요약 (자동 생성)
+│       ├── project.md                # 프로젝트 개요 (선택적, memory-set으로 생성)
+│       ├── architecture.md           # 아키텍처 결정 (선택적, memory-set으로 생성)
+│       ├── conventions.md            # 코딩 컨벤션 (선택적, memory-set으로 생성)
 │       ├── facts.json                # 구조화된 결정/패턴/이슈 + 카운터 + 개념 인덱스
 │       ├── debug-hook.json           # 훅 실행 디버그 정보
 │       └── sessions/                 # 세션별 아카이브 (자동 생성)
@@ -47,9 +47,12 @@ memory-keeper-plugin/
 │   ├── save-prompt.js                # 저장 프롬프트 포맷터
 │   └── utils.js                      # 공유 유틸리티
 │
-├── skills/                           # 재사용 가능한 스킬
-│   └── memory-save/
-│       └── SKILL.md                  # 자동 트리거 메모리 저장 스킬
+├── skills/                           # 슬래시 커맨드 스킬
+│   ├── memory-save/SKILL.md          # 자동 트리거 메모리 저장 (훅 출력 시)
+│   ├── save-memory/SKILL.md          # /memory-keeper:save-memory 수동 저장
+│   ├── load-memory/SKILL.md          # /memory-keeper:load-memory 메모리 로드
+│   ├── search-memory/SKILL.md        # /memory-keeper:search-memory 검색
+│   └── clear-memory/SKILL.md         # /memory-keeper:clear-memory 정리
 │
 ├── docs/                             # 문서
 │   ├── ARCHITECTURE.md               # 시스템 아키텍처
@@ -66,7 +69,7 @@ memory-keeper-plugin/
 │
 ├── .gitignore                        # Git 무시 규칙
 ├── README.md                         # 프로젝트 문서
-└── test.md                           # 이 파일 (프로젝트 구조 문서)
+└── STRUCTURE.md                      # 이 파일 (프로젝트 구조 문서)
 ```
 
 ## 핵심 파일 설명
@@ -178,12 +181,14 @@ memory-keeper-plugin/
 
 ## 계층형 메모리 구조 (v7.0.0)
 
-| 파일 | 용도 | 업데이트 시점 |
-|------|------|--------------|
-| `project.md` | 프로젝트 개요, 목표, 기술 스택 | 프로젝트 시작/변경시 |
-| `architecture.md` | 아키텍처 결정, 구조 다이어그램 | 구조 변경시 |
-| `conventions.md` | 코딩 스타일, 네이밍 규칙 | 규칙 추가시 |
-| `memory.md` | 세션 요약 (rolling) | 매 세션 |
+**참고:** `project.md`, `architecture.md`, `conventions.md`는 **선택적**입니다. `memory-set` 명령으로 생성합니다.
+
+| 파일 | 용도 | 생성 방법 | 자동 업데이트 |
+|------|------|----------|--------------|
+| `project.md` | 프로젝트 개요, 목표, 기술 스택 | `memory-set project` | 아니오 |
+| `architecture.md` | 아키텍처 결정, 구조 다이어그램 | `memory-set architecture` | 아니오 |
+| `conventions.md` | 코딩 스타일, 네이밍 규칙 | `memory-set conventions` | 아니오 |
+| `memory.md` | 세션 요약 (rolling) | 자동 생성 | 예 |
 
 ### CLI 명령어 (v7.0.0)
 
@@ -259,6 +264,7 @@ node counter.js memory-list           # 메모리 파일 목록
 
 | 버전 | 주요 변경사항 |
 |------|--------------|
+| 7.0.1 | clearFacts에서 concepts 인덱스 초기화 수정, skills 폴더 완성 |
 | 7.0.0 | 계층형 메모리 구조 (project/architecture/conventions.md) |
 | 6.5.0 | 파일 참조 + 개념 태깅 (files, concepts) |
 | 6.4.0 | 관측 유형 (type) + Privacy 태그 |

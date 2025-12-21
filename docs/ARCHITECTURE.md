@@ -35,15 +35,16 @@ Memory Keeper is a Claude Code plugin that automatically saves session context u
           ▼                 ▼                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  .claude/memory/ (Project Storage)                              │
-│  ┌────────────┐  ┌────────────┐  ┌─────────────────────────────┐│
-│  │ memory.md  │  │ facts.json │  │ sessions/                   ││
-│  │            │  │            │  │ ├── YYYY-MM-DD_HHMM.md      ││
-│  │ Rolling    │  │ _meta:     │  │ ├── YYYY-MM-DD_HHMM.raw.jsonl│
-│  │ summary    │  │   counter  │  │ └── archive/                ││
-│  │            │  │ decisions  │  │     └── YYYY-MM.md          ││
-│  │            │  │ patterns   │  │                             ││
-│  │            │  │ issues     │  │                             ││
-│  └────────────┘  └────────────┘  └─────────────────────────────┘│
+│  ┌────────────────────────────────────────┐  ┌────────────────┐ │
+│  │ Auto-created:                          │  │ sessions/      │ │
+│  │ ├── memory.md (rolling summary)        │  │ ├── *.md       │ │
+│  │ └── facts.json (structured facts)      │  │ ├── *.raw.jsonl│ │
+│  │                                        │  │ └── archive/   │ │
+│  │ Optional (create with memory-set):     │  │     └── *.md   │ │
+│  │ ├── project.md                         │  │                │ │
+│  │ ├── architecture.md                    │  │                │ │
+│  │ └── conventions.md                     │  │                │ │
+│  └────────────────────────────────────────┘  └────────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -252,6 +253,7 @@ Location priority:
 
 | Version | Key Changes |
 |---------|-------------|
+| 7.0.1 | clearFacts() now clears concepts index, added missing skills |
 | 7.0.0 | Hierarchical memory structure (project/architecture/conventions.md) |
 | 6.5.0 | File references + concept tagging |
 | 6.4.0 | Observation types + privacy tags |
