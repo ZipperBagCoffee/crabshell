@@ -24,7 +24,7 @@ node scripts/counter.js search
 
 Project-local: `.claude/memory/facts.json`
 
-## facts.json Structure
+## facts.json Structure (v6.4.0+)
 
 ```json
 {
@@ -33,15 +33,17 @@ Project-local: `.claude/memory/facts.json`
     "lastSave": "2025-12-21_0300"
   },
   "decisions": [
-    {"id": "d001", "date": "2025-12-21", "content": "...", "reason": "..."}
+    {"id": "d001", "type": "architecture", "date": "2025-12-21", "content": "...", "reason": "..."}
   ],
   "patterns": [
-    {"id": "p001", "date": "2025-12-21", "content": "..."}
+    {"id": "p001", "type": "convention", "date": "2025-12-21", "content": "..."}
   ],
   "issues": [
-    {"id": "i001", "date": "2025-12-21", "content": "...", "status": "open|resolved"}
+    {"id": "i001", "type": "bugfix", "date": "2025-12-21", "content": "...", "status": "open|resolved"}
   ]
 }
 ```
+
+**Types:** decisions (architecture/technology/approach), patterns (convention/best-practice), issues (bugfix/performance/security)
 
 See [Architecture](../docs/ARCHITECTURE.md) for details.

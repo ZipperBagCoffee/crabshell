@@ -1,7 +1,7 @@
 {
   "name": "memory-keeper",
-  "version": "6.3.0",
-  "description": "Auto-save memory with background agent summarization. Saves summary + original, facts.json for search, tiered storage.",
+  "version": "6.4.0",
+  "description": "Auto-save memory with typed observations and privacy tags. Saves summary + facts.json with type classification.",
   "author": {
     "name": "TaWa"
   },

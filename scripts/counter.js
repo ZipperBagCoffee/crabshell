@@ -137,17 +137,21 @@ function check() {
 [What was accomplished in 2-3 sentences]
 
 ## Decisions
-- [Decision 1]: [Reason]
-- [Decision 2]: [Reason]
+- [architecture|technology|approach] Decision content: Reason why
+- [architecture] Another decision: Its reason
 
 ## Patterns
-- [Pattern or convention discovered]
+- [convention|best-practice] Pattern description
+- [convention] Another pattern
 
 ## Issues
-- [Issue found]: [open/resolved]
+- [bugfix|performance|security] Issue description: open|resolved
+- [bugfix] Fixed something: resolved
 
 ENDSESSION
    \`\`\`
+
+   NOTE: <private>sensitive data</private> tags will be stripped from facts.json
 
 3. EXTRACT facts from session file:
    \`\`\`bash
@@ -285,18 +289,21 @@ ${rawSaved ? `✓ Raw transcript saved: ${rawSaved}` : '⚠ Raw transcript not s
 [Everything accomplished in this session - be thorough]
 
 ## Decisions
-- [Decision 1]: [Reason why this was decided]
-- [Decision 2]: [Reason]
+- [architecture|technology|approach] Decision content: Reason why
+- [architecture] Another decision: Its reason
 
 ## Patterns
-- [Pattern or convention discovered]
-- [Another pattern if any]
+- [convention|best-practice] Pattern description
+- [convention] Another pattern
 
 ## Issues
-- [Issue found]: [open/resolved]
+- [bugfix|performance|security] Issue description: open|resolved
+- [bugfix] Fixed something: resolved
 
 ENDSESSION
    \`\`\`
+
+   NOTE: <private>sensitive data</private> tags will be stripped from facts.json
 
 3. EXTRACT facts from session file:
    \`\`\`bash
@@ -327,39 +334,59 @@ function reset() {
   console.log('[MEMORY_KEEPER] Counter reset.');
 }
 
+// Strip <private>...</private> content for privacy
+function stripPrivate(text) {
+  return text.replace(/<private>[\s\S]*?<\/private>/gi, '[PRIVATE]');
+}
+
+// Valid types for each category
+const VALID_TYPES = {
+  decisions: ['architecture', 'technology', 'approach', 'other'],
+  patterns: ['convention', 'best-practice', 'anti-pattern', 'other'],
+  issues: ['bugfix', 'performance', 'security', 'feature', 'other']
+};
+
 // Add fact commands - Claude calls these instead of editing JSON
-function addDecision(content, reason) {
+function addDecision(content, reason, type) {
   const facts = loadFacts();
   const date = new Date().toISOString().split('T')[0];
   const id = `d${String(facts.decisions.length + 1).padStart(3, '0')}`;
-  facts.decisions.push({ id, date, content, reason: reason || '' });
+  const factType = VALID_TYPES.decisions.includes(type) ? type : 'other';
+  const cleanContent = stripPrivate(content);
+  const cleanReason = stripPrivate(reason || '');
+  facts.decisions.push({ id, type: factType, date, content: cleanContent, reason: cleanReason });
   saveFacts(facts);
-  console.log(`[MEMORY_KEEPER] Added decision: ${id}`);
+  console.log(`[MEMORY_KEEPER] Added decision: ${id} (${factType})`);
 }
 
-function addPattern(content) {
+function addPattern(content, type) {
   const facts = loadFacts();
   const date = new Date().toISOString().split('T')[0];
   const id = `p${String(facts.patterns.length + 1).padStart(3, '0')}`;
-  facts.patterns.push({ id, date, content });
+  const factType = VALID_TYPES.patterns.includes(type) ? type : 'other';
+  const cleanContent = stripPrivate(content);
+  facts.patterns.push({ id, type: factType, date, content: cleanContent });
   saveFacts(facts);
-  console.log(`[MEMORY_KEEPER] Added pattern: ${id}`);
+  console.log(`[MEMORY_KEEPER] Added pattern: ${id} (${factType})`);
 }
 
-function addIssue(content, status) {
+function addIssue(content, status, type) {
   const facts = loadFacts();
   const date = new Date().toISOString().split('T')[0];
   const id = `i${String(facts.issues.length + 1).padStart(3, '0')}`;
-  facts.issues.push({ id, date, content, status: status || 'open' });
+  const factType = VALID_TYPES.issues.includes(type) ? type : 'other';
+  const cleanContent = stripPrivate(content);
+  facts.issues.push({ id, type: factType, date, content: cleanContent, status: status || 'open' });
   saveFacts(facts);
-  console.log(`[MEMORY_KEEPER] Added issue: ${id}`);
+  console.log(`[MEMORY_KEEPER] Added issue: ${id} (${factType})`);
 }
 
-// Search facts.json for keyword
-function search(query) {
-  if (!query) {
+// Search facts.json for keyword with optional type filter
+function search(query, typeFilter) {
+  const facts = loadFacts();
+
+  if (!query && !typeFilter) {
     // Show summary
-    const facts = loadFacts();
     const projectDir = getProjectDir();
     const sessionsDir = path.join(projectDir, 'sessions');
 
@@ -374,18 +401,27 @@ function search(query) {
     console.log(`  Patterns: ${facts.patterns.length}`);
     console.log(`  Issues: ${facts.issues.length}`);
     console.log(`  Sessions: ${sessionCount}`);
+
+    // Show type breakdown
+    const decTypes = {};
+    facts.decisions.forEach(d => { decTypes[d.type || 'other'] = (decTypes[d.type || 'other'] || 0) + 1; });
+    if (Object.keys(decTypes).length > 0) {
+      console.log(`  Decision types: ${Object.entries(decTypes).map(([k,v]) => `${k}(${v})`).join(', ')}`);
+    }
     return;
   }
 
-  const facts = loadFacts();
-  const queryLower = query.toLowerCase();
+  const queryLower = query ? query.toLowerCase() : '';
+  const typeLower = typeFilter ? typeFilter.toLowerCase() : null;
   let found = false;
 
   // Search decisions
   facts.decisions.forEach(d => {
-    if (d.content.toLowerCase().includes(queryLower) ||
-        (d.reason && d.reason.toLowerCase().includes(queryLower))) {
-      console.log(`[DECISION ${d.id}] ${d.date}: ${d.content}`);
+    const typeMatch = !typeLower || (d.type || 'other') === typeLower;
+    const textMatch = !query || d.content.toLowerCase().includes(queryLower) ||
+        (d.reason && d.reason.toLowerCase().includes(queryLower));
+    if (typeMatch && textMatch) {
+      console.log(`[DECISION ${d.id}] [${d.type || 'other'}] ${d.date}: ${d.content}`);
       if (d.reason) console.log(`  Reason: ${d.reason}`);
       found = true;
     }
@@ -393,22 +429,28 @@ function search(query) {
 
   // Search patterns
   facts.patterns.forEach(p => {
-    if (p.content.toLowerCase().includes(queryLower)) {
-      console.log(`[PATTERN ${p.id}] ${p.date}: ${p.content}`);
+    const typeMatch = !typeLower || (p.type || 'other') === typeLower;
+    const textMatch = !query || p.content.toLowerCase().includes(queryLower);
+    if (typeMatch && textMatch) {
+      console.log(`[PATTERN ${p.id}] [${p.type || 'other'}] ${p.date}: ${p.content}`);
       found = true;
     }
   });
 
   // Search issues
   facts.issues.forEach(i => {
-    if (i.content.toLowerCase().includes(queryLower)) {
-      console.log(`[ISSUE ${i.id}] ${i.date}: ${i.content} (${i.status})`);
+    const typeMatch = !typeLower || (i.type || 'other') === typeLower;
+    const textMatch = !query || i.content.toLowerCase().includes(queryLower);
+    if (typeMatch && textMatch) {
+      console.log(`[ISSUE ${i.id}] [${i.type || 'other'}] ${i.date}: ${i.content} (${i.status})`);
       found = true;
     }
   });
 
   if (!found) {
-    console.log(`[MEMORY_KEEPER] No matches in facts.json for: ${query}`);
+    const filterMsg = typeLower ? ` with type=${typeLower}` : '';
+    const queryMsg = query ? ` for: ${query}` : '';
+    console.log(`[MEMORY_KEEPER] No matches${filterMsg}${queryMsg}`);
   }
 }
 
@@ -458,43 +500,69 @@ function extractFacts(sessionFile) {
   }
 
   const content = fs.readFileSync(filePath, 'utf8');
-  const date = new Date().toISOString().split('T')[0];
   let extracted = { decisions: 0, patterns: 0, issues: 0 };
 
   // Parse ## Decisions section
+  // Format: - [type] Content: Reason  OR  - Content: Reason (type defaults to 'other')
   const decisionsMatch = content.match(/## Decisions\s*([\s\S]*?)(?=##|$)/i);
   if (decisionsMatch) {
     const lines = decisionsMatch[1].trim().split('\n');
     lines.forEach(line => {
+      // Try typed format first: - [architecture] Use hooks: Better state
+      const typedMatch = line.match(/^-\s*\[(\w+(?:-\w+)?)\]\s*(.+?):\s*(.+)$/);
+      if (typedMatch) {
+        addDecision(typedMatch[2].trim(), typedMatch[3].trim(), typedMatch[1].toLowerCase());
+        extracted.decisions++;
+        return;
+      }
+      // Fallback to untyped: - Use hooks: Better state
       const match = line.match(/^-\s*(.+?):\s*(.+)$/);
       if (match && !match[1].startsWith('[')) {
-        addDecision(match[1].trim(), match[2].trim());
+        addDecision(match[1].trim(), match[2].trim(), 'other');
         extracted.decisions++;
       }
     });
   }
 
   // Parse ## Patterns section
+  // Format: - [type] Pattern  OR  - Pattern (type defaults to 'other')
   const patternsMatch = content.match(/## Patterns\s*([\s\S]*?)(?=##|$)/i);
   if (patternsMatch) {
     const lines = patternsMatch[1].trim().split('\n');
     lines.forEach(line => {
+      // Try typed format: - [convention] Always test first
+      const typedMatch = line.match(/^-\s*\[(\w+(?:-\w+)?)\]\s*(.+)$/);
+      if (typedMatch) {
+        addPattern(typedMatch[2].trim(), typedMatch[1].toLowerCase());
+        extracted.patterns++;
+        return;
+      }
+      // Fallback to untyped
       const match = line.match(/^-\s*(.+)$/);
       if (match && !match[1].startsWith('[')) {
-        addPattern(match[1].trim());
+        addPattern(match[1].trim(), 'other');
         extracted.patterns++;
       }
     });
   }
 
   // Parse ## Issues section
+  // Format: - [type] Issue: status  OR  - Issue: status (type defaults to 'other')
   const issuesMatch = content.match(/## Issues\s*([\s\S]*?)(?=##|$)/i);
   if (issuesMatch) {
     const lines = issuesMatch[1].trim().split('\n');
     lines.forEach(line => {
+      // Try typed format: - [bugfix] Memory leak: resolved
+      const typedMatch = line.match(/^-\s*\[(\w+(?:-\w+)?)\]\s*(.+?):\s*(open|resolved)$/i);
+      if (typedMatch) {
+        addIssue(typedMatch[2].trim(), typedMatch[3].toLowerCase(), typedMatch[1].toLowerCase());
+        extracted.issues++;
+        return;
+      }
+      // Fallback to untyped
       const match = line.match(/^-\s*(.+?):\s*(open|resolved)$/i);
       if (match && !match[1].startsWith('[')) {
-        addIssue(match[1].trim(), match[2].toLowerCase());
+        addIssue(match[1].trim(), match[2].toLowerCase(), 'other');
         extracted.issues++;
       }
     });
@@ -541,8 +609,19 @@ function compress() {
   console.log('[MEMORY_KEEPER] Compression complete.');
 }
 
+// Parse --type=value from arguments
+function parseTypeArg(args) {
+  for (const arg of args) {
+    if (arg.startsWith('--type=')) {
+      return arg.substring(7);
+    }
+  }
+  return null;
+}
+
 // Main - handle async commands
 const command = process.argv[2];
+const args = process.argv.slice(3);
 
 switch (command) {
   case 'check':
@@ -561,23 +640,51 @@ switch (command) {
     compress();
     break;
   case 'add-decision':
-    addDecision(process.argv[3], process.argv[4]);
+    // add-decision "content" "reason" [type]
+    addDecision(args[0], args[1], args[2]);
     break;
   case 'add-pattern':
-    addPattern(process.argv[3]);
+    // add-pattern "content" [type]
+    addPattern(args[0], args[1]);
     break;
   case 'add-issue':
-    addIssue(process.argv[3], process.argv[4]);
+    // add-issue "content" "status" [type]
+    addIssue(args[0], args[1], args[2]);
     break;
   case 'search':
-    search(process.argv[3]);
+    // search [query] [--type=value]
+    {
+      const typeFilter = parseTypeArg(args);
+      const query = args.find(a => !a.startsWith('--')) || null;
+      search(query, typeFilter);
+    }
     break;
   case 'clear-facts':
     clearFacts();
     break;
   case 'extract-facts':
-    extractFacts(process.argv[3]);
+    extractFacts(args[0]);
     break;
   default:
-    console.log('Usage: counter.js [check|final|reset|compress|add-decision|add-pattern|add-issue|search|clear-facts|extract-facts]');
+    console.log(`Usage: counter.js <command>
+
+Commands:
+  check                  Increment counter, trigger save at interval
+  final                  Session end handler (reads stdin for hook data)
+  reset                  Reset counter to 0
+  compress               Archive old session files (30+ days)
+
+  add-decision <content> <reason> [type]
+                         Add decision (types: architecture, technology, approach, other)
+  add-pattern <content> [type]
+                         Add pattern (types: convention, best-practice, anti-pattern, other)
+  add-issue <content> <status> [type]
+                         Add issue (types: bugfix, performance, security, feature, other)
+
+  search [query] [--type=TYPE]
+                         Search facts or show summary (no args)
+  clear-facts            Clear all facts (keeps _meta)
+  extract-facts [session]
+                         Extract facts from session file
+`);
 }

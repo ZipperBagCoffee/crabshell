@@ -117,7 +117,7 @@ Read stdin    Copy transcript
 
 ## Data Flow
 
-### Session File Format
+### Session File Format (v6.4.0+)
 ```markdown
 # Session 2025-12-21_0300
 
@@ -125,15 +125,19 @@ Read stdin    Copy transcript
 [What was accomplished]
 
 ## Decisions
-- Decision 1: Reason
-- Decision 2: Reason
+- [architecture|technology|approach] Decision content: Reason why
+- [architecture] Another decision: Its reason
 
 ## Patterns
-- Pattern discovered
+- [convention|best-practice|anti-pattern] Pattern description
+- [convention] Another pattern
 
 ## Issues
-- Issue found: open/resolved
+- [bugfix|performance|security|feature] Issue description: open|resolved
+- [bugfix] Fixed something: resolved
 ```
+
+**Privacy Tags:** Use `<private>sensitive</private>` to exclude content from facts.json.
 
 ### Facts Extraction
 ```
@@ -157,12 +161,17 @@ session.md ──parse──> extractFacts() ──add──> facts.json
 | `final` | Copy transcript, output final instructions | stdin (hookData) | Instructions |
 | `reset` | Reset counter to 0 | - | Confirmation |
 | `compress` | Archive 30+ day files | - | Archive status |
-| `add-decision` | Add decision to facts.json | content, reason | Confirmation |
-| `add-pattern` | Add pattern to facts.json | content | Confirmation |
-| `add-issue` | Add issue to facts.json | content, status | Confirmation |
-| `search` | Search facts.json | query | Matching facts |
+| `add-decision` | Add decision to facts.json | content, reason, [type] | Confirmation |
+| `add-pattern` | Add pattern to facts.json | content, [type] | Confirmation |
+| `add-issue` | Add issue to facts.json | content, status, [type] | Confirmation |
+| `search` | Search facts.json | query, [--type=TYPE] | Matching facts |
 | `clear-facts` | Clear facts arrays | - | Confirmation |
 | `extract-facts` | Parse session.md for facts | filename | Extraction stats |
+
+**Observation Types:**
+- decisions: `architecture`, `technology`, `approach`, `other`
+- patterns: `convention`, `best-practice`, `anti-pattern`, `other`
+- issues: `bugfix`, `performance`, `security`, `feature`, `other`
 
 ### facts.json Structure
 
@@ -175,6 +184,7 @@ session.md ──parse──> extractFacts() ──add──> facts.json
   "decisions": [
     {
       "id": "d001",
+      "type": "architecture",
       "date": "2025-12-21",
       "content": "Use structured markdown",
       "reason": "Easier to parse"
@@ -183,6 +193,7 @@ session.md ──parse──> extractFacts() ──add──> facts.json
   "patterns": [
     {
       "id": "p001",
+      "type": "convention",
       "date": "2025-12-21",
       "content": "Always use heredoc for bash"
     }
@@ -190,6 +201,7 @@ session.md ──parse──> extractFacts() ──add──> facts.json
   "issues": [
     {
       "id": "i001",
+      "type": "bugfix",
       "date": "2025-12-21",
       "content": "JSON editing fails",
       "status": "resolved"
@@ -216,6 +228,7 @@ Location priority:
 
 | Version | Key Changes |
 |---------|-------------|
+| 6.4.0 | Observation types + privacy tags |
 | 6.3.0 | Auto-extract facts from structured session files |
 | 6.2.0 | Fix command paths, add search/clear-facts |
 | 6.1.0 | CLI commands for facts.json |
