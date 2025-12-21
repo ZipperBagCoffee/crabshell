@@ -1,0 +1,11 @@
+{
+  "name": "memory-keeper",
+  "version": "1.0.0",
+  "description": "Automatic session memory - saves context on session end, loads on session start",
+  "author": {
+    "name": "TaWa"
+  },
+  "repository": "https://github.com/YOUR_USERNAME/memory-keeper",
+  "license": "MIT",
+  "keywords": ["memory", "context", "session", "productivity"]
+}
