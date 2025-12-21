@@ -139,10 +139,12 @@ function check() {
    echo "[Full session summary]" > "${projectDir}/sessions/${timestamp}.md"
    \`\`\`
 
-4. UPDATE facts.json (if decisions/patterns/issues found):
-   - Read: ${projectDir}/facts.json
-   - Append new items to appropriate arrays
-   - Write back
+4. ADD FACTS (run for each fact found):
+   \`\`\`bash
+   node "${scriptPath}" add-decision "decision content" "reason"
+   node "${scriptPath}" add-pattern "pattern content"
+   node "${scriptPath}" add-issue "issue content" "open|resolved"
+   \`\`\`
 
 (Counter auto-resets after this message - no manual reset needed)
 
@@ -277,12 +279,12 @@ ${rawSaved ? `✓ Raw transcript saved: ${rawSaved}` : '⚠ Raw transcript not s
    echo "[Detailed session summary with all context]" > "${projectDir}/sessions/${timestamp}.md"
    \`\`\`
 
-4. UPDATE facts.json with ALL session learnings:
-   - Read: ${projectDir}/facts.json
-   - Add all decisions to decisions array
-   - Add all patterns to patterns array
-   - Add all issues to issues array
-   - Write back
+4. ADD ALL FACTS (run for each fact found):
+   \`\`\`bash
+   node "${scriptPath}" add-decision "decision content" "reason"
+   node "${scriptPath}" add-pattern "pattern content"
+   node "${scriptPath}" add-issue "issue content" "open|resolved"
+   \`\`\`
 
 5. RUN compression (archives old files):
    \`\`\`bash
@@ -306,6 +308,34 @@ This is the FINAL save. Be thorough and complete.
 function reset() {
   setCounter(0);
   console.log('[MEMORY_KEEPER] Counter reset.');
+}
+
+// Add fact commands - Claude calls these instead of editing JSON
+function addDecision(content, reason) {
+  const facts = loadFacts();
+  const date = new Date().toISOString().split('T')[0];
+  const id = `d${String(facts.decisions.length + 1).padStart(3, '0')}`;
+  facts.decisions.push({ id, date, content, reason: reason || '' });
+  saveFacts(facts);
+  console.log(`[MEMORY_KEEPER] Added decision: ${id}`);
+}
+
+function addPattern(content) {
+  const facts = loadFacts();
+  const date = new Date().toISOString().split('T')[0];
+  const id = `p${String(facts.patterns.length + 1).padStart(3, '0')}`;
+  facts.patterns.push({ id, date, content });
+  saveFacts(facts);
+  console.log(`[MEMORY_KEEPER] Added pattern: ${id}`);
+}
+
+function addIssue(content, status) {
+  const facts = loadFacts();
+  const date = new Date().toISOString().split('T')[0];
+  const id = `i${String(facts.issues.length + 1).padStart(3, '0')}`;
+  facts.issues.push({ id, date, content, status: status || 'open' });
+  saveFacts(facts);
+  console.log(`[MEMORY_KEEPER] Added issue: ${id}`);
 }
 
 function compress() {
@@ -364,6 +394,15 @@ switch (command) {
   case 'compress':
     compress();
     break;
+  case 'add-decision':
+    addDecision(process.argv[3], process.argv[4]);
+    break;
+  case 'add-pattern':
+    addPattern(process.argv[3]);
+    break;
+  case 'add-issue':
+    addIssue(process.argv[3], process.argv[4]);
+    break;
   default:
-    console.log('Usage: counter.js [check|final|reset|compress]');
+    console.log('Usage: counter.js [check|final|reset|compress|add-decision|add-pattern|add-issue]');
 }

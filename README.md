@@ -36,8 +36,8 @@ claude --plugin-dir /path/to/memory-keeper-plugin
 1. PostToolUse hook increments counter in facts.json._meta
 2. At N tool uses (default: 5), outputs explicit save instructions
 3. Claude sees instructions in hook output
-4. Claude follows numbered steps: analyze, save memory.md, save session, update facts.json
-5. Claude resets counter after saving
+4. Claude follows numbered steps: analyze, save memory.md, save session, add facts via CLI
+5. Counter auto-resets after trigger
 
 ### Session End
 1. Stop hook copies raw transcript to sessions/
@@ -102,8 +102,22 @@ Create `.claude/memory/config.json` in your project (or `~/.claude/memory-keeper
 | `/memory-keeper:search-memory [query]` | Search past sessions |
 | `/memory-keeper:clear-memory [all\|old]` | Clean up memory |
 
+## CLI Commands (for facts.json)
+
+```bash
+# Add a decision
+node scripts/counter.js add-decision "Use hooks for auto-save" "More reliable than manual"
+
+# Add a pattern
+node scripts/counter.js add-pattern "JSON output required for hook visibility"
+
+# Add an issue
+node scripts/counter.js add-issue "Write tool fails on Windows" "resolved"
+```
+
 ## Version History
 
+- **v6.1.0**: Add CLI commands (add-decision/add-pattern/add-issue) for safe facts.json updates
 - **v6.0.1**: Fix stdin reading with async/await for proper transcript_path capture
 - **v6.0.0**: Clear instruction output - hooks now output explicit step-by-step commands for Claude to follow
 - **v5.0.1**: Counter moved to facts.json._meta, auto-create facts.json, transcript fallback search
