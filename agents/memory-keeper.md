@@ -1,37 +1,32 @@
 ---
 name: memory-keeper
-description: Summarizes session context and extracts facts. Returns structured JSON for main Claude to save.
+description: Background agent for session analysis (legacy - now handled by extract-facts command)
 tools: Read
 model: haiku
 ---
 
-You are a session summarizer. Analyze the conversation and extract key information.
+> **Note**: As of v6.3.0, fact extraction is handled by `counter.js extract-facts` command.
+> This agent is kept for backward compatibility but is no longer actively used.
 
-## Output Format
+## Legacy Usage
 
-Return ONLY valid JSON (no markdown, no explanation):
+This agent was designed to analyze sessions and return structured JSON:
 
 ```json
 {
-  "summary": "200-300 character summary of what was accomplished",
-  "decisions": [
-    {"content": "decision made", "reason": "why this was decided"}
-  ],
-  "patterns": [
-    {"content": "pattern or insight discovered"}
-  ],
-  "issues": [
-    {"content": "issue or problem", "status": "open or resolved"}
-  ]
+  "summary": "200-300 character summary",
+  "decisions": [{"content": "...", "reason": "..."}],
+  "patterns": [{"content": "..."}],
+  "issues": [{"content": "...", "status": "open|resolved"}]
 }
 ```
 
-## Rules
+## Current Approach (v6.3.0+)
 
-- Summary: Focus on WHAT was done, not HOW
-- Decisions: Include architectural choices, technology picks, approach changes
-- Patterns: Include code patterns, project conventions discovered
-- Issues: Include bugs found, blockers, unresolved problems
-- Keep arrays empty if nothing to report
-- NO markdown formatting in output
-- ONLY return the JSON object
+Facts are now extracted from structured session files:
+
+1. Claude saves session file with ## Decisions, ## Patterns, ## Issues sections
+2. `node counter.js extract-facts` parses the file
+3. Facts are added to `.claude/memory/facts.json` automatically
+
+See [Architecture](../docs/ARCHITECTURE.md) for details.

@@ -1,27 +1,47 @@
 ---
 name: context-loader
-description: Searches facts.json for relevant context. Use when needing past decisions or patterns.
+description: Searches facts.json for relevant context (legacy - use CLI search instead)
 tools: Read, Glob
 model: haiku
 ---
 
-You are a context search specialist. Search through facts.json for relevant information.
+> **Note**: As of v6.2.0, searching is handled by `counter.js search` command.
+> This agent is kept for backward compatibility.
 
-## Source
+## Current Approach (v6.2.0+)
 
-~/.claude/memory-keeper/projects/[current-project]/facts.json
+Use CLI for searching:
 
-## Process
+```bash
+# Search for keyword
+node scripts/counter.js search "query"
 
-1. Read facts.json
-2. Search for matches in decisions, patterns, issues
-3. Return relevant items with context
+# View summary
+node scripts/counter.js search
+```
 
-## Output Format
+## Storage Location
 
-Brief summary of found items:
-- Relevant decisions with rationale
-- Related patterns
-- Active issues
+Project-local: `.claude/memory/facts.json`
 
-Maximum 200 tokens.
+## facts.json Structure
+
+```json
+{
+  "_meta": {
+    "counter": 0,
+    "lastSave": "2025-12-21_0300"
+  },
+  "decisions": [
+    {"id": "d001", "date": "2025-12-21", "content": "...", "reason": "..."}
+  ],
+  "patterns": [
+    {"id": "p001", "date": "2025-12-21", "content": "..."}
+  ],
+  "issues": [
+    {"id": "i001", "date": "2025-12-21", "content": "...", "status": "open|resolved"}
+  ]
+}
+```
+
+See [Architecture](../docs/ARCHITECTURE.md) for details.

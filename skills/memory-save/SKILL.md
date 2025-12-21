@@ -3,13 +3,12 @@ name: memory-save
 description: Execute when you see "[MEMORY_KEEPER]" in hook output. Follow the numbered steps exactly to save session memory.
 ---
 
-# Memory Save Skill
+# Memory Save Skill (v6.3.0)
 
-This skill activates when `[MEMORY_KEEPER]` appears in conversation (from PostToolUse or Stop hooks).
+This skill activates when `[MEMORY_KEEPER]` appears in conversation.
 
-## When Triggered
+## Trigger Message
 
-You will see a message like:
 ```
 ═══════════════════════════════════════════════════════════════
 [MEMORY_KEEPER] AUTO-SAVE TRIGGERED - N tool uses reached
@@ -18,48 +17,70 @@ You will see a message like:
 
 ## Required Actions
 
-**Follow the numbered steps in the hook message exactly:**
-
-1. **ANALYZE** - Review the session and identify accomplishments, decisions, patterns, issues
-2. **SAVE memory.md** - Append summary using the provided bash command
-3. **SAVE session file** - Create session file using the provided bash command
-4. **UPDATE facts.json** - If decisions/patterns/issues found, update the JSON file
-5. **RESET counter** - Run the reset command provided
-
-## Example Execution
-
+### Step 1: Save to memory.md
 ```bash
-# Step 2: Append to memory.md
-echo -e "\n## 2025-12-21_1430\nImplemented new feature X. Fixed bug in Y." >> ".claude/memory/memory.md"
-
-# Step 3: Save session file
-echo "Session summary: Implemented feature X, fixed Y bug, discovered pattern Z." > ".claude/memory/sessions/2025-12-21_1430.md"
-
-# Step 5: Reset counter
-node "scripts/counter.js" reset
+echo -e "\n## 2025-12-21_0300\n[1-2 sentence summary]" >> ".claude/memory/memory.md"
 ```
 
-## facts.json Update Example
+### Step 2: Save session file (EXACT FORMAT)
+```bash
+cat > ".claude/memory/sessions/2025-12-21_0300.md" << 'ENDSESSION'
+# Session 2025-12-21_0300
 
-```javascript
-// Read current facts
-const facts = JSON.parse(fs.readFileSync('.claude/memory/facts.json'));
+## Summary
+[What was accomplished in 2-3 sentences]
 
-// Add new items
-facts.decisions.push({
-  id: "d" + String(facts.decisions.length + 1).padStart(3, '0'),
-  date: "2025-12-21",
-  content: "Decision description",
-  reason: "Why this decision"
-});
+## Decisions
+- [Decision 1]: [Reason]
+- [Decision 2]: [Reason]
 
-// Write back
-fs.writeFileSync('.claude/memory/facts.json', JSON.stringify(facts, null, 2));
+## Patterns
+- [Pattern discovered]
+
+## Issues
+- [Issue found]: [open/resolved]
+
+ENDSESSION
 ```
 
-## Critical Rules
+### Step 3: Extract facts
+```bash
+node "scripts/counter.js" extract-facts 2025-12-21_0300
+```
+
+## Session End (Stop Hook)
+
+Additional step:
+```bash
+node "scripts/counter.js" compress
+```
+
+## Format Rules
+
+- `## Decisions` - Each line: `- Content: Reason`
+- `## Patterns` - Each line: `- Pattern description`
+- `## Issues` - Each line: `- Issue: open` or `- Issue: resolved`
+
+## Critical
 
 - **DO NOT SKIP** any steps
-- **USE THE EXACT PATHS** provided in the hook message
-- **RESET COUNTER** after saving (prevents duplicate triggers)
-- Keep summaries concise (2-3 sentences for memory.md)
+- **USE EXACT FORMAT** for session file (extract-facts parses it)
+- Counter resets automatically (no manual reset needed)
+
+## How Extraction Works
+
+```
+session.md                    facts.json
+─────────────                ────────────
+## Decisions                 "decisions": [
+- Use CLI: Reliable    ───>    {"content": "Use CLI", "reason": "Reliable"}
+                             ]
+## Patterns                  "patterns": [
+- Test before commit   ───>    {"content": "Test before commit"}
+                             ]
+## Issues                    "issues": [
+- Bug in X: resolved   ───>    {"content": "Bug in X", "status": "resolved"}
+                             ]
+```
+
+See [Architecture](../../docs/ARCHITECTURE.md) for full details.

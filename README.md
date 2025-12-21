@@ -1,96 +1,60 @@
 # Memory Keeper
 
-Automatic session memory for Claude Code with background agent summarization, structured facts storage, and tiered archiving.
+Automatic session memory for Claude Code with structured fact extraction and tiered archiving.
+
+## Documentation
+
+- [User Manual](docs/USER-MANUAL.md) - Installation, usage, commands
+- [Architecture](docs/ARCHITECTURE.md) - System design, data flow, components
+
+## Quick Start
+
+```bash
+# Install from GitHub
+/plugin marketplace add ZipperBagCoffee/memory-keeper-plugin
+/plugin install memory-keeper
+
+# That's it! Memory Keeper works automatically.
+```
 
 ## Features
 
 - **Auto-save**: Saves memory every 5 tool uses (configurable)
-- **Background Agent**: Spawns agent to analyze and summarize session
-- **Dual Storage**: Saves both summary and raw conversation
-- **Structured Facts**: decisions/patterns/issues stored in facts.json
+- **Structured Facts**: Decisions/patterns/issues extracted automatically
+- **Session Backup**: Raw transcript saved on session end
 - **Tiered Archiving**: 30+ day files archived monthly
 - **Auto-load**: Previous session context loaded on start
-- **Project isolation**: Each project has its own memory
-
-## Installation
-
-### From GitHub
-```bash
-/plugin marketplace add ZipperBagCoffee/memory-keeper-plugin
-/plugin install memory-keeper
-```
-
-### Local Development
-```bash
-claude --plugin-dir /path/to/memory-keeper-plugin
-```
+- **Project Isolation**: Each project has its own memory
 
 ## How It Works
 
-### Session Start
-1. SessionStart hook runs `load-memory.js`
-2. Reads `memory.md` for current project
-3. Outputs to Claude's context
-
-### During Session
-1. PostToolUse hook increments counter in facts.json._meta
-2. At N tool uses (default: 5), outputs explicit save instructions
-3. Claude sees instructions in hook output
-4. Claude follows numbered steps: analyze, save memory.md, save session, add facts via CLI
-5. Counter auto-resets after trigger
-
-### Session End
-1. Stop hook copies raw transcript to sessions/
-2. Stop hook outputs comprehensive save instructions
-3. Claude saves final session summary
-4. Compression archives 30+ day files
-
-## Storage Structure
-
-Each project stores memory in its own `.claude/memory/` folder:
-
 ```
-[project-root]/
-└── .claude/
-    └── memory/
-        ├── config.json            # Project-local settings (optional)
-        ├── memory.md              # Rolling summary (loaded at start)
-        ├── facts.json             # Structured decisions/patterns/issues + counter in _meta
-        └── sessions/
-            ├── YYYY-MM-DD_HHMM.md      # Session summary
-            ├── YYYY-MM-DD_HHMM.raw.jsonl # Raw transcript (on session end)
-            └── archive/
-                └── YYYY-MM.md          # Monthly archives
+Session Start ──> Load memory.md + facts.json
+       │
+       ▼
+   Tool Use ──> Counter++ ──> At 5: Save trigger
+       │                            │
+       ▼                            ▼
+   Tool Use                  Claude saves:
+       │                     1. memory.md
+       ▼                     2. session.md (structured)
+   Session End               3. extract-facts
+       │
+       ▼
+   Copy transcript + Final save + Compress
 ```
 
-## facts.json Structure
+## Storage
 
-```json
-{
-  "_meta": {
-    "counter": 3,
-    "lastSave": "2024-12-21_1430"
-  },
-  "decisions": [
-    {"id": "d001", "date": "2024-12-21", "content": "Use hooks for auto-save", "reason": "More reliable than manual"}
-  ],
-  "patterns": [
-    {"id": "p001", "date": "2024-12-21", "content": "JSON output required for hook visibility"}
-  ],
-  "issues": [
-    {"id": "i001", "date": "2024-12-21", "content": "Write tool fails on Windows", "status": "resolved"}
-  ]
-}
 ```
-
-## Configuration
-
-Create `.claude/memory/config.json` in your project (or `~/.claude/memory-keeper/config.json` for global):
-
-```json
-{
-  "saveInterval": 5
-}
+.claude/memory/
+├── memory.md              # Rolling summary
+├── facts.json             # Structured facts + counter
+└── sessions/
+    ├── YYYY-MM-DD_HHMM.md      # Session summary
+    ├── YYYY-MM-DD_HHMM.raw.jsonl # Raw transcript
+    └── archive/
+        └── YYYY-MM.md          # Monthly archive
 ```
 
 ## Commands
@@ -99,37 +63,68 @@ Create `.claude/memory/config.json` in your project (or `~/.claude/memory-keeper
 |---------|-------------|
 | `/memory-keeper:save-memory` | Manual save |
 | `/memory-keeper:load-memory` | Load memory |
-| `/memory-keeper:search-memory [query]` | Search past sessions |
-| `/memory-keeper:clear-memory [all\|old]` | Clean up memory |
+| `/memory-keeper:search-memory [query]` | Search sessions |
+| `/memory-keeper:clear-memory [all\|old]` | Clean up |
 
-## CLI Commands (for facts.json)
+## CLI
 
 ```bash
-# Add a decision
-node scripts/counter.js add-decision "Use hooks for auto-save" "More reliable than manual"
+# Search
+node scripts/counter.js search "query"
+node scripts/counter.js search              # Summary
 
-# Add a pattern
-node scripts/counter.js add-pattern "JSON output required for hook visibility"
+# Add facts
+node scripts/counter.js add-decision "what" "why"
+node scripts/counter.js add-pattern "pattern"
+node scripts/counter.js add-issue "issue" "open"
 
-# Add an issue
-node scripts/counter.js add-issue "Write tool fails on Windows" "resolved"
+# Extract from session file
+node scripts/counter.js extract-facts 2025-12-21_0300
+
+# Maintenance
+node scripts/counter.js compress            # Archive old
+node scripts/counter.js clear-facts         # Reset facts
+```
+
+## Session File Format
+
+```markdown
+# Session 2025-12-21_0300
+
+## Summary
+Implemented feature X.
+
+## Decisions
+- Use hooks: More reliable
+- Skip Redux: Overkill
+
+## Patterns
+- Run tests before commit
+
+## Issues
+- Build fails: resolved
+```
+
+## Configuration
+
+`.claude/memory/config.json`:
+```json
+{
+  "saveInterval": 5
+}
 ```
 
 ## Version History
 
-- **v6.3.0**: Auto-extract facts from structured session files via `extract-facts` command
-- **v6.2.0**: Fix command paths to project-local, add search/clear-facts CLI commands
-- **v6.1.0**: Add CLI commands (add-decision/add-pattern/add-issue) for safe facts.json updates
-- **v6.0.1**: Fix stdin reading with async/await for proper transcript_path capture
-- **v6.0.0**: Clear instruction output - hooks now output explicit step-by-step commands for Claude to follow
-- **v5.0.1**: Counter moved to facts.json._meta, auto-create facts.json, transcript fallback search
-- **v5.0.0**: SKILL.md auto-trigger system - Claude automatically executes save when triggered
-- **v4.1.0**: Project-local storage (.claude/memory/), raw transcript copy on session end
-- **v4.0.0**: Background agent summarization, original+summary saves, facts.json, tiered storage
-- **v3.0.4**: Use Bash for saves (Windows compatibility fix)
-- **v3.0.3**: Convert all text to English
-- **v3.0.2**: JSON output format for hooks
-- **v3.0.0**: Counter-based trigger system
+| Version | Changes |
+|---------|---------|
+| 6.3.0 | Auto-extract facts from structured session files |
+| 6.2.0 | Fix command paths, add search/clear-facts |
+| 6.1.0 | CLI commands for facts.json |
+| 6.0.x | Explicit instruction output, async stdin |
+| 5.x | SKILL.md auto-trigger (deprecated) |
+| 4.x | Background agent, project-local storage |
+| 3.x | Counter-based trigger |
 
 ## License
 
