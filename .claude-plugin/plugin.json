@@ -1,7 +1,7 @@
 {
   "name": "memory-keeper",
-  "version": "3.0.4",
-  "description": "Auto-save memory every N tool uses. Counter-based trigger with background agent summarization.",
+  "version": "4.0.0",
+  "description": "Auto-save memory with background agent summarization. Saves summary + original, facts.json for search, tiered storage.",
   "author": {
     "name": "TaWa"
   },
