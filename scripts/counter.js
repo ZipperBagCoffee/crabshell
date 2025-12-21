@@ -15,34 +15,45 @@ function getConfig() {
   return config;
 }
 
-// Read hook data from stdin
+// Read hook data from stdin using async/await
 function readStdin() {
-  try {
-    // Try reading from stdin synchronously
-    const chunks = [];
-    const BUFSIZE = 256;
-    let buf = Buffer.alloc(BUFSIZE);
-    let bytesRead;
+  return new Promise((resolve) => {
+    let data = '';
 
-    const fd = fs.openSync(0, 'r');
-    while ((bytesRead = fs.readSync(fd, buf, 0, BUFSIZE)) > 0) {
-      chunks.push(buf.slice(0, bytesRead));
-    }
-    fs.closeSync(fd);
+    // Set encoding
+    process.stdin.setEncoding('utf8');
 
-    const data = Buffer.concat(chunks).toString('utf8').trim();
-    if (data) {
-      return JSON.parse(data);
-    }
-  } catch (e) {
-    // Fallback: check environment variable
-    if (process.env.CLAUDE_HOOK_DATA) {
-      try {
-        return JSON.parse(process.env.CLAUDE_HOOK_DATA);
-      } catch {}
-    }
-  }
-  return {};
+    // Handle data chunks
+    process.stdin.on('data', (chunk) => {
+      data += chunk;
+    });
+
+    // Handle end of input
+    process.stdin.on('end', () => {
+      if (data.trim()) {
+        try {
+          resolve(JSON.parse(data.trim()));
+        } catch (e) {
+          // Log parse error
+          const debugPath = path.join(getProjectDir(), 'stdin-parse-error.log');
+          fs.appendFileSync(debugPath, `${new Date().toISOString()}: ${e.message}\nData: ${data.substring(0, 500)}\n`);
+          resolve({});
+        }
+      } else {
+        resolve({});
+      }
+    });
+
+    // Handle error
+    process.stdin.on('error', (e) => {
+      const debugPath = path.join(getProjectDir(), 'stdin-error.log');
+      fs.appendFileSync(debugPath, `${new Date().toISOString()}: ${e.message}\n`);
+      resolve({});
+    });
+
+    // Resume stdin (important for piped input)
+    process.stdin.resume();
+  });
 }
 
 // Get facts.json path and ensure it exists
@@ -151,8 +162,8 @@ DO NOT SKIP STEPS 1-4. Execute them immediately before continuing.
   }
 }
 
-function final() {
-  const hookData = readStdin();
+async function final() {
+  const hookData = await readStdin();
   const projectDir = getProjectDir().replace(/\\/g, '/');
   const timestamp = getTimestamp();
   const sessionsDir = path.join(getProjectDir(), 'sessions');
@@ -161,7 +172,13 @@ function final() {
 
   // Debug: log what we received
   const debugPath = path.join(getProjectDir(), 'debug-hook.json');
-  writeJson(debugPath, { hookData, timestamp, hasTranscript: !!hookData.transcript_path });
+  writeJson(debugPath, {
+    hookData,
+    timestamp,
+    hasTranscript: !!hookData.transcript_path,
+    transcriptPath: hookData.transcript_path || null,
+    sessionId: hookData.session_id || null
+  });
 
   // Copy raw transcript if available
   let rawSaved = '';
@@ -176,33 +193,61 @@ function final() {
         `${timestamp}: Failed to copy transcript: ${e.message}\n`);
     }
   } else {
-    // Try to find transcript in default location
-    const projectName = getProjectName();
-    const claudeProjectsDir = path.join(os.homedir(), '.claude', 'projects');
-
-    try {
-      // Look for session files
-      if (fs.existsSync(claudeProjectsDir)) {
-        const projects = fs.readdirSync(claudeProjectsDir);
-        for (const proj of projects) {
-          if (proj.includes(projectName)) {
+    // Try to find transcript using session_id if available
+    if (hookData.session_id) {
+      const claudeProjectsDir = path.join(os.homedir(), '.claude', 'projects');
+      try {
+        if (fs.existsSync(claudeProjectsDir)) {
+          const projects = fs.readdirSync(claudeProjectsDir);
+          for (const proj of projects) {
             const projPath = path.join(claudeProjectsDir, proj);
-            const files = fs.readdirSync(projPath).filter(f => f.endsWith('.jsonl'));
-            if (files.length > 0) {
-              // Get most recent
-              const sorted = files.sort().reverse();
-              const srcPath = path.join(projPath, sorted[0]);
+            const transcriptFile = path.join(projPath, `${hookData.session_id}.jsonl`);
+            if (fs.existsSync(transcriptFile)) {
               const rawDest = path.join(sessionsDir, `${timestamp}.raw.jsonl`);
-              fs.copyFileSync(srcPath, rawDest);
+              fs.copyFileSync(transcriptFile, rawDest);
               rawSaved = rawDest.replace(/\\/g, '/');
               break;
             }
           }
         }
+      } catch (e) {
+        fs.appendFileSync(path.join(getProjectDir(), 'error.log'),
+          `${timestamp}: Failed to find transcript by session_id: ${e.message}\n`);
       }
-    } catch (e) {
-      fs.appendFileSync(path.join(getProjectDir(), 'error.log'),
-        `${timestamp}: Failed to find transcript: ${e.message}\n`);
+    }
+
+    // Fallback: find by project name and most recent file
+    if (!rawSaved) {
+      const projectName = getProjectName();
+      const claudeProjectsDir = path.join(os.homedir(), '.claude', 'projects');
+
+      try {
+        if (fs.existsSync(claudeProjectsDir)) {
+          const projects = fs.readdirSync(claudeProjectsDir);
+          for (const proj of projects) {
+            if (proj.includes(projectName)) {
+              const projPath = path.join(claudeProjectsDir, proj);
+              const files = fs.readdirSync(projPath).filter(f => f.endsWith('.jsonl'));
+              if (files.length > 0) {
+                // Get most recent by modification time
+                const fileStats = files.map(f => ({
+                  name: f,
+                  mtime: fs.statSync(path.join(projPath, f)).mtime
+                }));
+                fileStats.sort((a, b) => b.mtime - a.mtime);
+                const srcPath = path.join(projPath, fileStats[0].name);
+                const rawDest = path.join(sessionsDir, `${timestamp}.raw.jsonl`);
+                fs.copyFileSync(srcPath, rawDest);
+                rawSaved = rawDest.replace(/\\/g, '/');
+                break;
+              }
+            }
+          }
+        }
+      } catch (e) {
+        fs.appendFileSync(path.join(getProjectDir(), 'error.log'),
+          `${timestamp}: Failed to find transcript: ${e.message}\n`);
+      }
     }
   }
 
@@ -300,7 +345,7 @@ function compress() {
   console.log('[MEMORY_KEEPER] Compression complete.');
 }
 
-// Main
+// Main - handle async commands
 const command = process.argv[2];
 
 switch (command) {
@@ -308,7 +353,10 @@ switch (command) {
     check();
     break;
   case 'final':
-    final();
+    final().catch(e => {
+      console.error(`[MEMORY_KEEPER] Final error: ${e.message}`);
+      process.exit(1);
+    });
     break;
   case 'reset':
     reset();
