@@ -117,7 +117,7 @@ Read stdin    Copy transcript
 
 ## Data Flow
 
-### Session File Format (v6.4.0+)
+### Session File Format (v6.5.0+)
 ```markdown
 # Session 2025-12-21_0300
 
@@ -126,18 +126,21 @@ Read stdin    Copy transcript
 
 ## Decisions
 - [architecture|technology|approach] Decision content: Reason why
-- [architecture] Another decision: Its reason
+  - files: path/to/file1.ts, path/to/file2.ts
+  - concepts: authentication, state-management
 
 ## Patterns
 - [convention|best-practice|anti-pattern] Pattern description
-- [convention] Another pattern
+  - concepts: testing, workflow
 
 ## Issues
 - [bugfix|performance|security|feature] Issue description: open|resolved
-- [bugfix] Fixed something: resolved
+  - files: path/to/fixed-file.ts
+  - concepts: performance
 ```
 
 **Privacy Tags:** Use `<private>sensitive</private>` to exclude content from facts.json.
+**File/Concept Tags:** Optional sub-items for better search and grouping.
 
 ### Facts Extraction
 ```
@@ -161,10 +164,10 @@ session.md ──parse──> extractFacts() ──add──> facts.json
 | `final` | Copy transcript, output final instructions | stdin (hookData) | Instructions |
 | `reset` | Reset counter to 0 | - | Confirmation |
 | `compress` | Archive 30+ day files | - | Archive status |
-| `add-decision` | Add decision to facts.json | content, reason, [type] | Confirmation |
-| `add-pattern` | Add pattern to facts.json | content, [type] | Confirmation |
-| `add-issue` | Add issue to facts.json | content, status, [type] | Confirmation |
-| `search` | Search facts.json | query, [--type=TYPE] | Matching facts |
+| `add-decision` | Add decision to facts.json | content, reason, [type], [files], [concepts] | Confirmation |
+| `add-pattern` | Add pattern to facts.json | content, [type], [files], [concepts] | Confirmation |
+| `add-issue` | Add issue to facts.json | content, status, [type], [files], [concepts] | Confirmation |
+| `search` | Search facts.json | query, [--type], [--concept], [--file] | Matching facts |
 | `clear-facts` | Clear facts arrays | - | Confirmation |
 | `extract-facts` | Parse session.md for facts | filename | Extraction stats |
 
@@ -187,7 +190,9 @@ session.md ──parse──> extractFacts() ──add──> facts.json
       "type": "architecture",
       "date": "2025-12-21",
       "content": "Use structured markdown",
-      "reason": "Easier to parse"
+      "reason": "Easier to parse",
+      "files": ["src/parser.ts"],
+      "concepts": ["parsing", "architecture"]
     }
   ],
   "patterns": [
@@ -195,7 +200,8 @@ session.md ──parse──> extractFacts() ──add──> facts.json
       "id": "p001",
       "type": "convention",
       "date": "2025-12-21",
-      "content": "Always use heredoc for bash"
+      "content": "Always use heredoc for bash",
+      "concepts": ["bash", "workflow"]
     }
   ],
   "issues": [
@@ -204,9 +210,19 @@ session.md ──parse──> extractFacts() ──add──> facts.json
       "type": "bugfix",
       "date": "2025-12-21",
       "content": "JSON editing fails",
-      "status": "resolved"
+      "status": "resolved",
+      "files": ["scripts/counter.js"],
+      "concepts": ["json", "cli"]
     }
-  ]
+  ],
+  "concepts": {
+    "architecture": ["d001"],
+    "parsing": ["d001"],
+    "bash": ["p001"],
+    "workflow": ["p001"],
+    "json": ["i001"],
+    "cli": ["i001"]
+  }
 }
 ```
 
@@ -228,6 +244,7 @@ Location priority:
 
 | Version | Key Changes |
 |---------|-------------|
+| 6.5.0 | File references + concept tagging |
 | 6.4.0 | Observation types + privacy tags |
 | 6.3.0 | Auto-extract facts from structured session files |
 | 6.2.0 | Fix command paths, add search/clear-facts |

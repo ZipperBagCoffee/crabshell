@@ -69,7 +69,8 @@ function loadFacts() {
     _meta: { counter: 0, lastSave: null },
     decisions: [],
     patterns: [],
-    issues: []
+    issues: [],
+    concepts: {}
   };
 
   let facts = readJsonOrDefault(factsPath, null);
@@ -84,7 +85,28 @@ function loadFacts() {
     facts._meta = { counter: 0, lastSave: null };
   }
 
+  // Ensure concepts index exists (v6.5.0+)
+  if (!facts.concepts) {
+    facts.concepts = {};
+  }
+
   return facts;
+}
+
+// Update concepts index with fact ID
+function updateConceptsIndex(facts, factId, conceptsList) {
+  if (!conceptsList || conceptsList.length === 0) return;
+
+  conceptsList.forEach(concept => {
+    const c = concept.trim().toLowerCase();
+    if (!c) return;
+    if (!facts.concepts[c]) {
+      facts.concepts[c] = [];
+    }
+    if (!facts.concepts[c].includes(factId)) {
+      facts.concepts[c].push(factId);
+    }
+  });
 }
 
 function saveFacts(facts) {
@@ -138,20 +160,23 @@ function check() {
 
 ## Decisions
 - [architecture|technology|approach] Decision content: Reason why
-- [architecture] Another decision: Its reason
+  - files: path/to/file1.ts, path/to/file2.ts
+  - concepts: concept1, concept2
 
 ## Patterns
 - [convention|best-practice] Pattern description
-- [convention] Another pattern
+  - concepts: testing, workflow
 
 ## Issues
 - [bugfix|performance|security] Issue description: open|resolved
-- [bugfix] Fixed something: resolved
+  - files: path/to/fixed-file.ts
+  - concepts: performance
 
 ENDSESSION
    \`\`\`
 
    NOTE: <private>sensitive data</private> tags will be stripped from facts.json
+   TIP: files/concepts sub-items are optional but help with search
 
 3. EXTRACT facts from session file:
    \`\`\`bash
@@ -290,20 +315,23 @@ ${rawSaved ? `✓ Raw transcript saved: ${rawSaved}` : '⚠ Raw transcript not s
 
 ## Decisions
 - [architecture|technology|approach] Decision content: Reason why
-- [architecture] Another decision: Its reason
+  - files: path/to/file1.ts, path/to/file2.ts
+  - concepts: concept1, concept2
 
 ## Patterns
 - [convention|best-practice] Pattern description
-- [convention] Another pattern
+  - concepts: testing, workflow
 
 ## Issues
 - [bugfix|performance|security] Issue description: open|resolved
-- [bugfix] Fixed something: resolved
+  - files: path/to/fixed-file.ts
+  - concepts: performance
 
 ENDSESSION
    \`\`\`
 
    NOTE: <private>sensitive data</private> tags will be stripped from facts.json
+   TIP: files/concepts sub-items are optional but help with search
 
 3. EXTRACT facts from session file:
    \`\`\`bash
@@ -346,46 +374,91 @@ const VALID_TYPES = {
   issues: ['bugfix', 'performance', 'security', 'feature', 'other']
 };
 
+// Parse comma-separated list into array
+function parseList(str) {
+  if (!str) return [];
+  return str.split(',').map(s => s.trim()).filter(s => s.length > 0);
+}
+
 // Add fact commands - Claude calls these instead of editing JSON
-function addDecision(content, reason, type) {
+function addDecision(content, reason, type, filesStr, conceptsStr) {
   const facts = loadFacts();
   const date = new Date().toISOString().split('T')[0];
   const id = `d${String(facts.decisions.length + 1).padStart(3, '0')}`;
   const factType = VALID_TYPES.decisions.includes(type) ? type : 'other';
   const cleanContent = stripPrivate(content);
   const cleanReason = stripPrivate(reason || '');
-  facts.decisions.push({ id, type: factType, date, content: cleanContent, reason: cleanReason });
+  const files = parseList(filesStr);
+  const concepts = parseList(conceptsStr);
+
+  const fact = { id, type: factType, date, content: cleanContent, reason: cleanReason };
+  if (files.length > 0) fact.files = files;
+  if (concepts.length > 0) fact.concepts = concepts;
+
+  facts.decisions.push(fact);
+  updateConceptsIndex(facts, id, concepts);
   saveFacts(facts);
-  console.log(`[MEMORY_KEEPER] Added decision: ${id} (${factType})`);
+
+  const extras = [];
+  if (files.length > 0) extras.push(`${files.length} files`);
+  if (concepts.length > 0) extras.push(`${concepts.length} concepts`);
+  const extrasStr = extras.length > 0 ? ` [${extras.join(', ')}]` : '';
+  console.log(`[MEMORY_KEEPER] Added decision: ${id} (${factType})${extrasStr}`);
 }
 
-function addPattern(content, type) {
+function addPattern(content, type, filesStr, conceptsStr) {
   const facts = loadFacts();
   const date = new Date().toISOString().split('T')[0];
   const id = `p${String(facts.patterns.length + 1).padStart(3, '0')}`;
   const factType = VALID_TYPES.patterns.includes(type) ? type : 'other';
   const cleanContent = stripPrivate(content);
-  facts.patterns.push({ id, type: factType, date, content: cleanContent });
+  const files = parseList(filesStr);
+  const concepts = parseList(conceptsStr);
+
+  const fact = { id, type: factType, date, content: cleanContent };
+  if (files.length > 0) fact.files = files;
+  if (concepts.length > 0) fact.concepts = concepts;
+
+  facts.patterns.push(fact);
+  updateConceptsIndex(facts, id, concepts);
   saveFacts(facts);
-  console.log(`[MEMORY_KEEPER] Added pattern: ${id} (${factType})`);
+
+  const extras = [];
+  if (files.length > 0) extras.push(`${files.length} files`);
+  if (concepts.length > 0) extras.push(`${concepts.length} concepts`);
+  const extrasStr = extras.length > 0 ? ` [${extras.join(', ')}]` : '';
+  console.log(`[MEMORY_KEEPER] Added pattern: ${id} (${factType})${extrasStr}`);
 }
 
-function addIssue(content, status, type) {
+function addIssue(content, status, type, filesStr, conceptsStr) {
   const facts = loadFacts();
   const date = new Date().toISOString().split('T')[0];
   const id = `i${String(facts.issues.length + 1).padStart(3, '0')}`;
   const factType = VALID_TYPES.issues.includes(type) ? type : 'other';
   const cleanContent = stripPrivate(content);
-  facts.issues.push({ id, type: factType, date, content: cleanContent, status: status || 'open' });
+  const files = parseList(filesStr);
+  const concepts = parseList(conceptsStr);
+
+  const fact = { id, type: factType, date, content: cleanContent, status: status || 'open' };
+  if (files.length > 0) fact.files = files;
+  if (concepts.length > 0) fact.concepts = concepts;
+
+  facts.issues.push(fact);
+  updateConceptsIndex(facts, id, concepts);
   saveFacts(facts);
-  console.log(`[MEMORY_KEEPER] Added issue: ${id} (${factType})`);
+
+  const extras = [];
+  if (files.length > 0) extras.push(`${files.length} files`);
+  if (concepts.length > 0) extras.push(`${concepts.length} concepts`);
+  const extrasStr = extras.length > 0 ? ` [${extras.join(', ')}]` : '';
+  console.log(`[MEMORY_KEEPER] Added issue: ${id} (${factType})${extrasStr}`);
 }
 
-// Search facts.json for keyword with optional type filter
-function search(query, typeFilter) {
+// Search facts.json for keyword with optional filters
+function search(query, typeFilter, conceptFilter, fileFilter) {
   const facts = loadFacts();
 
-  if (!query && !typeFilter) {
+  if (!query && !typeFilter && !conceptFilter && !fileFilter) {
     // Show summary
     const projectDir = getProjectDir();
     const sessionsDir = path.join(projectDir, 'sessions');
@@ -408,21 +481,52 @@ function search(query, typeFilter) {
     if (Object.keys(decTypes).length > 0) {
       console.log(`  Decision types: ${Object.entries(decTypes).map(([k,v]) => `${k}(${v})`).join(', ')}`);
     }
+
+    // Show concepts
+    const conceptKeys = Object.keys(facts.concepts || {});
+    if (conceptKeys.length > 0) {
+      console.log(`  Concepts: ${conceptKeys.slice(0, 10).join(', ')}${conceptKeys.length > 10 ? '...' : ''}`);
+    }
     return;
   }
 
   const queryLower = query ? query.toLowerCase() : '';
   const typeLower = typeFilter ? typeFilter.toLowerCase() : null;
+  const conceptLower = conceptFilter ? conceptFilter.toLowerCase() : null;
+  const fileLower = fileFilter ? fileFilter.toLowerCase() : null;
   let found = false;
+
+  // Helper: check if fact matches file filter
+  function matchesFile(fact) {
+    if (!fileLower) return true;
+    if (!fact.files || fact.files.length === 0) return false;
+    return fact.files.some(f => f.toLowerCase().includes(fileLower));
+  }
+
+  // Helper: check if fact matches concept filter
+  function matchesConcept(fact) {
+    if (!conceptLower) return true;
+    if (!fact.concepts || fact.concepts.length === 0) return false;
+    return fact.concepts.some(c => c.toLowerCase() === conceptLower);
+  }
+
+  // Helper: format extras
+  function formatExtras(fact) {
+    const parts = [];
+    if (fact.files && fact.files.length > 0) parts.push(`files: ${fact.files.join(', ')}`);
+    if (fact.concepts && fact.concepts.length > 0) parts.push(`concepts: ${fact.concepts.join(', ')}`);
+    return parts.length > 0 ? `\n  ${parts.join(' | ')}` : '';
+  }
 
   // Search decisions
   facts.decisions.forEach(d => {
     const typeMatch = !typeLower || (d.type || 'other') === typeLower;
     const textMatch = !query || d.content.toLowerCase().includes(queryLower) ||
         (d.reason && d.reason.toLowerCase().includes(queryLower));
-    if (typeMatch && textMatch) {
+    if (typeMatch && textMatch && matchesFile(d) && matchesConcept(d)) {
       console.log(`[DECISION ${d.id}] [${d.type || 'other'}] ${d.date}: ${d.content}`);
       if (d.reason) console.log(`  Reason: ${d.reason}`);
+      console.log(formatExtras(d));
       found = true;
     }
   });
@@ -431,8 +535,9 @@ function search(query, typeFilter) {
   facts.patterns.forEach(p => {
     const typeMatch = !typeLower || (p.type || 'other') === typeLower;
     const textMatch = !query || p.content.toLowerCase().includes(queryLower);
-    if (typeMatch && textMatch) {
+    if (typeMatch && textMatch && matchesFile(p) && matchesConcept(p)) {
       console.log(`[PATTERN ${p.id}] [${p.type || 'other'}] ${p.date}: ${p.content}`);
+      console.log(formatExtras(p));
       found = true;
     }
   });
@@ -441,14 +546,19 @@ function search(query, typeFilter) {
   facts.issues.forEach(i => {
     const typeMatch = !typeLower || (i.type || 'other') === typeLower;
     const textMatch = !query || i.content.toLowerCase().includes(queryLower);
-    if (typeMatch && textMatch) {
+    if (typeMatch && textMatch && matchesFile(i) && matchesConcept(i)) {
       console.log(`[ISSUE ${i.id}] [${i.type || 'other'}] ${i.date}: ${i.content} (${i.status})`);
+      console.log(formatExtras(i));
       found = true;
     }
   });
 
   if (!found) {
-    const filterMsg = typeLower ? ` with type=${typeLower}` : '';
+    const filters = [];
+    if (typeLower) filters.push(`type=${typeLower}`);
+    if (conceptLower) filters.push(`concept=${conceptLower}`);
+    if (fileLower) filters.push(`file=${fileLower}`);
+    const filterMsg = filters.length > 0 ? ` with ${filters.join(', ')}` : '';
     const queryMsg = query ? ` for: ${query}` : '';
     console.log(`[MEMORY_KEEPER] No matches${filterMsg}${queryMsg}`);
   }
@@ -502,70 +612,96 @@ function extractFacts(sessionFile) {
   const content = fs.readFileSync(filePath, 'utf8');
   let extracted = { decisions: 0, patterns: 0, issues: 0 };
 
+  // Helper: parse sub-items (files, concepts) following a main item
+  function parseSubItems(lines, startIdx) {
+    let files = '';
+    let concepts = '';
+    for (let i = startIdx + 1; i < lines.length; i++) {
+      const subLine = lines[i];
+      // Sub-items are indented (start with spaces and -)
+      if (/^\s+-\s*(files|concepts):/i.test(subLine)) {
+        const filesMatch = subLine.match(/^\s+-\s*files:\s*(.+)$/i);
+        if (filesMatch) files = filesMatch[1].trim();
+        const conceptsMatch = subLine.match(/^\s+-\s*concepts:\s*(.+)$/i);
+        if (conceptsMatch) concepts = conceptsMatch[1].trim();
+      } else if (/^-\s/.test(subLine) || /^##/.test(subLine)) {
+        // Next main item or section
+        break;
+      }
+    }
+    return { files, concepts };
+  }
+
   // Parse ## Decisions section
-  // Format: - [type] Content: Reason  OR  - Content: Reason (type defaults to 'other')
   const decisionsMatch = content.match(/## Decisions\s*([\s\S]*?)(?=##|$)/i);
   if (decisionsMatch) {
     const lines = decisionsMatch[1].trim().split('\n');
-    lines.forEach(line => {
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
       // Try typed format first: - [architecture] Use hooks: Better state
       const typedMatch = line.match(/^-\s*\[(\w+(?:-\w+)?)\]\s*(.+?):\s*(.+)$/);
       if (typedMatch) {
-        addDecision(typedMatch[2].trim(), typedMatch[3].trim(), typedMatch[1].toLowerCase());
+        const { files, concepts } = parseSubItems(lines, i);
+        addDecision(typedMatch[2].trim(), typedMatch[3].trim(), typedMatch[1].toLowerCase(), files, concepts);
         extracted.decisions++;
-        return;
+        continue;
       }
       // Fallback to untyped: - Use hooks: Better state
       const match = line.match(/^-\s*(.+?):\s*(.+)$/);
-      if (match && !match[1].startsWith('[')) {
-        addDecision(match[1].trim(), match[2].trim(), 'other');
+      if (match && !match[1].startsWith('[') && !/^\s/.test(line)) {
+        const { files, concepts } = parseSubItems(lines, i);
+        addDecision(match[1].trim(), match[2].trim(), 'other', files, concepts);
         extracted.decisions++;
       }
-    });
+    }
   }
 
   // Parse ## Patterns section
-  // Format: - [type] Pattern  OR  - Pattern (type defaults to 'other')
   const patternsMatch = content.match(/## Patterns\s*([\s\S]*?)(?=##|$)/i);
   if (patternsMatch) {
     const lines = patternsMatch[1].trim().split('\n');
-    lines.forEach(line => {
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
       // Try typed format: - [convention] Always test first
       const typedMatch = line.match(/^-\s*\[(\w+(?:-\w+)?)\]\s*(.+)$/);
       if (typedMatch) {
-        addPattern(typedMatch[2].trim(), typedMatch[1].toLowerCase());
+        const { files, concepts } = parseSubItems(lines, i);
+        addPattern(typedMatch[2].trim(), typedMatch[1].toLowerCase(), files, concepts);
         extracted.patterns++;
-        return;
+        continue;
       }
       // Fallback to untyped
       const match = line.match(/^-\s*(.+)$/);
-      if (match && !match[1].startsWith('[')) {
-        addPattern(match[1].trim(), 'other');
+      if (match && !match[1].startsWith('[') && !/^\s/.test(line)) {
+        const { files, concepts } = parseSubItems(lines, i);
+        addPattern(match[1].trim(), 'other', files, concepts);
         extracted.patterns++;
       }
-    });
+    }
   }
 
   // Parse ## Issues section
-  // Format: - [type] Issue: status  OR  - Issue: status (type defaults to 'other')
   const issuesMatch = content.match(/## Issues\s*([\s\S]*?)(?=##|$)/i);
   if (issuesMatch) {
     const lines = issuesMatch[1].trim().split('\n');
-    lines.forEach(line => {
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
       // Try typed format: - [bugfix] Memory leak: resolved
       const typedMatch = line.match(/^-\s*\[(\w+(?:-\w+)?)\]\s*(.+?):\s*(open|resolved)$/i);
       if (typedMatch) {
-        addIssue(typedMatch[2].trim(), typedMatch[3].toLowerCase(), typedMatch[1].toLowerCase());
+        const { files, concepts } = parseSubItems(lines, i);
+        addIssue(typedMatch[2].trim(), typedMatch[3].toLowerCase(), typedMatch[1].toLowerCase(), files, concepts);
         extracted.issues++;
-        return;
+        continue;
       }
       // Fallback to untyped
       const match = line.match(/^-\s*(.+?):\s*(open|resolved)$/i);
-      if (match && !match[1].startsWith('[')) {
-        addIssue(match[1].trim(), match[2].toLowerCase(), 'other');
+      if (match && !match[1].startsWith('[') && !/^\s/.test(line)) {
+        const { files, concepts } = parseSubItems(lines, i);
+        addIssue(match[1].trim(), match[2].toLowerCase(), 'other', files, concepts);
         extracted.issues++;
       }
-    });
+    }
   }
 
   console.log(`[MEMORY_KEEPER] Extracted from ${path.basename(filePath)}:`);
@@ -609,11 +745,12 @@ function compress() {
   console.log('[MEMORY_KEEPER] Compression complete.');
 }
 
-// Parse --type=value from arguments
-function parseTypeArg(args) {
+// Parse --key=value from arguments
+function parseArg(args, key) {
+  const prefix = `--${key}=`;
   for (const arg of args) {
-    if (arg.startsWith('--type=')) {
-      return arg.substring(7);
+    if (arg.startsWith(prefix)) {
+      return arg.substring(prefix.length);
     }
   }
   return null;
@@ -640,23 +777,25 @@ switch (command) {
     compress();
     break;
   case 'add-decision':
-    // add-decision "content" "reason" [type]
-    addDecision(args[0], args[1], args[2]);
+    // add-decision "content" "reason" [type] [files] [concepts]
+    addDecision(args[0], args[1], args[2], args[3], args[4]);
     break;
   case 'add-pattern':
-    // add-pattern "content" [type]
-    addPattern(args[0], args[1]);
+    // add-pattern "content" [type] [files] [concepts]
+    addPattern(args[0], args[1], args[2], args[3]);
     break;
   case 'add-issue':
-    // add-issue "content" "status" [type]
-    addIssue(args[0], args[1], args[2]);
+    // add-issue "content" "status" [type] [files] [concepts]
+    addIssue(args[0], args[1], args[2], args[3], args[4]);
     break;
   case 'search':
-    // search [query] [--type=value]
+    // search [query] [--type=X] [--concept=X] [--file=X]
     {
-      const typeFilter = parseTypeArg(args);
+      const typeFilter = parseArg(args, 'type');
+      const conceptFilter = parseArg(args, 'concept');
+      const fileFilter = parseArg(args, 'file');
       const query = args.find(a => !a.startsWith('--')) || null;
-      search(query, typeFilter);
+      search(query, typeFilter, conceptFilter, fileFilter);
     }
     break;
   case 'clear-facts':
@@ -674,17 +813,24 @@ Commands:
   reset                  Reset counter to 0
   compress               Archive old session files (30+ days)
 
-  add-decision <content> <reason> [type]
-                         Add decision (types: architecture, technology, approach, other)
-  add-pattern <content> [type]
-                         Add pattern (types: convention, best-practice, anti-pattern, other)
-  add-issue <content> <status> [type]
-                         Add issue (types: bugfix, performance, security, feature, other)
+  add-decision <content> <reason> [type] [files] [concepts]
+                         Add decision with optional file refs and concept tags
+                         Types: architecture, technology, approach, other
+                         Files/concepts: comma-separated (e.g., "src/a.ts,src/b.ts")
 
-  search [query] [--type=TYPE]
-                         Search facts or show summary (no args)
-  clear-facts            Clear all facts (keeps _meta)
+  add-pattern <content> [type] [files] [concepts]
+                         Add pattern with optional file refs and concept tags
+                         Types: convention, best-practice, anti-pattern, other
+
+  add-issue <content> <status> [type] [files] [concepts]
+                         Add issue with optional file refs and concept tags
+                         Types: bugfix, performance, security, feature, other
+
+  search [query] [--type=X] [--concept=X] [--file=X]
+                         Search facts with filters or show summary (no args)
+
+  clear-facts            Clear all facts (keeps _meta and concepts)
   extract-facts [session]
-                         Extract facts from session file
+                         Extract facts from session file (parses files/concepts sub-items)
 `);
 }

@@ -3,7 +3,7 @@ name: memory-save
 description: Execute when you see "[MEMORY_KEEPER]" in hook output. Follow the numbered steps exactly to save session memory.
 ---
 
-# Memory Save Skill (v6.4.0)
+# Memory Save Skill (v6.5.0)
 
 This skill activates when `[MEMORY_KEEPER]` appears in conversation.
 
@@ -32,20 +32,23 @@ cat > ".claude/memory/sessions/2025-12-21_0300.md" << 'ENDSESSION'
 
 ## Decisions
 - [architecture|technology|approach] Decision content: Reason why
-- [architecture] Another decision: Its reason
+  - files: path/to/file1.ts, path/to/file2.ts
+  - concepts: authentication, state-management
 
 ## Patterns
 - [convention|best-practice] Pattern description
-- [convention] Another pattern
+  - concepts: testing, workflow
 
 ## Issues
 - [bugfix|performance|security] Issue description: open|resolved
-- [bugfix] Fixed something: resolved
+  - files: path/to/fixed-file.ts
+  - concepts: performance
 
 ENDSESSION
 ```
 
-**Privacy:** Use `<private>API key here</private>` to exclude sensitive data from facts.json.
+**Privacy:** Use `<private>API key here</private>` to exclude sensitive data.
+**Files/Concepts:** Optional sub-items for better organization and search.
 
 ### Step 3: Extract facts
 ```bash
@@ -63,11 +66,13 @@ node "scripts/counter.js" compress
 
 - `## Decisions` - Each line: `- [type] Content: Reason`
   - Types: architecture, technology, approach, other
+  - Optional: `  - files: path1, path2` and `  - concepts: tag1, tag2`
 - `## Patterns` - Each line: `- [type] Pattern description`
   - Types: convention, best-practice, anti-pattern, other
 - `## Issues` - Each line: `- [type] Issue: open|resolved`
   - Types: bugfix, performance, security, feature, other
 - **Privacy**: `<private>...</private>` content excluded from facts.json
+- **Search**: `node counter.js search --concept=X --file=Y --type=Z`
 
 ## Critical
 
@@ -81,16 +86,15 @@ node "scripts/counter.js" compress
 session.md                              facts.json
 ──────────────────                     ────────────
 ## Decisions                           "decisions": [
-- [architecture] Use CLI: Reliable ───>  {"type":"architecture", "content":"Use CLI", "reason":"Reliable"}
-                                       ]
-## Patterns                            "patterns": [
-- [convention] Test before commit  ───>  {"type":"convention", "content":"Test before commit"}
-                                       ]
-## Issues                              "issues": [
-- [bugfix] Bug in X: resolved      ───>  {"type":"bugfix", "content":"Bug in X", "status":"resolved"}
-                                       ]
+- [architecture] Use CLI: Reliable     {
+  - files: src/cli.ts               ───>  "type":"architecture",
+  - concepts: cli, reliability            "content":"Use CLI",
+                                          "files":["src/cli.ts"],
+                                          "concepts":["cli","reliability"]
+                                        }]
 
-Privacy: - Use key <private>sk-xxx</private> ───> {"content":"Use key [PRIVATE]"}
+Privacy: <private>sk-xxx</private> ───> [PRIVATE]
+Concepts index auto-updated: {"cli":["d001"], "reliability":["d001"]}
 ```
 
 See [Architecture](../../docs/ARCHITECTURE.md) for full details.
