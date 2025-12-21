@@ -1,6 +1,6 @@
 {
   "name": "memory-keeper",
-  "version": "7.0.0",
+  "version": "7.0.1",
   "description": "Auto-save memory with hierarchical structure (project/architecture/conventions), file references, and concept tagging.",
   "author": {
     "name": "TaWa"

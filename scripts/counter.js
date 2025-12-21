@@ -570,6 +570,7 @@ function clearFacts() {
   facts.decisions = [];
   facts.patterns = [];
   facts.issues = [];
+  facts.concepts = {};  // v7.0.1: Also clear concepts index
   saveFacts(facts);
   console.log('[MEMORY_KEEPER] Facts cleared (kept _meta).');
 }
