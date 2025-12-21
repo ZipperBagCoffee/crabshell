@@ -1,5 +1,5 @@
 const path = require('path');
-const { getProjectDir, getProjectName, readFileOrDefault, writeFile, readJsonOrDefault, ensureDir } = require('./utils');
+const { getProjectDir, getProjectName, readFileOrDefault, writeFile, readJsonOrDefault, ensureDir, getTimestamp } = require('./utils');
 const os = require('os');
 
 const CONFIG_PATH = path.join(os.homedir(), '.claude', 'memory-keeper', 'config.json');
@@ -35,14 +35,31 @@ function check() {
 
   if (counter >= interval) {
     const projectDir = getProjectDir().replace(/\\/g, '/');
-    const memoryPath = `${projectDir}/memory.md`;
     const scriptPath = process.argv[1].replace(/\\/g, '/');
+    const timestamp = getTimestamp();
 
-    // JSON output required for Claude to see hook output
     const output = {
       hookSpecificOutput: {
         hookEventName: "PostToolUse",
-        additionalContext: `[MEMORY_KEEPER_SAVE] ${counter} tool uses. Save memory now.\n\nUse Bash to save (NOT Write tool):\necho "# Session Summary\\n\\n$(date): [your 200 char summary here]" >> "${memoryPath}"\n\nThen reset counter:\nnode "${scriptPath}" reset`
+        additionalContext: `[MEMORY_KEEPER_SAVE] ${counter} tool uses reached. Execute memory save:
+
+1. Spawn background agent:
+   Task tool with subagent_type: "general-purpose", run_in_background: false
+   Prompt: "Analyze this session and return JSON only (no markdown):
+   {
+     \\"summary\\": \\"200 char session summary\\",
+     \\"decisions\\": [{\\"content\\": \\"decision\\", \\"reason\\": \\"why\\"}],
+     \\"patterns\\": [{\\"content\\": \\"pattern found\\"}],
+     \\"issues\\": [{\\"content\\": \\"issue\\", \\"status\\": \\"open\\"}]
+   }"
+
+2. After agent returns, save files using Bash:
+   - Append summary to ${projectDir}/memory.md
+   - Update ${projectDir}/facts.json with decisions/patterns/issues
+   - Save summary to ${projectDir}/sessions/${timestamp}.md
+   - Save raw conversation to ${projectDir}/sessions/${timestamp}.raw.md
+
+3. Reset counter: node "${scriptPath}" reset`
       }
     };
     console.log(JSON.stringify(output));
