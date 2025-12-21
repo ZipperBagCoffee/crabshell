@@ -4,8 +4,8 @@
       {
         "hooks": [
           {
-            "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/load-memory.sh\""
+            "type": "prompt",
+            "prompt": "Check if ~/.claude/memory-keeper/sessions/ exists. If it does, read the 3 most recent .md files for the current project (files starting with the current directory name) and briefly summarize the context. If no sessions exist, say nothing. Be very brief (max 200 tokens)."
           }
         ]
       }
