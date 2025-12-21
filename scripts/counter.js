@@ -1,4 +1,5 @@
 const path = require('path');
+const fs = require('fs');
 const { getProjectDir, getProjectName, readFileOrDefault, writeFile, readJsonOrDefault, ensureDir, getTimestamp } = require('./utils');
 const os = require('os');
 
@@ -101,6 +102,39 @@ function reset() {
   console.log('[MEMORY_KEEPER] Counter reset.');
 }
 
+function compress() {
+  const projectDir = getProjectDir();
+  const sessionsDir = path.join(projectDir, 'sessions');
+
+  // Ensure sessions directory exists
+  ensureDir(sessionsDir);
+
+  const now = new Date();
+  const files = fs.readdirSync(sessionsDir).filter(f => f.endsWith('.md') && !f.includes('week-') && !f.startsWith('archive'));
+
+  // Group files by age
+  files.forEach(file => {
+    const match = file.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!match) return;
+
+    const fileDate = new Date(match[1], match[2] - 1, match[3]);
+    const daysOld = Math.floor((now - fileDate) / (1000 * 60 * 60 * 24));
+
+    if (daysOld > 30) {
+      // Move to archive
+      const archiveDir = path.join(sessionsDir, 'archive');
+      ensureDir(archiveDir);
+      const archiveFile = path.join(archiveDir, `${match[1]}-${match[2]}.md`);
+      const content = readFileOrDefault(path.join(sessionsDir, file), '');
+      fs.appendFileSync(archiveFile, `\n\n---\n\n${content}`);
+      fs.unlinkSync(path.join(sessionsDir, file));
+      console.log(`[MEMORY_KEEPER] Archived: ${file}`);
+    }
+  });
+
+  console.log('[MEMORY_KEEPER] Compression complete.');
+}
+
 // Main
 const command = process.argv[2];
 
@@ -114,6 +148,9 @@ switch (command) {
   case 'reset':
     reset();
     break;
+  case 'compress':
+    compress();
+    break;
   default:
-    console.log('Usage: counter.js [check|final|reset]');
+    console.log('Usage: counter.js [check|final|reset|compress]');
 }
