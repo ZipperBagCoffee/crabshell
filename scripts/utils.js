@@ -54,6 +54,63 @@ function getTimestamp() {
   return `${year}-${month}-${day}_${hour}${min}`;
 }
 
+function getFactsPath() {
+  return path.join(getProjectDir(), 'facts.json');
+}
+
+function loadFacts() {
+  return readJsonOrDefault(getFactsPath(), {
+    decisions: [],
+    patterns: [],
+    issues: []
+  });
+}
+
+function saveFacts(facts) {
+  writeJson(getFactsPath(), facts);
+}
+
+function appendFacts(newFacts) {
+  const facts = loadFacts();
+  const timestamp = getTimestamp();
+
+  if (newFacts.decisions) {
+    newFacts.decisions.forEach((d, i) => {
+      facts.decisions.push({
+        id: `d${String(facts.decisions.length + 1).padStart(3, '0')}`,
+        date: timestamp.split('_')[0],
+        content: d.content,
+        reason: d.reason || '',
+        session: timestamp
+      });
+    });
+  }
+
+  if (newFacts.patterns) {
+    newFacts.patterns.forEach(p => {
+      facts.patterns.push({
+        id: `p${String(facts.patterns.length + 1).padStart(3, '0')}`,
+        date: timestamp.split('_')[0],
+        content: p.content
+      });
+    });
+  }
+
+  if (newFacts.issues) {
+    newFacts.issues.forEach(i => {
+      facts.issues.push({
+        id: `i${String(facts.issues.length + 1).padStart(3, '0')}`,
+        date: timestamp.split('_')[0],
+        content: i.content,
+        status: i.status || 'open',
+        resolution: i.resolution || ''
+      });
+    });
+  }
+
+  saveFacts(facts);
+}
+
 module.exports = {
   MEMORY_ROOT,
   getProjectName,
@@ -63,5 +120,9 @@ module.exports = {
   readJsonOrDefault,
   writeFile,
   writeJson,
-  getTimestamp
+  getTimestamp,
+  getFactsPath,
+  loadFacts,
+  saveFacts,
+  appendFacts
 };
