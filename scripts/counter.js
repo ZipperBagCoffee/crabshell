@@ -34,51 +34,32 @@ function check() {
   setCounter(counter);
 
   if (counter >= interval) {
-    const projectName = getProjectName();
     const projectDir = getProjectDir();
+    const scriptPath = process.argv[1].replace(/\\/g, '/');
 
-    console.log(`
-[MEMORY_KEEPER_SAVE]
-도구 ${counter}회 사용됨. 메모리 저장 필요.
-
-다음을 수행하라:
-1. 백그라운드 에이전트 스폰 (Task tool, run_in_background: false, subagent_type: general-purpose)
-2. 에이전트 프롬프트: "이 세션의 작업 내용을 요약하라. 200자 이내로. 핵심 결정, 현재 상태, 최근 작업, 알려진 문제 포함."
-3. 에이전트 결과를 ${projectDir}/memory.md에 저장 (Write tool)
-4. 저장 후 node "${process.argv[1]}" reset 실행하여 카운터 리셋
-`);
+    // JSON 형식으로 출력해야 Claude가 볼 수 있음
+    const output = {
+      hookSpecificOutput: {
+        hookEventName: "PostToolUse",
+        additionalContext: `[MEMORY_KEEPER_SAVE] 도구 ${counter}회 사용됨. 메모리 저장 필요.\n\n다음을 수행하라:\n1. 이 세션의 작업 내용을 200자 이내로 요약\n2. ${projectDir.replace(/\\/g, '/')}/memory.md에 저장 (Write tool)\n3. 저장 후 Bash로 node "${scriptPath}" reset 실행하여 카운터 리셋`
+      }
+    };
+    console.log(JSON.stringify(output));
   }
 }
 
 function final() {
   const projectName = getProjectName();
-  const projectDir = getProjectDir();
+  const projectDir = getProjectDir().replace(/\\/g, '/');
+  const timestamp = new Date().toISOString();
 
-  console.log(`
-[MEMORY_KEEPER_FINAL]
-세션 종료. 최종 메모리 저장.
-
-다음을 수행하라:
-1. 이 세션 전체를 요약하라 (300자 이내)
-2. ${projectDir}/memory.md에 저장
-3. ${projectDir}/sessions/ 폴더에 현재 타임스탬프로 세션 기록 저장
-
-저장 형식:
-# Project Memory: ${projectName}
-
-## Core Decisions
-[핵심 결정들]
-
-## Current State
-- 마지막 업데이트: ${new Date().toISOString()}
-- 상태: [현재 상태]
-
-## Recent Context
-[최근 작업 요약]
-
-## Known Issues
-[알려진 문제들]
-`);
+  const output = {
+    hookSpecificOutput: {
+      hookEventName: "Stop",
+      additionalContext: `[MEMORY_KEEPER_FINAL] 세션 종료. 최종 메모리 저장.\n\n다음을 수행하라:\n1. 이 세션 전체를 300자 이내로 요약\n2. ${projectDir}/memory.md에 저장\n\n저장 형식:\n# Project Memory: ${projectName}\n\n## Current State\n- 마지막 업데이트: ${timestamp}\n- 상태: [현재 상태]\n\n## Recent Context\n[최근 작업 요약]\n\n## Known Issues\n[알려진 문제들]`
+    }
+  };
+  console.log(JSON.stringify(output));
 
   setCounter(0);
 }
