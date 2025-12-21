@@ -34,14 +34,15 @@ function check() {
   setCounter(counter);
 
   if (counter >= interval) {
-    const projectDir = getProjectDir();
+    const projectDir = getProjectDir().replace(/\\/g, '/');
+    const memoryPath = `${projectDir}/memory.md`;
     const scriptPath = process.argv[1].replace(/\\/g, '/');
 
     // JSON output required for Claude to see hook output
     const output = {
       hookSpecificOutput: {
         hookEventName: "PostToolUse",
-        additionalContext: `[MEMORY_KEEPER_SAVE] ${counter} tool uses reached. Memory save required.\n\nDo the following:\n1. Summarize this session's work in under 200 chars\n2. Save to ${projectDir.replace(/\\/g, '/')}/memory.md (Write tool)\n3. After saving, run: node "${scriptPath}" reset`
+        additionalContext: `[MEMORY_KEEPER_SAVE] ${counter} tool uses. Save memory now.\n\nUse Bash to save (NOT Write tool):\necho "# Session Summary\\n\\n$(date): [your 200 char summary here]" >> "${memoryPath}"\n\nThen reset counter:\nnode "${scriptPath}" reset`
       }
     };
     console.log(JSON.stringify(output));
@@ -51,12 +52,13 @@ function check() {
 function final() {
   const projectName = getProjectName();
   const projectDir = getProjectDir().replace(/\\/g, '/');
+  const memoryPath = `${projectDir}/memory.md`;
   const timestamp = new Date().toISOString();
 
   const output = {
     hookSpecificOutput: {
       hookEventName: "Stop",
-      additionalContext: `[MEMORY_KEEPER_FINAL] Session ending. Final memory save.\n\nDo the following:\n1. Summarize entire session in under 300 chars\n2. Save to ${projectDir}/memory.md\n\nFormat:\n# Project Memory: ${projectName}\n\n## Current State\n- Last updated: ${timestamp}\n- Status: [current status]\n\n## Recent Context\n[recent work summary]\n\n## Known Issues\n[known issues]`
+      additionalContext: `[MEMORY_KEEPER_FINAL] Session end. Save memory using Bash:\n\necho "# ${projectName}\\n\\nUpdated: ${timestamp}\\n\\n## Summary\\n[300 char summary]\\n\\n## Status\\n[current status]" > "${memoryPath}"`
     }
   };
   console.log(JSON.stringify(output));
