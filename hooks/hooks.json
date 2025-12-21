@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd\" load-memory"
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/load-memory.js\""
           }
         ]
       }
@@ -16,8 +16,8 @@
         "matcher": ".*",
         "hooks": [
           {
-            "type": "prompt",
-            "prompt": "MEMORY KEEPER AUTO-SAVE CHECK: If this conversation has accumulated significant context (estimate 50%+ of context window), spawn a background agent using Task tool with run_in_background:true to save session memory. The agent should: 1) Summarize current session progress 2) Save to ~/.claude/memory-keeper/projects/[PROJECT_NAME]/sessions/[TIMESTAMP].md 3) Update memory.md with current state 4) Extract key decisions/patterns/issues to facts.json. Do NOT interrupt current work - only spawn background agent if needed."
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/counter.js\" check"
           }
         ]
       }
@@ -27,8 +27,8 @@
         "matcher": ".*",
         "hooks": [
           {
-            "type": "prompt",
-            "prompt": "MEMORY KEEPER FINAL SAVE: Before session ends, save complete session memory to ~/.claude/memory-keeper/projects/[PROJECT_NAME]/. Include: 1) Full session summary in sessions/[TIMESTAMP].md 2) Raw conversation backup in sessions/[TIMESTAMP].raw.md 3) Update memory.md (Core Decisions, Current State, Recent Context, Known Issues) 4) Extract facts to facts.json 5) Compress old sessions (7+ days -> weekly, 30+ days -> archive). Create directories if needed."
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/counter.js\" final"
           }
         ]
       }

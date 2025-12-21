@@ -1,7 +1,7 @@
 {
   "name": "memory-keeper",
-  "version": "2.0.0",
-  "description": "Automatic background session memory - saves context periodically, loads on session start",
+  "version": "3.0.0",
+  "description": "Auto-save memory every N tool uses. Counter-based trigger with background agent summarization.",
   "author": {
     "name": "TaWa"
   },
