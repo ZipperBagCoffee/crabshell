@@ -338,6 +338,73 @@ function addIssue(content, status) {
   console.log(`[MEMORY_KEEPER] Added issue: ${id}`);
 }
 
+// Search facts.json for keyword
+function search(query) {
+  if (!query) {
+    // Show summary
+    const facts = loadFacts();
+    const projectDir = getProjectDir();
+    const sessionsDir = path.join(projectDir, 'sessions');
+
+    let sessionCount = 0;
+    try {
+      const files = fs.readdirSync(sessionsDir).filter(f => f.endsWith('.md'));
+      sessionCount = files.length;
+    } catch (e) {}
+
+    console.log(`[MEMORY_KEEPER] Memory Summary:`);
+    console.log(`  Decisions: ${facts.decisions.length}`);
+    console.log(`  Patterns: ${facts.patterns.length}`);
+    console.log(`  Issues: ${facts.issues.length}`);
+    console.log(`  Sessions: ${sessionCount}`);
+    return;
+  }
+
+  const facts = loadFacts();
+  const queryLower = query.toLowerCase();
+  let found = false;
+
+  // Search decisions
+  facts.decisions.forEach(d => {
+    if (d.content.toLowerCase().includes(queryLower) ||
+        (d.reason && d.reason.toLowerCase().includes(queryLower))) {
+      console.log(`[DECISION ${d.id}] ${d.date}: ${d.content}`);
+      if (d.reason) console.log(`  Reason: ${d.reason}`);
+      found = true;
+    }
+  });
+
+  // Search patterns
+  facts.patterns.forEach(p => {
+    if (p.content.toLowerCase().includes(queryLower)) {
+      console.log(`[PATTERN ${p.id}] ${p.date}: ${p.content}`);
+      found = true;
+    }
+  });
+
+  // Search issues
+  facts.issues.forEach(i => {
+    if (i.content.toLowerCase().includes(queryLower)) {
+      console.log(`[ISSUE ${i.id}] ${i.date}: ${i.content} (${i.status})`);
+      found = true;
+    }
+  });
+
+  if (!found) {
+    console.log(`[MEMORY_KEEPER] No matches in facts.json for: ${query}`);
+  }
+}
+
+// Clear facts arrays (keep _meta)
+function clearFacts() {
+  const facts = loadFacts();
+  facts.decisions = [];
+  facts.patterns = [];
+  facts.issues = [];
+  saveFacts(facts);
+  console.log('[MEMORY_KEEPER] Facts cleared (kept _meta).');
+}
+
 function compress() {
   const projectDir = getProjectDir();
   const sessionsDir = path.join(projectDir, 'sessions');
@@ -403,6 +470,12 @@ switch (command) {
   case 'add-issue':
     addIssue(process.argv[3], process.argv[4]);
     break;
+  case 'search':
+    search(process.argv[3]);
+    break;
+  case 'clear-facts':
+    clearFacts();
+    break;
   default:
-    console.log('Usage: counter.js [check|final|reset|compress|add-decision|add-pattern|add-issue]');
+    console.log('Usage: counter.js [check|final|reset|compress|add-decision|add-pattern|add-issue|search|clear-facts]');
 }

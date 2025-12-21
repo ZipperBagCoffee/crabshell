@@ -1,18 +1,32 @@
 ---
 description: Manually save current session context to memory
+allowed-tools: Bash, Read, Write
 ---
 
-Save a session summary to ~/.claude/memory-keeper/sessions/
+Save a session summary to .claude/memory/sessions/
 
-Filename format: [PROJECT_NAME]_[YYYY-MM-DD_HH-MM].md
-- PROJECT_NAME = current directory name
+Run the save commands:
+```bash
+node scripts/counter.js check
+```
 
-Include:
-1. **Project**: Full path
-2. **Summary**: 1-2 sentence overview
-3. **Changes**: Files modified/created with brief description
-4. **Decisions**: Key decisions and rationale
-5. **Discoveries**: Patterns, insights, or issues found
-6. **Next Steps**: Actionable TODOs with checkboxes
+Or manually save with timestamp:
+```bash
+TIMESTAMP=$(date +%Y-%m-%d_%H%M)
+echo -e "\n## $TIMESTAMP\n[Your summary here]" >> .claude/memory/memory.md
+echo "[Full session summary]" > .claude/memory/sessions/$TIMESTAMP.md
+```
 
-Keep under 500 tokens. Create directory if needed.
+Include in summary:
+1. **Summary**: 1-2 sentence overview
+2. **Changes**: Files modified/created with brief description
+3. **Decisions**: Key decisions and rationale (also add to facts.json)
+4. **Discoveries**: Patterns, insights, or issues found
+5. **Next Steps**: Actionable TODOs
+
+Add facts via CLI:
+```bash
+node scripts/counter.js add-decision "decision" "reason"
+node scripts/counter.js add-pattern "pattern"
+node scripts/counter.js add-issue "issue" "open|resolved"
+```

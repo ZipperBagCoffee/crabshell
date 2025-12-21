@@ -117,6 +117,7 @@ node scripts/counter.js add-issue "Write tool fails on Windows" "resolved"
 
 ## Version History
 
+- **v6.2.0**: Fix command paths to project-local, add search/clear-facts CLI commands
 - **v6.1.0**: Add CLI commands (add-decision/add-pattern/add-issue) for safe facts.json updates
 - **v6.0.1**: Fix stdin reading with async/await for proper transcript_path capture
 - **v6.0.0**: Clear instruction output - hooks now output explicit step-by-step commands for Claude to follow
