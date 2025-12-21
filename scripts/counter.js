@@ -105,13 +105,46 @@ function check() {
     const scriptPath = process.argv[1].replace(/\\/g, '/');
     const timestamp = getTimestamp();
 
+    const instructions = `
+═══════════════════════════════════════════════════════════════
+[MEMORY_KEEPER] AUTO-SAVE TRIGGERED - ${counter} tool uses reached
+═══════════════════════════════════════════════════════════════
+
+**YOU MUST EXECUTE THESE STEPS NOW:**
+
+1. ANALYZE this session - identify:
+   - What was accomplished (2-3 sentences)
+   - Key decisions made (if any)
+   - Patterns discovered (if any)
+   - Issues found (if any)
+
+2. SAVE to memory.md:
+   \`\`\`bash
+   echo -e "\\n## ${timestamp}\\n[Your summary here]" >> "${projectDir}/memory.md"
+   \`\`\`
+
+3. SAVE session file:
+   \`\`\`bash
+   echo "[Full session summary]" > "${projectDir}/sessions/${timestamp}.md"
+   \`\`\`
+
+4. UPDATE facts.json (if decisions/patterns/issues found):
+   - Read: ${projectDir}/facts.json
+   - Append new items to appropriate arrays
+   - Write back
+
+5. RESET counter:
+   \`\`\`bash
+   node "${scriptPath}" reset
+   \`\`\`
+
+DO NOT SKIP THESE STEPS. Execute them immediately before continuing.
+═══════════════════════════════════════════════════════════════`;
+
     const output = {
       hookSpecificOutput: {
         hookEventName: "PostToolUse",
-        additionalContext: `[MEMORY_KEEPER_SAVE] ${counter} tool uses reached.
-MEMORY_DIR: ${projectDir}
-TIMESTAMP: ${timestamp}
-RESET_CMD: node "${scriptPath}" reset`
+        additionalContext: instructions
       }
     };
     console.log(JSON.stringify(output));
@@ -173,14 +206,51 @@ function final() {
     }
   }
 
+  const scriptPath = process.argv[1].replace(/\\/g, '/');
+
+  const instructions = `
+═══════════════════════════════════════════════════════════════
+[MEMORY_KEEPER] SESSION ENDING - Final Save Required
+═══════════════════════════════════════════════════════════════
+${rawSaved ? `✓ Raw transcript saved: ${rawSaved}` : '⚠ Raw transcript not saved (check debug-hook.json)'}
+
+**YOU MUST EXECUTE THESE STEPS NOW:**
+
+1. ANALYZE the COMPLETE session - identify:
+   - Everything accomplished in this session
+   - All key decisions made and why
+   - All patterns/conventions discovered
+   - All issues found (resolved or open)
+
+2. SAVE comprehensive summary to memory.md:
+   \`\`\`bash
+   echo -e "\\n## ${timestamp} (Session End)\\n[Complete session summary]" >> "${projectDir}/memory.md"
+   \`\`\`
+
+3. SAVE detailed session file:
+   \`\`\`bash
+   echo "[Detailed session summary with all context]" > "${projectDir}/sessions/${timestamp}.md"
+   \`\`\`
+
+4. UPDATE facts.json with ALL session learnings:
+   - Read: ${projectDir}/facts.json
+   - Add all decisions to decisions array
+   - Add all patterns to patterns array
+   - Add all issues to issues array
+   - Write back
+
+5. RUN compression (archives old files):
+   \`\`\`bash
+   node "${scriptPath}" compress
+   \`\`\`
+
+This is the FINAL save. Be thorough and complete.
+═══════════════════════════════════════════════════════════════`;
+
   const output = {
     hookSpecificOutput: {
       hookEventName: "Stop",
-      additionalContext: `[MEMORY_KEEPER_FINAL] Session ending.
-MEMORY_DIR: ${projectDir}
-TIMESTAMP: ${timestamp}
-${rawSaved ? `RAW_SAVED: ${rawSaved}` : 'RAW_SAVED: (none - check debug-hook.json)'}
-COMPRESS_CMD: node "${process.argv[1].replace(/\\/g, '/')}" compress`
+      additionalContext: instructions
     }
   };
   console.log(JSON.stringify(output));

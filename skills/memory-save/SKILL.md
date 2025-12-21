@@ -1,62 +1,65 @@
 ---
 name: memory-save
-description: Auto-triggered when "[MEMORY_KEEPER_SAVE]" appears in hook output. Summarizes session and saves to .claude/memory/. Use when you see MEMORY_KEEPER_SAVE or MEMORY_KEEPER_FINAL messages.
+description: Execute when you see "[MEMORY_KEEPER]" in hook output. Follow the numbered steps exactly to save session memory.
 ---
 
 # Memory Save Skill
 
-When you see `[MEMORY_KEEPER_SAVE]` or `[MEMORY_KEEPER_FINAL]` in the conversation, execute this skill automatically.
+This skill activates when `[MEMORY_KEEPER]` appears in conversation (from PostToolUse or Stop hooks).
 
-## Step 1: Analyze Current Session
+## When Triggered
 
-Review the conversation and identify:
-- What was accomplished (summary)
-- Key decisions made and why
-- Patterns or conventions discovered
-- Issues found (open or resolved)
-
-## Step 2: Create Summary JSON
-
-Format your analysis as:
-```json
-{
-  "summary": "200-300 char summary of what was done",
-  "decisions": [{"content": "decision made", "reason": "why"}],
-  "patterns": [{"content": "pattern discovered"}],
-  "issues": [{"content": "issue", "status": "open|resolved"}]
-}
+You will see a message like:
+```
+═══════════════════════════════════════════════════════════════
+[MEMORY_KEEPER] AUTO-SAVE TRIGGERED - N tool uses reached
+═══════════════════════════════════════════════════════════════
 ```
 
-## Step 3: Save Files
+## Required Actions
 
-Use Bash to save (paths from hook message):
+**Follow the numbered steps in the hook message exactly:**
+
+1. **ANALYZE** - Review the session and identify accomplishments, decisions, patterns, issues
+2. **SAVE memory.md** - Append summary using the provided bash command
+3. **SAVE session file** - Create session file using the provided bash command
+4. **UPDATE facts.json** - If decisions/patterns/issues found, update the JSON file
+5. **RESET counter** - Run the reset command provided
+
+## Example Execution
 
 ```bash
-# Get project memory directory
-MEMORY_DIR=".claude/memory"
-TIMESTAMP=$(date +%Y-%m-%d_%H%M)
+# Step 2: Append to memory.md
+echo -e "\n## 2025-12-21_1430\nImplemented new feature X. Fixed bug in Y." >> ".claude/memory/memory.md"
 
-# Append to memory.md
-echo -e "\n## ${TIMESTAMP}\n[Your summary here]" >> "${MEMORY_DIR}/memory.md"
+# Step 3: Save session file
+echo "Session summary: Implemented feature X, fixed Y bug, discovered pattern Z." > ".claude/memory/sessions/2025-12-21_1430.md"
 
-# Save session file
-echo "[Full summary]" > "${MEMORY_DIR}/sessions/${TIMESTAMP}.md"
+# Step 5: Reset counter
+node "scripts/counter.js" reset
 ```
 
-## Step 4: Update facts.json
+## facts.json Update Example
 
-If decisions, patterns, or issues were found, update facts.json by reading existing content and appending new items.
+```javascript
+// Read current facts
+const facts = JSON.parse(fs.readFileSync('.claude/memory/facts.json'));
 
-## Step 5: Reset Counter
+// Add new items
+facts.decisions.push({
+  id: "d" + String(facts.decisions.length + 1).padStart(3, '0'),
+  date: "2025-12-21",
+  content: "Decision description",
+  reason: "Why this decision"
+});
 
-Run the reset command from the hook message:
-```bash
-node "[path from message]" reset
+// Write back
+fs.writeFileSync('.claude/memory/facts.json', JSON.stringify(facts, null, 2));
 ```
 
-## Important
+## Critical Rules
 
-- Always save files BEFORE resetting counter
-- Use paths provided in the hook message
-- Keep summaries concise (under 300 chars)
-- Empty arrays are fine if nothing to report
+- **DO NOT SKIP** any steps
+- **USE THE EXACT PATHS** provided in the hook message
+- **RESET COUNTER** after saving (prevents duplicate triggers)
+- Keep summaries concise (2-3 sentences for memory.md)

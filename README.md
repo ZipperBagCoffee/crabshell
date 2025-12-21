@@ -33,16 +33,17 @@ claude --plugin-dir /path/to/memory-keeper-plugin
 3. Outputs to Claude's context
 
 ### During Session
-1. PostToolUse hook increments counter
-2. At N tool uses (default: 5), outputs `[MEMORY_KEEPER_SAVE]` trigger
-3. SKILL.md auto-activates on trigger
-4. Claude analyzes session, creates summary
-5. Claude saves to memory.md, facts.json, sessions/*.md
+1. PostToolUse hook increments counter in facts.json._meta
+2. At N tool uses (default: 5), outputs explicit save instructions
+3. Claude sees instructions in hook output
+4. Claude follows numbered steps: analyze, save memory.md, save session, update facts.json
+5. Claude resets counter after saving
 
 ### Session End
-1. Stop hook triggers final save
-2. Background agent creates complete session summary
-3. Tier compression runs (archives 30+ day files)
+1. Stop hook copies raw transcript to sessions/
+2. Stop hook outputs comprehensive save instructions
+3. Claude saves final session summary
+4. Compression archives 30+ day files
 
 ## Storage Structure
 
@@ -103,6 +104,7 @@ Create `.claude/memory/config.json` in your project (or `~/.claude/memory-keeper
 
 ## Version History
 
+- **v6.0.0**: Clear instruction output - hooks now output explicit step-by-step commands for Claude to follow
 - **v5.0.1**: Counter moved to facts.json._meta, auto-create facts.json, transcript fallback search
 - **v5.0.0**: SKILL.md auto-trigger system - Claude automatically executes save when triggered
 - **v4.1.0**: Project-local storage (.claude/memory/), raw transcript copy on session end
