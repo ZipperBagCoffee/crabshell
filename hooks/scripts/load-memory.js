@@ -25,6 +25,7 @@ const projectFiles = files.filter(f => f.name.startsWith(PROJECT_NAME + '_')).sl
 const otherFiles = files.filter(f => !f.name.startsWith(PROJECT_NAME + '_')).slice(0, 2);
 
 if (projectFiles.length === 0 && otherFiles.length === 0) {
+    console.log('🧠 Memory Keeper: No saved sessions found.');
     process.exit(0);
 }
 
