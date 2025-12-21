@@ -34,7 +34,8 @@ Memory Keeper solves this problem.
 
 **2. During Work:**
 - Auto-save triggers every 5 tool uses
-- Claude automatically saves current work summary
+- Claude records decisions/patterns/issues directly via CLI commands
+- Summary appended to `memory.md`
 
 **3. Session End:**
 - Full conversation backed up (`.raw.jsonl`)

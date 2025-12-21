@@ -3,30 +3,47 @@ description: Manually save current session context to memory
 allowed-tools: Bash, Read, Write
 ---
 
-Save a session summary to .claude/memory/sessions/
+Save current session context to memory.
 
-Run the save commands:
+## Quick Save (Recommended)
+
+Run to trigger auto-save instructions:
 ```bash
 node scripts/counter.js check
 ```
 
-Or manually save with timestamp:
+## Manual Save
+
+1. **Append to memory.md:**
 ```bash
 TIMESTAMP=$(date +%Y-%m-%d_%H%M)
 echo -e "\n## $TIMESTAMP\n[Your summary here]" >> .claude/memory/memory.md
-echo "[Full session summary]" > .claude/memory/sessions/$TIMESTAMP.md
 ```
 
-Include in summary:
-1. **Summary**: 1-2 sentence overview
-2. **Changes**: Files modified/created with brief description
-3. **Decisions**: Key decisions and rationale (also add to facts.json)
-4. **Discoveries**: Patterns, insights, or issues found
-5. **Next Steps**: Actionable TODOs
-
-Add facts via CLI:
+2. **Record decisions directly:**
 ```bash
-node scripts/counter.js add-decision "decision" "reason"
-node scripts/counter.js add-pattern "pattern"
-node scripts/counter.js add-issue "issue" "open|resolved"
+node scripts/counter.js add-decision "what was decided" "why" "architecture|technology|approach"
 ```
+
+3. **Record patterns directly:**
+```bash
+node scripts/counter.js add-pattern "pattern description" "convention|best-practice|anti-pattern"
+```
+
+4. **Record issues directly:**
+```bash
+node scripts/counter.js add-issue "issue description" "open|resolved" "bugfix|performance|security|feature"
+```
+
+## Optional: File References and Concepts
+
+Add file references and concept tags at the end:
+```bash
+node scripts/counter.js add-decision "Use React hooks" "Better state" "technology" "src/hooks/useAuth.ts" "auth,hooks"
+```
+
+## What to Record
+
+- **Decisions**: Architectural choices, technology selections, approach decisions
+- **Patterns**: Coding conventions, best practices, anti-patterns to avoid
+- **Issues**: Bugs found/fixed, performance issues, security concerns

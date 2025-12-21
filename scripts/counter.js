@@ -143,49 +143,35 @@ function check() {
 [MEMORY_KEEPER] AUTO-SAVE TRIGGERED - ${counter} tool uses reached
 ═══════════════════════════════════════════════════════════════
 
-**EXECUTE THESE STEPS NOW:**
+**YOU MUST EXECUTE THESE COMMANDS NOW:**
 
-1. SAVE to memory.md:
+1. APPEND to memory.md:
    \`\`\`bash
-   echo -e "\\n## ${timestamp}\\n[1-2 sentence summary]" >> "${projectDir}/memory.md"
+   echo -e "\\n## ${timestamp}\\n[1-2 sentence summary of work so far]" >> "${projectDir}/memory.md"
    \`\`\`
 
-2. SAVE session file (USE THIS EXACT FORMAT):
+2. RECORD any decisions made (run for EACH decision):
    \`\`\`bash
-   cat > "${projectDir}/sessions/${timestamp}.md" << 'ENDSESSION'
-# Session ${timestamp}
+   node "${scriptPath}" add-decision "what was decided" "why" "architecture|technology|approach"
+   \`\`\`
+   With file refs: add "file1.ts,file2.ts" "concept1,concept2" at end
 
-## Summary
-[What was accomplished in 2-3 sentences]
-
-## Decisions
-- [architecture|technology|approach] Decision content: Reason why
-  - files: path/to/file1.ts, path/to/file2.ts
-  - concepts: concept1, concept2
-
-## Patterns
-- [convention|best-practice] Pattern description
-  - concepts: testing, workflow
-
-## Issues
-- [bugfix|performance|security] Issue description: open|resolved
-  - files: path/to/fixed-file.ts
-  - concepts: performance
-
-ENDSESSION
+3. RECORD any patterns established (run for EACH pattern):
+   \`\`\`bash
+   node "${scriptPath}" add-pattern "pattern description" "convention|best-practice|anti-pattern"
    \`\`\`
 
-   NOTE: <private>sensitive data</private> tags will be stripped from facts.json
-   TIP: files/concepts sub-items are optional but help with search
-
-3. EXTRACT facts from session file:
+4. RECORD any issues found/fixed (run for EACH issue):
    \`\`\`bash
-   node "${scriptPath}" extract-facts ${timestamp}
+   node "${scriptPath}" add-issue "issue description" "open|resolved" "bugfix|performance|security|feature"
    \`\`\`
 
-(Counter auto-resets after this message)
+IMPORTANT:
+- Run Step 1 ALWAYS
+- Run Steps 2-4 for ALL relevant items from this session
+- If no decisions/patterns/issues exist, skip those steps
+- Files and concepts are OPTIONAL (omit if not applicable)
 
-Execute steps 1-3 immediately.
 ═══════════════════════════════════════════════════════════════`;
 
     const output = {
@@ -296,54 +282,42 @@ async function final() {
 ═══════════════════════════════════════════════════════════════
 [MEMORY_KEEPER] SESSION ENDING - Final Save Required
 ═══════════════════════════════════════════════════════════════
-${rawSaved ? `✓ Raw transcript saved: ${rawSaved}` : '⚠ Raw transcript not saved (check debug-hook.json)'}
+${rawSaved ? `✓ Raw transcript saved: ${rawSaved}` : '⚠ Raw transcript not saved'}
 
-**EXECUTE THESE STEPS NOW:**
+**YOU MUST EXECUTE THESE COMMANDS NOW:**
 
-1. SAVE to memory.md:
+1. APPEND complete summary to memory.md:
    \`\`\`bash
-   echo -e "\\n## ${timestamp} (Session End)\\n[Complete session summary]" >> "${projectDir}/memory.md"
+   echo -e "\\n## ${timestamp} (Session End)\\n[Complete session summary - be thorough]" >> "${projectDir}/memory.md"
    \`\`\`
 
-2. SAVE session file (USE THIS EXACT FORMAT):
+2. RECORD ALL decisions from this session:
    \`\`\`bash
-   cat > "${projectDir}/sessions/${timestamp}.md" << 'ENDSESSION'
-# Session ${timestamp}
+   node "${scriptPath}" add-decision "what was decided" "why" "architecture|technology|approach"
+   \`\`\`
+   With file refs: add "file1.ts,file2.ts" "concept1,concept2" at end
 
-## Summary
-[Everything accomplished in this session - be thorough]
-
-## Decisions
-- [architecture|technology|approach] Decision content: Reason why
-  - files: path/to/file1.ts, path/to/file2.ts
-  - concepts: concept1, concept2
-
-## Patterns
-- [convention|best-practice] Pattern description
-  - concepts: testing, workflow
-
-## Issues
-- [bugfix|performance|security] Issue description: open|resolved
-  - files: path/to/fixed-file.ts
-  - concepts: performance
-
-ENDSESSION
+3. RECORD ALL patterns from this session:
+   \`\`\`bash
+   node "${scriptPath}" add-pattern "pattern description" "convention|best-practice|anti-pattern"
    \`\`\`
 
-   NOTE: <private>sensitive data</private> tags will be stripped from facts.json
-   TIP: files/concepts sub-items are optional but help with search
-
-3. EXTRACT facts from session file:
+4. RECORD ALL issues from this session:
    \`\`\`bash
-   node "${scriptPath}" extract-facts ${timestamp}
+   node "${scriptPath}" add-issue "issue description" "open|resolved" "bugfix|performance|security|feature"
    \`\`\`
 
-4. RUN compression:
+5. RUN compression:
    \`\`\`bash
    node "${scriptPath}" compress
    \`\`\`
 
-FINAL SAVE - Be thorough. Execute steps 1-4 now.
+IMPORTANT:
+- This is your FINAL chance to save context
+- Review ENTIRE session for decisions/patterns/issues
+- Be thorough - next session starts fresh
+- Files and concepts are OPTIONAL
+
 ═══════════════════════════════════════════════════════════════`;
 
   const output = {

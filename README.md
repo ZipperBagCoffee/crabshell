@@ -16,7 +16,7 @@ After installation, **you don't need to do anything**. It works automatically.
 ## How It Works
 
 1. **Session start** - Loads saved content from previous sessions into Claude's context
-2. **During work** - Auto-save triggers every 5 tool uses
+2. **During work** - Auto-save triggers every 5 tool uses, Claude records decisions/patterns/issues directly
 3. **Session end** - Full conversation backup + final save
 
 ## What Gets Saved
@@ -170,6 +170,7 @@ node scripts/counter.js reset                  # Reset counter
 
 | Version | Changes |
 |---------|---------|
+| 7.1.0 | Direct fact extraction (no session file step) |
 | 7.0.1 | clearFacts bug fix, added slash command skills |
 | 7.0.0 | Hierarchical memory (project/architecture/conventions) |
 | 6.5.0 | File references + concept tagging |

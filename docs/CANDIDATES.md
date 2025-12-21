@@ -16,7 +16,7 @@ Analysis of memory management features from other projects that could enhance me
 ### 1. Observation Type Tags
 **Source**: claude-mem
 
-현재 memory-keeper는 decisions/patterns/issues만 구분. 더 세분화된 타입 추가:
+Current memory-keeper only distinguishes decisions/patterns/issues. Add more granular types:
 
 | Type | Icon | Description |
 |------|------|-------------|
@@ -27,8 +27,8 @@ Analysis of memory management features from other projects that could enhance me
 | discovery | 🟡 | New insight/pattern found |
 | change | ⚪ | General modification |
 
-**구현 난이도**: 낮음
-**적용 방법**: facts.json 구조 확장, extract-facts 파서 업데이트
+**Implementation Difficulty**: Low
+**How to Apply**: Extend facts.json structure, update extract-facts parser
 
 ```json
 {
@@ -50,31 +50,31 @@ Analysis of memory management features from other projects that could enhance me
 ### 2. Hierarchical Memory Structure
 **Source**: claude-code-memory-bank
 
-현재: 단일 memory.md에 모든 것 저장
-제안: 계층적 파일 구조
+Current: Everything stored in single memory.md
+Proposed: Hierarchical file structure
 
 ```
 .claude/memory/
-├── memory.md              # Rolling summary (현재)
-├── project.md             # 프로젝트 개요 (새로)
-├── architecture.md        # 아키텍처 결정 (새로)
-├── conventions.md         # 코드 컨벤션 (새로)
-├── current.md             # 현재 작업 중 (새로)
+├── memory.md              # Rolling summary (current)
+├── project.md             # Project overview (new)
+├── architecture.md        # Architecture decisions (new)
+├── conventions.md         # Code conventions (new)
+├── current.md             # Work in progress (new)
 ├── facts.json
 └── sessions/
 ```
 
-**구현 난이도**: 중간
-**적용 방법**:
-- load-memory.js에서 여러 파일 로드
-- save 지시문에서 적절한 파일에 분류
+**Implementation Difficulty**: Medium
+**How to Apply**:
+- Load multiple files in load-memory.js
+- Classify into appropriate files in save instructions
 
 ---
 
 ### 3. Concept/Tag System
 **Source**: claude-mem, mcp-memory
 
-관련 항목을 개념으로 그룹화:
+Group related items by concept:
 
 ```json
 {
@@ -86,18 +86,18 @@ Analysis of memory management features from other projects that could enhance me
 }
 ```
 
-**구현 난이도**: 중간
-**적용 방법**:
-- facts.json에 concepts 섹션 추가
-- extract-facts에서 자동 태깅
-- search 명령에서 개념별 검색
+**Implementation Difficulty**: Medium
+**How to Apply**:
+- Add concepts section to facts.json
+- Auto-tagging in extract-facts
+- Search by concept in search command
 
 ---
 
 ### 4. File Reference Tracking
 **Source**: claude-mem
 
-어떤 파일이 어떤 결정/패턴과 관련됐는지 추적:
+Track which files are related to which decisions/patterns:
 
 ```json
 {
@@ -111,17 +111,17 @@ Analysis of memory management features from other projects that could enhance me
 }
 ```
 
-**구현 난이도**: 중간
-**적용 방법**:
-- session.md 포맷에 파일 섹션 추가
-- extract-facts에서 파일 참조 파싱
+**Implementation Difficulty**: Medium
+**How to Apply**:
+- Add files section to session.md format
+- Parse file references in extract-facts
 
 ---
 
 ### 5. Progressive Disclosure (Token-Aware)
 **Source**: claude-mem
 
-대용량 메모리를 단계적으로 로드:
+Load large memory progressively:
 
 | Layer | Content | Token Cost |
 |-------|---------|------------|
@@ -129,47 +129,47 @@ Analysis of memory management features from other projects that could enhance me
 | 2 | Summaries | ~500 tokens |
 | 3 | Full details | 2000+ tokens |
 
-**구현 난이도**: 높음
-**적용 방법**:
-- load-memory.js에서 레이어 선택 옵션
-- 필요시 상세 정보 추가 로드
+**Implementation Difficulty**: High
+**How to Apply**:
+- Layer selection option in load-memory.js
+- Load additional details on demand
 
 ---
 
 ### 6. Memory Compression/Archiving
 **Source**: claude-mem (Endless Mode), claude-memory-system
 
-현재: 30일 후 archive로 이동
-제안: AI 기반 압축 요약
+Current: Move to archive after 30 days
+Proposed: AI-based compression summary
 
 ```
-Recent Sessions (7일): Full detail
-Mid-term (30일): Compressed summary
-Archive (30일+): Key facts only
+Recent Sessions (7 days): Full detail
+Mid-term (30 days): Compressed summary
+Archive (30+ days): Key facts only
 ```
 
-**구현 난이도**: 높음
-**적용 방법**:
-- compress 명령 확장
-- 에이전트로 요약 생성 (선택적)
+**Implementation Difficulty**: High
+**How to Apply**:
+- Extend compress command
+- Generate summary via agent (optional)
 
 ---
 
 ### 7. Privacy Tags
 **Source**: claude-mem
 
-민감한 내용 제외:
+Exclude sensitive content:
 
 ```markdown
 ## Decisions
 - Use API key from <private>env.SECRET_KEY</private>: Security
 ```
 
-`<private>` 태그 내용은 facts.json에 저장 안 됨.
+Content within `<private>` tags is not saved to facts.json.
 
-**구현 난이도**: 낮음
-**적용 방법**:
-- extract-facts에서 `<private>` 태그 필터링
+**Implementation Difficulty**: Low
+**How to Apply**:
+- Filter `<private>` tags in extract-facts
 
 ---
 
@@ -177,10 +177,10 @@ Archive (30일+): Key facts only
 
 | Feature | Reason for Skip |
 |---------|-----------------|
-| Web Viewer UI | 백그라운드 서버 필요 (포트 37777) |
-| Real-time memory stream | WebSocket 서버 필요 |
-| Chroma vector DB | 별도 서비스 필요 |
-| SQLite FTS5 | 복잡도 증가, 현재 JSON으로 충분 |
+| Web Viewer UI | Requires background server (port 37777) |
+| Real-time memory stream | Requires WebSocket server |
+| Chroma vector DB | Requires separate service |
+| SQLite FTS5 | Increased complexity, current JSON is sufficient |
 
 ---
 
@@ -188,18 +188,18 @@ Archive (30일+): Key facts only
 
 | Priority | Feature | Effort | Impact |
 |----------|---------|--------|--------|
-| 1 | Observation Type Tags | 낮음 | 높음 |
-| 2 | File Reference Tracking | 중간 | 높음 |
-| 3 | Privacy Tags | 낮음 | 중간 |
-| 4 | Concept/Tag System | 중간 | 높음 |
-| 5 | Hierarchical Memory | 중간 | 중간 |
-| 6 | Progressive Disclosure | 높음 | 중간 |
-| 7 | Memory Compression | 높음 | 낮음 |
+| 1 | Observation Type Tags | Low | High |
+| 2 | File Reference Tracking | Medium | High |
+| 3 | Privacy Tags | Low | Medium |
+| 4 | Concept/Tag System | Medium | High |
+| 5 | Hierarchical Memory | Medium | Medium |
+| 6 | Progressive Disclosure | High | Medium |
+| 7 | Memory Compression | High | Low |
 
 ---
 
 ## Next Steps
 
-1. **v6.4.0**: Observation Types + Privacy Tags (낮은 노력, 높은 가치)
+1. **v6.4.0**: Observation Types + Privacy Tags (low effort, high value)
 2. **v6.5.0**: File References + Concept Tags
 3. **v7.0.0**: Hierarchical Memory Structure
