@@ -37,11 +37,11 @@ function check() {
     const projectDir = getProjectDir();
     const scriptPath = process.argv[1].replace(/\\/g, '/');
 
-    // JSON 형식으로 출력해야 Claude가 볼 수 있음
+    // JSON output required for Claude to see hook output
     const output = {
       hookSpecificOutput: {
         hookEventName: "PostToolUse",
-        additionalContext: `[MEMORY_KEEPER_SAVE] 도구 ${counter}회 사용됨. 메모리 저장 필요.\n\n다음을 수행하라:\n1. 이 세션의 작업 내용을 200자 이내로 요약\n2. ${projectDir.replace(/\\/g, '/')}/memory.md에 저장 (Write tool)\n3. 저장 후 Bash로 node "${scriptPath}" reset 실행하여 카운터 리셋`
+        additionalContext: `[MEMORY_KEEPER_SAVE] ${counter} tool uses reached. Memory save required.\n\nDo the following:\n1. Summarize this session's work in under 200 chars\n2. Save to ${projectDir.replace(/\\/g, '/')}/memory.md (Write tool)\n3. After saving, run: node "${scriptPath}" reset`
       }
     };
     console.log(JSON.stringify(output));
@@ -56,7 +56,7 @@ function final() {
   const output = {
     hookSpecificOutput: {
       hookEventName: "Stop",
-      additionalContext: `[MEMORY_KEEPER_FINAL] 세션 종료. 최종 메모리 저장.\n\n다음을 수행하라:\n1. 이 세션 전체를 300자 이내로 요약\n2. ${projectDir}/memory.md에 저장\n\n저장 형식:\n# Project Memory: ${projectName}\n\n## Current State\n- 마지막 업데이트: ${timestamp}\n- 상태: [현재 상태]\n\n## Recent Context\n[최근 작업 요약]\n\n## Known Issues\n[알려진 문제들]`
+      additionalContext: `[MEMORY_KEEPER_FINAL] Session ending. Final memory save.\n\nDo the following:\n1. Summarize entire session in under 300 chars\n2. Save to ${projectDir}/memory.md\n\nFormat:\n# Project Memory: ${projectName}\n\n## Current State\n- Last updated: ${timestamp}\n- Status: [current status]\n\n## Recent Context\n[recent work summary]\n\n## Known Issues\n[known issues]`
     }
   };
   console.log(JSON.stringify(output));
@@ -66,7 +66,7 @@ function final() {
 
 function reset() {
   setCounter(0);
-  console.log('[MEMORY_KEEPER] 카운터 리셋됨.');
+  console.log('[MEMORY_KEEPER] Counter reset.');
 }
 
 // Main
