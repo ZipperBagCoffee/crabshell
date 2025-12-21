@@ -69,13 +69,26 @@ function check() {
 function final() {
   const projectName = getProjectName();
   const projectDir = getProjectDir().replace(/\\/g, '/');
-  const memoryPath = `${projectDir}/memory.md`;
-  const timestamp = new Date().toISOString();
+  const timestamp = getTimestamp();
 
   const output = {
     hookSpecificOutput: {
       hookEventName: "Stop",
-      additionalContext: `[MEMORY_KEEPER_FINAL] Session end. Save memory using Bash:\n\necho "# ${projectName}\\n\\nUpdated: ${timestamp}\\n\\n## Summary\\n[300 char summary]\\n\\n## Status\\n[current status]" > "${memoryPath}"`
+      additionalContext: `[MEMORY_KEEPER_FINAL] Session ending. Execute final save:
+
+1. Spawn background agent for final summary:
+   Task tool with subagent_type: "general-purpose"
+   Prompt: "Create final session summary. Return JSON only:
+   {
+     \\"summary\\": \\"300 char complete session summary\\",
+     \\"decisions\\": [{\\"content\\": \\"decision\\", \\"reason\\": \\"why\\"}],
+     \\"patterns\\": [{\\"content\\": \\"pattern found\\"}],
+     \\"issues\\": [{\\"content\\": \\"issue\\", \\"status\\": \\"open|resolved\\"}]
+   }"
+
+2. Save all files to ${projectDir}/
+
+3. Run tier compression: node "${process.argv[1].replace(/\\/g, '/')}" compress`
     }
   };
   console.log(JSON.stringify(output));
