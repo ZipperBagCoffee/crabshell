@@ -133,12 +133,9 @@ function check() {
    - Append new items to appropriate arrays
    - Write back
 
-5. RESET counter:
-   \`\`\`bash
-   node "${scriptPath}" reset
-   \`\`\`
+(Counter auto-resets after this message - no manual reset needed)
 
-DO NOT SKIP THESE STEPS. Execute them immediately before continuing.
+DO NOT SKIP STEPS 1-4. Execute them immediately before continuing.
 ═══════════════════════════════════════════════════════════════`;
 
     const output = {
@@ -148,6 +145,9 @@ DO NOT SKIP THESE STEPS. Execute them immediately before continuing.
       }
     };
     console.log(JSON.stringify(output));
+
+    // Auto-reset counter after trigger to prevent duplicate triggers
+    setCounter(0);
   }
 }
 
