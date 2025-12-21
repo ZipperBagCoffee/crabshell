@@ -68,6 +68,14 @@ node scripts/counter.js search "query"
 # View summary
 node scripts/counter.js search
 
+# Hierarchical Memory (v7.0.0)
+node scripts/counter.js memory-set project "Project description..."
+node scripts/counter.js memory-set architecture "Architecture decisions..."
+node scripts/counter.js memory-set conventions "Coding conventions..."
+node scripts/counter.js memory-get project
+node scripts/counter.js memory-get              # View all memory files
+node scripts/counter.js memory-list             # List memory file status
+
 # Add facts manually
 node scripts/counter.js add-decision "decision" "reason"
 node scripts/counter.js add-pattern "pattern"
@@ -127,7 +135,10 @@ Facts are automatically extracted from these sections.
 └── .claude/
     └── memory/
         ├── memory.md              # Rolling summary
-        ├── facts.json             # Structured facts
+        ├── project.md             # Project overview (v7.0.0+)
+        ├── architecture.md        # Architecture decisions (v7.0.0+)
+        ├── conventions.md         # Coding conventions (v7.0.0+)
+        ├── facts.json             # Structured facts + concepts index
         ├── config.json            # Settings (optional)
         └── sessions/
             ├── 2025-12-21_0300.md      # Session summary
@@ -135,6 +146,15 @@ Facts are automatically extracted from these sections.
             └── archive/
                 └── 2025-12.md          # Monthly archive
 ```
+
+## Hierarchical Memory (v7.0.0)
+
+| File | Purpose | When to Update |
+|------|---------|----------------|
+| `project.md` | Project overview, goals, tech stack | Project start/changes |
+| `architecture.md` | Architecture decisions, diagrams | Structure changes |
+| `conventions.md` | Coding style, naming rules | Rule additions |
+| `memory.md` | Session summaries (rolling) | Every session |
 
 ## Searching Memory
 
@@ -199,4 +219,7 @@ Output:
 
 | Version | Claude Code | Node.js |
 |---------|-------------|---------|
+| 7.0.0 | 1.0+ | 18+ |
+| 6.5.0 | 1.0+ | 18+ |
+| 6.4.0 | 1.0+ | 18+ |
 | 6.3.0 | 1.0+ | 18+ |

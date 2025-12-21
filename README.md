@@ -20,7 +20,10 @@ Automatic session memory for Claude Code with structured fact extraction and tie
 ## Features
 
 - **Auto-save**: Saves memory every 5 tool uses (configurable)
-- **Structured Facts**: Decisions/patterns/issues extracted automatically
+- **Hierarchical Memory** (v7.0.0): Separate project/architecture/conventions files
+- **Structured Facts**: Decisions/patterns/issues with types, files, concepts
+- **Concept Index**: Fast search by concept tags
+- **Privacy Tags**: Exclude sensitive data from facts.json
 - **Session Backup**: Raw transcript saved on session end
 - **Tiered Archiving**: 30+ day files archived monthly
 - **Auto-load**: Previous session context loaded on start
@@ -49,7 +52,10 @@ Session Start ──> Load memory.md + facts.json
 ```
 .claude/memory/
 ├── memory.md              # Rolling summary
-├── facts.json             # Structured facts + counter
+├── project.md             # Project overview (v7.0.0+)
+├── architecture.md        # Architecture decisions (v7.0.0+)
+├── conventions.md         # Coding conventions (v7.0.0+)
+├── facts.json             # Structured facts + counter + concepts index
 └── sessions/
     ├── YYYY-MM-DD_HHMM.md      # Session summary
     ├── YYYY-MM-DD_HHMM.raw.jsonl # Raw transcript
@@ -72,6 +78,13 @@ Session Start ──> Load memory.md + facts.json
 # Search
 node scripts/counter.js search "query"
 node scripts/counter.js search              # Summary
+
+# Hierarchical Memory (v7.0.0)
+node scripts/counter.js memory-set project "Project description..."
+node scripts/counter.js memory-set architecture "Architecture..."
+node scripts/counter.js memory-set conventions "Conventions..."
+node scripts/counter.js memory-get project
+node scripts/counter.js memory-list
 
 # Add facts
 node scripts/counter.js add-decision "what" "why"
@@ -118,6 +131,9 @@ Implemented feature X.
 
 | Version | Changes |
 |---------|---------|
+| 7.0.0 | Hierarchical memory (project/architecture/conventions.md) |
+| 6.5.0 | File references + concept tagging |
+| 6.4.0 | Observation types + privacy tags |
 | 6.3.0 | Auto-extract facts from structured session files |
 | 6.2.0 | Fix command paths, add search/clear-facts |
 | 6.1.0 | CLI commands for facts.json |
