@@ -1,6 +1,6 @@
 {
   "name": "memory-keeper",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Automatic session memory - saves context on session end, loads on session start",
   "author": {
     "name": "TaWa"

@@ -12,7 +12,7 @@
       "name": "memory-keeper",
       "source": "./",
       "description": "Automatic session memory - saves context on session end, loads on session start",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": {
         "name": "TaWa"
       },
