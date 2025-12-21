@@ -12,7 +12,7 @@
       "name": "memory-keeper",
       "source": "./",
       "description": "Auto-save memory every N tool uses. Counter-based trigger with background agent summarization.",
-      "version": "3.0.0",
+      "version": "3.0.1",
       "author": {
         "name": "TaWa"
       },
