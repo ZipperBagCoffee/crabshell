@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin 프로젝트 구조
 
-**버전**: 6.0.1 | **작성자**: TaWa | **라이선스**: MIT
+**버전**: 6.2.0 | **작성자**: TaWa | **라이선스**: MIT
 
 ## 개요
 Memory Keeper는 Claude Code 플러그인으로, 세션 메모리를 자동 저장하고 관리합니다. 백그라운드 에이전트 요약, 구조화된 facts 저장, 계층형 아카이빙을 지원합니다.
@@ -35,7 +35,8 @@ memory-keeper-plugin/
 │   └── clear-memory.md               # 정리 명령
 │
 ├── hooks/                            # 라이프사이클 훅
-│   └── hooks.json                    # 훅 설정 (SessionStart, PostToolUse, Stop)
+│   ├── hooks.json                    # 훅 설정 (SessionStart, PostToolUse, Stop)
+│   └── run-hook.cmd                  # Windows용 훅 실행 래퍼
 │
 ├── scripts/                          # 핵심 구현 (Node.js)
 │   ├── counter.js                    # 도구 사용 카운터 및 트리거 로직
@@ -158,6 +159,8 @@ memory-keeper-plugin/
 
 | 버전 | 주요 변경사항 |
 |------|--------------|
+| 6.2.0 | 명령 경로 수정 및 search 기능 추가 |
+| 6.1.0 | CLI 명령어로 안전한 facts.json 업데이트 |
 | 6.0.1 | 비동기 stdin 읽기로 transcript_path 캡처 수정 |
 | 6.0.0 | 명시적 지시 출력 방식, 트리거 후 자동 카운터 리셋 |
 | 5.0.1 | facts.json._meta.counter 기반 저장 트리거 |

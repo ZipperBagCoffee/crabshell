@@ -121,34 +121,42 @@ function check() {
 [MEMORY_KEEPER] AUTO-SAVE TRIGGERED - ${counter} tool uses reached
 ═══════════════════════════════════════════════════════════════
 
-**YOU MUST EXECUTE THESE STEPS NOW:**
+**EXECUTE THESE STEPS NOW:**
 
-1. ANALYZE this session - identify:
-   - What was accomplished (2-3 sentences)
-   - Key decisions made (if any)
-   - Patterns discovered (if any)
-   - Issues found (if any)
-
-2. SAVE to memory.md:
+1. SAVE to memory.md:
    \`\`\`bash
-   echo -e "\\n## ${timestamp}\\n[Your summary here]" >> "${projectDir}/memory.md"
+   echo -e "\\n## ${timestamp}\\n[1-2 sentence summary]" >> "${projectDir}/memory.md"
    \`\`\`
 
-3. SAVE session file:
+2. SAVE session file (USE THIS EXACT FORMAT):
    \`\`\`bash
-   echo "[Full session summary]" > "${projectDir}/sessions/${timestamp}.md"
+   cat > "${projectDir}/sessions/${timestamp}.md" << 'ENDSESSION'
+# Session ${timestamp}
+
+## Summary
+[What was accomplished in 2-3 sentences]
+
+## Decisions
+- [Decision 1]: [Reason]
+- [Decision 2]: [Reason]
+
+## Patterns
+- [Pattern or convention discovered]
+
+## Issues
+- [Issue found]: [open/resolved]
+
+ENDSESSION
    \`\`\`
 
-4. ADD FACTS (run for each fact found):
+3. EXTRACT facts from session file:
    \`\`\`bash
-   node "${scriptPath}" add-decision "decision content" "reason"
-   node "${scriptPath}" add-pattern "pattern content"
-   node "${scriptPath}" add-issue "issue content" "open|resolved"
+   node "${scriptPath}" extract-facts ${timestamp}
    \`\`\`
 
-(Counter auto-resets after this message - no manual reset needed)
+(Counter auto-resets after this message)
 
-DO NOT SKIP STEPS 1-4. Execute them immediately before continuing.
+Execute steps 1-3 immediately.
 ═══════════════════════════════════════════════════════════════`;
 
     const output = {
@@ -261,37 +269,46 @@ async function final() {
 ═══════════════════════════════════════════════════════════════
 ${rawSaved ? `✓ Raw transcript saved: ${rawSaved}` : '⚠ Raw transcript not saved (check debug-hook.json)'}
 
-**YOU MUST EXECUTE THESE STEPS NOW:**
+**EXECUTE THESE STEPS NOW:**
 
-1. ANALYZE the COMPLETE session - identify:
-   - Everything accomplished in this session
-   - All key decisions made and why
-   - All patterns/conventions discovered
-   - All issues found (resolved or open)
-
-2. SAVE comprehensive summary to memory.md:
+1. SAVE to memory.md:
    \`\`\`bash
    echo -e "\\n## ${timestamp} (Session End)\\n[Complete session summary]" >> "${projectDir}/memory.md"
    \`\`\`
 
-3. SAVE detailed session file:
+2. SAVE session file (USE THIS EXACT FORMAT):
    \`\`\`bash
-   echo "[Detailed session summary with all context]" > "${projectDir}/sessions/${timestamp}.md"
+   cat > "${projectDir}/sessions/${timestamp}.md" << 'ENDSESSION'
+# Session ${timestamp}
+
+## Summary
+[Everything accomplished in this session - be thorough]
+
+## Decisions
+- [Decision 1]: [Reason why this was decided]
+- [Decision 2]: [Reason]
+
+## Patterns
+- [Pattern or convention discovered]
+- [Another pattern if any]
+
+## Issues
+- [Issue found]: [open/resolved]
+
+ENDSESSION
    \`\`\`
 
-4. ADD ALL FACTS (run for each fact found):
+3. EXTRACT facts from session file:
    \`\`\`bash
-   node "${scriptPath}" add-decision "decision content" "reason"
-   node "${scriptPath}" add-pattern "pattern content"
-   node "${scriptPath}" add-issue "issue content" "open|resolved"
+   node "${scriptPath}" extract-facts ${timestamp}
    \`\`\`
 
-5. RUN compression (archives old files):
+4. RUN compression:
    \`\`\`bash
    node "${scriptPath}" compress
    \`\`\`
 
-This is the FINAL save. Be thorough and complete.
+FINAL SAVE - Be thorough. Execute steps 1-4 now.
 ═══════════════════════════════════════════════════════════════`;
 
   const output = {
@@ -405,6 +422,88 @@ function clearFacts() {
   console.log('[MEMORY_KEEPER] Facts cleared (kept _meta).');
 }
 
+// Extract facts from a session file
+function extractFacts(sessionFile) {
+  const projectDir = getProjectDir();
+  const sessionsDir = path.join(projectDir, 'sessions');
+
+  let filePath;
+  if (sessionFile) {
+    // Specific file provided
+    filePath = sessionFile.endsWith('.md')
+      ? path.join(sessionsDir, sessionFile)
+      : path.join(sessionsDir, `${sessionFile}.md`);
+  } else {
+    // Find most recent session file
+    try {
+      const files = fs.readdirSync(sessionsDir)
+        .filter(f => f.endsWith('.md') && !f.includes('.raw.'))
+        .map(f => ({ name: f, mtime: fs.statSync(path.join(sessionsDir, f)).mtime }))
+        .sort((a, b) => b.mtime - a.mtime);
+
+      if (files.length === 0) {
+        console.log('[MEMORY_KEEPER] No session files found.');
+        return;
+      }
+      filePath = path.join(sessionsDir, files[0].name);
+    } catch (e) {
+      console.log(`[MEMORY_KEEPER] Error finding session files: ${e.message}`);
+      return;
+    }
+  }
+
+  if (!fs.existsSync(filePath)) {
+    console.log(`[MEMORY_KEEPER] Session file not found: ${filePath}`);
+    return;
+  }
+
+  const content = fs.readFileSync(filePath, 'utf8');
+  const date = new Date().toISOString().split('T')[0];
+  let extracted = { decisions: 0, patterns: 0, issues: 0 };
+
+  // Parse ## Decisions section
+  const decisionsMatch = content.match(/## Decisions\s*([\s\S]*?)(?=##|$)/i);
+  if (decisionsMatch) {
+    const lines = decisionsMatch[1].trim().split('\n');
+    lines.forEach(line => {
+      const match = line.match(/^-\s*(.+?):\s*(.+)$/);
+      if (match && !match[1].startsWith('[')) {
+        addDecision(match[1].trim(), match[2].trim());
+        extracted.decisions++;
+      }
+    });
+  }
+
+  // Parse ## Patterns section
+  const patternsMatch = content.match(/## Patterns\s*([\s\S]*?)(?=##|$)/i);
+  if (patternsMatch) {
+    const lines = patternsMatch[1].trim().split('\n');
+    lines.forEach(line => {
+      const match = line.match(/^-\s*(.+)$/);
+      if (match && !match[1].startsWith('[')) {
+        addPattern(match[1].trim());
+        extracted.patterns++;
+      }
+    });
+  }
+
+  // Parse ## Issues section
+  const issuesMatch = content.match(/## Issues\s*([\s\S]*?)(?=##|$)/i);
+  if (issuesMatch) {
+    const lines = issuesMatch[1].trim().split('\n');
+    lines.forEach(line => {
+      const match = line.match(/^-\s*(.+?):\s*(open|resolved)$/i);
+      if (match && !match[1].startsWith('[')) {
+        addIssue(match[1].trim(), match[2].toLowerCase());
+        extracted.issues++;
+      }
+    });
+  }
+
+  console.log(`[MEMORY_KEEPER] Extracted from ${path.basename(filePath)}:`);
+  console.log(`  Decisions: ${extracted.decisions}, Patterns: ${extracted.patterns}, Issues: ${extracted.issues}`);
+}
+
 function compress() {
   const projectDir = getProjectDir();
   const sessionsDir = path.join(projectDir, 'sessions');
@@ -476,6 +575,9 @@ switch (command) {
   case 'clear-facts':
     clearFacts();
     break;
+  case 'extract-facts':
+    extractFacts(process.argv[3]);
+    break;
   default:
-    console.log('Usage: counter.js [check|final|reset|compress|add-decision|add-pattern|add-issue|search|clear-facts]');
+    console.log('Usage: counter.js [check|final|reset|compress|add-decision|add-pattern|add-issue|search|clear-facts|extract-facts]');
 }

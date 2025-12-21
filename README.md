@@ -117,6 +117,7 @@ node scripts/counter.js add-issue "Write tool fails on Windows" "resolved"
 
 ## Version History
 
+- **v6.3.0**: Auto-extract facts from structured session files via `extract-facts` command
 - **v6.2.0**: Fix command paths to project-local, add search/clear-facts CLI commands
 - **v6.1.0**: Add CLI commands (add-decision/add-pattern/add-issue) for safe facts.json updates
 - **v6.0.1**: Fix stdin reading with async/await for proper transcript_path capture
