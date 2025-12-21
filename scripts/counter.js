@@ -1,6 +1,6 @@
 const path = require('path');
 const fs = require('fs');
-const { getProjectDir, getProjectName, readFileOrDefault, writeFile, readJsonOrDefault, ensureDir, getTimestamp } = require('./utils');
+const { getProjectDir, getProjectName, readFileOrDefault, writeFile, readJsonOrDefault, writeJson, ensureDir, getTimestamp } = require('./utils');
 const os = require('os');
 
 const CONFIG_PATH = path.join(process.cwd(), '.claude', 'memory', 'config.json');
@@ -8,7 +8,6 @@ const GLOBAL_CONFIG_PATH = path.join(os.homedir(), '.claude', 'memory-keeper', '
 const DEFAULT_INTERVAL = 5;
 
 function getConfig() {
-  // Try project-local config first, then global
   let config = readJsonOrDefault(CONFIG_PATH, null);
   if (!config) {
     config = readJsonOrDefault(GLOBAL_CONFIG_PATH, { saveInterval: DEFAULT_INTERVAL });
@@ -16,37 +15,81 @@ function getConfig() {
   return config;
 }
 
-// Read hook data from stdin (contains transcript_path for Stop hook)
+// Read hook data from stdin
 function readStdin() {
   try {
+    // Try reading from stdin synchronously
+    const chunks = [];
+    const BUFSIZE = 256;
+    let buf = Buffer.alloc(BUFSIZE);
+    let bytesRead;
+
     const fd = fs.openSync(0, 'r');
-    const buf = Buffer.alloc(10000);
-    let data = '';
-    let n;
-    while ((n = fs.readSync(fd, buf)) > 0) {
-      data += buf.toString('utf8', 0, n);
+    while ((bytesRead = fs.readSync(fd, buf, 0, BUFSIZE)) > 0) {
+      chunks.push(buf.slice(0, bytesRead));
     }
     fs.closeSync(fd);
-    return data ? JSON.parse(data) : {};
-  } catch {
-    return {};
+
+    const data = Buffer.concat(chunks).toString('utf8').trim();
+    if (data) {
+      return JSON.parse(data);
+    }
+  } catch (e) {
+    // Fallback: check environment variable
+    if (process.env.CLAUDE_HOOK_DATA) {
+      try {
+        return JSON.parse(process.env.CLAUDE_HOOK_DATA);
+      } catch {}
+    }
   }
+  return {};
 }
 
-function getCounterPath() {
-  return path.join(getProjectDir(), 'counter.txt');
+// Get facts.json path and ensure it exists
+function getFactsPath() {
+  return path.join(getProjectDir(), 'facts.json');
 }
 
+function loadFacts() {
+  const factsPath = getFactsPath();
+  ensureDir(path.dirname(factsPath));
+
+  const defaultFacts = {
+    _meta: { counter: 0, lastSave: null },
+    decisions: [],
+    patterns: [],
+    issues: []
+  };
+
+  let facts = readJsonOrDefault(factsPath, null);
+  if (!facts) {
+    // Create facts.json if doesn't exist
+    writeJson(factsPath, defaultFacts);
+    return defaultFacts;
+  }
+
+  // Ensure _meta exists
+  if (!facts._meta) {
+    facts._meta = { counter: 0, lastSave: null };
+  }
+
+  return facts;
+}
+
+function saveFacts(facts) {
+  writeJson(getFactsPath(), facts);
+}
+
+// Counter stored in facts.json._meta.counter
 function getCounter() {
-  const counterPath = getCounterPath();
-  const value = readFileOrDefault(counterPath, '0');
-  return parseInt(value, 10) || 0;
+  const facts = loadFacts();
+  return facts._meta.counter || 0;
 }
 
 function setCounter(value) {
-  const counterPath = getCounterPath();
-  ensureDir(path.dirname(counterPath));
-  writeFile(counterPath, String(value));
+  const facts = loadFacts();
+  facts._meta.counter = value;
+  saveFacts(facts);
 }
 
 function check() {
@@ -62,7 +105,6 @@ function check() {
     const scriptPath = process.argv[1].replace(/\\/g, '/');
     const timestamp = getTimestamp();
 
-    // Simple trigger - SKILL.md handles the logic
     const output = {
       hookSpecificOutput: {
         hookEventName: "PostToolUse",
@@ -82,27 +124,62 @@ function final() {
   const timestamp = getTimestamp();
   const sessionsDir = path.join(getProjectDir(), 'sessions');
 
+  ensureDir(sessionsDir);
+
+  // Debug: log what we received
+  const debugPath = path.join(getProjectDir(), 'debug-hook.json');
+  writeJson(debugPath, { hookData, timestamp, hasTranscript: !!hookData.transcript_path });
+
   // Copy raw transcript if available
-  let rawSaved = false;
-  if (hookData.transcript_path) {
+  let rawSaved = '';
+  if (hookData.transcript_path && hookData.transcript_path !== '') {
     try {
-      ensureDir(sessionsDir);
       const rawDest = path.join(sessionsDir, `${timestamp}.raw.jsonl`);
       fs.copyFileSync(hookData.transcript_path, rawDest);
-      rawSaved = true;
+      rawSaved = rawDest.replace(/\\/g, '/');
     } catch (e) {
-      // Ignore copy errors
+      // Log error
+      fs.appendFileSync(path.join(getProjectDir(), 'error.log'),
+        `${timestamp}: Failed to copy transcript: ${e.message}\n`);
+    }
+  } else {
+    // Try to find transcript in default location
+    const projectName = getProjectName();
+    const claudeProjectsDir = path.join(os.homedir(), '.claude', 'projects');
+
+    try {
+      // Look for session files
+      if (fs.existsSync(claudeProjectsDir)) {
+        const projects = fs.readdirSync(claudeProjectsDir);
+        for (const proj of projects) {
+          if (proj.includes(projectName)) {
+            const projPath = path.join(claudeProjectsDir, proj);
+            const files = fs.readdirSync(projPath).filter(f => f.endsWith('.jsonl'));
+            if (files.length > 0) {
+              // Get most recent
+              const sorted = files.sort().reverse();
+              const srcPath = path.join(projPath, sorted[0]);
+              const rawDest = path.join(sessionsDir, `${timestamp}.raw.jsonl`);
+              fs.copyFileSync(srcPath, rawDest);
+              rawSaved = rawDest.replace(/\\/g, '/');
+              break;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      fs.appendFileSync(path.join(getProjectDir(), 'error.log'),
+        `${timestamp}: Failed to find transcript: ${e.message}\n`);
     }
   }
 
-  // Simple trigger - SKILL.md handles the logic
   const output = {
     hookSpecificOutput: {
       hookEventName: "Stop",
       additionalContext: `[MEMORY_KEEPER_FINAL] Session ending.
 MEMORY_DIR: ${projectDir}
 TIMESTAMP: ${timestamp}
-${rawSaved ? `RAW_SAVED: ${projectDir}/sessions/${timestamp}.raw.jsonl` : ''}
+${rawSaved ? `RAW_SAVED: ${rawSaved}` : 'RAW_SAVED: (none - check debug-hook.json)'}
 COMPRESS_CMD: node "${process.argv[1].replace(/\\/g, '/')}" compress`
     }
   };
@@ -120,31 +197,35 @@ function compress() {
   const projectDir = getProjectDir();
   const sessionsDir = path.join(projectDir, 'sessions');
 
-  // Ensure sessions directory exists
   ensureDir(sessionsDir);
 
   const now = new Date();
-  const files = fs.readdirSync(sessionsDir).filter(f => f.endsWith('.md') && !f.includes('week-') && !f.startsWith('archive'));
 
-  // Group files by age
-  files.forEach(file => {
-    const match = file.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (!match) return;
+  try {
+    const files = fs.readdirSync(sessionsDir).filter(f =>
+      f.endsWith('.md') && !f.includes('week-') && !f.startsWith('archive')
+    );
 
-    const fileDate = new Date(match[1], match[2] - 1, match[3]);
-    const daysOld = Math.floor((now - fileDate) / (1000 * 60 * 60 * 24));
+    files.forEach(file => {
+      const match = file.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (!match) return;
 
-    if (daysOld > 30) {
-      // Move to archive
-      const archiveDir = path.join(sessionsDir, 'archive');
-      ensureDir(archiveDir);
-      const archiveFile = path.join(archiveDir, `${match[1]}-${match[2]}.md`);
-      const content = readFileOrDefault(path.join(sessionsDir, file), '');
-      fs.appendFileSync(archiveFile, `\n\n---\n\n${content}`);
-      fs.unlinkSync(path.join(sessionsDir, file));
-      console.log(`[MEMORY_KEEPER] Archived: ${file}`);
-    }
-  });
+      const fileDate = new Date(match[1], match[2] - 1, match[3]);
+      const daysOld = Math.floor((now - fileDate) / (1000 * 60 * 60 * 24));
+
+      if (daysOld > 30) {
+        const archiveDir = path.join(sessionsDir, 'archive');
+        ensureDir(archiveDir);
+        const archiveFile = path.join(archiveDir, `${match[1]}-${match[2]}.md`);
+        const content = readFileOrDefault(path.join(sessionsDir, file), '');
+        fs.appendFileSync(archiveFile, `\n\n---\n\n${content}`);
+        fs.unlinkSync(path.join(sessionsDir, file));
+        console.log(`[MEMORY_KEEPER] Archived: ${file}`);
+      }
+    });
+  } catch (e) {
+    console.log(`[MEMORY_KEEPER] Compress error: ${e.message}`);
+  }
 
   console.log('[MEMORY_KEEPER] Compression complete.');
 }

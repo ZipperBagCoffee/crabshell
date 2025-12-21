@@ -54,8 +54,7 @@ Each project stores memory in its own `.claude/memory/` folder:
     └── memory/
         ├── config.json            # Project-local settings (optional)
         ├── memory.md              # Rolling summary (loaded at start)
-        ├── facts.json             # Structured decisions/patterns/issues
-        ├── counter.txt            # Current counter value
+        ├── facts.json             # Structured decisions/patterns/issues + counter in _meta
         └── sessions/
             ├── YYYY-MM-DD_HHMM.md      # Session summary
             ├── YYYY-MM-DD_HHMM.raw.jsonl # Raw transcript (on session end)
@@ -67,6 +66,10 @@ Each project stores memory in its own `.claude/memory/` folder:
 
 ```json
 {
+  "_meta": {
+    "counter": 3,
+    "lastSave": "2024-12-21_1430"
+  },
   "decisions": [
     {"id": "d001", "date": "2024-12-21", "content": "Use hooks for auto-save", "reason": "More reliable than manual"}
   ],
@@ -100,6 +103,7 @@ Create `.claude/memory/config.json` in your project (or `~/.claude/memory-keeper
 
 ## Version History
 
+- **v5.0.1**: Counter moved to facts.json._meta, auto-create facts.json, transcript fallback search
 - **v5.0.0**: SKILL.md auto-trigger system - Claude automatically executes save when triggered
 - **v4.1.0**: Project-local storage (.claude/memory/), raw transcript copy on session end
 - **v4.0.0**: Background agent summarization, original+summary saves, facts.json, tiered storage
