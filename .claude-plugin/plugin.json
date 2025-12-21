@@ -1,11 +1,11 @@
 {
   "name": "memory-keeper",
-  "version": "6.5.0",
-  "description": "Auto-save memory with file references and concept tagging. Search by concept, file, or type.",
+  "version": "7.0.0",
+  "description": "Auto-save memory with hierarchical structure (project/architecture/conventions), file references, and concept tagging.",
   "author": {
     "name": "TaWa"
   },
   "repository": "https://github.com/ZipperBagCoffee/memory-keeper-plugin",
   "license": "MIT",
-  "keywords": ["memory", "context", "session", "productivity", "background", "auto-save"]
+  "keywords": ["memory", "context", "session", "productivity", "background", "auto-save", "hierarchical"]
 }

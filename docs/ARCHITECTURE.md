@@ -164,12 +164,20 @@ session.md ──parse──> extractFacts() ──add──> facts.json
 | `final` | Copy transcript, output final instructions | stdin (hookData) | Instructions |
 | `reset` | Reset counter to 0 | - | Confirmation |
 | `compress` | Archive 30+ day files | - | Archive status |
+| `memory-set` | Set hierarchical memory file content | name, content | Confirmation |
+| `memory-get` | Get memory file content | [name] | Content or all files |
+| `memory-list` | List all memory files with status | - | File list |
 | `add-decision` | Add decision to facts.json | content, reason, [type], [files], [concepts] | Confirmation |
 | `add-pattern` | Add pattern to facts.json | content, [type], [files], [concepts] | Confirmation |
 | `add-issue` | Add issue to facts.json | content, status, [type], [files], [concepts] | Confirmation |
 | `search` | Search facts.json | query, [--type], [--concept], [--file] | Matching facts |
 | `clear-facts` | Clear facts arrays | - | Confirmation |
 | `extract-facts` | Parse session.md for facts | filename | Extraction stats |
+
+**Memory File Names:**
+- `project` - Project overview and description
+- `architecture` - Architecture decisions and patterns
+- `conventions` - Coding conventions and workflows
 
 **Observation Types:**
 - decisions: `architecture`, `technology`, `approach`, `other`
@@ -244,6 +252,7 @@ Location priority:
 
 | Version | Key Changes |
 |---------|-------------|
+| 7.0.0 | Hierarchical memory structure (project/architecture/conventions.md) |
 | 6.5.0 | File references + concept tagging |
 | 6.4.0 | Observation types + privacy tags |
 | 6.3.0 | Auto-extract facts from structured session files |

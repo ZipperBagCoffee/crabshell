@@ -745,6 +745,127 @@ function compress() {
   console.log('[MEMORY_KEEPER] Compression complete.');
 }
 
+// Memory file management (v7.0.0)
+const MEMORY_FILES = {
+  project: { file: 'project.md', title: 'Project Overview' },
+  architecture: { file: 'architecture.md', title: 'Architecture' },
+  conventions: { file: 'conventions.md', title: 'Conventions' }
+};
+
+function memorySet(name, content) {
+  if (!name) {
+    console.log('[MEMORY_KEEPER] Error: memory name required');
+    console.log('  Valid names: project, architecture, conventions');
+    return;
+  }
+
+  const key = name.toLowerCase();
+  const memConfig = MEMORY_FILES[key];
+
+  if (!memConfig) {
+    console.log(`[MEMORY_KEEPER] Unknown memory file: ${name}`);
+    console.log('  Valid names: project, architecture, conventions');
+    return;
+  }
+
+  if (!content) {
+    console.log('[MEMORY_KEEPER] Error: content required');
+    console.log(`  Usage: memory-set ${key} "Your content here"`);
+    return;
+  }
+
+  const projectDir = getProjectDir();
+  ensureDir(projectDir);
+  const filePath = path.join(projectDir, memConfig.file);
+
+  writeFile(filePath, content);
+  console.log(`[MEMORY_KEEPER] Saved ${memConfig.title} to ${memConfig.file}`);
+}
+
+function memoryGet(name) {
+  const projectDir = getProjectDir();
+
+  if (!name) {
+    // Show all memory files
+    console.log('[MEMORY_KEEPER] Memory Files:');
+    Object.entries(MEMORY_FILES).forEach(([key, config]) => {
+      const filePath = path.join(projectDir, config.file);
+      if (fs.existsSync(filePath)) {
+        const content = readFileOrDefault(filePath, '').trim();
+        const lines = content.split('\n').length;
+        const preview = content.substring(0, 100).replace(/\n/g, ' ');
+        console.log(`\n[${key}] ${config.title} (${lines} lines)`);
+        console.log(`  ${preview}${content.length > 100 ? '...' : ''}`);
+      } else {
+        console.log(`\n[${key}] ${config.title} - not created`);
+      }
+    });
+    return;
+  }
+
+  const key = name.toLowerCase();
+  const memConfig = MEMORY_FILES[key];
+
+  if (!memConfig) {
+    console.log(`[MEMORY_KEEPER] Unknown memory file: ${name}`);
+    console.log('  Valid names: project, architecture, conventions');
+    return;
+  }
+
+  const filePath = path.join(projectDir, memConfig.file);
+  if (!fs.existsSync(filePath)) {
+    console.log(`[MEMORY_KEEPER] ${memConfig.title} not created yet.`);
+    console.log(`  Create with: memory-set ${key} "content"`);
+    return;
+  }
+
+  const content = readFileOrDefault(filePath, '');
+  console.log(`[MEMORY_KEEPER] ${memConfig.title}:`);
+  console.log('---');
+  console.log(content);
+  console.log('---');
+}
+
+function memoryList() {
+  const projectDir = getProjectDir();
+  console.log('[MEMORY_KEEPER] Memory Structure:');
+
+  let total = 0;
+  Object.entries(MEMORY_FILES).forEach(([key, config]) => {
+    const filePath = path.join(projectDir, config.file);
+    if (fs.existsSync(filePath)) {
+      const stats = fs.statSync(filePath);
+      const content = readFileOrDefault(filePath, '');
+      const lines = content.trim().split('\n').length;
+      console.log(`  ✓ ${config.file} (${lines} lines, ${stats.size} bytes)`);
+      total++;
+    } else {
+      console.log(`  ○ ${config.file} - not created`);
+    }
+  });
+
+  // Also show memory.md (rolling)
+  const memoryPath = path.join(projectDir, 'memory.md');
+  if (fs.existsSync(memoryPath)) {
+    const stats = fs.statSync(memoryPath);
+    const content = readFileOrDefault(memoryPath, '');
+    const lines = content.trim().split('\n').length;
+    console.log(`  ✓ memory.md (${lines} lines, ${stats.size} bytes) [rolling]`);
+  } else {
+    console.log(`  ○ memory.md - not created [rolling]`);
+  }
+
+  // Show facts.json
+  const factsPath = getFactsPath();
+  if (fs.existsSync(factsPath)) {
+    const facts = loadFacts();
+    const counts = `${facts.decisions.length}d/${facts.patterns.length}p/${facts.issues.length}i`;
+    console.log(`  ✓ facts.json (${counts})`);
+  }
+
+  console.log(`\nHierarchical files: ${total}/3 created`);
+}
+
 // Parse --key=value from arguments
 function parseArg(args, key) {
   const prefix = `--${key}=`;
@@ -804,6 +925,15 @@ switch (command) {
   case 'extract-facts':
     extractFacts(args[0]);
     break;
+  case 'memory-set':
+    memorySet(args[0], args.slice(1).join(' '));
+    break;
+  case 'memory-get':
+    memoryGet(args[0]);
+    break;
+  case 'memory-list':
+    memoryList();
+    break;
   default:
     console.log(`Usage: counter.js <command>
 
@@ -813,6 +943,14 @@ Commands:
   reset                  Reset counter to 0
   compress               Archive old session files (30+ days)
 
+Memory Management (v7.0.0):
+  memory-set <name> <content>
+                         Set hierarchical memory file content
+                         Names: project, architecture, conventions
+  memory-get [name]      Get memory file content (all if no name)
+  memory-list            List all memory files with status
+
+Fact Commands:
   add-decision <content> <reason> [type] [files] [concepts]
                          Add decision with optional file refs and concept tags
                          Types: architecture, technology, approach, other

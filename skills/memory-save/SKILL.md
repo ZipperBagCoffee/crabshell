@@ -3,9 +3,21 @@ name: memory-save
 description: Execute when you see "[MEMORY_KEEPER]" in hook output. Follow the numbered steps exactly to save session memory.
 ---
 
-# Memory Save Skill (v6.5.0)
+# Memory Save Skill (v7.0.0)
 
 This skill activates when `[MEMORY_KEEPER]` appears in conversation.
+
+## Memory Structure
+
+```
+.claude/memory/
+  project.md        <- Project overview (stable)
+  architecture.md   <- Architecture decisions (stable)
+  conventions.md    <- Coding conventions (stable)
+  memory.md         <- Rolling session log (last 50 lines loaded)
+  facts.json        <- Structured facts with concepts index
+  sessions/         <- Individual session files
+```
 
 ## Trigger Message
 
@@ -60,6 +72,26 @@ node "scripts/counter.js" extract-facts 2025-12-21_0300
 Additional step:
 ```bash
 node "scripts/counter.js" compress
+```
+
+## Optional: Update Hierarchical Memory
+
+If major project understanding changed, update stable memory files:
+```bash
+node "scripts/counter.js" memory-set project "Updated project description..."
+node "scripts/counter.js" memory-set architecture "Updated architecture..."
+node "scripts/counter.js" memory-set conventions "Updated conventions..."
+```
+
+**When to update:**
+- `project.md`: New project scope, goals, or tech stack
+- `architecture.md`: New architecture decisions or patterns
+- `conventions.md`: New coding standards or workflows
+
+**View current memory:**
+```bash
+node "scripts/counter.js" memory-list
+node "scripts/counter.js" memory-get project
 ```
 
 ## Format Rules
