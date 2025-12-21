@@ -2,16 +2,18 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const MEMORY_ROOT = path.join(os.homedir(), '.claude', 'memory-keeper', 'projects');
-
+// Store in project-local .claude/memory/ instead of global ~/.claude/memory-keeper/
 function getProjectName() {
   return path.basename(process.cwd());
 }
 
 function getProjectDir() {
-  const projectName = getProjectName();
-  return path.join(MEMORY_ROOT, projectName);
+  // Project-local storage: .claude/memory/
+  return path.join(process.cwd(), '.claude', 'memory');
 }
+
+// Legacy: global storage path (for migration if needed)
+const MEMORY_ROOT = path.join(os.homedir(), '.claude', 'memory-keeper', 'projects');
 
 function ensureDir(dirPath) {
   if (!fs.existsSync(dirPath)) {

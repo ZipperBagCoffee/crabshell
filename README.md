@@ -46,19 +46,21 @@ claude --plugin-dir /path/to/memory-keeper-plugin
 
 ## Storage Structure
 
+Each project stores memory in its own `.claude/memory/` folder:
+
 ```
-~/.claude/memory-keeper/
-├── config.json                    # Global settings
-└── projects/
-    └── [project-name]/
+[project-root]/
+└── .claude/
+    └── memory/
+        ├── config.json            # Project-local settings (optional)
         ├── memory.md              # Rolling summary (loaded at start)
         ├── facts.json             # Structured decisions/patterns/issues
         ├── counter.txt            # Current counter value
         └── sessions/
-            ├── YYYY-MM-DD_HHMM.md     # Session summary
-            ├── YYYY-MM-DD_HHMM.raw.md # Raw conversation backup
+            ├── YYYY-MM-DD_HHMM.md      # Session summary
+            ├── YYYY-MM-DD_HHMM.raw.jsonl # Raw transcript (on session end)
             └── archive/
-                └── YYYY-MM.md         # Monthly archives
+                └── YYYY-MM.md          # Monthly archives
 ```
 
 ## facts.json Structure
@@ -79,7 +81,7 @@ claude --plugin-dir /path/to/memory-keeper-plugin
 
 ## Configuration
 
-Create `~/.claude/memory-keeper/config.json`:
+Create `.claude/memory/config.json` in your project (or `~/.claude/memory-keeper/config.json` for global):
 
 ```json
 {
@@ -98,6 +100,7 @@ Create `~/.claude/memory-keeper/config.json`:
 
 ## Version History
 
+- **v4.1.0**: Project-local storage (.claude/memory/), raw transcript copy on session end
 - **v4.0.0**: Background agent summarization, original+summary saves, facts.json, tiered storage
 - **v3.0.4**: Use Bash for saves (Windows compatibility fix)
 - **v3.0.3**: Convert all text to English

@@ -3,11 +3,34 @@ const fs = require('fs');
 const { getProjectDir, getProjectName, readFileOrDefault, writeFile, readJsonOrDefault, ensureDir, getTimestamp } = require('./utils');
 const os = require('os');
 
-const CONFIG_PATH = path.join(os.homedir(), '.claude', 'memory-keeper', 'config.json');
+const CONFIG_PATH = path.join(process.cwd(), '.claude', 'memory', 'config.json');
+const GLOBAL_CONFIG_PATH = path.join(os.homedir(), '.claude', 'memory-keeper', 'config.json');
 const DEFAULT_INTERVAL = 5;
 
 function getConfig() {
-  return readJsonOrDefault(CONFIG_PATH, { saveInterval: DEFAULT_INTERVAL });
+  // Try project-local config first, then global
+  let config = readJsonOrDefault(CONFIG_PATH, null);
+  if (!config) {
+    config = readJsonOrDefault(GLOBAL_CONFIG_PATH, { saveInterval: DEFAULT_INTERVAL });
+  }
+  return config;
+}
+
+// Read hook data from stdin (contains transcript_path for Stop hook)
+function readStdin() {
+  try {
+    const fd = fs.openSync(0, 'r');
+    const buf = Buffer.alloc(10000);
+    let data = '';
+    let n;
+    while ((n = fs.readSync(fd, buf)) > 0) {
+      data += buf.toString('utf8', 0, n);
+    }
+    fs.closeSync(fd);
+    return data ? JSON.parse(data) : {};
+  } catch {
+    return {};
+  }
 }
 
 function getCounterPath() {
@@ -58,7 +81,6 @@ function check() {
    - Append summary to ${projectDir}/memory.md
    - Update ${projectDir}/facts.json with decisions/patterns/issues
    - Save summary to ${projectDir}/sessions/${timestamp}.md
-   - Save raw conversation to ${projectDir}/sessions/${timestamp}.raw.md
 
 3. Reset counter: node "${scriptPath}" reset`
       }
@@ -68,9 +90,23 @@ function check() {
 }
 
 function final() {
-  const projectName = getProjectName();
+  const hookData = readStdin();
   const projectDir = getProjectDir().replace(/\\/g, '/');
   const timestamp = getTimestamp();
+  const sessionsDir = path.join(getProjectDir(), 'sessions');
+
+  // Copy raw transcript if available
+  let rawSaved = false;
+  if (hookData.transcript_path) {
+    try {
+      ensureDir(sessionsDir);
+      const rawDest = path.join(sessionsDir, `${timestamp}.raw.jsonl`);
+      fs.copyFileSync(hookData.transcript_path, rawDest);
+      rawSaved = true;
+    } catch (e) {
+      // Ignore copy errors
+    }
+  }
 
   const output = {
     hookSpecificOutput: {
@@ -88,6 +124,7 @@ function final() {
    }"
 
 2. Save all files to ${projectDir}/
+${rawSaved ? `   Raw transcript saved: ${projectDir}/sessions/${timestamp}.raw.jsonl` : ''}
 
 3. Run tier compression: node "${process.argv[1].replace(/\\/g, '/')}" compress`
     }
