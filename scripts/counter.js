@@ -62,27 +62,14 @@ function check() {
     const scriptPath = process.argv[1].replace(/\\/g, '/');
     const timestamp = getTimestamp();
 
+    // Simple trigger - SKILL.md handles the logic
     const output = {
       hookSpecificOutput: {
         hookEventName: "PostToolUse",
-        additionalContext: `[MEMORY_KEEPER_SAVE] ${counter} tool uses reached. Execute memory save:
-
-1. Spawn background agent:
-   Task tool with subagent_type: "general-purpose", run_in_background: false
-   Prompt: "Analyze this session and return JSON only (no markdown):
-   {
-     \\"summary\\": \\"200 char session summary\\",
-     \\"decisions\\": [{\\"content\\": \\"decision\\", \\"reason\\": \\"why\\"}],
-     \\"patterns\\": [{\\"content\\": \\"pattern found\\"}],
-     \\"issues\\": [{\\"content\\": \\"issue\\", \\"status\\": \\"open\\"}]
-   }"
-
-2. After agent returns, save files using Bash:
-   - Append summary to ${projectDir}/memory.md
-   - Update ${projectDir}/facts.json with decisions/patterns/issues
-   - Save summary to ${projectDir}/sessions/${timestamp}.md
-
-3. Reset counter: node "${scriptPath}" reset`
+        additionalContext: `[MEMORY_KEEPER_SAVE] ${counter} tool uses reached.
+MEMORY_DIR: ${projectDir}
+TIMESTAMP: ${timestamp}
+RESET_CMD: node "${scriptPath}" reset`
       }
     };
     console.log(JSON.stringify(output));
@@ -108,25 +95,15 @@ function final() {
     }
   }
 
+  // Simple trigger - SKILL.md handles the logic
   const output = {
     hookSpecificOutput: {
       hookEventName: "Stop",
-      additionalContext: `[MEMORY_KEEPER_FINAL] Session ending. Execute final save:
-
-1. Spawn background agent for final summary:
-   Task tool with subagent_type: "general-purpose"
-   Prompt: "Create final session summary. Return JSON only:
-   {
-     \\"summary\\": \\"300 char complete session summary\\",
-     \\"decisions\\": [{\\"content\\": \\"decision\\", \\"reason\\": \\"why\\"}],
-     \\"patterns\\": [{\\"content\\": \\"pattern found\\"}],
-     \\"issues\\": [{\\"content\\": \\"issue\\", \\"status\\": \\"open|resolved\\"}]
-   }"
-
-2. Save all files to ${projectDir}/
-${rawSaved ? `   Raw transcript saved: ${projectDir}/sessions/${timestamp}.raw.jsonl` : ''}
-
-3. Run tier compression: node "${process.argv[1].replace(/\\/g, '/')}" compress`
+      additionalContext: `[MEMORY_KEEPER_FINAL] Session ending.
+MEMORY_DIR: ${projectDir}
+TIMESTAMP: ${timestamp}
+${rawSaved ? `RAW_SAVED: ${projectDir}/sessions/${timestamp}.raw.jsonl` : ''}
+COMPRESS_CMD: node "${process.argv[1].replace(/\\/g, '/')}" compress`
     }
   };
   console.log(JSON.stringify(output));
