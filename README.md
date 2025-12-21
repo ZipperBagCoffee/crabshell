@@ -1,14 +1,13 @@
 # Memory Keeper
 
-Automatic background session memory for Claude Code. Saves context periodically during sessions, loads previous context on start.
+Automatic session memory for Claude Code. Saves context every N tool uses, loads previous context on session start.
 
 ## Features
 
-- **Auto-save**: Background agent saves memory when context reaches 50%
+- **Auto-save**: Saves memory every 5 tool uses (configurable)
 - **Auto-load**: Previous session context loaded on start
 - **Rolling summary**: Maintains `memory.md` with current project state
-- **Knowledge extraction**: Extracts decisions/patterns/issues to searchable JSON
-- **Tiered storage**: Recent sessions preserved, old ones compressed
+- **Project isolation**: Each project has its own memory
 
 ## Installation
 
@@ -31,46 +30,50 @@ claude --plugin-dir /path/to/memory-keeper-plugin
 3. Outputs to Claude's context
 
 ### During Session
-1. PostToolUse hook checks context usage
-2. At ~50%, spawns background agent
-3. Agent saves summary without interrupting work
+1. PostToolUse hook increments counter
+2. At N tool uses (default: 5), triggers save
+3. Claude saves summary using Bash
 
 ### Session End
 1. Stop hook triggers final save
 2. Complete session summary saved
-3. Tier compression runs (7+ days -> weekly, 30+ days -> archive)
 
 ## Storage Structure
 
 ```
-~/.claude/memory-keeper/projects/[project]/
-├── memory.md           # Rolling summary (loaded at start)
-├── facts.json          # Searchable facts database
-├── sessions/           # Session history
-│   ├── YYYY-MM-DD_HHMM.md      # Recent summaries
-│   ├── YYYY-MM-DD_HHMM.raw.md  # Recent raw backups
-│   ├── week-NN.md              # Weekly summaries
-│   └── archive/                # Monthly archives
-└── index.json          # Keyword index
+~/.claude/memory-keeper/
+├── config.json                    # Global settings
+└── projects/
+    └── [project-name]/
+        ├── memory.md              # Rolling summary (loaded at start)
+        └── counter.txt            # Current counter value
+```
+
+## Configuration
+
+Create `~/.claude/memory-keeper/config.json`:
+
+```json
+{
+  "saveInterval": 5
+}
 ```
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| `/memory-keeper:save` | Manual save (backup) |
-| `/memory-keeper:recall [query]` | Search and load past context |
-| `/memory-keeper:status` | Show memory status |
-| `/memory-keeper:clear [all\|old]` | Clean up memory files |
+| `/memory-keeper:save-memory` | Manual save |
+| `/memory-keeper:load-memory` | Load memory |
+| `/memory-keeper:search-memory [query]` | Search past sessions |
+| `/memory-keeper:clear-memory [all\|old]` | Clean up memory |
 
-## Configuration
+## Version History
 
-No configuration needed. Works automatically.
-
-To disable temporarily:
-```bash
-/plugin disable memory-keeper
-```
+- **v3.0.4**: Use Bash for saves (Windows compatibility fix)
+- **v3.0.3**: Convert all text to English
+- **v3.0.2**: JSON output format for hooks
+- **v3.0.0**: Counter-based trigger system
 
 ## License
 

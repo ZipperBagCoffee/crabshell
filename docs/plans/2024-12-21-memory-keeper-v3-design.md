@@ -2,69 +2,62 @@
 
 ## Overview
 
-도구 사용 횟수 기반 자동 저장. 백그라운드 에이전트가 요약 생성, 메인 Claude가 저장.
+Counter-based automatic save. Main Claude handles all file operations directly.
 
 ## Requirements
 
-| 항목 | 결정 |
-|------|------|
-| 저장 트리거 | 도구 5회 사용마다 (설정 가능) |
-| 저장 방식 | 백그라운드 에이전트 요약 → 메인 Claude 저장 |
-| 로드 | 세션 시작 시 memory.md |
-| 프로젝트 | 완전 분리 |
+| Item | Decision |
+|------|----------|
+| Save trigger | Every N tool uses (configurable, default: 5) |
+| Save method | Main Claude saves directly using Bash |
+| Load | Load memory.md on session start |
+| Projects | Completely separated per project |
 
 ## Flow
 
 ```
-[PostToolUse 훅]
+[PostToolUse hook]
        │
        ▼
-[Node.js 카운터 스크립트]
+[Node.js counter script]
        │
-       ├─ 카운터 < 5 → 아무것도 안 함
+       ├─ Counter < 5 → Do nothing
        │
-       └─ 카운터 >= 5 → "MEMORY_SAVE_TRIGGER" 출력
+       └─ Counter >= 5 → Output JSON with additionalContext
                               │
                               ▼
-                     [메인 Claude가 봄]
+                     [Main Claude sees message]
                               │
                               ▼
-                     [백그라운드 에이전트 스폰]
+                     [Claude saves memory using Bash]
                               │
                               ▼
-                     [에이전트가 요약 생성해서 리턴]
-                              │
-                              ▼
-                     [메인 Claude가 파일 저장]
-                              │
-                              ▼
-                     [카운터 리셋]
+                     [Claude resets counter]
 ```
 
 ## File Structure
 
 ```
 scripts/
-├── counter.js      # 카운터 관리 (증가, 체크, 리셋)
-├── load-memory.js  # 세션 시작 시 메모리 로드
-└── utils.js        # 공통 유틸리티
+├── counter.js      # Counter management (increment, check, reset)
+├── load-memory.js  # Load memory on session start
+└── utils.js        # Common utilities
 
 hooks/
-├── hooks.json      # 훅 설정
-└── run-hook.cmd    # Windows 래퍼
+└── hooks.json      # Hook configuration
 ```
 
 ## Storage Structure
 
 ```
 ~/.claude/memory-keeper/
-├── config.json                    # 전역 설정
+├── config.json                    # Global settings
 └── projects/
     └── [project-name]/
-        ├── memory.md              # 롤링 요약
-        ├── counter.txt            # 현재 카운터 값
+        ├── memory.md              # Rolling summary
+        ├── counter.txt            # Current counter value
         └── sessions/
-            └── YYYY-MM-DD_HHMM.md # 개별 세션
+            └── YYYY-MM-DD_HHMM.md # Individual sessions
 ```
 
 ## Hooks Configuration
@@ -112,16 +105,16 @@ hooks/
 ## Counter Script Behavior
 
 **counter.js check:**
-- 카운터 증가
-- 카운터 >= 설정값이면 트리거 메시지 출력
-- Claude가 메시지 보고 백그라운드 에이전트 스폰
+- Increment counter
+- If counter >= threshold, output JSON with additionalContext
+- Claude sees message and saves memory
 
 **counter.js final:**
-- 최종 저장 트리거 메시지 출력
-- 카운터 리셋
+- Output final save trigger message
+- Reset counter
 
 **counter.js reset:**
-- 카운터를 0으로 리셋
+- Reset counter to 0
 
 ## Config File
 
@@ -138,34 +131,35 @@ hooks/
 # Project Memory: [project-name]
 
 ## Core Decisions
-- [핵심 결정들]
+- [key decisions]
 
 ## Current State
-- 마지막 업데이트: [timestamp]
-- 상태: [현재 상태]
+- Last updated: [timestamp]
+- Status: [current status]
 
 ## Recent Context
-- [최근 작업 요약]
+- [recent work summary]
 
 ## Known Issues
-- [알려진 문제들]
+- [known issues]
 ```
 
-## Trigger Messages
+## Hook Output Format
 
-**MEMORY_KEEPER_SAVE:**
-```
-[MEMORY_KEEPER] 저장 트리거. 다음을 수행하라:
-1. Task tool로 백그라운드 에이전트 스폰 (run_in_background: false)
-2. 에이전트에게 현재 세션 요약 요청
-3. 에이전트 결과 받으면 ~/.claude/memory-keeper/projects/[PROJECT]/memory.md에 저장
-4. counter.js reset 실행
+PostToolUse hooks must output JSON for Claude to see the message:
+
+```json
+{
+  "hookSpecificOutput": {
+    "hookEventName": "PostToolUse",
+    "additionalContext": "[MEMORY_KEEPER_SAVE] 5 tool uses. Save memory now.\n\nUse Bash to save..."
+  }
+}
 ```
 
-**MEMORY_KEEPER_FINAL:**
-```
-[MEMORY_KEEPER] 세션 종료. 최종 저장:
-1. 현재 세션 전체 요약
-2. memory.md 업데이트
-3. sessions/에 세션 기록 저장
-```
+## Key Design Decisions
+
+1. **Bash over Write tool**: Write tool has path issues on Windows. Bash echo works reliably.
+2. **Counter-based trigger**: Simpler than token-based, more predictable.
+3. **JSON output format**: Required for hook output to be visible to Claude.
+4. **Direct save by main Claude**: No background agent permission issues.
