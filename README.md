@@ -104,6 +104,7 @@ Create `.claude/memory/config.json` in your project (or `~/.claude/memory-keeper
 
 ## Version History
 
+- **v6.0.1**: Fix stdin reading with async/await for proper transcript_path capture
 - **v6.0.0**: Clear instruction output - hooks now output explicit step-by-step commands for Claude to follow
 - **v5.0.1**: Counter moved to facts.json._meta, auto-create facts.json, transcript fallback search
 - **v5.0.0**: SKILL.md auto-trigger system - Claude automatically executes save when triggered

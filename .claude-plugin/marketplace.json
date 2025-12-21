@@ -12,7 +12,7 @@
       "name": "memory-keeper",
       "source": "./",
       "description": "Auto-save memory with background agent summarization. Saves summary + original, facts.json for search, tiered storage.",
-      "version": "6.0.0",
+      "version": "6.0.1",
       "author": {
         "name": "TaWa"
       },
