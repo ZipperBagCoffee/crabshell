@@ -13,7 +13,7 @@ Automatic session memory for Claude Code. Saves context when you exit, loads whe
 
 ### From GitHub
 ```bash
-/plugin marketplace add YOUR_USERNAME/memory-keeper
+/plugin marketplace add ZipperBagCoffee/memory-keeper-plugin
 /plugin install memory-keeper
 ```
 
