@@ -1,11 +1,43 @@
 {
   "name": "memory-keeper",
-  "version": "1.0.1",
-  "description": "Automatic session memory - saves context on session end, loads on session start",
+  "version": "2.0.0",
+  "description": "Automatic background session memory - saves context periodically, loads on session start",
   "author": {
     "name": "TaWa"
   },
   "repository": "https://github.com/ZipperBagCoffee/memory-keeper-plugin",
   "license": "MIT",
-  "keywords": ["memory", "context", "session", "productivity"]
+  "keywords": ["memory", "context", "session", "productivity", "background", "auto-save"],
+  "commands": [
+    {
+      "name": "save",
+      "description": "Manually save current session memory"
+    },
+    {
+      "name": "recall",
+      "description": "Search and load past session context",
+      "args": [
+        {
+          "name": "query",
+          "description": "Search keywords",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "status",
+      "description": "Show current memory status"
+    },
+    {
+      "name": "clear",
+      "description": "Clear old memory files",
+      "args": [
+        {
+          "name": "scope",
+          "description": "all or old (default: old)",
+          "required": false
+        }
+      ]
+    }
+  ]
 }

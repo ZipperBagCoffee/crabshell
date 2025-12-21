@@ -10,15 +10,15 @@
   "plugins": [
     {
       "name": "memory-keeper",
-      "source": "./",
-      "description": "Automatic session memory - saves context on session end, loads on session start",
-      "version": "1.0.1",
+      "source": "../",
+      "description": "Automatic background session memory - saves context periodically, loads on session start",
+      "version": "2.0.0",
       "author": {
         "name": "TaWa"
       },
       "repository": "https://github.com/ZipperBagCoffee/memory-keeper-plugin",
       "license": "MIT",
-      "keywords": ["memory", "context", "session", "productivity"]
+      "keywords": ["memory", "context", "session", "productivity", "background", "auto-save"]
     }
   ]
 }
