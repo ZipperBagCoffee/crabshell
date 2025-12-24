@@ -431,10 +431,23 @@ function addIssue(content, status, type, filesStr, conceptsStr) {
 // Search facts.json for keyword with optional filters
 function search(query, typeFilter, conceptFilter, fileFilter) {
   const facts = loadFacts();
+  const factsPath = getFactsPath();
+  const projectDir = getProjectDir();
+  const totalFacts = facts.decisions.length + facts.patterns.length + facts.issues.length;
+
+  // Debug info helper
+  const showDebugInfo = () => {
+    console.log(`  ---`);
+    console.log(`  Project: ${process.cwd()}`);
+    console.log(`  Facts: ${factsPath}`);
+    console.log(`  Exists: ${fs.existsSync(factsPath) ? 'yes' : 'NO'}`);
+    if (totalFacts === 0) {
+      console.log(`  WARNING: No facts stored. Run add-decision/add-pattern/add-issue first.`);
+    }
+  };
 
   if (!query && !typeFilter && !conceptFilter && !fileFilter) {
     // Show summary
-    const projectDir = getProjectDir();
     const sessionsDir = path.join(projectDir, 'sessions');
 
     let sessionCount = 0;
@@ -460,6 +473,11 @@ function search(query, typeFilter, conceptFilter, fileFilter) {
     const conceptKeys = Object.keys(facts.concepts || {});
     if (conceptKeys.length > 0) {
       console.log(`  Concepts: ${conceptKeys.slice(0, 10).join(', ')}${conceptKeys.length > 10 ? '...' : ''}`);
+    }
+
+    // Show debug info if empty
+    if (totalFacts === 0) {
+      showDebugInfo();
     }
     return;
   }
@@ -535,6 +553,7 @@ function search(query, typeFilter, conceptFilter, fileFilter) {
     const filterMsg = filters.length > 0 ? ` with ${filters.join(', ')}` : '';
     const queryMsg = query ? ` for: ${query}` : '';
     console.log(`[MEMORY_KEEPER] No matches${filterMsg}${queryMsg}`);
+    showDebugInfo();
   }
 }
 
