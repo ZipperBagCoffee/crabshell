@@ -1093,6 +1093,65 @@ switch (command) {
   case 'list-concepts':
     listConcepts();
     break;
+  case 'migrate-facts':
+    {
+      const { migrateFacts } = require('./migrate-facts');
+      migrateFacts();
+    }
+    break;
+  case 'add-rule':
+    // node counter.js add-rule "content" "reason" [source]
+    {
+      const { addRule } = require('./permanent-memory');
+      addRule(args[0], args[1], args[2] || 'user');
+    }
+    break;
+  case 'add-solution':
+    // node counter.js add-solution "problem" "solution" [attempts]
+    {
+      const { addSolution } = require('./permanent-memory');
+      addSolution(args[0], args[1], parseInt(args[2]) || 1);
+    }
+    break;
+  case 'add-core-logic':
+    // node counter.js add-core-logic "feature" "description" [files]
+    {
+      const { addCoreLogic } = require('./permanent-memory');
+      const coreFiles = args[2] ? args[2].split(',') : [];
+      addCoreLogic(args[0], args[1], coreFiles);
+    }
+    break;
+  case 'list-permanent':
+    {
+      const { listPermanent } = require('./permanent-memory');
+      listPermanent();
+    }
+    break;
+  case 'validate-rule':
+    {
+      const { validateRule } = require('./permanent-memory');
+      validateRule(args[0]);
+    }
+    break;
+  case 'delete-rule':
+    {
+      const { deleteRule } = require('./permanent-memory');
+      deleteRule(args[0]);
+    }
+    break;
+  case 'search-keywords':
+    {
+      const { searchKeywords } = require('./keyword-index');
+      const kwResults = searchKeywords(args[0] || '');
+      if (kwResults.length === 0) {
+        console.log('[MEMORY_KEEPER] No keywords matched');
+      } else {
+        for (const r of kwResults) {
+          console.log(`[${r.keyword}] → ${r.refs.join(', ')}`);
+        }
+      }
+    }
+    break;
   default:
     console.log(`Usage: counter.js <command>
 
@@ -1139,5 +1198,15 @@ L2-L3 Commands:
   update-concepts <l2-file>
                          Update concepts index from L2 file
   list-concepts          List all concepts with details
+
+L4 Permanent Memory:
+  migrate-facts              Migrate facts.json to new format
+  add-rule <content> <reason> [source]  Add a rule
+  add-solution <problem> <solution> [attempts]  Add a solution
+  add-core-logic <feature> <desc> [files]  Add core logic
+  list-permanent             List all permanent memories
+  validate-rule <id>         Validate a rule
+  delete-rule <id>           Delete a rule
+  search-keywords <query>    Search keyword index
 `);
 }
