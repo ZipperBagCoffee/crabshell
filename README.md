@@ -166,6 +166,27 @@ node scripts/counter.js reset                  # Reset counter
 - [User Manual](docs/USER-MANUAL.md) - Detailed usage
 - [Architecture](docs/ARCHITECTURE.md) - System design
 
+## v8.2.0 - L4 Permanent Memory Automation
+
+### L4: Permanent Memory with Auto-Triggers
+- **Auto-detection** for things worth remembering:
+  - User explicit requests ("기억해", "항상", "remember")
+  - Repeated solutions (10+ occurrences)
+  - Breakthroughs (problem-solving patterns)
+  - Core logic changes
+- **Self-correction**: Rules track confidence and contradictions
+- **Keyword indexing**: Fast search across all sessions
+
+### New Commands
+- `migrate-facts` - Migrate old facts.json to new structure
+- `add-rule <content> [confidence]` - Add permanent rule
+- `add-solution <problem> <solution>` - Add solution
+- `add-core-logic <file> <description>` - Add core logic
+- `list-permanent [type]` - List permanent memories
+- `validate-rule <id> <true|false>` - Validate rule
+- `delete-rule <id>` - Delete rule
+- `search-keywords <keyword>` - Search by keyword
+
 ## v8.1.0 - L2-L3 Hierarchical Summarization
 
 ### L2: Exchange Summaries
@@ -200,6 +221,7 @@ Raw transcripts are now automatically refined to remove junk metadata:
 
 | Version | Changes |
 |---------|---------|
+| 8.2.0 | L4 permanent memory automation |
 | 8.1.0 | L2-L3 hierarchical summarization |
 | 8.0.0 | L1 hierarchical memory refinement |
 | 7.1.0 | Direct fact extraction (no session file step) |
