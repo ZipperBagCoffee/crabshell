@@ -330,6 +330,33 @@ ${rawSaved ? `✓ Raw transcript saved: ${rawSaved}` : '⚠ Raw transcript not s
    node "${scriptPath}" compress
    \`\`\`
 
+**STEP 6: Generate L2 Summary**
+
+Review this session and create L2 exchange summaries. For each distinct task/request:
+\`\`\`json
+[
+  {
+    "id": "e001",
+    "summary": "One sentence: what was done",
+    "details": "1-2 sentences with specifics (files, functions, fixes)",
+    "files": ["file1.js", "file2.js"],
+    "keywords": ["keyword1", "keyword2", "keyword3"],
+    "l1_range": [1, 50]
+  }
+]
+\`\`\`
+
+Save L2:
+\`\`\`bash
+node "${scriptPath}" save-l2 "${timestamp}" '<paste-json-here>'
+\`\`\`
+
+**STEP 7: Update Concepts**
+
+\`\`\`bash
+node "${scriptPath}" update-concepts "${projectDir}/sessions/${timestamp}.l2.json"
+\`\`\`
+
 IMPORTANT:
 - This is your FINAL chance to save context
 - Review ENTIRE session for decisions/patterns/issues
@@ -990,6 +1017,34 @@ switch (command) {
   case 'memory-list':
     memoryList();
     break;
+  case 'save-l2':
+    // node counter.js save-l2 <session-id> <json>
+    {
+      const { saveL2 } = require('./save-l2');
+      const l2SessionId = args[0];
+      const l2JsonStr = args.slice(1).join(' ');
+      try {
+        const summaries = JSON.parse(l2JsonStr);
+        const saved = saveL2(l2SessionId, summaries);
+        console.log(`[MEMORY_KEEPER] L2 saved: ${saved}`);
+      } catch (e) {
+        console.error(`[MEMORY_KEEPER] Error: ${e.message}`);
+      }
+    }
+    break;
+  case 'update-concepts':
+    {
+      const { updateConcepts } = require('./update-concepts');
+      const l2FilePath = args[0];
+      if (!fs.existsSync(l2FilePath)) {
+        console.error(`[MEMORY_KEEPER] L2 file not found: ${l2FilePath}`);
+        break;
+      }
+      const l2FileData = JSON.parse(fs.readFileSync(l2FilePath, 'utf8'));
+      const conceptResult = updateConcepts(l2FileData);
+      console.log(`[MEMORY_KEEPER] Concepts: ${conceptResult.concepts.length} total`);
+    }
+    break;
   default:
     console.log(`Usage: counter.js <command>
 
@@ -1029,5 +1084,11 @@ Fact Commands:
 
 L1 Refinement:
   refine-all             Process all raw.jsonl files without L1 versions
+
+L2-L3 Commands:
+  save-l2 <session-id> <json>
+                         Save L2 exchange summaries for a session
+  update-concepts <l2-file>
+                         Update concepts index from L2 file
 `);
 }
