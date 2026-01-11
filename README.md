@@ -121,10 +121,12 @@ node scripts/counter.js add-issue "Login redirect not working" "resolved" bugfix
 `.claude/memory/config.json`:
 ```json
 {
-  "saveInterval": 5
+  "saveInterval": 5,
+  "keepRaw": false
 }
 ```
 - `saveInterval`: How many tool uses before save (default: 5)
+- `keepRaw`: Keep raw.jsonl files after L1 conversion (default: false)
 
 ## CLI Commands
 

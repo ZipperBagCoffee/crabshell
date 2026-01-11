@@ -11,7 +11,7 @@ const DEFAULT_INTERVAL = 5;
 function getConfig() {
   let config = readJsonOrDefault(CONFIG_PATH, null);
   if (!config) {
-    config = readJsonOrDefault(GLOBAL_CONFIG_PATH, { saveInterval: DEFAULT_INTERVAL });
+    config = readJsonOrDefault(GLOBAL_CONFIG_PATH, { saveInterval: DEFAULT_INTERVAL, keepRaw: false });
   }
   return config;
 }
@@ -288,6 +288,13 @@ async function final() {
       const reduction = ((1 - l1Size / rawSize) * 100).toFixed(1);
       fs.appendFileSync(path.join(getProjectDir(), 'refine.log'),
         `${timestamp}: ${lineCount} lines, ${rawSize}→${l1Size} bytes (${reduction}% reduction)\n`);
+
+      // Delete raw file unless keepRaw is enabled
+      const config = getConfig();
+      if (!config.keepRaw) {
+        fs.unlinkSync(rawSaved);
+        rawSaved = ''; // Clear so instructions don't show deleted file
+      }
     } catch (e) {
       fs.appendFileSync(path.join(getProjectDir(), 'error.log'),
         `${timestamp}: Failed to create L1: ${e.message}\n`);
