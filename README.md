@@ -166,10 +166,24 @@ node scripts/counter.js reset                  # Reset counter
 - [User Manual](docs/USER-MANUAL.md) - Detailed usage
 - [Architecture](docs/ARCHITECTURE.md) - System design
 
+## v8.0.0 - Hierarchical Memory (L1)
+
+### L1: Refined Raw Content
+
+Raw transcripts are now automatically refined to remove junk metadata:
+- Removes: queue-operation, file-history-snapshot, thinking blocks
+- Keeps: user text, assistant text, tool summaries with diff
+- Size reduction: ~95% (20MB → 1MB)
+
+### New Commands
+
+- `refine-all` - Process all existing raw files to create L1 versions
+
 ## Version
 
 | Version | Changes |
 |---------|---------|
+| 8.0.0 | L1 hierarchical memory refinement |
 | 7.1.0 | Direct fact extraction (no session file step) |
 | 7.0.1 | clearFacts bug fix, added slash command skills |
 | 7.0.0 | Hierarchical memory (project/architecture/conventions) |
