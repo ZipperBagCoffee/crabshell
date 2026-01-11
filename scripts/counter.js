@@ -717,6 +717,47 @@ function extractFacts(sessionFile) {
   console.log(`  Decisions: ${extracted.decisions}, Patterns: ${extracted.patterns}, Issues: ${extracted.issues}`);
 }
 
+async function refineAll() {
+  const sessionsDir = path.join(getProjectDir(), 'sessions');
+  if (!fs.existsSync(sessionsDir)) {
+    console.log('[MEMORY_KEEPER] No sessions directory found');
+    return;
+  }
+
+  const rawFiles = fs.readdirSync(sessionsDir)
+    .filter(f => f.endsWith('.raw.jsonl'))
+    .filter(f => !fs.existsSync(path.join(sessionsDir, f.replace('.raw.jsonl', '.l1.jsonl'))));
+
+  if (rawFiles.length === 0) {
+    console.log('[MEMORY_KEEPER] All raw files already have L1 versions');
+    return;
+  }
+
+  console.log(`[MEMORY_KEEPER] Processing ${rawFiles.length} raw files...`);
+
+  let totalRaw = 0;
+  let totalL1 = 0;
+
+  for (const file of rawFiles) {
+    const rawPath = path.join(sessionsDir, file);
+    const l1Path = rawPath.replace('.raw.jsonl', '.l1.jsonl');
+
+    try {
+      await refineRaw(rawPath, l1Path);
+      const rawSize = fs.statSync(rawPath).size;
+      const l1Size = fs.statSync(l1Path).size;
+      totalRaw += rawSize;
+      totalL1 += l1Size;
+      console.log(`  ${file}: ${(rawSize/1024/1024).toFixed(1)}MB → ${(l1Size/1024/1024).toFixed(1)}MB`);
+    } catch (e) {
+      console.log(`  ${file}: ERROR - ${e.message}`);
+    }
+  }
+
+  const reduction = ((1 - totalL1 / totalRaw) * 100).toFixed(1);
+  console.log(`[MEMORY_KEEPER] Total: ${(totalRaw/1024/1024).toFixed(1)}MB → ${(totalL1/1024/1024).toFixed(1)}MB (${reduction}% reduction)`);
+}
+
 function compress() {
   const projectDir = getProjectDir();
   const sessionsDir = path.join(projectDir, 'sessions');
@@ -934,6 +975,12 @@ switch (command) {
   case 'extract-facts':
     extractFacts(args[0]);
     break;
+  case 'refine-all':
+    refineAll().catch(e => {
+      console.error(`[MEMORY_KEEPER] Refine-all error: ${e.message}`);
+      process.exit(1);
+    });
+    break;
   case 'memory-set':
     memorySet(args[0], args.slice(1).join(' '));
     break;
@@ -979,5 +1026,8 @@ Fact Commands:
   clear-facts            Clear all facts (keeps _meta and concepts)
   extract-facts [session]
                          Extract facts from session file (parses files/concepts sub-items)
+
+L1 Refinement:
+  refine-all             Process all raw.jsonl files without L1 versions
 `);
 }
