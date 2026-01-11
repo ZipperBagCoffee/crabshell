@@ -47,7 +47,14 @@ function refineLine(obj) {
   }
 
   switch (type) {
-    case 'user': return processUser(obj);
+    case 'user': {
+      // Check if this is a tool_result wrapped in user message
+      const content = obj.message?.content;
+      if (content?.length >= 1 && content[0].type === 'tool_result') {
+        return processToolResult(obj, content[0]);
+      }
+      return processUser(obj);
+    }
     case 'assistant': {
       // Check if this is a tool_use wrapped in assistant message
       const content = obj.message?.content;
@@ -57,6 +64,7 @@ function refineLine(obj) {
       return processAssistant(obj);
     }
     case 'tool_use': return processToolUse(obj, obj);
+    case 'tool_result': return processToolResult(obj, obj);
     default: return null;
   }
 }
@@ -113,6 +121,50 @@ function processToolUse(wrapper, toolContent) {
     }
 
   return tool;
+}
+
+// Extract tool result (success/fail + brief output)
+// wrapper = the raw line object (has timestamp), resultContent = the tool_result content
+function processToolResult(wrapper, resultContent) {
+  const result = {
+    ts: wrapper.timestamp || new Date().toISOString(),
+    role: 'tool_result',
+    tool_use_id: resultContent.tool_use_id
+  };
+
+  // Check if error
+  if (resultContent.is_error) {
+    result.result = 'error';
+    const content = extractToolResultContent(resultContent.content);
+    result.output = content.substring(0, 200);
+  } else {
+    result.result = 'ok';
+    // Brief output for context
+    const content = extractToolResultContent(resultContent.content);
+    if (content && content.length > 0) {
+      result.output = content.substring(0, 200);
+    }
+  }
+
+  return result;
+}
+
+// Extract text content from tool_result content (can be string, array, or object)
+function extractToolResultContent(content) {
+  if (typeof content === 'string') {
+    return content;
+  }
+  if (Array.isArray(content)) {
+    // Content is array of {type: 'text', text: '...'} objects
+    return content
+      .filter(c => c.type === 'text')
+      .map(c => c.text)
+      .join('\n');
+  }
+  if (content && typeof content === 'object') {
+    return JSON.stringify(content);
+  }
+  return '';
 }
 
 // Extract assistant message (text only, no thinking)
