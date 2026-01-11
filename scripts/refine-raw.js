@@ -42,12 +42,34 @@ function processLine(line) {
 function refineLine(obj) {
   const type = obj.type;
 
-  // Remove junk types
   if (JUNK_TYPES.includes(type)) {
     return null;
   }
 
-  // TODO: Process each type
+  if (type === 'user') {
+    return processUser(obj);
+  }
+
+  return null;
+}
+
+// Extract user message
+function processUser(obj) {
+  // User messages have type: "user" with message.content array
+  if (obj.type === 'user' && obj.message?.content) {
+    const textContent = obj.message.content
+      .filter(c => c.type === 'text')
+      .map(c => c.text)
+      .join('\n');
+
+    if (textContent) {
+      return {
+        ts: obj.timestamp || new Date().toISOString(),
+        role: 'user',
+        text: textContent
+      };
+    }
+  }
   return null;
 }
 
