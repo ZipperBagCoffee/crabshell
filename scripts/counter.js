@@ -816,6 +816,124 @@ async function refineAll() {
   console.log(`[MEMORY_KEEPER] Total: ${(totalRaw/1024/1024).toFixed(1)}MB → ${(totalL1/1024/1024).toFixed(1)}MB (${reduction}% reduction)`);
 }
 
+// Build L2 prompts for all L1 files without L2
+function buildL2Prompts() {
+  const { prepareL1ForSummary, formatForLLM } = require('./generate-l2');
+  const sessionsDir = path.join(getProjectDir(), 'sessions');
+
+  if (!fs.existsSync(sessionsDir)) {
+    console.log('[MEMORY_KEEPER] No sessions directory found');
+    return;
+  }
+
+  const l1Files = fs.readdirSync(sessionsDir)
+    .filter(f => f.endsWith('.l1.jsonl'))
+    .filter(f => !fs.existsSync(path.join(sessionsDir, f.replace('.l1.jsonl', '.l2.json'))));
+
+  if (l1Files.length === 0) {
+    console.log('[MEMORY_KEEPER] All L1 files already have L2 versions');
+    return;
+  }
+
+  console.log(`[MEMORY_KEEPER] ${l1Files.length} L1 files need L2 processing:\n`);
+
+  l1Files.forEach((file, i) => {
+    console.log(`${i + 1}. ${file}`);
+  });
+
+  console.log(`\nUse 'process-l1 <filename>' to generate prompt for each file.`);
+  console.log(`Or use 'process-l1 --all' to output all prompts.\n`);
+}
+
+// Process single L1 file to L2 prompt
+function processL1(filename, outputAll = false) {
+  const { prepareL1ForSummary, formatForLLM } = require('./generate-l2');
+  const sessionsDir = path.join(getProjectDir(), 'sessions');
+
+  if (filename === '--all') {
+    // Process all L1 without L2
+    const l1Files = fs.readdirSync(sessionsDir)
+      .filter(f => f.endsWith('.l1.jsonl'))
+      .filter(f => !fs.existsSync(path.join(sessionsDir, f.replace('.l1.jsonl', '.l2.json'))));
+
+    if (l1Files.length === 0) {
+      console.log('[MEMORY_KEEPER] No L1 files need processing');
+      return;
+    }
+
+    l1Files.forEach(file => {
+      const l1Path = path.join(sessionsDir, file);
+      const sessionId = file.replace('.l1.jsonl', '');
+      const exchanges = prepareL1ForSummary(l1Path);
+
+      if (exchanges && exchanges.length > 0) {
+        console.log(`\n${'='.repeat(60)}`);
+        console.log(`SESSION: ${sessionId}`);
+        console.log(`${'='.repeat(60)}\n`);
+        console.log(formatForLLM(exchanges, sessionId));
+      }
+    });
+    return;
+  }
+
+  // Single file
+  let l1Path = path.join(sessionsDir, filename);
+  if (!filename.endsWith('.l1.jsonl')) {
+    l1Path = path.join(sessionsDir, `${filename}.l1.jsonl`);
+  }
+
+  if (!fs.existsSync(l1Path)) {
+    console.log(`[MEMORY_KEEPER] File not found: ${l1Path}`);
+    return;
+  }
+
+  const sessionId = path.basename(l1Path, '.l1.jsonl');
+  const exchanges = prepareL1ForSummary(l1Path);
+
+  if (!exchanges || exchanges.length === 0) {
+    console.log('[MEMORY_KEEPER] No exchanges found in L1');
+    return;
+  }
+
+  console.log(formatForLLM(exchanges, sessionId));
+  console.log(`\n--- After Claude generates JSON, save with: ---`);
+  console.log(`node scripts/counter.js save-l2 ${sessionId} '<paste JSON here>'`);
+}
+
+// Update concepts from all L2 files
+function updateAllConcepts() {
+  const { updateConcepts } = require('./update-concepts');
+  const sessionsDir = path.join(getProjectDir(), 'sessions');
+
+  if (!fs.existsSync(sessionsDir)) {
+    console.log('[MEMORY_KEEPER] No sessions directory found');
+    return;
+  }
+
+  const l2Files = fs.readdirSync(sessionsDir).filter(f => f.endsWith('.l2.json'));
+
+  if (l2Files.length === 0) {
+    console.log('[MEMORY_KEEPER] No L2 files found');
+    return;
+  }
+
+  console.log(`[MEMORY_KEEPER] Processing ${l2Files.length} L2 files...`);
+
+  let totalExchanges = 0;
+  l2Files.forEach(file => {
+    const l2Path = path.join(sessionsDir, file);
+    try {
+      const result = updateConcepts(l2Path);
+      totalExchanges += result.exchangeCount || 0;
+      console.log(`  ${file}: ${result.exchangeCount || 0} exchanges → ${result.conceptsUpdated || 0} concepts`);
+    } catch (e) {
+      console.log(`  ${file}: ERROR - ${e.message}`);
+    }
+  });
+
+  console.log(`[MEMORY_KEEPER] Total: ${totalExchanges} exchanges processed`);
+}
+
 function compress() {
   const projectDir = getProjectDir();
   const sessionsDir = path.join(projectDir, 'sessions');
@@ -1100,6 +1218,15 @@ switch (command) {
   case 'list-concepts':
     listConcepts();
     break;
+  case 'build-l2-prompts':
+    buildL2Prompts();
+    break;
+  case 'process-l1':
+    processL1(args[0]);
+    break;
+  case 'update-all-concepts':
+    updateAllConcepts();
+    break;
   case 'migrate-facts':
     {
       const { migrateFacts } = require('./migrate-facts');
@@ -1200,10 +1327,14 @@ L1 Refinement:
   refine-all             Process all raw.jsonl files without L1 versions
 
 L2-L3 Commands:
+  build-l2-prompts       List L1 files without L2 (shows what needs processing)
+  process-l1 <file>      Generate L2 prompt for single L1 file
+  process-l1 --all       Generate L2 prompts for all L1 files
   save-l2 <session-id> <json>
                          Save L2 exchange summaries for a session
   update-concepts <l2-file>
                          Update concepts index from L2 file
+  update-all-concepts    Update concepts from all L2 files
   list-concepts          List all concepts with details
 
 L4 Permanent Memory:
