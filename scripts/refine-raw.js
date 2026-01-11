@@ -50,6 +50,29 @@ function refineLine(obj) {
     return processUser(obj);
   }
 
+  if (type === 'assistant') {
+    return processAssistant(obj);
+  }
+
+  return null;
+}
+
+// Extract assistant message (text only, no thinking)
+function processAssistant(obj) {
+  if (obj.type === 'assistant' && obj.message?.content) {
+    const textContent = obj.message.content
+      .filter(c => c.type === 'text')
+      .map(c => c.text)
+      .join('\n');
+
+    if (textContent) {
+      return {
+        ts: obj.timestamp || new Date().toISOString(),
+        role: 'assistant',
+        text: textContent
+      };
+    }
+  }
   return null;
 }
 
