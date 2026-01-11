@@ -2,6 +2,7 @@ const path = require('path');
 const fs = require('fs');
 const { getProjectDir, getProjectName, readFileOrDefault, writeFile, readJsonOrDefault, writeJson, ensureDir, getTimestamp } = require('./utils');
 const os = require('os');
+const { refineRaw } = require('./refine-raw');
 
 const CONFIG_PATH = path.join(process.cwd(), '.claude', 'memory', 'config.json');
 const GLOBAL_CONFIG_PATH = path.join(os.homedir(), '.claude', 'memory-keeper', 'config.json');
@@ -273,6 +274,23 @@ async function final() {
         fs.appendFileSync(path.join(getProjectDir(), 'error.log'),
           `${timestamp}: Failed to find transcript: ${e.message}\n`);
       }
+    }
+  }
+
+  // Create L1 refined version
+  if (rawSaved) {
+    try {
+      const l1Dest = rawSaved.replace('.raw.jsonl', '.l1.jsonl');
+      const lineCount = await refineRaw(rawSaved, l1Dest);
+      // Log stats
+      const rawSize = fs.statSync(rawSaved).size;
+      const l1Size = fs.statSync(l1Dest).size;
+      const reduction = ((1 - l1Size / rawSize) * 100).toFixed(1);
+      fs.appendFileSync(path.join(getProjectDir(), 'refine.log'),
+        `${timestamp}: ${lineCount} lines, ${rawSize}→${l1Size} bytes (${reduction}% reduction)\n`);
+    } catch (e) {
+      fs.appendFileSync(path.join(getProjectDir(), 'error.log'),
+        `${timestamp}: Failed to create L1: ${e.message}\n`);
     }
   }
 
