@@ -321,10 +321,7 @@ IMPORTANT:
 ═══════════════════════════════════════════════════════════════`;
 
   const output = {
-    hookSpecificOutput: {
-      hookEventName: "Stop",
-      additionalContext: instructions
-    }
+    systemMessage: instructions
   };
   console.log(JSON.stringify(output));
 
