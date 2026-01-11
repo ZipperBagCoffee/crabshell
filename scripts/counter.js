@@ -923,9 +923,10 @@ function updateAllConcepts() {
   l2Files.forEach(file => {
     const l2Path = path.join(sessionsDir, file);
     try {
-      const result = updateConcepts(l2Path);
-      totalExchanges += result.exchangeCount || 0;
-      console.log(`  ${file}: ${result.exchangeCount || 0} exchanges → ${result.conceptsUpdated || 0} concepts`);
+      const l2Data = JSON.parse(fs.readFileSync(l2Path, 'utf8'));
+      const result = updateConcepts(l2Data);
+      const exchangeCount = l2Data.exchanges?.length || 0;
+      totalExchanges += exchangeCount;
     } catch (e) {
       console.log(`  ${file}: ERROR - ${e.message}`);
     }
