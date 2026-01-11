@@ -954,6 +954,27 @@ function parseArg(args, key) {
   return null;
 }
 
+function listConcepts() {
+  const { loadConcepts } = require('./update-concepts');
+  const data = loadConcepts();
+
+  if (data.concepts.length === 0) {
+    console.log('[MEMORY_KEEPER] No concepts yet');
+    return;
+  }
+
+  console.log(`[MEMORY_KEEPER] ${data.concepts.length} concepts:\n`);
+
+  for (const c of data.concepts) {
+    console.log(`[${c.id}] ${c.name}`);
+    console.log(`  ${c.summary}`);
+    console.log(`  Files: ${c.files.join(', ') || 'none'}`);
+    console.log(`  Keywords: ${c.keywords.join(', ')}`);
+    console.log(`  Exchanges: ${c.exchanges.length}`);
+    console.log('');
+  }
+}
+
 // Main - handle async commands
 const command = process.argv[2];
 const args = process.argv.slice(3);
@@ -1045,6 +1066,9 @@ switch (command) {
       console.log(`[MEMORY_KEEPER] Concepts: ${conceptResult.concepts.length} total`);
     }
     break;
+  case 'list-concepts':
+    listConcepts();
+    break;
   default:
     console.log(`Usage: counter.js <command>
 
@@ -1090,5 +1114,6 @@ L2-L3 Commands:
                          Save L2 exchange summaries for a session
   update-concepts <l2-file>
                          Update concepts index from L2 file
+  list-concepts          List all concepts with details
 `);
 }

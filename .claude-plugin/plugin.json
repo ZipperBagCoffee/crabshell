@@ -1,6 +1,6 @@
 {
   "name": "memory-keeper",
-  "version": "8.0.0",
+  "version": "8.1.0",
   "description": "Auto-save memory with direct fact extraction, hierarchical structure, file references, and concept tagging.",
   "author": {
     "name": "TaWa"

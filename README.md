@@ -166,6 +166,23 @@ node scripts/counter.js reset                  # Reset counter
 - [User Manual](docs/USER-MANUAL.md) - Detailed usage
 - [Architecture](docs/ARCHITECTURE.md) - System design
 
+## v8.1.0 - L2-L3 Hierarchical Summarization
+
+### L2: Exchange Summaries
+- Session end prompts Claude to generate structured summaries
+- Each user request → response cycle becomes an "exchange"
+- Stored as `.l2.json` files with keywords and file references
+
+### L3: Concept Grouping
+- Related exchanges grouped by file/keyword overlap
+- Concepts stored in `concepts.json`
+- Automatic classification with 30% overlap threshold
+
+### New Commands
+- `save-l2 <session> <json>` - Save L2 summaries
+- `update-concepts <l2-path>` - Update concepts from L2
+- `list-concepts` - List all concepts
+
 ## v8.0.0 - Hierarchical Memory (L1)
 
 ### L1: Refined Raw Content
@@ -183,6 +200,7 @@ Raw transcripts are now automatically refined to remove junk metadata:
 
 | Version | Changes |
 |---------|---------|
+| 8.1.0 | L2-L3 hierarchical summarization |
 | 8.0.0 | L1 hierarchical memory refinement |
 | 7.1.0 | Direct fact extraction (no session file step) |
 | 7.0.1 | clearFacts bug fix, added slash command skills |
