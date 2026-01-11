@@ -357,6 +357,30 @@ node "${scriptPath}" save-l2 "${timestamp}" '<paste-json-here>'
 node "${scriptPath}" update-concepts "${projectDir}/sessions/${timestamp}.l2.json"
 \`\`\`
 
+**STEP 8: Check for Permanent Memories**
+
+Review this session for items to permanently remember:
+
+1. **User explicit requests** - Did user say "remember", "always", "never", "from now on"?
+   \`\`\`bash
+   node "${scriptPath}" add-rule "what to remember" "why" "user"
+   \`\`\`
+
+2. **Repeated solutions** - Was a problem solved that appeared 10+ times?
+   \`\`\`bash
+   node "${scriptPath}" add-solution "the problem" "the solution" <attempts>
+   \`\`\`
+
+3. **Breakthroughs** - Multiple failed attempts then success?
+   \`\`\`bash
+   node "${scriptPath}" add-solution "what was failing" "what fixed it" <attempts>
+   \`\`\`
+
+4. **Core logic changes** - Major architecture/feature changes?
+   \`\`\`bash
+   node "${scriptPath}" add-core-logic "feature name" "what changed" "file1.js,file2.js"
+   \`\`\`
+
 IMPORTANT:
 - This is your FINAL chance to save context
 - Review ENTIRE session for decisions/patterns/issues
