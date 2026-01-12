@@ -11,7 +11,7 @@ const DEFAULT_INTERVAL = 5;
 function getConfig() {
   let config = readJsonOrDefault(CONFIG_PATH, null);
   if (!config) {
-    config = readJsonOrDefault(GLOBAL_CONFIG_PATH, { saveInterval: DEFAULT_INTERVAL, keepRaw: false });
+    config = readJsonOrDefault(GLOBAL_CONFIG_PATH, { saveInterval: DEFAULT_INTERVAL, keepRaw: false, quietStop: true });
   }
   return config;
 }
@@ -302,6 +302,17 @@ async function final() {
   }
 
   const scriptPath = process.argv[1].replace(/\\/g, '/');
+  const config = getConfig();
+
+  // Quiet mode by default - only show brief message
+  if (config.quietStop !== false) {
+    const output = {
+      systemMessage: `[MEMORY_KEEPER] Session saved. L1: ${rawSaved ? 'OK' : 'SKIP'}`
+    };
+    console.log(JSON.stringify(output));
+    setCounter(0);
+    return;
+  }
 
   const instructions = `
 ═══════════════════════════════════════════════════════════════
