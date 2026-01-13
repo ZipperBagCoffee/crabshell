@@ -157,18 +157,47 @@ function setCounter(value) {
   saveFacts(facts);
 }
 
-// Clean up tmpclaude-*-cwd files created by Claude Code hook execution
+// Clean up tmpclaude-*-cwd files created by Claude Code hook execution (bug #17600)
+// Cleans multiple directories since hook cwd may differ from project dir
 function cleanupTmpFiles() {
+  const dirsToClean = new Set();
+
+  // Add current working directory
+  dirsToClean.add(process.cwd());
+
+  // Add project directory (may be different from cwd during hook execution)
   try {
-    const cwd = process.cwd();
-    const files = fs.readdirSync(cwd);
-    for (const file of files) {
-      if (file.startsWith('tmpclaude-') && file.endsWith('-cwd')) {
-        fs.unlinkSync(path.join(cwd, file));
-      }
+    dirsToClean.add(getProjectDir());
+  } catch (e) {}
+
+  // Add original cwd from environment if available
+  if (process.env.ORIGINAL_CWD) {
+    dirsToClean.add(process.env.ORIGINAL_CWD);
+  }
+
+  // Add parent directories (sometimes files end up one level up)
+  for (const dir of [...dirsToClean]) {
+    const parent = path.dirname(dir);
+    if (parent && parent !== dir) {
+      dirsToClean.add(parent);
     }
-  } catch (e) {
-    // Ignore cleanup errors
+  }
+
+  // Clean each directory
+  for (const dir of dirsToClean) {
+    try {
+      if (!fs.existsSync(dir)) continue;
+      const files = fs.readdirSync(dir);
+      for (const file of files) {
+        if (file.startsWith('tmpclaude-') && file.endsWith('-cwd')) {
+          try {
+            fs.unlinkSync(path.join(dir, file));
+          } catch (e) {}
+        }
+      }
+    } catch (e) {
+      // Ignore cleanup errors
+    }
   }
 }
 
