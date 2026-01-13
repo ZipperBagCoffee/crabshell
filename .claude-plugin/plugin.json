@@ -1,6 +1,6 @@
 {
   "name": "memory-keeper",
-  "version": "10.0.0",
+  "version": "10.0.1",
   "description": "H-MEM inspired hierarchical memory: L4 permanent→L3 concepts→L2 sessions→L1 raw with auto-compress and hierarchical search.",
   "author": {
     "name": "TaWa"
