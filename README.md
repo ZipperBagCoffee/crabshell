@@ -1,32 +1,43 @@
-# Memory Keeper v12
+# Memory Keeper v12.2
 
-**Claude Code forgets everything when a session ends.** Memory Keeper automatically saves and loads session context using a 4-layer hierarchical memory system.
+**Claude Code forgets everything when a session ends.** Memory Keeper saves and loads session context using a 4-layer hierarchical memory system with **blocking enforcement**.
 
 ## Installation
 
 ```bash
 /plugin marketplace add ZipperBagCoffee/memory-keeper-plugin
-/plugin install memory-keeper
+/plugin install memory-keeper@memory-keeper-marketplace
 ```
-
-After installation, **it works automatically**. No configuration needed.
 
 ## How It Works
 
 ### 4-Layer Hierarchical Memory
 
-| Layer | What | When | Algorithm |
-|-------|------|------|-----------|
+| Layer | What | How | Algorithm |
+|-------|------|-----|-----------|
 | **L1** | Refined transcripts | Auto on session end | Removes metadata, keeps essentials |
-| **L2** | Verified facts | Auto via haiku subagent | ProMem 3-step extraction |
-| **L3** | Concept groups | Auto when L2 saved | LiSA semantic assignment |
-| **L4** | Permanent memory | Auto on compress | Reflection pattern detection |
+| **L2** | Verified facts | Haiku subagent (Task tool) | ProMem 3-step extraction |
+| **L3** | Concept groups | After L2 saved | LiSA semantic assignment |
+| **L4** | Permanent memory | compress command | Reflection pattern detection |
+
+### Blocking Enforcement (v12.2)
+
+**Stop hook blocks session end until ALL are complete:**
+
+```
+✓L2 | ✓L3 | ✗L4 | ✓mem  ← Status display
+```
+
+- ✗ = Missing, must complete before stop allowed
+- ✓ = Done
+
+**If blocked, follow the STEP instructions to complete.**
 
 ### Session Lifecycle
 
 1. **Start** → Loads `memory.md` + permanent rules
-2. **Every 5 tools** → Haiku subagent extracts L2 facts in background
-3. **End** → L1 refined, L2/L3 updated, L4 candidates detected
+2. **Every 5 tools** → Instructions to spawn haiku for L2
+3. **End** → BLOCKED until L2/L3/L4/memory.md all complete
 
 ## Storage
 

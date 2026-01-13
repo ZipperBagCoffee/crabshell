@@ -1,17 +1,15 @@
-# Memory Keeper User Manual (v12)
+# Memory Keeper User Manual (v12.2)
 
 ## Why Use This?
 
-Claude Code **forgets everything when a session ends**. Memory Keeper automatically saves and loads context using a 4-layer hierarchical memory system.
+Claude Code **forgets everything when a session ends**. Memory Keeper saves and loads context using a 4-layer hierarchical memory system with **blocking enforcement**.
 
 ## Installation
 
 ```bash
 /plugin marketplace add ZipperBagCoffee/memory-keeper-plugin
-/plugin install memory-keeper
+/plugin install memory-keeper@memory-keeper-marketplace
 ```
-
-**That's it.** It works automatically.
 
 ---
 
@@ -22,15 +20,28 @@ Claude Code **forgets everything when a session ends**. Memory Keeper automatica
 | Layer | Content | Algorithm |
 |-------|---------|-----------|
 | **L1** | Refined transcripts | Auto-removes metadata (95% size reduction) |
-| **L2** | Verified facts | ProMem 3-step extraction (max 10/session) |
+| **L2** | Verified facts | ProMem 3-step extraction via haiku |
 | **L3** | Concept groups | LiSA semantic assignment |
 | **L4** | Permanent rules | Reflection pattern detection |
 
 ### Session Lifecycle
 
-1. **Session Start** → Loads memory.md + permanent rules from facts.json
-2. **Every 5 Tool Uses** → Haiku subagent extracts L2 facts in background
-3. **Session End** → L1 refined transcript saved, L2/L3 updated
+1. **Session Start** → Loads memory.md + permanent rules
+2. **Every 5 Tool Uses** → Instructions to spawn haiku for L2
+3. **Session End** → **BLOCKED** until L2/L3/L4/memory.md all complete
+
+### Blocking Enforcement (v12.2)
+
+When you try to stop a session, the hook checks:
+
+```
+✓L2 | ✓L3 | ✗L4 | ✓mem
+```
+
+- ✓ = Complete
+- ✗ = Missing, must complete before stop allowed
+
+**Follow the STEP instructions shown to complete each missing item.**
 
 ---
 
@@ -41,45 +52,11 @@ Claude Code **forgets everything when a session ends**. Memory Keeper automatica
 ├── memory.md           # Session summaries (rolling)
 ├── facts.json          # Decisions, patterns, issues, L4 permanent
 ├── concepts.json       # L3 concept groups
-├── project.md          # Project info (optional, via memory-set)
-├── architecture.md     # Architecture (optional)
-├── conventions.md      # Coding rules (optional)
+├── .l4-done            # L4 completion marker
 ├── config.json         # Settings (optional)
 └── sessions/
     ├── *.l1.jsonl      # L1 refined transcripts
     └── *.l2.json       # L2 verified facts
-```
-
----
-
-## Setting Project Information
-
-Set info Claude should know at every session start:
-
-```bash
-# Project overview
-node scripts/counter.js memory-set project "
-React + TypeScript web app.
-Backend: Node.js + PostgreSQL.
-Currently developing user authentication.
-"
-
-# Architecture
-node scripts/counter.js memory-set architecture "
-src/
-  components/  - React components
-  hooks/       - Custom hooks
-  services/    - API calls
-
-API: REST, /api/v1/ prefix
-"
-
-# Conventions
-node scripts/counter.js memory-set conventions "
-- Functional components only
-- Tests required before commit
-- camelCase variables
-"
 ```
 
 ---
@@ -89,25 +66,19 @@ node scripts/counter.js memory-set conventions "
 ### Decisions
 ```bash
 node scripts/counter.js add-decision "Use JWT" "Better scalability" technology
-node scripts/counter.js add-decision "Add Redis cache" "API speed" technology "src/lib/cache.ts" "caching,performance"
 ```
-
 Types: `architecture`, `technology`, `approach`
 
 ### Patterns
 ```bash
 node scripts/counter.js add-pattern "API responses in try-catch" convention
-node scripts/counter.js add-pattern "Never use any type" anti-pattern
 ```
-
 Types: `convention`, `best-practice`, `anti-pattern`
 
 ### Issues
 ```bash
 node scripts/counter.js add-issue "Login redirect bug" "resolved" bugfix
-node scripts/counter.js add-issue "Slow payment page" "open" performance
 ```
-
 Types: `bugfix`, `performance`, `security`, `feature`
 
 ---
@@ -118,8 +89,6 @@ Types: `bugfix`, `performance`, `security`, `feature`
 node scripts/counter.js search                    # Summary
 node scripts/counter.js search "auth"             # Keyword
 node scripts/counter.js search --type=technology  # By type
-node scripts/counter.js search --concept=security # By concept
-node scripts/counter.js search-keywords "cache"   # L4 keyword index
 ```
 
 ---
@@ -137,51 +106,38 @@ node scripts/counter.js search-keywords "cache"   # L4 keyword index
 
 ## Maintenance
 
-### Compress (L4 Reflection)
+### Complete L2/L3/L4 Manually
+
+If blocked on session end:
+
 ```bash
+# L3 - Update concepts
+node scripts/counter.js update-concepts sessions/YYYY-MM-DD.l2.json
+
+# L4 - Run reflection
 node scripts/counter.js compress
+echo done > .claude/memory/.l4-done
 ```
-- Archives old sessions (30+ days)
-- Detects patterns for L4 promotion
-- Utility-based cleanup of stale rules
 
 ### Other
 ```bash
 node scripts/counter.js reset        # Reset counter
 node scripts/counter.js clear-facts  # Reset facts.json
-node scripts/counter.js refine-all   # Process raw → L1
 ```
-
----
-
-## Configuration
-
-`.claude/memory/config.json`:
-```json
-{
-  "saveInterval": 5,
-  "keepRaw": false,
-  "quietStop": true
-}
-```
-
-- `saveInterval`: Tool uses before auto-save (default: 5)
-- `keepRaw`: Keep raw.jsonl after L1 conversion (default: false)
-- `quietStop`: Minimal output on session end (default: true)
 
 ---
 
 ## Troubleshooting
 
+### Session Won't End (Blocked)
+1. Check status: `✓L2 | ✓L3 | ✗L4 | ✓mem`
+2. Complete missing steps shown in STEP instructions
+3. Each ✗ must become ✓
+
 ### Memory Not Loading
 1. Check `.claude/memory/` folder exists
-2. Check `memory.md` file exists
-3. Run `/memory-keeper:load-memory`
-
-### Auto-save Not Triggering
-1. Check `facts.json._meta.counter`
-2. Run `node scripts/counter.js reset`
+2. Run `/memory-keeper:load-memory`
 
 ### tmpclaude Files Appearing
 - Known Claude Code bug (#17600)
-- Memory Keeper auto-cleans these on each hook execution
+- Memory Keeper auto-cleans these
