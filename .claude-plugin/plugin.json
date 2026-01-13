@@ -1,6 +1,6 @@
 {
   "name": "memory-keeper",
-  "version": "9.0.0",
+  "version": "9.0.1",
   "description": "Auto-save memory with Claude-based L2/L3/L4 summarization, hierarchical structure, and keyword indexing.",
   "author": {
     "name": "TaWa"

@@ -12,25 +12,14 @@ function getProjectDir() {
   const cwd = process.cwd();
   const memoryDir = path.join(cwd, '.claude', 'memory');
 
-  // Only use cwd path if it already exists (don't auto-create in wrong places)
+  // Only use cwd if .claude/memory ALREADY exists (never create in wrong places)
   if (fs.existsSync(memoryDir)) {
     return memoryDir;
   }
 
-  // Check if .claude exists (project is initialized but memory not yet)
-  const claudeDir = path.join(cwd, '.claude');
-  if (fs.existsSync(claudeDir)) {
-    return memoryDir; // Will be created when needed
-  }
-
-  // Fallback: script location (for plugin development)
-  const scriptDir = path.join(__dirname, '..', '.claude', 'memory');
-  if (fs.existsSync(scriptDir)) {
-    return scriptDir;
-  }
-
-  // Default to cwd (will create .claude/memory when ensureDir is called)
-  return memoryDir;
+  // Always fallback to script location - never return cwd-based path that doesn't exist
+  // This prevents creating .claude/memory in temp directories or wrong locations
+  return path.join(__dirname, '..', '.claude', 'memory');
 }
 
 // Legacy: global storage path (for migration if needed)
