@@ -220,7 +220,7 @@ function ensureMemoryStructure(projectDir) {
 ---
 
 
-## 0. 메모리 검색 전략
+## 1. 메모리 검색 전략
 
 ### 핵심 원칙
 
@@ -479,7 +479,7 @@ case 'migrate-legacy':
 
 ---
 
-## 0.1 레거시 포맷 처리 (Migration)
+## 1.1 레거시 포맷 처리 (Migration)
 
 ### 현재 존재하는 파일들
 
@@ -565,7 +565,7 @@ threshold(23,750 토큰)보다 큰 레거시 memory.md 발견 시:
 const fs = require('fs');
 const path = require('path');
 const { ROTATION_THRESHOLD_TOKENS, CARRYOVER_TOKENS } = require('./constants');
-const { estimateTokens, extractTailByTokens, updateIndex, getProjectDir } = require('./utils');
+const { estimateTokens, extractTailByTokens, updateIndex } = require('./utils');
 
 /**
  * 날짜 헤더(## YYYY-MM-DD)로 섹션 파싱
@@ -594,6 +594,56 @@ function parseDateSections(content) {
   return sections;
 }
 
+/**
+ * 단일 섹션이 threshold 초과 시 강제 분할
+ * 반환 형식: [{ date, content }, ...] (원본 날짜 유지)
+ */
+function forceSplitSection(section, threshold) {
+  const tokens = estimateTokens(section.content);
+
+  if (tokens <= threshold) {
+    return [section];
+  }
+
+  const lines = section.content.split('\n');
+  const chunks = [];
+  let currentChunk = { lines: [], tokens: 0 };
+
+  for (const line of lines) {
+    const lineTokens = estimateTokens(line + '\n');
+
+    if (currentChunk.tokens + lineTokens > threshold && currentChunk.lines.length > 0) {
+      chunks.push({
+        date: section.date,  // 원본 날짜 유지 (파일명은 sequence로 구분)
+        content: currentChunk.lines.join('\n')
+      });
+      currentChunk = { lines: [line], tokens: lineTokens };
+    } else {
+      currentChunk.lines.push(line);
+      currentChunk.tokens += lineTokens;
+    }
+  }
+
+  if (currentChunk.lines.length > 0) {
+    chunks.push({
+      date: section.date,
+      content: currentChunk.lines.join('\n')
+    });
+  }
+
+  return chunks;
+}
+
+/**
+ * 고유한 archive 파일명 생성 (충돌 방지)
+ * Format: memory_YYYYMMDD_2359SS.md (SS = sequence 00-99)
+ */
+function generateArchiveName(baseDate, sequence) {
+  const dateStr = baseDate.replace(/-/g, '');
+  const seqStr = sequence.toString().padStart(2, '0');
+  return `memory_${dateStr}_2359${seqStr}.md`;
+}
+
 function splitLegacyMemory(memoryPath) {
   const memoryDir = path.dirname(memoryPath);
   const content = fs.readFileSync(memoryPath, 'utf8');
@@ -604,10 +654,17 @@ function splitLegacyMemory(memoryPath) {
     return null;
   }
 
-  // Parse sections by date headers (## YYYY-MM-DD)
-  const sections = parseDateSections(content);
+  // 1. Parse sections by date headers
+  const rawSections = parseDateSections(content);
 
-  // Group sections into chunks under threshold
+  // 2. Force split oversized sections (통합!)
+  const sections = [];
+  for (const section of rawSections) {
+    const splitSections = forceSplitSection(section, ROTATION_THRESHOLD_TOKENS);
+    sections.push(...splitSections);
+  }
+
+  // 3. Group sections into chunks under threshold
   const chunks = [];
   let currentChunk = { sections: [], tokens: 0 };
 
@@ -615,7 +672,6 @@ function splitLegacyMemory(memoryPath) {
     const sectionTokens = estimateTokens(section.content);
 
     if (currentChunk.tokens + sectionTokens > ROTATION_THRESHOLD_TOKENS) {
-      // Save current chunk, start new one
       if (currentChunk.sections.length > 0) {
         chunks.push(currentChunk);
       }
@@ -626,45 +682,56 @@ function splitLegacyMemory(memoryPath) {
     }
   }
 
-  // Don't forget last chunk
   if (currentChunk.sections.length > 0) {
     chunks.push(currentChunk);
   }
 
-  // Archive all but last chunk + register to index + emit triggers
+  // 4. Archive all but last chunk
   const archives = [];
   const triggers = [];
+  let sequence = 0;
+
   for (let i = 0; i < chunks.length - 1; i++) {
     const chunk = chunks[i];
     const lastDate = chunk.sections[chunk.sections.length - 1].date;
-    // Use rotation-compatible naming: memory_YYYYMMDD_HHMMSS.md
-    const archivePath = `memory_${lastDate.replace(/-/g, '')}_235959.md`;
+    const archiveContent = chunk.sections.map(s => s.content).join('\n');
+
+    // Generate unique filename
+    const archiveName = generateArchiveName(lastDate, sequence++);
+    const archiveFullPath = path.join(memoryDir, archiveName);
+
+    // WRITE FILE FIRST (before updateIndex!)
+    fs.writeFileSync(archiveFullPath, archiveContent);
+
+    // THEN update index (now fs.statSync will succeed)
+    updateIndex(archiveFullPath, chunk.tokens, memoryDir);
+
+    // Emit trigger
+    triggers.push(`[MEMORY_KEEPER_ROTATE] file=${archiveName}`);
+
     archives.push({
-      path: archivePath,
-      content: chunk.sections.map(s => s.content).join('\n'),
+      file: archiveName,
       tokens: chunk.tokens,
       dateRange: {
         first: chunk.sections[0].date,
         last: lastDate
       }
     });
-
-    // Register to index (same as normal rotation)
-    updateIndex(path.join(memoryDir, archivePath), chunk.tokens, memoryDir);
-
-    // Emit L3 trigger (same as normal rotation)
-    triggers.push(`[MEMORY_KEEPER_ROTATE] file=${archivePath}`);
   }
 
-  // Last chunk becomes new memory.md (with carryover from tail)
+  // 5. Last chunk → new memory.md (atomic write)
   const lastChunk = chunks[chunks.length - 1];
-  const newMemoryContent = extractTailByTokens(
-    lastChunk.sections.map(s => s.content).join('\n'),
-    CARRYOVER_TOKENS
-  );
+  const lastChunkContent = lastChunk.sections.map(s => s.content).join('\n');
+  const newMemoryContent = extractTailByTokens(lastChunkContent, CARRYOVER_TOKENS);
+
+  const tempPath = memoryPath + '.tmp';
+  fs.writeFileSync(tempPath, newMemoryContent);
+  fs.renameSync(tempPath, memoryPath);
 
   return { archives, newMemoryContent, triggers };
 }
+
+module.exports = { splitLegacyMemory, parseDateSections, forceSplitSection };
 ```
 
 **실행 시점**:
@@ -674,73 +741,10 @@ function splitLegacyMemory(memoryPath) {
 **Edge Cases**:
 | 케이스 | 처리 |
 |--------|------|
-| 헤더 없는 레거시 | 전체를 하나의 섹션으로 처리 → 단일 archive |
-| 단일 섹션이 threshold 초과 | 해당 섹션만 별도 archive (강제 분할) |
+| 헤더 없는 레거시 | 전체를 하나의 섹션으로 처리 |
+| 단일 섹션이 threshold 초과 | forceSplitSection으로 강제 분할 |
+| 같은 날 여러 archive | sequence 번호로 구분 (2359SS) |
 | 날짜 포맷 불일치 | `## `로 시작하는 모든 라인을 섹션 구분자로 |
-
-### 대용량 단일 섹션 강제 분할
-
-단일 섹션이 threshold를 초과할 경우 (예: 하루에 매우 많은 작업):
-
-```javascript
-/**
- * 단일 섹션이 threshold 초과 시 강제 분할
- * @param {object} section - { date, content }
- * @param {number} threshold - 토큰 threshold
- * @returns {array} 분할된 섹션 배열
- */
-function forceSplitSection(section, threshold) {
-  const tokens = estimateTokens(section.content);
-
-  if (tokens <= threshold) {
-    return [section];  // 분할 불필요
-  }
-
-  // 줄 단위로 분할
-  const lines = section.content.split('\n');
-  const chunks = [];
-  let currentChunk = { lines: [], tokens: 0 };
-  let partNum = 1;
-
-  for (const line of lines) {
-    const lineTokens = estimateTokens(line + '\n');
-
-    if (currentChunk.tokens + lineTokens > threshold && currentChunk.lines.length > 0) {
-      // Save current chunk
-      chunks.push({
-        date: `${section.date}_part${partNum}`,
-        content: currentChunk.lines.join('\n')
-      });
-      partNum++;
-      currentChunk = { lines: [line], tokens: lineTokens };
-    } else {
-      currentChunk.lines.push(line);
-      currentChunk.tokens += lineTokens;
-    }
-  }
-
-  // Last chunk
-  if (currentChunk.lines.length > 0) {
-    chunks.push({
-      date: `${section.date}_part${partNum}`,
-      content: currentChunk.lines.join('\n')
-    });
-  }
-
-  return chunks;
-}
-```
-
-**사용 예시**:
-```javascript
-// splitLegacyMemory 내부에서 호출
-for (const section of sections) {
-  const splitSections = forceSplitSection(section, ROTATION_THRESHOLD_TOKENS);
-  for (const split of splitSections) {
-    // 기존 로직과 동일하게 처리
-  }
-}
-```
 
 ### 호환성 보장
 
@@ -768,7 +772,7 @@ function loadMemory() {
 
 ---
 
-## 1. 크기 제한 기준
+## 2. 크기 제한 기준
 
 | 기준 | 값 | 근거 |
 |------|-----|------|
@@ -933,7 +937,7 @@ module.exports = {
 
 ---
 
-## 2. 파일 명명 규칙
+## 3. 파일 명명 규칙
 
 ### 현재 메모리 (L2)
 ```
@@ -957,7 +961,7 @@ memory-index.json                   # 모든 파일 메타데이터
 
 ---
 
-## 3. 인덱스 구조
+## 4. 인덱스 구조
 
 ```json
 {
@@ -984,7 +988,7 @@ memory-index.json                   # 모든 파일 메타데이터
 
 ---
 
-## 4. Rotation 로직
+## 5. Rotation 로직
 
 ### 타이밍
 `counter.js check()` 에서 크기 체크 후 threshold 초과 시
@@ -1007,7 +1011,7 @@ rotation 시 **마지막 2,500 토큰** (~10%, 약 100줄)을 새 memory.md에 �
 
 ---
 
-## 5. L3 요약 생성 - 자동화 메커니즘
+## 6. L3 요약 생성 - 자동화 메커니즘
 
 ### 핵심: Skill + Hook 연동
 
@@ -1157,7 +1161,7 @@ counter.js check() 호출 시:
 
 ---
 
-## 6. Session Start 로드 로직
+## 7. Session Start 로드 로직
 
 ### load-memory.js 수정사항
 
@@ -1234,9 +1238,9 @@ function getUnreflectedL1Content(sessionsDir, memoryContent) {
 
 ---
 
-## 7. 에러 핸들링
+## 8. 에러 핸들링
 
-### 7.1 Rotation 실패 시 (파일 작업)
+### 8.1 Rotation 실패 시 (파일 작업)
 
 | 단계 | 실패 시나리오 | 복구 전략 |
 |------|--------------|----------|
@@ -1266,7 +1270,7 @@ try {
 }
 ```
 
-### 7.2 Skill/Haiku 호출 실패 시
+### 8.2 Skill/Haiku 호출 실패 시
 
 | 실패 유형 | 감지 방법 | 복구 |
 |----------|---------|------|
@@ -1275,7 +1279,7 @@ try {
 | JSON 파싱 실패 | `JSON.parse()` 예외 | raw 응답 `.summary.raw.txt` 저장 |
 | 불완전한 JSON | 필수 필드 누락 | 위와 동일 |
 
-### 7.3 Session Start 복구
+### 8.3 Session Start 복구
 
 `load-memory.js`에서 미생성 요약 감지 시:
 ```javascript
@@ -1288,7 +1292,7 @@ if (pendingSummaries.length > 0) {
 }
 ```
 
-### 7.4 로그 파일
+### 8.4 로그 파일
 
 | 파일 | 내용 |
 |------|------|
@@ -1297,7 +1301,7 @@ if (pendingSummaries.length > 0) {
 
 ---
 
-## 8. 구현할 파일
+## 9. 구현할 파일
 
 ### 새 파일
 | 파일 | 역할 |
@@ -1314,6 +1318,8 @@ if (pendingSummaries.length > 0) {
 ### `memory-rotation.js` 핵심 구조
 
 ```javascript
+const fs = require('fs');
+const path = require('path');
 const {
   estimateTokensFromFile, extractTailByTokens,
   updateIndex, acquireLock, releaseLock, getProjectDir
@@ -1323,9 +1329,16 @@ const {
   getTimestamp, MEMORY_DIR
 } = require('./constants');
 
+// Safety margin constant
+const SAFETY_MARGIN = 0.95;
+
 function checkAndRotate(memoryPath, config) {
   const tokens = estimateTokensFromFile(memoryPath);
-  const threshold = config.memoryRotation?.thresholdTokens || ROTATION_THRESHOLD_TOKENS;
+  // Apply 5% safety margin to config value (or use pre-margined constant)
+  const rawThreshold = config.memoryRotation?.thresholdTokens;
+  const threshold = rawThreshold
+    ? Math.floor(rawThreshold * SAFETY_MARGIN)
+    : ROTATION_THRESHOLD_TOKENS;
 
   if (tokens < threshold) {
     return null; // rotation 불필요
@@ -1348,7 +1361,10 @@ function checkAndRotate(memoryPath, config) {
     fs.copyFileSync(memoryPath, archivePath);
 
     // 2. carryover 추출 (파일 읽어서 content 전달)
-    const carryoverTokens = config.memoryRotation?.carryoverTokens || CARRYOVER_TOKENS;
+    const rawCarryover = config.memoryRotation?.carryoverTokens;
+    const carryoverTokens = rawCarryover
+      ? Math.floor(rawCarryover * SAFETY_MARGIN)
+      : CARRYOVER_TOKENS;
     const memoryContent = fs.readFileSync(memoryPath, 'utf8');
     const carryoverContent = extractTailByTokens(memoryContent, carryoverTokens);
 
@@ -1381,7 +1397,7 @@ function checkAndRotate(memoryPath, config) {
 
 ---
 
-## 9. 흐름도
+## 10. 흐름도
 
 ```
 Session Start
@@ -1436,7 +1452,7 @@ counter.js final()
 
 ---
 
-## 10. 설정 옵션
+## 11. 설정 옵션
 
 `config.json`:
 ```json
@@ -1450,15 +1466,19 @@ counter.js final()
 }
 ```
 
+**중요**: config 값에 **5% 안전 마진 자동 적용**
+- `thresholdTokens: 25000` → 실제 적용: 23,750 토큰
+- `carryoverTokens: 2500` → 실제 적용: 2,375 토큰
+
 **토큰 계산**: `Math.ceil(fileBytes / 4)` (평균 4바이트/토큰)
 
 **참고**: Rotate된 파일은 무제한 보관
 
 ---
 
-## 11. 검증 방법
+## 12. 검증 방법
 
-### 11.1 단위 테스트
+### 12.1 단위 테스트
 
 | 테스트 | 입력 | 기대 결과 |
 |--------|------|----------|
@@ -1467,7 +1487,7 @@ counter.js final()
 | `estimateTokensFromFile()` | 100KB 파일 | ~25,000 토큰 |
 | `extractTailByTokens()` | 1000줄, 2500 토큰 요청 | ~100줄 반환 |
 
-### 11.2 통합 테스트 시나리오
+### 12.2 통합 테스트 시나리오
 
 **시나리오 A: 정상 Rotation**
 ```bash
@@ -1499,7 +1519,7 @@ node scripts/load-memory.js
 # 결과: "1개 요약 미생성" 메시지 출력
 ```
 
-### 11.3 Edge Cases
+### 12.3 Edge Cases
 
 | 케이스 | 테스트 방법 | 기대 동작 |
 |--------|------------|----------|
@@ -1510,7 +1530,7 @@ node scripts/load-memory.js
 | 동시 rotation | 2개 세션 동시 | 파일 잠금 또는 순차 처리 |
 | index 손상 | 잘못된 JSON | 새 index 생성 |
 
-### 11.4 E2E 테스트 체크리스트
+### 12.4 E2E 테스트 체크리스트
 
 - [ ] memory.md 100KB+ 생성
 - [ ] tool 사용 5회 → check() 트리거
@@ -1524,7 +1544,7 @@ node scripts/load-memory.js
 - [ ] summaryGenerated: true로 업데이트
 - [ ] 다음 세션 시작 시 L3 요약 로드됨
 
-### 11.5 테스트 파일 구조
+### 12.5 테스트 파일 구조
 
 ```
 tests/
@@ -1564,26 +1584,26 @@ npm test
 ---
 
 
-## 12. 검토 결과 - 해결된 문제
+## 13. 검토 결과 - 해결된 문제
 
 > 아래 문제들은 검토 과정에서 발견되어 **본문에 통합 완료**됨
 
 | # | 문제 | 해결 위치 |
 |---|------|----------|
-| 12.1 | 신규 프로젝트 초기화 | Section 7: `init.js` - `ensureMemoryStructure()` |
-| 12.2 | 동시 접근 (Concurrency) | Section 7: `utils.js` - `acquireLock()`, `releaseLock()` |
+| 12.1 | 신규 프로젝트 초기화 | Section 8: `init.js` - `ensureMemoryStructure()` |
+| 12.2 | 동시 접근 (Concurrency) | Section 8: `utils.js` - `acquireLock()`, `releaseLock()` |
 | 12.3 | Threshold 값 불일치 | 전체 문서에서 23,750 토큰으로 통일 |
-| 12.4 | Agent/Skill 경로 | Section 7.1 참조 |
+| 12.4 | Agent/Skill 경로 | Section 8.1 참조 |
 | 12.5 | Haiku 실패 시 재시도 | Section 8: `skills/memory-rotate/SKILL.md` |
-| 12.6 | 디스크 공간 관리 | Section 7: `config.json` 옵션 |
-| 12.7 | Cross-Platform 경로 | Section 7: 모든 코드에서 `path.join()` 사용 |
-| 12.8 | 날짜 파싱 정규식 | Section 7: `legacy-migration.js` - `parseDateSections()` |
-| 12.9 | 사용자 검색 인터페이스 | Section 0: `search.js` - `searchMemory()`, `searchL3Summaries()` |
-| 12.10 | Skill 트리거 신뢰성 | Section 7: `load-memory.js` 미생성 요약 감지 |
-| 12.11 | memory-index keywords/themes 중복 | Section 0: L3에 있으므로 index에서 제거 |
-| 12.12 | Session end 시 memory.md 누락 | Section 6: `load-memory.js`에서 L1 tail 로드 |
+| 12.6 | 디스크 공간 관리 | Section 8: `config.json` 옵션 |
+| 12.7 | Cross-Platform 경로 | Section 8: 모든 코드에서 `path.join()` 사용 |
+| 12.8 | 날짜 파싱 정규식 | Section 8: `legacy-migration.js` - `parseDateSections()` |
+| 12.9 | 사용자 검색 인터페이스 | Section 1: `search.js` - `searchMemory()`, `searchL3Summaries()` |
+| 12.10 | Skill 트리거 신뢰성 | Section 8: `load-memory.js` 미생성 요약 감지 |
+| 12.11 | memory-index keywords/themes 중복 | Section 1: L3에 있으므로 index에서 제거 |
+| 12.12 | Session end 시 memory.md 누락 | Section 7: `load-memory.js`에서 L1 tail 로드 |
 | 12.13 | facts.json 불필요 | 제거됨 - L3 keyDecisions와 중복 |
-| 12.14 | L2 archive 검색 누락 | Section 0: `searchL2Archives()` 추가, 검색 순서 4단계로 확장 |
+| 12.14 | L2 archive 검색 누락 | Section 1: `searchL2Archives()` 추가, 검색 순서 4단계로 확장 |
 
 ### 미래 고려사항 (V2)
 
@@ -1592,7 +1612,7 @@ npm test
 - **Override 구조**: 플러그인 기본값, 프로젝트 `.claude/`에서 override 가능
 
 ---
-## 13. 구현 전 필수 결정 사항
+## 14. 구현 전 필수 결정 사항
 
 | # | 질문 | 선택지 | 권장 |
 |---|------|--------|------|
