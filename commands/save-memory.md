@@ -9,7 +9,7 @@ Save current session context to memory.
 
 Run to trigger auto-save instructions:
 ```bash
-node scripts/counter.js check
+node "${CLAUDE_PLUGIN_ROOT}/scripts/counter.js" check
 ```
 
 ## Manual Save
@@ -22,24 +22,24 @@ echo -e "\n## $TIMESTAMP\n[Your summary here]" >> .claude/memory/memory.md
 
 2. **Record decisions directly:**
 ```bash
-node scripts/counter.js add-decision "what was decided" "why" "architecture|technology|approach"
+node "${CLAUDE_PLUGIN_ROOT}/scripts/counter.js" add-decision "what was decided" "why" "architecture|technology|approach"
 ```
 
 3. **Record patterns directly:**
 ```bash
-node scripts/counter.js add-pattern "pattern description" "convention|best-practice|anti-pattern"
+node "${CLAUDE_PLUGIN_ROOT}/scripts/counter.js" add-pattern "pattern description" "convention|best-practice|anti-pattern"
 ```
 
 4. **Record issues directly:**
 ```bash
-node scripts/counter.js add-issue "issue description" "open|resolved" "bugfix|performance|security|feature"
+node "${CLAUDE_PLUGIN_ROOT}/scripts/counter.js" add-issue "issue description" "open|resolved" "bugfix|performance|security|feature"
 ```
 
 ## Optional: File References and Concepts
 
 Add file references and concept tags at the end:
 ```bash
-node scripts/counter.js add-decision "Use React hooks" "Better state" "technology" "src/hooks/useAuth.ts" "auth,hooks"
+node "${CLAUDE_PLUGIN_ROOT}/scripts/counter.js" add-decision "Use React hooks" "Better state" "technology" "src/hooks/useAuth.ts" "auth,hooks"
 ```
 
 ## What to Record

@@ -12,7 +12,7 @@ Options based on $ARGUMENTS:
 
 For "old" option, run compression:
 ```bash
-node scripts/counter.js compress
+node "${CLAUDE_PLUGIN_ROOT}/scripts/counter.js" compress
 ```
 
 For "all" option (DESTRUCTIVE):
@@ -22,7 +22,7 @@ rm -rf .claude/memory/sessions/*.md .claude/memory/sessions/*.jsonl
 
 For "facts" option:
 ```bash
-node scripts/counter.js clear-facts
+node "${CLAUDE_PLUGIN_ROOT}/scripts/counter.js" clear-facts
 ```
 
 Show what will be deleted and ask for confirmation before proceeding.
