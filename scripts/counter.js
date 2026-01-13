@@ -157,7 +157,24 @@ function setCounter(value) {
   saveFacts(facts);
 }
 
+// Clean up tmpclaude-*-cwd files created by Claude Code hook execution
+function cleanupTmpFiles() {
+  try {
+    const cwd = process.cwd();
+    const files = fs.readdirSync(cwd);
+    for (const file of files) {
+      if (file.startsWith('tmpclaude-') && file.endsWith('-cwd')) {
+        fs.unlinkSync(path.join(cwd, file));
+      }
+    }
+  } catch (e) {
+    // Ignore cleanup errors
+  }
+}
+
 function check() {
+  cleanupTmpFiles();
+
   const config = getConfig();
   const interval = config.saveInterval || DEFAULT_INTERVAL;
 
