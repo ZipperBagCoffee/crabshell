@@ -195,41 +195,48 @@ function check() {
       existingConcepts = conceptsData.concepts.map(c => `${c.id}: ${c.name}`).slice(0, 10);
     } catch (e) {}
 
-    // ProMem + LiSA style instructions (v11)
+    // ProMem + LiSA style instructions (v11.1 - Claude executes directly)
     const instructions = `
 ═══════════════════════════════════════════════════════════════
 [MEMORY_KEEPER] AUTO-SAVE TRIGGERED - ${interval} tool uses reached
 ═══════════════════════════════════════════════════════════════
 
-**YOU MUST EXECUTE THESE COMMANDS NOW:**
+**CLAUDE: YOU MUST DO THE FOLLOWING NOW:**
 
-1. APPEND to memory.md:
-   \`\`\`bash
-   echo -e "\\n## ${timestamp}\\n[1-2 sentence summary of work so far]" >> "${projectDir}/memory.md"
-   \`\`\`
+## STEP 1: Update memory.md
+\`\`\`bash
+echo -e "\\n## ${timestamp}\\n[Write 1-2 sentence summary of work done so far]" >> "${projectDir}/memory.md"
+\`\`\`
 
-2. RECORD any decisions made (run for EACH decision):
-   \`\`\`bash
-   node "${scriptPath}" add-decision "what was decided" "why" "architecture|technology|approach"
-   \`\`\`
-   With file refs: add "file1.ts,file2.ts" "concept1,concept2" at end
+## STEP 2: Create L2 Facts (ProMem 3-Step Process)
 
-3. RECORD any patterns established (run for EACH pattern):
-   \`\`\`bash
-   node "${scriptPath}" add-pattern "pattern description" "convention|best-practice|anti-pattern"
-   \`\`\`
+**2a. EXTRACT** - Review this session and identify:
+- What was accomplished (specific, verifiable statements)
+- What files were modified
+- What keywords describe this work
 
-4. RECORD any issues found/fixed (run for EACH issue):
-   \`\`\`bash
-   node "${scriptPath}" add-issue "issue description" "open|resolved" "bugfix|performance|security|feature"
-   \`\`\`
+**2b. VERIFY** - For each fact:
+- Did this actually happen in this session?
+- Is this a fact or an assumption?
+- Remove anything not verified
 
-IMPORTANT:
-- Run Step 1 ALWAYS
-- Run Steps 2-4 for ALL relevant items from this session
-- If no decisions/patterns/issues exist, skip those steps
-- Files and concepts are OPTIONAL (omit if not applicable)
+**2c. SAVE** - Run this command with your extracted facts:
+\`\`\`bash
+node "${scriptPath}" save-l2 "${timestamp}" '[{"id":"e1","facts":["fact1","fact2","fact3"],"keywords":["keyword1","keyword2"],"files":["file1.js","file2.js"]}]'
+\`\`\`
 
+Example with real content:
+\`\`\`bash
+node "${scriptPath}" save-l2 "${timestamp}" '[{"id":"e1","facts":["Implemented user authentication with JWT","Added login and logout endpoints","Fixed token refresh bug"],"keywords":["auth","jwt","login"],"files":["src/auth.js","src/routes/login.js"]}]'
+\`\`\`
+
+## STEP 3: Record any key decisions/patterns/issues
+Only if applicable - use these commands:
+- Decision: \`node "${scriptPath}" add-decision "what" "why" "architecture|technology|approach"\`
+- Pattern: \`node "${scriptPath}" add-pattern "pattern" "convention|best-practice"\`
+- Issue: \`node "${scriptPath}" add-issue "issue" "open|resolved" "bugfix|feature"\`
+
+**CRITICAL: Step 2 (L2 Facts) is REQUIRED. Do not skip it.**
 ═══════════════════════════════════════════════════════════════`;
 
     const output = {
@@ -364,33 +371,37 @@ async function final() {
   const l1Path = rawSaved ? rawSaved.replace('.raw.jsonl', '.l1.jsonl') : null;
   const l1Exists = l1Path && fs.existsSync(l1Path.replace(/\//g, path.sep));
 
-  // ProMem-style L2 instructions (v11)
-  const l2Instructions = l1Exists ? `
+  // ProMem-style L2 instructions (v11.1 - Claude executes directly)
+  const l2Instructions = `
 
-**[MEMORY_KEEPER] L2 FACT EXTRACTION (ProMem)**
+═══════════════════════════════════════════════════════════════
+[MEMORY_KEEPER] SESSION END - L2 FACT EXTRACTION REQUIRED
+═══════════════════════════════════════════════════════════════
 
-Extract verified facts from this session using ProMem 3-step process:
+**CLAUDE: YOU MUST CREATE L2 FACTS NOW (ProMem 3-Step):**
 
-**Step 1 - Initial Extraction:**
-From this session, identify:
-- Facts: What was accomplished (specific, verifiable statements)
-- Keywords: Search terms for finding this later
-- Files: Files that were modified
+## 1. EXTRACT from this session:
+- What tasks were completed? (specific, verifiable)
+- What files were modified?
+- What keywords describe this work?
 
-**Step 2 - Verification:**
-For each fact, verify it actually happened in this session.
-Remove any assumptions or hallucinations.
+## 2. VERIFY each fact:
+- Did this actually happen?
+- Is this fact or assumption?
+- Remove unverified items
 
-**Step 3 - Save:**
+## 3. SAVE (REQUIRED):
 \`\`\`bash
 node "${scriptPath}" save-l2 "${timestamp}" '[{"id":"e1","facts":["fact1","fact2"],"keywords":["kw1","kw2"],"files":["file1.js"]}]'
 \`\`\`
 
-Or with summary (backwards compatible):
+## 4. Update memory.md:
 \`\`\`bash
-node "${scriptPath}" save-l2 "${timestamp}" '[{"id":"e1","summary":"What was done","keywords":["kw1"],"files":[]}]'
+echo -e "\\n## ${timestamp} (Session End)\\n[Complete summary of session]" >> "${projectDir}/memory.md"
 \`\`\`
-` : '';
+
+**DO NOT SKIP L2 CREATION. This preserves your work for future sessions.**
+═══════════════════════════════════════════════════════════════`;
 
   // Quiet mode by default - show brief message + L2 instructions
   if (config.quietStop !== false) {
