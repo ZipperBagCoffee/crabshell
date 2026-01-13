@@ -1,16 +1,8 @@
-# Memory Keeper User Manual
+# Memory Keeper User Manual (v12)
 
-## Why Do You Need This?
+## Why Use This?
 
-Claude Code **forgets everything when a session ends:**
-- Work you did yesterday
-- Decisions and their reasons
-- Project structure
-- Bugs found and how you fixed them
-
-Every new session, you have to repeat: "This project is built with React, uses Zustand for state management, JWT for auth..." and so on.
-
-Memory Keeper solves this problem.
+Claude Code **forgets everything when a session ends**. Memory Keeper automatically saves and loads context using a 4-layer hierarchical memory system.
 
 ## Installation
 
@@ -19,313 +11,177 @@ Memory Keeper solves this problem.
 /plugin install memory-keeper
 ```
 
-**That's it.** It works automatically after installation.
+**That's it.** It works automatically.
 
 ---
 
-## Basic Usage (Automatic)
+## How It Works
 
-### What Happens After Installation
+### 4-Layer Hierarchical Memory
 
-**1. Session Start:**
-- Previous session summary (`memory.md`) sent to Claude
-- Stored decisions/patterns/issues (`facts.json`) sent to Claude
-- Project info you set (`project.md` etc.) sent to Claude
+| Layer | Content | Algorithm |
+|-------|---------|-----------|
+| **L1** | Refined transcripts | Auto-removes metadata (95% size reduction) |
+| **L2** | Verified facts | ProMem 3-step extraction (max 10/session) |
+| **L3** | Concept groups | LiSA semantic assignment |
+| **L4** | Permanent rules | Reflection pattern detection |
 
-**2. During Work:**
-- Auto-save triggers every 5 tool uses
-- Claude records decisions/patterns/issues directly via CLI commands
-- Summary appended to `memory.md`
+### Session Lifecycle
 
-**3. Session End:**
-- Full conversation backed up (`.raw.jsonl`)
-- Final session summary saved
-- Old files cleaned up
+1. **Session Start** → Loads memory.md + permanent rules from facts.json
+2. **Every 5 Tool Uses** → Haiku subagent extracts L2 facts in background
+3. **Session End** → L1 refined transcript saved, L2/L3 updated
 
-### What Gets Saved
+---
+
+## Storage Structure
 
 ```
-.claude/memory/
-├── memory.md       # Session summaries (auto)
-├── facts.json      # Decisions/patterns/issues (auto)
-└── sessions/       # Per-session records (auto)
+[project]/.claude/memory/
+├── memory.md           # Session summaries (rolling)
+├── facts.json          # Decisions, patterns, issues, L4 permanent
+├── concepts.json       # L3 concept groups
+├── project.md          # Project info (optional, via memory-set)
+├── architecture.md     # Architecture (optional)
+├── conventions.md      # Coding rules (optional)
+├── config.json         # Settings (optional)
+└── sessions/
+    ├── *.l1.jsonl      # L1 refined transcripts
+    └── *.l2.json       # L2 verified facts
 ```
 
 ---
 
-## Advanced Usage (Manual)
+## Setting Project Information
 
-### Setting Project Information
-
-Set information you want Claude to know **at the start of every session**.
-
-#### project.md - Project Overview
+Set info Claude should know at every session start:
 
 ```bash
+# Project overview
 node scripts/counter.js memory-set project "
-Project: Online Shopping Mall
-Tech Stack: Next.js 14, TypeScript, Prisma, PostgreSQL
-Current Status: MVP development, implementing payment feature
-Team: 2 frontend, 1 backend
+React + TypeScript web app.
+Backend: Node.js + PostgreSQL.
+Currently developing user authentication.
 "
-```
 
-#### architecture.md - System Structure
-
-```bash
+# Architecture
 node scripts/counter.js memory-set architecture "
-Directory Structure:
 src/
-  app/           - Next.js 14 App Router
-  components/    - React components
-    ui/          - Common UI (Button, Input, Modal)
-    features/    - Feature components (Cart, Checkout)
-  lib/           - Utilities
-  services/      - API call wrappers
+  components/  - React components
+  hooks/       - Custom hooks
+  services/    - API calls
 
-Database:
-- users: User info
-- products: Products
-- orders: Orders
-- cart_items: Shopping cart
-
-API Rules:
-- All APIs under /api/v1/
-- Auth-required APIs under /api/v1/protected/
-- Error format: { error: string, code: number }
+API: REST, /api/v1/ prefix
 "
-```
 
-#### conventions.md - Coding Rules
-
-```bash
+# Conventions
 node scripts/counter.js memory-set conventions "
-Code Style:
 - Functional components only
-- Prefer interface over type (type only for unions)
-- Filenames: kebab-case
-- Component names: PascalCase
-- Variable/function names: camelCase
-
-Testing:
-- All util functions must have tests
-- Components: only critical ones
-- Test files: *.test.ts
-
-Commits:
-- Run pnpm lint && pnpm test before commit
-- Commit messages: feat:, fix:, docs:, refactor:, test:
+- Tests required before commit
+- camelCase variables
 "
 ```
 
-### Check Settings
-
-```bash
-# List all memory files
-node scripts/counter.js memory-list
-
-# Example output:
-# [MEMORY_KEEPER] Memory Structure:
-#   ✓ project.md (15 lines, 423 bytes)
-#   ✓ architecture.md (28 lines, 892 bytes)
-#   ○ conventions.md - not created
-#   ✓ memory.md (156 lines, 4521 bytes) [rolling]
-#   ✓ facts.json (12d/5p/3i)
-
-# View specific memory content
-node scripts/counter.js memory-get project
-node scripts/counter.js memory-get architecture
-node scripts/counter.js memory-get              # View all
-```
-
 ---
 
-## Decision Management
+## Recording Facts
 
-### Automatic Extraction
-
-When Claude saves a session file in this format:
-
-```markdown
-## Decisions
-- [technology] Use JWT: Better scalability than sessions
-  - concepts: auth, security
-- [architecture] API versioning: Maintain backward compatibility
-  - files: src/app/api/v1/
+### Decisions
+```bash
+node scripts/counter.js add-decision "Use JWT" "Better scalability" technology
+node scripts/counter.js add-decision "Add Redis cache" "API speed" technology "src/lib/cache.ts" "caching,performance"
 ```
 
-It's automatically extracted to `facts.json`.
+Types: `architecture`, `technology`, `approach`
 
-### Manual Addition
-
-When you want to record an important decision immediately:
-
+### Patterns
 ```bash
-# Basic
-node scripts/counter.js add-decision "decision content" "reason"
-
-# With type
-node scripts/counter.js add-decision "Use PostgreSQL" "Complex queries are common" technology
-
-# With related files and concepts
-node scripts/counter.js add-decision "Add Redis caching" "Improve API response speed" technology "src/lib/cache.ts" "caching,performance"
-```
-
-**Type options:**
-- `architecture` - System structure related
-- `technology` - Technology choices
-- `approach` - Implementation approaches
-
-### Search
-
-```bash
-# Summary
-node scripts/counter.js search
-
-# Keyword search
-node scripts/counter.js search "auth"
-
-# Filter by type
-node scripts/counter.js search --type=technology
-
-# Filter by concept
-node scripts/counter.js search --concept=security
-
-# Filter by file
-node scripts/counter.js search --file=auth
-
-# Combine filters
-node scripts/counter.js search "cache" --type=architecture
-```
-
----
-
-## Pattern Management
-
-Record recurring patterns or rules:
-
-```bash
-# Basic
-node scripts/counter.js add-pattern "Wrap all API responses in try-catch"
-
-# With type
-node scripts/counter.js add-pattern "One component per file" convention
-node scripts/counter.js add-pattern "DB queries inside transactions" best-practice
+node scripts/counter.js add-pattern "API responses in try-catch" convention
 node scripts/counter.js add-pattern "Never use any type" anti-pattern
 ```
 
-**Type options:**
-- `convention` - Team rules
-- `best-practice` - Good habits
-- `anti-pattern` - Things to avoid
+Types: `convention`, `best-practice`, `anti-pattern`
+
+### Issues
+```bash
+node scripts/counter.js add-issue "Login redirect bug" "resolved" bugfix
+node scripts/counter.js add-issue "Slow payment page" "open" performance
+```
+
+Types: `bugfix`, `performance`, `security`, `feature`
 
 ---
 
-## Issue Management
-
-Record bugs or problems:
+## Search
 
 ```bash
-# Open issue
-node scripts/counter.js add-issue "Payment page slow" "open" performance
-
-# Resolved issue
-node scripts/counter.js add-issue "Login token not expiring" "resolved" security
-
-# With related files
-node scripts/counter.js add-issue "Cart sync bug" "resolved" bugfix "src/hooks/useCart.ts" "cart,state-management"
+node scripts/counter.js search                    # Summary
+node scripts/counter.js search "auth"             # Keyword
+node scripts/counter.js search --type=technology  # By type
+node scripts/counter.js search --concept=security # By concept
+node scripts/counter.js search-keywords "cache"   # L4 keyword index
 ```
-
-**Type options:**
-- `bugfix` - Bugs
-- `performance` - Performance issues
-- `security` - Security issues
-- `feature` - Feature related
 
 ---
 
 ## Slash Commands
 
-Use directly in Claude Code:
-
-| Command | When to Use |
+| Command | Description |
 |---------|-------------|
-| `/memory-keeper:save-memory` | Save immediately |
-| `/memory-keeper:load-memory` | Reload after manual file edits |
-| `/memory-keeper:search-memory keyword` | Find past work |
-| `/memory-keeper:clear-memory old` | Clean up old files |
+| `/memory-keeper:save-memory` | Manual save |
+| `/memory-keeper:load-memory` | Reload memory |
+| `/memory-keeper:search-memory <query>` | Search |
+| `/memory-keeper:clear-memory` | Cleanup old files |
 
 ---
 
 ## Maintenance
 
-### Clean Up Old Files
-
-Archive session files older than 30 days to monthly archives:
-
+### Compress (L4 Reflection)
 ```bash
 node scripts/counter.js compress
-
-# sessions/2025-10-15_0300.md -> sessions/archive/2025-10.md
 ```
+- Archives old sessions (30+ days)
+- Detects patterns for L4 promotion
+- Utility-based cleanup of stale rules
 
-### Reset Facts
-
-Reset facts.json (keeps memory files):
-
+### Other
 ```bash
-node scripts/counter.js clear-facts
+node scripts/counter.js reset        # Reset counter
+node scripts/counter.js clear-facts  # Reset facts.json
+node scripts/counter.js refine-all   # Process raw → L1
 ```
-
-### Reset Counter
-
-Reset auto-save counter to 0:
-
-```bash
-node scripts/counter.js reset
-```
-
----
-
-## Troubleshooting
-
-### Memory Not Loading
-
-1. Check `.claude/memory/` folder exists
-2. Check `memory.md` file exists
-3. Run `/memory-keeper:load-memory`
-
-### Auto-save Not Triggering
-
-1. Check `facts.json._meta.counter` value
-2. Check `config.json` `saveInterval` (default 5)
-3. Reset counter with `node scripts/counter.js reset`
-
-### Session Files Missing
-
-1. Ensure session ended properly (`/exit` not Ctrl+C)
-2. Check `.claude/memory/debug-hook.json`
-3. Check `.claude/memory/error.log`
 
 ---
 
 ## Configuration
 
 `.claude/memory/config.json`:
-
 ```json
 {
-  "saveInterval": 5
+  "saveInterval": 5,
+  "keepRaw": false,
+  "quietStop": true
 }
 ```
 
-- `saveInterval`: Tool uses before save (default: 5, range: 1-50)
+- `saveInterval`: Tool uses before auto-save (default: 5)
+- `keepRaw`: Keep raw.jsonl after L1 conversion (default: false)
+- `quietStop`: Minimal output on session end (default: true)
 
 ---
 
-## Version Compatibility
+## Troubleshooting
 
-| Version | Claude Code | Node.js |
-|---------|-------------|---------|
-| 7.0.x | 1.0+ | 18+ |
-| 6.x | 1.0+ | 18+ |
+### Memory Not Loading
+1. Check `.claude/memory/` folder exists
+2. Check `memory.md` file exists
+3. Run `/memory-keeper:load-memory`
+
+### Auto-save Not Triggering
+1. Check `facts.json._meta.counter`
+2. Run `node scripts/counter.js reset`
+
+### tmpclaude Files Appearing
+- Known Claude Code bug (#17600)
+- Memory Keeper auto-cleans these on each hook execution
