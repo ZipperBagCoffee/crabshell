@@ -237,6 +237,7 @@ IMPORTANT:
 }
 
 async function final() {
+  cleanupTmpFiles();
   const hookData = await readStdin();
   const projectDir = getProjectDir().replace(/\\/g, '/');
   const timestamp = getTimestamp();
