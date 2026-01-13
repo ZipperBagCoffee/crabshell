@@ -195,48 +195,52 @@ function check() {
       existingConcepts = conceptsData.concepts.map(c => `${c.id}: ${c.name}`).slice(0, 10);
     } catch (e) {}
 
-    // ProMem + LiSA style instructions (v11.1 - Claude executes directly)
+    // Build concepts list for L3 assignment
+    const conceptsList = existingConcepts.length > 0
+      ? `\n**Existing Concepts (assign conceptId if related):**\n${existingConcepts.map(c => `- ${c}`).join('\n')}\n`
+      : '\n**No existing concepts yet. Use conceptName to create new ones.**\n';
+
+    // ProMem + LiSA style instructions (v11.2 - includes L3 concept assignment)
     const instructions = `
 ═══════════════════════════════════════════════════════════════
-[MEMORY_KEEPER] AUTO-SAVE TRIGGERED - ${interval} tool uses reached
+[MEMORY_KEEPER] AUTO-SAVE - ${interval} tool uses
 ═══════════════════════════════════════════════════════════════
 
-**CLAUDE: YOU MUST DO THE FOLLOWING NOW:**
+**CLAUDE: EXECUTE NOW:**
 
-## STEP 1: Update memory.md
+## 1. Update memory.md
 \`\`\`bash
-echo -e "\\n## ${timestamp}\\n[Write 1-2 sentence summary of work done so far]" >> "${projectDir}/memory.md"
+echo -e "\\n## ${timestamp}\\n[1-2 sentence summary]" >> "${projectDir}/memory.md"
 \`\`\`
 
-## STEP 2: Create L2 Facts (ProMem 3-Step Process)
-
-**2a. EXTRACT** - Review this session and identify:
-- What was accomplished (specific, verifiable statements)
-- What files were modified
-- What keywords describe this work
-
-**2b. VERIFY** - For each fact:
-- Did this actually happen in this session?
-- Is this a fact or an assumption?
-- Remove anything not verified
-
-**2c. SAVE** - Run this command with your extracted facts:
-\`\`\`bash
-node "${scriptPath}" save-l2 "${timestamp}" '[{"id":"e1","facts":["fact1","fact2","fact3"],"keywords":["keyword1","keyword2"],"files":["file1.js","file2.js"]}]'
+## 2. Create L2 Facts + L3 Concept Assignment
+${conceptsList}
+**L2 Format (REQUIRED fields marked with *):**
+\`\`\`json
+[{
+  "id": "e1",
+  "facts": ["fact1", "fact2"],      // * What was done (verified)
+  "keywords": ["kw1", "kw2"],       // * Search terms (specific, not generic)
+  "files": ["file1.js"],            // * Modified files
+  "conceptId": "c001",              // L3: Assign to existing concept OR
+  "conceptName": "New Topic Name",  // L3: Create new concept (3-5 words)
+  "topic": "Short topic description"// L3: What this is about
+}]
 \`\`\`
 
-Example with real content:
+**Save command:**
 \`\`\`bash
-node "${scriptPath}" save-l2 "${timestamp}" '[{"id":"e1","facts":["Implemented user authentication with JWT","Added login and logout endpoints","Fixed token refresh bug"],"keywords":["auth","jwt","login"],"files":["src/auth.js","src/routes/login.js"]}]'
+node "${scriptPath}" save-l2 "${timestamp}" '[JSON_HERE]'
 \`\`\`
 
-## STEP 3: Record any key decisions/patterns/issues
-Only if applicable - use these commands:
-- Decision: \`node "${scriptPath}" add-decision "what" "why" "architecture|technology|approach"\`
-- Pattern: \`node "${scriptPath}" add-pattern "pattern" "convention|best-practice"\`
-- Issue: \`node "${scriptPath}" add-issue "issue" "open|resolved" "bugfix|feature"\`
+## 3. Decisions/Patterns/Issues (if any)
+\`\`\`bash
+node "${scriptPath}" add-decision "what" "why" "architecture|technology|approach"
+node "${scriptPath}" add-pattern "pattern" "convention|best-practice"
+node "${scriptPath}" add-issue "issue" "open|resolved" "bugfix|feature"
+\`\`\`
 
-**CRITICAL: Step 2 (L2 Facts) is REQUIRED. Do not skip it.**
+**REQUIRED: Step 2 must include conceptId OR conceptName for L3 grouping.**
 ═══════════════════════════════════════════════════════════════`;
 
     const output = {
@@ -371,36 +375,52 @@ async function final() {
   const l1Path = rawSaved ? rawSaved.replace('.raw.jsonl', '.l1.jsonl') : null;
   const l1Exists = l1Path && fs.existsSync(l1Path.replace(/\//g, path.sep));
 
-  // ProMem-style L2 instructions (v11.1 - Claude executes directly)
+  // Get existing concepts for L3 assignment
+  let finalConcepts = [];
+  try {
+    const { loadConcepts } = require('./update-concepts');
+    const conceptsData = loadConcepts();
+    finalConcepts = conceptsData.concepts.map(c => `${c.id}: ${c.name}`).slice(0, 10);
+  } catch (e) {}
+
+  const finalConceptsList = finalConcepts.length > 0
+    ? `**Existing Concepts:**\n${finalConcepts.map(c => `- ${c}`).join('\n')}\n`
+    : '**No existing concepts. Use conceptName to create.**\n';
+
+  // ProMem + LiSA L2 instructions (v11.2 - includes L3 concept assignment)
   const l2Instructions = `
 
 ═══════════════════════════════════════════════════════════════
-[MEMORY_KEEPER] SESSION END - L2 FACT EXTRACTION REQUIRED
+[MEMORY_KEEPER] SESSION END - L2 + L3 REQUIRED
 ═══════════════════════════════════════════════════════════════
 
-**CLAUDE: YOU MUST CREATE L2 FACTS NOW (ProMem 3-Step):**
+**CLAUDE: CREATE L2 FACTS WITH L3 CONCEPT ASSIGNMENT:**
 
-## 1. EXTRACT from this session:
-- What tasks were completed? (specific, verifiable)
-- What files were modified?
-- What keywords describe this work?
-
-## 2. VERIFY each fact:
-- Did this actually happen?
-- Is this fact or assumption?
-- Remove unverified items
-
-## 3. SAVE (REQUIRED):
-\`\`\`bash
-node "${scriptPath}" save-l2 "${timestamp}" '[{"id":"e1","facts":["fact1","fact2"],"keywords":["kw1","kw2"],"files":["file1.js"]}]'
+${finalConceptsList}
+**L2 Format:**
+\`\`\`json
+[{
+  "id": "e1",
+  "facts": ["what was done"],
+  "keywords": ["specific", "search", "terms"],
+  "files": ["modified.js"],
+  "conceptId": "c001",           // OR conceptName for new
+  "conceptName": "Topic Name",   // 3-5 words
+  "topic": "Short description"
+}]
 \`\`\`
 
-## 4. Update memory.md:
+**Save:**
 \`\`\`bash
-echo -e "\\n## ${timestamp} (Session End)\\n[Complete summary of session]" >> "${projectDir}/memory.md"
+node "${scriptPath}" save-l2 "${timestamp}" '[JSON]'
 \`\`\`
 
-**DO NOT SKIP L2 CREATION. This preserves your work for future sessions.**
+**Update memory.md:**
+\`\`\`bash
+echo -e "\\n## ${timestamp}\\n[Session summary]" >> "${projectDir}/memory.md"
+\`\`\`
+
+**REQUIRED: Include conceptId OR conceptName for L3.**
 ═══════════════════════════════════════════════════════════════`;
 
   // Quiet mode by default - show brief message + L2 instructions
