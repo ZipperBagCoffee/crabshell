@@ -11,14 +11,14 @@
     {
       "name": "memory-keeper",
       "source": "./",
-      "description": "Auto-save memory with Claude-based L2/L3/L4 summarization, hierarchical structure, and keyword indexing.",
-      "version": "9.0.0",
+      "description": "Hierarchical memory with ProMem L2, LiSA L3, Reflection L4, and haiku subagent.",
+      "version": "12.0.2",
       "author": {
         "name": "TaWa"
       },
       "repository": "https://github.com/ZipperBagCoffee/memory-keeper-plugin",
       "license": "MIT",
-      "keywords": ["memory", "context", "session", "productivity", "background", "auto-save"]
+      "keywords": ["memory", "context", "session", "productivity", "ProMem", "LiSA", "Reflection"]
     }
   ]
 }
