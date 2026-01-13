@@ -158,16 +158,22 @@ function setCounter(value) {
 }
 
 // Clean up tmpclaude-*-cwd files created by Claude Code hook execution (bug #17600)
-// Cleans multiple directories since hook cwd may differ from project dir
+// Cleans multiple directories recursively since files can end up anywhere
 function cleanupTmpFiles() {
   const dirsToClean = new Set();
 
   // Add current working directory
   dirsToClean.add(process.cwd());
 
-  // Add project directory (may be different from cwd during hook execution)
+  // Add project directory and its subdirectories
   try {
-    dirsToClean.add(getProjectDir());
+    const projectDir = getProjectDir();
+    dirsToClean.add(projectDir);
+    // Add common subdirectories where files might appear
+    dirsToClean.add(path.join(projectDir, 'sessions'));
+    dirsToClean.add(path.join(projectDir, '.claude'));
+    dirsToClean.add(path.join(projectDir, '.claude', 'memory'));
+    dirsToClean.add(path.join(projectDir, '.claude', 'memory', 'sessions'));
   } catch (e) {}
 
   // Add original cwd from environment if available
@@ -176,7 +182,8 @@ function cleanupTmpFiles() {
   }
 
   // Add parent directories (sometimes files end up one level up)
-  for (const dir of [...dirsToClean]) {
+  const initialDirs = [...dirsToClean];
+  for (const dir of initialDirs) {
     const parent = path.dirname(dir);
     if (parent && parent !== dir) {
       dirsToClean.add(parent);
