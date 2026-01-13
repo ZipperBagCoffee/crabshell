@@ -425,15 +425,35 @@ node "${scriptPath}" compress
 \`\`\`
 ═══════════════════════════════════════════════════════════════`;
 
-  // Quiet mode by default - show brief message + L2 instructions
-  if (config.quietStop !== false) {
-    const output = {
-      systemMessage: `[MEMORY_KEEPER] Session saved. L1: ${l1Exists ? 'OK' : 'SKIP'}${l2Instructions}`
-    };
-    console.log(JSON.stringify(output));
-    setCounter(0);
-    return;
+  // v12.1: Use decision:block to FORCE L2 save before stopping
+  const l2MarkerPath = path.join(getProjectDir(), '.l2-pending');
+
+  // Create marker on first stop if not exists
+  if (!fs.existsSync(l2MarkerPath)) {
+    fs.writeFileSync(l2MarkerPath, timestamp);
   }
+
+  // BLOCK - Force Claude to save L2 via Task tool with haiku
+  const blockReason = `[MEMORY_KEEPER] BLOCKED - You MUST save L2 facts before stopping.
+
+DO THIS NOW:
+1. Spawn l2-summarizer with Task tool:
+   - subagent_type: "memory-keeper:l2-summarizer"
+   - model: "haiku"
+   - prompt: "Extract L2 facts. Timestamp: ${timestamp}. Save: node ${scriptPath} save-l2"
+
+2. Update memory.md:
+   echo "## ${timestamp}" >> "${projectDir}/memory.md"
+   echo "[Session summary]" >> "${projectDir}/memory.md"
+
+3. Clear marker:
+   rm "${projectDir}/.l2-pending"
+
+Then you may stop.`;
+
+  const output = { decision: "block", reason: blockReason };
+  console.log(JSON.stringify(output));
+  return;
 
   const instructions = `
 ═══════════════════════════════════════════════════════════════

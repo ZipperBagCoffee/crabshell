@@ -1,5 +1,16 @@
 # Changelog
 
+## v12.1.0 (2026-01-13)
+### Blocking Stop Hook for L2 Enforcement
+- Stop hook now uses `decision: block` to FORCE L2 save before session ends
+- Uses built-in Task tool with `model: "haiku"` (no API key required)
+- Creates `.l2-pending` marker file to track save state
+- Fixes issue where L2 instructions were ignored
+
+### Bug Fixes
+- Reset corrupted concepts.json (41 duplicate entries cleaned)
+- Removed invalid `customAgents` field from plugin.json
+
 ## v12.0.2 (2026-01-13)
 - Fix: tmpclaude-*-cwd cleanup in subdirectories (Claude Code bug #17600 workaround)
 
@@ -10,7 +21,6 @@
 ### Haiku Proactive Subagent
 - Automatic L2 generation via proactive haiku subagent
 - No manual intervention - spawns on auto-save trigger
-- `customAgents` config with `proactive: true`
 
 ### L2: ProMem Algorithm
 - 3-step fact extraction: Extract → Verify → Save
