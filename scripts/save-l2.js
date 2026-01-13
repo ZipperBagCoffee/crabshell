@@ -2,12 +2,24 @@ const fs = require('fs');
 const path = require('path');
 const { getProjectDir, readJsonOrDefault, writeJson, readFileOrDefault, writeFile, ensureDir } = require('./utils');
 
-// Format L2 data for memory.md
+// Format L2 data for memory.md (v11: supports facts array)
 function formatL2ForMemory(l2Data, sessionId) {
   const lines = [`## ${sessionId}`];
 
   for (const ex of l2Data.exchanges || []) {
-    lines.push(`- ${ex.summary || 'No summary'}`);
+    // Support both facts array (ProMem) and summary (legacy)
+    if (ex.facts?.length > 0) {
+      // ProMem style: facts array
+      for (const fact of ex.facts) {
+        lines.push(`- ${fact}`);
+      }
+    } else if (ex.summary) {
+      // Legacy style: single summary
+      lines.push(`- ${ex.summary}`);
+    } else {
+      lines.push(`- No summary`);
+    }
+
     if (ex.keywords?.length > 0) {
       lines.push(`  - Keywords: ${ex.keywords.join(', ')}`);
     }

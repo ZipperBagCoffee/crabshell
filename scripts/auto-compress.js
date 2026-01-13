@@ -191,13 +191,33 @@ function consolidateMemoryMd(projectDir, stats) {
 }
 
 /**
+ * Step 5: L4 Reflection - Pattern detection and cleanup (v11)
+ */
+function runReflection(sessionsDir, projectDir, stats) {
+  const { getPromotionCandidates, cleanupByUtility, generateReflectionPrompt } = require('./permanent-memory');
+
+  // Get promotion candidates
+  const candidates = getPromotionCandidates(sessionsDir);
+  stats.promotionCandidates = candidates;
+
+  // Run utility-based cleanup
+  const cleanupResult = cleanupByUtility();
+  stats.rulesRemoved = cleanupResult.removed;
+
+  // Generate reflection prompt for Claude
+  if (candidates.keywords.length > 0 || candidates.files.length > 0) {
+    stats.reflectionPrompt = generateReflectionPrompt(candidates);
+  }
+}
+
+/**
  * Main: Run auto-compression
  */
 function autoCompress() {
   const projectDir = getProjectDir();
   const sessionsDir = path.join(projectDir, 'sessions');
 
-  console.log('\n═══ Memory Keeper: Auto-Compress ═══\n');
+  console.log('\n═══ Memory Keeper: Auto-Compress (v11) ═══\n');
 
   if (!fs.existsSync(sessionsDir)) {
     console.log('No sessions directory found.');
@@ -212,7 +232,10 @@ function autoCompress() {
     archived: 0,
     duplicatesRemoved: 0,
     sectionsRemoved: 0,
-    bytesFreed: 0
+    bytesFreed: 0,
+    rulesRemoved: 0,
+    promotionCandidates: null,
+    reflectionPrompt: null
   };
 
   console.log('## Step 1: L1 Cleanup');
@@ -227,6 +250,9 @@ function autoCompress() {
   console.log('\n## Step 4: Consolidate memory.md');
   consolidateMemoryMd(projectDir, stats);
 
+  console.log('\n## Step 5: L4 Reflection (v11)');
+  runReflection(sessionsDir, projectDir, stats);
+
   // Summary
   console.log('\n═══ Compression Summary ═══');
   console.log(`  L1 files deleted: ${stats.l1Deleted}`);
@@ -234,6 +260,7 @@ function autoCompress() {
   console.log(`  Sessions archived: ${stats.archived}`);
   console.log(`  Concepts added: ${stats.conceptsAdded}`);
   console.log(`  Duplicates removed: ${stats.duplicatesRemoved}`);
+  console.log(`  Rules cleaned up: ${stats.rulesRemoved}`);
   console.log(`  Space freed: ${(stats.bytesFreed / 1024).toFixed(1)} KB`);
 
   if (stats.l1NeedsL2.length > 0) {
@@ -243,6 +270,13 @@ function autoCompress() {
       console.log(`    ... and ${stats.l1NeedsL2.length - 5} more`);
     }
     console.log('  Run: node scripts/counter.js build-l2-prompts');
+  }
+
+  // Output reflection prompt for Claude to analyze
+  if (stats.reflectionPrompt) {
+    console.log(stats.reflectionPrompt);
+  } else if (stats.promotionCandidates) {
+    console.log('\n[L4 REFLECTION] No significant patterns found for promotion.');
   }
 
   console.log('\n═══ Done ═══\n');
