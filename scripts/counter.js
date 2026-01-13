@@ -200,7 +200,7 @@ function check() {
       ? `\n**Existing Concepts (assign conceptId if related):**\n${existingConcepts.map(c => `- ${c}`).join('\n')}\n`
       : '\n**No existing concepts yet. Use conceptName to create new ones.**\n';
 
-    // ProMem + LiSA style instructions (v11.2 - includes L3 concept assignment)
+    // ProMem + LiSA style instructions (v11.4 - with Risk mitigations)
     const instructions = `
 ═══════════════════════════════════════════════════════════════
 [MEMORY_KEEPER] AUTO-SAVE - ${interval} tool uses
@@ -213,34 +213,24 @@ function check() {
 echo -e "\\n## ${timestamp}\\n[1-2 sentence summary]" >> "${projectDir}/memory.md"
 \`\`\`
 
-## 2. Create L2 Facts + L3 Concept Assignment
+## 2. Create L2 Facts + L3 Concept
 ${conceptsList}
-**L2 Format (REQUIRED fields marked with *):**
+**L2 Format:**
 \`\`\`json
 [{
   "id": "e1",
-  "facts": ["fact1", "fact2"],      // * What was done (verified)
-  "keywords": ["kw1", "kw2"],       // * Search terms (specific, not generic)
-  "files": ["file1.js"],            // * Modified files
-  "conceptId": "c001",              // L3: Assign to existing concept OR
-  "conceptName": "New Topic Name",  // L3: Create new concept (3-5 words)
-  "topic": "Short topic description"// L3: What this is about
+  "facts": ["fact1", "fact2"],      // MAX 10 facts, verified only
+  "keywords": ["specific-term"],    // Specific, not generic
+  "files": ["file.js"],
+  "conceptId": "c001",              // Use if 70%+ similar to existing
+  "conceptName": "Topic Name"       // New concept if <70% similar
 }]
 \`\`\`
-
-**Save command:**
 \`\`\`bash
-node "${scriptPath}" save-l2 "${timestamp}" '[JSON_HERE]'
+node "${scriptPath}" save-l2 "${timestamp}" '[JSON]'
 \`\`\`
 
-## 3. Decisions/Patterns/Issues (if any)
-\`\`\`bash
-node "${scriptPath}" add-decision "what" "why" "architecture|technology|approach"
-node "${scriptPath}" add-pattern "pattern" "convention|best-practice"
-node "${scriptPath}" add-issue "issue" "open|resolved" "bugfix|feature"
-\`\`\`
-
-**REQUIRED: Step 2 must include conceptId OR conceptName for L3 grouping.**
+**LIMITS:** Max 10 facts. Use conceptId if 70%+ similar to existing concept.
 ═══════════════════════════════════════════════════════════════`;
 
     const output = {
@@ -387,7 +377,7 @@ async function final() {
     ? `**Existing Concepts:**\n${finalConcepts.map(c => `- ${c}`).join('\n')}\n`
     : '**No existing concepts. Use conceptName to create.**\n';
 
-  // ProMem + LiSA + Reflection instructions (v11.3 - L2/L3/L4 all in one)
+  // ProMem + LiSA + Reflection instructions (v11.4 - with Risk mitigations)
   const l2Instructions = `
 
 ═══════════════════════════════════════════════════════════════
@@ -397,7 +387,7 @@ async function final() {
 ## STEP 1: Create L2 Facts + L3 Concept
 ${finalConceptsList}
 \`\`\`json
-[{"id":"e1","facts":["verified fact"],"keywords":["specific"],"files":["file.js"],"conceptName":"Topic 3-5 words"}]
+[{"id":"e1","facts":["max 10 verified facts"],"keywords":["specific"],"files":["file.js"],"conceptId":"c001 if 70%+ similar","conceptName":"New Topic if <70%"}]
 \`\`\`
 \`\`\`bash
 node "${scriptPath}" save-l2 "${timestamp}" '[JSON]'
@@ -408,17 +398,12 @@ node "${scriptPath}" save-l2 "${timestamp}" '[JSON]'
 echo -e "\\n## ${timestamp}\\n[Summary]" >> "${projectDir}/memory.md"
 \`\`\`
 
-## STEP 3: L4 Reflection (Pattern Detection)
-Review this session for permanent memory:
-- **Repeated decisions** (3+ times) → \`add-rule "rule" "reason" "auto"\`
-- **Problem-solution pairs** → \`add-solution "problem" "solution" N\`
-- **Core logic changes** → \`add-core-logic "feature" "desc" "files"\`
-
+## STEP 3: L4 Reflection
 \`\`\`bash
 node "${scriptPath}" compress
 \`\`\`
 
-**ALL STEPS REQUIRED.**
+**LIMITS:** Max 10 facts. Use conceptId if 70%+ similar to existing.
 ═══════════════════════════════════════════════════════════════`;
 
   // Quiet mode by default - show brief message + L2 instructions
