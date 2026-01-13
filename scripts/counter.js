@@ -200,37 +200,24 @@ function check() {
       ? `\n**Existing Concepts (assign conceptId if related):**\n${existingConcepts.map(c => `- ${c}`).join('\n')}\n`
       : '\n**No existing concepts yet. Use conceptName to create new ones.**\n';
 
-    // ProMem + LiSA style instructions (v11.4 - with Risk mitigations)
+    // v12: Haiku subagent auto L2 generation
     const instructions = `
 ═══════════════════════════════════════════════════════════════
 [MEMORY_KEEPER] AUTO-SAVE - ${interval} tool uses
 ═══════════════════════════════════════════════════════════════
 
-**CLAUDE: EXECUTE NOW:**
+**SPAWN L2-SUMMARIZER SUBAGENT NOW:**
 
-## 1. Update memory.md
+Use Task tool to spawn l2-summarizer (haiku) in background:
+- subagent_type: "general-purpose"
+- model: "haiku"
+- run_in_background: true
+- prompt: "Extract L2 facts from this session. Timestamp: ${timestamp}. Project: ${projectDir}. Save with: node ${scriptPath} save-l2"
+
+**Also update memory.md:**
 \`\`\`bash
 echo -e "\\n## ${timestamp}\\n[1-2 sentence summary]" >> "${projectDir}/memory.md"
 \`\`\`
-
-## 2. Create L2 Facts + L3 Concept
-${conceptsList}
-**L2 Format:**
-\`\`\`json
-[{
-  "id": "e1",
-  "facts": ["fact1", "fact2"],      // MAX 10 facts, verified only
-  "keywords": ["specific-term"],    // Specific, not generic
-  "files": ["file.js"],
-  "conceptId": "c001",              // Use if 70%+ similar to existing
-  "conceptName": "Topic Name"       // New concept if <70% similar
-}]
-\`\`\`
-\`\`\`bash
-node "${scriptPath}" save-l2 "${timestamp}" '[JSON]'
-\`\`\`
-
-**LIMITS:** Max 10 facts. Use conceptId if 70%+ similar to existing concept.
 ═══════════════════════════════════════════════════════════════`;
 
     const output = {
@@ -377,21 +364,19 @@ async function final() {
     ? `**Existing Concepts:**\n${finalConcepts.map(c => `- ${c}`).join('\n')}\n`
     : '**No existing concepts. Use conceptName to create.**\n';
 
-  // ProMem + LiSA + Reflection instructions (v11.4 - with Risk mitigations)
+  // v12: Haiku subagent auto L2 + L4 Reflection
   const l2Instructions = `
 
 ═══════════════════════════════════════════════════════════════
 [MEMORY_KEEPER] SESSION END - L2/L3/L4 REQUIRED
 ═══════════════════════════════════════════════════════════════
 
-## STEP 1: Create L2 Facts + L3 Concept
-${finalConceptsList}
-\`\`\`json
-[{"id":"e1","facts":["max 10 verified facts"],"keywords":["specific"],"files":["file.js"],"conceptId":"c001 if 70%+ similar","conceptName":"New Topic if <70%"}]
-\`\`\`
-\`\`\`bash
-node "${scriptPath}" save-l2 "${timestamp}" '[JSON]'
-\`\`\`
+## STEP 1: SPAWN L2-SUMMARIZER (haiku background)
+Use Task tool:
+- subagent_type: "general-purpose"
+- model: "haiku"
+- run_in_background: true
+- prompt: "Extract L2 facts. Timestamp: ${timestamp}. Project: ${projectDir}. Concepts: ${finalConcepts.slice(0,5).join(', ')}. Save: node ${scriptPath} save-l2"
 
 ## STEP 2: Update memory.md
 \`\`\`bash
@@ -402,8 +387,6 @@ echo -e "\\n## ${timestamp}\\n[Summary]" >> "${projectDir}/memory.md"
 \`\`\`bash
 node "${scriptPath}" compress
 \`\`\`
-
-**LIMITS:** Max 10 facts. Use conceptId if 70%+ similar to existing.
 ═══════════════════════════════════════════════════════════════`;
 
   // Quiet mode by default - show brief message + L2 instructions

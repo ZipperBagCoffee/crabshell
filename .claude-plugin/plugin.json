@@ -1,11 +1,22 @@
 {
   "name": "memory-keeper",
-  "version": "11.4.0",
-  "description": "Hierarchical memory with ProMem fact extraction (L2), LiSA semantic grouping (L3), and Reflection auto-promotion (L4). Achieves 73%+ memory integrity.",
+  "version": "12.0.0",
+  "description": "Hierarchical memory with ProMem fact extraction (L2), LiSA semantic grouping (L3), and Reflection auto-promotion (L4). Now with proactive haiku subagent for auto L2 generation.",
   "author": {
     "name": "TaWa"
   },
   "repository": "https://github.com/ZipperBagCoffee/memory-keeper-plugin",
   "license": "MIT",
-  "keywords": ["memory", "context", "session", "productivity", "ProMem", "LiSA", "Reflection", "hierarchical"]
+  "keywords": ["memory", "context", "session", "productivity", "ProMem", "LiSA", "Reflection", "hierarchical", "haiku", "subagent"],
+  "customAgents": [
+    {
+      "name": "l2-summarizer",
+      "description": "Use this agent to extract L2 facts from session. Trigger proactively when auto-save fires or session ends. Creates verified facts for memory persistence.",
+      "model": "haiku",
+      "color": "cyan",
+      "tools": ["Read", "Bash", "Glob"],
+      "proactive": true,
+      "agentFile": "agents/l2-summarizer.md"
+    }
+  ]
 }
