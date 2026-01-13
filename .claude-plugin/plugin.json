@@ -7,16 +7,16 @@
   },
   "repository": "https://github.com/ZipperBagCoffee/memory-keeper-plugin",
   "license": "MIT",
-  "keywords": ["memory", "context", "session", "productivity", "ProMem", "LiSA", "Reflection", "hierarchical", "haiku", "subagent"],
-  "customAgents": [
-    {
-      "name": "l2-summarizer",
-      "description": "Use this agent to extract L2 facts from session. Trigger proactively when auto-save fires or session ends. Creates verified facts for memory persistence.",
-      "model": "haiku",
-      "color": "cyan",
-      "tools": ["Read", "Bash", "Glob"],
-      "proactive": true,
-      "agentFile": "agents/l2-summarizer.md"
-    }
+  "keywords": [
+    "memory",
+    "context",
+    "session",
+    "productivity",
+    "ProMem",
+    "LiSA",
+    "Reflection",
+    "hierarchical",
+    "haiku",
+    "subagent"
   ]
 }
