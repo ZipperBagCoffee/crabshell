@@ -387,40 +387,38 @@ async function final() {
     ? `**Existing Concepts:**\n${finalConcepts.map(c => `- ${c}`).join('\n')}\n`
     : '**No existing concepts. Use conceptName to create.**\n';
 
-  // ProMem + LiSA L2 instructions (v11.2 - includes L3 concept assignment)
+  // ProMem + LiSA + Reflection instructions (v11.3 - L2/L3/L4 all in one)
   const l2Instructions = `
 
 ═══════════════════════════════════════════════════════════════
-[MEMORY_KEEPER] SESSION END - L2 + L3 REQUIRED
+[MEMORY_KEEPER] SESSION END - L2/L3/L4 REQUIRED
 ═══════════════════════════════════════════════════════════════
 
-**CLAUDE: CREATE L2 FACTS WITH L3 CONCEPT ASSIGNMENT:**
-
+## STEP 1: Create L2 Facts + L3 Concept
 ${finalConceptsList}
-**L2 Format:**
 \`\`\`json
-[{
-  "id": "e1",
-  "facts": ["what was done"],
-  "keywords": ["specific", "search", "terms"],
-  "files": ["modified.js"],
-  "conceptId": "c001",           // OR conceptName for new
-  "conceptName": "Topic Name",   // 3-5 words
-  "topic": "Short description"
-}]
+[{"id":"e1","facts":["verified fact"],"keywords":["specific"],"files":["file.js"],"conceptName":"Topic 3-5 words"}]
 \`\`\`
-
-**Save:**
 \`\`\`bash
 node "${scriptPath}" save-l2 "${timestamp}" '[JSON]'
 \`\`\`
 
-**Update memory.md:**
+## STEP 2: Update memory.md
 \`\`\`bash
-echo -e "\\n## ${timestamp}\\n[Session summary]" >> "${projectDir}/memory.md"
+echo -e "\\n## ${timestamp}\\n[Summary]" >> "${projectDir}/memory.md"
 \`\`\`
 
-**REQUIRED: Include conceptId OR conceptName for L3.**
+## STEP 3: L4 Reflection (Pattern Detection)
+Review this session for permanent memory:
+- **Repeated decisions** (3+ times) → \`add-rule "rule" "reason" "auto"\`
+- **Problem-solution pairs** → \`add-solution "problem" "solution" N\`
+- **Core logic changes** → \`add-core-logic "feature" "desc" "files"\`
+
+\`\`\`bash
+node "${scriptPath}" compress
+\`\`\`
+
+**ALL STEPS REQUIRED.**
 ═══════════════════════════════════════════════════════════════`;
 
   // Quiet mode by default - show brief message + L2 instructions
