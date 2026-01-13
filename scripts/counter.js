@@ -425,37 +425,49 @@ node "${scriptPath}" compress
 \`\`\`
 ═══════════════════════════════════════════════════════════════`;
 
-  // v12.1: Use decision:block to FORCE L2 save before stopping
-  const l2MarkerPath = path.join(getProjectDir(), '.l2-pending');
+  // v12.2: Complete L2/L3/L4 blocking - ALL must be done
+  const todayPrefix = timestamp.split('_')[0];
+  const l2Files = fs.readdirSync(sessionsDir).filter(f => f.startsWith(todayPrefix) && f.endsWith('.l2.json'));
+  const l2Done = l2Files.length > 0;
 
-  // Create marker on first stop if not exists
-  if (!fs.existsSync(l2MarkerPath)) {
-    fs.writeFileSync(l2MarkerPath, timestamp);
+  const conceptsPath = path.join(getProjectDir(), 'concepts.json');
+  let l3Done = false;
+  try {
+    if (fs.existsSync(conceptsPath)) {
+      const stat = fs.statSync(conceptsPath);
+      l3Done = stat.mtime.toISOString().split('T')[0] === todayPrefix;
+    }
+  } catch (e) {}
+
+  const l4MarkerPath = path.join(getProjectDir(), '.l4-done');
+  const l4Done = fs.existsSync(l4MarkerPath);
+
+  const memoryPath = path.join(getProjectDir(), 'memory.md');
+  let memoryDone = false;
+  try {
+    if (fs.existsSync(memoryPath)) {
+      memoryDone = fs.readFileSync(memoryPath, 'utf8').includes(todayPrefix);
+    }
+  } catch (e) {}
+
+  if (l2Done && l3Done && l4Done && memoryDone) {
+    try { fs.unlinkSync(l4MarkerPath); } catch(e) {}
+    console.log(JSON.stringify({ decision: 'approve', reason: '[MEMORY_KEEPER] L2/L3/L4 complete.' }));
+    setCounter(0);
+    return;
   }
 
-  // BLOCK - Force Claude to save L2 via Task tool with haiku
-  const blockReason = `[MEMORY_KEEPER] BLOCKED - You MUST save L2 facts before stopping.
+  const status = (l2Done ? '✓' : '✗') + 'L2 | ' + (l3Done ? '✓' : '✗') + 'L3 | ' + (l4Done ? '✓' : '✗') + 'L4 | ' + (memoryDone ? '✓' : '✗') + 'mem';
+  let steps = '[MEMORY_KEEPER] BLOCKED - ' + status + '\n\n';
 
-DO THIS NOW:
-1. Spawn l2-summarizer with Task tool:
-   - subagent_type: "memory-keeper:l2-summarizer"
-   - model: "haiku"
-   - prompt: "Extract L2 facts. Timestamp: ${timestamp}. Save: node ${scriptPath} save-l2"
+  if (!l2Done) steps += 'STEP 1 - L2: Task tool { subagent_type:"memory-keeper:l2-summarizer", model:"haiku", prompt:"Extract facts. Save: node ' + scriptPath + ' save-l2 ' + timestamp + ' JSON" }\n\n';
+  if (!l3Done) steps += 'STEP 2 - L3: node "' + scriptPath + '" update-concepts "' + sessionsDir + '/' + (l2Files[0] || timestamp + '.l2.json') + '"\n\n';
+  if (!l4Done) steps += 'STEP 3 - L4: node "' + scriptPath + '" compress && echo done > "' + getProjectDir() + '/.l4-done"\n\n';
+  if (!memoryDone) steps += 'STEP 4 - memory.md: echo "## ' + timestamp + ' [summary]" >> "' + getProjectDir() + '/memory.md"\n\n';
 
-2. Update memory.md:
-   echo "## ${timestamp}" >> "${projectDir}/memory.md"
-   echo "[Session summary]" >> "${projectDir}/memory.md"
-
-3. Clear marker:
-   rm "${projectDir}/.l2-pending"
-
-Then you may stop.`;
-
-  const output = { decision: "block", reason: blockReason };
-  console.log(JSON.stringify(output));
+  steps += 'Complete ALL, then stop again.';
+  console.log(JSON.stringify({ decision: 'block', reason: steps }));
   return;
-
-  setCounter(0);
 }
 
 function reset() {

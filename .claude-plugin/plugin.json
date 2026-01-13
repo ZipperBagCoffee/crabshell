@@ -1,6 +1,6 @@
 {
   "name": "memory-keeper",
-  "version": "12.1.0",
+  "version": "12.2.0",
   "description": "Hierarchical memory with ProMem fact extraction (L2), LiSA semantic grouping (L3), and Reflection auto-promotion (L4). Now with proactive haiku subagent for auto L2 generation.",
   "author": {
     "name": "TaWa"

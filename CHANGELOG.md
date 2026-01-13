@@ -1,5 +1,6 @@
 # Changelog
 
+## v12.2.0 (2026-01-13)### Complete L2/L3/L4 Blocking- Stop hook now checks ALL: L2 file, L3 concepts, L4 compress, memory.md- Shows status: ✓L2 | ✓L3 | ✗L4 | ✓mem- Only allows stop when ALL complete- Fixes issue where L3/L4 were being ignored
 ## v12.1.0 (2026-01-13)
 ### Blocking Stop Hook for L2 Enforcement
 - Stop hook now uses `decision: block` to FORCE L2 save before session ends
