@@ -1,6 +1,19 @@
 # Changelog
 
-## v12.2.0 (2026-01-13)### Complete L2/L3/L4 Blocking- Stop hook now checks ALL: L2 file, L3 concepts, L4 compress, memory.md- Shows status: ✓L2 | ✓L3 | ✗L4 | ✓mem- Only allows stop when ALL complete- Fixes issue where L3/L4 were being ignored
+## v12.3.0 (2026-01-13)
+### Clearer Hook Instructions
+- Fixed check() auto-save: correct subagent_type "memory-keeper:l2-summarizer"
+- Fixed final() blocking: clear step-by-step L1→L2→L3→L4 workflow
+- Explains that L1 is auto-created (no manual action needed)
+- Each layer shows exact command/Tool call needed
+- Updated l2-summarizer.md with clearer instructions
+
+## v12.2.0 (2026-01-13)
+### Complete L2/L3/L4 Blocking
+- Stop hook now checks ALL: L2 file, L3 concepts, L4 compress, memory.md
+- Shows status: ✓L2 | ✓L3 | ✗L4 | ✓mem
+- Only allows stop when ALL complete
+- Fixes issue where L3/L4 were being ignored
 ## v12.1.0 (2026-01-13)
 ### Blocking Stop Hook for L2 Enforcement
 - Stop hook now uses `decision: block` to FORCE L2 save before session ends

@@ -1,4 +1,4 @@
-# Memory Keeper Architecture (v12.2)
+# Memory Keeper Architecture (v12.3)
 
 ## Overview
 

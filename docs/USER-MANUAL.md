@@ -1,4 +1,4 @@
-# Memory Keeper User Manual (v12.2)
+# Memory Keeper User Manual (v12.3)
 
 ## Why Use This?
 

@@ -236,23 +236,33 @@ function check() {
       ? `\n**Existing Concepts (assign conceptId if related):**\n${existingConcepts.map(c => `- ${c}`).join('\n')}\n`
       : '\n**No existing concepts yet. Use conceptName to create new ones.**\n';
 
-    // v12: Haiku subagent auto L2 generation
+    // v12.3: Clear L2 instructions with correct subagent_type
     const instructions = `
 ═══════════════════════════════════════════════════════════════
-[MEMORY_KEEPER] AUTO-SAVE - ${interval} tool uses
+[MEMORY_KEEPER] AUTO-SAVE TRIGGERED (${interval} tool uses)
 ═══════════════════════════════════════════════════════════════
 
-**SPAWN L2-SUMMARIZER SUBAGENT NOW:**
+## 4-Layer Memory System: L1 → L2 → L3 → L4
+- L1: Auto-created on session end (refined transcript)
+- L2: Verified facts extracted by haiku (YOU DO THIS NOW)
+- L3: Concept grouping (run after L2 saved)
+- L4: Pattern detection (run at session end)
 
-Use Task tool to spawn l2-summarizer (haiku) in background:
-- subagent_type: "general-purpose"
-- model: "haiku"
-- run_in_background: true
-- prompt: "Extract L2 facts from this session. Timestamp: ${timestamp}. Project: ${projectDir}. Save with: node ${scriptPath} save-l2"
+## YOUR TASK NOW: Create L2 Facts
 
-**Also update memory.md:**
+Use Task tool:
+\`\`\`json
+{
+  "subagent_type": "memory-keeper:l2-summarizer",
+  "model": "haiku",
+  "run_in_background": true,
+  "prompt": "Extract L2 facts. Timestamp: ${timestamp}. Project: ${projectDir}. After extracting, save with: node scripts/counter.js save-l2 ${timestamp} '[{\"id\":\"e1\",\"facts\":[...],\"keywords\":[...],\"files\":[...]}]'"
+}
+\`\`\`
+
+## Also update memory.md:
 \`\`\`bash
-echo -e "\\n## ${timestamp}\\n[1-2 sentence summary]" >> "${projectDir}/memory.md"
+echo -e "\\n## ${timestamp}\\n[1-2 sentence summary of this session]" >> "${projectDir}/memory.md"
 \`\`\`
 ═══════════════════════════════════════════════════════════════`;
 
@@ -458,14 +468,61 @@ node "${scriptPath}" compress
   }
 
   const status = (l2Done ? '✓' : '✗') + 'L2 | ' + (l3Done ? '✓' : '✗') + 'L3 | ' + (l4Done ? '✓' : '✗') + 'L4 | ' + (memoryDone ? '✓' : '✗') + 'mem';
-  let steps = '[MEMORY_KEEPER] BLOCKED - ' + status + '\n\n';
 
-  if (!l2Done) steps += 'STEP 1 - L2: Task tool { subagent_type:"memory-keeper:l2-summarizer", model:"haiku", prompt:"Extract facts. Save: node ' + scriptPath + ' save-l2 ' + timestamp + ' JSON" }\n\n';
-  if (!l3Done) steps += 'STEP 2 - L3: node "' + scriptPath + '" update-concepts "' + sessionsDir + '/' + (l2Files[0] || timestamp + '.l2.json') + '"\n\n';
-  if (!l4Done) steps += 'STEP 3 - L4: node "' + scriptPath + '" compress && echo done > "' + getProjectDir() + '/.l4-done"\n\n';
-  if (!memoryDone) steps += 'STEP 4 - memory.md: echo "## ' + timestamp + ' [summary]" >> "' + getProjectDir() + '/memory.md"\n\n';
+  // v12.3: Clear step-by-step instructions for each layer
+  let steps = `═══════════════════════════════════════════════════════════════
+[MEMORY_KEEPER] SESSION BLOCKED - ${status}
+═══════════════════════════════════════════════════════════════
 
-  steps += 'Complete ALL, then stop again.';
+## 4-Layer Memory System (L1 → L2 → L3 → L4)
+
+✓ L1 (Auto): Refined transcript already created at session end
+`;
+
+  if (!l2Done) {
+    steps += `
+✗ L2 (Verified Facts) - REQUIRED
+   Use Task tool to spawn l2-summarizer:
+   {
+     "subagent_type": "memory-keeper:l2-summarizer",
+     "model": "haiku",
+     "prompt": "Extract L2 facts from session. Save with: node scripts/counter.js save-l2 ${timestamp} JSON"
+   }
+`;
+  }
+
+  if (!l3Done) {
+    const l2File = l2Files[0] || `${timestamp}.l2.json`;
+    steps += `
+✗ L3 (Concept Groups) - REQUIRED (needs L2 first)
+   \`\`\`bash
+   node "${scriptPath}" update-concepts "${sessionsDir}/${l2File}"
+   \`\`\`
+`;
+  }
+
+  if (!l4Done) {
+    steps += `
+✗ L4 (Pattern Detection) - REQUIRED
+   \`\`\`bash
+   node "${scriptPath}" compress && echo done > "${getProjectDir()}/.l4-done"
+   \`\`\`
+`;
+  }
+
+  if (!memoryDone) {
+    steps += `
+✗ memory.md - REQUIRED
+   \`\`\`bash
+   echo "## ${timestamp} [1-2 sentence session summary]" >> "${getProjectDir()}/memory.md"
+   \`\`\`
+`;
+  }
+
+  steps += `
+═══════════════════════════════════════════════════════════════
+Complete ALL ✗ items above, then try to stop again.
+═══════════════════════════════════════════════════════════════`;
   console.log(JSON.stringify({ decision: 'block', reason: steps }));
   return;
 }

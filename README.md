@@ -1,4 +1,4 @@
-# Memory Keeper v12.2
+# Memory Keeper v12.3
 
 **Claude Code forgets everything when a session ends.** Memory Keeper saves and loads session context using a 4-layer hierarchical memory system with **blocking enforcement**.
 
