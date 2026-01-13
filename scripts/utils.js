@@ -9,7 +9,28 @@ function getProjectName() {
 
 function getProjectDir() {
   // Project-local storage: .claude/memory/
-  return path.join(process.cwd(), '.claude', 'memory');
+  const cwd = process.cwd();
+  const memoryDir = path.join(cwd, '.claude', 'memory');
+
+  // Only use cwd path if it already exists (don't auto-create in wrong places)
+  if (fs.existsSync(memoryDir)) {
+    return memoryDir;
+  }
+
+  // Check if .claude exists (project is initialized but memory not yet)
+  const claudeDir = path.join(cwd, '.claude');
+  if (fs.existsSync(claudeDir)) {
+    return memoryDir; // Will be created when needed
+  }
+
+  // Fallback: script location (for plugin development)
+  const scriptDir = path.join(__dirname, '..', '.claude', 'memory');
+  if (fs.existsSync(scriptDir)) {
+    return scriptDir;
+  }
+
+  // Default to cwd (will create .claude/memory when ensureDir is called)
+  return memoryDir;
 }
 
 // Legacy: global storage path (for migration if needed)
@@ -61,11 +82,36 @@ function getFactsPath() {
 }
 
 function loadFacts() {
-  return readJsonOrDefault(getFactsPath(), {
-    decisions: [],
-    patterns: [],
-    issues: []
-  });
+  const facts = readJsonOrDefault(getFactsPath(), null);
+
+  if (!facts) {
+    // Return new unified structure (v9.0.0)
+    return {
+      _meta: { counter: 0, lastSave: null, version: 3 },
+      decisions: [],
+      patterns: [],
+      issues: [],
+      concepts: {},
+      keywords: {},
+      permanent: { rules: [], solutions: [], core_logic: [] },
+      stats: { total_exchanges: 0, total_concepts: 0, last_updated: new Date().toISOString().split('T')[0] }
+    };
+  }
+
+  // Ensure all required fields exist (compatibility)
+  if (!facts._meta) facts._meta = { counter: 0, lastSave: null };
+  if (!facts.decisions) facts.decisions = [];
+  if (!facts.patterns) facts.patterns = [];
+  if (!facts.issues) facts.issues = [];
+  if (!facts.concepts) facts.concepts = {};
+  if (!facts.keywords) facts.keywords = {};
+  if (!facts.permanent) facts.permanent = { rules: [], solutions: [], core_logic: [] };
+  if (!facts.permanent.rules) facts.permanent.rules = [];
+  if (!facts.permanent.solutions) facts.permanent.solutions = [];
+  if (!facts.permanent.core_logic) facts.permanent.core_logic = [];
+  if (!facts.stats) facts.stats = { total_exchanges: 0, total_concepts: 0 };
+
+  return facts;
 }
 
 function saveFacts(facts) {

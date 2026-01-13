@@ -66,17 +66,30 @@ function loadFacts() {
   const factsPath = getFactsPath();
   ensureDir(path.dirname(factsPath));
 
-  const defaultFacts = {
-    _meta: { counter: 0, lastSave: null },
-    decisions: [],
-    patterns: [],
-    issues: [],
-    concepts: {}
-  };
-
   let facts = readJsonOrDefault(factsPath, null);
+
   if (!facts) {
-    // Create facts.json if doesn't exist
+    // Create new unified structure (v9.0.0)
+    const defaultFacts = {
+      _meta: { counter: 0, lastSave: null, version: 3 },
+      // Old structure (v6.x compatibility)
+      decisions: [],
+      patterns: [],
+      issues: [],
+      concepts: {},
+      // L4 structure (v8.2.0+ nested format from migrate-facts)
+      keywords: {},
+      permanent: {
+        rules: [],
+        solutions: [],
+        core_logic: []
+      },
+      stats: {
+        total_exchanges: 0,
+        total_concepts: 0,
+        last_updated: new Date().toISOString().split('T')[0]
+      }
+    };
     writeJson(factsPath, defaultFacts);
     return defaultFacts;
   }
@@ -86,10 +99,28 @@ function loadFacts() {
     facts._meta = { counter: 0, lastSave: null };
   }
 
-  // Ensure concepts index exists (v6.5.0+)
-  if (!facts.concepts) {
-    facts.concepts = {};
+  // Ensure old structure exists (v6.x compatibility)
+  if (!facts.decisions) facts.decisions = [];
+  if (!facts.patterns) facts.patterns = [];
+  if (!facts.issues) facts.issues = [];
+  if (!facts.concepts) facts.concepts = {};
+
+  // Ensure L4 nested structure exists (v8.2.0+ format)
+  if (!facts.keywords) facts.keywords = {};
+  if (!facts.permanent) {
+    facts.permanent = { rules: [], solutions: [], core_logic: [] };
   }
+  if (!facts.permanent.rules) facts.permanent.rules = [];
+  if (!facts.permanent.solutions) facts.permanent.solutions = [];
+  if (!facts.permanent.core_logic) facts.permanent.core_logic = [];
+  if (!facts.stats) {
+    facts.stats = { total_exchanges: 0, total_concepts: 0, last_updated: new Date().toISOString().split('T')[0] };
+  }
+
+  // Ensure _meta has nextIds for L4
+  if (!facts._meta.nextRuleId) facts._meta.nextRuleId = facts.permanent.rules.length + 1;
+  if (!facts._meta.nextSolutionId) facts._meta.nextSolutionId = facts.permanent.solutions.length + 1;
+  if (!facts._meta.nextCoreLogicId) facts._meta.nextCoreLogicId = facts.permanent.core_logic.length + 1;
 
   return facts;
 }
@@ -303,11 +334,42 @@ async function final() {
 
   const scriptPath = process.argv[1].replace(/\\/g, '/');
   const config = getConfig();
+  const l1Path = rawSaved ? rawSaved.replace('.raw.jsonl', '.l1.jsonl') : null;
+  const l1Exists = l1Path && fs.existsSync(l1Path.replace(/\//g, path.sep));
 
-  // Quiet mode by default - only show brief message
+  // Always generate L2 instructions (v9.0.0)
+  const l2Instructions = l1Exists ? `
+
+**[MEMORY_KEEPER] L2 SUMMARY REQUIRED**
+
+Use Task tool with Haiku model to summarize this session:
+
+\`\`\`
+Task tool call:
+- subagent_type: "general-purpose"
+- model: "haiku"
+- prompt: "Summarize this coding session. Output JSON only:
+{
+  \\"exchanges\\": [{
+    \\"id\\": \\"e001\\",
+    \\"summary\\": \\"What was done (1 sentence)\\",
+    \\"keywords\\": [\\"3-5 search keywords\\"],
+    \\"files\\": [\\"modified files\\"]
+  }]
+}
+Focus on: decisions made, problems solved, code changes."
+\`\`\`
+
+After receiving L2 JSON, save it:
+\`\`\`bash
+node "${scriptPath}" save-l2 "${timestamp}" '<paste L2 JSON>'
+\`\`\`
+` : '';
+
+  // Quiet mode by default - show brief message + L2 instructions
   if (config.quietStop !== false) {
     const output = {
-      systemMessage: `[MEMORY_KEEPER] Session saved. L1: ${rawSaved ? 'OK' : 'SKIP'}`
+      systemMessage: `[MEMORY_KEEPER] Session saved. L1: ${l1Exists ? 'OK' : 'SKIP'}${l2Instructions}`
     };
     console.log(JSON.stringify(output));
     setCounter(0);

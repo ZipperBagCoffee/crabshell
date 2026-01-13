@@ -4,16 +4,19 @@ const { getProjectDir, readJsonOrDefault, writeJson } = require('./utils');
 
 const FACTS_FILE = 'facts.json';
 
-// Load facts
+// Load facts - use utils.loadFacts for consistent structure
 function loadFacts() {
-  const factsPath = path.join(getProjectDir(), FACTS_FILE);
-  return readJsonOrDefault(factsPath, null);
+  const { loadFacts: utilsLoadFacts } = require('./utils');
+  return utilsLoadFacts();
 }
 
 // Save facts
 function saveFacts(facts) {
   const factsPath = path.join(getProjectDir(), FACTS_FILE);
-  facts.stats.last_updated = new Date().toISOString().split('T')[0];
+  // Update stats if exists
+  if (facts.stats) {
+    facts.stats.last_updated = new Date().toISOString().split('T')[0];
+  }
   writeJson(factsPath, facts);
 }
 
@@ -21,6 +24,9 @@ function saveFacts(facts) {
 function indexKeywords(keywords, refs) {
   const facts = loadFacts();
   if (!facts) return;
+
+  // Ensure keywords object exists
+  if (!facts.keywords) facts.keywords = {};
 
   for (const kw of keywords) {
     const key = kw.toLowerCase();
@@ -40,7 +46,7 @@ function indexKeywords(keywords, refs) {
 // Search by keyword
 function searchKeywords(query) {
   const facts = loadFacts();
-  if (!facts) return [];
+  if (!facts || !facts.keywords) return [];
 
   const results = [];
   const queryLower = query.toLowerCase();

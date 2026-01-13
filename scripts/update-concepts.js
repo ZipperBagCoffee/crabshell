@@ -18,12 +18,20 @@ function saveConcepts(data) {
 }
 
 // Calculate overlap between two arrays
+// Returns ratio of intersection to the smaller set (more lenient matching)
 function calculateOverlap(arr1, arr2) {
+  // Both empty = no basis for comparison, don't match
+  if (!arr1?.length && !arr2?.length) return 0;
+
+  // One empty = no overlap possible
   if (!arr1?.length || !arr2?.length) return 0;
+
   const set1 = new Set(arr1.map(s => s.toLowerCase()));
   const set2 = new Set(arr2.map(s => s.toLowerCase()));
   const intersection = [...set1].filter(x => set2.has(x));
-  return intersection.length / Math.max(set1.size, set2.size);
+
+  // Use Math.min for more lenient matching (easier to find overlap)
+  return intersection.length / Math.min(set1.size, set2.size);
 }
 
 // Find matching concept or create new one
@@ -65,11 +73,28 @@ function updateConcepts(l2Data) {
       matchingConcept.keywords = [...new Set([...matchingConcept.keywords, ...(exchange.keywords || [])])];
       matchingConcept.updated = new Date().toISOString().split('T')[0];
     } else {
-      // Create new concept
+      // Create new concept with improved naming (v9.0.0)
+      // Generate a short, descriptive name from keywords or summary
+      let conceptName = 'Unnamed concept';
+      if (exchange.keywords?.length > 0) {
+        // Use first 2-3 keywords as name
+        conceptName = exchange.keywords.slice(0, 3).join(' - ');
+      } else if (exchange.summary) {
+        // Extract key phrase from summary (first 50 chars, break at word)
+        const summary = exchange.summary;
+        if (summary.length <= 50) {
+          conceptName = summary;
+        } else {
+          const truncated = summary.substring(0, 50);
+          const lastSpace = truncated.lastIndexOf(' ');
+          conceptName = lastSpace > 20 ? truncated.substring(0, lastSpace) + '...' : truncated + '...';
+        }
+      }
+
       const newConcept = {
         id: `c${String(conceptsData.nextId++).padStart(3, '0')}`,
-        name: exchange.summary || 'Unnamed concept',
-        summary: exchange.details || exchange.summary,
+        name: conceptName,
+        summary: exchange.details || exchange.summary || conceptName,
         exchanges: [exchange.id],
         files: exchange.files || [],
         keywords: exchange.keywords || [],

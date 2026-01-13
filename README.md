@@ -168,6 +168,28 @@ node scripts/counter.js reset                  # Reset counter
 - [User Manual](docs/USER-MANUAL.md) - Detailed usage
 - [Architecture](docs/ARCHITECTURE.md) - System design
 
+## v9.0.0 - Claude-Based L2/L3/L4 Implementation
+
+### Bug Fixes
+- **getProjectDir()**: Fixed cwd folder creation bug
+- **facts.json**: Unified structure for v6.x and L4 compatibility
+- **calculateOverlap**: Fixed empty array handling
+
+### L2: Claude-Based Summaries
+- Stop hook now prompts Claude (Haiku) for L2 summaries
+- memory.md auto-updated when L2 saved
+- Keywords extracted by Claude, not first 100 chars
+
+### L3: Improved Concept Grouping
+- Auto-update concepts when L2 saved
+- Better concept naming from keywords
+- More lenient overlap matching (Math.min)
+
+### L4: Keywords Index + Unified Structure
+- Keywords auto-indexed when L2 saved
+- Unified facts.json structure (v6.x + L4)
+- search-keywords command works properly
+
 ## v8.2.0 - L4 Permanent Memory Automation
 
 ### L4: Permanent Memory with Auto-Triggers
@@ -223,6 +245,7 @@ Raw transcripts are now automatically refined to remove junk metadata:
 
 | Version | Changes |
 |---------|---------|
+| 9.0.0 | Claude-based L2/L3/L4, bug fixes, unified facts.json |
 | 8.2.0 | L4 permanent memory automation |
 | 8.1.0 | L2-L3 hierarchical summarization |
 | 8.0.0 | L1 hierarchical memory refinement |
