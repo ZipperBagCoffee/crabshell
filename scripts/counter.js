@@ -189,37 +189,23 @@ function check() {
 
     const instructions = `
 ═══════════════════════════════════════════════════════════════
-[MEMORY_KEEPER] AUTO-SAVE TRIGGERED - ${counter} tool uses reached
+[MEMORY_KEEPER] AUTO-SAVE - Generate L2 summary now
 ═══════════════════════════════════════════════════════════════
 
-**YOU MUST EXECUTE THESE COMMANDS NOW:**
+**GENERATE L2 SUMMARY AND SAVE:**
 
-1. APPEND to memory.md:
-   \`\`\`bash
-   echo -e "\\n## ${timestamp}\\n[1-2 sentence summary of work so far]" >> "${projectDir}/memory.md"
-   \`\`\`
+Based on this session so far, create a JSON summary and save it:
 
-2. RECORD any decisions made (run for EACH decision):
-   \`\`\`bash
-   node "${scriptPath}" add-decision "what was decided" "why" "architecture|technology|approach"
-   \`\`\`
-   With file refs: add "file1.ts,file2.ts" "concept1,concept2" at end
+\`\`\`bash
+node "${scriptPath}" save-l2 "${timestamp}" '[{"id":"e1","summary":"<1-2 sentence summary of work>","keywords":["<3-5 searchable keywords>"],"files":["<modified files>"]}]'
+\`\`\`
 
-3. RECORD any patterns established (run for EACH pattern):
-   \`\`\`bash
-   node "${scriptPath}" add-pattern "pattern description" "convention|best-practice|anti-pattern"
-   \`\`\`
-
-4. RECORD any issues found/fixed (run for EACH issue):
-   \`\`\`bash
-   node "${scriptPath}" add-issue "issue description" "open|resolved" "bugfix|performance|security|feature"
-   \`\`\`
-
-IMPORTANT:
-- Run Step 1 ALWAYS
-- Run Steps 2-4 for ALL relevant items from this session
-- If no decisions/patterns/issues exist, skip those steps
-- Files and concepts are OPTIONAL (omit if not applicable)
+**RULES:**
+- summary: What was accomplished (1-2 sentences, be specific)
+- keywords: Search terms for finding this later (lowercase)
+- files: Only files you actually modified (can be empty [])
+- Generate the JSON yourself based on the conversation
+- This auto-updates memory.md, concepts, and keyword index
 
 ═══════════════════════════════════════════════════════════════`;
 
