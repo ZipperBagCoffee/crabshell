@@ -66,30 +66,17 @@ function loadFacts() {
   const factsPath = getFactsPath();
   ensureDir(path.dirname(factsPath));
 
-  let facts = readJsonOrDefault(factsPath, null);
+  const defaultFacts = {
+    _meta: { counter: 0, lastSave: null },
+    decisions: [],
+    patterns: [],
+    issues: [],
+    concepts: {}
+  };
 
+  let facts = readJsonOrDefault(factsPath, null);
   if (!facts) {
-    // Create new unified structure (v9.0.0)
-    const defaultFacts = {
-      _meta: { counter: 0, lastSave: null, version: 3 },
-      // Old structure (v6.x compatibility)
-      decisions: [],
-      patterns: [],
-      issues: [],
-      concepts: {},
-      // L4 structure (v8.2.0+ nested format from migrate-facts)
-      keywords: {},
-      permanent: {
-        rules: [],
-        solutions: [],
-        core_logic: []
-      },
-      stats: {
-        total_exchanges: 0,
-        total_concepts: 0,
-        last_updated: new Date().toISOString().split('T')[0]
-      }
-    };
+    // Create facts.json if doesn't exist
     writeJson(factsPath, defaultFacts);
     return defaultFacts;
   }
@@ -99,28 +86,10 @@ function loadFacts() {
     facts._meta = { counter: 0, lastSave: null };
   }
 
-  // Ensure old structure exists (v6.x compatibility)
-  if (!facts.decisions) facts.decisions = [];
-  if (!facts.patterns) facts.patterns = [];
-  if (!facts.issues) facts.issues = [];
-  if (!facts.concepts) facts.concepts = {};
-
-  // Ensure L4 nested structure exists (v8.2.0+ format)
-  if (!facts.keywords) facts.keywords = {};
-  if (!facts.permanent) {
-    facts.permanent = { rules: [], solutions: [], core_logic: [] };
+  // Ensure concepts index exists (v6.5.0+)
+  if (!facts.concepts) {
+    facts.concepts = {};
   }
-  if (!facts.permanent.rules) facts.permanent.rules = [];
-  if (!facts.permanent.solutions) facts.permanent.solutions = [];
-  if (!facts.permanent.core_logic) facts.permanent.core_logic = [];
-  if (!facts.stats) {
-    facts.stats = { total_exchanges: 0, total_concepts: 0, last_updated: new Date().toISOString().split('T')[0] };
-  }
-
-  // Ensure _meta has nextIds for L4
-  if (!facts._meta.nextRuleId) facts._meta.nextRuleId = facts.permanent.rules.length + 1;
-  if (!facts._meta.nextSolutionId) facts._meta.nextSolutionId = facts.permanent.solutions.length + 1;
-  if (!facts._meta.nextCoreLogicId) facts._meta.nextCoreLogicId = facts.permanent.core_logic.length + 1;
 
   return facts;
 }
@@ -157,60 +126,7 @@ function setCounter(value) {
   saveFacts(facts);
 }
 
-// Clean up tmpclaude-*-cwd files created by Claude Code hook execution (bug #17600)
-// Cleans multiple directories recursively since files can end up anywhere
-function cleanupTmpFiles() {
-  const dirsToClean = new Set();
-
-  // Add current working directory
-  dirsToClean.add(process.cwd());
-
-  // Add project directory and its subdirectories
-  try {
-    const projectDir = getProjectDir();
-    dirsToClean.add(projectDir);
-    // Add common subdirectories where files might appear
-    dirsToClean.add(path.join(projectDir, 'sessions'));
-    dirsToClean.add(path.join(projectDir, '.claude'));
-    dirsToClean.add(path.join(projectDir, '.claude', 'memory'));
-    dirsToClean.add(path.join(projectDir, '.claude', 'memory', 'sessions'));
-  } catch (e) {}
-
-  // Add original cwd from environment if available
-  if (process.env.ORIGINAL_CWD) {
-    dirsToClean.add(process.env.ORIGINAL_CWD);
-  }
-
-  // Add parent directories (sometimes files end up one level up)
-  const initialDirs = [...dirsToClean];
-  for (const dir of initialDirs) {
-    const parent = path.dirname(dir);
-    if (parent && parent !== dir) {
-      dirsToClean.add(parent);
-    }
-  }
-
-  // Clean each directory
-  for (const dir of dirsToClean) {
-    try {
-      if (!fs.existsSync(dir)) continue;
-      const files = fs.readdirSync(dir);
-      for (const file of files) {
-        if (file.startsWith('tmpclaude-') && file.endsWith('-cwd')) {
-          try {
-            fs.unlinkSync(path.join(dir, file));
-          } catch (e) {}
-        }
-      }
-    } catch (e) {
-      // Ignore cleanup errors
-    }
-  }
-}
-
 function check() {
-  cleanupTmpFiles();
-
   const config = getConfig();
   const interval = config.saveInterval || DEFAULT_INTERVAL;
 
@@ -223,47 +139,40 @@ function check() {
     const scriptPath = process.argv[1].replace(/\\/g, '/');
     const timestamp = getTimestamp();
 
-    // Get existing concepts for LiSA-style assignment
-    let existingConcepts = [];
-    try {
-      const { loadConcepts } = require('./update-concepts');
-      const conceptsData = loadConcepts();
-      existingConcepts = conceptsData.concepts.map(c => `${c.id}: ${c.name}`).slice(0, 10);
-    } catch (e) {}
-
-    // Build concepts list for L3 assignment
-    const conceptsList = existingConcepts.length > 0
-      ? `\n**Existing Concepts (assign conceptId if related):**\n${existingConcepts.map(c => `- ${c}`).join('\n')}\n`
-      : '\n**No existing concepts yet. Use conceptName to create new ones.**\n';
-
-    // v12.3: Clear L2 instructions with correct subagent_type
     const instructions = `
 ═══════════════════════════════════════════════════════════════
-[MEMORY_KEEPER] AUTO-SAVE TRIGGERED (${interval} tool uses)
+[MEMORY_KEEPER] AUTO-SAVE TRIGGERED - ${counter} tool uses reached
 ═══════════════════════════════════════════════════════════════
 
-## 4-Layer Memory System: L1 → L2 → L3 → L4
-- L1: Auto-created on session end (refined transcript)
-- L2: Verified facts extracted by haiku (YOU DO THIS NOW)
-- L3: Concept grouping (run after L2 saved)
-- L4: Pattern detection (run at session end)
+**YOU MUST EXECUTE THESE COMMANDS NOW:**
 
-## YOUR TASK NOW: Create L2 Facts
+1. APPEND to memory.md:
+   \`\`\`bash
+   echo -e "\\n## ${timestamp}\\n[1-2 sentence summary of work so far]" >> "${projectDir}/memory.md"
+   \`\`\`
 
-Use Task tool:
-\`\`\`json
-{
-  "subagent_type": "memory-keeper:l2-summarizer",
-  "model": "haiku",
-  "run_in_background": true,
-  "prompt": "Extract L2 facts. Timestamp: ${timestamp}. Project: ${projectDir}. After extracting, save with: node scripts/counter.js save-l2 ${timestamp} '[{\"id\":\"e1\",\"facts\":[...],\"keywords\":[...],\"files\":[...]}]'"
-}
-\`\`\`
+2. RECORD any decisions made (run for EACH decision):
+   \`\`\`bash
+   node "${scriptPath}" add-decision "what was decided" "why" "architecture|technology|approach"
+   \`\`\`
+   With file refs: add "file1.ts,file2.ts" "concept1,concept2" at end
 
-## Also update memory.md:
-\`\`\`bash
-echo -e "\\n## ${timestamp}\\n[1-2 sentence summary of this session]" >> "${projectDir}/memory.md"
-\`\`\`
+3. RECORD any patterns established (run for EACH pattern):
+   \`\`\`bash
+   node "${scriptPath}" add-pattern "pattern description" "convention|best-practice|anti-pattern"
+   \`\`\`
+
+4. RECORD any issues found/fixed (run for EACH issue):
+   \`\`\`bash
+   node "${scriptPath}" add-issue "issue description" "open|resolved" "bugfix|performance|security|feature"
+   \`\`\`
+
+IMPORTANT:
+- Run Step 1 ALWAYS
+- Run Steps 2-4 for ALL relevant items from this session
+- If no decisions/patterns/issues exist, skip those steps
+- Files and concepts are OPTIONAL (omit if not applicable)
+
 ═══════════════════════════════════════════════════════════════`;
 
     const output = {
@@ -280,7 +189,6 @@ echo -e "\\n## ${timestamp}\\n[1-2 sentence summary of this session]" >> "${proj
 }
 
 async function final() {
-  cleanupTmpFiles();
   const hookData = await readStdin();
   const projectDir = getProjectDir().replace(/\\/g, '/');
   const timestamp = getTimestamp();
@@ -395,136 +303,116 @@ async function final() {
 
   const scriptPath = process.argv[1].replace(/\\/g, '/');
   const config = getConfig();
-  const l1Path = rawSaved ? rawSaved.replace('.raw.jsonl', '.l1.jsonl') : null;
-  const l1Exists = l1Path && fs.existsSync(l1Path.replace(/\//g, path.sep));
 
-  // Get existing concepts for L3 assignment
-  let finalConcepts = [];
-  try {
-    const { loadConcepts } = require('./update-concepts');
-    const conceptsData = loadConcepts();
-    finalConcepts = conceptsData.concepts.map(c => `${c.id}: ${c.name}`).slice(0, 10);
-  } catch (e) {}
-
-  const finalConceptsList = finalConcepts.length > 0
-    ? `**Existing Concepts:**\n${finalConcepts.map(c => `- ${c}`).join('\n')}\n`
-    : '**No existing concepts. Use conceptName to create.**\n';
-
-  // v12: Haiku subagent auto L2 + L4 Reflection
-  const l2Instructions = `
-
-═══════════════════════════════════════════════════════════════
-[MEMORY_KEEPER] SESSION END - L2/L3/L4 REQUIRED
-═══════════════════════════════════════════════════════════════
-
-## STEP 1: SPAWN L2-SUMMARIZER (haiku background)
-Use Task tool:
-- subagent_type: "general-purpose"
-- model: "haiku"
-- run_in_background: true
-- prompt: "Extract L2 facts. Timestamp: ${timestamp}. Project: ${projectDir}. Concepts: ${finalConcepts.slice(0,5).join(', ')}. Save: node ${scriptPath} save-l2"
-
-## STEP 2: Update memory.md
-\`\`\`bash
-echo -e "\\n## ${timestamp}\\n[Summary]" >> "${projectDir}/memory.md"
-\`\`\`
-
-## STEP 3: L4 Reflection
-\`\`\`bash
-node "${scriptPath}" compress
-\`\`\`
-═══════════════════════════════════════════════════════════════`;
-
-  // v12.2: Complete L2/L3/L4 blocking - ALL must be done
-  const todayPrefix = timestamp.split('_')[0];
-  const l2Files = fs.readdirSync(sessionsDir).filter(f => f.startsWith(todayPrefix) && f.endsWith('.l2.json'));
-  const l2Done = l2Files.length > 0;
-
-  const conceptsPath = path.join(getProjectDir(), 'concepts.json');
-  let l3Done = false;
-  try {
-    if (fs.existsSync(conceptsPath)) {
-      const stat = fs.statSync(conceptsPath);
-      l3Done = stat.mtime.toISOString().split('T')[0] === todayPrefix;
-    }
-  } catch (e) {}
-
-  const l4MarkerPath = path.join(getProjectDir(), '.l4-done');
-  const l4Done = fs.existsSync(l4MarkerPath);
-
-  const memoryPath = path.join(getProjectDir(), 'memory.md');
-  let memoryDone = false;
-  try {
-    if (fs.existsSync(memoryPath)) {
-      memoryDone = fs.readFileSync(memoryPath, 'utf8').includes(todayPrefix);
-    }
-  } catch (e) {}
-
-  if (l2Done && l3Done && l4Done && memoryDone) {
-    try { fs.unlinkSync(l4MarkerPath); } catch(e) {}
-    console.log(JSON.stringify({ decision: 'approve', reason: '[MEMORY_KEEPER] L2/L3/L4 complete.' }));
+  // Quiet mode by default - only show brief message
+  if (config.quietStop !== false) {
+    const output = {
+      systemMessage: `[MEMORY_KEEPER] Session saved. L1: ${rawSaved ? 'OK' : 'SKIP'}`
+    };
+    console.log(JSON.stringify(output));
     setCounter(0);
     return;
   }
 
-  const status = (l2Done ? '✓' : '✗') + 'L2 | ' + (l3Done ? '✓' : '✗') + 'L3 | ' + (l4Done ? '✓' : '✗') + 'L4 | ' + (memoryDone ? '✓' : '✗') + 'mem';
-
-  // v12.3: Clear step-by-step instructions for each layer
-  let steps = `═══════════════════════════════════════════════════════════════
-[MEMORY_KEEPER] SESSION BLOCKED - ${status}
+  const instructions = `
 ═══════════════════════════════════════════════════════════════
-
-## 4-Layer Memory System (L1 → L2 → L3 → L4)
-
-✓ L1 (Auto): Refined transcript already created at session end
-`;
-
-  if (!l2Done) {
-    steps += `
-✗ L2 (Verified Facts) - REQUIRED
-   Use Task tool to spawn l2-summarizer:
-   {
-     "subagent_type": "memory-keeper:l2-summarizer",
-     "model": "haiku",
-     "prompt": "Extract L2 facts from session. Save with: node scripts/counter.js save-l2 ${timestamp} JSON"
-   }
-`;
-  }
-
-  if (!l3Done) {
-    const l2File = l2Files[0] || `${timestamp}.l2.json`;
-    steps += `
-✗ L3 (Concept Groups) - REQUIRED (needs L2 first)
-   \`\`\`bash
-   node "${scriptPath}" update-concepts "${sessionsDir}/${l2File}"
-   \`\`\`
-`;
-  }
-
-  if (!l4Done) {
-    steps += `
-✗ L4 (Pattern Detection) - REQUIRED
-   \`\`\`bash
-   node "${scriptPath}" compress && echo done > "${getProjectDir()}/.l4-done"
-   \`\`\`
-`;
-  }
-
-  if (!memoryDone) {
-    steps += `
-✗ memory.md - REQUIRED
-   \`\`\`bash
-   echo "## ${timestamp} [1-2 sentence session summary]" >> "${getProjectDir()}/memory.md"
-   \`\`\`
-`;
-  }
-
-  steps += `
+[MEMORY_KEEPER] SESSION ENDING - Final Save Required
 ═══════════════════════════════════════════════════════════════
-Complete ALL ✗ items above, then try to stop again.
+${rawSaved ? `✓ Raw transcript saved: ${rawSaved}` : '⚠ Raw transcript not saved'}
+
+**YOU MUST EXECUTE THESE COMMANDS NOW:**
+
+1. APPEND complete summary to memory.md:
+   \`\`\`bash
+   echo -e "\\n## ${timestamp} (Session End)\\n[Complete session summary - be thorough]" >> "${projectDir}/memory.md"
+   \`\`\`
+
+2. RECORD ALL decisions from this session:
+   \`\`\`bash
+   node "${scriptPath}" add-decision "what was decided" "why" "architecture|technology|approach"
+   \`\`\`
+   With file refs: add "file1.ts,file2.ts" "concept1,concept2" at end
+
+3. RECORD ALL patterns from this session:
+   \`\`\`bash
+   node "${scriptPath}" add-pattern "pattern description" "convention|best-practice|anti-pattern"
+   \`\`\`
+
+4. RECORD ALL issues from this session:
+   \`\`\`bash
+   node "${scriptPath}" add-issue "issue description" "open|resolved" "bugfix|performance|security|feature"
+   \`\`\`
+
+5. RUN compression:
+   \`\`\`bash
+   node "${scriptPath}" compress
+   \`\`\`
+
+**STEP 6: Generate L2 Summary**
+
+Review this session and create L2 exchange summaries. For each distinct task/request:
+\`\`\`json
+[
+  {
+    "id": "e001",
+    "summary": "One sentence: what was done",
+    "details": "1-2 sentences with specifics (files, functions, fixes)",
+    "files": ["file1.js", "file2.js"],
+    "keywords": ["keyword1", "keyword2", "keyword3"],
+    "l1_range": [1, 50]
+  }
+]
+\`\`\`
+
+Save L2:
+\`\`\`bash
+node "${scriptPath}" save-l2 "${timestamp}" '<paste-json-here>'
+\`\`\`
+
+**STEP 7: Update Concepts**
+
+\`\`\`bash
+node "${scriptPath}" update-concepts "${projectDir}/sessions/${timestamp}.l2.json"
+\`\`\`
+
+**STEP 8: Check for Permanent Memories**
+
+Review this session for items to permanently remember:
+
+1. **User explicit requests** - Did user say "remember", "always", "never", "from now on"?
+   \`\`\`bash
+   node "${scriptPath}" add-rule "what to remember" "why" "user"
+   \`\`\`
+
+2. **Repeated solutions** - Was a problem solved that appeared 10+ times?
+   \`\`\`bash
+   node "${scriptPath}" add-solution "the problem" "the solution" <attempts>
+   \`\`\`
+
+3. **Breakthroughs** - Multiple failed attempts then success?
+   \`\`\`bash
+   node "${scriptPath}" add-solution "what was failing" "what fixed it" <attempts>
+   \`\`\`
+
+4. **Core logic changes** - Major architecture/feature changes?
+   \`\`\`bash
+   node "${scriptPath}" add-core-logic "feature name" "what changed" "file1.js,file2.js"
+   \`\`\`
+
+IMPORTANT:
+- This is your FINAL chance to save context
+- Review ENTIRE session for decisions/patterns/issues
+- Be thorough - next session starts fresh
+- Files and concepts are OPTIONAL
+
 ═══════════════════════════════════════════════════════════════`;
-  console.log(JSON.stringify({ decision: 'block', reason: steps }));
-  return;
+
+  const output = {
+    systemMessage: instructions
+  };
+  console.log(JSON.stringify(output));
+
+  setCounter(0);
 }
 
 function reset() {
@@ -1266,11 +1154,7 @@ switch (command) {
     reset();
     break;
   case 'compress':
-    // Use new hierarchical auto-compress
-    {
-      const { autoCompress } = require('./auto-compress');
-      autoCompress();
-    }
+    compress();
     break;
   case 'add-decision':
     // add-decision "content" "reason" [type] [files] [concepts]
@@ -1292,15 +1176,6 @@ switch (command) {
       const fileFilter = parseArg(args, 'file');
       const query = args.find(a => !a.startsWith('--')) || null;
       search(query, typeFilter, conceptFilter, fileFilter);
-    }
-    break;
-  case 'hsearch':
-  case 'hierarchical-search':
-    // Hierarchical search: L4→L3→L2→L1
-    {
-      const { hierarchicalSearch } = require('./hierarchical-search');
-      const hsQuery = args.join(' ');
-      hierarchicalSearch(hsQuery);
     }
     break;
   case 'clear-facts':

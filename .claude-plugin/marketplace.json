@@ -11,14 +11,14 @@
     {
       "name": "memory-keeper",
       "source": "./",
-      "description": "Hierarchical memory with ProMem L2, LiSA L3, Reflection L4, and haiku subagent.",
-      "version": "12.2.0",
+      "description": "Auto-save memory with background agent summarization. Saves summary + original, facts.json for search, tiered storage.",
+      "version": "6.3.0",
       "author": {
         "name": "TaWa"
       },
       "repository": "https://github.com/ZipperBagCoffee/memory-keeper-plugin",
       "license": "MIT",
-      "keywords": ["memory", "context", "session", "productivity", "ProMem", "LiSA", "Reflection"]
+      "keywords": ["memory", "context", "session", "productivity", "background", "auto-save"]
     }
   ]
 }

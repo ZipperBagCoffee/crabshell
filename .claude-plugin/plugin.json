@@ -1,22 +1,11 @@
 {
   "name": "memory-keeper",
-  "version": "12.2.0",
-  "description": "Hierarchical memory with ProMem fact extraction (L2), LiSA semantic grouping (L3), and Reflection auto-promotion (L4). Now with proactive haiku subagent for auto L2 generation.",
+  "version": "8.2.1",
+  "description": "Auto-save memory with direct fact extraction, hierarchical structure, file references, and concept tagging.",
   "author": {
     "name": "TaWa"
   },
   "repository": "https://github.com/ZipperBagCoffee/memory-keeper-plugin",
   "license": "MIT",
-  "keywords": [
-    "memory",
-    "context",
-    "session",
-    "productivity",
-    "ProMem",
-    "LiSA",
-    "Reflection",
-    "hierarchical",
-    "haiku",
-    "subagent"
-  ]
+  "keywords": ["memory", "context", "session", "productivity", "background", "auto-save", "hierarchical"]
 }

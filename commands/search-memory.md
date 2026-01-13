@@ -7,7 +7,7 @@ Search through project memory for: $ARGUMENTS
 
 1. Search facts.json (decisions, patterns, issues):
    ```bash
-   node "${CLAUDE_PLUGIN_ROOT}/scripts/counter.js" search "$ARGUMENTS"
+   node scripts/counter.js search "$ARGUMENTS"
    ```
 
 2. Search session files in .claude/memory/sessions/:

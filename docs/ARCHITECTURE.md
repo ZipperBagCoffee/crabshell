@@ -1,8 +1,8 @@
-# Memory Keeper Architecture (v12.3)
+# Memory Keeper Architecture
 
 ## Overview
 
-Memory Keeper uses a 4-layer hierarchical memory system with **blocking enforcement** to ensure L2/L3/L4 are completed before session end.
+Memory Keeper is a Claude Code plugin that automatically saves session context using hooks, structured fact extraction, and tiered storage.
 
 ## System Architecture
 
@@ -13,170 +13,254 @@ Memory Keeper uses a 4-layer hierarchical memory system with **blocking enforcem
 │  Hooks                                                          │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
 │  │ SessionStart │  │ PostToolUse  │  │    Stop      │          │
-│  │ load-memory  │  │   counter    │  │  BLOCKING    │          │
+│  │ load-memory  │  │   counter    │  │   counter    │          │
 │  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘          │
 └─────────┼─────────────────┼─────────────────┼───────────────────┘
           │                 │                 │
           ▼                 ▼                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  Blocking Logic (v12.2)                                        │
-│                                                                │
-│  Stop hook checks:                                             │
-│  ✓/✗ L2 - .l2.json exists for today?                          │
-│  ✓/✗ L3 - concepts.json modified today?                       │
-│  ✓/✗ L4 - .l4-done marker exists?                             │
-│  ✓/✗ mem - memory.md updated today?                           │
-│                                                                │
-│  ALL ✓ → decision:approve (stop allowed)                      │
-│  ANY ✗ → decision:block (must complete first)                 │
+│  scripts/                                                        │
+│  ┌────────────────┐  ┌────────────────────────────────────────┐ │
+│  │ load-memory.js │  │ counter.js                             │ │
+│  │                │  │ - check: increment counter, trigger    │ │
+│  │ Reads:         │  │ - final: save transcript, output instr │ │
+│  │ - memory.md    │  │ - extract-facts: parse session.md      │ │
+│  │ - facts.json   │  │ - add-decision/pattern/issue           │ │
+│  │                │  │ - search: query facts.json             │ │
+│  │ Outputs to     │  │ - compress: archive old files          │ │
+│  │ Claude context │  │ - clear-facts: reset arrays            │ │
+│  └────────────────┘  └────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
-          │
-          ▼
+          │                 │                 │
+          ▼                 ▼                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  4-Layer Hierarchical Memory                                    │
-│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐           │
-│  │   L1    │  │   L2    │  │   L3    │  │   L4    │           │
-│  │ Refined │→ │ Facts   │→ │Concepts │→ │Permanent│           │
-│  │*.l1.jsonl│  │*.l2.json│  │concepts │  │facts.json│          │
-│  │         │  │ ProMem  │  │  LiSA   │  │Reflection│          │
-│  └─────────┘  └─────────┘  └─────────┘  └─────────┘           │
+│  .claude/memory/ (Project Storage)                              │
+│  ┌────────────────────────────────────────┐  ┌────────────────┐ │
+│  │ Auto-created:                          │  │ sessions/      │ │
+│  │ ├── memory.md (rolling summary)        │  │ ├── *.md       │ │
+│  │ └── facts.json (structured facts)      │  │ ├── *.raw.jsonl│ │
+│  │                                        │  │ └── archive/   │ │
+│  │ Optional (create with memory-set):     │  │     └── *.md   │ │
+│  │ ├── project.md                         │  │                │ │
+│  │ ├── architecture.md                    │  │                │ │
+│  │ └── conventions.md                     │  │                │ │
+│  └────────────────────────────────────────┘  └────────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
 ```
-
-## Memory Layers
-
-### L1: Refined Transcripts
-- **Input**: Raw JSONL from Claude Code
-- **Output**: `*.l1.jsonl` (95% size reduction)
-- **Algorithm**: Removes metadata, keeps user/assistant text + tool summaries
-
-### L2: Verified Facts (ProMem)
-Based on arxiv:2601.04463 (73%+ memory integrity)
-
-```
-Step 1: Extract    → Identify facts from session (via haiku)
-Step 2: Verify     → Cross-check with context
-Step 3: Save       → Max 10 facts per session
-```
-
-**Triggered by**: Task tool with `model: "haiku"`, `subagent_type: "memory-keeper:l2-summarizer"`
-
-### L3: Concept Groups (LiSA)
-Based on ACL 2025 LiSA semantic assignment
-
-- Claude assigns `conceptId` (existing) or `conceptName` (new)
-- 70% similarity threshold
-- No keyword overlap calculation
-
-**Triggered by**: `node scripts/counter.js update-concepts <l2-file>`
-
-### L4: Permanent Memory (Reflection)
-
-```
-Step 1: Detect patterns    → 3+ occurrences across L2 files
-Step 2: Verify relevance   → Is this generalizable?
-Step 3: Promote to L4      → Add to facts.json.permanent
-Step 4: Cleanup            → Remove old/contradicted rules
-```
-
-**Triggered by**: `node scripts/counter.js compress`
 
 ## Hook Flow
 
-### SessionStart
+### 1. SessionStart Hook
 ```
-load-memory.js
+User starts Claude Code session
+        │
+        ▼
+┌─────────────────┐
+│ load-memory.js  │
+└────────┬────────┘
+         │
+    ┌────┴────┐
+    ▼         ▼
+memory.md  facts.json
+    │         │
+    └────┬────┘
+         │
+         ▼
+   Output to Claude
+   (additionalContext)
+```
+
+### 2. PostToolUse Hook (Counter Check)
+```
+Claude uses a tool
+        │
+        ▼
+┌─────────────────────┐
+│ counter.js check    │
+└──────────┬──────────┘
+           │
+           ▼
+    facts.json._meta.counter++
+           │
+           ▼
+    counter >= 5?
+    ┌──────┴──────┐
+    │ YES         │ NO
+    ▼             ▼
+Output save     (silent)
+instructions
     │
-    ├── Read memory.md
-    ├── Read facts.json (L4 permanent)
-    └── Output to Claude context
+    ▼
+Reset counter to 0
 ```
 
-### PostToolUse (every tool use)
+### 3. Stop Hook (Session End)
 ```
-counter.js check()
-    │
-    ├── cleanupTmpFiles()
-    ├── counter++
-    └── if counter >= 5:
-        └── Output L2 spawn instructions
-```
-
-### Stop (session end) - BLOCKING
-```
-counter.js final()
-    │
-    ├── Create L1 from transcript
-    │
-    ├── Check completion status:
-    │   ├── L2: .l2.json exists today?
-    │   ├── L3: concepts.json modified today?
-    │   ├── L4: .l4-done marker exists?
-    │   └── mem: memory.md has today's date?
-    │
-    ├── ALL complete → decision:approve
-    └── ANY missing  → decision:block + STEP instructions
+User ends session (Ctrl+C, /exit, etc.)
+        │
+        ▼
+┌─────────────────────┐
+│ counter.js final    │
+└──────────┬──────────┘
+           │
+    ┌──────┴──────┐
+    │             │
+    ▼             ▼
+Read stdin    Copy transcript
+(hookData)    to sessions/
+    │             │
+    └──────┬──────┘
+           │
+           ▼
+    Output final save
+    instructions
 ```
 
-## Agents
+## Data Flow
 
-Located in `agents/` folder:
+### Session File Format (v6.5.0+)
+```markdown
+# Session 2025-12-21_0300
 
-| Agent | Purpose |
-|-------|---------|
-| `l2-summarizer.md` | ProMem fact extraction (haiku) |
-| `memory-keeper.md` | Background session analysis |
-| `context-loader.md` | Load relevant context |
+## Summary
+[What was accomplished]
 
-**Note**: Agents are spawned via Task tool, not automatically. Blocking enforcement ensures they get called.
+## Decisions
+- [architecture|technology|approach] Decision content: Reason why
+  - files: path/to/file1.ts, path/to/file2.ts
+  - concepts: authentication, state-management
 
-## Data Structures
+## Patterns
+- [convention|best-practice|anti-pattern] Pattern description
+  - concepts: testing, workflow
 
-### facts.json
+## Issues
+- [bugfix|performance|security|feature] Issue description: open|resolved
+  - files: path/to/fixed-file.ts
+  - concepts: performance
+```
+
+**Privacy Tags:** Use `<private>sensitive</private>` to exclude content from facts.json.
+**File/Concept Tags:** Optional sub-items for better search and grouping.
+
+### Facts Extraction
+```
+session.md ──parse──> extractFacts() ──add──> facts.json
+     │                     │                      │
+     ▼                     ▼                      ▼
+## Decisions          regex match           decisions: [
+- Foo: Bar     ───>   ("Foo", "Bar")  ───>   {id, date,
+                                               content: "Foo",
+                                               reason: "Bar"}
+                                             ]
+```
+
+## Component Details
+
+### counter.js Commands
+
+| Command | Description | Input | Output |
+|---------|-------------|-------|--------|
+| `check` | Increment counter, trigger at threshold | - | Instructions (if triggered) |
+| `final` | Copy transcript, output final instructions | stdin (hookData) | Instructions |
+| `reset` | Reset counter to 0 | - | Confirmation |
+| `compress` | Archive 30+ day files | - | Archive status |
+| `memory-set` | Set hierarchical memory file content | name, content | Confirmation |
+| `memory-get` | Get memory file content | [name] | Content or all files |
+| `memory-list` | List all memory files with status | - | File list |
+| `add-decision` | Add decision to facts.json | content, reason, [type], [files], [concepts] | Confirmation |
+| `add-pattern` | Add pattern to facts.json | content, [type], [files], [concepts] | Confirmation |
+| `add-issue` | Add issue to facts.json | content, status, [type], [files], [concepts] | Confirmation |
+| `search` | Search facts.json | query, [--type], [--concept], [--file] | Matching facts |
+| `clear-facts` | Clear facts arrays | - | Confirmation |
+| `extract-facts` | Parse session.md for facts | filename | Extraction stats |
+
+**Memory File Names:**
+- `project` - Project overview and description
+- `architecture` - Architecture decisions and patterns
+- `conventions` - Coding conventions and workflows
+
+**Observation Types:**
+- decisions: `architecture`, `technology`, `approach`, `other`
+- patterns: `convention`, `best-practice`, `anti-pattern`, `other`
+- issues: `bugfix`, `performance`, `security`, `feature`, `other`
+
+### facts.json Structure
+
 ```json
 {
-  "_meta": { "counter": 0, "version": 3 },
-  "decisions": [],
-  "patterns": [],
-  "issues": [],
-  "permanent": {
-    "rules": [],
-    "solutions": [],
-    "core_logic": []
+  "_meta": {
+    "counter": 0,
+    "lastSave": "2025-12-21_0300"
+  },
+  "decisions": [
+    {
+      "id": "d001",
+      "type": "architecture",
+      "date": "2025-12-21",
+      "content": "Use structured markdown",
+      "reason": "Easier to parse",
+      "files": ["src/parser.ts"],
+      "concepts": ["parsing", "architecture"]
+    }
+  ],
+  "patterns": [
+    {
+      "id": "p001",
+      "type": "convention",
+      "date": "2025-12-21",
+      "content": "Always use heredoc for bash",
+      "concepts": ["bash", "workflow"]
+    }
+  ],
+  "issues": [
+    {
+      "id": "i001",
+      "type": "bugfix",
+      "date": "2025-12-21",
+      "content": "JSON editing fails",
+      "status": "resolved",
+      "files": ["scripts/counter.js"],
+      "concepts": ["json", "cli"]
+    }
+  ],
+  "concepts": {
+    "architecture": ["d001"],
+    "parsing": ["d001"],
+    "bash": ["p001"],
+    "workflow": ["p001"],
+    "json": ["i001"],
+    "cli": ["i001"]
   }
 }
 ```
 
-### concepts.json
+## Configuration
+
+### config.json (Optional)
 ```json
 {
-  "concepts": [
-    {
-      "id": "c001",
-      "name": "concept-name",
-      "summary": "description",
-      "files": [],
-      "keywords": [],
-      "exchanges": []
-    }
-  ],
-  "nextId": 2
+  "saveInterval": 5
 }
 ```
 
-## Key Scripts
+Location priority:
+1. `.claude/memory/config.json` (project)
+2. `~/.claude/memory-keeper/config.json` (global)
+3. Default: 5
 
-| Script | Purpose |
-|--------|---------|
-| `counter.js` | Hook handler, CLI commands, blocking logic |
-| `load-memory.js` | SessionStart hook |
-| `refine-raw.js` | L1 refinement |
-| `save-l2.js` | L2 fact storage |
-| `update-concepts.js` | L3 concept grouping |
-| `auto-compress.js` | L4 Reflection + cleanup |
+## Version History
 
-## Research References
-
-- **ProMem**: arxiv:2601.04463 - Memory integrity in LLM agents
-- **LiSA**: ACL 2025 - Semantic assignment for memory clustering
-- **Reflection**: Agent Memory Survey - Pattern detection and pruning
+| Version | Key Changes |
+|---------|-------------|
+| 7.0.1 | clearFacts() now clears concepts index, added missing skills |
+| 7.0.0 | Hierarchical memory structure (project/architecture/conventions.md) |
+| 6.5.0 | File references + concept tagging |
+| 6.4.0 | Observation types + privacy tags |
+| 6.3.0 | Auto-extract facts from structured session files |
+| 6.2.0 | Fix command paths, add search/clear-facts |
+| 6.1.0 | CLI commands for facts.json |
+| 6.0.x | Explicit instruction output, async stdin |
+| 5.x | SKILL.md auto-trigger (deprecated) |
+| 4.x | Background agent, project-local storage |
+| 3.x | Counter-based trigger |
