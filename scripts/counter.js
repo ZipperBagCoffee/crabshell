@@ -1234,7 +1234,11 @@ switch (command) {
     reset();
     break;
   case 'compress':
-    compress();
+    // Use new hierarchical auto-compress
+    {
+      const { autoCompress } = require('./auto-compress');
+      autoCompress();
+    }
     break;
   case 'add-decision':
     // add-decision "content" "reason" [type] [files] [concepts]
@@ -1256,6 +1260,15 @@ switch (command) {
       const fileFilter = parseArg(args, 'file');
       const query = args.find(a => !a.startsWith('--')) || null;
       search(query, typeFilter, conceptFilter, fileFilter);
+    }
+    break;
+  case 'hsearch':
+  case 'hierarchical-search':
+    // Hierarchical search: L4→L3→L2→L1
+    {
+      const { hierarchicalSearch } = require('./hierarchical-search');
+      const hsQuery = args.join(' ');
+      hierarchicalSearch(hsQuery);
     }
     break;
   case 'clear-facts':

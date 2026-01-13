@@ -1,7 +1,7 @@
 {
   "name": "memory-keeper",
-  "version": "9.0.3",
-  "description": "Auto-save memory with Claude-based L2/L3/L4 summarization, hierarchical structure, and keyword indexing.",
+  "version": "10.0.0",
+  "description": "H-MEM inspired hierarchical memory: L4 permanent→L3 concepts→L2 sessions→L1 raw with auto-compress and hierarchical search.",
   "author": {
     "name": "TaWa"
   },
