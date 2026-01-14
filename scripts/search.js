@@ -41,8 +41,9 @@ function searchL3Summaries(memoryDir, query) {
   const indexPath = path.join(memoryDir, INDEX_FILE);
   const index = readJsonOrDefault(indexPath, { rotatedFiles: [] });
   const matches = [];
+  const rotatedFiles = Array.isArray(index.rotatedFiles) ? index.rotatedFiles : [];
 
-  for (const entry of index.rotatedFiles) {
+  for (const entry of rotatedFiles) {
     if (!entry.summaryGenerated) continue;
     const summaryPath = path.join(memoryDir, entry.summary);
     if (!fs.existsSync(summaryPath)) continue;
