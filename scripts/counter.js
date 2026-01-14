@@ -10,7 +10,10 @@ const { MEMORY_DIR, MEMORY_FILE, SESSIONS_DIR } = require('./constants');
 const FILE_DELETION_WARNING = `
 ⚠️ CRITICAL: NEVER delete files without explicit user permission.
    If you need to delete something, REPORT first and ASK for permission.
-   → If CLAUDE.md exists and lacks this rule, ADD it there now.`;
+
+⚠️ CRITICAL: Think objectively and logically before responding.
+   Don't just agree with user statements - verify claims independently.
+   The user's interpretation may be incomplete or wrong. Investigate first.`;
 
 const CONFIG_PATH = path.join(process.cwd(), '.claude', 'memory', 'config.json');
 const GLOBAL_CONFIG_PATH = path.join(os.homedir(), '.claude', 'memory-keeper', 'config.json');
