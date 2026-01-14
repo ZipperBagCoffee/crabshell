@@ -6,6 +6,12 @@ const { refineRaw } = require('./refine-raw');
 const { checkAndRotate } = require('./memory-rotation');
 const { MEMORY_DIR, MEMORY_FILE, SESSIONS_DIR } = require('./constants');
 
+// CRITICAL WARNING - Shown to Claude in hook outputs
+const FILE_DELETION_WARNING = `
+⚠️ CRITICAL: NEVER delete files without explicit user permission.
+   If you need to delete something, REPORT first and ASK for permission.
+   → If CLAUDE.md exists and lacks this rule, ADD it there now.`;
+
 const CONFIG_PATH = path.join(process.cwd(), '.claude', 'memory', 'config.json');
 const GLOBAL_CONFIG_PATH = path.join(os.homedir(), '.claude', 'memory-keeper', 'config.json');
 const DEFAULT_INTERVAL = 5;
@@ -98,6 +104,7 @@ function check() {
 ═══════════════════════════════════════════════════════════════
 [MEMORY_KEEPER] AUTO-SAVE TRIGGERED - ${counter} tool uses reached
 ═══════════════════════════════════════════════════════════════
+${FILE_DELETION_WARNING}
 
 **APPEND to memory.md:**
 \`\`\`bash
@@ -241,7 +248,7 @@ async function final() {
   // Quiet mode by default - only show brief message
   if (config.quietStop !== false) {
     const output = {
-      systemMessage: `[MEMORY_KEEPER] Session saved. L1: ${rawSaved ? 'OK' : 'SKIP'}`
+      systemMessage: `[MEMORY_KEEPER] Session saved. L1: ${rawSaved ? 'OK' : 'SKIP'}${FILE_DELETION_WARNING}`
     };
     console.log(JSON.stringify(output));
     setCounter(0);
@@ -252,6 +259,8 @@ async function final() {
 ═══════════════════════════════════════════════════════════════
 [MEMORY_KEEPER] SESSION ENDING - Final Save Required
 ═══════════════════════════════════════════════════════════════
+${FILE_DELETION_WARNING}
+
 ${rawSaved ? `✓ Raw transcript saved: ${rawSaved}` : '⚠ Raw transcript not saved'}
 
 **APPEND complete summary to memory.md:**
@@ -507,14 +516,6 @@ function memoryList() {
     console.log(`  ○ memory.md - not created [rolling]`);
   }
 
-  // Show facts.json
-  const factsPath = getFactsPath();
-  if (fs.existsSync(factsPath)) {
-    const facts = loadFacts();
-    const counts = `${facts.decisions.length}d/${facts.patterns.length}p/${facts.issues.length}i`;
-    console.log(`  ✓ facts.json (${counts})`);
-  }
-
   console.log(`\nHierarchical files: ${total}/3 created`);
 }
 
@@ -622,14 +623,6 @@ Memory Management:
   memory-set <name> <content>   Set memory file (project|architecture|conventions)
   memory-get [name]             Get memory file content
   memory-list                   List all memory files
-
-Facts (auto-triggered via hooks):
-  add-decision <content> <reason> [type] [files] [concepts]
-  add-pattern <content> [type] [files] [concepts]
-  add-issue <content> <status> [type] [files] [concepts]
-  search [query] [--type=X] [--concept=X] [--file=X]
-  clear-facts                   Clear all facts
-  extract-facts [session]       Extract facts from session file
 
 Memory Rotation (v13.0.0):
   search-memory <query> [--deep]  Search L3/L2/L1 hierarchically

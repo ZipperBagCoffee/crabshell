@@ -1,5 +1,11 @@
 # Project Notes
 
+## ⚠️ CRITICAL RULES
+
+**NEVER delete files without explicit user permission.**
+- If you need to delete something, REPORT first and ASK for permission.
+- This applies to ALL files - code, config, docs, anything.
+
 ## Known Issues
 
 ### Edit Tool "File unexpectedly modified" Error (Windows)
