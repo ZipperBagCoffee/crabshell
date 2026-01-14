@@ -30,9 +30,6 @@ This will output the current memory state to context:
 2. **Rolling Memory**:
    - Last 50 lines of `memory.md`
 
-3. **Structured Facts**:
-   - Recent decisions, patterns, issues from `facts.json`
-
 ## When to Use
 
 - After manually editing memory files

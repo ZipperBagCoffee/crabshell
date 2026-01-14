@@ -16,6 +16,13 @@ const CONFIG_PATH = path.join(process.cwd(), '.claude', 'memory', 'config.json')
 const GLOBAL_CONFIG_PATH = path.join(os.homedir(), '.claude', 'memory-keeper', 'config.json');
 const DEFAULT_INTERVAL = 5;
 
+// Get logs directory (ensures it exists)
+function getLogsDir() {
+  const logsDir = path.join(getProjectDir(), '.claude', 'memory', 'logs');
+  ensureDir(logsDir);
+  return logsDir;
+}
+
 function getConfig() {
   let config = readJsonOrDefault(CONFIG_PATH, null);
   if (!config) {
@@ -44,7 +51,7 @@ function readStdin() {
           resolve(JSON.parse(data.trim()));
         } catch (e) {
           // Log parse error
-          const debugPath = path.join(getProjectDir(), 'stdin-parse-error.log');
+          const debugPath = path.join(getLogsDir(), 'stdin-parse-error.log');
           fs.appendFileSync(debugPath, `${new Date().toISOString()}: ${e.message}\nData: ${data.substring(0, 500)}\n`);
           resolve({});
         }
@@ -55,7 +62,7 @@ function readStdin() {
 
     // Handle error
     process.stdin.on('error', (e) => {
-      const debugPath = path.join(getProjectDir(), 'stdin-error.log');
+      const debugPath = path.join(getLogsDir(), 'stdin-error.log');
       fs.appendFileSync(debugPath, `${new Date().toISOString()}: ${e.message}\n`);
       resolve({});
     });
@@ -135,7 +142,8 @@ async function final() {
   ensureDir(sessionsDir);
 
   // Debug: log what we received
-  const debugPath = path.join(getProjectDir(), 'debug-hook.json');
+  const logsDir = getLogsDir();
+  const debugPath = path.join(logsDir, 'debug-hook.json');
   writeJson(debugPath, {
     hookData,
     timestamp,
@@ -153,7 +161,7 @@ async function final() {
       rawSaved = rawDest.replace(/\\/g, '/');
     } catch (e) {
       // Log error
-      fs.appendFileSync(path.join(getProjectDir(), 'error.log'),
+      fs.appendFileSync(path.join(getLogsDir(), 'error.log'),
         `${timestamp}: Failed to copy transcript: ${e.message}\n`);
     }
   } else {
@@ -175,7 +183,7 @@ async function final() {
           }
         }
       } catch (e) {
-        fs.appendFileSync(path.join(getProjectDir(), 'error.log'),
+        fs.appendFileSync(path.join(getLogsDir(), 'error.log'),
           `${timestamp}: Failed to find transcript by session_id: ${e.message}\n`);
       }
     }
@@ -209,7 +217,7 @@ async function final() {
           }
         }
       } catch (e) {
-        fs.appendFileSync(path.join(getProjectDir(), 'error.log'),
+        fs.appendFileSync(path.join(getLogsDir(), 'error.log'),
           `${timestamp}: Failed to find transcript: ${e.message}\n`);
       }
     }
@@ -224,7 +232,7 @@ async function final() {
       const rawSize = fs.statSync(rawSaved).size;
       const l1Size = fs.statSync(l1Dest).size;
       const reduction = ((1 - l1Size / rawSize) * 100).toFixed(1);
-      fs.appendFileSync(path.join(getProjectDir(), 'refine.log'),
+      fs.appendFileSync(path.join(logsDir, 'refine.log'),
         `${timestamp}: ${lineCount} lines, ${rawSize}→${l1Size} bytes (${reduction}% reduction)\n`);
 
       // Remove duplicate L1 files from same session
@@ -237,7 +245,7 @@ async function final() {
         rawSaved = ''; // Clear so instructions don't show deleted file
       }
     } catch (e) {
-      fs.appendFileSync(path.join(getProjectDir(), 'error.log'),
+      fs.appendFileSync(path.join(getLogsDir(), 'error.log'),
         `${timestamp}: Failed to create L1: ${e.message}\n`);
     }
   }

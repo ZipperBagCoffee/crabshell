@@ -83,22 +83,6 @@ function loadMemory() {
     }
   }
 
-  // Load facts summary
-  const factsPath = path.join(memoryDir, 'facts.json');
-  if (fs.existsSync(factsPath)) {
-    const facts = readJsonOrDefault(factsPath, null);
-    if (facts) {
-      const summary = [];
-      if (facts.decisions && facts.decisions.length > 0) summary.push('Decisions: ' + facts.decisions.length);
-      if (facts.patterns && facts.patterns.length > 0) summary.push('Patterns: ' + facts.patterns.length);
-      if (facts.issues && facts.issues.length > 0) {
-        const open = facts.issues.filter(i => i.status === 'open').length;
-        summary.push('Issues: ' + facts.issues.length + ' (' + open + ' open)');
-      }
-      if (summary.length > 0) sections.push('## Facts Summary\n' + summary.join(' | '));
-    }
-  }
-
   // Output
   if (sections.length > 0) {
     console.log('\n=== Memory Keeper: ' + projectName + ' ===\n');
