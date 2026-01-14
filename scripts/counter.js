@@ -335,6 +335,57 @@ function cleanupDuplicateL1(newL1Path) {
   }
 }
 
+// Deduplicate all L1 files (keep largest per session)
+function dedupeL1() {
+  const sessionsDir = path.join(getProjectDir(), '.claude', SESSIONS_DIR);
+  if (!fs.existsSync(sessionsDir)) {
+    console.log('[MEMORY_KEEPER] No sessions directory found');
+    return;
+  }
+
+  const l1Files = fs.readdirSync(sessionsDir).filter(f => f.endsWith('.l1.jsonl'));
+  const tsMap = {};
+
+  // Group files by session start timestamp
+  for (const f of l1Files) {
+    try {
+      const filePath = path.join(sessionsDir, f);
+      const firstLine = fs.readFileSync(filePath, 'utf8').split('\n')[0];
+      const ts = JSON.parse(firstLine).ts;
+      const size = fs.statSync(filePath).size;
+      if (!tsMap[ts]) tsMap[ts] = [];
+      tsMap[ts].push({ file: f, size, path: filePath });
+    } catch (e) {
+      continue;
+    }
+  }
+
+  let deletedCount = 0;
+  let savedBytes = 0;
+
+  // Find and delete duplicates
+  for (const [ts, files] of Object.entries(tsMap)) {
+    if (files.length > 1) {
+      files.sort((a, b) => b.size - a.size);
+      console.log(`\n중복 발견: 세션 ${ts}`);
+      console.log(`  ✅ 유지: ${files[0].file} (${(files[0].size / 1024).toFixed(0)}KB)`);
+
+      for (let i = 1; i < files.length; i++) {
+        console.log(`  ❌ 삭제: ${files[i].file} (${(files[i].size / 1024).toFixed(0)}KB)`);
+        savedBytes += files[i].size;
+        fs.unlinkSync(files[i].path);
+        deletedCount++;
+      }
+    }
+  }
+
+  if (deletedCount === 0) {
+    console.log('[MEMORY_KEEPER] 중복 L1 파일 없음');
+  } else {
+    console.log(`\n[MEMORY_KEEPER] 삭제: ${deletedCount}개 파일, ${(savedBytes / 1024 / 1024).toFixed(2)}MB 절약`);
+  }
+}
+
 
 async function refineAll() {
   const sessionsDir = path.join(getProjectDir(), '.claude', SESSIONS_DIR);
@@ -619,6 +670,9 @@ switch (command) {
       }
     }
     break;
+  case 'dedupe-l1':
+    dedupeL1();
+    break;
   default:
     console.log(`Usage: counter.js <command>
 
@@ -638,5 +692,6 @@ Memory Rotation (v13.0.0):
   migrate-legacy                  Split oversized legacy memory.md
   compress                        Archive old sessions (30+ days)
   refine-all                      Process raw.jsonl to L1
+  dedupe-l1                       Remove duplicate L1 files (keep largest)
 `);
 }

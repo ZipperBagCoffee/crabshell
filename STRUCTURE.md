@@ -1,10 +1,10 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 13.0.0 | **Author**: TaWa | **License**: MIT
+**Version**: 13.2.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
-Memory Keeper is a Claude Code plugin that automatically saves and manages session memory. Supports token-based rotation, L3 Haiku summaries, structured facts storage, and hierarchical memory structure.
+Memory Keeper is a Claude Code plugin that automatically saves and manages session memory. Supports token-based rotation, L3 Haiku summaries, hierarchical L1-L2-L3 structure, and integrated search.
 
 ## Directory Structure
 
@@ -16,13 +16,13 @@ memory-keeper-plugin/
 │       ├── memory.md                 # Rolling session summary (auto-rotates)
 │       ├── memory_*.md               # Rotated archives (L2)
 │       ├── *.summary.json            # L3 summaries (Haiku-generated)
-│       ├── index.json                # Rotation tracking
+│       ├── memory-index.json         # Rotation tracking & counter
 │       ├── project.md                # Project overview (optional)
 │       ├── architecture.md           # Architecture decisions (optional)
 │       ├── conventions.md            # Coding conventions (optional)
-│       ├── facts.json                # Structured decisions/patterns/issues
+│       ├── logs/                     # Refine logs
 │       └── sessions/                 # Per-session archive
-│           └── *.l1.jsonl            # L1 session transcripts
+│           └── *.l1.jsonl            # L1 session transcripts (deduplicated)
 │
 ├── .claude-plugin/                   # Plugin configuration
 │   ├── plugin.json                   # Plugin metadata
@@ -76,14 +76,15 @@ memory-keeper-plugin/
 ### scripts/counter.js
 Main automation engine with commands:
 - `check`: Increment counter, trigger save at threshold, check rotation
-- `final`: Session end handler
-- `search-memory`: Search L1/L2/L3 layers
+- `final`: Session end handler, create L1, cleanup duplicates
+- `reset`: Reset counter to 0
+- `search-memory`: Search L1/L2/L3 layers (--deep for L1)
 - `generate-l3`: Create L3 summary for archive
 - `migrate-legacy`: Split oversized memory files
+- `compress`: Archive old files (30+ days)
+- `refine-all`: Process raw.jsonl to L1
+- `dedupe-l1`: Remove duplicate L1 files (keep largest per session)
 - `memory-set/get/list`: Hierarchical memory management
-- `add-decision/pattern/issue`: Fact recording
-- `search`: Legacy facts.json search
-- `compress`: Archive old files
 
 ### scripts/constants.js
 Centralized configuration:
@@ -123,25 +124,27 @@ L1 generation:
 ```
 1. SessionStart
    └─> load-memory.js
-       └─> Load L2 + L3 + facts
+       └─> Load memory.md + L3 summaries + project files
 
 2. PostToolUse
    └─> counter.js check
        ├─> Increment counter
        ├─> checkAndRotate()
-       └─> Output [MEMORY_KEEPER] at threshold
+       └─> Output [MEMORY_KEEPER] at threshold (default: 5)
 
 3. Stop
    └─> counter.js final
-       └─> Archive transcript + final save
+       ├─> Create L1 session transcript
+       ├─> Cleanup duplicate L1 files
+       └─> Output final save instructions
 ```
 
 ## Version History
 
 | Version | Key Changes |
 |---------|-------------|
-| 13.0.0 | Token-based memory rotation, L3 Haiku summaries, cleanup unused files |
-| 12.3.0 | Clearer hook instructions |
-| 8.2.0 | L4 permanent memory |
-| 8.0.0 | L1 refined transcripts |
-| 7.0.0 | Hierarchical memory structure |
+| 13.2.0 | L1 deduplication, facts.json removal, file deletion warnings |
+| 13.0.0 | Token-based memory rotation, L3 Haiku summaries |
+| 12.x | Stop hook blocking, L2/L3/L4 workflow improvements |
+| 8.x | L1-L4 hierarchical memory system |
+| 7.x | Hierarchical memory (project/architecture/conventions) |

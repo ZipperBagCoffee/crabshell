@@ -1,5 +1,15 @@
 # Changelog
 
+## v13.3.0 (2026-01-14)
+### L1 Deduplication Command
+- **New command**: `dedupe-l1` removes duplicate L1 files (keeps largest per session)
+- **Documentation update**: All docs updated to v13.2.0+ (facts.json removed, new commands)
+
+### Fixes
+- Removed all references to deprecated `facts.json`
+- Removed deprecated commands: `add-decision`, `add-pattern`, `add-issue`, `search` (legacy)
+- Updated README, ARCHITECTURE, USER-MANUAL, STRUCTURE docs
+
 ## v13.0.0 (2026-01-13)
 ### Token-Based Memory Rotation
 - **L2 Auto-rotation**: memory.md automatically rotates when exceeding 23,750 tokens

@@ -30,7 +30,6 @@ Memory Keeper solves this problem.
 **1. Session Start:**
 - Previous session summary (`memory.md`) sent to Claude
 - L3 summaries of archived memory sent to Claude
-- Stored decisions/patterns/issues (`facts.json`) sent to Claude
 - Project info you set (`project.md` etc.) sent to Claude
 
 **2. During Work:**
@@ -47,13 +46,16 @@ Memory Keeper solves this problem.
 
 ```
 .claude/memory/
-├── memory.md           # Active rolling memory (auto-rotates)
-├── memory_*.md         # Rotated archives (L2)
-├── *.summary.json      # L3 summaries (Haiku-generated)
-├── index.json          # Rotation tracking
-├── facts.json          # Decisions/patterns/issues (auto)
-└── sessions/           # Per-session records (auto)
-    └── *.l1.jsonl      # L1 session transcripts
+├── memory.md            # Active rolling memory (auto-rotates)
+├── memory_*.md          # Rotated archives (L2)
+├── *.summary.json       # L3 summaries (Haiku-generated)
+├── memory-index.json    # Rotation tracking & counter
+├── project.md           # Project overview (optional)
+├── architecture.md      # Architecture (optional)
+├── conventions.md       # Coding rules (optional)
+├── logs/                # Refine logs
+└── sessions/            # Per-session records (auto)
+    └── *.l1.jsonl       # L1 session transcripts (deduplicated)
 ```
 
 ---
@@ -146,59 +148,6 @@ node scripts/counter.js memory-get              # View all
 
 ---
 
-## Decision Management
-
-### Manual Addition
-
-```bash
-# Basic
-node scripts/counter.js add-decision "decision content" "reason"
-
-# With type
-node scripts/counter.js add-decision "Use PostgreSQL" "Complex queries" technology
-
-# With related files and concepts
-node scripts/counter.js add-decision "Add Redis caching" "Speed" technology "src/lib/cache.ts" "caching,performance"
-```
-
-**Type options:** `architecture`, `technology`, `approach`
-
-### Search
-
-```bash
-# Legacy search (facts.json only)
-node scripts/counter.js search "auth"
-node scripts/counter.js search --type=technology
-
-# New integrated search (L1/L2/L3)
-node scripts/counter.js search-memory "auth"
-node scripts/counter.js search-memory "auth" --deep
-```
-
----
-
-## Pattern Management
-
-```bash
-node scripts/counter.js add-pattern "Wrap all API responses in try-catch"
-node scripts/counter.js add-pattern "One component per file" convention
-```
-
-**Type options:** `convention`, `best-practice`, `anti-pattern`
-
----
-
-## Issue Management
-
-```bash
-node scripts/counter.js add-issue "Payment page slow" "open" performance
-node scripts/counter.js add-issue "Login bug" "resolved" bugfix
-```
-
-**Type options:** `bugfix`, `performance`, `security`, `feature`
-
----
-
 ## Slash Commands
 
 | Command | When to Use |
@@ -218,16 +167,16 @@ node scripts/counter.js add-issue "Login bug" "resolved" bugfix
 node scripts/counter.js compress
 ```
 
-### Reset Facts
-
-```bash
-node scripts/counter.js clear-facts
-```
-
 ### Reset Counter
 
 ```bash
 node scripts/counter.js reset
+```
+
+### Process Raw Files to L1
+
+```bash
+node scripts/counter.js refine-all
 ```
 
 ---
@@ -242,8 +191,16 @@ node scripts/counter.js reset
 
 ### Auto-save Not Triggering
 
-1. Check `facts.json._meta.counter` value
+1. Check counter in `memory-index.json`
 2. Reset counter with `node scripts/counter.js reset`
+
+### L1 Files Taking Too Much Space
+
+L1 files are deduplicated automatically when created, but manual cleanup may be needed:
+```bash
+# Remove duplicate L1 files (keeps largest per session)
+node scripts/counter.js dedupe-l1
+```
 
 ---
 
@@ -264,6 +221,4 @@ node scripts/counter.js reset
 
 | Version | Claude Code | Node.js |
 |---------|-------------|---------|
-| 13.0.x | 1.0+ | 18+ |
-| 12.x | 1.0+ | 18+ |
-| 8.x | 1.0+ | 18+ |
+| 13.2.x | 1.0+ | 18+ |

@@ -22,9 +22,10 @@ After installation, **you don't need to do anything**. It works automatically.
 ## What Gets Saved
 
 ### Automatic (No action needed)
-- `memory.md` - Session summaries accumulate here
-- `facts.json` - Decisions, patterns, issues stored in structured format
-- `sessions/` - Detailed records for each session
+- `memory.md` - Session summaries accumulate here (auto-rotates at 23,750 tokens)
+- `memory_*.md` - Rotated archives (L2)
+- `*.summary.json` - L3 summaries (Haiku-generated)
+- `sessions/*.l1.jsonl` - Detailed session transcripts (L1)
 
 ### Manual Setup (Optional)
 If there's information you want Claude to know every session:
@@ -67,30 +68,21 @@ After the 5th tool use, Claude receives this message:
 ```
 [MEMORY_KEEPER] AUTO-SAVE TRIGGERED - 5 tool uses reached
 ```
-Claude then automatically saves the current work.
+Claude then automatically appends a summary to memory.md.
 
-### Search Decisions
+### Search Memory
 ```bash
-# Find auth-related decisions
-node scripts/counter.js search "auth"
+# Search across all layers (memory.md, L2 archives, L3 summaries)
+node scripts/counter.js search-memory "auth"
+
+# Include L1 session transcripts (slower, more thorough)
+node scripts/counter.js search-memory "auth" --deep
 
 # Example output:
-# [DECISION d001] [technology] 2025-12-21: Use JWT
-#   Reason: Better scalability than sessions
-# [DECISION d003] [architecture] 2025-12-21: Token refresh on client side
-#   Reason: Reduce server load
-```
-
-### Manually Record Important Decisions
-```bash
-# Record a technology decision
-node scripts/counter.js add-decision "Use MongoDB instead of PostgreSQL" "Document-based data is common" technology
-
-# Record a pattern
-node scripts/counter.js add-pattern "API errors always return { error: string, code: number }" convention
-
-# Record a resolved issue
-node scripts/counter.js add-issue "Login redirect not working" "resolved" bugfix
+# [memory.md]
+#   L15: Implemented JWT authentication for API endpoints
+# [L3 summaries]
+#   [decision] Use refresh tokens for better security
 ```
 
 ## Slash Commands
@@ -109,13 +101,13 @@ node scripts/counter.js add-issue "Login redirect not working" "resolved" bugfix
 ├── memory.md              # Active rolling memory (auto-rotates at 23,750 tokens)
 ├── memory_*.md            # Rotated archives (L2)
 ├── *.summary.json         # L3 summaries (Haiku-generated)
-├── index.json             # Rotation tracking
+├── memory-index.json      # Rotation tracking & counter
 ├── project.md             # Project overview (via memory-set)
 ├── architecture.md        # Architecture (via memory-set)
 ├── conventions.md         # Coding rules (via memory-set)
-├── facts.json             # Structured decisions/patterns/issues (auto)
+├── logs/                  # Refine logs
 └── sessions/
-    └── *.l1.jsonl         # L1 session transcripts
+    └── *.l1.jsonl         # L1 session transcripts (deduplicated)
 ```
 
 ## Configuration
@@ -133,115 +125,62 @@ node scripts/counter.js add-issue "Login redirect not working" "resolved" bugfix
 ## CLI Commands
 
 ```bash
-# View memory
+# Core
+node scripts/counter.js check                  # Increment counter, trigger auto-save
+node scripts/counter.js final                  # Session end handler
+node scripts/counter.js reset                  # Reset counter to 0
+
+# View/Set memory
 node scripts/counter.js memory-list            # List memory files
 node scripts/counter.js memory-get             # View all memory content
 node scripts/counter.js memory-get project     # View project.md only
-
-# Set memory
 node scripts/counter.js memory-set project "content"
 node scripts/counter.js memory-set architecture "content"
 node scripts/counter.js memory-set conventions "content"
 
-# Search (v13.0.0+)
-node scripts/counter.js search-memory "query"       # Search L1/L2/L3
-node scripts/counter.js search-memory --deep        # Include L1 sessions
-node scripts/counter.js search-memory --type=decision
+# Search (hierarchical L3 -> L2 -> L1)
+node scripts/counter.js search-memory "query"       # Search memory.md, L2, L3
+node scripts/counter.js search-memory "query" --deep  # Include L1 sessions
 
-# Legacy search
-node scripts/counter.js search                 # Summary of stored facts
-node scripts/counter.js search "keyword"       # Search by keyword
-node scripts/counter.js search --type=architecture  # Filter by type
-node scripts/counter.js search --concept=auth       # Filter by concept
-
-# Manual recording
-node scripts/counter.js add-decision "content" "reason" [type]
-node scripts/counter.js add-pattern "pattern" [type]
-node scripts/counter.js add-issue "issue" "open|resolved" [type]
-
-# Rotation (v13.0.0+)
-node scripts/counter.js generate-l3 <archive.md>   # Generate L3 summary
-node scripts/counter.js migrate-legacy             # Split oversized files
-
-# Maintenance
-node scripts/counter.js compress               # Archive files older than 30 days
-node scripts/counter.js clear-facts            # Reset facts.json
-node scripts/counter.js reset                  # Reset counter
+# Memory rotation
+node scripts/counter.js generate-l3 <archive.md>   # Generate L3 summary for archive
+node scripts/counter.js migrate-legacy             # Split oversized memory files
+node scripts/counter.js compress                   # Archive old sessions (30+ days)
+node scripts/counter.js refine-all                 # Process raw.jsonl to L1
+node scripts/counter.js dedupe-l1                  # Remove duplicate L1 files
 ```
-
-**Type options:**
-- decisions: `architecture`, `technology`, `approach`
-- patterns: `convention`, `best-practice`, `anti-pattern`
-- issues: `bugfix`, `performance`, `security`, `feature`
 
 ## Documentation
 
 - [User Manual](docs/USER-MANUAL.md) - Detailed usage
 - [Architecture](docs/ARCHITECTURE.md) - System design
 
-## v13.0.0 - Token-Based Memory Rotation
+## Hierarchical Memory Architecture
 
-### Automatic Rotation
-When `memory.md` exceeds **23,750 tokens** (~95KB), it automatically:
-1. Archives current content to `memory_YYYYMMDD_HHMMSS.md`
-2. Keeps last **2,375 tokens** as carryover in new `memory.md`
-3. Triggers `[MEMORY_KEEPER_ROTATE]` for Haiku agent L3 summary
+```
+L1 (sessions/*.l1.jsonl)  - Refined session transcripts (~95% size reduction)
+     ↓
+L2 (memory_*.md)          - Rotated archives (auto at 23,750 tokens)
+     ↓
+L3 (*.summary.json)       - Haiku-generated summaries
+     ↓
+memory.md                 - Active rolling memory (loaded at startup)
+```
 
-### New Commands
-- `search-memory [query]` - Search L1/L2/L3 with filters
-- `generate-l3 <file>` - Generate L3 summary for archive
-- `migrate-legacy` - Split oversized memory files
-
-## v8.2.0 - L4 Permanent Memory Automation
-
-### L4: Permanent Memory with Auto-Triggers
-- **Auto-detection** for things worth remembering:
-  - User explicit requests ("remember")
-  - Repeated solutions (10+ occurrences)
-  - Breakthroughs (problem-solving patterns)
-  - Core logic changes
-- **Self-correction**: Rules track confidence and contradictions
-- **Keyword indexing**: Fast search across all sessions
-
-## v8.1.0 - L2-L3 Hierarchical Summarization
-
-### L2: Exchange Summaries
-- Session end prompts Claude to generate structured summaries
-- Each user request -> response cycle becomes an "exchange"
-- Stored as `.l2.json` files with keywords and file references
-
-### L3: Concept Grouping
-- Related exchanges grouped by file/keyword overlap
-- Concepts stored in `concepts.json`
-- Automatic classification with 30% overlap threshold
-
-## v8.0.0 - Hierarchical Memory (L1)
-
-### L1: Refined Raw Content
-
-Raw transcripts are now automatically refined to remove junk metadata:
-- Removes: queue-operation, file-history-snapshot, thinking blocks
-- Keeps: user text, assistant text, tool summaries with diff
-- Size reduction: ~95% (20MB -> 1MB)
-
-### New Commands
-
-- `refine-all` - Process all existing raw files to create L1 versions
+- **L1**: Raw transcripts refined to keep only meaningful content
+- **L2**: memory.md auto-rotates when too large, archives preserved
+- **L3**: AI-generated summaries of archived content
+- **Search**: `search-memory` traverses L3 → L2 → memory.md (add `--deep` for L1)
 
 ## Version
 
 | Version | Changes |
 |---------|---------|
+| 13.2.0 | L1 deduplication, facts.json removal, file deletion warnings |
 | 13.0.0 | Token-based memory rotation (L2 archives, L3 summaries) |
-| 12.3.0 | Clearer hook instructions for L1->L2->L3->L4 workflow |
-| 8.2.0 | L4 permanent memory automation |
-| 8.1.0 | L2-L3 hierarchical summarization |
-| 8.0.0 | L1 hierarchical memory refinement |
-| 7.1.0 | Direct fact extraction (no session file step) |
-| 7.0.1 | clearFacts bug fix, added slash command skills |
-| 7.0.0 | Hierarchical memory (project/architecture/conventions) |
-| 6.5.0 | File references + concept tagging |
-| 6.4.0 | Type classification + privacy tags |
+| 12.x | Stop hook blocking, L2/L3/L4 workflow improvements |
+| 8.x | L1-L4 hierarchical memory system |
+| 7.x | Hierarchical memory (project/architecture/conventions) |
 
 ## License
 

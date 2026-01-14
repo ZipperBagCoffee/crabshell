@@ -23,10 +23,10 @@ Memory Keeper is a Claude Code plugin that automatically saves session context u
 |  +----------------+  +------------------------------------------+   |
 |  | load-memory.js |  | counter.js                               |   |
 |  |                |  | - check: increment counter, trigger      |   |
-|  | Reads:         |  | - final: save transcript, output instr   |   |
+|  | Reads:         |  | - final: save transcript, create L1      |   |
 |  | - memory.md    |  | - search-memory: L1/L2/L3 search         |   |
 |  | - L3 summaries |  | - generate-l3: create L3 summary         |   |
-|  | - facts.json   |  | - migrate-legacy: split large files      |   |
+|  | - project.md   |  | - compress, refine-all, migrate-legacy   |   |
 |  +----------------+  +------------------------------------------+   |
 |                                                                      |
 |  +----------------+  +----------------+  +----------------------+    |
@@ -43,11 +43,10 @@ Memory Keeper is a Claude Code plugin that automatically saves session context u
 |  | Auto-created:                          |  | sessions/      |     |
 |  | - memory.md (rolling, auto-rotates)    |  | - *.l1.jsonl   |     |
 |  | - memory_*.md (L2 archives)            |  +----------------+     |
-|  | - *.summary.json (L3 summaries)        |                         |
-|  | - index.json (rotation tracking)       |                         |
-|  | - facts.json (structured facts)        |                         |
-|  |                                        |                         |
-|  | Optional (create with memory-set):     |                         |
+|  | - *.summary.json (L3 summaries)        |  +----------------+     |
+|  | - memory-index.json (rotation/counter) |  | logs/          |     |
+|  |                                        |  | - refine.log   |     |
+|  | Optional (create with memory-set):     |  +----------------+     |
 |  | - project.md                           |                         |
 |  | - architecture.md                      |                         |
 |  | - conventions.md                       |                         |
@@ -104,18 +103,18 @@ Save to *.summary.json
 
 | Command | Description |
 |---------|-------------|
-| check | Increment counter, trigger at threshold |
-| final | Copy transcript, output final instructions |
-| search-memory | Search L1/L2/L3 layers |
+| check | Increment counter, trigger auto-save at interval |
+| final | Session end: create L1, cleanup duplicates |
+| reset | Reset counter to 0 |
+| search-memory | Search L1/L2/L3 layers (--deep for L1) |
 | generate-l3 | Create L3 summary for archive |
 | migrate-legacy | Split oversized memory files |
+| compress | Archive 30+ day files |
+| refine-all | Process raw.jsonl to L1 |
+| dedupe-l1 | Remove duplicate L1 files (keep largest) |
 | memory-set | Set hierarchical memory file content |
 | memory-get | Get memory file content |
-| add-decision | Add decision to facts.json |
-| add-pattern | Add pattern to facts.json |
-| add-issue | Add issue to facts.json |
-| search | Search facts.json (legacy) |
-| compress | Archive 30+ day files |
+| memory-list | List all memory files |
 
 ## Configuration Constants (constants.js)
 
@@ -126,14 +125,15 @@ Save to *.summary.json
 | CARRYOVER_TOKENS | 2500 | Base carryover amount |
 | MEMORY_DIR | memory | Memory storage directory |
 | SESSIONS_DIR | sessions | Session storage directory |
-| INDEX_FILE | index.json | Rotation tracking file |
+| INDEX_FILE | memory-index.json | Rotation tracking + counter |
 | MEMORY_FILE | memory.md | Active memory file |
 
-## index.json Structure
+## memory-index.json Structure
 
 ```json
 {
-  "version": "13.0.0",
+  "version": 1,
+  "current": "memory.md",
   "rotatedFiles": [
     {
       "file": "memory_20260113_120000.md",
@@ -142,7 +142,12 @@ Save to *.summary.json
       "summary": "memory_20260113_120000.summary.json",
       "summaryGenerated": true
     }
-  ]
+  ],
+  "stats": {
+    "totalRotations": 0,
+    "lastRotation": null
+  },
+  "counter": 0
 }
 ```
 
@@ -169,9 +174,8 @@ Save to *.summary.json
 
 | Version | Key Changes |
 |---------|-------------|
+| 13.2.0 | L1 deduplication, facts.json removal, file deletion warnings |
 | 13.0.0 | Token-based memory rotation, L3 Haiku summaries, integrated search |
-| 12.3.0 | Clearer hook instructions for L1-L4 workflow |
-| 8.2.0 | L4 permanent memory automation |
-| 8.0.0 | L1 refined transcripts |
-| 7.0.0 | Hierarchical memory structure |
-| 6.5.0 | File references + concept tagging |
+| 12.x | Stop hook blocking, L2/L3/L4 workflow improvements |
+| 8.x | L1-L4 hierarchical memory system |
+| 7.x | Hierarchical memory (project/architecture/conventions) |
