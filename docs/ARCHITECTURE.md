@@ -101,6 +101,9 @@ Save to *.summary.json
 
 ## counter.js Commands
 
+> ⚠️ **Note:** These commands only work inside the plugin directory.
+> For normal usage, use slash commands like `/memory-keeper:search-memory`.
+
 | Command | Description |
 |---------|-------------|
 | check | Increment counter, trigger auto-save at interval |

@@ -28,36 +28,16 @@ After installation, **you don't need to do anything**. It works automatically.
 - `sessions/*.l1.jsonl` - Detailed session transcripts (L1)
 
 ### Manual Setup (Optional)
-If there's information you want Claude to know every session:
+If there's information you want Claude to know every session, **directly edit the files**:
 
 ```bash
-# Set project overview
-node scripts/counter.js memory-set project "
-React + TypeScript web app.
-Backend: Node.js + PostgreSQL.
-Currently developing user authentication.
-"
-
-# Set architecture
-node scripts/counter.js memory-set architecture "
-src/
-  components/  - React components
-  hooks/       - Custom hooks
-  services/    - API calls
-  utils/       - Utilities
-
-State management: Zustand
-API: REST, /api/v1/ prefix
-"
-
-# Set coding conventions
-node scripts/counter.js memory-set conventions "
-- Functional components only
-- Tests required (Jest + React Testing Library)
-- Lint must pass before commit
-- Variable names: camelCase
-"
+# Create/edit files in your project's .claude/memory/ folder
+echo "React + TypeScript web app." > .claude/memory/project.md
+echo "src/ - components, hooks, services" > .claude/memory/architecture.md
+echo "Functional components only" > .claude/memory/conventions.md
 ```
+
+Or just ask Claude: "Save the project info to project.md"
 
 With this setup, **Claude starts every new session knowing this information**.
 
@@ -85,7 +65,9 @@ node scripts/counter.js search-memory "auth" --deep
 #   [decision] Use refresh tokens for better security
 ```
 
-## Slash Commands
+## Slash Commands (Recommended)
+
+**Works in any project where the plugin is installed:**
 
 | Command | Description |
 |---------|-------------|
@@ -93,6 +75,8 @@ node scripts/counter.js search-memory "auth" --deep
 | `/memory-keeper:load-memory` | Reload memory (after manual edits) |
 | `/memory-keeper:search-memory query` | Search past sessions |
 | `/memory-keeper:clear-memory old` | Clean up files older than 30 days |
+
+> **Note:** Slash commands work in any project with the plugin installed. Use these instead of CLI commands.
 
 ## Storage Location
 
@@ -122,9 +106,15 @@ node scripts/counter.js search-memory "auth" --deep
 - `saveInterval`: How many tool uses before save (default: 5)
 - `keepRaw`: Keep raw.jsonl files after L1 conversion (default: false)
 
-## CLI Commands
+## CLI Commands (Advanced)
+
+> ⚠️ **Warning:** These commands only work **inside the plugin directory**.
+> For normal use, use the **Slash Commands** above.
 
 ```bash
+# Navigate to plugin directory first
+cd ~/.claude/plugins/cache/memory-keeper-plugin  # or your plugin install path
+
 # Core
 node scripts/counter.js check                  # Increment counter, trigger auto-save
 node scripts/counter.js final                  # Session end handler
@@ -148,6 +138,11 @@ node scripts/counter.js migrate-legacy             # Split oversized memory file
 node scripts/counter.js compress                   # Archive old sessions (30+ days)
 node scripts/counter.js refine-all                 # Process raw.jsonl to L1
 node scripts/counter.js dedupe-l1                  # Remove duplicate L1 files
+```
+
+**To run CLI from other projects:**
+```bash
+node "$CLAUDE_PLUGIN_ROOT/scripts/counter.js" <command>
 ```
 
 ## Documentation

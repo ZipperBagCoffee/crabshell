@@ -69,29 +69,15 @@ When `memory.md` grows beyond **23,750 tokens** (~95KB):
 
 ### Search Across All Layers
 
-```bash
-# Search L1/L2/L3 layers
-node scripts/counter.js search-memory "query"
-
-# Include L1 raw sessions (slower but thorough)
-node scripts/counter.js search-memory "query" --deep
-
-# Filter by type
-node scripts/counter.js search-memory --type=decision
+**Use slash command (recommended):**
+```
+/memory-keeper:search-memory auth
 ```
 
-### Manual L3 Generation
+**Or ask Claude directly:**
+> "Search memory for authentication related work"
 
-```bash
-# Generate L3 summary for archived file
-node scripts/counter.js generate-l3 memory_20260113_120000.md
-```
-
-### Split Oversized Legacy Files
-
-```bash
-node scripts/counter.js migrate-legacy
-```
+---
 
 ---
 
@@ -101,54 +87,33 @@ node scripts/counter.js migrate-legacy
 
 Set information you want Claude to know **at the start of every session**.
 
-#### project.md - Project Overview
+**Option 1: Ask Claude (Recommended)**
+> "Save this to project.md: This is a Next.js 14 app with TypeScript and Prisma."
 
+**Option 2: Edit files directly**
 ```bash
-node scripts/counter.js memory-set project "
-Project: Online Shopping Mall
-Tech Stack: Next.js 14, TypeScript, Prisma, PostgreSQL
-Current Status: MVP development, implementing payment feature
-"
-```
-
-#### architecture.md - System Structure
-
-```bash
-node scripts/counter.js memory-set architecture "
-Directory Structure:
-src/
-  app/           - Next.js 14 App Router
-  components/    - React components
-  lib/           - Utilities
-  services/      - API call wrappers
-"
-```
-
-#### conventions.md - Coding Rules
-
-```bash
-node scripts/counter.js memory-set conventions "
-Code Style:
-- Functional components only
-- Filenames: kebab-case
-- Component names: PascalCase
-"
+# In your project folder
+echo "Next.js 14 + TypeScript + Prisma" > .claude/memory/project.md
+echo "src/app - App Router, src/components - UI" > .claude/memory/architecture.md
+echo "Functional components, kebab-case files" > .claude/memory/conventions.md
 ```
 
 ### Check Settings
 
-```bash
-# List all memory files
-node scripts/counter.js memory-list
+**Ask Claude:**
+> "Show me what's in memory"
 
-# View specific memory content
-node scripts/counter.js memory-get project
-node scripts/counter.js memory-get              # View all
+**Or view files directly:**
+```bash
+cat .claude/memory/project.md
+cat .claude/memory/architecture.md
 ```
 
 ---
 
-## Slash Commands
+## Slash Commands (Recommended)
+
+**These work in any project with the plugin installed:**
 
 | Command | When to Use |
 |---------|-------------|
@@ -157,26 +122,19 @@ node scripts/counter.js memory-get              # View all
 | `/memory-keeper:search-memory keyword` | Find past work |
 | `/memory-keeper:clear-memory old` | Clean up old files |
 
+> **Tip:** For most operations, just ask Claude directly instead of using commands.
+
 ---
 
 ## Maintenance
 
-### Clean Up Old Files
+**Ask Claude for maintenance tasks:**
+> "Clean up old memory files"
+> "Reset the memory counter"
 
-```bash
-node scripts/counter.js compress
+Or use slash command:
 ```
-
-### Reset Counter
-
-```bash
-node scripts/counter.js reset
-```
-
-### Process Raw Files to L1
-
-```bash
-node scripts/counter.js refine-all
+/memory-keeper:clear-memory old
 ```
 
 ---
@@ -191,16 +149,14 @@ node scripts/counter.js refine-all
 
 ### Auto-save Not Triggering
 
-1. Check counter in `memory-index.json`
-2. Reset counter with `node scripts/counter.js reset`
+1. Check counter in `.claude/memory/memory-index.json`
+2. Ask Claude: "Reset the memory counter"
 
 ### L1 Files Taking Too Much Space
 
-L1 files are deduplicated automatically when created, but manual cleanup may be needed:
-```bash
-# Remove duplicate L1 files (keeps largest per session)
-node scripts/counter.js dedupe-l1
-```
+Ask Claude: "Remove duplicate L1 files"
+
+L1 files are deduplicated automatically when created, but manual cleanup may sometimes be needed.
 
 ---
 
