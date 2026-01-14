@@ -33,17 +33,18 @@ function loadMemory() {
   // Load L3 summaries from index
   const indexPath = path.join(memoryDir, INDEX_FILE);
   const index = readJsonOrDefault(indexPath, null);
-  
-  if (index && index.rotatedFiles) {
+  const rotatedFiles = (index && Array.isArray(index.rotatedFiles)) ? index.rotatedFiles : [];
+
+  if (rotatedFiles.length > 0) {
     // Check for pending summaries
-    const pending = index.rotatedFiles.filter(f => !f.summaryGenerated);
+    const pending = rotatedFiles.filter(f => !f.summaryGenerated);
     if (pending.length > 0) {
       console.log('[MEMORY_KEEPER] ' + pending.length + ' summaries pending:');
       pending.forEach(f => console.log('  - ' + f.file));
     }
 
     // Load most recent L3 summary
-    const generated = index.rotatedFiles.filter(f => f.summaryGenerated);
+    const generated = rotatedFiles.filter(f => f.summaryGenerated);
     if (generated.length > 0) {
       const latest = generated[generated.length - 1];
       const summaryPath = path.join(memoryDir, latest.summary);

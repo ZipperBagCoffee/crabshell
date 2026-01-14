@@ -177,4 +177,4 @@ L1 files are deduplicated automatically when created, but manual cleanup may som
 
 | Version | Claude Code | Node.js |
 |---------|-------------|---------|
-| 13.2.x | 1.0+ | 18+ |
+| 13.3.x | 1.0+ | 18+ |

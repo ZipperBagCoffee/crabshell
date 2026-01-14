@@ -1,6 +1,6 @@
 {
   "name": "memory-keeper",
-  "version": "13.3.0",
+  "version": "13.3.1",
   "description": "Auto-save memory with token-based rotation, L3 Haiku summaries, hierarchical structure, and integrated search.",
   "author": {
     "name": "TaWa"

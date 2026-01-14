@@ -171,6 +171,7 @@ memory.md                 - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 13.3.1 | Fix memory-index.json structure handling bug |
 | 13.2.0 | L1 deduplication, facts.json removal, file deletion warnings |
 | 13.0.0 | Token-based memory rotation (L2 archives, L3 summaries) |
 | 12.x | Stop hook blocking, L2/L3/L4 workflow improvements |

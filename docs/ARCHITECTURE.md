@@ -177,6 +177,7 @@ Save to *.summary.json
 
 | Version | Key Changes |
 |---------|-------------|
+| 13.3.1 | Fix memory-index.json structure handling bug |
 | 13.2.0 | L1 deduplication, facts.json removal, file deletion warnings |
 | 13.0.0 | Token-based memory rotation, L3 Haiku summaries, integrated search |
 | 12.x | Stop hook blocking, L2/L3/L4 workflow improvements |

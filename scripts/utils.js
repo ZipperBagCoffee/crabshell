@@ -64,6 +64,8 @@ function extractTailByTokens(content, targetTokens) {
 function updateIndex(archivePath, tokens, memoryDir, dateRange) {
   const indexPath = path.join(memoryDir, INDEX_FILE);
   const index = readJsonOrDefault(indexPath, { version: 1, current: MEMORY_FILE, rotatedFiles: [], stats: { totalRotations: 0, lastRotation: null } });
+  if (!Array.isArray(index.rotatedFiles)) index.rotatedFiles = [];
+  if (!index.stats) index.stats = { totalRotations: 0, lastRotation: null };
   const entry = { file: path.basename(archivePath), rotatedAt: new Date().toISOString(), tokens, bytes: fs.statSync(archivePath).size, summary: path.basename(archivePath).replace('.md', '.summary.json'), summaryGenerated: false };
   if (dateRange) entry.dateRange = dateRange;
   index.rotatedFiles.push(entry);
