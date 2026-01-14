@@ -108,7 +108,7 @@ ${FILE_DELETION_WARNING}
 
 **APPEND to memory.md:**
 \`\`\`bash
-echo -e "\\n## ${timestamp}\\n[1-2 sentence summary of work so far]" >> "${projectDir}/memory.md"
+echo -e "\\n## ${timestamp}\\n[1-2 sentence summary of work so far]" >> "${projectDir}/.claude/memory/memory.md"
 \`\`\`
 
 ═══════════════════════════════════════════════════════════════`;
@@ -265,7 +265,7 @@ ${rawSaved ? `✓ Raw transcript saved: ${rawSaved}` : '⚠ Raw transcript not s
 
 **APPEND complete summary to memory.md:**
 \`\`\`bash
-echo -e "\\n## ${timestamp} (Session End)\\n[Complete session summary - be thorough]" >> "${projectDir}/memory.md"
+echo -e "\\n## ${timestamp} (Session End)\\n[Complete session summary - be thorough]" >> "${projectDir}/.claude/memory/memory.md"
 \`\`\`
 
 **RUN compression:**
@@ -506,7 +506,7 @@ function memoryList() {
   });
 
   // Also show memory.md (rolling)
-  const memoryPath = path.join(projectDir, 'memory.md');
+  const memoryPath = path.join(projectDir, '.claude', MEMORY_DIR, MEMORY_FILE);
   if (fs.existsSync(memoryPath)) {
     const stats = fs.statSync(memoryPath);
     const content = readFileOrDefault(memoryPath, '');
