@@ -1,5 +1,25 @@
 # Changelog
 
+## v13.5.0 (2026-01-14)
+### Smarter Auto-Save with Delta Updates
+- **Delta-based summarization**: Auto-save now extracts actual changes from L1 session log
+- **Haiku summarization**: Delta content summarized by Haiku agent for accurate memory.md updates
+- **Session-end processing**: Remaining unsaved content processed before session ends
+
+### Rules Injection via UserPromptSubmit Hook
+- **Persistent rules**: Critical rules injected every prompt (not just session start)
+- **User indicator**: `[rules injected]` shown in terminal
+- **Configurable frequency**: Set `rulesInjectionFrequency` in config.json (default: 1 = every prompt)
+
+### New Files
+- `scripts/inject-rules.js` - UserPromptSubmit hook handler
+- `scripts/extract-delta.js` - L1 delta extraction with CLI
+- `agents/delta-summarizer.md` - Haiku agent for delta summarization
+- `skills/memory-delta/SKILL.md` - Auto-trigger skill for delta processing
+
+### Cleanup
+- Removed `ensureClaudeMdRules()` from load-memory.js (replaced by inject-rules.js)
+
 ## v13.3.0 (2026-01-14)
 ### L1 Deduplication Command
 - **New command**: `dedupe-l1` removes duplicate L1 files (keeps largest per session)

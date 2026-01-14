@@ -100,11 +100,13 @@ node scripts/counter.js search-memory "auth" --deep
 ```json
 {
   "saveInterval": 5,
-  "keepRaw": false
+  "keepRaw": false,
+  "rulesInjectionFrequency": 1
 }
 ```
 - `saveInterval`: How many tool uses before save (default: 5)
 - `keepRaw`: Keep raw.jsonl files after L1 conversion (default: false)
+- `rulesInjectionFrequency`: Inject rules every N prompts (default: 1 = every prompt)
 
 ## CLI Commands (Advanced)
 
@@ -171,6 +173,7 @@ memory.md                 - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 13.5.0 | Delta-based auto-save (Haiku summarization), rules injection every prompt |
 | 13.3.1 | Fix memory-index.json structure handling bug |
 | 13.2.0 | L1 deduplication, facts.json removal, file deletion warnings |
 | 13.0.0 | Token-based memory rotation (L2 archives, L3 summaries) |

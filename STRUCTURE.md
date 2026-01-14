@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 13.2.0 | **Author**: TaWa | **License**: MIT
+**Version**: 13.5.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -29,7 +29,8 @@ memory-keeper-plugin/
 │   └── marketplace.json              # Marketplace registration
 │
 ├── agents/                           # Background agent definitions
-│   └── memory-summarizer.md          # L3 summary generator (haiku)
+│   ├── memory-summarizer.md          # L3 summary generator (haiku)
+│   └── delta-summarizer.md           # Delta content summarizer (haiku)
 │
 ├── commands/                         # CLI commands
 │   ├── save-memory.md                # Manual save command
@@ -44,6 +45,8 @@ memory-keeper-plugin/
 ├── scripts/                          # Core implementation (Node.js)
 │   ├── counter.js                    # Main engine
 │   ├── load-memory.js                # Load memory on session start
+│   ├── inject-rules.js               # UserPromptSubmit rules injection
+│   ├── extract-delta.js              # L1 delta extraction
 │   ├── constants.js                  # Centralized configuration
 │   ├── init.js                       # Project initialization
 │   ├── search.js                     # L1/L2/L3 integrated search
@@ -54,6 +57,7 @@ memory-keeper-plugin/
 │
 ├── skills/                           # Slash command skills
 │   ├── memory-save/SKILL.md          # Auto-trigger memory save
+│   ├── memory-delta/SKILL.md         # Auto-trigger delta summarization
 │   ├── save-memory/SKILL.md          # /memory-keeper:save-memory
 │   ├── load-memory/SKILL.md          # /memory-keeper:load-memory
 │   ├── search-memory/SKILL.md        # /memory-keeper:search-memory
@@ -91,6 +95,7 @@ Centralized configuration:
 - `ROTATION_THRESHOLD_TOKENS`: 23750 (25000 * 0.95)
 - `CARRYOVER_TOKENS`: 2375 (2500 * 0.95)
 - `MEMORY_DIR`, `SESSIONS_DIR`, `INDEX_FILE`, `MEMORY_FILE`
+- `DELTA_TEMP_FILE`, `HAIKU_SAFE_TOKENS`, `FIRST_RUN_MAX_ENTRIES`
 
 ### scripts/memory-rotation.js
 Token-based rotation logic:
@@ -105,6 +110,17 @@ Session start loader:
 - Load hierarchical memory files
 - Load L3 summaries
 - Load rolling memory tail
+
+### scripts/inject-rules.js
+UserPromptSubmit hook:
+- Inject critical rules every prompt via `additionalContext`
+- Configurable frequency via `rulesInjectionFrequency`
+
+### scripts/extract-delta.js
+L1 delta extraction:
+- `extractDelta()`: Extract changes since last memory.md update
+- `markMemoryUpdated()`: Update timestamp watermark
+- `cleanupDeltaTemp()`: Remove temp file after processing
 
 ### scripts/refine-raw.js
 L1 generation:
@@ -126,16 +142,22 @@ L1 generation:
    └─> load-memory.js
        └─> Load memory.md + L3 summaries + project files
 
-2. PostToolUse
+2. UserPromptSubmit (every prompt)
+   └─> inject-rules.js
+       └─> Inject critical rules via additionalContext
+       └─> Output [rules injected] indicator
+
+3. PostToolUse
    └─> counter.js check
        ├─> Increment counter
        ├─> checkAndRotate()
-       └─> Output [MEMORY_KEEPER] at threshold (default: 5)
+       └─> At threshold: extractDelta() → [MEMORY_KEEPER_DELTA]
 
-3. Stop
+4. Stop
    └─> counter.js final
        ├─> Create L1 session transcript
        ├─> Cleanup duplicate L1 files
+       ├─> extractDelta() for remaining content
        └─> Output final save instructions
 ```
 
@@ -143,6 +165,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 13.5.0 | Delta-based auto-save, rules injection via UserPromptSubmit |
 | 13.2.0 | L1 deduplication, facts.json removal, file deletion warnings |
 | 13.0.0 | Token-based memory rotation, L3 Haiku summaries |
 | 12.x | Stop hook blocking, L2/L3/L4 workflow improvements |

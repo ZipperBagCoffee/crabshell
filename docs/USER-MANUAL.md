@@ -34,9 +34,9 @@ Memory Keeper solves this problem.
 
 **2. During Work:**
 - Auto-save triggers every 5 tool uses
-- Claude records decisions/patterns/issues directly via CLI commands
-- Summary appended to `memory.md`
+- Delta extracted from L1 session log → Haiku summarizes → appended to `memory.md`
 - Auto-rotation when memory.md exceeds 23,750 tokens
+- Rules re-injected every prompt to ensure Claude follows them
 
 **3. Session End:**
 - Full conversation backed up (`.l1.jsonl`)
@@ -167,9 +167,14 @@ L1 files are deduplicated automatically when created, but manual cleanup may som
 ```json
 {
   "saveInterval": 5,
-  "keepRaw": false
+  "keepRaw": false,
+  "rulesInjectionFrequency": 1
 }
 ```
+
+- `saveInterval`: Tool uses before auto-save trigger (default: 5)
+- `keepRaw`: Keep raw.jsonl after L1 conversion (default: false)
+- `rulesInjectionFrequency`: Inject rules every N prompts (default: 1 = every prompt)
 
 ---
 
@@ -177,4 +182,4 @@ L1 files are deduplicated automatically when created, but manual cleanup may som
 
 | Version | Claude Code | Node.js |
 |---------|-------------|---------|
-| 13.3.x | 1.0+ | 18+ |
+| 13.5.x | 1.0+ | 18+ |
