@@ -113,16 +113,12 @@ echo -e "\\n## ${timestamp}\\n[1-2 sentence summary of work so far]" >> "${proje
 
 ═══════════════════════════════════════════════════════════════`;
 
-    const output = {
-      hookSpecificOutput: {
-        hookEventName: "PostToolUse",
-        additionalContext: instructions
-      }
-    };
-    console.log(JSON.stringify(output));
-
-    // Auto-reset counter after trigger to prevent duplicate triggers
+    // Reset counter before exit
     setCounter(0);
+
+    // stderr + exit 2 = Claude sees this as system-reminder
+    console.error(instructions);
+    process.exit(2);
   }
 }
 
