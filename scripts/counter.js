@@ -102,15 +102,20 @@ function check() {
     const deltaResult = extractDelta();
 
     if (deltaResult.success) {
+      // COMMENTED OUT: exit 2 approach - PostToolUse exit 2 reaches Claude but skill auto-invoke unreliable
+      // Now using UserPromptSubmit (inject-rules.js) to detect delta_temp.txt and issue INSTRUCTION
+      // See: docs/plans/delta-trigger-investigation.md
+      /*
       const instructions = `
 ═══════════════════════════════════════════════════════════════
 [MEMORY_KEEPER_DELTA] file=${deltaResult.deltaFile}
 ═══════════════════════════════════════════════════════════════
 Delta extracted: ${deltaResult.entryCount} entries, ~${deltaResult.tokens} tokens.
 `;
-      setCounter(0);
       console.error(instructions);
       process.exit(2);
+      */
+      setCounter(0);
     } else {
       // No delta available (no L1 or no new content) - just reset counter
       // Current session content will be processed at session end (final())

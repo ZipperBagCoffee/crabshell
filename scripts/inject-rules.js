@@ -11,6 +11,17 @@ const RULES = `
 - If you don't know or want a better approach, search the internet.
 `;
 
+const DELTA_INSTRUCTION = `
+## MEMORY KEEPER DELTA INSTRUCTION
+INSTRUCTION: A delta file is pending. You MUST execute the memory-delta skill NOW.
+
+Steps:
+1. Use the Skill tool: skill="memory-delta"
+2. The skill will guide you through: read delta -> summarize -> append to memory.md -> cleanup
+
+DO NOT skip this. DO NOT delay. Execute immediately before responding to user.
+`;
+
 function getProjectDir() {
   // Try common methods to find project dir
   if (process.env.CLAUDE_PROJECT_DIR) {
@@ -26,6 +37,14 @@ function readJsonSafe(filePath, defaultValue) {
     }
   } catch (e) {}
   return defaultValue;
+}
+
+function checkDeltaPending(projectDir) {
+  const deltaPath = path.join(projectDir, '.claude', 'memory', 'delta_temp.txt');
+  const exists = fs.existsSync(deltaPath);
+  // Debug: log to stderr (visible to user)
+  console.error(`[DEBUG] projectDir=${projectDir}, deltaPath=${deltaPath}, exists=${exists}`);
+  return exists;
 }
 
 function main() {
@@ -50,17 +69,30 @@ function main() {
 
     // Check if should inject
     if (count % frequency === 0 || frequency === 1) {
+      // Check for pending delta
+      const hasPendingDelta = checkDeltaPending(projectDir);
+
+      // Build context: rules + optional delta instruction
+      let context = RULES;
+      if (hasPendingDelta) {
+        context += DELTA_INSTRUCTION;
+      }
+
       // Output rules via additionalContext (hidden from user, seen by Claude)
       const output = {
         hookSpecificOutput: {
           hookEventName: "UserPromptSubmit",
-          additionalContext: RULES
+          additionalContext: context
         }
       };
       console.log(JSON.stringify(output));
 
       // Brief indicator to stderr (shown to user)
-      console.error('[rules injected]');
+      if (hasPendingDelta) {
+        console.error('[rules injected + delta pending]');
+      } else {
+        console.error('[rules injected]');
+      }
     }
   } catch (e) {
     // On error, still try to inject rules (fail-safe)
