@@ -101,4 +101,45 @@ function searchL1Sessions(projectDir, query) {
   return matches;
 }
 
-module.exports = { searchMemory, searchL3Summaries, searchL2Archives };
+// Parse timestamp string to Date object
+function parseTimestamp(ts) {
+  // Format: "2026-01-13_0830" or "2026-01-13_0830"
+  const match = ts.match(/(\d{4})-(\d{2})-(\d{2})_(\d{2})(\d{2})/);
+  if (!match) return null;
+  return new Date(match[1], match[2] - 1, match[3], match[4], match[5]);
+}
+
+// Parse L1 filename to Date object
+function parseFilenameTimestamp(filename) {
+  // Format: "2026-01-13_0839.l1.jsonl"
+  const match = filename.match(/(\d{4})-(\d{2})-(\d{2})_(\d{2})(\d{2})\.l1\.jsonl/);
+  if (!match) return null;
+  return new Date(match[1], match[2] - 1, match[3], match[4], match[5]);
+}
+
+// Find the L1 file that covers a given timestamp
+function findL1ForTimestamp(timestamp, sessionsDir) {
+  if (!fs.existsSync(sessionsDir)) return null;
+  const targetTime = parseTimestamp(timestamp);
+  if (!targetTime) return null;
+
+  const l1Files = fs.readdirSync(sessionsDir)
+    .filter(f => f.endsWith('.l1.jsonl'))
+    .map(f => {
+      const filePath = path.join(sessionsDir, f);
+      try {
+        const firstLine = fs.readFileSync(filePath, 'utf8').split('\n')[0];
+        const startTs = JSON.parse(firstLine).ts;
+        const endTs = parseFilenameTimestamp(f);
+        return { file: f, start: new Date(startTs), end: endTs };
+      } catch (e) {
+        return null;
+      }
+    })
+    .filter(f => f !== null);
+
+  // Find L1 where target time is within range
+  return l1Files.find(l1 => targetTime >= l1.start && targetTime <= l1.end);
+}
+
+module.exports = { searchMemory, searchL3Summaries, searchL2Archives, findL1ForTimestamp };

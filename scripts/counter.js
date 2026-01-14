@@ -220,6 +220,9 @@ async function final() {
       fs.appendFileSync(path.join(getProjectDir(), 'refine.log'),
         `${timestamp}: ${lineCount} lines, ${rawSize}→${l1Size} bytes (${reduction}% reduction)\n`);
 
+      // Remove duplicate L1 files from same session
+      cleanupDuplicateL1(l1Dest);
+
       // Delete raw file unless keepRaw is enabled
       const config = getConfig();
       if (!config.keepRaw) {
@@ -276,8 +279,44 @@ function reset() {
   console.log('[MEMORY_KEEPER] Counter reset.');
 }
 
+// Remove duplicate L1 files from same session (keep only the largest/latest)
+function cleanupDuplicateL1(newL1Path) {
+  const sessionsDir = path.dirname(newL1Path);
+  const newL1Content = fs.readFileSync(newL1Path, 'utf8');
+  const newL1FirstLine = newL1Content.split('\n')[0];
 
+  let sessionStartTs;
+  try {
+    sessionStartTs = JSON.parse(newL1FirstLine).ts;
+  } catch (e) {
+    return; // Skip if parsing fails
+  }
 
+  const newL1Size = fs.statSync(newL1Path).size;
+  const newL1Name = path.basename(newL1Path);
+
+  // Find and delete smaller L1 files from same session
+  const l1Files = fs.readdirSync(sessionsDir).filter(f => f.endsWith('.l1.jsonl'));
+
+  for (const fileName of l1Files) {
+    if (fileName === newL1Name) continue;
+
+    const filePath = path.join(sessionsDir, fileName);
+    const firstLine = fs.readFileSync(filePath, 'utf8').split('\n')[0];
+
+    try {
+      const fileStartTs = JSON.parse(firstLine).ts;
+      const fileSize = fs.statSync(filePath).size;
+
+      // Same session and smaller than new file = delete
+      if (fileStartTs === sessionStartTs && fileSize < newL1Size) {
+        fs.unlinkSync(filePath);
+      }
+    } catch (e) {
+      continue;
+    }
+  }
+}
 
 
 async function refineAll() {
