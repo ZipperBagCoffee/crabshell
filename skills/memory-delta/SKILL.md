@@ -12,7 +12,7 @@ Auto-invoked when hook outputs `[MEMORY_KEEPER_DELTA] file=delta_temp.txt`.
 1. **Call Haiku agent for summarization**:
    ```
    Task tool:
-   - subagent_type: "delta-summarizer"
+   - subagent_type: "memory-keeper:delta-summarizer"
    - model: "haiku"
    - prompt: "Read .claude/memory/delta_temp.txt and summarize in 1-2 sentences."
    ```

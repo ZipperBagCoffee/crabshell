@@ -23,9 +23,12 @@ DO NOT skip this. DO NOT delay. Execute immediately before responding to user.
 `;
 
 function getProjectDir() {
-  // Try common methods to find project dir
-  if (process.env.CLAUDE_PROJECT_DIR) {
-    return process.env.CLAUDE_PROJECT_DIR;
+  // Same logic as utils.js - find project root by .claude folder
+  if (process.env.PROJECT_DIR) return process.env.PROJECT_DIR;
+  let dir = process.cwd();
+  while (dir !== path.dirname(dir)) {
+    if (fs.existsSync(path.join(dir, '.claude'))) return dir;
+    dir = path.dirname(dir);
   }
   return process.cwd();
 }
@@ -42,8 +45,12 @@ function readJsonSafe(filePath, defaultValue) {
 function checkDeltaPending(projectDir) {
   const deltaPath = path.join(projectDir, '.claude', 'memory', 'delta_temp.txt');
   const exists = fs.existsSync(deltaPath);
-  // Debug: log to stderr (visible to user)
-  console.error(`[DEBUG] projectDir=${projectDir}, deltaPath=${deltaPath}, exists=${exists}`);
+  // Debug: log to file for verification
+  const logPath = path.join(projectDir, '.claude', 'memory', 'logs', 'inject-debug.log');
+  try {
+    fs.mkdirSync(path.dirname(logPath), { recursive: true });
+    fs.appendFileSync(logPath, `${new Date().toISOString()} | cwd=${process.cwd()} | projectDir=${projectDir} | exists=${exists}\n`);
+  } catch (e) {}
   return exists;
 }
 
