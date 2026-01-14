@@ -1,11 +1,11 @@
 {
   "name": "memory-keeper",
-  "version": "8.2.1",
-  "description": "Auto-save memory with direct fact extraction, hierarchical structure, file references, and concept tagging.",
+  "version": "13.0.0",
+  "description": "Auto-save memory with token-based rotation, L3 Haiku summaries, hierarchical structure, and integrated search.",
   "author": {
     "name": "TaWa"
   },
   "repository": "https://github.com/ZipperBagCoffee/memory-keeper-plugin",
   "license": "MIT",
-  "keywords": ["memory", "context", "session", "productivity", "background", "auto-save", "hierarchical"]
+  "keywords": ["memory", "context", "session", "productivity", "background", "auto-save", "hierarchical", "rotation"]
 }
