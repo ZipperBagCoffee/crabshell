@@ -6,6 +6,12 @@
 - If you need to delete something, REPORT first and ASK for permission.
 - This applies to ALL files - code, config, docs, anything.
 
+**Think objectively and logically before responding.**
+- Don't just agree with the user's statements. Verify claims independently.
+- If the user says something is broken, investigate the actual cause first.
+- Apply rigorous analysis - the user's interpretation may be incomplete or wrong.
+- Provide honest, evidence-based answers even if they contradict user assumptions.
+
 ## Known Issues
 
 ### Edit Tool "File unexpectedly modified" Error (Windows)
