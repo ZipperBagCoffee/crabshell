@@ -1,5 +1,27 @@
 # Changelog
 
+## v13.0.0 (2026-01-13)
+### Token-Based Memory Rotation
+- **L2 Auto-rotation**: memory.md automatically rotates when exceeding 23,750 tokens
+- **Archive naming**: `memory_YYYYMMDD_HHMMSS.md` with 2,375 token carryover
+- **L3 Haiku summaries**: Rotated archives summarized to JSON via Haiku agent
+- **Integrated search**: `search-memory` searches across L1/L2/L3 layers
+- **Legacy migration**: `migrate-legacy` splits oversized memory files
+
+### New Files
+- `scripts/constants.js` - Centralized configuration (thresholds, paths)
+- `scripts/memory-rotation.js` - Token-based rotation logic
+- `scripts/legacy-migration.js` - Large file splitting utility
+- `scripts/search.js` - Multi-layer search implementation
+- `scripts/init.js` - Project initialization
+- `agents/memory-summarizer.md` - Haiku agent for L3 summaries
+- `skills/memory-rotate/SKILL.md` - Auto-trigger skill
+
+### New Commands
+- `search-memory [query]` - Search L1/L2/L3 with filters
+- `generate-l3 <file>` - Generate L3 summary for archive
+- `migrate-legacy` - Split oversized memory files
+
 ## v12.3.0 (2026-01-13)
 ### Clearer Hook Instructions
 - Fixed check() auto-save: correct subagent_type "memory-keeper:l2-summarizer"
@@ -14,6 +36,7 @@
 - Shows status: ✓L2 | ✓L3 | ✗L4 | ✓mem
 - Only allows stop when ALL complete
 - Fixes issue where L3/L4 were being ignored
+
 ## v12.1.0 (2026-01-13)
 ### Blocking Stop Hook for L2 Enforcement
 - Stop hook now uses `decision: block` to FORCE L2 save before session ends

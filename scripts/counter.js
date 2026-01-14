@@ -3,6 +3,8 @@ const fs = require('fs');
 const { getProjectDir, getProjectName, readFileOrDefault, writeFile, readJsonOrDefault, writeJson, ensureDir, getTimestamp } = require('./utils');
 const os = require('os');
 const { refineRaw } = require('./refine-raw');
+const { checkAndRotate } = require('./memory-rotation');
+const { MEMORY_DIR, MEMORY_FILE } = require('./constants');
 
 const CONFIG_PATH = path.join(process.cwd(), '.claude', 'memory', 'config.json');
 const GLOBAL_CONFIG_PATH = path.join(os.homedir(), '.claude', 'memory-keeper', 'config.json');
@@ -134,7 +136,14 @@ function check() {
   counter++;
   setCounter(counter);
 
-  if (counter >= interval) {
+  // Check rotation before auto-save
+    const memoryPath = path.join(getProjectDir(), ".claude", MEMORY_DIR, MEMORY_FILE);
+    const rotationResult = checkAndRotate(memoryPath, config);
+    if (rotationResult) {
+      console.log(rotationResult.hookOutput);
+    }
+
+    if (counter >= interval) {
     const projectDir = getProjectDir().replace(/\\/g, '/');
     const scriptPath = process.argv[1].replace(/\\/g, '/');
     const timestamp = getTimestamp();
@@ -1298,6 +1307,52 @@ switch (command) {
       }
     }
     break;
+  case 'generate-l3':
+    // Manual L3 summary generation
+    if (args[0]) {
+      console.log('[MEMORY_KEEPER_ROTATE] file=' + args[0]);
+    } else {
+      console.log('[MEMORY_KEEPER] Usage: generate-l3 <archive-file>');
+    }
+    break;
+  case 'search-memory':
+    {
+      const { searchMemory } = require('./search');
+      const deep = args.includes('--deep');
+      const query = args.filter(a => !a.startsWith('--'))[0];
+      if (!query) {
+        console.log('[MEMORY_KEEPER] Usage: search-memory <query> [--deep]');
+        break;
+      }
+      const results = searchMemory(query, { deep });
+      if (results.length === 0) {
+        console.log('[MEMORY_KEEPER] No results for "' + query + '"');
+      } else {
+        for (const r of results) {
+          console.log('\n[' + r.source + ']');
+          for (const m of r.matches.slice(0, 5)) {
+            if (m.line) console.log('  L' + m.line + ': ' + m.text);
+            else if (m.type) console.log('  [' + m.type + '] ' + m.content);
+            else console.log('  ' + m.file);
+          }
+          if (r.matches.length > 5) console.log('  ... and ' + (r.matches.length - 5) + ' more');
+        }
+      }
+    }
+    break;
+  case 'migrate-legacy':
+    {
+      const { splitLegacyMemory } = require('./legacy-migration');
+      const mp = path.join(getProjectDir(), '.claude', 'memory', 'memory.md');
+      const result = splitLegacyMemory(mp);
+      if (result) {
+        console.log('[MEMORY_KEEPER] Legacy split: ' + result.archives.length + ' archives created');
+        result.triggers.forEach(t => console.log(t));
+      } else {
+        console.log('[MEMORY_KEEPER] No migration needed (under threshold)');
+      }
+    }
+    break;
   default:
     console.log(`Usage: counter.js <command>
 
@@ -1358,5 +1413,10 @@ L4 Permanent Memory:
   validate-rule <id>         Validate a rule
   delete-rule <id>           Delete a rule
   search-keywords <query>    Search keyword index
+
+Memory Rotation:
+  search-memory <query> [--deep]  Search L3/L2/L1 memory (new rotation system)
+  generate-l3 <archive-file>      Manual L3 summary generation
+  migrate-legacy                  Split oversized legacy memory.md
 `);
 }

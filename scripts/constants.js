@@ -1,0 +1,47 @@
+// All configurable values in one place
+module.exports = {
+  // Token thresholds (with 5% safety margin)
+  ROTATION_THRESHOLD_TOKENS: 23750,  // 25000 * 0.95
+  CARRYOVER_TOKENS: 2375,            // 2500 * 0.95
+
+  // Byte fallbacks
+  ROTATION_THRESHOLD_BYTES: 95000,   // ~100KB * 0.95
+  CARRYOVER_BYTES: 9500,             // ~10KB * 0.95
+
+  // Token calculation
+  BYTES_PER_TOKEN: 4,
+
+  // Directory names (relative to .claude/)
+  MEMORY_DIR: 'memory',
+  SESSIONS_DIR: 'memory/sessions',
+  LOGS_DIR: 'memory/logs',
+
+  // File names
+  MEMORY_FILE: 'memory.md',
+  INDEX_FILE: 'memory-index.json',
+  LOCK_FILE: '.rotation.lock',
+
+  // Lock settings
+  LOCK_STALE_MS: 60000,  // 60 seconds
+
+  // Retry settings
+  MAX_RETRIES: 3,
+  RETRY_DELAY_MS: 1000,  // Base delay for exponential backoff
+
+  // Limits for L3 summary
+  MAX_THEMES: 10,
+  MAX_DECISIONS: 10,
+  MAX_ISSUES: 10,
+  SUMMARY_SENTENCES: { min: 10, max: 15 },
+
+  // Archive settings
+  ARCHIVE_PREFIX: 'memory_',
+  SUMMARY_SUFFIX: '.summary.json',
+
+  // Timestamp format function
+  getTimestamp: () => {
+    const now = new Date();
+    const pad = n => n.toString().padStart(2, '0');
+    return `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+  }
+};

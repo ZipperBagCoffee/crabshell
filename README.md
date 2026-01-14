@@ -106,14 +106,16 @@ node scripts/counter.js add-issue "Login redirect not working" "resolved" bugfix
 
 ```
 [project]/.claude/memory/
-├── memory.md              # Session summaries (auto)
+├── memory.md              # Active rolling memory (auto-rotates at 23,750 tokens)
+├── memory_*.md            # Rotated archives (L2)
+├── *.summary.json         # L3 summaries (Haiku-generated)
+├── index.json             # Rotation tracking
 ├── project.md             # Project overview (via memory-set)
 ├── architecture.md        # Architecture (via memory-set)
 ├── conventions.md         # Coding rules (via memory-set)
 ├── facts.json             # Structured decisions/patterns/issues (auto)
 └── sessions/
-    ├── 2025-12-21_0300.md      # Session summary
-    └── 2025-12-21_0300.raw.jsonl # Full conversation backup
+    └── *.l1.jsonl         # L1 session transcripts
 ```
 
 ## Configuration
@@ -141,7 +143,12 @@ node scripts/counter.js memory-set project "content"
 node scripts/counter.js memory-set architecture "content"
 node scripts/counter.js memory-set conventions "content"
 
-# Search
+# Search (v13.0.0+)
+node scripts/counter.js search-memory "query"       # Search L1/L2/L3
+node scripts/counter.js search-memory --deep        # Include L1 sessions
+node scripts/counter.js search-memory --type=decision
+
+# Legacy search
 node scripts/counter.js search                 # Summary of stored facts
 node scripts/counter.js search "keyword"       # Search by keyword
 node scripts/counter.js search --type=architecture  # Filter by type
@@ -151,6 +158,10 @@ node scripts/counter.js search --concept=auth       # Filter by concept
 node scripts/counter.js add-decision "content" "reason" [type]
 node scripts/counter.js add-pattern "pattern" [type]
 node scripts/counter.js add-issue "issue" "open|resolved" [type]
+
+# Rotation (v13.0.0+)
+node scripts/counter.js generate-l3 <archive.md>   # Generate L3 summary
+node scripts/counter.js migrate-legacy             # Split oversized files
 
 # Maintenance
 node scripts/counter.js compress               # Archive files older than 30 days
@@ -168,11 +179,24 @@ node scripts/counter.js reset                  # Reset counter
 - [User Manual](docs/USER-MANUAL.md) - Detailed usage
 - [Architecture](docs/ARCHITECTURE.md) - System design
 
+## v13.0.0 - Token-Based Memory Rotation
+
+### Automatic Rotation
+When `memory.md` exceeds **23,750 tokens** (~95KB), it automatically:
+1. Archives current content to `memory_YYYYMMDD_HHMMSS.md`
+2. Keeps last **2,375 tokens** as carryover in new `memory.md`
+3. Triggers `[MEMORY_KEEPER_ROTATE]` for Haiku agent L3 summary
+
+### New Commands
+- `search-memory [query]` - Search L1/L2/L3 with filters
+- `generate-l3 <file>` - Generate L3 summary for archive
+- `migrate-legacy` - Split oversized memory files
+
 ## v8.2.0 - L4 Permanent Memory Automation
 
 ### L4: Permanent Memory with Auto-Triggers
 - **Auto-detection** for things worth remembering:
-  - User explicit requests ("기억해", "항상", "remember")
+  - User explicit requests ("remember")
   - Repeated solutions (10+ occurrences)
   - Breakthroughs (problem-solving patterns)
   - Core logic changes
@@ -193,7 +217,7 @@ node scripts/counter.js reset                  # Reset counter
 
 ### L2: Exchange Summaries
 - Session end prompts Claude to generate structured summaries
-- Each user request → response cycle becomes an "exchange"
+- Each user request -> response cycle becomes an "exchange"
 - Stored as `.l2.json` files with keywords and file references
 
 ### L3: Concept Grouping
@@ -213,7 +237,7 @@ node scripts/counter.js reset                  # Reset counter
 Raw transcripts are now automatically refined to remove junk metadata:
 - Removes: queue-operation, file-history-snapshot, thinking blocks
 - Keeps: user text, assistant text, tool summaries with diff
-- Size reduction: ~95% (20MB → 1MB)
+- Size reduction: ~95% (20MB -> 1MB)
 
 ### New Commands
 
@@ -223,6 +247,8 @@ Raw transcripts are now automatically refined to remove junk metadata:
 
 | Version | Changes |
 |---------|---------|
+| 13.0.0 | Token-based memory rotation (L2 archives, L3 summaries) |
+| 12.3.0 | Clearer hook instructions for L1->L2->L3->L4 workflow |
 | 8.2.0 | L4 permanent memory automation |
 | 8.1.0 | L2-L3 hierarchical summarization |
 | 8.0.0 | L1 hierarchical memory refinement |
