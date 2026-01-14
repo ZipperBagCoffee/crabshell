@@ -190,10 +190,20 @@ counter.js check()
 | `memory.md` | No | 첫 save | 없어도 에러 없음 |
 | `config.json` | No | - | 없으면 기본값 사용 |
 
-### 에러 방지를 위한 가드
+### 에러 방지를 위한 가드 (`scripts/init.js`)
 
 ```javascript
-// init.js에서 호출
+const fs = require('fs');
+const path = require('path');
+const {
+  MEMORY_DIR, SESSIONS_DIR, LOGS_DIR,
+  INDEX_FILE, MEMORY_FILE
+} = require('./constants');
+
+/**
+ * 메모리 디렉토리 구조 초기화
+ * @param {string} projectDir - 프로젝트 루트 디렉토리
+ */
 function ensureMemoryStructure(projectDir) {
   const dirs = [MEMORY_DIR, SESSIONS_DIR, LOGS_DIR];
 
@@ -215,6 +225,8 @@ function ensureMemoryStructure(projectDir) {
     }, null, 2));
   }
 }
+
+module.exports = { ensureMemoryStructure };
 ```
 
 ---
@@ -241,7 +253,7 @@ function ensureMemoryStructure(projectDir) {
 const fs = require('fs');
 const path = require('path');
 const { getProjectDir, readJsonOrDefault } = require('./utils');
-const { MEMORY_DIR, INDEX_FILE, MEMORY_FILE } = require('./constants');
+const { MEMORY_DIR, SESSIONS_DIR, INDEX_FILE, MEMORY_FILE } = require('./constants');
 
 /**
  * 통합 메모리 검색
@@ -272,7 +284,7 @@ function searchMemory(query, options = {}) {
 
   // 4. L1 sessions - deep search only
   if (options.deep) {
-    const l1Matches = searchL1Sessions(memoryDir, queryLower);
+    const l1Matches = searchL1Sessions(projectDir, queryLower);
     if (l1Matches.length > 0) {
       results.push({ source: 'L1 sessions', matches: l1Matches });
     }
@@ -378,8 +390,8 @@ function searchL3Summaries(memoryDir, query) {
 /**
  * L1 session 검색 - .l1.jsonl 파일에서 raw 검색
  */
-function searchL1Sessions(memoryDir, query) {
-  const sessionsDir = path.join(memoryDir, 'sessions');
+function searchL1Sessions(projectDir, query) {
+  const sessionsDir = path.join(projectDir, '.claude', SESSIONS_DIR);
   if (!fs.existsSync(sessionsDir)) return [];
 
   const files = fs.readdirSync(sessionsDir).filter(f => f.endsWith('.l1.jsonl'));
@@ -423,7 +435,8 @@ module.exports = { searchMemory, searchL3Summaries, searchL2Archives };
 ### counter.js 통합
 
 ```javascript
-// counter.js에 추가
+// counter.js main() 함수의 switch(command) 블록에 추가
+// command = process.argv[2], args = process.argv.slice(3)
 case 'search':
   const { searchMemory } = require('./search');
   const deep = args.includes('--deep');
@@ -762,6 +775,32 @@ function loadMemory() {
     loadLegacyMemory();
   }
 }
+
+function loadFromIndex(index) {
+  // L3 요약이 있으면 로드
+  for (const archive of index.rotatedFiles || []) {
+    if (archive.summaryGenerated && archive.summary) {
+      const summaryPath = path.join(memoryDir, archive.summary);
+      if (fs.existsSync(summaryPath)) {
+        const summary = readJsonOrDefault(summaryPath, null);
+        if (summary) {
+          console.log(`[MEMORY_KEEPER] L3 Summary: ${archive.file}`);
+          console.log(`  Themes: ${summary.themes?.join(', ') || 'none'}`);
+        }
+      }
+    }
+  }
+  // 현재 memory.md 로드
+  loadLegacyMemory();
+}
+
+function loadLegacyMemory() {
+  const memoryPath = path.join(memoryDir, MEMORY_FILE);
+  if (fs.existsSync(memoryPath)) {
+    const content = fs.readFileSync(memoryPath, 'utf8');
+    console.log(`[MEMORY_KEEPER] Loaded memory.md (${estimateTokens(content)} tokens)`);
+  }
+}
 ```
 
 ### 마이그레이션 체크리스트
@@ -866,8 +905,12 @@ function getProjectDir() {
 
 /**
  * memory-index.json 업데이트
+ * @param {string} archivePath - archive 파일 전체 경로
+ * @param {number} tokens - 토큰 수
+ * @param {string} memoryDir - 메모리 디렉토리 경로
+ * @param {object} [dateRange] - 선택적 날짜 범위 { first, last }
  */
-function updateIndex(archivePath, tokens, memoryDir) {
+function updateIndex(archivePath, tokens, memoryDir, dateRange = null) {
   const indexPath = path.join(memoryDir, INDEX_FILE);
   const index = readJsonOrDefault(indexPath, {
     version: 1,
@@ -877,14 +920,21 @@ function updateIndex(archivePath, tokens, memoryDir) {
   });
 
   // Add new rotation entry
-  index.rotatedFiles.push({
+  const entry = {
     file: path.basename(archivePath),
     rotatedAt: new Date().toISOString(),
     tokens: tokens,
     bytes: fs.statSync(archivePath).size,
     summary: path.basename(archivePath).replace('.md', '.summary.json'),
     summaryGenerated: false
-  });
+  };
+
+  // Add dateRange if provided
+  if (dateRange) {
+    entry.dateRange = dateRange;
+  }
+
+  index.rotatedFiles.push(entry);
 
   index.stats.totalRotations++;
   index.stats.lastRotation = new Date().toISOString();
@@ -973,7 +1023,6 @@ memory-index.json                   # 모든 파일 메타데이터
       "rotatedAt": "2026-01-13T11:27:00Z",
       "tokens": 24500,
       "bytes": 98000,
-      "lines": 1200,
       "dateRange": { "first": "2026-01-01", "last": "2026-01-13" },
       "summary": "memory_20260113_112700.summary.json",
       "summaryGenerated": true
@@ -1387,6 +1436,8 @@ function checkAndRotate(memoryPath, config) {
     releaseLock(memoryDir);
   }
 }
+
+module.exports = { checkAndRotate };
 ```
 
 ### 수정할 파일
