@@ -38,6 +38,14 @@ module.exports = {
   ARCHIVE_PREFIX: 'memory_',
   SUMMARY_SUFFIX: '.summary.json',
 
+  // Delta extraction settings
+  DELTA_TEMP_FILE: 'delta_temp.txt',
+  HAIKU_CONTEXT_LIMIT: 200000,  // 200K tokens
+  HAIKU_SAFE_MARGIN: 0.95,      // 5% margin
+  HAIKU_SAFE_TOKENS: Math.floor(200000 * 0.95),  // 190K tokens
+  FIRST_RUN_MAX_ENTRIES: 50,    // First run limit
+  DELTA_OUTPUT_TRUNCATE: 300,   // Truncate tool output to this length
+
   // Timestamp format function
   getTimestamp: () => {
     const now = new Date();

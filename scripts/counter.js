@@ -4,6 +4,7 @@ const { getProjectDir, getProjectName, readFileOrDefault, writeFile, readJsonOrD
 const os = require('os');
 const { refineRaw } = require('./refine-raw');
 const { checkAndRotate } = require('./memory-rotation');
+const { extractDelta } = require('./extract-delta');
 const { MEMORY_DIR, MEMORY_FILE, SESSIONS_DIR } = require('./constants');
 
 const CONFIG_PATH = path.join(process.cwd(), '.claude', 'memory', 'config.json');
@@ -90,35 +91,31 @@ function check() {
   setCounter(counter);
 
   // Check rotation before auto-save
-    const memoryPath = path.join(getProjectDir(), ".claude", MEMORY_DIR, MEMORY_FILE);
-    const rotationResult = checkAndRotate(memoryPath, config);
-    if (rotationResult) {
-      console.log(rotationResult.hookOutput);
+  const memoryPath = path.join(getProjectDir(), ".claude", MEMORY_DIR, MEMORY_FILE);
+  const rotationResult = checkAndRotate(memoryPath, config);
+  if (rotationResult) {
+    console.log(rotationResult.hookOutput);
+  }
+
+  if (counter >= interval) {
+    // Try delta extraction
+    const deltaResult = extractDelta();
+
+    if (deltaResult.success) {
+      const instructions = `
+═══════════════════════════════════════════════════════════════
+[MEMORY_KEEPER_DELTA] file=${deltaResult.deltaFile}
+═══════════════════════════════════════════════════════════════
+Delta extracted: ${deltaResult.entryCount} entries, ~${deltaResult.tokens} tokens.
+`;
+      setCounter(0);
+      console.error(instructions);
+      process.exit(2);
+    } else {
+      // No delta available (no L1 or no new content) - just reset counter
+      // Current session content will be processed at session end (final())
+      setCounter(0);
     }
-
-    if (counter >= interval) {
-    const projectDir = getProjectDir().replace(/\\/g, '/');
-    const scriptPath = process.argv[1].replace(/\\/g, '/');
-    const timestamp = getTimestamp();
-
-    const instructions = `
-═══════════════════════════════════════════════════════════════
-[MEMORY_KEEPER] AUTO-SAVE TRIGGERED - ${counter} tool uses reached
-═══════════════════════════════════════════════════════════════
-
-**APPEND to memory.md:**
-\`\`\`bash
-echo -e "\\n## ${timestamp}\\n[1-2 sentence summary of work so far]" >> "${projectDir}/.claude/memory/memory.md"
-\`\`\`
-
-═══════════════════════════════════════════════════════════════`;
-
-    // Reset counter before exit
-    setCounter(0);
-
-    // stderr + exit 2 = Claude sees this as system-reminder
-    console.error(instructions);
-    process.exit(2);
   }
 }
 
@@ -242,10 +239,21 @@ async function final() {
   const scriptPath = process.argv[1].replace(/\\/g, '/');
   const config = getConfig();
 
+  // Process any remaining delta before session ends
+  const deltaResult = extractDelta();
+  let deltaOutput = '';
+  if (deltaResult.success) {
+    deltaOutput = `\n[MEMORY_KEEPER_DELTA] file=${deltaResult.deltaFile}\nDelta extracted at session end: ${deltaResult.entryCount} entries.`;
+  }
+
   // Quiet mode by default - only show brief message
   if (config.quietStop !== false) {
+    let systemMsg = `[MEMORY_KEEPER] Session saved. L1: ${rawSaved ? 'OK' : 'SKIP'}`;
+    if (deltaOutput) {
+      systemMsg += deltaOutput;
+    }
     const output = {
-      systemMessage: `[MEMORY_KEEPER] Session saved. L1: ${rawSaved ? 'OK' : 'SKIP'}`
+      systemMessage: systemMsg
     };
     console.log(JSON.stringify(output));
     setCounter(0);
