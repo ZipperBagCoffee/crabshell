@@ -50,13 +50,7 @@ memory-keeper-plugin/
 │   ├── memory-rotation.js            # Token-based rotation
 │   ├── legacy-migration.js           # Large file splitting
 │   ├── refine-raw.js                 # raw.jsonl -> l1.jsonl conversion
-│   ├── utils.js                      # Shared utilities
-│   ├── generate-l2.js                # L2 prompt generation
-│   ├── save-l2.js                    # L2 file saving
-│   ├── update-concepts.js            # Concept index updates
-│   ├── keyword-index.js              # Keyword indexing
-│   ├── migrate-facts.js              # Facts migration
-│   └── permanent-memory.js           # Permanent memory management
+│   └── utils.js                      # Shared utilities
 │
 ├── skills/                           # Slash command skills
 │   ├── memory-save/SKILL.md          # Auto-trigger memory save

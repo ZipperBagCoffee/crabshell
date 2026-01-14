@@ -203,16 +203,6 @@ When `memory.md` exceeds **23,750 tokens** (~95KB), it automatically:
 - **Self-correction**: Rules track confidence and contradictions
 - **Keyword indexing**: Fast search across all sessions
 
-### New Commands
-- `migrate-facts` - Migrate old facts.json to new structure
-- `add-rule <content> [confidence]` - Add permanent rule
-- `add-solution <problem> <solution>` - Add solution
-- `add-core-logic <file> <description>` - Add core logic
-- `list-permanent [type]` - List permanent memories
-- `validate-rule <id> <true|false>` - Validate rule
-- `delete-rule <id>` - Delete rule
-- `search-keywords <keyword>` - Search by keyword
-
 ## v8.1.0 - L2-L3 Hierarchical Summarization
 
 ### L2: Exchange Summaries
@@ -224,11 +214,6 @@ When `memory.md` exceeds **23,750 tokens** (~95KB), it automatically:
 - Related exchanges grouped by file/keyword overlap
 - Concepts stored in `concepts.json`
 - Automatic classification with 30% overlap threshold
-
-### New Commands
-- `save-l2 <session> <json>` - Save L2 summaries
-- `update-concepts <l2-path>` - Update concepts from L2
-- `list-concepts` - List all concepts
 
 ## v8.0.0 - Hierarchical Memory (L1)
 

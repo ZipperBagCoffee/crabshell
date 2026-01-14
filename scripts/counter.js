@@ -357,34 +357,7 @@ ${rawSaved ? `✓ Raw transcript saved: ${rawSaved}` : '⚠ Raw transcript not s
    node "${scriptPath}" compress
    \`\`\`
 
-**STEP 6: Generate L2 Summary**
-
-Review this session and create L2 exchange summaries. For each distinct task/request:
-\`\`\`json
-[
-  {
-    "id": "e001",
-    "summary": "One sentence: what was done",
-    "details": "1-2 sentences with specifics (files, functions, fixes)",
-    "files": ["file1.js", "file2.js"],
-    "keywords": ["keyword1", "keyword2", "keyword3"],
-    "l1_range": [1, 50]
-  }
-]
-\`\`\`
-
-Save L2:
-\`\`\`bash
-node "${scriptPath}" save-l2 "${timestamp}" '<paste-json-here>'
-\`\`\`
-
-**STEP 7: Update Concepts**
-
-\`\`\`bash
-node "${scriptPath}" update-concepts "${projectDir}/sessions/${timestamp}.l2.json"
-\`\`\`
-
-**STEP 8: Check for Permanent Memories**
+**STEP 6: Check for Permanent Memories**
 
 Review this session for items to permanently remember:
 
@@ -836,125 +809,6 @@ async function refineAll() {
   console.log(`[MEMORY_KEEPER] Total: ${(totalRaw/1024/1024).toFixed(1)}MB → ${(totalL1/1024/1024).toFixed(1)}MB (${reduction}% reduction)`);
 }
 
-// Build L2 prompts for all L1 files without L2
-function buildL2Prompts() {
-  const { prepareL1ForSummary, formatForLLM } = require('./generate-l2');
-  const sessionsDir = path.join(getProjectDir(), 'sessions');
-
-  if (!fs.existsSync(sessionsDir)) {
-    console.log('[MEMORY_KEEPER] No sessions directory found');
-    return;
-  }
-
-  const l1Files = fs.readdirSync(sessionsDir)
-    .filter(f => f.endsWith('.l1.jsonl'))
-    .filter(f => !fs.existsSync(path.join(sessionsDir, f.replace('.l1.jsonl', '.l2.json'))));
-
-  if (l1Files.length === 0) {
-    console.log('[MEMORY_KEEPER] All L1 files already have L2 versions');
-    return;
-  }
-
-  console.log(`[MEMORY_KEEPER] ${l1Files.length} L1 files need L2 processing:\n`);
-
-  l1Files.forEach((file, i) => {
-    console.log(`${i + 1}. ${file}`);
-  });
-
-  console.log(`\nUse 'process-l1 <filename>' to generate prompt for each file.`);
-  console.log(`Or use 'process-l1 --all' to output all prompts.\n`);
-}
-
-// Process single L1 file to L2 prompt
-function processL1(filename, outputAll = false) {
-  const { prepareL1ForSummary, formatForLLM } = require('./generate-l2');
-  const sessionsDir = path.join(getProjectDir(), 'sessions');
-
-  if (filename === '--all') {
-    // Process all L1 without L2
-    const l1Files = fs.readdirSync(sessionsDir)
-      .filter(f => f.endsWith('.l1.jsonl'))
-      .filter(f => !fs.existsSync(path.join(sessionsDir, f.replace('.l1.jsonl', '.l2.json'))));
-
-    if (l1Files.length === 0) {
-      console.log('[MEMORY_KEEPER] No L1 files need processing');
-      return;
-    }
-
-    l1Files.forEach(file => {
-      const l1Path = path.join(sessionsDir, file);
-      const sessionId = file.replace('.l1.jsonl', '');
-      const exchanges = prepareL1ForSummary(l1Path);
-
-      if (exchanges && exchanges.length > 0) {
-        console.log(`\n${'='.repeat(60)}`);
-        console.log(`SESSION: ${sessionId}`);
-        console.log(`${'='.repeat(60)}\n`);
-        console.log(formatForLLM(exchanges, sessionId));
-      }
-    });
-    return;
-  }
-
-  // Single file
-  let l1Path = path.join(sessionsDir, filename);
-  if (!filename.endsWith('.l1.jsonl')) {
-    l1Path = path.join(sessionsDir, `${filename}.l1.jsonl`);
-  }
-
-  if (!fs.existsSync(l1Path)) {
-    console.log(`[MEMORY_KEEPER] File not found: ${l1Path}`);
-    return;
-  }
-
-  const sessionId = path.basename(l1Path, '.l1.jsonl');
-  const exchanges = prepareL1ForSummary(l1Path);
-
-  if (!exchanges || exchanges.length === 0) {
-    console.log('[MEMORY_KEEPER] No exchanges found in L1');
-    return;
-  }
-
-  console.log(formatForLLM(exchanges, sessionId));
-  console.log(`\n--- After Claude generates JSON, save with: ---`);
-  console.log(`node scripts/counter.js save-l2 ${sessionId} '<paste JSON here>'`);
-}
-
-// Update concepts from all L2 files
-function updateAllConcepts() {
-  const { updateConcepts } = require('./update-concepts');
-  const sessionsDir = path.join(getProjectDir(), 'sessions');
-
-  if (!fs.existsSync(sessionsDir)) {
-    console.log('[MEMORY_KEEPER] No sessions directory found');
-    return;
-  }
-
-  const l2Files = fs.readdirSync(sessionsDir).filter(f => f.endsWith('.l2.json'));
-
-  if (l2Files.length === 0) {
-    console.log('[MEMORY_KEEPER] No L2 files found');
-    return;
-  }
-
-  console.log(`[MEMORY_KEEPER] Processing ${l2Files.length} L2 files...`);
-
-  let totalExchanges = 0;
-  l2Files.forEach(file => {
-    const l2Path = path.join(sessionsDir, file);
-    try {
-      const l2Data = JSON.parse(fs.readFileSync(l2Path, 'utf8'));
-      const result = updateConcepts(l2Data);
-      const exchangeCount = l2Data.exchanges?.length || 0;
-      totalExchanges += exchangeCount;
-    } catch (e) {
-      console.log(`  ${file}: ERROR - ${e.message}`);
-    }
-  });
-
-  console.log(`[MEMORY_KEEPER] Total: ${totalExchanges} exchanges processed`);
-}
-
 function compress() {
   const projectDir = getProjectDir();
   const sessionsDir = path.join(projectDir, 'sessions');
@@ -1124,27 +978,6 @@ function parseArg(args, key) {
   return null;
 }
 
-function listConcepts() {
-  const { loadConcepts } = require('./update-concepts');
-  const data = loadConcepts();
-
-  if (data.concepts.length === 0) {
-    console.log('[MEMORY_KEEPER] No concepts yet');
-    return;
-  }
-
-  console.log(`[MEMORY_KEEPER] ${data.concepts.length} concepts:\n`);
-
-  for (const c of data.concepts) {
-    console.log(`[${c.id}] ${c.name}`);
-    console.log(`  ${c.summary}`);
-    console.log(`  Files: ${c.files.join(', ') || 'none'}`);
-    console.log(`  Keywords: ${c.keywords.join(', ')}`);
-    console.log(`  Exchanges: ${c.exchanges.length}`);
-    console.log('');
-  }
-}
-
 // Main - handle async commands
 const command = process.argv[2];
 const args = process.argv.slice(3);
@@ -1208,105 +1041,6 @@ switch (command) {
   case 'memory-list':
     memoryList();
     break;
-  case 'save-l2':
-    // node counter.js save-l2 <session-id> <json>
-    {
-      const { saveL2 } = require('./save-l2');
-      const l2SessionId = args[0];
-      const l2JsonStr = args.slice(1).join(' ');
-      try {
-        const summaries = JSON.parse(l2JsonStr);
-        const saved = saveL2(l2SessionId, summaries);
-        console.log(`[MEMORY_KEEPER] L2 saved: ${saved}`);
-      } catch (e) {
-        console.error(`[MEMORY_KEEPER] Error: ${e.message}`);
-      }
-    }
-    break;
-  case 'update-concepts':
-    {
-      const { updateConcepts } = require('./update-concepts');
-      const l2FilePath = args[0];
-      if (!fs.existsSync(l2FilePath)) {
-        console.error(`[MEMORY_KEEPER] L2 file not found: ${l2FilePath}`);
-        break;
-      }
-      const l2FileData = JSON.parse(fs.readFileSync(l2FilePath, 'utf8'));
-      const conceptResult = updateConcepts(l2FileData);
-      console.log(`[MEMORY_KEEPER] Concepts: ${conceptResult.concepts.length} total`);
-    }
-    break;
-  case 'list-concepts':
-    listConcepts();
-    break;
-  case 'build-l2-prompts':
-    buildL2Prompts();
-    break;
-  case 'process-l1':
-    processL1(args[0]);
-    break;
-  case 'update-all-concepts':
-    updateAllConcepts();
-    break;
-  case 'migrate-facts':
-    {
-      const { migrateFacts } = require('./migrate-facts');
-      migrateFacts();
-    }
-    break;
-  case 'add-rule':
-    // node counter.js add-rule "content" "reason" [source]
-    {
-      const { addRule } = require('./permanent-memory');
-      addRule(args[0], args[1], args[2] || 'user');
-    }
-    break;
-  case 'add-solution':
-    // node counter.js add-solution "problem" "solution" [attempts]
-    {
-      const { addSolution } = require('./permanent-memory');
-      addSolution(args[0], args[1], parseInt(args[2]) || 1);
-    }
-    break;
-  case 'add-core-logic':
-    // node counter.js add-core-logic "feature" "description" [files]
-    {
-      const { addCoreLogic } = require('./permanent-memory');
-      const coreFiles = args[2] ? args[2].split(',') : [];
-      addCoreLogic(args[0], args[1], coreFiles);
-    }
-    break;
-  case 'list-permanent':
-    {
-      const { listPermanent } = require('./permanent-memory');
-      listPermanent();
-    }
-    break;
-  case 'validate-rule':
-    {
-      const { validateRule } = require('./permanent-memory');
-      validateRule(args[0]);
-    }
-    break;
-  case 'delete-rule':
-    {
-      const { deleteRule } = require('./permanent-memory');
-      deleteRule(args[0]);
-    }
-    break;
-  case 'search-keywords':
-    {
-      const { searchKeywords } = require('./keyword-index');
-      const kwResults = searchKeywords(args[0] || '');
-      if (kwResults.length === 0) {
-        console.log('[MEMORY_KEEPER] No keywords matched');
-      } else {
-        for (const r of kwResults) {
-          console.log(`[${r.keyword}] → ${r.refs.join(', ')}`);
-        }
-      }
-    }
-    break;
   case 'generate-l3':
     // Manual L3 summary generation
     if (args[0]) {
@@ -1356,67 +1090,29 @@ switch (command) {
   default:
     console.log(`Usage: counter.js <command>
 
-Commands:
-  check                  Increment counter, trigger save at interval
-  final                  Session end handler (reads stdin for hook data)
+Core Commands:
+  check                  Increment counter, trigger auto-save at interval
+  final                  Session end handler
   reset                  Reset counter to 0
-  compress               Archive old session files (30+ days)
 
-Memory Management (v7.0.0):
-  memory-set <name> <content>
-                         Set hierarchical memory file content
-                         Names: project, architecture, conventions
-  memory-get [name]      Get memory file content (all if no name)
-  memory-list            List all memory files with status
+Memory Management:
+  memory-set <name> <content>   Set memory file (project|architecture|conventions)
+  memory-get [name]             Get memory file content
+  memory-list                   List all memory files
 
-Fact Commands:
+Facts (auto-triggered via hooks):
   add-decision <content> <reason> [type] [files] [concepts]
-                         Add decision with optional file refs and concept tags
-                         Types: architecture, technology, approach, other
-                         Files/concepts: comma-separated (e.g., "src/a.ts,src/b.ts")
-
   add-pattern <content> [type] [files] [concepts]
-                         Add pattern with optional file refs and concept tags
-                         Types: convention, best-practice, anti-pattern, other
-
   add-issue <content> <status> [type] [files] [concepts]
-                         Add issue with optional file refs and concept tags
-                         Types: bugfix, performance, security, feature, other
-
   search [query] [--type=X] [--concept=X] [--file=X]
-                         Search facts with filters or show summary (no args)
+  clear-facts                   Clear all facts
+  extract-facts [session]       Extract facts from session file
 
-  clear-facts            Clear all facts (keeps _meta and concepts)
-  extract-facts [session]
-                         Extract facts from session file (parses files/concepts sub-items)
-
-L1 Refinement:
-  refine-all             Process all raw.jsonl files without L1 versions
-
-L2-L3 Commands:
-  build-l2-prompts       List L1 files without L2 (shows what needs processing)
-  process-l1 <file>      Generate L2 prompt for single L1 file
-  process-l1 --all       Generate L2 prompts for all L1 files
-  save-l2 <session-id> <json>
-                         Save L2 exchange summaries for a session
-  update-concepts <l2-file>
-                         Update concepts index from L2 file
-  update-all-concepts    Update concepts from all L2 files
-  list-concepts          List all concepts with details
-
-L4 Permanent Memory:
-  migrate-facts              Migrate facts.json to new format
-  add-rule <content> <reason> [source]  Add a rule
-  add-solution <problem> <solution> [attempts]  Add a solution
-  add-core-logic <feature> <desc> [files]  Add core logic
-  list-permanent             List all permanent memories
-  validate-rule <id>         Validate a rule
-  delete-rule <id>           Delete a rule
-  search-keywords <query>    Search keyword index
-
-Memory Rotation:
-  search-memory <query> [--deep]  Search L3/L2/L1 memory (new rotation system)
+Memory Rotation (v13.0.0):
+  search-memory <query> [--deep]  Search L3/L2/L1 hierarchically
   generate-l3 <archive-file>      Manual L3 summary generation
   migrate-legacy                  Split oversized legacy memory.md
+  compress                        Archive old sessions (30+ days)
+  refine-all                      Process raw.jsonl to L1
 `);
 }
