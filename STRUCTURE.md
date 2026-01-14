@@ -29,10 +29,7 @@ memory-keeper-plugin/
 │   └── marketplace.json              # Marketplace registration
 │
 ├── agents/                           # Background agent definitions
-│   ├── memory-keeper.md              # Session summarizer (haiku model)
-│   ├── memory-summarizer.md          # L3 summary generator (haiku)
-│   ├── l2-summarizer.md              # L2 summarizer
-│   └── context-loader.md             # Context search expert
+│   └── memory-summarizer.md          # L3 summary generator (haiku)
 │
 ├── commands/                         # CLI commands
 │   ├── save-memory.md                # Manual save command
@@ -52,8 +49,14 @@ memory-keeper-plugin/
 │   ├── search.js                     # L1/L2/L3 integrated search
 │   ├── memory-rotation.js            # Token-based rotation
 │   ├── legacy-migration.js           # Large file splitting
+│   ├── refine-raw.js                 # raw.jsonl -> l1.jsonl conversion
 │   ├── utils.js                      # Shared utilities
-│   └── save-prompt.js                # Save prompt formatter
+│   ├── generate-l2.js                # L2 prompt generation
+│   ├── save-l2.js                    # L2 file saving
+│   ├── update-concepts.js            # Concept index updates
+│   ├── keyword-index.js              # Keyword indexing
+│   ├── migrate-facts.js              # Facts migration
+│   └── permanent-memory.js           # Permanent memory management
 │
 ├── skills/                           # Slash command skills
 │   ├── memory-save/SKILL.md          # Auto-trigger memory save
@@ -66,7 +69,6 @@ memory-keeper-plugin/
 ├── docs/                             # Documentation
 │   ├── ARCHITECTURE.md               # System architecture
 │   ├── USER-MANUAL.md                # User manual
-│   ├── CANDIDATES.md                 # Feature candidates
 │   └── plans/                        # Version design documents
 │
 ├── CLAUDE.md                         # Project notes (Windows workarounds)
@@ -88,7 +90,6 @@ Main automation engine with commands:
 - `add-decision/pattern/issue`: Fact recording
 - `search`: Legacy facts.json search
 - `compress`: Archive old files
-- `clear-facts`: Reset facts arrays
 
 ### scripts/constants.js
 Centralized configuration:
@@ -103,16 +104,16 @@ Token-based rotation logic:
 ### scripts/search.js
 Multi-layer search:
 - `searchMemory()`: Search across L1/L2/L3
-- `searchL3Summaries()`: Search JSON summaries
-- `searchL2Archives()`: Search archived memory files
-- `searchL1Sessions()`: Search raw transcripts
 
 ### scripts/load-memory.js
 Session start loader:
 - Load hierarchical memory files
 - Load L3 summaries
-- Load unreflected L1 content
 - Load rolling memory tail
+
+### scripts/refine-raw.js
+L1 generation:
+- `refineRaw()`: Convert raw.jsonl to l1.jsonl
 
 ## Memory Hierarchy (v13.0.0)
 
@@ -145,7 +146,7 @@ Session start loader:
 
 | Version | Key Changes |
 |---------|-------------|
-| 13.0.0 | Token-based memory rotation, L3 Haiku summaries, integrated search |
+| 13.0.0 | Token-based memory rotation, L3 Haiku summaries, cleanup unused files |
 | 12.3.0 | Clearer hook instructions |
 | 8.2.0 | L4 permanent memory |
 | 8.0.0 | L1 refined transcripts |
