@@ -1641,16 +1641,16 @@ npm test
 
 | # | 문제 | 해결 위치 |
 |---|------|----------|
-| 12.1 | 신규 프로젝트 초기화 | Section 8: `init.js` - `ensureMemoryStructure()` |
-| 12.2 | 동시 접근 (Concurrency) | Section 8: `utils.js` - `acquireLock()`, `releaseLock()` |
+| 12.1 | 신규 프로젝트 초기화 | 빠른 시작: `init.js` - `ensureMemoryStructure()` |
+| 12.2 | 동시 접근 (Concurrency) | Section 2: `utils.js` - `acquireLock()`, `releaseLock()` |
 | 12.3 | Threshold 값 불일치 | 전체 문서에서 23,750 토큰으로 통일 |
-| 12.4 | Agent/Skill 경로 | Section 8.1 참조 |
-| 12.5 | Haiku 실패 시 재시도 | Section 8: `skills/memory-rotate/SKILL.md` |
-| 12.6 | 디스크 공간 관리 | Section 8: `config.json` 옵션 |
-| 12.7 | Cross-Platform 경로 | Section 8: 모든 코드에서 `path.join()` 사용 |
-| 12.8 | 날짜 파싱 정규식 | Section 8: `legacy-migration.js` - `parseDateSections()` |
+| 12.4 | Agent/Skill 경로 | Section 6: `agents/`, `skills/` |
+| 12.5 | Haiku 실패 시 재시도 | Section 6: `skills/memory-rotate/SKILL.md` |
+| 12.6 | 디스크 공간 관리 | Section 11: `config.json` 옵션 |
+| 12.7 | Cross-Platform 경로 | 전체: 모든 코드에서 `path.join()` 사용 |
+| 12.8 | 날짜 파싱 정규식 | Section 1.1: `legacy-migration.js` - `parseDateSections()` |
 | 12.9 | 사용자 검색 인터페이스 | Section 1: `search.js` - `searchMemory()`, `searchL3Summaries()` |
-| 12.10 | Skill 트리거 신뢰성 | Section 8: `load-memory.js` 미생성 요약 감지 |
+| 12.10 | Skill 트리거 신뢰성 | Section 8.3: `load-memory.js` 미생성 요약 감지 |
 | 12.11 | memory-index keywords/themes 중복 | Section 1: L3에 있으므로 index에서 제거 |
 | 12.12 | Session end 시 memory.md 누락 | Section 7: `load-memory.js`에서 L1 tail 로드 |
 | 12.13 | facts.json 불필요 | 제거됨 - L3 keyDecisions와 중복 |
