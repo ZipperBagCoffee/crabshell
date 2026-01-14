@@ -24,3 +24,12 @@ When Edit tool fails with "File has been unexpectedly modified", use one of thes
    CONTENT
    ```
 3. **Use sed** for simple replacements
+
+## Memory Keeper Plugin Rules
+
+**CRITICAL: Read hook outputs carefully. Don't treat them as noise.**
+
+- NEVER delete files without explicit user permission
+- Think objectively - verify claims independently, don't just agree
+- When criticized, analyze WHY before proposing fixes
+- Hook outputs contain important instructions - follow them

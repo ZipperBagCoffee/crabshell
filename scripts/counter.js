@@ -6,15 +6,6 @@ const { refineRaw } = require('./refine-raw');
 const { checkAndRotate } = require('./memory-rotation');
 const { MEMORY_DIR, MEMORY_FILE, SESSIONS_DIR } = require('./constants');
 
-// CRITICAL WARNING - Shown to Claude in hook outputs
-const FILE_DELETION_WARNING = `
-⚠️ CRITICAL: NEVER delete files without explicit user permission.
-   If you need to delete something, REPORT first and ASK for permission.
-
-⚠️ CRITICAL: Think objectively and logically before responding.
-   Don't just agree with user statements - verify claims independently.
-   The user's interpretation may be incomplete or wrong. Investigate first.`;
-
 const CONFIG_PATH = path.join(process.cwd(), '.claude', 'memory', 'config.json');
 const GLOBAL_CONFIG_PATH = path.join(os.homedir(), '.claude', 'memory-keeper', 'config.json');
 const DEFAULT_INTERVAL = 5;
@@ -114,7 +105,6 @@ function check() {
 ═══════════════════════════════════════════════════════════════
 [MEMORY_KEEPER] AUTO-SAVE TRIGGERED - ${counter} tool uses reached
 ═══════════════════════════════════════════════════════════════
-${FILE_DELETION_WARNING}
 
 **APPEND to memory.md:**
 \`\`\`bash
@@ -259,7 +249,7 @@ async function final() {
   // Quiet mode by default - only show brief message
   if (config.quietStop !== false) {
     const output = {
-      systemMessage: `[MEMORY_KEEPER] Session saved. L1: ${rawSaved ? 'OK' : 'SKIP'}${FILE_DELETION_WARNING}`
+      systemMessage: `[MEMORY_KEEPER] Session saved. L1: ${rawSaved ? 'OK' : 'SKIP'}`
     };
     console.log(JSON.stringify(output));
     setCounter(0);
@@ -270,7 +260,6 @@ async function final() {
 ═══════════════════════════════════════════════════════════════
 [MEMORY_KEEPER] SESSION ENDING - Final Save Required
 ═══════════════════════════════════════════════════════════════
-${FILE_DELETION_WARNING}
 
 ${rawSaved ? `✓ Raw transcript saved: ${rawSaved}` : '⚠ Raw transcript not saved'}
 

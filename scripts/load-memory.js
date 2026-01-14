@@ -12,6 +12,32 @@ const CLAUDE_RULES = `
 - memory-index.json format: see scripts/init.js in plugin directory.
 `;
 
+const CLAUDE_MD_SECTION = `
+## Memory Keeper Plugin Rules
+
+**CRITICAL: Read hook outputs carefully. Don't treat them as noise.**
+
+- NEVER delete files without explicit user permission
+- Think objectively - verify claims independently, don't just agree
+- When criticized, analyze WHY before proposing fixes
+- Hook outputs contain important instructions - follow them
+`;
+
+// Ensure CLAUDE.md has memory-keeper rules
+function ensureClaudeMdRules(projectDir) {
+  const claudeMdPath = path.join(projectDir, 'CLAUDE.md');
+  const marker = '## Memory Keeper Plugin Rules';
+
+  let content = '';
+  if (fs.existsSync(claudeMdPath)) {
+    content = fs.readFileSync(claudeMdPath, 'utf8');
+    if (content.includes(marker)) return; // Already has rules
+  }
+
+  // Append rules
+  fs.appendFileSync(claudeMdPath, CLAUDE_MD_SECTION);
+}
+
 const MEMORY_FILES = [
   { name: 'project.md', title: 'Project Overview' },
   { name: 'architecture.md', title: 'Architecture' },
@@ -28,6 +54,9 @@ function loadMemory() {
 
   // Ensure memory structure exists
   ensureMemoryStructure(projectDir);
+
+  // Ensure CLAUDE.md has memory-keeper rules
+  ensureClaudeMdRules(projectDir);
 
   // Load hierarchical memory files
   MEMORY_FILES.forEach(({ name, title }) => {
