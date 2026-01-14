@@ -1,3 +1,25 @@
+/**
+ * memory-index.json format specification
+ * Location: .claude/memory/memory-index.json
+ *
+ * {
+ *   "version": 1,
+ *   "current": "memory.md",
+ *   "rotatedFiles": [
+ *     {
+ *       "file": "memory_YYYYMMDD_HHMMSS.md",
+ *       "rotatedAt": "2026-01-13T12:34:56.789Z",
+ *       "tokens": 1234,
+ *       "bytes": 5678,
+ *       "summary": "memory_YYYYMMDD_HHMMSS.summary.json",
+ *       "summaryGenerated": false,
+ *       "dateRange": { "start": "ISO", "end": "ISO" }
+ *     }
+ *   ],
+ *   "stats": { "totalRotations": 0, "lastRotation": null },
+ *   "counter": 0
+ * }
+ */
 const fs = require('fs');
 const path = require('path');
 const { MEMORY_DIR, SESSIONS_DIR, LOGS_DIR, INDEX_FILE, MEMORY_FILE } = require('./constants');

@@ -4,6 +4,14 @@ const { getProjectDir, getProjectName, readFileOrDefault, readJsonOrDefault, est
 const { ensureMemoryStructure } = require('./init');
 const { MEMORY_DIR, SESSIONS_DIR, INDEX_FILE, MEMORY_FILE } = require('./constants');
 
+// CRITICAL WARNING - Must be in SessionStart hook for Claude to see
+const CLAUDE_RULES = `
+## CRITICAL RULES FOR CLAUDE
+- NEVER delete files without explicit user permission. REPORT first, ASK permission.
+- Think objectively. Don't just agree with user - verify claims independently.
+- memory-index.json format: see scripts/init.js in plugin directory.
+`;
+
 const MEMORY_FILES = [
   { name: 'project.md', title: 'Project Overview' },
   { name: 'architecture.md', title: 'Architecture' },
@@ -88,9 +96,11 @@ function loadMemory() {
   if (sections.length > 0) {
     console.log('\n=== Memory Keeper: ' + projectName + ' ===\n');
     console.log(sections.join('\n\n---\n\n'));
+    console.log(CLAUDE_RULES);
     console.log('\n=== End of Memory ===\n');
   } else {
     console.log('\n--- Memory Keeper: No memory for ' + projectName + ' ---\n');
+    console.log(CLAUDE_RULES);
   }
 }
 
