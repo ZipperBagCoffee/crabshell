@@ -4,7 +4,7 @@ const { getProjectDir, getProjectName, readFileOrDefault, writeFile, readJsonOrD
 const os = require('os');
 const { refineRaw } = require('./refine-raw');
 const { checkAndRotate } = require('./memory-rotation');
-const { MEMORY_DIR, MEMORY_FILE } = require('./constants');
+const { MEMORY_DIR, MEMORY_FILE, SESSIONS_DIR } = require('./constants');
 
 const CONFIG_PATH = path.join(process.cwd(), '.claude', 'memory', 'config.json');
 const GLOBAL_CONFIG_PATH = path.join(os.homedir(), '.claude', 'memory-keeper', 'config.json');
@@ -123,7 +123,7 @@ async function final() {
   const hookData = await readStdin();
   const projectDir = getProjectDir().replace(/\\/g, '/');
   const timestamp = getTimestamp();
-  const sessionsDir = path.join(getProjectDir(), 'sessions');
+  const sessionsDir = path.join(getProjectDir(), '.claude', SESSIONS_DIR);
 
   ensureDir(sessionsDir);
 
@@ -320,7 +320,7 @@ function cleanupDuplicateL1(newL1Path) {
 
 
 async function refineAll() {
-  const sessionsDir = path.join(getProjectDir(), 'sessions');
+  const sessionsDir = path.join(getProjectDir(), '.claude', SESSIONS_DIR);
   if (!fs.existsSync(sessionsDir)) {
     console.log('[MEMORY_KEEPER] No sessions directory found');
     return;
@@ -362,7 +362,7 @@ async function refineAll() {
 
 function compress() {
   const projectDir = getProjectDir();
-  const sessionsDir = path.join(projectDir, 'sessions');
+  const sessionsDir = path.join(projectDir, '.claude', SESSIONS_DIR);
 
   ensureDir(sessionsDir);
 
