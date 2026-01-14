@@ -29,6 +29,7 @@ Memory Keeper solves this problem.
 
 **1. Session Start:**
 - Previous session summary (`memory.md`) sent to Claude
+- L3 summaries of archived memory sent to Claude
 - Stored decisions/patterns/issues (`facts.json`) sent to Claude
 - Project info you set (`project.md` etc.) sent to Claude
 
@@ -36,19 +37,58 @@ Memory Keeper solves this problem.
 - Auto-save triggers every 5 tool uses
 - Claude records decisions/patterns/issues directly via CLI commands
 - Summary appended to `memory.md`
+- Auto-rotation when memory.md exceeds 23,750 tokens
 
 **3. Session End:**
-- Full conversation backed up (`.raw.jsonl`)
+- Full conversation backed up (`.l1.jsonl`)
 - Final session summary saved
-- Old files cleaned up
 
 ### What Gets Saved
 
 ```
 .claude/memory/
-├── memory.md       # Session summaries (auto)
-├── facts.json      # Decisions/patterns/issues (auto)
-└── sessions/       # Per-session records (auto)
+├── memory.md           # Active rolling memory (auto-rotates)
+├── memory_*.md         # Rotated archives (L2)
+├── *.summary.json      # L3 summaries (Haiku-generated)
+├── index.json          # Rotation tracking
+├── facts.json          # Decisions/patterns/issues (auto)
+└── sessions/           # Per-session records (auto)
+    └── *.l1.jsonl      # L1 session transcripts
+```
+
+---
+
+## Memory Rotation (v13.0.0)
+
+When `memory.md` grows beyond **23,750 tokens** (~95KB):
+1. Current content archived to `memory_YYYYMMDD_HHMMSS.md`
+2. Last **2,375 tokens** kept as carryover
+3. Haiku agent generates L3 JSON summary
+
+### Search Across All Layers
+
+```bash
+# Search L1/L2/L3 layers
+node scripts/counter.js search-memory "query"
+
+# Include L1 raw sessions (slower but thorough)
+node scripts/counter.js search-memory "query" --deep
+
+# Filter by type
+node scripts/counter.js search-memory --type=decision
+```
+
+### Manual L3 Generation
+
+```bash
+# Generate L3 summary for archived file
+node scripts/counter.js generate-l3 memory_20260113_120000.md
+```
+
+### Split Oversized Legacy Files
+
+```bash
+node scripts/counter.js migrate-legacy
 ```
 
 ---
@@ -66,7 +106,6 @@ node scripts/counter.js memory-set project "
 Project: Online Shopping Mall
 Tech Stack: Next.js 14, TypeScript, Prisma, PostgreSQL
 Current Status: MVP development, implementing payment feature
-Team: 2 frontend, 1 backend
 "
 ```
 
@@ -78,21 +117,8 @@ Directory Structure:
 src/
   app/           - Next.js 14 App Router
   components/    - React components
-    ui/          - Common UI (Button, Input, Modal)
-    features/    - Feature components (Cart, Checkout)
   lib/           - Utilities
   services/      - API call wrappers
-
-Database:
-- users: User info
-- products: Products
-- orders: Orders
-- cart_items: Shopping cart
-
-API Rules:
-- All APIs under /api/v1/
-- Auth-required APIs under /api/v1/protected/
-- Error format: { error: string, code: number }
 "
 ```
 
@@ -102,19 +128,8 @@ API Rules:
 node scripts/counter.js memory-set conventions "
 Code Style:
 - Functional components only
-- Prefer interface over type (type only for unions)
 - Filenames: kebab-case
 - Component names: PascalCase
-- Variable/function names: camelCase
-
-Testing:
-- All util functions must have tests
-- Components: only critical ones
-- Test files: *.test.ts
-
-Commits:
-- Run pnpm lint && pnpm test before commit
-- Commit messages: feat:, fix:, docs:, refactor:, test:
 "
 ```
 
@@ -124,17 +139,8 @@ Commits:
 # List all memory files
 node scripts/counter.js memory-list
 
-# Example output:
-# [MEMORY_KEEPER] Memory Structure:
-#   ✓ project.md (15 lines, 423 bytes)
-#   ✓ architecture.md (28 lines, 892 bytes)
-#   ○ conventions.md - not created
-#   ✓ memory.md (156 lines, 4521 bytes) [rolling]
-#   ✓ facts.json (12d/5p/3i)
-
 # View specific memory content
 node scripts/counter.js memory-get project
-node scripts/counter.js memory-get architecture
 node scripts/counter.js memory-get              # View all
 ```
 
@@ -142,111 +148,58 @@ node scripts/counter.js memory-get              # View all
 
 ## Decision Management
 
-### Automatic Extraction
-
-When Claude saves a session file in this format:
-
-```markdown
-## Decisions
-- [technology] Use JWT: Better scalability than sessions
-  - concepts: auth, security
-- [architecture] API versioning: Maintain backward compatibility
-  - files: src/app/api/v1/
-```
-
-It's automatically extracted to `facts.json`.
-
 ### Manual Addition
-
-When you want to record an important decision immediately:
 
 ```bash
 # Basic
 node scripts/counter.js add-decision "decision content" "reason"
 
 # With type
-node scripts/counter.js add-decision "Use PostgreSQL" "Complex queries are common" technology
+node scripts/counter.js add-decision "Use PostgreSQL" "Complex queries" technology
 
 # With related files and concepts
-node scripts/counter.js add-decision "Add Redis caching" "Improve API response speed" technology "src/lib/cache.ts" "caching,performance"
+node scripts/counter.js add-decision "Add Redis caching" "Speed" technology "src/lib/cache.ts" "caching,performance"
 ```
 
-**Type options:**
-- `architecture` - System structure related
-- `technology` - Technology choices
-- `approach` - Implementation approaches
+**Type options:** `architecture`, `technology`, `approach`
 
 ### Search
 
 ```bash
-# Summary
-node scripts/counter.js search
-
-# Keyword search
+# Legacy search (facts.json only)
 node scripts/counter.js search "auth"
-
-# Filter by type
 node scripts/counter.js search --type=technology
 
-# Filter by concept
-node scripts/counter.js search --concept=security
-
-# Filter by file
-node scripts/counter.js search --file=auth
-
-# Combine filters
-node scripts/counter.js search "cache" --type=architecture
+# New integrated search (L1/L2/L3)
+node scripts/counter.js search-memory "auth"
+node scripts/counter.js search-memory "auth" --deep
 ```
 
 ---
 
 ## Pattern Management
 
-Record recurring patterns or rules:
-
 ```bash
-# Basic
 node scripts/counter.js add-pattern "Wrap all API responses in try-catch"
-
-# With type
 node scripts/counter.js add-pattern "One component per file" convention
-node scripts/counter.js add-pattern "DB queries inside transactions" best-practice
-node scripts/counter.js add-pattern "Never use any type" anti-pattern
 ```
 
-**Type options:**
-- `convention` - Team rules
-- `best-practice` - Good habits
-- `anti-pattern` - Things to avoid
+**Type options:** `convention`, `best-practice`, `anti-pattern`
 
 ---
 
 ## Issue Management
 
-Record bugs or problems:
-
 ```bash
-# Open issue
 node scripts/counter.js add-issue "Payment page slow" "open" performance
-
-# Resolved issue
-node scripts/counter.js add-issue "Login token not expiring" "resolved" security
-
-# With related files
-node scripts/counter.js add-issue "Cart sync bug" "resolved" bugfix "src/hooks/useCart.ts" "cart,state-management"
+node scripts/counter.js add-issue "Login bug" "resolved" bugfix
 ```
 
-**Type options:**
-- `bugfix` - Bugs
-- `performance` - Performance issues
-- `security` - Security issues
-- `feature` - Feature related
+**Type options:** `bugfix`, `performance`, `security`, `feature`
 
 ---
 
 ## Slash Commands
-
-Use directly in Claude Code:
 
 | Command | When to Use |
 |---------|-------------|
@@ -261,25 +214,17 @@ Use directly in Claude Code:
 
 ### Clean Up Old Files
 
-Archive session files older than 30 days to monthly archives:
-
 ```bash
 node scripts/counter.js compress
-
-# sessions/2025-10-15_0300.md -> sessions/archive/2025-10.md
 ```
 
 ### Reset Facts
-
-Reset facts.json (keeps memory files):
 
 ```bash
 node scripts/counter.js clear-facts
 ```
 
 ### Reset Counter
-
-Reset auto-save counter to 0:
 
 ```bash
 node scripts/counter.js reset
@@ -298,14 +243,7 @@ node scripts/counter.js reset
 ### Auto-save Not Triggering
 
 1. Check `facts.json._meta.counter` value
-2. Check `config.json` `saveInterval` (default 5)
-3. Reset counter with `node scripts/counter.js reset`
-
-### Session Files Missing
-
-1. Ensure session ended properly (`/exit` not Ctrl+C)
-2. Check `.claude/memory/debug-hook.json`
-3. Check `.claude/memory/error.log`
+2. Reset counter with `node scripts/counter.js reset`
 
 ---
 
@@ -315,11 +253,10 @@ node scripts/counter.js reset
 
 ```json
 {
-  "saveInterval": 5
+  "saveInterval": 5,
+  "keepRaw": false
 }
 ```
-
-- `saveInterval`: Tool uses before save (default: 5, range: 1-50)
 
 ---
 
@@ -327,5 +264,6 @@ node scripts/counter.js reset
 
 | Version | Claude Code | Node.js |
 |---------|-------------|---------|
-| 7.0.x | 1.0+ | 18+ |
-| 6.x | 1.0+ | 18+ |
+| 13.0.x | 1.0+ | 18+ |
+| 12.x | 1.0+ | 18+ |
+| 8.x | 1.0+ | 18+ |
