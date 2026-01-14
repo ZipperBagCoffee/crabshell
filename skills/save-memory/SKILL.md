@@ -44,11 +44,6 @@ cat > ".claude/memory/sessions/$(date +%Y-%m-%d_%H%M).md" << 'ENDSESSION'
 ENDSESSION
 ```
 
-3. **Extract facts:**
-```bash
-node "scripts/counter.js" extract-facts TIMESTAMP
-```
-
 ## Notes
 
 - Uses same format as auto-save

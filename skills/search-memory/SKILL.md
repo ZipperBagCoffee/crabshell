@@ -1,11 +1,11 @@
 ---
 name: search-memory
-description: Search past sessions and facts
+description: Search past sessions and memory
 ---
 
 # Search Memory
 
-Search through saved facts, session history, and memory archives.
+Search through session history and memory archives.
 
 ## Usage
 
@@ -15,7 +15,6 @@ Search through saved facts, session history, and memory archives.
 
 ## Actions
 
-### New: Search L1/L2/L3 layers (v13.0.0)
 ```bash
 # Search across all memory layers
 node "scripts/counter.js" search-memory "query"
@@ -29,29 +28,6 @@ node "scripts/counter.js" search-memory --type=theme
 node "scripts/counter.js" search-memory --type=issue
 ```
 
-### Legacy: Search facts.json only
-```bash
-# Keyword search
-node "scripts/counter.js" search "query"
-
-# By type
-node "scripts/counter.js" search --type=architecture
-
-# By concept
-node "scripts/counter.js" search --concept=authentication
-
-# By file
-node "scripts/counter.js" search --file=src/auth
-
-# Combined
-node "scripts/counter.js" search "react" --type=technology --concept=frontend
-```
-
-### Show summary (no query):
-```bash
-node "scripts/counter.js" search
-```
-
 ## Examples
 
 ```bash
@@ -60,16 +36,9 @@ node scripts/counter.js search-memory "auth"
 
 # Deep search including L1 sessions
 node scripts/counter.js search-memory "auth" --deep
-
-# Find all architecture decisions (legacy)
-node scripts/counter.js search --type=architecture
-
-# Find facts about authentication (legacy)
-node scripts/counter.js search --concept=authentication
 ```
 
 ## Notes
 
-- `search-memory` (v13.0.0): Searches L1, L2, and L3 layers
-- `search` (legacy): Searches only facts.json
+- Searches L1, L2, and L3 memory layers
 - Use `--deep` flag for thorough L1 session search
