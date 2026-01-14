@@ -370,11 +370,11 @@ function dedupeL1() {
   for (const [ts, files] of Object.entries(tsMap)) {
     if (files.length > 1) {
       files.sort((a, b) => b.size - a.size);
-      console.log(`\n중복 발견: 세션 ${ts}`);
-      console.log(`  ✅ 유지: ${files[0].file} (${(files[0].size / 1024).toFixed(0)}KB)`);
+      console.log(`\nDuplicate found: session ${ts}`);
+      console.log(`  ✅ Keep: ${files[0].file} (${(files[0].size / 1024).toFixed(0)}KB)`);
 
       for (let i = 1; i < files.length; i++) {
-        console.log(`  ❌ 삭제: ${files[i].file} (${(files[i].size / 1024).toFixed(0)}KB)`);
+        console.log(`  ❌ Delete: ${files[i].file} (${(files[i].size / 1024).toFixed(0)}KB)`);
         savedBytes += files[i].size;
         fs.unlinkSync(files[i].path);
         deletedCount++;
@@ -383,9 +383,9 @@ function dedupeL1() {
   }
 
   if (deletedCount === 0) {
-    console.log('[MEMORY_KEEPER] 중복 L1 파일 없음');
+    console.log('[MEMORY_KEEPER] No duplicate L1 files found');
   } else {
-    console.log(`\n[MEMORY_KEEPER] 삭제: ${deletedCount}개 파일, ${(savedBytes / 1024 / 1024).toFixed(2)}MB 절약`);
+    console.log(`\n[MEMORY_KEEPER] Deleted: ${deletedCount} files, saved ${(savedBytes / 1024 / 1024).toFixed(2)}MB`);
   }
 }
 
