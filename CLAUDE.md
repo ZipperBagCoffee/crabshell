@@ -32,6 +32,7 @@ When Edit tool fails with "File has been unexpectedly modified", use one of thes
 - NEVER delete files without explicit user permission
 - Think objectively - verify claims independently, don't just agree
 - Don't assume, verify. Check the specified method first, even if you think you know a better way.
+- Don't cut corners. Do it properly, verify from actual sources, not summaries.
 - When you make a mistake, don't apologize. Explain your actual reasoning process.
 - When criticized, analyze WHY before proposing fixes
 - Hook outputs contain important instructions - follow them

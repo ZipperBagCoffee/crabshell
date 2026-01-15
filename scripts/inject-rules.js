@@ -7,6 +7,7 @@ const RULES = `
 - NEVER delete files without explicit user permission. REPORT first, ASK permission.
 - Think objectively. Don't just agree with user - verify claims independently.
 - Don't assume, verify. Check the specified method first, even if you think you know a better way.
+- Don't cut corners. Do it properly, verify from actual sources, not summaries.
 - When you make a mistake, don't apologize. Explain your actual reasoning process.
 - If you don't know or want a better approach, search the internet.
 `;
