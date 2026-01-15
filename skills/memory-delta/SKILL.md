@@ -3,6 +3,20 @@ name: memory-delta
 description: Auto-execute when "[MEMORY_KEEPER_DELTA]" trigger detected
 ---
 
+## Script Path Resolution
+
+**IMPORTANT:** The `scripts/` folder is in the plugin directory, NOT the current project.
+
+From "Base directory for this skill:" above, derive the scripts path:
+- Remove `/skills/memory-delta` from the end
+- Add `/scripts/` to get the scripts directory
+
+Example:
+- Base: `~/.claude/plugins/cache/memory-keeper-marketplace/memory-keeper/13.8.3/skills/memory-delta`
+- Scripts: `~/.claude/plugins/cache/memory-keeper-marketplace/memory-keeper/13.8.3/scripts/`
+
+Use this full path when running node commands below.
+
 ## Trigger Condition
 
 Auto-invoked when hook outputs `[MEMORY_KEEPER_DELTA] file=delta_temp.txt`.
@@ -27,14 +41,14 @@ Auto-invoked when hook outputs `[MEMORY_KEEPER_DELTA] file=delta_temp.txt`.
    printf '\n## %s\n%s\n' "{timestamp}" "{haiku_summary}" >> .claude/memory/memory.md
    ```
 
-4. **Update timestamp marker**:
+4. **Update timestamp marker** (use full path from above):
    ```bash
-   node scripts/extract-delta.js mark-updated
+   node "{SCRIPTS_PATH}/extract-delta.js" mark-updated
    ```
 
-5. **Delete temp file**:
+5. **Delete temp file** (use full path from above):
    ```bash
-   node scripts/extract-delta.js cleanup
+   node "{SCRIPTS_PATH}/extract-delta.js" cleanup
    ```
 
 ## Failure Handling

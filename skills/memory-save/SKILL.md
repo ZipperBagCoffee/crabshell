@@ -3,6 +3,20 @@ name: memory-save
 description: Execute when you see "[MEMORY_KEEPER]" in hook output. Follow the numbered steps exactly to save session memory.
 ---
 
+## Script Path Resolution
+
+**IMPORTANT:** The `scripts/` folder is in the plugin directory, NOT the current project.
+
+From "Base directory for this skill:" above, derive the scripts path:
+- Remove `/skills/memory-save` from the end
+- Add `/scripts/` to get the scripts directory
+
+Example:
+- Base: `~/.claude/plugins/cache/memory-keeper-marketplace/memory-keeper/13.8.3/skills/memory-save`
+- Scripts: `~/.claude/plugins/cache/memory-keeper-marketplace/memory-keeper/13.8.3/scripts/`
+
+Use this full path when running node commands below.
+
 # Memory Save Skill (v13.1.0)
 
 This skill activates when `[MEMORY_KEEPER]` appears in conversation.
@@ -31,23 +45,23 @@ This skill activates when `[MEMORY_KEEPER]` appears in conversation.
 
 ### Step 1: Save to memory.md
 ```bash
-printf '\n## %s\n%s\n' "2025-12-21_0300" "[1-2 sentence summary]" >> ".claude/memory/memory.md"
+printf '\n## %s\n%s\n' "$(date +%Y-%m-%d_%H%M)" "[1-2 sentence summary]" >> ".claude/memory/memory.md"
 ```
 
 ## Session End (Stop Hook)
 
-Additional step:
+Additional step (use full path from above):
 ```bash
-node "scripts/counter.js" compress
+node "{SCRIPTS_PATH}/counter.js" compress
 ```
 
 ## Optional: Update Hierarchical Memory
 
-If major project understanding changed, update stable memory files:
+If major project understanding changed, update stable memory files (use full path):
 ```bash
-node "scripts/counter.js" memory-set project "Updated project description..."
-node "scripts/counter.js" memory-set architecture "Updated architecture..."
-node "scripts/counter.js" memory-set conventions "Updated conventions..."
+node "{SCRIPTS_PATH}/counter.js" memory-set project "Updated project description..."
+node "{SCRIPTS_PATH}/counter.js" memory-set architecture "Updated architecture..."
+node "{SCRIPTS_PATH}/counter.js" memory-set conventions "Updated conventions..."
 ```
 
 **When to update:**
@@ -57,8 +71,8 @@ node "scripts/counter.js" memory-set conventions "Updated conventions..."
 
 **View current memory:**
 ```bash
-node "scripts/counter.js" memory-list
-node "scripts/counter.js" memory-get project
+node "{SCRIPTS_PATH}/counter.js" memory-list
+node "{SCRIPTS_PATH}/counter.js" memory-get project
 ```
 
 ## Critical
