@@ -28,7 +28,7 @@ Auto-invoked when hook outputs `[MEMORY_KEEPER_DELTA] file=delta_temp.txt`.
    Task tool:
    - subagent_type: "memory-keeper:delta-summarizer"
    - model: "haiku"
-   - prompt: "Read .claude/memory/delta_temp.txt and summarize in 1-2 sentences."
+   - prompt: "Read .claude/memory/delta_temp.txt and summarize (1 sentence per ~200 words)."
    ```
 
 2. **Get current timestamp**:
