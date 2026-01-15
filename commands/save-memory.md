@@ -17,7 +17,7 @@ node scripts/counter.js check
 1. **Append to memory.md:**
 ```bash
 TIMESTAMP=$(date +%Y-%m-%d_%H%M)
-echo -e "\n## $TIMESTAMP\n[Your summary here]" >> .claude/memory/memory.md
+printf '\n## %s\n%s\n' "$TIMESTAMP" "[Your summary here]" >> .claude/memory/memory.md
 ```
 
 2. **Record decisions directly:**

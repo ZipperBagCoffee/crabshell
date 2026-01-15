@@ -24,7 +24,7 @@ Auto-invoked when hook outputs `[MEMORY_KEEPER_DELTA] file=delta_temp.txt`.
 
 3. **Append summary to memory.md**:
    ```bash
-   echo -e "\n## {timestamp}\n{haiku_summary}" >> .claude/memory/memory.md
+   printf '\n## %s\n%s\n' "{timestamp}" "{haiku_summary}" >> .claude/memory/memory.md
    ```
 
 4. **Update timestamp marker**:

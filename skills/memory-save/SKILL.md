@@ -31,7 +31,7 @@ This skill activates when `[MEMORY_KEEPER]` appears in conversation.
 
 ### Step 1: Save to memory.md
 ```bash
-echo -e "\n## 2025-12-21_0300\n[1-2 sentence summary]" >> ".claude/memory/memory.md"
+printf '\n## %s\n%s\n' "2025-12-21_0300" "[1-2 sentence summary]" >> ".claude/memory/memory.md"
 ```
 
 ## Session End (Stop Hook)

@@ -17,7 +17,7 @@ Force immediate save of session memory.
 
 1. **Save to memory.md:**
 ```bash
-echo -e "\n## $(date +%Y-%m-%d_%H%M)\n[Summary of current session progress]" >> ".claude/memory/memory.md"
+printf '\n## %s\n%s\n' "$(date +%Y-%m-%d_%H%M)" "[Summary of current session progress]" >> ".claude/memory/memory.md"
 ```
 
 2. **Create session file:**

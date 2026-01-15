@@ -274,7 +274,7 @@ ${rawSaved ? `✓ Raw transcript saved: ${rawSaved}` : '⚠ Raw transcript not s
 
 **APPEND complete summary to memory.md:**
 \`\`\`bash
-echo -e "\\n## ${timestamp} (Session End)\\n[Complete session summary - be thorough]" >> "${projectDir}/.claude/memory/memory.md"
+printf '\\n## %s (Session End)\\n%s\\n' "${timestamp}" "[Complete session summary - be thorough]" >> "${projectDir}/.claude/memory/memory.md"
 \`\`\`
 
 **RUN compression:**
