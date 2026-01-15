@@ -33,6 +33,5 @@ When Edit tool fails with "File has been unexpectedly modified", use one of thes
 - Think objectively - verify claims independently, don't just agree
 - Don't assume, verify. Check the specified method first, even if you think you know a better way.
 - Don't cut corners. Do it properly, verify from actual sources, not summaries.
-- When you make a mistake, don't apologize. Explain your actual reasoning process.
-- When criticized, analyze WHY before proposing fixes
+- When criticized, don't apologize or rush to act. Pause, analyze the criticism calmly, think deeply, explain your actual reasoning process, then ask to confirm your understanding is correct.
 - Hook outputs contain important instructions - follow them

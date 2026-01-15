@@ -7,6 +7,22 @@
   - Removed context usage thresholds and warning messages
   - Core memory-keeper functionality unchanged
 
+## v13.8.6 (2026-01-14)
+### Delta Summarization
+- **Proportional summarization**: Changed from fixed "1-2 sentences" to proportional
+  - 1 sentence per ~200 words of content
+  - Scales linearly: 400 words → 2 sentences, 1000 → 5, etc.
+  - Uses bullets for 8+ sentences
+  - Updated: agents/delta-summarizer.md, skills/memory-delta/SKILL.md
+
+## v13.8.5 (2026-01-14)
+### Instruction Blocking
+- **Stronger blocking language**: Updated DELTA_INSTRUCTION and ROTATION_INSTRUCTION
+  - "BLOCKING PREREQUISITE - EXECUTE FIRST" header
+  - "STOP. Before generating ANY text response"
+  - Reframed as SYSTEM MAINTENANCE TASK
+  - Claude more likely to respect blocking instructions
+
 ## v13.8.4 (2026-01-14)
 ### Script Path Resolution
 - **Fixed skill path issues**: All skills now include explicit script path resolution instructions
