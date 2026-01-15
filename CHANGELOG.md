@@ -1,5 +1,30 @@
 # Changelog
 
+## v13.8.7 (2026-01-14)
+### Cleanup
+- **Removed context warning feature**: Experimental auto-compact replacement deemed not viable
+  - Removed `findCurrentTranscript()` and `estimateContextUsage()` from inject-rules.js
+  - Removed context usage thresholds and warning messages
+  - Core memory-keeper functionality unchanged
+
+## v13.8.4 (2026-01-14)
+### Script Path Resolution
+- **Fixed skill path issues**: All skills now include explicit script path resolution instructions
+  - Scripts are in plugin cache, not current project directory
+  - Added "Script Path Resolution" section to: memory-delta, memory-save, load-memory, search-memory, clear-memory
+  - Prevents errors when skills invoked from projects other than memory-keeper source
+
+## v13.8.3 (2026-01-14)
+### New Rule
+- **'Don't cut corners' rule**: Added to critical rules in inject-rules.js and CLAUDE.md
+  - "Do it properly, verify from actual sources, not summaries"
+
+## v13.8.2 (2026-01-14)
+### Bug Fix
+- **memory-index.json field preservation**: Fixed field loss on parse errors
+  - Added `readIndexSafe()` function to utils.js, counter.js, extract-delta.js, inject-rules.js
+  - All scripts now preserve existing fields when reading/writing index
+
 ## v13.8.1 (2026-01-14)
 ### Bug Fix
 - **Windows compatibility**: Replaced `echo -e` with `printf` across all files
