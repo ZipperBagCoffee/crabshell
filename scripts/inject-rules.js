@@ -13,25 +13,29 @@ const RULES = `
 `;
 
 const DELTA_INSTRUCTION = `
-## MEMORY KEEPER DELTA INSTRUCTION
-INSTRUCTION: A delta file is pending. You MUST execute the memory-delta skill NOW.
+## BLOCKING PREREQUISITE - EXECUTE FIRST
 
-Steps:
+STOP. Before generating ANY text response to the user:
+
 1. Use the Skill tool: skill="memory-delta"
-2. The skill will guide you through: read delta -> summarize -> append to memory.md -> cleanup
+2. Complete all steps in the skill
+3. THEN respond to user
 
-DO NOT skip this. DO NOT delay. Execute immediately before responding to user.
+This is a SYSTEM MAINTENANCE TASK that BLOCKS user response.
+You CANNOT skip this. You CANNOT respond first.
+Your response to the user is INVALID until delta processing completes.
 `;
 
 const ROTATION_INSTRUCTION = `
-## MEMORY KEEPER ROTATION INSTRUCTION
-INSTRUCTION: Rotation summaries pending. Execute memory-rotate skill NOW.
+## BLOCKING PREREQUISITE - ROTATION REQUIRED
 
-Steps:
+After delta processing (if any), before responding to user:
+
 1. Use the Skill tool: skill="memory-rotate"
-2. The skill will trigger Haiku to generate L3 summary
+2. Complete all steps in the skill
+3. THEN respond to user
 
-Execute after delta processing (if any). DO NOT skip.
+This is a SYSTEM MAINTENANCE TASK. You CANNOT skip this.
 `;
 
 function getProjectDir() {
