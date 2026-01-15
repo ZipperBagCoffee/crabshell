@@ -1,12 +1,6 @@
 // scripts/inject-rules.js
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
-
-// Context estimation settings
-const CONTEXT_LIMIT = 200000;  // 200k tokens
-const WARNING_THRESHOLD = 0.80;  // 80%
-const CRITICAL_THRESHOLD = 0.90;  // 90%
 
 const RULES = `
 ## CRITICAL RULES (auto-injected every prompt)
@@ -116,62 +110,6 @@ function checkRotationPending(projectDir) {
   return pending;
 }
 
-// Find most recent JSONL transcript file
-function findCurrentTranscript() {
-  const claudeDir = path.join(os.homedir(), '.claude', 'projects');
-  if (!fs.existsSync(claudeDir)) return null;
-
-  let newest = null;
-  let newestTime = 0;
-
-  function scanDir(dir) {
-    try {
-      const entries = fs.readdirSync(dir, { withFileTypes: true });
-      for (const entry of entries) {
-        const fullPath = path.join(dir, entry.name);
-        if (entry.isDirectory()) {
-          scanDir(fullPath);
-        } else if (entry.name.endsWith('.jsonl')) {
-          const stat = fs.statSync(fullPath);
-          if (stat.mtimeMs > newestTime) {
-            newestTime = stat.mtimeMs;
-            newest = fullPath;
-          }
-        }
-      }
-    } catch (e) {}
-  }
-
-  scanDir(claudeDir);
-  return newest;
-}
-
-// Estimate context usage from transcript
-function estimateContextUsage(transcriptPath) {
-  if (!transcriptPath || !fs.existsSync(transcriptPath)) return null;
-
-  try {
-    const content = fs.readFileSync(transcriptPath, 'utf8').trim();
-    const lines = content.split('\n');
-
-    // Find last assistant entry with usage info
-    for (let i = lines.length - 1; i >= 0; i--) {
-      try {
-        const entry = JSON.parse(lines[i]);
-        if (entry.type === 'assistant' && entry.message?.usage) {
-          const u = entry.message.usage;
-          const total = (u.input_tokens || 0) +
-                        (u.cache_creation_input_tokens || 0) +
-                        (u.cache_read_input_tokens || 0);
-          const percent = total / CONTEXT_LIMIT;
-          return { total, percent, percentStr: (percent * 100).toFixed(1) };
-        }
-      } catch (e) {}
-    }
-  } catch (e) {}
-  return null;
-}
-
 function main() {
   try {
     const projectDir = getProjectDir();
@@ -200,29 +138,6 @@ function main() {
       // Check for pending rotation summaries
       const pendingRotations = checkRotationPending(projectDir);
 
-      // Check context usage for auto-clear
-      const transcriptPath = findCurrentTranscript();
-      const contextUsage = estimateContextUsage(transcriptPath);
-      let contextWarning = null;
-
-      if (contextUsage) {
-        if (contextUsage.percent >= CRITICAL_THRESHOLD) {
-          // 90%+ - CRITICAL
-          contextWarning = {
-            level: 'CRITICAL',
-            percent: contextUsage.percentStr,
-            message: `[CRITICAL] Context ${contextUsage.percentStr}% - /clear 하세요!`
-          };
-        } else if (contextUsage.percent >= WARNING_THRESHOLD) {
-          // 80%+ - WARNING
-          contextWarning = {
-            level: 'WARNING',
-            percent: contextUsage.percentStr,
-            message: `[MEMORY KEEPER] Context ${contextUsage.percentStr}% - /clear 권장`
-          };
-        }
-      }
-
       // Build context: rules + optional instructions
       let context = RULES;
       if (hasPendingDelta) {
@@ -247,14 +162,9 @@ function main() {
       if (hasPendingDelta) indicators.push('delta');
       if (pendingRotations.length > 0) indicators.push('rotation');
 
-      // Output context warning first if present (most important)
-      if (contextWarning) {
-        console.error(contextWarning.message);
-      }
-
       if (indicators.length > 0) {
         console.error(`[rules + ${indicators.join(' + ')} pending]`);
-      } else if (!contextWarning) {
+      } else {
         console.error('[rules injected]');
       }
     }
