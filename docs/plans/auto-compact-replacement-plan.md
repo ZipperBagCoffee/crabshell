@@ -97,7 +97,7 @@ Total Context: 200k tokens (assumption: buffer becomes usable)
 └─────────────────────────────────────────────────────────┘
 ```
 
-## Research Findings (2025-01-14)
+## Research Findings (2026-01-14)
 
 ### 1. Auto-Compact Disable Setting - VERIFIED
 **Answer:** Setting EXISTS. Can be disabled.
@@ -136,18 +136,33 @@ Total Context: 200k tokens (assumption: buffer becomes usable)
 
 **Implication:** Effective usable space is ~150k, not ~155k.
 
-### 4. Context Token Estimation - STILL UNKNOWN
-**Question:** How can hooks estimate current context usage?
+### 4. Context Token Estimation - SOLVED (2026-01-15)
+**Answer:** Parse JSONL transcript file from `~/.claude/projects/`
 
-**Possibilities:**
-- A) Count tokens from L1 session log (incomplete - misses system prompt, tools)
-- B) Parse /context output (not available in hooks)
-- C) Track message tokens incrementally (complex, prone to drift)
-- D) API provides this info somewhere (need to investigate)
+**Method:**
+1. Hook receives `transcript_path` via stdin JSON (or derive from project path)
+2. Parse JSONL file, find last `assistant` entry with `message.usage`
+3. Calculate: `input_tokens + cache_creation_input_tokens + cache_read_input_tokens`
+4. Compare against 200k context window
 
-**Verification Method:** Claude Code API documentation, experimentation
+**Implementation:**
+```javascript
+const lines = fs.readFileSync(transcriptPath, 'utf8').trim().split('\n');
+for (let i = lines.length - 1; i >= 0; i--) {
+  const entry = JSON.parse(lines[i]);
+  if (entry.type === 'assistant' && entry.message?.usage) {
+    const u = entry.message.usage;
+    const total = (u.input_tokens || 0) +
+                  (u.cache_creation_input_tokens || 0) +
+                  (u.cache_read_input_tokens || 0);
+    return { total, percent: (total / 200000 * 100) };
+  }
+}
+```
 
-### 4. Summarization Quality Comparison
+**Verified:** Working - tested on live session, accurate to /context command
+
+### 5. Summarization Quality Comparison
 **Question:** Is Memory Keeper's incremental Haiku summarization as good as Claude's auto-compact summarization?
 
 **Considerations:**
@@ -167,7 +182,7 @@ Total Context: 200k tokens (assumption: buffer becomes usable)
 ### Settings Required
 ```json
 {
-  "autoCompact": false  // Need to verify this setting exists
+  "autoCompactEnabled": false  // VERIFIED - in ~/.claude.json or via /config
 }
 ```
 
@@ -175,6 +190,60 @@ Total Context: 200k tokens (assumption: buffer becomes usable)
 1. `/context-check` - Quick context usage display
 2. `/soft-restart` - Atomic: save → clear → load
 3. Context warning in UserPromptSubmit hook output
+
+### 70% Threshold Behavior (Phase 2 Core)
+
+**Trigger:** Context usage ≥ 70% (140k of 200k tokens)
+
+**Detection Method:**
+1. `inject-rules.js` reads current session transcript from `~/.claude/projects/`
+2. Parse last `assistant` entry's `message.usage`
+3. Calculate: `input_tokens + cache_creation_input_tokens + cache_read_input_tokens`
+4. If ≥ 140,000 → inject warning
+
+**LIMITATION: Claude cannot execute /clear**
+- Tested: `Skill tool` cannot invoke `/clear` ("not a prompt-based skill")
+- `/clear` is user-only command
+- Full automation impossible, semi-automation only
+
+**Semi-Automatic Notification System:**
+
+| Threshold | stderr (User Terminal) | additionalContext (Claude) |
+|-----------|------------------------|---------------------------|
+| 70% | `[MEMORY KEEPER] 70% - /clear 권장` | Tell user to run /clear |
+| 80% | `[CRITICAL] 80% - 지금 /clear 하세요` | Strongly urge /clear |
+
+**70% - User Warning (stderr):**
+```javascript
+console.error(`[MEMORY KEEPER] Context ${percent}% - /clear 권장`);
+```
+
+**70% - Claude Instruction (additionalContext):**
+```
+[CONTEXT_WARNING] Usage: {percent}%
+Inform user: "Context at {percent}%. Recommend running /clear to free space."
+```
+
+**80% - Critical Warning (stderr):**
+```javascript
+console.error(`[CRITICAL] Context ${percent}% - 지금 /clear 하세요`);
+```
+
+**`/soft-restart` Skill Steps:**
+1. `/save-memory` - Ensure current context saved to memory.md
+2. `/clear` - Reset Claude's context window
+3. `/load-memory` - Restore memory.md into fresh context
+
+**Rationale:**
+- Hook cannot force Claude to execute, only instruct
+- stderr bypasses Claude, goes directly to user terminal
+- Dual approach ensures user always knows, regardless of Claude compliance
+
+**Post-Clear Memory Restoration:**
+- SessionStart hook automatically runs `load-memory.js` after `/clear`
+- Loads: memory.md tail (50 lines), L3 summaries, unreflected L1 content
+- Verified working: memory context restored after clear
+- Note: 50-line limit may truncate important content
 
 ### Risk Mitigation
 - Always maintain L1 raw logs as backup
@@ -201,39 +270,76 @@ If user forgets to /clear and hits hard limit:
 
 ## Conclusion
 
-**Original Proposal: VIABLE**
-- Auto-compact CAN be disabled via `~/.claude.json` or `/config`
-- Remaining unknown: Does disabling free the 45k buffer?
+**Strategy A: CONFIRMED (2026-01-15)**
+- Auto-compact disabled via `~/.claude.json` or `/config` ✓
+- Buffer freed, ~45k extra tokens usable ✓
 
-**Two Strategies:**
-
-### Strategy A: Replace Auto-Compact (If Buffer Freed)
+**Current Workflow:**
 1. Disable auto-compact: `"autoCompactEnabled": false`
-2. Gain ~45k extra usable tokens (needs verification)
+2. Memory Keeper saves incremental deltas (every 5 tool uses)
 3. User monitors context with `/context`
 4. At ~80%, execute `/save-memory` → `/clear` → `/load-memory`
 
-### Strategy B: Complement Auto-Compact (If Buffer NOT Freed)
-Memory Keeper works WITH auto-compact:
-1. **Pre-compact saves**: Delta saves preserve context before auto-compact loses it
-2. **Cross-session persistence**: Auto-compact only helps within session
-3. **Searchable history**: Auto-compact summaries are lost; L3 summaries are searchable
-4. **Recovery**: Auto-compact can't recover from crashes; L1 logs can
-
-**Next: Experiment Required**
-Test with `autoCompactEnabled: false` to verify:
-1. Does buffer become usable?
-2. What happens at 200k limit?
+**Phase 2 Goal:** Semi-automate step 4:
+- Hook detects 70%+ context usage
+- Claude asks user: "Context at X%. Run /soft-restart?"
+- User confirms → Claude executes save → clear → load
 
 ## Next Steps
 
-1. [x] Verify auto-compact disable setting - DONE (exists: ~/.claude.json or /config)
+### Phase 1: Complete ✓
+1. [x] Verify auto-compact disable setting - DONE
 2. [x] Verify hard limit behavior - DONE (validation error)
-3. [ ] **EXPERIMENT**: Test `autoCompactEnabled: false` - does buffer free up?
-4. [ ] Investigate context token estimation methods
-5. [ ] Prototype `/soft-restart` command
-6. [ ] Add context warning to inject-rules.js
-7. [ ] Compare summarization quality
+3. [x] Test `autoCompactEnabled: false` - DONE (buffer freed)
+
+### Phase 2: Semi-Automatic (Priority Order)
+4. [ ] **Prototype `/soft-restart`** - Immediate value, simple implementation
+5. [x] **Investigate context token estimation** - DONE (JSONL transcript parsing)
+6. [x] **Add context warning to inject-rules.js** - DONE (signal file creation at 70%+)
+7. [x] **External auto-clear watcher** - DONE (PowerShell script)
+8. [ ] Compare summarization quality - Long-term evaluation
+
+### Phase 2.5: External Auto-Clear (IMPLEMENTED 2026-01-15)
+
+**Problem:** Claude cannot execute `/clear` programmatically (not exposed as a tool)
+
+**Solution:** External PowerShell watcher script
+
+**Architecture:**
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  inject-rules.js (runs every prompt)                            │
+│       │                                                         │
+│       ├── Parse JSONL transcript for context usage              │
+│       │                                                         │
+│       └── If ≥70%: Create ~/.claude/clear-signal               │
+│                                                                 │
+│  auto-clear-watcher.ps1 (runs in separate terminal)             │
+│       │                                                         │
+│       ├── Polls for ~/.claude/clear-signal every 2 seconds      │
+│       │                                                         │
+│       └── When detected:                                        │
+│           ├── Find Claude Code window by title                  │
+│           ├── Activate window (SetForegroundWindow)             │
+│           ├── Send "/clear" + ENTER (SendKeys)                  │
+│           └── Delete signal file                                │
+│                                                                 │
+│  SessionStart hook (runs after /clear)                          │
+│       │                                                         │
+│       └── load-memory.js restores memory.md                     │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Files:**
+- `scripts/inject-rules.js` - Signal file creation at 70%+
+- `scripts/auto-clear-watcher.ps1` - PowerShell watcher
+- `scripts/start-auto-clear.bat` - Easy startup script
+
+**Usage:**
+1. Start watcher: Double-click `start-auto-clear.bat` or run in PowerShell
+2. Use Claude Code normally
+3. At 70%+ context, `/clear` is automatically sent
+4. Memory is automatically restored by SessionStart hook
 
 ## References
 
@@ -243,5 +349,9 @@ Test with `autoCompactEnabled: false` to verify:
 - [GitHub Issue #10691: autoCompact settings request](https://github.com/anthropics/claude-code/issues/10691)
 - [How Claude Code Got Better by Protecting More Context](https://hyperdev.matsuoka.com/p/how-claude-code-got-better-by-protecting)
 - [Context Windows - Claude Docs](https://docs.claude.com/en/docs/build-with-claude/context-windows)
+- [How to Calculate Your Claude Code Context Usage](https://codelynx.dev/posts/calculate-claude-code-context)
+- [Hooks reference - Claude Code Docs](https://code.claude.com/docs/en/hooks)
+- [ccusage - JSONL analysis CLI](https://github.com/ryoppippi/ccusage)
+- [Token Audit MCP](https://github.com/littlebearapps/token-audit)
 - Memory Keeper architecture: ./ARCHITECTURE.md
 - Current implementation: ./trigger-mechanism-analysis.md
