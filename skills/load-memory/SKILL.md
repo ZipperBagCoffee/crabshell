@@ -27,7 +27,10 @@ This will output the current memory state to context:
    - `architecture.md` - Architecture decisions
    - `conventions.md` - Coding conventions
 
-2. **Rolling Memory**:
+2. **L3 Summaries**:
+   - JSON summaries of rotated memory archives
+
+3. **Rolling Memory**:
    - Last 50 lines of `memory.md`
 
 ## When to Use

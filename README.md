@@ -173,13 +173,14 @@ memory.md                 - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 13.8.1 | Windows `echo -e` bug fix (replaced with `printf`) |
+| 13.8.0 | Auto-trigger L3 generation after rotation |
+| 13.7.0 | Path detection fix for plugin cache execution |
+| 13.6.0 | UserPromptSubmit-based delta triggers (more reliable) |
 | 13.5.0 | Delta-based auto-save (Haiku summarization), rules injection every prompt |
-| 13.3.1 | Fix memory-index.json structure handling bug |
-| 13.2.0 | L1 deduplication, facts.json removal, file deletion warnings |
 | 13.0.0 | Token-based memory rotation (L2 archives, L3 summaries) |
 | 12.x | Stop hook blocking, L2/L3/L4 workflow improvements |
 | 8.x | L1-L4 hierarchical memory system |
-| 7.x | Hierarchical memory (project/architecture/conventions) |
 
 ## License
 

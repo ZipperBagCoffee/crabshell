@@ -1,5 +1,32 @@
 # Changelog
 
+## v13.8.1 (2026-01-14)
+### Bug Fix
+- **Windows compatibility**: Replaced `echo -e` with `printf` across all files
+  - `echo -e` doesn't work reliably on Windows Git Bash (outputs literal "n" instead of newline)
+  - Fixed in: memory-delta, save-memory, memory-save skills, save-memory command, counter.js
+
+## v13.8.0 (2026-01-14)
+### Rotation Pending Detection
+- **Auto-trigger L3 generation**: inject-rules.js now detects pending rotation summaries
+  - Checks `summaryGenerated: false` in memory-index.json
+  - Outputs `[MEMORY_KEEPER_ROTATE]` trigger for Claude to execute memory-rotate skill
+  - No manual intervention needed - L3 summaries generated automatically after rotation
+
+## v13.7.0 (2026-01-14)
+### Bug Fixes
+- **Path detection fix**: inject-rules.js now correctly detects delta_temp.txt from plugin cache
+  - Plugin runs from installed cache location, not source directory
+  - Fixed path resolution to work regardless of execution context
+- **Skill subagent_type**: Fixed agent type references in skill files
+
+## v13.6.0 (2026-01-14)
+### Delta Trigger Improvement
+- **UserPromptSubmit-based triggers**: Moved delta delivery from PostToolUse to UserPromptSubmit
+  - PostToolUse stdout is limited and unreliable for delivering instructions
+  - UserPromptSubmit's `additionalContext` is the only reliable method
+  - Delta instructions now injected with critical rules every prompt
+
 ## v13.5.0 (2026-01-14)
 ### Smarter Auto-Save with Delta Updates
 - **Delta-based summarization**: Auto-save now extracts actual changes from L1 session log

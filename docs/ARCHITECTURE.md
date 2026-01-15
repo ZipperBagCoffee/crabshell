@@ -11,13 +11,13 @@ Memory Keeper is a Claude Code plugin that automatically saves session context u
 |                        Claude Code CLI                               |
 +---------------------------------------------------------------------+
 |  Hooks                                                               |
-|  +--------------+  +--------------+  +--------------+               |
-|  | SessionStart |  | PostToolUse  |  |    Stop      |               |
-|  | load-memory  |  |   counter    |  |   counter    |               |
-|  +------+-------+  +------+-------+  +------+-------+               |
-+---------+-----------------+-----------------+-----------------------+
-          |                 |                 |
-          v                 v                 v
+|  +--------------+  +------------------+  +--------------+  +------+ |
+|  | SessionStart |  | UserPromptSubmit |  | PostToolUse  |  | Stop | |
+|  | load-memory  |  |  inject-rules    |  |   counter    |  |counter|
+|  +------+-------+  +--------+---------+  +------+-------+  +--+---+ |
++---------+------------------+-----------------+----------------+-----+
+          |                  |                 |                |
+          v                  v                 v                v
 +---------------------------------------------------------------------+
 |  scripts/                                                            |
 |  +----------------+  +------------------------------------------+   |
@@ -26,13 +26,18 @@ Memory Keeper is a Claude Code plugin that automatically saves session context u
 |  | Reads:         |  | - final: save transcript, create L1      |   |
 |  | - memory.md    |  | - search-memory: L1/L2/L3 search         |   |
 |  | - L3 summaries |  | - generate-l3: create L3 summary         |   |
-|  | - project.md   |  | - compress, refine-all, migrate-legacy   |   |
+|  | - project.md   |  +------------------------------------------+   |
 |  +----------------+  +------------------------------------------+   |
-|                                                                      |
-|  +----------------+  +----------------+  +----------------------+    |
-|  | constants.js   |  | search.js      |  | memory-rotation.js   |    |
-|  | - thresholds   |  | - L1/L2/L3     |  | - checkAndRotate     |    |
-|  | - paths        |  |   search       |  | - token counting     |    |
+|                      | inject-rules.js                          |   |
+|  +----------------+  | - Inject critical rules (every prompt)   |   |
+|  | extract-delta  |  | - Detect pending delta → INSTRUCTION     |   |
+|  | - extractDelta |  | - Detect pending rotation → INSTRUCTION  |   |
+|  | - cleanup      |  +------------------------------------------+   |
+|  +----------------+                                                  |
+|                      +----------------+  +----------------------+    |
+|  +----------------+  | search.js      |  | memory-rotation.js   |    |
+|  | constants.js   |  | - L1/L2/L3     |  | - checkAndRotate     |    |
+|  | - thresholds   |  |   search       |  | - token counting     |    |
 |  +----------------+  +----------------+  +----------------------+    |
 +---------------------------------------------------------------------+
           |                 |                 |
@@ -177,9 +182,11 @@ Save to *.summary.json
 
 | Version | Key Changes |
 |---------|-------------|
-| 13.3.1 | Fix memory-index.json structure handling bug |
-| 13.2.0 | L1 deduplication, facts.json removal, file deletion warnings |
+| 13.8.1 | Windows `echo -e` → `printf` fix |
+| 13.8.0 | Auto-trigger L3 generation after rotation |
+| 13.7.0 | Path detection fix for plugin cache execution |
+| 13.6.0 | UserPromptSubmit-based delta/rotation triggers |
+| 13.5.0 | Delta-based auto-save, rules injection via UserPromptSubmit |
 | 13.0.0 | Token-based memory rotation, L3 Haiku summaries, integrated search |
 | 12.x | Stop hook blocking, L2/L3/L4 workflow improvements |
 | 8.x | L1-L4 hierarchical memory system |
-| 7.x | Hierarchical memory (project/architecture/conventions) |

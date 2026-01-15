@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 13.5.0 | **Author**: TaWa | **License**: MIT
+**Version**: 13.8.1 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -144,30 +144,35 @@ L1 generation:
 
 2. UserPromptSubmit (every prompt)
    └─> inject-rules.js
-       └─> Inject critical rules via additionalContext
-       └─> Output [rules injected] indicator
+       ├─> Inject critical rules via additionalContext
+       ├─> Check for pending delta (delta_temp.txt exists)
+       │   └─> If yes: Inject DELTA_INSTRUCTION → Claude executes memory-delta skill
+       ├─> Check for pending rotation (summaryGenerated: false)
+       │   └─> If yes: Inject ROTATION_INSTRUCTION → Claude executes memory-rotate skill
+       └─> Output indicator: [rules injected], [rules + delta pending], [rules + rotation pending]
 
 3. PostToolUse
    └─> counter.js check
        ├─> Increment counter
-       ├─> checkAndRotate()
-       └─> At threshold: extractDelta() → [MEMORY_KEEPER_DELTA]
+       ├─> checkAndRotate() - archive if > 23,750 tokens
+       └─> At threshold (5): extractDelta() → creates delta_temp.txt
 
 4. Stop
    └─> counter.js final
        ├─> Create L1 session transcript
        ├─> Cleanup duplicate L1 files
-       ├─> extractDelta() for remaining content
-       └─> Output final save instructions
+       └─> extractDelta() for remaining content
 ```
 
 ## Version History
 
 | Version | Key Changes |
 |---------|-------------|
+| 13.8.1 | Windows `echo -e` → `printf` fix |
+| 13.8.0 | Auto-trigger L3 after rotation via inject-rules.js |
+| 13.7.0 | Path detection fix for plugin cache |
+| 13.6.0 | UserPromptSubmit-based delta triggers |
 | 13.5.0 | Delta-based auto-save, rules injection via UserPromptSubmit |
-| 13.2.0 | L1 deduplication, facts.json removal, file deletion warnings |
 | 13.0.0 | Token-based memory rotation, L3 Haiku summaries |
-| 12.x | Stop hook blocking, L2/L3/L4 workflow improvements |
+| 12.x | Stop hook blocking, L2/L3/L4 workflow |
 | 8.x | L1-L4 hierarchical memory system |
-| 7.x | Hierarchical memory (project/architecture/conventions) |
