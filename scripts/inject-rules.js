@@ -22,6 +22,17 @@ Steps:
 DO NOT skip this. DO NOT delay. Execute immediately before responding to user.
 `;
 
+const ROTATION_INSTRUCTION = `
+## MEMORY KEEPER ROTATION INSTRUCTION
+INSTRUCTION: Rotation summaries pending. Execute memory-rotate skill NOW.
+
+Steps:
+1. Use the Skill tool: skill="memory-rotate"
+2. The skill will trigger Haiku to generate L3 summary
+
+Execute after delta processing (if any). DO NOT skip.
+`;
+
 function getProjectDir() {
   // Same logic as utils.js - find project root by .claude folder
   if (process.env.PROJECT_DIR) return process.env.PROJECT_DIR;
@@ -49,9 +60,22 @@ function checkDeltaPending(projectDir) {
   const logPath = path.join(projectDir, '.claude', 'memory', 'logs', 'inject-debug.log');
   try {
     fs.mkdirSync(path.dirname(logPath), { recursive: true });
-    fs.appendFileSync(logPath, `${new Date().toISOString()} | cwd=${process.cwd()} | projectDir=${projectDir} | exists=${exists}\n`);
+    fs.appendFileSync(logPath, `${new Date().toISOString()} | cwd=${process.cwd()} | projectDir=${projectDir} | delta=${exists}\n`);
   } catch (e) {}
   return exists;
+}
+
+function checkRotationPending(projectDir) {
+  const indexPath = path.join(projectDir, '.claude', 'memory', 'memory-index.json');
+  const index = readJsonSafe(indexPath, {});
+  const rotatedFiles = index.rotatedFiles || [];
+  const pending = rotatedFiles.filter(f => !f.summaryGenerated);
+  // Debug log
+  const logPath = path.join(projectDir, '.claude', 'memory', 'logs', 'inject-debug.log');
+  try {
+    fs.appendFileSync(logPath, `${new Date().toISOString()} | rotation pending=${pending.length}\n`);
+  } catch (e) {}
+  return pending;
 }
 
 function main() {
@@ -79,10 +103,17 @@ function main() {
       // Check for pending delta
       const hasPendingDelta = checkDeltaPending(projectDir);
 
-      // Build context: rules + optional delta instruction
+      // Check for pending rotation summaries
+      const pendingRotations = checkRotationPending(projectDir);
+
+      // Build context: rules + optional instructions
       let context = RULES;
       if (hasPendingDelta) {
         context += DELTA_INSTRUCTION;
+      }
+      if (pendingRotations.length > 0) {
+        context += ROTATION_INSTRUCTION;
+        context += `\nFiles: ${pendingRotations.map(f => f.file).join(', ')}`;
       }
 
       // Output rules via additionalContext (hidden from user, seen by Claude)
@@ -95,8 +126,11 @@ function main() {
       console.log(JSON.stringify(output));
 
       // Brief indicator to stderr (shown to user)
-      if (hasPendingDelta) {
-        console.error('[rules injected + delta pending]');
+      const indicators = [];
+      if (hasPendingDelta) indicators.push('delta');
+      if (pendingRotations.length > 0) indicators.push('rotation');
+      if (indicators.length > 0) {
+        console.error(`[rules + ${indicators.join(' + ')} pending]`);
       } else {
         console.error('[rules injected]');
       }
