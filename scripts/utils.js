@@ -34,6 +34,39 @@ function readJsonOrDefault(filePath, defaultValue) {
   } catch { return defaultValue; }
 }
 
+// Default memory-index.json structure - prevents field loss on parse errors
+function getDefaultIndex() {
+  return {
+    version: 1,
+    current: MEMORY_FILE,
+    rotatedFiles: [],
+    stats: { totalRotations: 0, lastRotation: null },
+    counter: 0,
+    lastMemoryUpdateTs: null
+  };
+}
+
+// Safe index reader - ALWAYS returns complete structure, preserving existing values
+function readIndexSafe(indexPath) {
+  const defaults = getDefaultIndex();
+  try {
+    if (!fs.existsSync(indexPath)) return defaults;
+    const existing = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
+    // Merge: defaults first, then existing values override
+    return {
+      version: existing.version ?? defaults.version,
+      current: existing.current ?? defaults.current,
+      rotatedFiles: Array.isArray(existing.rotatedFiles) ? existing.rotatedFiles : defaults.rotatedFiles,
+      stats: existing.stats ?? defaults.stats,
+      counter: existing.counter ?? defaults.counter,
+      lastMemoryUpdateTs: existing.lastMemoryUpdateTs ?? defaults.lastMemoryUpdateTs,
+      rulesInjectionCount: existing.rulesInjectionCount  // optional field
+    };
+  } catch {
+    return defaults;
+  }
+}
+
 function writeFile(filePath, content) {
   ensureDir(path.dirname(filePath));
   fs.writeFileSync(filePath, content, 'utf8');
@@ -63,9 +96,7 @@ function extractTailByTokens(content, targetTokens) {
 
 function updateIndex(archivePath, tokens, memoryDir, dateRange) {
   const indexPath = path.join(memoryDir, INDEX_FILE);
-  const index = readJsonOrDefault(indexPath, { version: 1, current: MEMORY_FILE, rotatedFiles: [], stats: { totalRotations: 0, lastRotation: null } });
-  if (!Array.isArray(index.rotatedFiles)) index.rotatedFiles = [];
-  if (!index.stats) index.stats = { totalRotations: 0, lastRotation: null };
+  const index = readIndexSafe(indexPath);  // Use safe reader to preserve all fields
   const entry = { file: path.basename(archivePath), rotatedAt: new Date().toISOString(), tokens, bytes: fs.statSync(archivePath).size, summary: path.basename(archivePath).replace('.md', '.summary.json'), summaryGenerated: false };
   if (dateRange) entry.dateRange = dateRange;
   index.rotatedFiles.push(entry);
@@ -84,4 +115,4 @@ function acquireLock(memoryDir) {
 
 function releaseLock(memoryDir) { try { fs.unlinkSync(path.join(memoryDir, LOCK_FILE)); } catch {} }
 
-module.exports = { MEMORY_ROOT, getProjectName, getProjectDir, getMemoryDir, ensureDir, readFileOrDefault, readJsonOrDefault, writeFile, writeJson, getTimestamp, estimateTokens, estimateTokensFromFile, extractTailByTokens, updateIndex, acquireLock, releaseLock };
+module.exports = { MEMORY_ROOT, getProjectName, getProjectDir, getMemoryDir, ensureDir, readFileOrDefault, readJsonOrDefault, getDefaultIndex, readIndexSafe, writeFile, writeJson, getTimestamp, estimateTokens, estimateTokensFromFile, extractTailByTokens, updateIndex, acquireLock, releaseLock };

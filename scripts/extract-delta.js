@@ -1,7 +1,7 @@
 // scripts/extract-delta.js
 const fs = require('fs');
 const path = require('path');
-const { getProjectDir, readJsonOrDefault, writeJson, estimateTokens, extractTailByTokens } = require('./utils');
+const { getProjectDir, readJsonOrDefault, readIndexSafe, writeJson, estimateTokens, extractTailByTokens } = require('./utils');
 const { SESSIONS_DIR, MEMORY_DIR, INDEX_FILE, DELTA_TEMP_FILE, HAIKU_SAFE_TOKENS, FIRST_RUN_MAX_ENTRIES, DELTA_OUTPUT_TRUNCATE } = require('./constants');
 
 function extractDelta() {
@@ -12,7 +12,7 @@ function extractDelta() {
     const indexPath = path.join(memoryDir, INDEX_FILE);
 
     // Get last update timestamp
-    const index = readJsonOrDefault(indexPath, {});
+    const index = readIndexSafe(indexPath);  // Use safe reader to preserve all fields
     const lastUpdateTs = index.lastMemoryUpdateTs || null;
 
     // Get most recent L1 file
@@ -130,7 +130,7 @@ function markMemoryUpdated() {
     const memoryDir = path.join(projectDir, '.claude', MEMORY_DIR);
     const indexPath = path.join(memoryDir, INDEX_FILE);
 
-    const index = readJsonOrDefault(indexPath, {});
+    const index = readIndexSafe(indexPath);  // Use safe reader to preserve all fields
     index.lastMemoryUpdateTs = new Date().toISOString();
     writeJson(indexPath, index);
 

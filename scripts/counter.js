@@ -1,6 +1,6 @@
 const path = require('path');
 const fs = require('fs');
-const { getProjectDir, getProjectName, readFileOrDefault, writeFile, readJsonOrDefault, writeJson, ensureDir, getTimestamp } = require('./utils');
+const { getProjectDir, getProjectName, readFileOrDefault, writeFile, readJsonOrDefault, readIndexSafe, writeJson, ensureDir, getTimestamp } = require('./utils');
 const os = require('os');
 const { refineRaw } = require('./refine-raw');
 const { checkAndRotate } = require('./memory-rotation');
@@ -77,7 +77,7 @@ function getCounter() {
 
 function setCounter(value) {
   const indexPath = path.join(getProjectDir(), '.claude', MEMORY_DIR, 'memory-index.json');
-  const index = readJsonOrDefault(indexPath, {});
+  const index = readIndexSafe(indexPath);  // Use safe reader to preserve all fields
   index.counter = value;
   writeJson(indexPath, index);
 }

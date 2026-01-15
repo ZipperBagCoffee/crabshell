@@ -53,6 +53,33 @@ function readJsonSafe(filePath, defaultValue) {
   return defaultValue;
 }
 
+// Safe index reader - ALWAYS returns complete structure, preserving existing values
+function readIndexSafe(indexPath) {
+  const defaults = {
+    version: 1,
+    current: 'memory.md',
+    rotatedFiles: [],
+    stats: { totalRotations: 0, lastRotation: null },
+    counter: 0,
+    lastMemoryUpdateTs: null
+  };
+  try {
+    if (!fs.existsSync(indexPath)) return defaults;
+    const existing = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
+    return {
+      version: existing.version ?? defaults.version,
+      current: existing.current ?? defaults.current,
+      rotatedFiles: Array.isArray(existing.rotatedFiles) ? existing.rotatedFiles : defaults.rotatedFiles,
+      stats: existing.stats ?? defaults.stats,
+      counter: existing.counter ?? defaults.counter,
+      lastMemoryUpdateTs: existing.lastMemoryUpdateTs ?? defaults.lastMemoryUpdateTs,
+      rulesInjectionCount: existing.rulesInjectionCount
+    };
+  } catch {
+    return defaults;
+  }
+}
+
 function checkDeltaPending(projectDir) {
   const deltaPath = path.join(projectDir, '.claude', 'memory', 'delta_temp.txt');
   const exists = fs.existsSync(deltaPath);
@@ -88,7 +115,7 @@ function main() {
 
     // Counter stored in memory-index.json
     const indexPath = path.join(projectDir, '.claude', 'memory', 'memory-index.json');
-    const index = readJsonSafe(indexPath, {});
+    const index = readIndexSafe(indexPath);  // Use safe reader to preserve all fields
 
     let count = (index.rulesInjectionCount || 0) + 1;
 
