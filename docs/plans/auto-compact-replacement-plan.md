@@ -292,54 +292,42 @@ If user forgets to /clear and hits hard limit:
 2. [x] Verify hard limit behavior - DONE (validation error)
 3. [x] Test `autoCompactEnabled: false` - DONE (buffer freed)
 
-### Phase 2: Semi-Automatic (Priority Order)
-4. [ ] **Prototype `/soft-restart`** - Immediate value, simple implementation
+### Phase 2: Context Warning (IMPLEMENTED 2026-01-15)
+4. [ ] **Prototype `/soft-restart`** - Deferred (manual /clear sufficient)
 5. [x] **Investigate context token estimation** - DONE (JSONL transcript parsing)
-6. [x] **Add context warning to inject-rules.js** - DONE (signal file creation at 70%+)
-7. [x] **External auto-clear watcher** - DONE (PowerShell script)
+6. [x] **Add context warning to inject-rules.js** - DONE (80%/90% thresholds)
+7. [x] **External auto-clear watcher** - ABANDONED (not truly automatic, requires manual setup)
 8. [ ] Compare summarization quality - Long-term evaluation
 
-### Phase 2.5: External Auto-Clear (IMPLEMENTED 2026-01-15)
+### Current Implementation
 
-**Problem:** Claude cannot execute `/clear` programmatically (not exposed as a tool)
+**Approach:** Warning-only (user manually runs /clear)
 
-**Solution:** External PowerShell watcher script
+**Why not fully automatic:**
+- Claude cannot execute `/clear` programmatically (not exposed as tool)
+- External watcher scripts require manual setup (not truly automatic)
+- PreCompact hook cannot block compaction (bug #13572)
+- No IPC mechanism between hooks and external processes
 
-**Architecture:**
+**Implementation:**
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  inject-rules.js (runs every prompt)                            │
+│  inject-rules.js (runs every prompt via UserPromptSubmit hook)  │
 │       │                                                         │
-│       ├── Parse JSONL transcript for context usage              │
+│       ├── Find newest JSONL transcript in ~/.claude/projects/   │
+│       ├── Parse last assistant entry for usage tokens           │
+│       ├── Calculate: input + cache_creation + cache_read        │
 │       │                                                         │
-│       └── If ≥70%: Create ~/.claude/clear-signal               │
-│                                                                 │
-│  auto-clear-watcher.ps1 (runs in separate terminal)             │
-│       │                                                         │
-│       ├── Polls for ~/.claude/clear-signal every 2 seconds      │
-│       │                                                         │
-│       └── When detected:                                        │
-│           ├── Find Claude Code window by title                  │
-│           ├── Activate window (SetForegroundWindow)             │
-│           ├── Send "/clear" + ENTER (SendKeys)                  │
-│           └── Delete signal file                                │
-│                                                                 │
-│  SessionStart hook (runs after /clear)                          │
-│       │                                                         │
-│       └── load-memory.js restores memory.md                     │
+│       └── Output to stderr (visible to user):                   │
+│           ├── 80%+: "[MEMORY KEEPER] Context X% - /clear 권장"  │
+│           └── 90%+: "[CRITICAL] Context X% - /clear 하세요!"    │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-**Files:**
-- `scripts/inject-rules.js` - Signal file creation at 70%+
-- `scripts/auto-clear-watcher.ps1` - PowerShell watcher
-- `scripts/start-auto-clear.bat` - Easy startup script
-
-**Usage:**
-1. Start watcher: Double-click `start-auto-clear.bat` or run in PowerShell
-2. Use Claude Code normally
-3. At 70%+ context, `/clear` is automatically sent
-4. Memory is automatically restored by SessionStart hook
+**User Workflow:**
+1. See warning in terminal at 80%+ context
+2. Manually run `/clear` when convenient
+3. SessionStart hook automatically restores memory.md
 
 ## References
 
