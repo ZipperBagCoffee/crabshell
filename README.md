@@ -173,6 +173,12 @@ memory.md                 - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 13.8.7 | Removed experimental context warning feature |
+| 13.8.6 | Proportional delta summarization (1 sentence per ~200 words) |
+| 13.8.5 | Stronger delta instruction blocking language |
+| 13.8.4 | Script path resolution for all skills |
+| 13.8.3 | Added 'don't cut corners' rule |
+| 13.8.2 | Fixed memory-index.json field preservation on parse errors |
 | 13.8.1 | Windows `echo -e` bug fix (replaced with `printf`) |
 | 13.8.0 | Auto-trigger L3 generation after rotation |
 | 13.7.0 | Path detection fix for plugin cache execution |
