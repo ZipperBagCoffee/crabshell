@@ -112,9 +112,54 @@ function checkRotationPending(projectDir) {
   return pending;
 }
 
+// Auto-sync RULES to CLAUDE.md (only if changed)
+function syncRulesToClaudeMd(projectDir) {
+  try {
+    const claudeMdPath = path.join(projectDir, 'CLAUDE.md');
+    if (!fs.existsSync(claudeMdPath)) return;
+
+    // Extract rule lines from RULES constant
+    const ruleLines = RULES.split('\n')
+      .map(l => l.trim())
+      .filter(l => l.startsWith('- '));
+
+    const content = fs.readFileSync(claudeMdPath, 'utf8');
+
+    // Find Memory Keeper Plugin Rules section
+    const sectionStart = content.indexOf('## Memory Keeper Plugin Rules');
+    if (sectionStart === -1) return;
+
+    const afterSection = content.slice(sectionStart);
+    const nextSection = afterSection.indexOf('\n## ', 1);
+    const sectionEnd = nextSection === -1 ? content.length : sectionStart + nextSection;
+
+    // Build new section
+    const newSection = `## Memory Keeper Plugin Rules
+
+**CRITICAL: Read hook outputs carefully. Don't treat them as noise.**
+
+${ruleLines.join('\n')}
+- Hook outputs contain important instructions - follow them
+`;
+
+    const currentSection = content.slice(sectionStart, sectionEnd);
+    if (currentSection.trim() === newSection.trim()) return; // No change needed
+
+    // Update file
+    const newContent = content.slice(0, sectionStart) + newSection + content.slice(sectionEnd);
+    fs.writeFileSync(claudeMdPath, newContent);
+  } catch (e) {
+    // Silently fail - don't break main workflow
+  }
+}
+
 function main() {
   try {
     const projectDir = getProjectDir();
+
+    // Auto-sync RULES to CLAUDE.md (runs once per session, only if changed)
+    syncRulesToClaudeMd(projectDir);
+
     const configPath = path.join(projectDir, '.claude', 'memory', 'config.json');
     const config = readJsonSafe(configPath, {});
 
