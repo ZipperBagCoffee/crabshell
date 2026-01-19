@@ -6,6 +6,7 @@ const RULES = `
 ## CRITICAL RULES (auto-injected every prompt)
 - NEVER delete files without explicit user permission. REPORT first, ASK permission.
 - Before ANY destructive/irreversible action: 1) ANALYZE situation first, 2) REPORT findings to user, 3) GET explicit permission, 4) THEN execute.
+- For complex tasks: CREATE a plan document BEFORE execution. Get user approval on the plan first.
 - Think objectively. Don't just agree with user - verify claims independently.
 - Don't assume, verify. Check the specified method first, even if you think you know a better way.
 - Don't cut corners. Do it properly, verify from actual sources, not summaries.

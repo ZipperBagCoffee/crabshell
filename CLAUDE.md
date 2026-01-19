@@ -6,6 +6,7 @@
 - If you need to delete something, REPORT first and ASK for permission.
 - This applies to ALL files - code, config, docs, anything.
 - **Workflow for destructive actions**: 1) ANALYZE situation, 2) REPORT findings, 3) GET permission, 4) THEN execute.
+- **For complex tasks**: Create a plan document BEFORE execution. Get user approval first.
 
 **Think objectively and logically before responding.**
 - Don't just agree with the user's statements. Verify claims independently.
@@ -32,6 +33,7 @@ When Edit tool fails with "File has been unexpectedly modified", use one of thes
 
 - NEVER delete files without explicit user permission
 - Before destructive actions: ANALYZE → REPORT → GET permission → EXECUTE
+- For complex tasks: CREATE plan document BEFORE execution, get approval first
 - Think objectively - verify claims independently, don't just agree
 - Don't assume, verify. Check the specified method first, even if you think you know a better way.
 - Don't cut corners. Do it properly, verify from actual sources, not summaries.
