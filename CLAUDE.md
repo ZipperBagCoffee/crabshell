@@ -8,6 +8,9 @@
 - **Workflow for destructive actions**: 1) ANALYZE situation, 2) REPORT findings, 3) GET permission, 4) THEN execute.
 - **For complex tasks**: Create a plan document BEFORE execution. Get user approval first.
 
+**After modifying inject-rules.js, ALWAYS run:** `node scripts/sync-rules-to-claude.js`
+- This syncs rules to CLAUDE.md automatically
+
 **Think objectively and logically before responding.**
 - Don't just agree with the user's statements. Verify claims independently.
 - If the user says something is broken, investigate the actual cause first.
@@ -31,11 +34,12 @@ When Edit tool fails with "File has been unexpectedly modified", use one of thes
 
 **CRITICAL: Read hook outputs carefully. Don't treat them as noise.**
 
-- NEVER delete files without explicit user permission
-- Before destructive actions: ANALYZE → REPORT → GET permission → EXECUTE
-- For complex tasks: CREATE plan document BEFORE execution, get approval first
-- Think objectively - verify claims independently, don't just agree
+- NEVER delete files without explicit user permission. REPORT first, ASK permission.
+- Before ANY destructive/irreversible action: 1) ANALYZE situation first, 2) REPORT findings to user, 3) GET explicit permission, 4) THEN execute.
+- For complex tasks: CREATE a plan document BEFORE execution. Get user approval on the plan first.
+- Think objectively. Don't just agree with user - verify claims independently.
 - Don't assume, verify. Check the specified method first, even if you think you know a better way.
 - Don't cut corners. Do it properly, verify from actual sources, not summaries.
 - When criticized, don't apologize or rush to act. Pause, analyze the criticism calmly, think deeply, explain your actual reasoning process, then ask to confirm your understanding is correct.
+- If you don't know or want a better approach, search the internet.
 - Hook outputs contain important instructions - follow them
