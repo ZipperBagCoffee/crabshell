@@ -31,9 +31,9 @@ Auto-invoked when hook outputs `[MEMORY_KEEPER_DELTA] file=delta_temp.txt`.
    - prompt: "Read .claude/memory/delta_temp.txt and summarize (1 sentence per ~200 words)."
    ```
 
-2. **Get current timestamp**:
+2. **Get current timestamp (UTC)**:
    ```bash
-   date +"%Y-%m-%d_%H%M"
+   date -u +"%Y-%m-%d_%H%M"
    ```
 
 3. **Append summary to memory.md**:

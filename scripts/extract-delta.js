@@ -142,12 +142,23 @@ function markMemoryUpdated() {
   }
 }
 
-// Delete temp file
+// Delete temp file (only if mark-updated was called recently)
 function cleanupDeltaTemp() {
   try {
     const projectDir = getProjectDir();
     const memoryDir = path.join(projectDir, '.claude', MEMORY_DIR);
+    const indexPath = path.join(memoryDir, INDEX_FILE);
     const deltaPath = path.join(memoryDir, DELTA_TEMP_FILE);
+
+    // Verify mark-updated was called within last 60 seconds
+    const index = readIndexSafe(indexPath);
+    const lastUpdate = index.lastMemoryUpdateTs ? new Date(index.lastMemoryUpdateTs) : null;
+    const now = new Date();
+
+    if (!lastUpdate || (now - lastUpdate) > 60000) {
+      console.error('[MEMORY_KEEPER] BLOCKED: memory.md not updated recently. Run mark-updated first!');
+      return false;
+    }
 
     if (fs.existsSync(deltaPath)) {
       fs.unlinkSync(deltaPath);

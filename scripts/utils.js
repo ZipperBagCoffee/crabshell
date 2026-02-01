@@ -77,7 +77,7 @@ function writeJson(filePath, data) { writeFile(filePath, JSON.stringify(data, nu
 function getTimestamp() {
   const now = new Date();
   const pad = n => String(n).padStart(2, '0');
-  return now.getFullYear() + '-' + pad(now.getMonth()+1) + '-' + pad(now.getDate()) + '_' + pad(now.getHours()) + pad(now.getMinutes());
+  return now.getUTCFullYear() + '-' + pad(now.getUTCMonth()+1) + '-' + pad(now.getUTCDate()) + '_' + pad(now.getUTCHours()) + pad(now.getUTCMinutes());
 }
 
 function estimateTokens(text) { return Math.ceil(Buffer.byteLength(text, 'utf8') / 4); }
