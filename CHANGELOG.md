@@ -1,5 +1,20 @@
 # Changelog
 
+## v13.9.4 (2026-02-01)
+### Delta Extraction Improvements
+- **Append mode**: Delta extraction now appends to existing file instead of overwriting
+  - Prevents data loss when Claude skips delta processing
+  - Previous delta content preserved until cleanup
+- **UTC timestamp headers**: Each extraction batch prefixed with `--- [ISO_TIMESTAMP] ---`
+  - Enables tracking of when each delta batch was extracted
+  - Helps debugging extraction timing issues
+
+### Haiku Agent Path Fix
+- **Absolute path support**: Haiku agent now receives absolute file path
+  - Fixed: delta-summarizer.md no longer hardcodes relative path
+  - Fixed: SKILL.md passes PWD-based absolute path to Haiku
+  - Resolves "file not found" errors when agent cwd differs from project
+
 ## v13.9.3 (2026-02-01)
 ### Delta Cleanup Protection
 - **Physical memory.md update verification**: Cleanup now blocked unless memory.md was actually modified
