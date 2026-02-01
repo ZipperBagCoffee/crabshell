@@ -33,7 +33,7 @@ Memory Keeper solves this problem.
 - Project info you set (`project.md` etc.) sent to Claude
 
 **2. During Work:**
-- Auto-save triggers every 5 tool uses
+- Auto-save triggers every 25 tool uses
 - Delta extracted from L1 session log → Haiku summarizes → appended to `memory.md`
 - Auto-rotation when memory.md exceeds 23,750 tokens
 - Rules re-injected every prompt to ensure Claude follows them
@@ -166,13 +166,13 @@ L1 files are deduplicated automatically when created, but manual cleanup may som
 
 ```json
 {
-  "saveInterval": 5,
+  "saveInterval": 25,
   "keepRaw": false,
   "rulesInjectionFrequency": 1
 }
 ```
 
-- `saveInterval`: Tool uses before auto-save trigger (default: 5)
+- `saveInterval`: Tool uses before auto-save trigger (default: 25)
 - `keepRaw`: Keep raw.jsonl after L1 conversion (default: false)
 - `rulesInjectionFrequency`: Inject rules every N prompts (default: 1 = every prompt)
 

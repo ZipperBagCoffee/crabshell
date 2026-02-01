@@ -155,9 +155,16 @@ Save to *.summary.json
     "totalRotations": 0,
     "lastRotation": null
   },
-  "counter": 0
+  "counter": 0,
+  "lastMemoryUpdateTs": "2026-02-01T12:00:00.000Z",
+  "deltaCreatedAtMemoryMtime": 1234567890123.456
 }
 ```
+
+| Field | Description |
+|-------|-------------|
+| lastMemoryUpdateTs | ISO timestamp of last memory.md update (for delta extraction) |
+| deltaCreatedAtMemoryMtime | memory.md mtime when delta was created (for cleanup validation) |
 
 ## L3 Summary Structure
 
@@ -182,6 +189,8 @@ Save to *.summary.json
 
 | Version | Key Changes |
 |---------|-------------|
+| 13.9.3 | Delta cleanup blocked unless memory.md physically updated |
+| 13.9.2 | UTC timestamp unification, migrate-timezone.js tool, interval 5→25 |
 | 13.8.7 | Removed experimental context warning feature |
 | 13.8.6 | Proportional delta summarization (1 sentence per ~200 words) |
 | 13.8.5 | Stronger delta instruction blocking language |

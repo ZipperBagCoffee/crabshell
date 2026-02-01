@@ -1,5 +1,29 @@
 # Changelog
 
+## v13.9.3 (2026-02-01)
+### Delta Cleanup Protection
+- **Physical memory.md update verification**: Cleanup now blocked unless memory.md was actually modified
+  - Records memory.md mtime when delta is created (`deltaCreatedAtMemoryMtime`)
+  - Cleanup verifies memory.md mtime is newer than recorded value
+  - Prevents delta deletion before content is saved to memory.md
+  - Added field preservation in `readIndexSafe()` across all scripts
+
+## v13.9.2 (2026-02-01)
+### Timezone Fixes
+- **UTC timestamp unification**: All timestamps now use UTC
+  - Fixed `getTimestamp()` in constants.js and utils.js to use `getUTC*()` methods
+  - memory-delta skill uses `date -u` for UTC timestamps
+  - Prevents timezone confusion between L1 files and memory.md headers
+
+### New Tool
+- **migrate-timezone.js**: Legacy timestamp migration utility
+  - Converts local timestamps to UTC in memory.md headers
+  - Supports `--offset`, `--before`, `--apply` options
+  - Creates `.bak` backup before modifying files
+
+### Config Change
+- **Tool interval**: DEFAULT_INTERVAL changed from 5 to 25 in counter.js
+
 ## v13.8.7 (2026-01-14)
 ### Cleanup
 - **Removed context warning feature**: Experimental auto-compact replacement deemed not viable
