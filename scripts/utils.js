@@ -60,7 +60,8 @@ function readIndexSafe(indexPath) {
       stats: existing.stats ?? defaults.stats,
       counter: existing.counter ?? defaults.counter,
       lastMemoryUpdateTs: existing.lastMemoryUpdateTs ?? defaults.lastMemoryUpdateTs,
-      rulesInjectionCount: existing.rulesInjectionCount  // optional field
+      rulesInjectionCount: existing.rulesInjectionCount,  // optional field
+      deltaCreatedAtMemoryMtime: existing.deltaCreatedAtMemoryMtime  // optional: mtime when delta was created
     };
   } catch {
     return defaults;

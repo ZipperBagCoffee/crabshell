@@ -2,7 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 const { getProjectDir, readJsonOrDefault, readIndexSafe, writeJson, estimateTokens, extractTailByTokens } = require('./utils');
-const { SESSIONS_DIR, MEMORY_DIR, INDEX_FILE, DELTA_TEMP_FILE, HAIKU_SAFE_TOKENS, FIRST_RUN_MAX_ENTRIES, DELTA_OUTPUT_TRUNCATE } = require('./constants');
+const { SESSIONS_DIR, MEMORY_DIR, MEMORY_FILE, INDEX_FILE, DELTA_TEMP_FILE, HAIKU_SAFE_TOKENS, FIRST_RUN_MAX_ENTRIES, DELTA_OUTPUT_TRUNCATE } = require('./constants');
 
 function extractDelta() {
   try {
@@ -112,6 +112,14 @@ function extractDelta() {
     const deltaPath = path.join(memoryDir, DELTA_TEMP_FILE);
     fs.writeFileSync(deltaPath, deltaContent);
 
+    // Record memory.md mtime at delta creation (for cleanup validation)
+    const memoryPath = path.join(memoryDir, MEMORY_FILE);
+    if (fs.existsSync(memoryPath)) {
+      const index = readIndexSafe(indexPath);
+      index.deltaCreatedAtMemoryMtime = fs.statSync(memoryPath).mtimeMs;
+      writeJson(indexPath, index);
+    }
+
     return {
       success: true,
       deltaFile: DELTA_TEMP_FILE,
@@ -142,28 +150,32 @@ function markMemoryUpdated() {
   }
 }
 
-// Delete temp file (only if mark-updated was called recently)
+// Delete temp file (only if memory.md was physically updated since delta creation)
 function cleanupDeltaTemp() {
   try {
     const projectDir = getProjectDir();
     const memoryDir = path.join(projectDir, '.claude', MEMORY_DIR);
     const indexPath = path.join(memoryDir, INDEX_FILE);
     const deltaPath = path.join(memoryDir, DELTA_TEMP_FILE);
+    const memoryPath = path.join(memoryDir, MEMORY_FILE);
 
-    // Verify mark-updated was called within last 60 seconds
+    if (!fs.existsSync(deltaPath)) {
+      console.log('[MEMORY_KEEPER] No delta temp file to clean');
+      return true;
+    }
+
+    // Verify memory.md was physically updated since delta was created
     const index = readIndexSafe(indexPath);
-    const lastUpdate = index.lastMemoryUpdateTs ? new Date(index.lastMemoryUpdateTs) : null;
-    const now = new Date();
+    const deltaCreatedMtime = index.deltaCreatedAtMemoryMtime || 0;
+    const currentMemoryMtime = fs.existsSync(memoryPath) ? fs.statSync(memoryPath).mtimeMs : 0;
 
-    if (!lastUpdate || (now - lastUpdate) > 60000) {
-      console.error('[MEMORY_KEEPER] BLOCKED: memory.md not updated recently. Run mark-updated first!');
+    if (currentMemoryMtime <= deltaCreatedMtime) {
+      console.error('[MEMORY_KEEPER] BLOCKED: memory.md not updated since delta creation. Write to memory.md first!');
       return false;
     }
 
-    if (fs.existsSync(deltaPath)) {
-      fs.unlinkSync(deltaPath);
-      console.log('[MEMORY_KEEPER] Delta temp file cleaned up');
-    }
+    fs.unlinkSync(deltaPath);
+    console.log('[MEMORY_KEEPER] Delta temp file cleaned up');
     return true;
   } catch (e) {
     console.error('[MEMORY_KEEPER] Failed to cleanup delta temp:', e.message);

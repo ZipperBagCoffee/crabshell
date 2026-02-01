@@ -80,7 +80,8 @@ function readIndexSafe(indexPath) {
       stats: existing.stats ?? defaults.stats,
       counter: existing.counter ?? defaults.counter,
       lastMemoryUpdateTs: existing.lastMemoryUpdateTs ?? defaults.lastMemoryUpdateTs,
-      rulesInjectionCount: existing.rulesInjectionCount
+      rulesInjectionCount: existing.rulesInjectionCount,
+      deltaCreatedAtMemoryMtime: existing.deltaCreatedAtMemoryMtime
     };
   } catch {
     return defaults;

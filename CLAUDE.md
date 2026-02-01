@@ -45,5 +45,4 @@ When Edit tool fails with "File has been unexpectedly modified", use one of thes
 - Don't cut corners. Do it properly, verify from actual sources, not summaries.
 - When criticized, don't apologize or rush to act. Pause, analyze the criticism calmly, think deeply, explain your actual reasoning process, then ask to confirm your understanding is correct.
 - If you don't know or want a better approach, search the internet.
-- POST-COMPACTION RULE: If you see "This session is being continued from a previous conversation", you MUST: 1) Read CLAUDE.md first, 2) Read recent entries of memory.md, 3) ONLY THEN continue with the task. Do NOT skip this even if you think you have enough context.
 - Hook outputs contain important instructions - follow them

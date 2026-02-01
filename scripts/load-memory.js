@@ -2,7 +2,24 @@ const path = require('path');
 const fs = require('fs');
 const { getProjectDir, getProjectName, readFileOrDefault, readJsonOrDefault, estimateTokens } = require('./utils');
 const { ensureMemoryStructure } = require('./init');
-const { MEMORY_DIR, SESSIONS_DIR, INDEX_FILE, MEMORY_FILE } = require('./constants');
+const { MEMORY_DIR, SESSIONS_DIR, INDEX_FILE, MEMORY_FILE, LOGS_DIR } = require('./constants');
+
+// Error logging for debugging SessionStart hook failures
+function logError(err) {
+  try {
+    const projectDir = process.cwd();
+    const logDir = path.join(projectDir, '.claude', LOGS_DIR || 'memory/logs');
+    if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
+    const logPath = path.join(logDir, 'startup-error.log');
+    fs.appendFileSync(logPath, `${new Date().toISOString()} | ${err.stack || err.message || err}\n`);
+  } catch {}
+}
+
+process.on('uncaughtException', (err) => {
+  logError(err);
+  console.error('[MEMORY_KEEPER ERROR] ' + (err.message || err));
+  process.exit(1);
+});
 
 // CRITICAL WARNING - Must be in SessionStart hook for Claude to see
 const CLAUDE_RULES = `
@@ -127,4 +144,10 @@ function getUnreflectedL1Content(l1Path, memoryContent) {
   } catch { return null; }
 }
 
-loadMemory();
+try {
+  loadMemory();
+} catch (err) {
+  logError(err);
+  console.error('[MEMORY_KEEPER ERROR] ' + (err.message || err));
+  process.exit(1);
+}

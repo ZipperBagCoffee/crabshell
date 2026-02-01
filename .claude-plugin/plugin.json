@@ -1,11 +1,20 @@
 {
   "name": "memory-keeper",
-  "version": "13.9.2",
+  "version": "13.9.3",
   "description": "Auto-save memory with L1-based delta updates, Haiku summarization, rules injection, token-based rotation, and integrated search.",
   "author": {
     "name": "TaWa"
   },
   "repository": "https://github.com/ZipperBagCoffee/memory-keeper-plugin",
   "license": "MIT",
-  "keywords": ["memory", "context", "session", "productivity", "background", "auto-save", "hierarchical", "rotation"]
+  "keywords": [
+    "memory",
+    "context",
+    "session",
+    "productivity",
+    "background",
+    "auto-save",
+    "hierarchical",
+    "rotation"
+  ]
 }
