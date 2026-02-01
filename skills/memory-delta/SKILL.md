@@ -30,12 +30,14 @@ Auto-invoked when hook outputs `[MEMORY_KEEPER_DELTA] file=delta_temp.txt`.
    If file not found or empty, STOP HERE - do not proceed.
 
 2. **Call Haiku agent for summarization**:
+   Use **absolute path** (get from pwd):
    ```
    Task tool:
    - subagent_type: "memory-keeper:delta-summarizer"
    - model: "haiku"
-   - prompt: "Read .claude/memory/delta_temp.txt and summarize (1 sentence per ~200 words)."
+   - prompt: "Read {PWD}/.claude/memory/delta_temp.txt and summarize (1 sentence per ~200 words)."
    ```
+   Replace {PWD} with the actual current working directory (absolute path).
 
 3. **Validate Haiku response**:
    - If response starts with "ERROR:" → STOP, do not proceed

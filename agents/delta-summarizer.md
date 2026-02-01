@@ -11,11 +11,11 @@ Read the delta file and output a summary proportional to content length.
 
 ## Input
 
-File: `.claude/memory/delta_temp.txt`
+The file path will be provided in the prompt. Use the EXACT path given.
 
 ## CRITICAL: File Reading
 
-1. You MUST use the Read tool to read the file
+1. You MUST use the Read tool with the EXACT path from the prompt
 2. If the file does not exist or is empty, respond with EXACTLY: `ERROR: delta_temp.txt not found or empty`
 3. Do NOT guess, assume, or fabricate content
 4. Do NOT say "file not found" in natural language - use the exact ERROR format above

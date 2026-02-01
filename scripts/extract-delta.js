@@ -99,18 +99,21 @@ function extractDelta() {
       return { success: false, reason: 'No new content' };
     }
 
-    // Join delta content
-    let deltaContent = delta.join('\n\n');
+    // Join delta content with UTC timestamp header
+    const extractTime = new Date().toISOString();
+    let deltaContent = `\n--- [${extractTime}] ---\n` + delta.join('\n\n');
 
-    // Handle Haiku context limit
-    const tokens = estimateTokens(deltaContent);
-    if (tokens > HAIKU_SAFE_TOKENS) {
-      deltaContent = extractTailByTokens(deltaContent, HAIKU_SAFE_TOKENS);
-    }
-
-    // Write delta to temp file
+    // Append to delta temp file (don't overwrite!)
     const deltaPath = path.join(memoryDir, DELTA_TEMP_FILE);
-    fs.writeFileSync(deltaPath, deltaContent);
+    fs.appendFileSync(deltaPath, deltaContent);
+
+    // Handle Haiku context limit (truncate if total exceeds limit)
+    const totalContent = fs.readFileSync(deltaPath, 'utf8');
+    const tokens = estimateTokens(totalContent);
+    if (tokens > HAIKU_SAFE_TOKENS) {
+      const truncated = extractTailByTokens(totalContent, HAIKU_SAFE_TOKENS);
+      fs.writeFileSync(deltaPath, truncated);
+    }
 
     // Record memory.md mtime at delta creation (for cleanup validation)
     const memoryPath = path.join(memoryDir, MEMORY_FILE);
@@ -124,7 +127,7 @@ function extractDelta() {
       success: true,
       deltaFile: DELTA_TEMP_FILE,
       entryCount: delta.length,
-      tokens: estimateTokens(deltaContent)
+      tokens: estimateTokens(fs.readFileSync(deltaPath, 'utf8'))
     };
   } catch (e) {
     return { success: false, reason: e.message };
