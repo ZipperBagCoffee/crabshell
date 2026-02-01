@@ -44,14 +44,16 @@ Auto-invoked when hook outputs `[MEMORY_KEEPER_DELTA] file=delta_temp.txt`.
    - If response is empty or says "file not found" → STOP, do not proceed
    - Only continue if you have actual summary content
 
-4. **Get current timestamp (UTC)**:
+4. **Get current timestamps (UTC + local)**:
    ```bash
-   date -u +"%Y-%m-%d_%H%M"
+   date -u +"%Y-%m-%d_%H%M"   # UTC (main)
+   date +"%m-%d_%H%M"         # local (sub)
    ```
 
 5. **Append summary to memory.md**:
+   Format: `## {UTC_TIMESTAMP} (local {LOCAL_TIMESTAMP})`
    ```bash
-   printf '\n## %s\n%s\n' "{timestamp}" "{haiku_summary}" >> .claude/memory/memory.md
+   printf '\n## %s (local %s)\n%s\n' "{utc_timestamp}" "{local_timestamp}" "{haiku_summary}" >> .claude/memory/memory.md
    ```
 
 6. **Update timestamp marker** (use full path from above):

@@ -1,5 +1,12 @@
 # Changelog
 
+## v13.9.5 (2026-02-01)
+### Dual Timestamp Headers
+- **UTC + local time**: Memory headers now show both timestamps
+  - Format: `## 2026-02-01_1738 (local 02-01_0938)`
+  - UTC as main timestamp, local as reference
+  - Uses system local time (no timezone assumption)
+
 ## v13.9.4 (2026-02-01)
 ### Delta Extraction Improvements
 - **Append mode**: Delta extraction now appends to existing file instead of overwriting
