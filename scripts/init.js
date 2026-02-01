@@ -37,23 +37,27 @@ function ensureMemoryStructure(projectDir) {
   const indexPath = path.join(projectDir, '.claude', MEMORY_DIR, INDEX_FILE);
 
   // Create new or migrate old index structure
-  let index = { version: 1, current: MEMORY_FILE, rotatedFiles: [], stats: { totalRotations: 0, lastRotation: null }, counter: 0 };
+  const defaults = { version: 1, current: MEMORY_FILE, rotatedFiles: [], stats: { totalRotations: 0, lastRotation: null }, counter: 0 };
 
   if (fs.existsSync(indexPath)) {
     try {
       const existing = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
-      // Migrate: preserve counter, add missing fields
-      index.counter = existing.counter || 0;
-      index.rotatedFiles = Array.isArray(existing.rotatedFiles) ? existing.rotatedFiles : [];
-      index.stats = existing.stats || { totalRotations: 0, lastRotation: null };
-      index.current = existing.current || MEMORY_FILE;
-      index.version = existing.version || 1;
+      // Preserve ALL existing fields, only add missing defaults
+      const index = {
+        ...defaults,
+        ...existing,
+        // Ensure critical fields have correct types
+        rotatedFiles: Array.isArray(existing.rotatedFiles) ? existing.rotatedFiles : [],
+        stats: existing.stats || defaults.stats,
+      };
+      fs.writeFileSync(indexPath, JSON.stringify(index, null, 2));
     } catch (e) {
       // Parse error - use defaults
+      fs.writeFileSync(indexPath, JSON.stringify(defaults, null, 2));
     }
+  } else {
+    fs.writeFileSync(indexPath, JSON.stringify(defaults, null, 2));
   }
-
-  fs.writeFileSync(indexPath, JSON.stringify(index, null, 2));
 }
 
 module.exports = { ensureMemoryStructure };

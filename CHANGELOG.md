@@ -1,5 +1,12 @@
 # Changelog
 
+## v13.9.7 (2026-02-01)
+### Bug Fix
+- **lastMemoryUpdateTs preservation**: Fixed `ensureMemoryStructure()` in init.js
+  - Previously: only preserved known fields (counter, rotatedFiles, stats, current, version)
+  - Now: preserves ALL existing fields using spread operator
+  - Prevents `lastMemoryUpdateTs` and `deltaCreatedAtMemoryMtime` from being erased on session start
+
 ## v13.9.6 (2026-02-01)
 ### SKILL.md Fix
 - **Single command for dual timestamps**: Combined date commands into printf
