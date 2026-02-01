@@ -13,6 +13,13 @@ Read the delta file and output a summary proportional to content length.
 
 File: `.claude/memory/delta_temp.txt`
 
+## CRITICAL: File Reading
+
+1. You MUST use the Read tool to read the file
+2. If the file does not exist or is empty, respond with EXACTLY: `ERROR: delta_temp.txt not found or empty`
+3. Do NOT guess, assume, or fabricate content
+4. Do NOT say "file not found" in natural language - use the exact ERROR format above
+
 ## Summary Length Rule
 
 **1 sentence per ~200 words of content.**
