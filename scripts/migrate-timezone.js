@@ -76,6 +76,11 @@ function migrateMemoryMd(projectDir, offsetHours, dryRun = true, beforeTs = null
   }
 
   if (!dryRun && changes > 0) {
+    // Create backup before modifying
+    const backupPath = memoryPath + '.bak.' + Date.now();
+    fs.copyFileSync(memoryPath, backupPath);
+    console.log(`Backup created: ${backupPath}`);
+
     fs.writeFileSync(memoryPath, newLines.join('\n'));
     console.log(`Written ${changes} changes to memory.md (skipped ${skipped})`);
   }
