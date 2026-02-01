@@ -44,24 +44,20 @@ Auto-invoked when hook outputs `[MEMORY_KEEPER_DELTA] file=delta_temp.txt`.
    - If response is empty or says "file not found" → STOP, do not proceed
    - Only continue if you have actual summary content
 
-4. **Get current timestamps (UTC + local)**:
+4. **Append summary to memory.md with dual timestamps**:
+   Run this single command (replace {SUMMARY} with Haiku's response):
    ```bash
-   date -u +"%Y-%m-%d_%H%M"   # UTC (main)
-   date +"%m-%d_%H%M"         # local (sub)
+   printf '\n## %s (local %s)\n%s\n' "$(date -u +'%Y-%m-%d_%H%M')" "$(date +'%m-%d_%H%M')" "{SUMMARY}" >> .claude/memory/memory.md
    ```
 
-5. **Append summary to memory.md**:
-   Format: `## {UTC_TIMESTAMP} (local {LOCAL_TIMESTAMP})`
-   ```bash
-   printf '\n## %s (local %s)\n%s\n' "{utc_timestamp}" "{local_timestamp}" "{haiku_summary}" >> .claude/memory/memory.md
-   ```
+   Example output: `## 2026-02-01_1727 (local 02-01_0927)`
 
-6. **Update timestamp marker** (use full path from above):
+5. **Update timestamp marker** (use full path from above):
    ```bash
    node "{SCRIPTS_PATH}/extract-delta.js" mark-updated
    ```
 
-7. **Delete temp file** (use full path from above):
+6. **Delete temp file** (use full path from above):
    ```bash
    node "{SCRIPTS_PATH}/extract-delta.js" cleanup
    ```

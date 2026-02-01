@@ -1,5 +1,12 @@
 # Changelog
 
+## v13.9.6 (2026-02-01)
+### SKILL.md Fix
+- **Single command for dual timestamps**: Combined date commands into printf
+  - Previous: separate commands without variable storage
+  - Now: `$(date -u +'%Y-%m-%d_%H%M')` and `$(date +'%m-%d_%H%M')` inline
+  - Clearer instruction with example output
+
 ## v13.9.5 (2026-02-01)
 ### Dual Timestamp Headers
 - **UTC + local time**: Memory headers now show both timestamps
