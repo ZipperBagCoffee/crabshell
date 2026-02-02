@@ -3,47 +3,34 @@ description: Manually save current session context to memory
 allowed-tools: Bash, Read, Write
 ---
 
-Save current session context to memory.
+## Script Path Resolution
 
-## Quick Save (Recommended)
+**IMPORTANT:** The `scripts/` folder is in the plugin directory, NOT the current project.
 
-Run to trigger auto-save instructions:
+Find the plugin path:
 ```bash
-node scripts/counter.js check
+ls ~/.claude/plugins/cache/memory-keeper-marketplace/memory-keeper/*/scripts/counter.js
+```
+
+Use the full path when running node commands.
+
+## Quick Save
+
+Trigger auto-save:
+```bash
+node "{PLUGIN_PATH}/scripts/counter.js" check
 ```
 
 ## Manual Save
 
-1. **Append to memory.md:**
+Append directly to memory.md (works from any project):
 ```bash
-TIMESTAMP=$(date +%Y-%m-%d_%H%M)
-printf '\n## %s\n%s\n' "$TIMESTAMP" "[Your summary here]" >> .claude/memory/memory.md
-```
-
-2. **Record decisions directly:**
-```bash
-node scripts/counter.js add-decision "what was decided" "why" "architecture|technology|approach"
-```
-
-3. **Record patterns directly:**
-```bash
-node scripts/counter.js add-pattern "pattern description" "convention|best-practice|anti-pattern"
-```
-
-4. **Record issues directly:**
-```bash
-node scripts/counter.js add-issue "issue description" "open|resolved" "bugfix|performance|security|feature"
-```
-
-## Optional: File References and Concepts
-
-Add file references and concept tags at the end:
-```bash
-node scripts/counter.js add-decision "Use React hooks" "Better state" "technology" "src/hooks/useAuth.ts" "auth,hooks"
+printf '\n## %s (local %s)\n%s\n' "$(date -u +'%Y-%m-%d_%H%M')" "$(date +'%m-%d_%H%M')" "[Your summary here]" >> .claude/memory/memory.md
 ```
 
 ## What to Record
 
-- **Decisions**: Architectural choices, technology selections, approach decisions
-- **Patterns**: Coding conventions, best practices, anti-patterns to avoid
-- **Issues**: Bugs found/fixed, performance issues, security concerns
+- What was accomplished
+- Key decisions made
+- Issues found/resolved
+- Files changed
