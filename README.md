@@ -16,7 +16,7 @@ After installation, **you don't need to do anything**. It works automatically.
 ## How It Works
 
 1. **Session start** - Loads saved content from previous sessions into Claude's context
-2. **During work** - Auto-save triggers every 5 tool uses, Claude records decisions/patterns/issues directly
+2. **During work** - Auto-save triggers every 25 tool uses, Claude records decisions/patterns/issues directly
 3. **Session end** - Full conversation backup + final save
 
 ## What Gets Saved
@@ -99,12 +99,12 @@ node scripts/counter.js search-memory "auth" --deep
 `.claude/memory/config.json`:
 ```json
 {
-  "saveInterval": 5,
+  "saveInterval": 25,
   "keepRaw": false,
   "rulesInjectionFrequency": 1
 }
 ```
-- `saveInterval`: How many tool uses before save (default: 5)
+- `saveInterval`: How many tool uses before save (default: 25)
 - `keepRaw`: Keep raw.jsonl files after L1 conversion (default: false)
 - `rulesInjectionFrequency`: Inject rules every N prompts (default: 1 = every prompt)
 
@@ -173,6 +173,11 @@ memory.md                 - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 13.9.9 | 30-second thinking rule with date command verification |
+| 13.9.7 | lastMemoryUpdateTs preservation fix |
+| 13.9.5 | Dual timestamp headers: `## UTC (local MM-DD_HHMM)` |
+| 13.9.4 | Delta extraction append mode |
+| 13.9.2 | UTC timestamps, saveInterval 5→25, migrate-timezone.js |
 | 13.8.7 | Removed experimental context warning feature |
 | 13.8.6 | Proportional delta summarization (1 sentence per ~200 words) |
 | 13.8.5 | Stronger delta instruction blocking language |

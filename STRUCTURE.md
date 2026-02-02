@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 13.8.7 | **Author**: TaWa | **License**: MIT
+**Version**: 13.9.9 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -168,6 +168,14 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 13.9.9 | 30-second thinking rule with date command verification |
+| 13.9.8 | Documentation sync improvements |
+| 13.9.7 | lastMemoryUpdateTs preservation fix in init.js |
+| 13.9.6 | SKILL.md single command for dual timestamps |
+| 13.9.5 | Dual timestamp headers (UTC + local) |
+| 13.9.4 | Delta extraction append mode, UTC timestamp headers |
+| 13.9.3 | Delta cleanup blocked unless memory.md physically updated |
+| 13.9.2 | UTC timestamp unification, migrate-timezone.js, interval 5→25 |
 | 13.8.7 | Removed experimental context warning feature |
 | 13.8.6 | Proportional delta summarization (1 sentence per ~200 words) |
 | 13.8.5 | Stronger delta instruction blocking language |
