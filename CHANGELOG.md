@@ -1,5 +1,12 @@
 # Changelog
 
+## v13.9.9 (2026-02-02)
+### New Critical Rule
+- **30-second thinking rule**: Added mandatory thinking time before any action
+  - Rule: "Before ANY action: use `date` command to check start time, think for at least 30 seconds, verify 30 seconds passed with `date` again."
+  - Forces deliberate verification before acting
+  - Prevents assumption-based mistakes
+
 ## v13.9.7 (2026-02-01)
 ### Bug Fix
 - **lastMemoryUpdateTs preservation**: Fixed `ensureMemoryStructure()` in init.js

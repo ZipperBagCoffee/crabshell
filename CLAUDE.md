@@ -37,6 +37,7 @@ When Edit tool fails with "File has been unexpectedly modified", use one of thes
 
 **CRITICAL: Read hook outputs carefully. Don't treat them as noise.**
 
+- Before ANY action: use `date` command to check start time, think for at least 30 seconds, verify 30 seconds passed with `date` again.
 - NEVER delete files without explicit user permission. REPORT first, ASK permission.
 - Before ANY destructive/irreversible action: 1) ANALYZE situation first, 2) REPORT findings to user, 3) GET explicit permission, 4) THEN execute.
 - For complex tasks: CREATE a plan document BEFORE execution. Get user approval on the plan first.
