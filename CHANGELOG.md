@@ -1,5 +1,12 @@
 # Changelog
 
+## v13.9.10 (2026-02-02)
+### Commands Fix
+- **Path resolution**: Added Script Path Resolution section to all commands
+- **Legacy cleanup**: Removed facts.json references (deleted in v13.0.0)
+- **File extensions**: Updated session files .md → .l1.jsonl
+- **Dead commands**: Removed non-existent add-decision, add-pattern, clear-facts
+
 ## v13.9.9 (2026-02-02)
 ### New Critical Rule
 - **30-second thinking rule**: Added mandatory thinking time before any action
