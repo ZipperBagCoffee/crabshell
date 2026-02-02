@@ -30,6 +30,12 @@ const CLAUDE_RULES = `
 - When you make a mistake, don't apologize. Explain your actual reasoning process - what logic led you to that action.
 - If you don't know or want a better approach, search the internet.
 - memory-index.json format: see scripts/init.js in plugin directory.
+
+## Memory Timestamp Format
+Session headers use: \`## YYYY-MM-DD_HHMM (local MM-DD_HHMM)\`
+- First timestamp: UTC time (primary reference)
+- Second timestamp: User's local time (for context)
+- Example: \`## 2026-02-01_1727 (local 02-01_0927)\` = UTC 17:27, local 09:27
 `;
 
 const MEMORY_FILES = [

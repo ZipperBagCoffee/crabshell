@@ -55,9 +55,10 @@ function extractDelta() {
         // - tool_result: { ts, role: 'tool_result', tool_use_id, result, output }
 
         if (entry.role === 'assistant' && entry.text) {
-          delta.push(`[Assistant]: ${entry.text}`);
+          // Use ◆ prefix to distinguish from actual Claude responses
+          delta.push(`◆ Claude: ${entry.text}`);
         } else if (entry.role === 'user' && entry.text) {
-          delta.push(`[User]: ${entry.text}`);
+          delta.push(`◆ User: ${entry.text}`);
         } else if (entry.role === 'tool' && entry.name) {
           // Format tool entry based on tool type
           let toolInfo = '';
@@ -77,16 +78,9 @@ function extractDelta() {
             // Other tools
             toolInfo = entry.params;
           }
-          delta.push(`[Tool: ${entry.name}] ${toolInfo}`);
-        } else if (entry.role === 'tool_result') {
-          // Tool result with output
-          let resultEntry = `[Result: ${entry.result || 'ok'}]`;
-          if (entry.output) {
-            const outputPreview = entry.output.substring(0, DELTA_OUTPUT_TRUNCATE);
-            resultEntry += ` ${outputPreview}${entry.output.length > DELTA_OUTPUT_TRUNCATE ? '...' : ''}`;
-          }
-          delta.push(resultEntry);
+          delta.push(`◆ Tool(${entry.name}): ${toolInfo}`);
         }
+        // Skip tool_result entirely - causes confusion when Claude sees "[Result: ok]" in logs
       } catch (e) {}
     }
 
