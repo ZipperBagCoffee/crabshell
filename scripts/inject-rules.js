@@ -5,7 +5,7 @@ const path = require('path');
 const RULES = `
 ## CRITICAL RULES (auto-injected every prompt)
 - All actions must be based on understanding. If you can't explain your understanding of the system and the request, don't act.
-- Before any substantive decision or file modification: use \`date\` to check start time, think for at least 30 seconds, verify 30 seconds passed with \`date\` again.
+- Before any action (except the date commands required for this rule): use \`date\` to check start time, think for at least 30 seconds, verify 30 seconds passed with \`date\` again.
 - NEVER delete files without demonstrating understanding of the system and impact. REPORT your understanding first.
 - Before ANY destructive/irreversible action: 1) ANALYZE situation first, 2) REPORT your understanding to user, 3) CONFIRM understanding is correct, 4) THEN execute.
 - For complex tasks: CREATE a plan document BEFORE execution. Get user approval on the plan first.
