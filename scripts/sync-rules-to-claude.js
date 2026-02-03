@@ -19,22 +19,11 @@ function extractRulesFromInjectRules(filePath) {
   const match = content.match(/const RULES = `([\s\S]*?)`;/);
   if (!match) return null;
 
-  // Parse individual rules (lines starting with -)
-  const rulesBlock = match[1];
-  const lines = rulesBlock.split('\n');
-  const rules = [];
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (trimmed.startsWith('- ')) {
-      rules.push(trimmed);
-    }
-  }
-
-  return rules;
+  // Return full content (trimmed), not just bullet points
+  return match[1].trim();
 }
 
-function updateClaudeMd(claudePath, rules) {
+function updateClaudeMd(claudePath, rulesContent) {
   let content = fs.readFileSync(claudePath, 'utf8');
 
   // Find the "Memory Keeper Plugin Rules" section
@@ -49,12 +38,12 @@ function updateClaudeMd(claudePath, rules) {
   const nextSection = afterSection.indexOf('\n## ', 1);
   const sectionEnd = nextSection === -1 ? content.length : sectionStart + nextSection;
 
-  // Build new section content
+  // Build new section content - use full rules content
   const newSection = `## Memory Keeper Plugin Rules
 
 **CRITICAL: Read hook outputs carefully. Don't treat them as noise.**
 
-${rules.join('\n')}
+${rulesContent}
 - Hook outputs contain important instructions - follow them
 `;
 
@@ -82,15 +71,15 @@ function main() {
     process.exit(1);
   }
 
-  const rules = extractRulesFromInjectRules(injectRulesPath);
-  if (!rules || rules.length === 0) {
+  const rulesContent = extractRulesFromInjectRules(injectRulesPath);
+  if (!rulesContent) {
     console.error('Could not extract rules from inject-rules.js');
     process.exit(1);
   }
 
-  console.log(`Extracted ${rules.length} rules from inject-rules.js`);
+  console.log(`Extracted rules content (${rulesContent.length} chars) from inject-rules.js`);
 
-  if (updateClaudeMd(claudeMdPath, rules)) {
+  if (updateClaudeMd(claudeMdPath, rulesContent)) {
     console.log('CLAUDE.md updated successfully');
   } else {
     console.error('Failed to update CLAUDE.md');
