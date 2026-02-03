@@ -19,7 +19,11 @@ Use this full path when running node commands below.
 
 ## Trigger Condition
 
-Auto-invoked when hook outputs `[MEMORY_KEEPER_DELTA] file=delta_temp.txt`.
+Auto-invoked when EITHER:
+1. Hook stderr outputs: `[MEMORY_KEEPER_DELTA] file=delta_temp.txt`
+2. Context contains: `[MEMORY_KEEPER_DELTA]` trigger pattern
+
+If you see `[MEMORY_KEEPER_DELTA]` anywhere in your context, execute this skill immediately.
 
 ## Execution Steps
 

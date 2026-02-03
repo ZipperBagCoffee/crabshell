@@ -1,5 +1,13 @@
 # Changelog
 
+## v13.9.11 (2026-02-02)
+### Delta Trigger Fix
+- **Explicit trigger pattern**: Fixed mismatch between SKILL.md documentation and inject-rules.js implementation
+  - stderr now outputs `[MEMORY_KEEPER_DELTA] file=delta_temp.txt` (was `[rules + delta pending]`)
+  - DELTA_INSTRUCTION header includes explicit trigger pattern
+  - SKILL.md updated to mention both stderr and context pattern detection
+- **Root cause fix**: lastMemoryUpdateTs was always null because Claude couldn't find trigger pattern
+
 ## v13.9.10 (2026-02-02)
 ### Commands Fix
 - **Path resolution**: Added Script Path Resolution section to all commands

@@ -16,17 +16,22 @@ const RULES = `
 `;
 
 const DELTA_INSTRUCTION = `
-## BLOCKING PREREQUISITE - EXECUTE FIRST
+## [MEMORY_KEEPER_DELTA] - BLOCKING PREREQUISITE
+
+**TRIGGER DETECTED: [MEMORY_KEEPER_DELTA] file=delta_temp.txt**
 
 STOP. Before generating ANY text response to the user:
 
-1. Use the Skill tool: skill="memory-delta"
-2. Complete all steps in the skill
-3. THEN respond to user
+1. Invoke Skill tool NOW: skill="memory-delta"
+2. Complete ALL steps in the skill (verify file, call Haiku, append to memory.md, mark-updated, cleanup)
+3. ONLY THEN respond to user
 
-This is a SYSTEM MAINTENANCE TASK that BLOCKS user response.
-You CANNOT skip this. You CANNOT respond first.
-Your response to the user is INVALID until delta processing completes.
+This is a MANDATORY SYSTEM MAINTENANCE TASK.
+- You CANNOT skip this
+- You CANNOT respond to user first
+- Your response is BLOCKED until delta processing completes
+
+If you see this instruction, the delta file EXISTS and MUST be processed.
 `;
 
 const ROTATION_INSTRUCTION = `
@@ -216,14 +221,14 @@ function main() {
       };
       console.log(JSON.stringify(output));
 
-      // Brief indicator to stderr (shown to user)
-      const indicators = [];
-      if (hasPendingDelta) indicators.push('delta');
-      if (pendingRotations.length > 0) indicators.push('rotation');
-
-      if (indicators.length > 0) {
-        console.error(`[rules + ${indicators.join(' + ')} pending]`);
-      } else {
+      // Explicit trigger patterns to stderr (visible to Claude)
+      if (hasPendingDelta) {
+        console.error(`[MEMORY_KEEPER_DELTA] file=delta_temp.txt`);
+      }
+      if (pendingRotations.length > 0) {
+        console.error(`[MEMORY_KEEPER_ROTATE] pending=${pendingRotations.length}`);
+      }
+      if (!hasPendingDelta && pendingRotations.length === 0) {
         console.error('[rules injected]');
       }
     }
