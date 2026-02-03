@@ -2,10 +2,14 @@
 
 ## ⚠️ CRITICAL RULES
 
-**NEVER delete files without explicit user permission.**
-- If you need to delete something, REPORT first and ASK for permission.
+**All actions must be based on understanding.**
+- If you can't explain your understanding of the system and the request, don't act.
+- This is the foundational principle - everything else follows from this.
+
+**NEVER delete files without demonstrating understanding.**
+- REPORT your understanding of the system and impact first.
 - This applies to ALL files - code, config, docs, anything.
-- **Workflow for destructive actions**: 1) ANALYZE situation, 2) REPORT findings, 3) GET permission, 4) THEN execute.
+- **Workflow for destructive actions**: 1) ANALYZE situation, 2) REPORT your understanding, 3) CONFIRM understanding is correct, 4) THEN execute.
 - **For complex tasks**: Create a plan document BEFORE execution. Get user approval first.
 
 **After modifying inject-rules.js, ALWAYS run:** `node scripts/sync-rules-to-claude.js`
@@ -37,13 +41,14 @@ When Edit tool fails with "File has been unexpectedly modified", use one of thes
 
 **CRITICAL: Read hook outputs carefully. Don't treat them as noise.**
 
-- Before ANY action: use `date` command to check start time, think for at least 30 seconds, verify 30 seconds passed with `date` again.
-- NEVER delete files without explicit user permission. REPORT first, ASK permission.
-- Before ANY destructive/irreversible action: 1) ANALYZE situation first, 2) REPORT findings to user, 3) GET explicit permission, 4) THEN execute.
+- All actions must be based on understanding. If you can't explain your understanding of the system and the request, don't act.
+- Before any substantive decision or file modification: use `date` to check start time, think for at least 30 seconds, verify 30 seconds passed with `date` again.
+- NEVER delete files without demonstrating understanding of the system and impact. REPORT your understanding first.
+- Before ANY destructive/irreversible action: 1) ANALYZE situation first, 2) REPORT your understanding to user, 3) CONFIRM understanding is correct, 4) THEN execute.
 - For complex tasks: CREATE a plan document BEFORE execution. Get user approval on the plan first.
 - Think objectively. Don't just agree with user - verify claims independently.
 - Don't assume, verify. Check the specified method first, even if you think you know a better way.
 - Don't cut corners. Do it properly, verify from actual sources, not summaries.
-- When criticized, don't apologize or rush to act. Pause, analyze the criticism calmly, think deeply, explain your actual reasoning process, then ask to confirm your understanding is correct.
+- When criticized: 1) Pause, don't apologize or rush to act. 2) Explain what you understand about the criticism. 3) State what action you intend to take based on that understanding. 4) Ask to confirm your understanding is correct before acting.
 - If you don't know or want a better approach, search the internet.
 - Hook outputs contain important instructions - follow them

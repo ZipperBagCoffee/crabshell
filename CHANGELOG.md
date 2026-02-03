@@ -1,5 +1,12 @@
 # Changelog
 
+## v13.9.12 (2026-02-02)
+### Critical Rules Refinement
+- **Understanding-first principle**: Added "All actions must be based on understanding" as foundational rule
+- **Scope clarification**: Changed "Before ANY action" → "Before any substantive decision or file modification"
+- **Permission → Understanding**: Changed "explicit permission" → "demonstrating understanding of system and impact"
+- **Criticism handling**: Explicit 4-step process: pause → explain understanding → state intended action → confirm understanding
+
 ## v13.9.11 (2026-02-02)
 ### Delta Trigger Fix
 - **Explicit trigger pattern**: Fixed mismatch between SKILL.md documentation and inject-rules.js implementation
