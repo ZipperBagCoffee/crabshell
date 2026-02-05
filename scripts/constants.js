@@ -15,6 +15,8 @@ module.exports = {
   MEMORY_DIR: 'memory',
   SESSIONS_DIR: 'memory/sessions',
   LOGS_DIR: 'memory/logs',
+  LESSONS_DIR: 'lessons',
+  WORKFLOW_DIR: 'workflow',
 
   // File names
   MEMORY_FILE: 'memory.md',

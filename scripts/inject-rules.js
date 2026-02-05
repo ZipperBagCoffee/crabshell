@@ -53,6 +53,9 @@ Watch for: completion drive, confidence w/o reading, pattern matching, efficienc
 ### ADDITIONAL RULES
 - Search internet if unsure.
 - When modifying files not tracked by git, always create a backup (.bak) before making changes.
+- **Workflow:** Follow .claude/workflow/workflow.md for complex tasks. Understanding = Gap closed + Consequences predicted.
+- **Lessons:** Check .claude/lessons/ for project-specific rules. Propose new lessons when patterns repeat 2+ times.
+- **After Compacting:** (1) If .claude/memory/delta_temp.txt exists → summarize to memory.md, else skip. (2) Read latest memory.md + related docs (workflow, lessons) to rebuild understanding. (3) If understanding feels incomplete → check relevant L1 session files in .claude/memory/sessions/.
 `;
 
 const DELTA_INSTRUCTION = `
