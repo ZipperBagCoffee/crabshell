@@ -50,7 +50,9 @@ Watch for: completion drive, confidence w/o reading, pattern matching, efficienc
 - ❌ Delete w/o understanding (All three)
 - ❌ Search memory oldest-to-newest (wrong order)
 
-Search internet if unsure.
+### ADDITIONAL RULES
+- Search internet if unsure.
+- When modifying files not tracked by git, always create a backup (.bak) before making changes.
 `;
 
 const DELTA_INSTRUCTION = `
