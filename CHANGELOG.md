@@ -1,5 +1,35 @@
 # Changelog
 
+## v13.9.21 (2026-02-05)
+### Context Recovery Fix
+- **Session restart**: Added "Session Restart" alongside "After Compacting" in recovery rule
+  - Rule now covers both context compaction and session restart scenarios
+
+## v13.9.20 (2026-02-05)
+### Workflow & Lessons System
+- **Workflow system**: Added `.claude/workflow/workflow.md` auto-copied from template on init
+  - Understanding-First workflow with gap-closing methodology
+  - Covers planning, implementation, and verification phases
+- **Lessons system**: Added `.claude/lessons/` with `lessons-README.md` template
+  - Project-specific rules proposed when patterns repeat 2+ times
+  - Organized by category with clear naming conventions
+- **Auto-init**: `init.js` now creates workflow and lessons directories, copies templates on first run
+- **New ADDITIONAL RULES**: Workflow, Lessons, and post-compacting/session-restart context recovery rules added to inject-rules.js
+- **New directory**: `templates/` containing `workflow.md` and `lessons-README.md`
+
+## v13.9.16 (2026-02-03)
+### CLAUDE.md Auto-Sync Restored & New Rules
+- **syncRulesToClaudeMd() restored**: Fixed v13.9.15 regression that removed CLAUDE.md auto-injection
+  - Runs at start of main() in inject-rules.js
+  - Improved deduplication with removeSection() helper
+- **"Unclear → Ask first"**: Added to UNDERSTANDING-FIRST section
+- **Example 2**: Added scenario for checking own code before blaming user after version update
+- **3 new REQUIREMENTS**:
+  - Memory search newest to oldest (recent context first)
+  - Investigate actual cause before blaming user environment
+  - Verify independently, never blindly agree with user claims
+- **1 new VIOLATION**: Search memory oldest-to-newest (wrong order)
+
 ## v13.9.19 (2026-02-05)
 ### CLAUDE.md Marker-Based Sync
 - **Marker system**: Plugin now uses explicit markers to manage its section in CLAUDE.md

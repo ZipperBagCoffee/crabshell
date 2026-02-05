@@ -190,7 +190,10 @@ Coding conventions: ...
 
 | Version | Changes |
 |---------|---------|
+| 13.9.21 | Session restart context recovery rule |
+| 13.9.20 | Workflow & lessons system with auto-init templates |
 | 13.9.19 | CLAUDE.md marker-based sync (preserves project-specific content) |
+| 13.9.16 | Restore CLAUDE.md auto-sync, add "Unclear → Ask first", Example 2, 3 new requirements |
 | 13.9.9 | 30-second thinking rule with date command verification |
 | 13.9.7 | lastMemoryUpdateTs preservation fix |
 | 13.9.5 | Dual timestamp headers: `## UTC (local MM-DD_HHMM)` |

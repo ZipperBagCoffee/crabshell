@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 13.9.12 | **Author**: TaWa | **License**: MIT
+**Version**: 13.9.21 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -52,7 +52,9 @@ memory-keeper-plugin/
 │   ├── search.js                     # L1/L2/L3 integrated search
 │   ├── memory-rotation.js            # Token-based rotation
 │   ├── legacy-migration.js           # Large file splitting
+│   ├── migrate-timezone.js           # Legacy timestamp migration (local → UTC)
 │   ├── refine-raw.js                 # raw.jsonl -> l1.jsonl conversion
+│   ├── sync-rules-to-claude.js       # Manual CLAUDE.md sync (standalone)
 │   └── utils.js                      # Shared utilities
 │
 ├── skills/                           # Slash command skills
@@ -64,12 +66,16 @@ memory-keeper-plugin/
 │   ├── clear-memory/SKILL.md         # /memory-keeper:clear-memory
 │   └── memory-rotate/SKILL.md        # Auto-trigger L3 generation
 │
+├── templates/                        # Auto-init templates (v13.9.20)
+│   ├── workflow.md                   # Understanding-First workflow template
+│   └── lessons-README.md             # Lessons system README template
+│
 ├── docs/                             # Documentation
 │   ├── ARCHITECTURE.md               # System architecture
 │   ├── USER-MANUAL.md                # User manual
 │   └── plans/                        # Version design documents
 │
-├── CLAUDE.md                         # Project notes (Windows workarounds)
+├── CLAUDE.md                         # Critical rules (auto-managed by plugin)
 ├── README.md                         # Project documentation
 ├── CHANGELOG.md                      # Version history
 └── STRUCTURE.md                      # This file
@@ -115,6 +121,9 @@ Session start loader:
 UserPromptSubmit hook:
 - Inject critical rules every prompt via `additionalContext`
 - Configurable frequency via `rulesInjectionFrequency`
+- Auto-sync rules to CLAUDE.md via `syncRulesToClaudeMd()` (marker-based)
+- Detect pending delta → inject DELTA_INSTRUCTION
+- Detect pending rotation → inject ROTATION_INSTRUCTION
 
 ### scripts/extract-delta.js
 L1 delta extraction:
@@ -168,10 +177,16 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 13.9.21 | Session restart context recovery rule |
+| 13.9.20 | Workflow & lessons system with auto-init templates |
+| 13.9.19 | CLAUDE.md marker-based sync (preserves project-specific content) |
+| 13.9.18 | Marker-based CLAUDE.md sync (initial implementation) |
+| 13.9.16 | Restore CLAUDE.md auto-sync, "Unclear → Ask first", Example 2, new rules |
+| 13.9.12 | Understanding-first principle, criticism handling 4-step process |
+| 13.9.11 | Delta trigger pattern fix (lastMemoryUpdateTs null) |
+| 13.9.10 | Commands path resolution fix, legacy cleanup |
 | 13.9.9 | 30-second thinking rule with date command verification |
-| 13.9.8 | Documentation sync improvements |
 | 13.9.7 | lastMemoryUpdateTs preservation fix in init.js |
-| 13.9.6 | SKILL.md single command for dual timestamps |
 | 13.9.5 | Dual timestamp headers (UTC + local) |
 | 13.9.4 | Delta extraction append mode, UTC timestamp headers |
 | 13.9.3 | Delta cleanup blocked unless memory.md physically updated |

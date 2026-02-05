@@ -30,9 +30,10 @@ Memory Keeper is a Claude Code plugin that automatically saves session context u
 |  +----------------+  +------------------------------------------+   |
 |                      | inject-rules.js                          |   |
 |  +----------------+  | - Inject critical rules (every prompt)   |   |
-|  | extract-delta  |  | - Detect pending delta → INSTRUCTION     |   |
-|  | - extractDelta |  | - Detect pending rotation → INSTRUCTION  |   |
-|  | - cleanup      |  +------------------------------------------+   |
+|  | extract-delta  |  | - syncRulesToClaudeMd() (marker-based)   |   |
+|  | - extractDelta |  | - Detect pending delta → INSTRUCTION     |   |
+|  | - cleanup      |  | - Detect pending rotation → INSTRUCTION  |   |
+|  +----------------+  +------------------------------------------+   |
 |  +----------------+                                                  |
 |                      +----------------+  +----------------------+    |
 |  +----------------+  | search.js      |  | memory-rotation.js   |    |
@@ -189,10 +190,16 @@ Save to *.summary.json
 
 | Version | Key Changes |
 |---------|-------------|
+| 13.9.21 | Session restart context recovery rule |
+| 13.9.20 | Workflow & lessons system with auto-init templates |
+| 13.9.19 | CLAUDE.md marker-based sync (preserves project-specific content) |
+| 13.9.18 | Marker-based CLAUDE.md sync (initial implementation) |
+| 13.9.16 | Restore CLAUDE.md auto-sync, new rules (Unclear→Ask, Example 2, memory order) |
+| 13.9.12 | Understanding-first principle, criticism handling process |
+| 13.9.11 | Delta trigger pattern fix (lastMemoryUpdateTs null) |
+| 13.9.10 | Commands path resolution fix, legacy cleanup |
 | 13.9.9 | 30-second thinking rule with date command verification |
-| 13.9.8 | Documentation sync improvements |
 | 13.9.7 | lastMemoryUpdateTs preservation fix in init.js |
-| 13.9.6 | SKILL.md single command for dual timestamps |
 | 13.9.5 | Dual timestamp headers (UTC + local) |
 | 13.9.4 | Delta extraction append mode, UTC timestamp headers |
 | 13.9.3 | Delta cleanup blocked unless memory.md physically updated |

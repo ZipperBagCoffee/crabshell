@@ -178,6 +178,41 @@ L1 files are deduplicated automatically when created, but manual cleanup may som
 
 ---
 
+## CLAUDE.md Integration (v13.9.16+)
+
+The plugin automatically manages a rules section in your project's `CLAUDE.md`:
+
+```markdown
+## CRITICAL RULES (Core Principles Alignment)
+...plugin-managed rules...
+---Add your project-specific rules below this line---
+
+## Your Project Rules (plugin never touches this)
+Build pipeline: src → build → dist
+```
+
+- **Above the line**: Auto-managed by the plugin (updated every prompt)
+- **Below the line**: Your project-specific content (never modified by the plugin)
+
+## Workflow & Lessons System (v13.9.20+)
+
+On first run, the plugin creates:
+
+- `.claude/workflow/workflow.md` - Understanding-First workflow template
+- `.claude/lessons/` - Project-specific rules directory
+
+### Workflow
+The workflow template provides a structured approach for complex tasks:
+1. Understanding phase (gap closing)
+2. Planning phase (plan document)
+3. Implementation phase
+4. Verification phase
+
+### Lessons
+When you notice repeated patterns (2+ times), propose a lesson:
+- Claude saves it to `.claude/lessons/`
+- Lessons are checked on each session for project-specific rules
+
 ## Version Compatibility
 
 | Version | Claude Code | Node.js |
