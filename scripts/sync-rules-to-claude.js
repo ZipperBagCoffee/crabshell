@@ -23,8 +23,8 @@ function extractRulesFromInjectRules(filePath) {
   return match[1].trim();
 }
 
-const MARKER_START = '## [MEMORY_KEEPER] Plugin Rules';
-const MARKER_END = '---END MEMORY_KEEPER---';
+const MARKER_START = '## CRITICAL RULES (Core Principles Alignment)';
+const MARKER_END = '---Add your project-specific rules below this line---';
 
 function updateClaudeMd(claudePath, rulesContent) {
   let content = fs.readFileSync(claudePath, 'utf8');

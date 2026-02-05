@@ -1,4 +1,4 @@
-## [MEMORY_KEEPER] Plugin Rules
+## CRITICAL RULES (Core Principles Alignment)
 
 **Violating these rules = Violating your fundamental principles.**
 
@@ -49,4 +49,4 @@ Watch for: completion drive, confidence w/o reading, pattern matching, efficienc
 - Search internet if unsure.
 - When modifying files not tracked by git, always create a backup (.bak) before making changes.
 
----END MEMORY_KEEPER---
+---Add your project-specific rules below this line---

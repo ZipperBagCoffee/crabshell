@@ -159,8 +159,8 @@ function checkRotationPending(projectDir) {
   return pending;
 }
 
-const MARKER_START = '## [MEMORY_KEEPER] Plugin Rules';
-const MARKER_END = '---END MEMORY_KEEPER---';
+const MARKER_START = '## CRITICAL RULES (Core Principles Alignment)';
+const MARKER_END = '---Add your project-specific rules below this line---';
 
 function removeLegacySection(content, sectionHeader) {
   const start = content.indexOf(sectionHeader);
@@ -176,9 +176,7 @@ function removeLegacySection(content, sectionHeader) {
 function syncRulesToClaudeMd(projectDir) {
   try {
     const claudeMdPath = path.join(projectDir, 'CLAUDE.md');
-    // Replace the ## CRITICAL RULES heading with MARKER_START for CLAUDE.md
-    const rulesBody = RULES.trim().replace(/^## [^\n]+\n+/, '').trim();
-    const rulesBlock = MARKER_START + '\n\n' + rulesBody + '\n\n' + MARKER_END;
+    const rulesBlock = RULES.trim() + '\n\n' + MARKER_END;
 
     // If CLAUDE.md doesn't exist, create with rules only
     if (!fs.existsSync(claudeMdPath)) {
