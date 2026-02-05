@@ -169,10 +169,28 @@ memory.md                 - Active rolling memory (loaded at startup)
 - **L3**: AI-generated summaries of archived content
 - **Search**: `search-memory` traverses L3 → L2 → memory.md (add `--deep` for L1)
 
+## CLAUDE.md Integration
+
+The plugin automatically manages a rules section in your project's `CLAUDE.md`:
+
+```markdown
+## CRITICAL RULES (Core Principles Alignment)
+...plugin-managed rules...
+---Add your project-specific rules below this line---
+
+## Your Project Rules (plugin never touches this)
+Build pipeline: src → build → dist
+Coding conventions: ...
+```
+
+- **Above the line**: Auto-managed by the plugin (updated on every session start)
+- **Below the line**: Your project-specific content (never modified by the plugin)
+
 ## Version
 
 | Version | Changes |
 |---------|---------|
+| 13.9.19 | CLAUDE.md marker-based sync (preserves project-specific content) |
 | 13.9.9 | 30-second thinking rule with date command verification |
 | 13.9.7 | lastMemoryUpdateTs preservation fix |
 | 13.9.5 | Dual timestamp headers: `## UTC (local MM-DD_HHMM)` |

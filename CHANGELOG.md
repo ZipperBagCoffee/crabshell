@@ -1,5 +1,18 @@
 # Changelog
 
+## v13.9.19 (2026-02-05)
+### CLAUDE.md Marker-Based Sync
+- **Marker system**: Plugin now uses explicit markers to manage its section in CLAUDE.md
+  - Start marker: `## CRITICAL RULES (Core Principles Alignment)` (same as rules heading)
+  - End marker: `---Add your project-specific rules below this line---`
+- **Project content preserved**: Anything below the end marker is never touched by the plugin
+  - Users can add project-specific rules, build pipelines, conventions, etc.
+  - Plugin only replaces content between its markers
+- **No more `# Project Notes` boilerplate**: Removed auto-generated heading
+- **Legacy migration**: Files without markers auto-migrate on first run
+  - Old `## CRITICAL RULES` / `## Memory Keeper Plugin Rules` sections detected and replaced
+- **sync-rules-to-claude.js**: Updated to use same marker system
+
 ## v13.9.12 (2026-02-02)
 ### Critical Rules Refinement
 - **Understanding-first principle**: Added "All actions must be based on understanding" as foundational rule
