@@ -159,7 +159,10 @@ function checkRotationPending(projectDir) {
   return pending;
 }
 
-function removeSection(content, sectionHeader) {
+const MARKER_START = '## [MEMORY_KEEPER] Plugin Rules';
+const MARKER_END = '---END MEMORY_KEEPER---';
+
+function removeLegacySection(content, sectionHeader) {
   const start = content.indexOf(sectionHeader);
   if (start === -1) return content;
 
@@ -173,21 +176,36 @@ function removeSection(content, sectionHeader) {
 function syncRulesToClaudeMd(projectDir) {
   try {
     const claudeMdPath = path.join(projectDir, 'CLAUDE.md');
+    // Replace the ## CRITICAL RULES heading with MARKER_START for CLAUDE.md
+    const rulesBody = RULES.trim().replace(/^## [^\n]+\n+/, '').trim();
+    const rulesBlock = MARKER_START + '\n\n' + rulesBody + '\n\n' + MARKER_END;
 
-    // If CLAUDE.md doesn't exist, create with rules
+    // If CLAUDE.md doesn't exist, create with rules only
     if (!fs.existsSync(claudeMdPath)) {
-      fs.writeFileSync(claudeMdPath, `# Project Notes\n\n${RULES}`);
+      fs.writeFileSync(claudeMdPath, rulesBlock + '\n');
       return;
     }
 
     let content = fs.readFileSync(claudeMdPath, 'utf8');
+    const startIdx = content.indexOf(MARKER_START);
+    const endIdx = content.indexOf(MARKER_END);
 
-    // Remove existing rule sections (both old and new format)
-    content = removeSection(content, '## Memory Keeper Plugin Rules');
-    content = removeSection(content, '## CRITICAL RULES');
-
-    // Append rules at end
-    fs.writeFileSync(claudeMdPath, content.trimEnd() + '\n\n' + RULES + '\n');
+    if (startIdx !== -1 && endIdx !== -1) {
+      // Markers found → replace only between markers (inclusive)
+      const before = content.slice(0, startIdx);
+      const after = content.slice(endIdx + MARKER_END.length);
+      fs.writeFileSync(claudeMdPath, before + rulesBlock + after);
+    } else {
+      // No markers → legacy migration: remove old sections, prepend rules at top
+      content = removeLegacySection(content, '## Memory Keeper Plugin Rules');
+      content = removeLegacySection(content, '## CRITICAL RULES');
+      const remaining = content.trim();
+      if (remaining && remaining !== '# Project Notes') {
+        fs.writeFileSync(claudeMdPath, rulesBlock + '\n\n' + remaining + '\n');
+      } else {
+        fs.writeFileSync(claudeMdPath, rulesBlock + '\n');
+      }
+    }
   } catch (e) {
     // Silently fail - don't break main workflow
   }

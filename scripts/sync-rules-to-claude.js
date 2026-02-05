@@ -23,37 +23,27 @@ function extractRulesFromInjectRules(filePath) {
   return match[1].trim();
 }
 
+const MARKER_START = '## [MEMORY_KEEPER] Plugin Rules';
+const MARKER_END = '---END MEMORY_KEEPER---';
+
 function updateClaudeMd(claudePath, rulesContent) {
   let content = fs.readFileSync(claudePath, 'utf8');
+  const rulesBlock = MARKER_START + '\n\n' + rulesContent + '\n\n' + MARKER_END;
 
-  // Find the "Memory Keeper Plugin Rules" section
-  const sectionStart = content.indexOf('## Memory Keeper Plugin Rules');
-  if (sectionStart === -1) {
-    console.error('Could not find "## Memory Keeper Plugin Rules" section in CLAUDE.md');
-    return false;
+  const startIdx = content.indexOf(MARKER_START);
+  const endIdx = content.indexOf(MARKER_END);
+
+  if (startIdx !== -1 && endIdx !== -1) {
+    // Markers found → replace only between markers (inclusive)
+    const before = content.slice(0, startIdx);
+    const after = content.slice(endIdx + MARKER_END.length);
+    fs.writeFileSync(claudePath, before + rulesBlock + after);
+    return true;
   }
 
-  // Find the end of this section (next ## or end of file)
-  const afterSection = content.slice(sectionStart);
-  const nextSection = afterSection.indexOf('\n## ', 1);
-  const sectionEnd = nextSection === -1 ? content.length : sectionStart + nextSection;
-
-  // Build new section content - use full rules content
-  const newSection = `## Memory Keeper Plugin Rules
-
-**CRITICAL: Read hook outputs carefully. Don't treat them as noise.**
-
-${rulesContent}
-- Hook outputs contain important instructions - follow them
-`;
-
-  // Replace the section
-  const before = content.slice(0, sectionStart);
-  const after = content.slice(sectionEnd);
-  const newContent = before + newSection + after;
-
-  fs.writeFileSync(claudePath, newContent);
-  return true;
+  // No markers found - try legacy format
+  console.error('Could not find MEMORY_KEEPER markers in CLAUDE.md. Run inject-rules.js first to migrate.');
+  return false;
 }
 
 function main() {
