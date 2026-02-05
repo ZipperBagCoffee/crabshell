@@ -1,5 +1,17 @@
 # Changelog
 
+## v13.9.22 (2026-02-05)
+### Timestamp Bug Fix & MEMORY.md Auto-Warning
+- **Timestamp double-escaping fix**: Date format in SKILL.md and save-memory.md separated into variables to prevent Claude from escaping `%Y` to `%%Y`
+  - Root cause: `$(date +'%Y...')` inside `printf` context caused Claude to double-escape percent signs
+  - Fix: `TS_UTC=$(date -u +%Y-%m-%d_%H%M) && printf ... "$TS_UTC"` — date separated from printf
+  - 7 broken timestamps in memory.md recovered from L1 session logs
+- **MEMORY.md auto-warning**: `ensureAutoMemoryWarning()` added to load-memory.js (SessionStart hook)
+  - Writes warning to Claude Code's built-in `~/.claude/projects/{project}/memory/MEMORY.md`
+  - Prevents confusion between Claude Code auto-memory (200-line limit) and Memory Keeper plugin memory (25K token rotation)
+  - Runs once per session start, idempotent (skips if warning already exists)
+- **Context recovery rule sync**: Plugin cache inject-rules.js synchronized with source (commit 508b788)
+
 ## v13.9.21 (2026-02-05)
 ### Context Recovery Fix
 - **Session restart**: Added "Session Restart" alongside "After Compacting" in recovery rule

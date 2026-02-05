@@ -186,10 +186,13 @@ Coding conventions: ...
 - **Above the line**: Auto-managed by the plugin (updated on every session start)
 - **Below the line**: Your project-specific content (never modified by the plugin)
 
+> **Note:** The plugin also writes a warning to Claude Code's built-in `MEMORY.md` (at `~/.claude/projects/{project}/memory/MEMORY.md`) to prevent confusion between the two memory systems. This is separate from the plugin's own `memory.md`.
+
 ## Version
 
 | Version | Changes |
 |---------|---------|
+| 13.9.22 | Timestamp double-escaping fix, MEMORY.md auto-warning (Claude Code distinction) |
 | 13.9.21 | Session restart context recovery rule |
 | 13.9.20 | Workflow & lessons system with auto-init templates |
 | 13.9.19 | CLAUDE.md marker-based sync (preserves project-specific content) |

@@ -27,6 +27,8 @@ Memory Keeper is a Claude Code plugin that automatically saves session context u
 |  | - memory.md    |  | - search-memory: L1/L2/L3 search         |   |
 |  | - L3 summaries |  | - generate-l3: create L3 summary         |   |
 |  | - project.md   |  +------------------------------------------+   |
+|  | Writes:        |                                                  |
+|  | - MEMORY.md    |  (Claude Code built-in auto-memory warning)      |
 |  +----------------+  +------------------------------------------+   |
 |                      | inject-rules.js                          |   |
 |  +----------------+  | - Inject critical rules (every prompt)   |   |
@@ -190,6 +192,7 @@ Save to *.summary.json
 
 | Version | Key Changes |
 |---------|-------------|
+| 13.9.22 | Timestamp double-escaping fix, MEMORY.md auto-warning in SessionStart |
 | 13.9.21 | Session restart context recovery rule |
 | 13.9.20 | Workflow & lessons system with auto-init templates |
 | 13.9.19 | CLAUDE.md marker-based sync (preserves project-specific content) |

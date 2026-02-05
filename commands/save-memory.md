@@ -25,7 +25,7 @@ node "{PLUGIN_PATH}/scripts/counter.js" check
 
 Append directly to memory.md (works from any project):
 ```bash
-printf '\n## %s (local %s)\n%s\n' "$(date -u +'%Y-%m-%d_%H%M')" "$(date +'%m-%d_%H%M')" "[Your summary here]" >> .claude/memory/memory.md
+TS_UTC=$(date -u +%Y-%m-%d_%H%M) && TS_LOCAL=$(date +%m-%d_%H%M) && printf '\n## %s (local %s)\n%s\n' "$TS_UTC" "$TS_LOCAL" "[Your summary here]" >> .claude/memory/memory.md
 ```
 
 ## What to Record

@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 13.9.21 | **Author**: TaWa | **License**: MIT
+**Version**: 13.9.22 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -116,6 +116,7 @@ Session start loader:
 - Load hierarchical memory files
 - Load L3 summaries
 - Load rolling memory tail
+- `ensureAutoMemoryWarning()`: Write distinction warning to Claude Code's built-in MEMORY.md
 
 ### scripts/inject-rules.js
 UserPromptSubmit hook:
@@ -177,6 +178,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 13.9.22 | Timestamp double-escaping fix, MEMORY.md auto-warning |
 | 13.9.21 | Session restart context recovery rule |
 | 13.9.20 | Workflow & lessons system with auto-init templates |
 | 13.9.19 | CLAUDE.md marker-based sync (preserves project-specific content) |

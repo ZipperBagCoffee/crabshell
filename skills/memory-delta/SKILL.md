@@ -51,8 +51,12 @@ If you see `[MEMORY_KEEPER_DELTA]` anywhere in your context, execute this skill 
 4. **Append summary to memory.md with dual timestamps**:
    Run this single command (replace {SUMMARY} with Haiku's response):
    ```bash
-   printf '\n## %s (local %s)\n%s\n' "$(date -u +'%Y-%m-%d_%H%M')" "$(date +'%m-%d_%H%M')" "{SUMMARY}" >> .claude/memory/memory.md
+   TS_UTC=$(date -u +%Y-%m-%d_%H%M) && TS_LOCAL=$(date +%m-%d_%H%M) && printf '\n## %s (local %s)\n%s\n' "$TS_UTC" "$TS_LOCAL" "{SUMMARY}" >> .claude/memory/memory.md
    ```
+
+   **WARNING: Do NOT modify this command. Copy EXACTLY as written.**
+   - The date format uses single `%` (e.g. `%Y`), NOT `%%Y`
+   - `%%` in date means "literal %" which outputs format strings instead of dates
 
    Example output: `## 2026-02-01_1727 (local 02-01_0927)`
 

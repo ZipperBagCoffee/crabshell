@@ -44,6 +44,32 @@ const MEMORY_FILES = [
   { name: 'conventions.md', title: 'Conventions' }
 ];
 
+const MEMORY_MD_WARNING = `## Memory Keeper Plugin
+- This MEMORY.md = Claude Code built-in auto memory (200-line limit, auto-loaded in system prompt)
+- .claude/memory/memory.md = Memory Keeper plugin memory (25K token rotation, loaded via hooks)
+- These are SEPARATE systems. Do NOT apply 200-line limit to plugin memory.md
+- Do NOT confuse rotation/archival rules between them`;
+
+function ensureAutoMemoryWarning(projectDir) {
+  try {
+    const os = require('os');
+    const home = os.homedir();
+    const sanitized = projectDir.replace(/[^a-zA-Z0-9-]/g, '-');
+    const memoryMdPath = path.join(home, '.claude', 'projects', sanitized, 'memory', 'MEMORY.md');
+
+    if (fs.existsSync(memoryMdPath)) {
+      const content = fs.readFileSync(memoryMdPath, 'utf8');
+      if (content.includes('Memory Keeper Plugin')) return;
+      fs.writeFileSync(memoryMdPath, MEMORY_MD_WARNING + '\n\n' + content);
+    } else {
+      fs.mkdirSync(path.dirname(memoryMdPath), { recursive: true });
+      fs.writeFileSync(memoryMdPath, MEMORY_MD_WARNING + '\n');
+    }
+  } catch (e) {
+    // Silently fail - don't break SessionStart
+  }
+}
+
 const MEMORY_TAIL_LINES = 50;
 
 function loadMemory() {
@@ -54,6 +80,9 @@ function loadMemory() {
 
   // Ensure memory structure exists
   ensureMemoryStructure(projectDir);
+
+  // Ensure MEMORY.md warning (Claude Code built-in vs plugin distinction)
+  ensureAutoMemoryWarning(projectDir);
 
   // Load hierarchical memory files
   MEMORY_FILES.forEach(({ name, title }) => {
