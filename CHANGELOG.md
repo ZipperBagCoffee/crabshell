@@ -1,5 +1,13 @@
 # Changelog
 
+## v13.9.23 (2026-02-08)
+### UNDERSTANDING-FIRST Rule Improvement
+- **Gap-based verification**: Replaced "Cannot explain → Cannot act" with "Cannot verify gap is closed → Cannot act"
+  - Understanding redefined as closing the gap between user intent and LLM inference through iterative verification
+  - 3-step process: (1) infer user intent, (2) identify gap, (3) narrow gap before acting
+  - `Understanding ≠ ability to explain` — LLM can generate plausible explanations without actual understanding
+- **Examples updated**: Added explicit "Gap:" identification step to both examples
+
 ## v13.9.22 (2026-02-05)
 ### Timestamp Bug Fix & MEMORY.md Auto-Warning
 - **Timestamp double-escaping fix**: Date format in SKILL.md and save-memory.md separated into variables to prevent Claude from escaping `%Y` to `%%Y`
