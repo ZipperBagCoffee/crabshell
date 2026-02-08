@@ -192,6 +192,7 @@ Coding conventions: ...
 
 | Version | Changes |
 |---------|---------|
+| 13.9.23 | UNDERSTANDING-FIRST rule: gap-based verification |
 | 13.9.22 | Timestamp double-escaping fix, MEMORY.md auto-warning (Claude Code distinction) |
 | 13.9.21 | Session restart context recovery rule |
 | 13.9.20 | Workflow & lessons system with auto-init templates |

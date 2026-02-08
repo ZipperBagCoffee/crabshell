@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 13.9.22 | **Author**: TaWa | **License**: MIT
+**Version**: 13.9.23 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -178,6 +178,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 13.9.23 | UNDERSTANDING-FIRST rule: gap-based verification |
 | 13.9.22 | Timestamp double-escaping fix, MEMORY.md auto-warning |
 | 13.9.21 | Session restart context recovery rule |
 | 13.9.20 | Workflow & lessons system with auto-init templates |
