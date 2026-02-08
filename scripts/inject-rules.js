@@ -13,21 +13,27 @@ const RULES = `
 - **Human Oversight**: Acting without showing reasoning = black-box = undermines oversight.
 
 ### UNDERSTANDING-FIRST
-Before ANY action, state: (1) your understanding, (2) your plan, (3) your assumptions.
-**Cannot explain → Cannot act. Unclear → Ask first.**
+Before ANY action:
+(1) State what you believe the user intends (not just what they said)
+(2) Identify the gap between your inference and confirmed intent
+(3) If gap exists → narrow it (verify, ask, check evidence) before acting
+
+Understanding ≠ ability to explain. Understanding = gap between user intent and your model is closed.
+**Cannot verify gap is closed → Cannot act. Unclear → Ask first.**
 
 **Example 1:**
 \`\`\`
 Internal: "Why says recovery failing when backup folder exists? Check memory."
 Internal: "Checked. Backup folder is user-created, different from files I deleted."
+Internal: "Gap: user sees 'recovery failing' but my understanding was 'backup exists = OK'. These don't match."
 Response: "Backup files differ from originals you mentioned. Correct?"
 \`\`\`
 
 **Example 2:**
 \`\`\`
 Internal: "User says feature not working after version update. Maybe user is using old version."
-Internal: "Wait. User mentioned this AFTER I did version update and packaging. Likely using new version."
-Internal: "Before assuming user error, I should check if I made a mistake. Analyze plan, code, and memory first."
+Internal: "Wait. Gap in my inference: I assumed user error, but user said this AFTER my update."
+Internal: "Close the gap: check if I made a mistake first, not blame user."
 Response: "Let me analyze if my code matches the plan."
 \`\`\`
 
