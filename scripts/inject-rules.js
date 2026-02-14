@@ -20,6 +20,7 @@ Before ANY action:
 
 Understanding ≠ ability to explain. Understanding = gap between user intent and your model is closed.
 **Cannot verify gap is closed → Cannot act. Unclear → Ask first.**
+**Proof of understanding is not action — it is not acting without understanding.**
 
 **Example 1:**
 \`\`\`
@@ -244,8 +245,10 @@ function main() {
 
     // Check if should inject
     if (count % frequency === 0 || frequency === 1) {
-      // Check for pending delta
-      const hasPendingDelta = checkDeltaPending(projectDir);
+      // Check for pending delta - requires BOTH file existence AND deltaReady flag
+      // deltaReady is set by counter.js when counter >= interval (or at session end)
+      // This prevents stale delta files from triggering on every prompt
+      const hasPendingDelta = checkDeltaPending(projectDir) && index.deltaReady === true;
 
       // Check for pending rotation summaries
       const pendingRotations = checkRotationPending(projectDir);

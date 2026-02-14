@@ -9,7 +9,7 @@ const { MEMORY_DIR, MEMORY_FILE, SESSIONS_DIR } = require('./constants');
 
 const CONFIG_PATH = path.join(process.cwd(), '.claude', 'memory', 'config.json');
 const GLOBAL_CONFIG_PATH = path.join(os.homedir(), '.claude', 'memory-keeper', 'config.json');
-const DEFAULT_INTERVAL = 25;
+const DEFAULT_INTERVAL = 100;
 
 // Get logs directory (ensures it exists)
 function getLogsDir() {
@@ -102,19 +102,12 @@ function check() {
     const deltaResult = extractDelta();
 
     if (deltaResult.success) {
-      // COMMENTED OUT: exit 2 approach - PostToolUse exit 2 reaches Claude but skill auto-invoke unreliable
-      // Now using UserPromptSubmit (inject-rules.js) to detect delta_temp.txt and issue INSTRUCTION
-      // See: docs/plans/delta-trigger-investigation.md
-      /*
-      const instructions = `
-═══════════════════════════════════════════════════════════════
-[MEMORY_KEEPER_DELTA] file=${deltaResult.deltaFile}
-═══════════════════════════════════════════════════════════════
-Delta extracted: ${deltaResult.entryCount} entries, ~${deltaResult.tokens} tokens.
-`;
-      console.error(instructions);
-      process.exit(2);
-      */
+      // Set deltaReady flag so inject-rules.js knows this is a legitimate delta
+      // inject-rules.js checks this flag instead of just file existence
+      const indexPath = path.join(getProjectDir(), '.claude', MEMORY_DIR, 'memory-index.json');
+      const index = readIndexSafe(indexPath);
+      index.deltaReady = true;
+      writeJson(indexPath, index);
       setCounter(0);
     } else {
       // No delta available (no L1 or no new content) - just reset counter
@@ -249,6 +242,11 @@ async function final() {
   let deltaOutput = '';
   if (deltaResult.success) {
     deltaOutput = `\n[MEMORY_KEEPER_DELTA] file=${deltaResult.deltaFile}\nDelta extracted at session end: ${deltaResult.entryCount} entries.`;
+    // Set deltaReady flag for next session's inject-rules.js
+    const idxPath = path.join(getProjectDir(), '.claude', MEMORY_DIR, 'memory-index.json');
+    const idx = readIndexSafe(idxPath);
+    idx.deltaReady = true;
+    writeJson(idxPath, idx);
   }
 
   // Quiet mode by default - only show brief message

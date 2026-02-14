@@ -2,7 +2,7 @@ const path = require('path');
 const fs = require('fs');
 const { getProjectDir, getProjectName, readFileOrDefault, readJsonOrDefault, estimateTokens } = require('./utils');
 const { ensureMemoryStructure } = require('./init');
-const { MEMORY_DIR, SESSIONS_DIR, INDEX_FILE, MEMORY_FILE, LOGS_DIR } = require('./constants');
+const { MEMORY_DIR, SESSIONS_DIR, INDEX_FILE, MEMORY_FILE, LOGS_DIR, DELTA_TEMP_FILE } = require('./constants');
 
 // Error logging for debugging SessionStart hook failures
 function logError(err) {
@@ -80,6 +80,13 @@ function loadMemory() {
 
   // Ensure memory structure exists
   ensureMemoryStructure(projectDir);
+
+  // Clean up stale delta_temp.txt from previous session
+  // Prevents delta instruction from firing on every prompt regardless of counter
+  const deltaPath = path.join(memoryDir, DELTA_TEMP_FILE);
+  if (fs.existsSync(deltaPath)) {
+    try { fs.unlinkSync(deltaPath); } catch {}
+  }
 
   // Ensure MEMORY.md warning (Claude Code built-in vs plugin distinction)
   ensureAutoMemoryWarning(projectDir);

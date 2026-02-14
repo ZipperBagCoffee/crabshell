@@ -172,6 +172,11 @@ function cleanupDeltaTemp() {
     }
 
     fs.unlinkSync(deltaPath);
+
+    // Clear deltaReady flag so inject-rules.js stops triggering
+    index.deltaReady = false;
+    fs.writeFileSync(indexPath, JSON.stringify(index, null, 2));
+
     console.log('[MEMORY_KEEPER] Delta temp file cleaned up');
     return true;
   } catch (e) {
