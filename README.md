@@ -99,12 +99,12 @@ node scripts/counter.js search-memory "auth" --deep
 `.claude/memory/config.json`:
 ```json
 {
-  "saveInterval": 25,
+  "saveInterval": 100,
   "keepRaw": false,
   "rulesInjectionFrequency": 1
 }
 ```
-- `saveInterval`: How many tool uses before save (default: 25)
+- `saveInterval`: How many tool uses before save (default: 100)
 - `keepRaw`: Keep raw.jsonl files after L1 conversion (default: false)
 - `rulesInjectionFrequency`: Inject rules every N prompts (default: 1 = every prompt)
 
@@ -192,6 +192,7 @@ Coding conventions: ...
 
 | Version | Changes |
 |---------|---------|
+| 13.9.24 | Counter-based delta gating, interval 25→100 |
 | 13.9.23 | UNDERSTANDING-FIRST rule: gap-based verification |
 | 13.9.22 | Timestamp double-escaping fix, MEMORY.md auto-warning (Claude Code distinction) |
 | 13.9.21 | Session restart context recovery rule |

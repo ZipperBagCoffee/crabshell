@@ -192,6 +192,7 @@ Save to *.summary.json
 
 | Version | Key Changes |
 |---------|-------------|
+| 13.9.24 | Counter-based delta gating, interval 25→100 |
 | 13.9.23 | UNDERSTANDING-FIRST rule: gap-based verification |
 | 13.9.22 | Timestamp double-escaping fix, MEMORY.md auto-warning in SessionStart |
 | 13.9.21 | Session restart context recovery rule |

@@ -1,5 +1,12 @@
 # Changelog
 
+## v13.9.24 (2026-02-13)
+### Counter-based Delta Gating
+- **fix**: Delta processing now requires `deltaReady` flag, not just file existence
+- **change**: DEFAULT_INTERVAL 25 → 100
+- **add**: Stale `delta_temp.txt` cleanup at session start (load-memory.js)
+- **add**: Understanding rule to injected RULES
+
 ## v13.9.23 (2026-02-08)
 ### UNDERSTANDING-FIRST Rule Improvement
 - **Gap-based verification**: Replaced "Cannot explain → Cannot act" with "Cannot verify gap is closed → Cannot act"
