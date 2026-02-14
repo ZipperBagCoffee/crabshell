@@ -117,6 +117,7 @@ function readJsonSafe(filePath, defaultValue) {
 }
 
 // Safe index reader - ALWAYS returns complete structure, preserving existing values
+// Uses spread to auto-preserve new optional fields (deltaReady, pendingLastProcessedTs, etc.)
 function readIndexSafe(indexPath) {
   const defaults = {
     version: 1,
@@ -130,14 +131,11 @@ function readIndexSafe(indexPath) {
     if (!fs.existsSync(indexPath)) return defaults;
     const existing = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
     return {
-      version: existing.version ?? defaults.version,
-      current: existing.current ?? defaults.current,
+      ...defaults,
+      ...existing,
+      // Array/object fields need safe validation
       rotatedFiles: Array.isArray(existing.rotatedFiles) ? existing.rotatedFiles : defaults.rotatedFiles,
       stats: existing.stats ?? defaults.stats,
-      counter: existing.counter ?? defaults.counter,
-      lastMemoryUpdateTs: existing.lastMemoryUpdateTs ?? defaults.lastMemoryUpdateTs,
-      rulesInjectionCount: existing.rulesInjectionCount,
-      deltaCreatedAtMemoryMtime: existing.deltaCreatedAtMemoryMtime
     };
   } catch {
     return defaults;

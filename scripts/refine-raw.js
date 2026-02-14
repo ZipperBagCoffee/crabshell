@@ -206,7 +206,26 @@ function processUser(obj) {
   return null;
 }
 
-module.exports = { refineRaw, processLine, refineLine };
+// Synchronous version for use in PostToolUse hook (check())
+// Same logic as refineRaw but uses readFileSync instead of readline stream
+function refineRawSync(inputPath, outputPath) {
+  const content = fs.readFileSync(inputPath, 'utf8');
+  const lines = content.split('\n');
+  const output = [];
+
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    const refined = processLine(line);
+    if (refined) {
+      output.push(JSON.stringify(refined));
+    }
+  }
+
+  fs.writeFileSync(outputPath, output.join('\n'));
+  return output.length;
+}
+
+module.exports = { refineRaw, refineRawSync, processLine, refineLine };
 
 // CLI usage
 if (require.main === module) {

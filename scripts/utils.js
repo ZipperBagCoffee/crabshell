@@ -47,21 +47,18 @@ function getDefaultIndex() {
 }
 
 // Safe index reader - ALWAYS returns complete structure, preserving existing values
+// Uses spread to auto-preserve new optional fields (deltaReady, pendingLastProcessedTs, etc.)
 function readIndexSafe(indexPath) {
   const defaults = getDefaultIndex();
   try {
     if (!fs.existsSync(indexPath)) return defaults;
     const existing = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
-    // Merge: defaults first, then existing values override
     return {
-      version: existing.version ?? defaults.version,
-      current: existing.current ?? defaults.current,
+      ...defaults,
+      ...existing,
+      // Array/object fields need safe validation
       rotatedFiles: Array.isArray(existing.rotatedFiles) ? existing.rotatedFiles : defaults.rotatedFiles,
       stats: existing.stats ?? defaults.stats,
-      counter: existing.counter ?? defaults.counter,
-      lastMemoryUpdateTs: existing.lastMemoryUpdateTs ?? defaults.lastMemoryUpdateTs,
-      rulesInjectionCount: existing.rulesInjectionCount,  // optional field
-      deltaCreatedAtMemoryMtime: existing.deltaCreatedAtMemoryMtime  // optional: mtime when delta was created
     };
   } catch {
     return defaults;

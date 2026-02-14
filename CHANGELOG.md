@@ -1,5 +1,15 @@
 # Changelog
 
+## v14.0.0 (2026-02-14)
+### Hook Architecture Refactoring
+- **feat**: L1 creation moved from Stop to PostToolUse (counter-gated) - L1 now updates during session, not just at end
+- **fix**: `lastMemoryUpdateTs` now uses L1 entry timestamp instead of wall clock time (prevents entry gaps)
+- **fix**: `readIndexSafe()` changed to spread-based merge (auto-preserves new fields like `deltaReady`)
+- **refactor**: `findTranscriptPath()` extracted from `final()` for reuse in `check()`
+- **add**: `refineRawSync()` - synchronous L1 generation for PostToolUse hook
+- **add**: `lastL1TranscriptMtime` tracking to skip redundant L1 creation
+- **add**: `pendingLastProcessedTs` in index for L1-based timestamp handoff
+
 ## v13.9.26 (2026-02-13)
 - change: DEFAULT_INTERVAL 100 → 50
 

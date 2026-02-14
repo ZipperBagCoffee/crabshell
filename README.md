@@ -192,6 +192,7 @@ Coding conventions: ...
 
 | Version | Changes |
 |---------|---------|
+| 14.0.0 | L1 on PostToolUse, L1-based timestamps, spread readIndexSafe |
 | 13.9.26 | DEFAULT_INTERVAL 100→50 |
 | 13.9.25 | Workflow: Orchestrator vs Agent role division |
 | 13.9.24 | Counter-based delta gating, interval 25→100 |

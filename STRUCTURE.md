@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 13.9.26 | **Author**: TaWa | **License**: MIT
+**Version**: 14.0.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -85,7 +85,7 @@ memory-keeper-plugin/
 
 ### scripts/counter.js
 Main automation engine with commands:
-- `check`: Increment counter, trigger save at threshold, check rotation
+- `check`: Increment counter, create/update L1 + trigger save at threshold, check rotation
 - `final`: Session end handler, create L1, cleanup duplicates
 - `reset`: Reset counter to 0
 - `search-memory`: Search L1/L2/L3 layers (--deep for L1)
@@ -95,6 +95,11 @@ Main automation engine with commands:
 - `refine-all`: Process raw.jsonl to L1
 - `dedupe-l1`: Remove duplicate L1 files (keep largest per session)
 - `memory-set/get/list`: Hierarchical memory management
+
+### scripts/refine-raw.js
+L1 generation:
+- `refineRaw()`: Async raw.jsonl to l1.jsonl conversion
+- `refineRawSync()`: Sync version for PostToolUse hook (v14.0.0)
 
 ### scripts/constants.js
 Centralized configuration:
@@ -165,11 +170,11 @@ L1 generation:
    └─> counter.js check
        ├─> Increment counter
        ├─> checkAndRotate() - archive if > 23,750 tokens
-       └─> At threshold (5): extractDelta() → creates delta_temp.txt
+       └─> At threshold: create/update L1 → extractDelta() → creates delta_temp.txt
 
 4. Stop
    └─> counter.js final
-       ├─> Create L1 session transcript
+       ├─> Create final L1 session transcript (last chance)
        ├─> Cleanup duplicate L1 files
        └─> extractDelta() for remaining content
 ```
@@ -178,6 +183,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 14.0.0 | L1 creation on PostToolUse, L1-based lastMemoryUpdateTs, spread readIndexSafe |
 | 13.9.26 | DEFAULT_INTERVAL 100→50 |
 | 13.9.25 | Workflow: Orchestrator vs Agent role division |
 | 13.9.24 | Counter-based delta gating, interval 25→100 |

@@ -33,9 +33,10 @@ function extractDelta() {
     const content = fs.readFileSync(l1Path, 'utf8');
     const lines = content.split('\n').filter(l => l.trim());
 
-    // Filter entries after lastUpdateTs
+    // Filter entries after lastUpdateTs, track max processed timestamp
     const delta = [];
     let skippedCount = 0;
+    let maxProcessedTs = null;
 
     for (const line of lines) {
       try {
@@ -47,35 +48,28 @@ function extractDelta() {
           continue;
         }
 
-        // Format entry based on role
-        // L1 format from refine-raw.js:
-        // - assistant: { ts, role: 'assistant', text }
-        // - user: { ts, role: 'user', text }
-        // - tool: { ts, role: 'tool', name, cmd?(Bash), target?(Read/Edit/Write), pattern?(Grep/Glob), ... }
-        // - tool_result: { ts, role: 'tool_result', tool_use_id, result, output }
+        // Track max timestamp of processed entries (for L1-based lastMemoryUpdateTs)
+        if (entry.ts && (!maxProcessedTs || entry.ts > maxProcessedTs)) {
+          maxProcessedTs = entry.ts;
+        }
 
+        // Format entry based on role
         if (entry.role === 'assistant' && entry.text) {
-          // Use ◆ prefix to distinguish from actual Claude responses
           delta.push(`◆ Claude: ${entry.text}`);
         } else if (entry.role === 'user' && entry.text) {
           delta.push(`◆ User: ${entry.text}`);
         } else if (entry.role === 'tool' && entry.name) {
-          // Format tool entry based on tool type
           let toolInfo = '';
           if (entry.cmd) {
-            // Bash
             toolInfo = entry.cmd;
           } else if (entry.target) {
-            // Read, Edit, Write
             toolInfo = entry.target;
             if (entry.diff) toolInfo += ` (edited)`;
             if (entry.size) toolInfo += ` (${entry.size} bytes)`;
           } else if (entry.pattern) {
-            // Grep, Glob
             toolInfo = entry.pattern;
             if (entry.path) toolInfo += ` in ${entry.path}`;
           } else if (entry.params) {
-            // Other tools
             toolInfo = entry.params;
           }
           delta.push(`◆ Tool(${entry.name}): ${toolInfo}`);
@@ -109,19 +103,25 @@ function extractDelta() {
       fs.writeFileSync(deltaPath, truncated);
     }
 
-    // Record memory.md mtime at delta creation (for cleanup validation)
+    // Record memory.md mtime + pendingLastProcessedTs for L1-based timestamp
     const memoryPath = path.join(memoryDir, MEMORY_FILE);
-    if (fs.existsSync(memoryPath)) {
-      const index = readIndexSafe(indexPath);
-      index.deltaCreatedAtMemoryMtime = fs.statSync(memoryPath).mtimeMs;
-      writeJson(indexPath, index);
+    {
+      const idx = readIndexSafe(indexPath);
+      if (fs.existsSync(memoryPath)) {
+        idx.deltaCreatedAtMemoryMtime = fs.statSync(memoryPath).mtimeMs;
+      }
+      if (maxProcessedTs) {
+        idx.pendingLastProcessedTs = maxProcessedTs;
+      }
+      writeJson(indexPath, idx);
     }
 
     return {
       success: true,
       deltaFile: DELTA_TEMP_FILE,
       entryCount: delta.length,
-      tokens: estimateTokens(fs.readFileSync(deltaPath, 'utf8'))
+      tokens: estimateTokens(fs.readFileSync(deltaPath, 'utf8')),
+      lastProcessedTs: maxProcessedTs
     };
   } catch (e) {
     return { success: false, reason: e.message };
@@ -129,14 +129,24 @@ function extractDelta() {
 }
 
 // Update timestamp after memory.md is updated
+// Uses L1 entry timestamp (pendingLastProcessedTs) instead of wall clock time
+// This prevents gaps where entries created between processing and marking get skipped
 function markMemoryUpdated() {
   try {
     const projectDir = getProjectDir();
     const memoryDir = path.join(projectDir, '.claude', MEMORY_DIR);
     const indexPath = path.join(memoryDir, INDEX_FILE);
 
-    const index = readIndexSafe(indexPath);  // Use safe reader to preserve all fields
-    index.lastMemoryUpdateTs = new Date().toISOString();
+    const index = readIndexSafe(indexPath);
+
+    if (index.pendingLastProcessedTs) {
+      index.lastMemoryUpdateTs = index.pendingLastProcessedTs;
+      delete index.pendingLastProcessedTs;
+    } else {
+      // Fallback: wall clock time (backward compatibility)
+      index.lastMemoryUpdateTs = new Date().toISOString();
+    }
+
     writeJson(indexPath, index);
 
     console.log('[MEMORY_KEEPER] Timestamp updated:', index.lastMemoryUpdateTs);

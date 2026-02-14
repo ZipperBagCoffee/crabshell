@@ -114,8 +114,8 @@ Save to *.summary.json
 
 | Command | Description |
 |---------|-------------|
-| check | Increment counter, trigger auto-save at interval |
-| final | Session end: create L1, cleanup duplicates |
+| check | Increment counter, create/update L1 + trigger auto-save at interval |
+| final | Session end: final L1 update, cleanup duplicates |
 | reset | Reset counter to 0 |
 | search-memory | Search L1/L2/L3 layers (--deep for L1) |
 | generate-l3 | Create L3 summary for archive |
@@ -166,8 +166,11 @@ Save to *.summary.json
 
 | Field | Description |
 |-------|-------------|
-| lastMemoryUpdateTs | ISO timestamp of last memory.md update (for delta extraction) |
+| lastMemoryUpdateTs | ISO timestamp of last processed L1 entry (for delta extraction) |
 | deltaCreatedAtMemoryMtime | memory.md mtime when delta was created (for cleanup validation) |
+| deltaReady | Flag: true when delta_temp.txt is ready for processing |
+| pendingLastProcessedTs | Temp: max L1 entry ts from last extractDelta(), used by markMemoryUpdated() |
+| lastL1TranscriptMtime | Transcript file mtime at last L1 creation (skip redundant L1 creation) |
 
 ## L3 Summary Structure
 
@@ -192,6 +195,7 @@ Save to *.summary.json
 
 | Version | Key Changes |
 |---------|-------------|
+| 14.0.0 | L1 creation on PostToolUse, L1-based lastMemoryUpdateTs, spread readIndexSafe |
 | 13.9.26 | DEFAULT_INTERVAL 100→50 |
 | 13.9.25 | Workflow: Orchestrator vs Agent role division |
 | 13.9.24 | Counter-based delta gating, interval 25→100 |

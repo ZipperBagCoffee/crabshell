@@ -2,7 +2,7 @@ const path = require('path');
 const fs = require('fs');
 const { getProjectDir, getProjectName, readFileOrDefault, writeFile, readJsonOrDefault, readIndexSafe, writeJson, ensureDir, getTimestamp } = require('./utils');
 const os = require('os');
-const { refineRaw } = require('./refine-raw');
+const { refineRaw, refineRawSync } = require('./refine-raw');
 const { checkAndRotate } = require('./memory-rotation');
 const { extractDelta } = require('./extract-delta');
 const { MEMORY_DIR, MEMORY_FILE, SESSIONS_DIR } = require('./constants');
@@ -16,6 +16,30 @@ function getLogsDir() {
   const logsDir = path.join(getProjectDir(), '.claude', 'memory', 'logs');
   ensureDir(logsDir);
   return logsDir;
+}
+
+// Find current session transcript by project name (reusable fallback)
+function findTranscriptPath() {
+  const projectName = getProjectName();
+  const claudeProjectsDir = path.join(os.homedir(), '.claude', 'projects');
+  try {
+    if (!fs.existsSync(claudeProjectsDir)) return null;
+    const projects = fs.readdirSync(claudeProjectsDir);
+    for (const proj of projects) {
+      if (proj.includes(projectName)) {
+        const projPath = path.join(claudeProjectsDir, proj);
+        const files = fs.readdirSync(projPath).filter(f => f.endsWith('.jsonl'));
+        if (files.length > 0) {
+          const sorted = files.map(f => ({
+            path: path.join(projPath, f),
+            mtime: fs.statSync(path.join(projPath, f)).mtime
+          })).sort((a, b) => b.mtime - a.mtime);
+          return sorted[0].path;
+        }
+      }
+    }
+  } catch (e) { return null; }
+  return null;
 }
 
 function getConfig() {
@@ -98,20 +122,42 @@ function check() {
   }
 
   if (counter >= interval) {
-    // Try delta extraction
+    const indexPath = path.join(getProjectDir(), '.claude', MEMORY_DIR, 'memory-index.json');
+    const sessionsDir = path.join(getProjectDir(), '.claude', SESSIONS_DIR);
+
+    // Step 1: Create/update L1 from current transcript
+    const transcriptPath = findTranscriptPath();
+    if (transcriptPath) {
+      try {
+        const transcriptMtime = fs.statSync(transcriptPath).mtimeMs;
+        const idx = readIndexSafe(indexPath);
+        // Only create L1 if transcript changed since last L1 creation
+        if (!idx.lastL1TranscriptMtime || transcriptMtime > idx.lastL1TranscriptMtime) {
+          const ts = getTimestamp();
+          ensureDir(sessionsDir);
+          const l1Dest = path.join(sessionsDir, `${ts}.l1.jsonl`);
+          refineRawSync(transcriptPath, l1Dest);
+          cleanupDuplicateL1(l1Dest);
+          idx.lastL1TranscriptMtime = transcriptMtime;
+          writeJson(indexPath, idx);
+        }
+      } catch (e) {
+        fs.appendFileSync(path.join(getLogsDir(), 'error.log'),
+          `${new Date().toISOString()}: check() L1 creation failed: ${e.message}\n`);
+      }
+    }
+
+    // Step 2: Try delta extraction
     const deltaResult = extractDelta();
 
     if (deltaResult.success) {
       // Set deltaReady flag so inject-rules.js knows this is a legitimate delta
-      // inject-rules.js checks this flag instead of just file existence
-      const indexPath = path.join(getProjectDir(), '.claude', MEMORY_DIR, 'memory-index.json');
       const index = readIndexSafe(indexPath);
       index.deltaReady = true;
       writeJson(indexPath, index);
       setCounter(0);
     } else {
-      // No delta available (no L1 or no new content) - just reset counter
-      // Current session content will be processed at session end (final())
+      // No delta available - just reset counter
       setCounter(0);
     }
   }
@@ -136,74 +182,44 @@ async function final() {
     sessionId: hookData.session_id || null
   });
 
-  // Copy raw transcript if available
-  let rawSaved = '';
+  // Find transcript: stdin transcript_path > session_id lookup > project-name fallback
+  let transcriptSrc = null;
   if (hookData.transcript_path && hookData.transcript_path !== '') {
+    transcriptSrc = hookData.transcript_path;
+  } else if (hookData.session_id) {
+    // Try session_id lookup
+    const claudeProjectsDir = path.join(os.homedir(), '.claude', 'projects');
+    try {
+      if (fs.existsSync(claudeProjectsDir)) {
+        const projects = fs.readdirSync(claudeProjectsDir);
+        for (const proj of projects) {
+          const transcriptFile = path.join(claudeProjectsDir, proj, `${hookData.session_id}.jsonl`);
+          if (fs.existsSync(transcriptFile)) {
+            transcriptSrc = transcriptFile;
+            break;
+          }
+        }
+      }
+    } catch (e) {
+      fs.appendFileSync(path.join(getLogsDir(), 'error.log'),
+        `${timestamp}: Failed to find transcript by session_id: ${e.message}\n`);
+    }
+  }
+  // Final fallback: project-name search
+  if (!transcriptSrc) {
+    transcriptSrc = findTranscriptPath();
+  }
+
+  // Copy raw transcript
+  let rawSaved = '';
+  if (transcriptSrc) {
     try {
       const rawDest = path.join(sessionsDir, `${timestamp}.raw.jsonl`);
-      fs.copyFileSync(hookData.transcript_path, rawDest);
+      fs.copyFileSync(transcriptSrc, rawDest);
       rawSaved = rawDest.replace(/\\/g, '/');
     } catch (e) {
-      // Log error
       fs.appendFileSync(path.join(getLogsDir(), 'error.log'),
         `${timestamp}: Failed to copy transcript: ${e.message}\n`);
-    }
-  } else {
-    // Try to find transcript using session_id if available
-    if (hookData.session_id) {
-      const claudeProjectsDir = path.join(os.homedir(), '.claude', 'projects');
-      try {
-        if (fs.existsSync(claudeProjectsDir)) {
-          const projects = fs.readdirSync(claudeProjectsDir);
-          for (const proj of projects) {
-            const projPath = path.join(claudeProjectsDir, proj);
-            const transcriptFile = path.join(projPath, `${hookData.session_id}.jsonl`);
-            if (fs.existsSync(transcriptFile)) {
-              const rawDest = path.join(sessionsDir, `${timestamp}.raw.jsonl`);
-              fs.copyFileSync(transcriptFile, rawDest);
-              rawSaved = rawDest.replace(/\\/g, '/');
-              break;
-            }
-          }
-        }
-      } catch (e) {
-        fs.appendFileSync(path.join(getLogsDir(), 'error.log'),
-          `${timestamp}: Failed to find transcript by session_id: ${e.message}\n`);
-      }
-    }
-
-    // Fallback: find by project name and most recent file
-    if (!rawSaved) {
-      const projectName = getProjectName();
-      const claudeProjectsDir = path.join(os.homedir(), '.claude', 'projects');
-
-      try {
-        if (fs.existsSync(claudeProjectsDir)) {
-          const projects = fs.readdirSync(claudeProjectsDir);
-          for (const proj of projects) {
-            if (proj.includes(projectName)) {
-              const projPath = path.join(claudeProjectsDir, proj);
-              const files = fs.readdirSync(projPath).filter(f => f.endsWith('.jsonl'));
-              if (files.length > 0) {
-                // Get most recent by modification time
-                const fileStats = files.map(f => ({
-                  name: f,
-                  mtime: fs.statSync(path.join(projPath, f)).mtime
-                }));
-                fileStats.sort((a, b) => b.mtime - a.mtime);
-                const srcPath = path.join(projPath, fileStats[0].name);
-                const rawDest = path.join(sessionsDir, `${timestamp}.raw.jsonl`);
-                fs.copyFileSync(srcPath, rawDest);
-                rawSaved = rawDest.replace(/\\/g, '/');
-                break;
-              }
-            }
-          }
-        }
-      } catch (e) {
-        fs.appendFileSync(path.join(getLogsDir(), 'error.log'),
-          `${timestamp}: Failed to find transcript: ${e.message}\n`);
-      }
     }
   }
 
