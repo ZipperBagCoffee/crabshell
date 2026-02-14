@@ -1,5 +1,8 @@
 # Changelog
 
+## v14.4.0 (2026-02-14)
+- **fix**: UNDERSTANDING-FIRST steps — step (1) now explicitly requires stating to user (not internal), step (3) changed from optional "ask" to required user confirmation, Example 2 fixed to show question instead of action
+
 ## v14.3.0 (2026-02-14)
 - **fix**: processUser() now handles string content (user-typed messages) in addition to array content (system-injected) — previously all user input was silently dropped from L1
 

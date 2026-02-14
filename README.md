@@ -192,6 +192,7 @@ Coding conventions: ...
 
 | Version | Changes |
 |---------|---------|
+| 14.4.0 | Fix: UNDERSTANDING-FIRST requires external user confirmation |
 | 14.3.0 | Fix: L1 captures user-typed messages (string content handling) |
 | 14.2.0 | PRINCIPLES: understanding-driven rewrite with verification tests |
 | 14.1.0 | Action Bias principle added to injected RULES |
