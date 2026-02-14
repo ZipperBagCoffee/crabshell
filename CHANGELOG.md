@@ -1,5 +1,8 @@
 # Changelog
 
+## v14.2.0 (2026-02-14)
+- **refactor**: PRINCIPLES section - understanding-driven rewrite anchored to Claude's internal principles (HHH, Anti-Deception, Human Oversight, Action Bias) with operational verification tests
+
 ## v14.1.0 (2026-02-14)
 - **add**: Action Bias principle to injected RULES - counters system prompt speed optimization with understanding-first framing
 
