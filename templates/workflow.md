@@ -13,11 +13,32 @@ If you understand something, you can:
 - Predict what will happen in new situations
 - Infer what is needed even when not explicitly stated
 
-**Example:**
-- Gap closing: "The user wants feature X added to file Y"
-- Inference: "This is a general-purpose workflow document, so it should be written in English even though the user speaks Korean"
-
 Understanding without inference is just parroting. You must go beyond what is stated.
+**Proof of understanding is not action — it is not acting without understanding.**
+
+---
+
+## Role Division
+
+**Agent:** Analysis, planning, implementation (heavy work)
+**Orchestrator (you):** Understanding, review, verification, reporting (quality control)
+
+```
+Phase 1: Understand       → Orchestrator + User
+Phase 2: Analyze           → AGENT
+Phase 3: Review Analysis   → Orchestrator
+Phase 4: Plan              → AGENT
+Phase 5: Review Plan       → Orchestrator + User
+Phase 5.5: Alternative     → Orchestrator (optional)
+Phase 6: Implement         → AGENT
+Phase 7: Verify            → Orchestrator
+Phase 8: Report            → Orchestrator
+```
+
+**Why this division:**
+- Agents are full Claude instances. They can read thousands of lines, trace execution paths, and analyze complex interactions. Use them for heavy lifting.
+- Orchestrator maintains the thread of understanding. Never delegate understanding or verification to agents — that is YOUR job.
+- Agents for grep/file search is waste. Use Grep/Glob tools directly.
 
 ---
 
@@ -72,9 +93,11 @@ Close gap → Infer → Detect problems in original intent → Report/Question �
 
 ## The Workflow
 
-### Phase 1: Understand the Intent
+### Phase 1: Understand the Intent (Orchestrator)
 
 **Goal:** Convert user intent into your mental model. Verify no gap exists.
+
+**This is YOUR job. Do not delegate to agents.**
 
 #### Steps:
 1. Read the request
@@ -99,150 +122,147 @@ Close gap → Infer → Detect problems in original intent → Report/Question �
 
 ---
 
-### Phase 2: Gather Facts
+### Phase 2: Analyze the Code (AGENT)
 
 **Goal:** Find gaps between your understanding and reality (the actual code/system).
 
-#### When gathering directly:
-1. Read relevant code
-2. **Record differences from expectation:**
-   ```
-   Expected: [A]
-   Actual: [B]
-   Difference: [specific gap between A and B]
-   ```
-3. **Infer implications:** What does this difference mean for the plan?
-4. If differences exist → review if Phase 1 understanding needs adjustment
+**Launch an agent.** Analysis requires reading large amounts of code, tracing call chains, and understanding dependencies. This is agent work.
 
-#### When delegating to agents:
-
-**Agent Intent Protocol:**
+#### Agent prompt template:
 
 ```
 ## Background
-[Full context — why this information is needed]
+[Phase 1 understanding — why this analysis is needed]
 
-## Question
-[Specific thing you need to know]
+## Task
+1. Read [file/module] and find [function/component].
+2. Trace its full context:
+   - Who calls this? (search for all callers)
+   - What does it do step by step?
+   - What does it call?
+   - What state does it read/write?
+   - What is the final user-visible result?
+3. Identify side effects and dependencies.
 
-## Expected output format
-[What a useful answer looks like]
-
-## Confirmation required
-Before working, state:
-1. What you understand the question to be
-2. How you will find the answer
+## Expected output
+- Call chain: Caller → Function → Callees
+- State changes: variable X: old_value → new_value
+- User sees: [description of observable behavior]
+- Dependencies: [what else relies on this]
 ```
 
-**Verifying agent response:**
-1. Does agent's stated understanding match your intent?
-   - Mismatch → re-instruct (gap detected)
-   - Match → check results
-2. Does the result answer the question?
-   - No → follow-up question
-   - Yes → adopt results
-3. **Infer:** Does the agent's answer change anything about your understanding?
+#### When NOT to use agents:
+- Simple grep / file search → use Grep/Glob tools directly
+- Checking if text exists in a file → use Read/Grep directly
+- Reading a single short file → Read it yourself
 
-**Output:** Verified facts
+**Output:** Agent's analysis results
 
 ---
 
-### Phase 3: Analysis
+### Phase 3: Review Analysis (Orchestrator)
 
-**Goal:** Crystallize the gap between current state and desired state.
+**Goal:** Verify the agent's analysis is complete and accurate.
 
-#### Structure:
+**This is YOUR job. Do not delegate review to another agent.**
+
+#### Check the agent's output:
 ```
-## Current State
-[How the code/system works now]
-
-## Desired State
-[What user wants — from Phase 1]
-
-## Gap
-[Specific differences — as a list]
-
-## Approach
-[How to close each gap]
-
-## Inferred Consequences
-[What will change as a result? Side effects? Risks?]
+Function: [name]
+Call chain: [caller → function → callees]
+State changes: [variables affected]
+Current behavior: [what happens now]
+Predicted behavior after change: [what will happen]
+Risk: [what could break]
 ```
+
+**If any of these are missing or unclear:**
+- Send the agent back with follow-up questions
+- Or launch a new agent with a more specific prompt
+
+**If you cannot produce a clear picture of how the code works, you do not understand it enough to modify it. Do not proceed.**
 
 #### Gap check:
-- Show analysis to user
-- "Is this gap definition correct? Anything missing?"
-- If corrections → adjust analysis
+- Does the analysis match Phase 1 understanding?
+- Did the analysis reveal anything that changes your understanding?
+- If yes → revisit Phase 1, adjust understanding with user
 
 ---
 
-### Phase 4: Plan
+### Phase 4: Plan (AGENT)
 
-**Goal:** Define specific changes that close each gap.
+**Goal:** Agent creates specific changes that close each gap.
 
-#### Structure:
+**Launch an agent** with Phase 1 understanding + Phase 3 verified analysis:
+
 ```
-## Changes
-For each gap:
-- Gap: [from Phase 3]
-- Solution: [what changes in which file]
-- Why: [how this change closes this gap]
+## Background
+[Phase 1 understanding + Phase 2-3 analysis results]
+
+## Task
+Create an implementation plan:
+
+For each gap between current and desired state:
+- Gap: [specific difference]
+- File: [which file to modify]
+- Change: [what specifically changes]
+- Why: [how this closes the gap]
+- Predicted effect: [what user will see differently]
 
 ## Success Criteria
-- [ ] [How to verify gap 1 is closed]
-- [ ] [How to verify gap 2 is closed]
+Each criterion must describe OBSERVABLE BEHAVIOR, not file contents.
+- BAD: "file.js contains newFunction()"
+- GOOD: "When counter reaches 100, delta processing triggers exactly once"
 
-## Inferred Consequences
-- [What else will be affected?]
-- [What could go wrong?]
+## Regression Checks
+List existing behaviors that must NOT break, with verification method.
 ```
 
-#### Gap check:
-- Does every gap have a corresponding change?
-- Are there unnecessary changes? (changes not tied to a gap = scope creep)
-- User confirmation: "Does this plan match your intent?"
+**Output:** Agent's plan
 
 ---
 
-### Phase 5: Plan Review
+### Phase 5: Review Plan (Orchestrator + User)
 
 **Goal:** Find gaps between plan and intent.
+
+**This is YOUR job.**
 
 #### Checklist:
 - [ ] Does the plan address every gap from Phase 3?
 - [ ] Does it preserve what must not break (from Phase 1)?
 - [ ] Is each change's "why" directly connected to a gap?
 - [ ] Are inferred consequences acceptable?
+- [ ] Success criteria describe behavior, not file contents?
 
-#### When using agent review:
-
+#### If regression risk exists, verify with agent:
 ```
 ## Background
-User intent: [Phase 1]
-Analyzed gaps: [Phase 3]
-Plan: [Phase 4]
+Current code does [X]. Plan proposes changing [Y].
 
-## Question
-Does this plan close all gaps? What is missing or wrong?
+## Task
+1. Trace the current execution path of [affected functions].
+2. Mentally apply the planned changes.
+3. Trace the new execution path.
+4. Compare: any differences besides the intended change?
 
-## Confirmation required
-Before answering, state:
-1. What you understand the user's intent to be
-2. What gaps need to be closed
+## Expected output
+- Before: [execution path and result]
+- After: [execution path and result]
+- Regression found: Yes/No + details
 ```
 
-**Processing review results:**
-- Do not blindly accept agent feedback
-- For each feedback item: "Is this valid against Phase 1 intent?"
-- If valid → revise plan → re-review
+If ANY regression is found → revise plan → re-review.
+
+**Get user approval before implementing.**
 
 ---
 
-### Phase 5.5: Alternative Proposal (Optional)
+### Phase 5.5: Alternative Proposal (Optional, Orchestrator)
 
 **Goal:** If a better approach exists, propose it before implementation.
 
-This phase occurs AFTER plan review, BEFORE implementation. It is optional — only use when you genuinely believe there's a better way.
+This phase occurs AFTER plan review, BEFORE implementation. Only use when you genuinely believe there's a better way.
 
 #### When to propose:
 
@@ -284,75 +304,97 @@ Which approach should we proceed with?
 
 ---
 
-### Phase 6: Implement
+### Phase 6: Implement (AGENT)
 
-**Goal:** Convert plan to code. Create no gap between plan and implementation.
+**Goal:** Agent executes the plan exactly. No improvisation.
 
-#### Rules:
-1. **Implement only what is in the plan**
-2. **When implementation differs from plan:**
-   - Stop
-   - Record why it differs
-   - Return to Phase 4-5 to revise plan
-   - Implement from revised plan
+**Launch an agent** with the approved plan:
+
+```
+## Background
+[Approved plan from Phase 4-5]
+
+## Task
+Implement the following changes exactly as specified:
+[List each change with file, location, and exact modification]
+
+## Rules
+- Implement ONLY what is in the plan
+- If reality differs from plan → STOP and report the discrepancy
+- Do NOT improvise or "improve" beyond the plan
+- After implementation, list all files changed
+```
+
+**Never:** "This is different from the plan but seems better" and continue without revision.
 
 #### Gap detection during implementation:
 ```
 Plan: [Do X]
 Reality: [X doesn't work, need to do Y]
 → This is a gap
-→ Plan revision required
+→ Plan revision required (return to Phase 4-5)
 ```
-
-**Never:** "This is different from the plan but better" and continue
 
 ---
 
-### Phase 7: Verify
+### Phase 7: Verify (Orchestrator)
 
 **Goal:** Confirm implementation matches plan and success criteria.
 
-#### Method:
-1. Check each success criterion from Phase 4
-2. For each: Pass or Fail (no partial success)
-3. If any Fail → gap exists → return to Phase 6
+**This is YOUR job. Verification is not delegation.**
 
-#### When using agent verification:
+#### Verification methods:
 
-```
-## Plan (from Phase 4)
-[Plan content]
+**Method 1: Execution Path Tracing** (logic, state changes)
+- Read the modified code
+- Start from trigger (user action / hook / event)
+- Follow every call, branch, and state change
+- End at the observable result
+- Predict exactly what happens
+- Compare against success criterion
+- Verdict: PASS or FAIL
 
-## Implementation
-[Changed files and content]
+**Method 2: State Comparison** (before/after)
+- Compare state transitions before and after change
+- Trace: trigger → execution → final state
+- Check for unintended side effects
+- Verdict: PASS or FAIL
 
-## Question
-Does implementation match plan? List all differences.
-
-## Confirmation required
-Before answering, state what you understand to be the key points of the plan.
-```
-
-**Even if agent says "matches":**
-- Verify critical parts yourself
-- If agent's "understood plan" differs from actual plan → re-verify
+#### Rules:
+- Every success criterion must have at least one verification method applied
+- Every regression check must be verified
+- Must produce a **behavior prediction**, not a text-existence check
+- **"File contains X" is NEVER valid verification.** Predict behavior.
+- If cannot predict behavior → understanding is insufficient → return to Phase 2
+- PASS requires explanation of predicted behavior. "It matches" alone is not PASS.
+- Only PASS/FAIL. "Mostly works" = FAIL.
 
 ---
 
-### Phase 8: Report
+### Phase 8: Report (Orchestrator)
 
 **Goal:** Communicate results and check for final gap.
 
 #### Structure:
 ```
 ## Changes Made
-[What changed]
+[What changed, which files]
 
 ## Verification Results
-[Which criteria passed]
+For each criterion:
+- Criterion: [description]
+- Method: [which verification method]
+- Prediction: [what will happen]
+- Verdict: PASS/FAIL
 
-## User Verification Needed
-[What user should check]
+## Regression Check Results
+For each preserved behavior:
+- Behavior: [description]
+- Verified by: [method]
+- Verdict: PASS/FAIL
+
+## User Testing Needed
+[What the user should check that cannot be verified statically]
 ```
 
 #### Final gap check:
@@ -380,6 +422,24 @@ Therefore:
 ## Expected output (what format)
 ## Confirmation (state your understanding before working)
 ```
+
+### Agents handle:
+- Code analysis (Phase 2): call chain tracing, dependency analysis, state flow
+- Planning (Phase 4): gap analysis, change specification, success criteria
+- Implementation (Phase 6): code modification, exact plan execution
+- Regression checks (Phase 5): trace before/after execution paths
+
+### Orchestrator handles:
+- Understanding (Phase 1): user intent, requirements
+- Review (Phase 3, 5): quality control of agent output
+- Verification (Phase 7): behavior prediction, regression check
+- Reporting (Phase 8): results to user
+
+### Never use agents for:
+- Simple grep / file search (use Grep/Glob tools)
+- Checking if text exists in a file (use Read/Grep tools)
+- Understanding user intent (that's your job)
+- Verification of implementation (that's your job)
 
 ### Processing agent responses:
 1. Does agent's stated understanding match your intent? → If not, re-instruct
@@ -430,30 +490,39 @@ See `.claude/lessons/README.md` for lesson format and guidelines.
 
 ## Anti-Patterns
 
-1. **Proceeding without verification** — "They probably understood" is how gaps start
-2. **Ignoring gaps** — Small gaps become large rework
-3. **Blindly trusting agent output** — Agents misunderstand too. Verify intent.
-4. **Modifying without plan update** — If reality differs from plan, fix plan first
-5. **"Partial success"** — Only Pass/Fail exists. No middle ground.
-6. **Understanding without inference** — If you can't predict consequences, you don't understand
-7. **Shortcuts as "improvements"** — Faster ≠ better. Skipping steps is not optimization.
-8. **Accepting proposals blindly** — User proposals also need understanding before acceptance
+1. **Orchestrator doing agent work** — Analysis, planning, implementation are agent tasks. You review and verify.
+2. **Delegating understanding** — Understanding and verification are YOUR job. Never delegate to agents.
+3. **"File contains X" verification** — Text in file ≠ feature works. Always predict behavior.
+4. **Agents for grep** — Agents do deep analysis. Grep does text search. Don't confuse them.
+5. **Proceeding without verification** — "They probably understood" is how gaps start
+6. **Ignoring gaps** — Small gaps become large rework
+7. **Blindly trusting agent output** — Agents misunderstand too. Verify intent.
+8. **Modifying without plan update** — If reality differs from plan, fix plan first
+9. **"Partial success"** — Only Pass/Fail exists. No middle ground.
+10. **Understanding without inference** — If you can't predict consequences, you don't understand
+11. **Shortcuts as "improvements"** — Faster ≠ better. Skipping steps is not optimization.
+12. **"Different from plan but better"** — Stop. Revise plan. Get approval. Then implement.
+13. **Accepting proposals blindly** — User proposals also need understanding before acceptance
+14. **Skipping Phase 2** — No analysis = no understanding = broken implementation.
+15. **"Can't verify without running"** — You can: trace execution, compare state, analyze dependencies.
 
 ---
 
-## Summary
+## Quick Reference
 
 ```
-At every phase:
-1. State your understanding
-2. Compare against intent (close the gap)
-3. Infer consequences (predict what follows)
-4. Verify (is the gap closed? are inferences correct?)
-5. Only then proceed
+Task received
+  → Phase 1: Understand         (Orchestrator + User confirm)
+  → Phase 2: Analyze            (AGENT — traces code, dependencies, state)
+  → Phase 3: Review analysis    (Orchestrator — checks completeness)
+  → Phase 4: Plan               (AGENT — gap analysis, changes, success criteria)
+  → Phase 5: Review plan        (Orchestrator + User confirm)
+  → Phase 5.5: Alternative      (Orchestrator — optional, propose better approach)
+  → Phase 6: Implement          (AGENT — executes plan exactly)
+  → Phase 7: Verify             (Orchestrator — behavior prediction, NOT text check)
+  → Phase 8: Report             (Orchestrator — results to user)
 
 Understanding = Gap closed + Consequences predicted
-
 If gap remains or inferences are wrong → do not proceed.
-
 When patterns repeat → propose lesson → prevent future gaps.
 ```

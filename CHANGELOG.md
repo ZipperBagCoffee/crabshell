@@ -1,5 +1,12 @@
 # Changelog
 
+## v13.9.25 (2026-02-13)
+### Workflow Role Division
+- **refactor**: Workflow now explicitly assigns Orchestrator vs Agent roles per phase
+- Agent: Phase 2 (Analyze), Phase 4 (Plan), Phase 6 (Implement)
+- Orchestrator: Phase 1, 3, 5, 7, 8 (Understanding, Review, Verification, Report)
+- Added concrete verification methods and anti-patterns
+
 ## v13.9.24 (2026-02-13)
 ### Counter-based Delta Gating
 - **fix**: Delta processing now requires `deltaReady` flag, not just file existence
