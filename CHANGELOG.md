@@ -1,5 +1,8 @@
 # Changelog
 
+## v14.3.0 (2026-02-14)
+- **fix**: processUser() now handles string content (user-typed messages) in addition to array content (system-injected) — previously all user input was silently dropped from L1
+
 ## v14.2.0 (2026-02-14)
 - **refactor**: PRINCIPLES section - understanding-driven rewrite anchored to Claude's internal principles (HHH, Anti-Deception, Human Oversight, Action Bias) with operational verification tests
 

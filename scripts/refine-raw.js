@@ -188,12 +188,20 @@ function processAssistant(obj) {
 
 // Extract user message
 function processUser(obj) {
-  // User messages have type: "user" with message.content array
   if (obj.type === 'user' && obj.message?.content) {
-    const textContent = obj.message.content
-      .filter(c => c.type === 'text')
-      .map(c => c.text)
-      .join('\n');
+    const content = obj.message.content;
+    let textContent;
+
+    if (typeof content === 'string') {
+      // User-typed messages: content is a plain string
+      textContent = content;
+    } else if (Array.isArray(content)) {
+      // System-injected messages: content is array of {type, text} objects
+      textContent = content
+        .filter(c => c.type === 'text')
+        .map(c => c.text)
+        .join('\n');
+    }
 
     if (textContent) {
       return {

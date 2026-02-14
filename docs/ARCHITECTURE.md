@@ -195,6 +195,7 @@ Save to *.summary.json
 
 | Version | Key Changes |
 |---------|-------------|
+| 14.3.0 | Fix: L1 captures user-typed messages (string content handling) |
 | 14.2.0 | PRINCIPLES: understanding-driven rewrite with verification tests |
 | 14.1.0 | Action Bias principle in injected RULES |
 | 14.0.0 | L1 creation on PostToolUse, L1-based lastMemoryUpdateTs, spread readIndexSafe |

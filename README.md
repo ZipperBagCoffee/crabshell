@@ -192,6 +192,7 @@ Coding conventions: ...
 
 | Version | Changes |
 |---------|---------|
+| 14.3.0 | Fix: L1 captures user-typed messages (string content handling) |
 | 14.2.0 | PRINCIPLES: understanding-driven rewrite with verification tests |
 | 14.1.0 | Action Bias principle added to injected RULES |
 | 14.0.0 | L1 on PostToolUse, L1-based timestamps, spread readIndexSafe |

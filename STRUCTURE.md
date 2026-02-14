@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 14.2.0 | **Author**: TaWa | **License**: MIT
+**Version**: 14.3.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -183,6 +183,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 14.3.0 | Fix: L1 now captures user-typed messages (string content) |
 | 14.2.0 | PRINCIPLES: understanding-driven rewrite with verification tests |
 | 14.1.0 | Action Bias principle in injected RULES |
 | 14.0.0 | L1 creation on PostToolUse, L1-based lastMemoryUpdateTs, spread readIndexSafe |
