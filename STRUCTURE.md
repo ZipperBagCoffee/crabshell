@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 13.9.25 | **Author**: TaWa | **License**: MIT
+**Version**: 13.9.26 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -178,6 +178,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 13.9.26 | DEFAULT_INTERVAL 100→50 |
 | 13.9.25 | Workflow: Orchestrator vs Agent role division |
 | 13.9.24 | Counter-based delta gating, interval 25→100 |
 | 13.9.23 | UNDERSTANDING-FIRST rule: gap-based verification |

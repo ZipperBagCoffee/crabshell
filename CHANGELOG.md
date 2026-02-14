@@ -1,5 +1,8 @@
 # Changelog
 
+## v13.9.26 (2026-02-13)
+- change: DEFAULT_INTERVAL 100 → 50
+
 ## v13.9.25 (2026-02-13)
 ### Workflow Role Division
 - **refactor**: Workflow now explicitly assigns Orchestrator vs Agent roles per phase

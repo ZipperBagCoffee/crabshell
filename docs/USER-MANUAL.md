@@ -166,13 +166,13 @@ L1 files are deduplicated automatically when created, but manual cleanup may som
 
 ```json
 {
-  "saveInterval": 100,
+  "saveInterval": 50,
   "keepRaw": false,
   "rulesInjectionFrequency": 1
 }
 ```
 
-- `saveInterval`: Tool uses before auto-save trigger (default: 100)
+- `saveInterval`: Tool uses before auto-save trigger (default: 50)
 - `keepRaw`: Keep raw.jsonl after L1 conversion (default: false)
 - `rulesInjectionFrequency`: Inject rules every N prompts (default: 1 = every prompt)
 

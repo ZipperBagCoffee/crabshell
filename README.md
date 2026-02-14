@@ -99,12 +99,12 @@ node scripts/counter.js search-memory "auth" --deep
 `.claude/memory/config.json`:
 ```json
 {
-  "saveInterval": 100,
+  "saveInterval": 50,
   "keepRaw": false,
   "rulesInjectionFrequency": 1
 }
 ```
-- `saveInterval`: How many tool uses before save (default: 100)
+- `saveInterval`: How many tool uses before save (default: 50)
 - `keepRaw`: Keep raw.jsonl files after L1 conversion (default: false)
 - `rulesInjectionFrequency`: Inject rules every N prompts (default: 1 = every prompt)
 
@@ -192,6 +192,7 @@ Coding conventions: ...
 
 | Version | Changes |
 |---------|---------|
+| 13.9.26 | DEFAULT_INTERVAL 100→50 |
 | 13.9.25 | Workflow: Orchestrator vs Agent role division |
 | 13.9.24 | Counter-based delta gating, interval 25→100 |
 | 13.9.23 | UNDERSTANDING-FIRST rule: gap-based verification |
