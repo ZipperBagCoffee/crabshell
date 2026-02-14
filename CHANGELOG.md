@@ -1,5 +1,8 @@
 # Changelog
 
+## v14.1.0 (2026-02-14)
+- **add**: Action Bias principle to injected RULES - counters system prompt speed optimization with understanding-first framing
+
 ## v14.0.0 (2026-02-14)
 ### Hook Architecture Refactoring
 - **feat**: L1 creation moved from Stop to PostToolUse (counter-gated) - L1 now updates during session, not just at end
