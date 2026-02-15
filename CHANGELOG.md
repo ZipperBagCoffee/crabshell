@@ -1,5 +1,8 @@
 # Changelog
 
+## v14.6.0 (2026-02-14)
+- **refactor**: PRINCIPLES rewritten as imperative commands — "X이니까 Y해라" structure instead of abstract definitions
+
 ## v14.5.0 (2026-02-14)
 - **change**: Rename "Action Bias" → "Completion Drive" in PRINCIPLES — uses Claude's native term for better activation
 

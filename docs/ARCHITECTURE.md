@@ -195,6 +195,7 @@ Save to *.summary.json
 
 | Version | Key Changes |
 |---------|-------------|
+| 14.6.0 | PRINCIPLES: imperative commands instead of definitions |
 | 14.5.0 | Rename Action Bias → Completion Drive (Claude's native term) |
 | 14.4.0 | Fix: UNDERSTANDING-FIRST requires external user confirmation |
 | 14.3.0 | Fix: L1 captures user-typed messages (string content handling) |
