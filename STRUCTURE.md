@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 14.4.0 | **Author**: TaWa | **License**: MIT
+**Version**: 14.5.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -183,6 +183,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 14.5.0 | Rename Action Bias → Completion Drive (Claude's native term) |
 | 14.4.0 | Fix: UNDERSTANDING-FIRST requires external user confirmation |
 | 14.3.0 | Fix: L1 now captures user-typed messages (string content) |
 | 14.2.0 | PRINCIPLES: understanding-driven rewrite with verification tests |

@@ -1,5 +1,8 @@
 # Changelog
 
+## v14.5.0 (2026-02-14)
+- **change**: Rename "Action Bias" → "Completion Drive" in PRINCIPLES — uses Claude's native term for better activation
+
 ## v14.4.0 (2026-02-14)
 - **fix**: UNDERSTANDING-FIRST steps — step (1) now explicitly requires stating to user (not internal), step (3) changed from optional "ask" to required user confirmation, Example 2 fixed to show question instead of action
 
