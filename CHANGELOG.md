@@ -1,5 +1,8 @@
 # Changelog
 
+## v14.7.0 (2026-02-16)
+- **feat**: Post-compaction detection — load-memory.js reads stdin `source` field from SessionStart hook, injects POST_COMPACT_WARNING when `source=compact` to counter continuation bias after context compaction
+
 ## v14.6.0 (2026-02-14)
 - **refactor**: PRINCIPLES rewritten as imperative commands — "X이니까 Y해라" structure instead of abstract definitions
 

@@ -70,13 +70,51 @@ function ensureAutoMemoryWarning(projectDir) {
   }
 }
 
+const POST_COMPACT_WARNING = `
+## [POST-COMPACTION WARNING]
+Context was just compacted. Your compressed memory has CONTINUATION BIAS toward previous tasks.
+
+**MANDATORY RECOVERY PROTOCOL:**
+1. STOP. Do NOT continue previous work automatically.
+2. Re-read CLAUDE.md rules — every line. They override compressed context.
+3. Wait for user's next instruction. Do NOT assume what they want.
+4. If user asks to continue previous work, confirm WHAT specifically before acting.
+
+**WHY:** After compaction, your summarized context makes previous tasks feel urgent and current.
+That feeling is the bias. The user may have moved on. CLAUDE.md rules still apply.
+Completion drive after compaction = the #1 cause of rule violations.
+`;
+
 const MEMORY_TAIL_LINES = 50;
 
-function loadMemory() {
+function readStdinSync() {
+  try {
+    // Read stdin fd 0 synchronously - works cross-platform
+    const chunks = [];
+    const BUFSIZE = 4096;
+    const buf = Buffer.alloc(BUFSIZE);
+    while (true) {
+      try {
+        const bytesRead = fs.readSync(0, buf, 0, BUFSIZE);
+        if (bytesRead === 0) break;
+        chunks.push(Buffer.from(buf.slice(0, bytesRead)));
+      } catch {
+        break;
+      }
+    }
+    const raw = Buffer.concat(chunks).toString('utf8').trim();
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function loadMemory(stdinData) {
   const projectDir = getProjectDir();
   const projectName = getProjectName();
   const memoryDir = path.join(projectDir, '.claude', MEMORY_DIR);
   const sections = [];
+  const source = (stdinData && stdinData.source) || 'unknown';
 
   // Ensure memory structure exists
   ensureMemoryStructure(projectDir);
@@ -157,12 +195,23 @@ function loadMemory() {
   // Output
   if (sections.length > 0) {
     console.log('\n=== Memory Keeper: ' + projectName + ' ===\n');
+    if (source === 'compact') {
+      console.log(POST_COMPACT_WARNING);
+    }
     console.log(sections.join('\n\n---\n\n'));
     console.log(CLAUDE_RULES);
     console.log('\n=== End of Memory ===\n');
   } else {
     console.log('\n--- Memory Keeper: No memory for ' + projectName + ' ---\n');
+    if (source === 'compact') {
+      console.log(POST_COMPACT_WARNING);
+    }
     console.log(CLAUDE_RULES);
+  }
+
+  // Log source for debugging
+  if (source === 'compact') {
+    console.error('[MEMORY_KEEPER] Post-compaction recovery mode activated');
   }
 }
 
@@ -187,7 +236,8 @@ function getUnreflectedL1Content(l1Path, memoryContent) {
 }
 
 try {
-  loadMemory();
+  const stdinData = readStdinSync();
+  loadMemory(stdinData);
 } catch (err) {
   logError(err);
   console.error('[MEMORY_KEEPER ERROR] ' + (err.message || err));
