@@ -87,26 +87,23 @@ Completion drive after compaction = the #1 cause of rule violations.
 
 const MEMORY_TAIL_LINES = 50;
 
-function readStdinSync() {
-  try {
-    // Read stdin fd 0 synchronously - works cross-platform
-    const chunks = [];
-    const BUFSIZE = 4096;
-    const buf = Buffer.alloc(BUFSIZE);
-    while (true) {
+function readStdinAsync() {
+  return new Promise((resolve) => {
+    let data = '';
+    process.stdin.setEncoding('utf8');
+    process.stdin.on('data', (chunk) => { data += chunk; });
+    process.stdin.on('end', () => {
       try {
-        const bytesRead = fs.readSync(0, buf, 0, BUFSIZE);
-        if (bytesRead === 0) break;
-        chunks.push(Buffer.from(buf.slice(0, bytesRead)));
+        resolve(data.trim() ? JSON.parse(data) : {});
       } catch {
-        break;
+        resolve({});
       }
-    }
-    const raw = Buffer.concat(chunks).toString('utf8').trim();
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
+    });
+    process.stdin.on('error', () => resolve({}));
+    // Safety timeout - if stdin never closes, proceed without data
+    setTimeout(() => resolve({}), 3000);
+    process.stdin.resume();
+  });
 }
 
 function loadMemory(stdinData) {
@@ -235,11 +232,12 @@ function getUnreflectedL1Content(l1Path, memoryContent) {
   } catch { return null; }
 }
 
-try {
-  const stdinData = readStdinSync();
-  loadMemory(stdinData);
-} catch (err) {
-  logError(err);
-  console.error('[MEMORY_KEEPER ERROR] ' + (err.message || err));
-  process.exit(1);
-}
+readStdinAsync().then((stdinData) => {
+  try {
+    loadMemory(stdinData);
+  } catch (err) {
+    logError(err);
+    console.error('[MEMORY_KEEPER ERROR] ' + (err.message || err));
+    process.exit(1);
+  }
+});
