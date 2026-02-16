@@ -1,5 +1,8 @@
 # Changelog
 
+## v14.7.1 (2026-02-16)
+- **fix**: Async stdin reading for Windows compatibility — replace fs.readSync(0) with process.stdin to avoid pipe blocking, includes 3s safety timeout
+
 ## v14.7.0 (2026-02-16)
 - **feat**: Post-compaction detection — load-memory.js reads stdin `source` field from SessionStart hook, injects POST_COMPACT_WARNING when `source=compact` to counter continuation bias after context compaction
 
