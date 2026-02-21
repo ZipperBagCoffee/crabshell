@@ -1,5 +1,9 @@
 # Changelog
 
+## v15.1.0 (2026-02-21)
+- **workaround**: Auto-register PostToolUse/UserPromptSubmit hooks in `~/.claude/settings.json` via SessionStart hook (Claude Code plugin hook bug #10225, #6305)
+- **fix**: Add try/catch to counter.js `check()` to prevent plugin-disabling crashes
+
 ## v15.0.0 (2026-02-21)
 - **fix**: Move final() hook from Stop (fires every response) to SessionEnd (fires on actual session end) — fixes counter reset, L1 duplication, delta duplication every turn
 - **change**: Default tool interval 50 → 30

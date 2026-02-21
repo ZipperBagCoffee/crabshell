@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 15.0.0 | **Author**: TaWa | **License**: MIT
+**Version**: 15.1.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -183,6 +183,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 15.1.0 | Workaround: auto-register hooks in settings.json via SessionStart (hook bug #10225, #6305), try/catch in counter.js check() |
 | 15.0.0 | Fix: Stop→SessionEnd hook, counter interval 50→30 |
 | 14.9.0 | Delta: conditional processing, only trigger at >= 40KB |
 | 14.8.1 | Workflow: remove presentation-specific section from template |

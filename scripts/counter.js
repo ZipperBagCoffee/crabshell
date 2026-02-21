@@ -610,7 +610,17 @@ const args = process.argv.slice(3);
 
 switch (command) {
   case 'check':
-    check();
+    try {
+      check();
+    } catch (e) {
+      // Log crash to file so we can diagnose PostToolUse failures
+      try {
+        const logsDir = getLogsDir();
+        fs.appendFileSync(path.join(logsDir, 'counter-debug.log'),
+          `${new Date().toISOString()} | CHECK CRASHED: ${e.message}\n${e.stack}\n`);
+      } catch {}
+      console.error(`[MEMORY_KEEPER] check error: ${e.message}`);
+    }
     break;
   case 'final':
     final().catch(e => {

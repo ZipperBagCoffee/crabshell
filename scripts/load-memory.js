@@ -4,6 +4,61 @@ const { getProjectDir, getProjectName, readFileOrDefault, readJsonOrDefault, est
 const { ensureMemoryStructure } = require('./init');
 const { MEMORY_DIR, SESSIONS_DIR, INDEX_FILE, MEMORY_FILE, LOGS_DIR, DELTA_TEMP_FILE } = require('./constants');
 
+// Workaround: Claude Code plugin hooks (PostToolUse, UserPromptSubmit) don't fire
+// reliably from plugin hooks.json (GitHub issues #10225, #6305).
+// Register them as user-level hooks in ~/.claude/settings.json instead.
+function ensureGlobalHooks() {
+  try {
+    const os = require('os');
+    const settingsPath = path.join(os.homedir(), '.claude', 'settings.json');
+    const pluginRoot = path.resolve(__dirname, '..').replace(/\\/g, '/');
+    const counterCmd = `node "${pluginRoot}/scripts/counter.js" check`;
+    const injectCmd = `node "${pluginRoot}/scripts/inject-rules.js"`;
+
+    let settings = {};
+    if (fs.existsSync(settingsPath)) {
+      settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    }
+    if (!settings.hooks) settings.hooks = {};
+
+    let modified = false;
+
+    function ensureHook(eventName, matcher, command) {
+      if (!settings.hooks[eventName]) settings.hooks[eventName] = [];
+      const scriptName = command.includes('counter.js') ? 'counter.js' : 'inject-rules.js';
+      const existingIdx = settings.hooks[eventName].findIndex(group =>
+        (group.hooks || []).some(h => h.command && h.command.includes(scriptName))
+      );
+      const hookEntry = { matcher, hooks: [{ type: 'command', command }] };
+
+      if (existingIdx >= 0) {
+        const existing = settings.hooks[eventName][existingIdx];
+        const existingCmd = existing.hooks && existing.hooks[0] && existing.hooks[0].command;
+        if (existingCmd !== command) {
+          settings.hooks[eventName][existingIdx] = hookEntry;
+          modified = true;
+        }
+      } else {
+        settings.hooks[eventName].push(hookEntry);
+        modified = true;
+      }
+    }
+
+    ensureHook('PostToolUse', '.*', counterCmd);
+    ensureHook('UserPromptSubmit', '*', injectCmd);
+
+    if (modified) {
+      if (fs.existsSync(settingsPath)) {
+        fs.copyFileSync(settingsPath, settingsPath + '.bak');
+      }
+      fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+      console.error('[MEMORY_KEEPER] Registered hooks in ~/.claude/settings.json (workaround for plugin hook bug). Review in /hooks menu.');
+    }
+  } catch (e) {
+    // Silently fail - don't break SessionStart
+  }
+}
+
 // Error logging for debugging SessionStart hook failures
 function logError(err) {
   try {
@@ -115,6 +170,9 @@ function loadMemory(stdinData) {
 
   // Ensure memory structure exists
   ensureMemoryStructure(projectDir);
+
+  // Workaround: register hooks as user-level hooks (plugin hooks bug)
+  ensureGlobalHooks();
 
   // Clean up stale delta_temp.txt from previous session
   // Prevents delta instruction from firing on every prompt regardless of counter
