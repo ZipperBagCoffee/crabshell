@@ -1,5 +1,8 @@
 # Changelog
 
+## v14.8.0 (2026-02-20)
+- **change**: Workflow template updated to 3-layer architecture (Work Agent + Review Agent + Orchestrator) with 11 phases, Review gap type, Template-Based Work section, and 18 anti-patterns
+
 ## v14.7.1 (2026-02-16)
 - **fix**: Async stdin reading for Windows compatibility — replace fs.readSync(0) with process.stdin to avoid pipe blocking, includes 3s safety timeout
 
