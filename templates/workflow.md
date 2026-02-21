@@ -570,29 +570,6 @@ The point: Orchestrator is the **final filter**, not the primary quality check. 
 
 ---
 
-## Template-Based Work (Presentation-Specific)
-
-When a reference prototype exists and work is being replicated across multiple items:
-
-### Generation (Work Agent) rules:
-- Agent MUST receive the reference HTML as literal template
-- Agent instructions: "Copy this exact structure. Replace ONLY these data fields: [list]"
-- Structural elements (grid layouts, CSS classes, component ordering) must NOT change
-- Only data values (scores, names, text content, chart data) change
-
-### Verification (Review Agent) rules:
-- Structural comparison against reference is MANDATORY
-- For each template slide: extract structural elements, diff against reference
-- Flag ANY structural difference — even "improvements"
-- Verify data values against canonical source (e.g., products.json)
-
-### Meta-verification (Orchestrator) rules:
-- Confirm reviewer did structural comparison (not just text search)
-- Spot-check: pick one slide, compare structure yourself against reference
-- Check: did reviewer verify data against canonical source?
-
----
-
 ## Learning from Mistakes
 
 ### Detecting patterns

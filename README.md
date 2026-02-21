@@ -192,6 +192,7 @@ Coding conventions: ...
 
 | Version | Changes |
 |---------|---------|
+| 14.8.1 | Workflow: remove presentation-specific section from template |
 | 14.8.0 | Workflow: 3-layer architecture (Work Agent + Review Agent + Orchestrator), 11 phases |
 | 14.7.1 | Fix: async stdin for Windows pipe compatibility |
 | 14.7.0 | Post-compaction detection: inject recovery warning via SessionStart |

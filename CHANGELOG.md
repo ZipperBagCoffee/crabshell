@@ -1,5 +1,8 @@
 # Changelog
 
+## v14.8.1 (2026-02-20)
+- **fix**: Remove presentation-specific Template-Based Work section from workflow template — not general-purpose
+
 ## v14.8.0 (2026-02-20)
 - **change**: Workflow template updated to 3-layer architecture (Work Agent + Review Agent + Orchestrator) with 11 phases, Review gap type, Template-Based Work section, and 18 anti-patterns
 
