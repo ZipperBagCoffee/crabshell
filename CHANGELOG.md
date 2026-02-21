@@ -1,5 +1,9 @@
 # Changelog
 
+## v15.2.0 (2026-02-21)
+- **fix**: Atomic writes for memory-index.json via writeJson() temp+rename (prevents race condition corruption)
+- **fix**: init.js no longer overwrites with defaults on JSON parse error (preserves existing data during concurrent access)
+
 ## v15.1.0 (2026-02-21)
 - **workaround**: Auto-register PostToolUse/UserPromptSubmit hooks in `~/.claude/settings.json` via SessionStart hook (Claude Code plugin hook bug #10225, #6305)
 - **fix**: Add try/catch to counter.js `check()` to prevent plugin-disabling crashes

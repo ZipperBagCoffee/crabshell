@@ -92,10 +92,12 @@ function ensureMemoryStructure(projectDir) {
         rotatedFiles: Array.isArray(existing.rotatedFiles) ? existing.rotatedFiles : [],
         stats: existing.stats || defaults.stats,
       };
-      fs.writeFileSync(indexPath, JSON.stringify(index, null, 2));
+      const tempPath = indexPath + '.tmp';
+      fs.writeFileSync(tempPath, JSON.stringify(index, null, 2));
+      fs.renameSync(tempPath, indexPath);
     } catch (e) {
-      // Parse error - use defaults
-      fs.writeFileSync(indexPath, JSON.stringify(defaults, null, 2));
+      // Parse error - do NOT overwrite with defaults (file may be temporarily corrupted by race condition)
+      // Leave existing file intact; readIndexSafe() will handle parse errors gracefully
     }
   } else {
     fs.writeFileSync(indexPath, JSON.stringify(defaults, null, 2));

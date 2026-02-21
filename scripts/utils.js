@@ -70,7 +70,12 @@ function writeFile(filePath, content) {
   fs.writeFileSync(filePath, content, 'utf8');
 }
 
-function writeJson(filePath, data) { writeFile(filePath, JSON.stringify(data, null, 2)); }
+function writeJson(filePath, data) {
+  ensureDir(path.dirname(filePath));
+  const tempPath = filePath + '.tmp';
+  fs.writeFileSync(tempPath, JSON.stringify(data, null, 2), 'utf8');
+  fs.renameSync(tempPath, filePath);
+}
 
 function getTimestamp() {
   const now = new Date();
