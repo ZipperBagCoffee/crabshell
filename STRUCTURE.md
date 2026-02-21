@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 15.2.0 | **Author**: TaWa | **License**: MIT
+**Version**: 15.3.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -121,6 +121,7 @@ Session start loader:
 - Load hierarchical memory files
 - Load L3 summaries
 - Load rolling memory tail
+- `ensureGlobalHooks()`: Register hooks in settings.json with stable hook-runner.js (workaround for plugin hook bug)
 - `ensureAutoMemoryWarning()`: Write distinction warning to Claude Code's built-in MEMORY.md
 
 ### scripts/inject-rules.js
@@ -183,6 +184,8 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 15.3.0 | Fix: stable hook-runner.js eliminates version-specific paths in settings.json |
+| 15.2.0 | Fix: atomic writeJson, init.js preserves index on parse error |
 | 15.1.0 | Workaround: auto-register hooks in settings.json via SessionStart (hook bug #10225, #6305), try/catch in counter.js check() |
 | 15.0.0 | Fix: Stop→SessionEnd hook, counter interval 50→30 |
 | 14.9.0 | Delta: conditional processing, only trigger at >= 40KB |

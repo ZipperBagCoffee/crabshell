@@ -1,5 +1,8 @@
 # Changelog
 
+## v15.3.0 (2026-02-21)
+- **fix**: Stable hook-runner.js at `~/.claude/memory-keeper/` dynamically resolves latest plugin cache version at runtime — eliminates version-specific paths in settings.json that broke on `/plugin update`
+
 ## v15.2.0 (2026-02-21)
 - **fix**: Atomic writes for memory-index.json via writeJson() temp+rename (prevents race condition corruption)
 - **fix**: init.js no longer overwrites with defaults on JSON parse error (preserves existing data during concurrent access)
