@@ -1,5 +1,9 @@
 # Changelog
 
+## v15.0.0 (2026-02-21)
+- **fix**: Move final() hook from Stop (fires every response) to SessionEnd (fires on actual session end) — fixes counter reset, L1 duplication, delta duplication every turn
+- **change**: Default tool interval 50 → 30
+
 ## v14.9.0 (2026-02-21)
 - **feat**: Conditional delta processing — only trigger DELTA_INSTRUCTION when delta_temp.txt >= 40KB, smaller deltas accumulate until threshold
 

@@ -192,6 +192,7 @@ Coding conventions: ...
 
 | Version | Changes |
 |---------|---------|
+| 15.0.0 | Fix: Stop→SessionEnd hook, counter interval 50→30 |
 | 14.9.0 | Delta: conditional processing, only trigger at >= 40KB |
 | 14.8.1 | Workflow: remove presentation-specific section from template |
 | 14.8.0 | Workflow: 3-layer architecture (Work Agent + Review Agent + Orchestrator), 11 phases |
