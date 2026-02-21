@@ -1,5 +1,8 @@
 # Changelog
 
+## v14.9.0 (2026-02-21)
+- **feat**: Conditional delta processing — only trigger DELTA_INSTRUCTION when delta_temp.txt >= 40KB, smaller deltas accumulate until threshold
+
 ## v14.8.1 (2026-02-20)
 - **fix**: Remove presentation-specific Template-Based Work section from workflow template — not general-purpose
 

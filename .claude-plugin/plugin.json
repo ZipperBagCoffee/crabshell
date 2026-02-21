@@ -1,6 +1,6 @@
 {
   "name": "memory-keeper",
-  "version": "14.8.1",
+  "version": "14.9.0",
   "description": "Auto-save memory with L1-based delta updates, Haiku summarization, rules injection, token-based rotation, and integrated search.",
   "author": {
     "name": "TaWa"

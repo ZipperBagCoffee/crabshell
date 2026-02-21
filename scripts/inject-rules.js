@@ -145,14 +145,10 @@ function readIndexSafe(indexPath) {
 
 function checkDeltaPending(projectDir) {
   const deltaPath = path.join(projectDir, '.claude', 'memory', 'delta_temp.txt');
-  const exists = fs.existsSync(deltaPath);
-  // Debug: log to file for verification
-  const logPath = path.join(projectDir, '.claude', 'memory', 'logs', 'inject-debug.log');
-  try {
-    fs.mkdirSync(path.dirname(logPath), { recursive: true });
-    fs.appendFileSync(logPath, `${new Date().toISOString()} | cwd=${process.cwd()} | projectDir=${projectDir} | delta=${exists}\n`);
-  } catch (e) {}
-  return exists;
+  if (!fs.existsSync(deltaPath)) return false;
+  const size = fs.statSync(deltaPath).size;
+  const MIN_DELTA_SIZE = 40 * 1024; // 40KB
+  return size >= MIN_DELTA_SIZE;
 }
 
 function checkRotationPending(projectDir) {
