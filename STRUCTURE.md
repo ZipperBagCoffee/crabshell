@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 16.0.4 | **Author**: TaWa | **License**: MIT
+**Version**: 16.0.5 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 

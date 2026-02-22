@@ -1,5 +1,8 @@
 # Changelog
 
+## v16.0.5 (2026-02-22)
+- **revert**: MIN_DELTA_SIZE 10KB → 20KB (restore user-requested value)
+
 ## v16.0.4 (2026-02-22)
 - **revert**: MIN_DELTA_SIZE 20KB → 10KB (20KB blocked legitimate deltas)
 
