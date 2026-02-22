@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 15.3.0 | **Author**: TaWa | **License**: MIT
+**Version**: 15.4.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -184,6 +184,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 15.4.0 | Change: MIN_DELTA_SIZE 40KB → 10KB |
 | 15.3.0 | Fix: stable hook-runner.js eliminates version-specific paths in settings.json |
 | 15.2.0 | Fix: atomic writeJson, init.js preserves index on parse error |
 | 15.1.0 | Workaround: auto-register hooks in settings.json via SessionStart (hook bug #10225, #6305), try/catch in counter.js check() |

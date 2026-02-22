@@ -1,5 +1,8 @@
 # Changelog
 
+## v15.4.0 (2026-02-22)
+- **change**: MIN_DELTA_SIZE 40KB → 10KB (shorter sessions can now trigger delta processing)
+
 ## v15.3.0 (2026-02-21)
 - **fix**: Stable hook-runner.js at `~/.claude/memory-keeper/` dynamically resolves latest plugin cache version at runtime — eliminates version-specific paths in settings.json that broke on `/plugin update`
 
