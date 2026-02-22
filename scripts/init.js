@@ -23,6 +23,7 @@
 const fs = require('fs');
 const path = require('path');
 const { MEMORY_DIR, SESSIONS_DIR, LOGS_DIR, LESSONS_DIR, WORKFLOW_DIR, INDEX_FILE, MEMORY_FILE } = require('./constants');
+const { writeJson } = require('./utils');
 
 /**
  * Get the plugin's template directory
@@ -92,9 +93,7 @@ function ensureMemoryStructure(projectDir) {
         rotatedFiles: Array.isArray(existing.rotatedFiles) ? existing.rotatedFiles : [],
         stats: existing.stats || defaults.stats,
       };
-      const tempPath = indexPath + '.tmp';
-      fs.writeFileSync(tempPath, JSON.stringify(index, null, 2));
-      fs.renameSync(tempPath, indexPath);
+      writeJson(indexPath, index);
     } catch (e) {
       // Parse error - do NOT overwrite with defaults (file may be temporarily corrupted by race condition)
       // Leave existing file intact; readIndexSafe() will handle parse errors gracefully

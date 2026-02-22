@@ -70,9 +70,17 @@ function writeFile(filePath, content) {
 
 function writeJson(filePath, data) {
   ensureDir(path.dirname(filePath));
+  const content = JSON.stringify(data, null, 2);
   const tempPath = filePath + '.tmp';
-  fs.writeFileSync(tempPath, JSON.stringify(data, null, 2), 'utf8');
-  fs.renameSync(tempPath, filePath);
+  try {
+    fs.writeFileSync(tempPath, content, 'utf8');
+    fs.renameSync(tempPath, filePath);
+  } catch (e) {
+    // Windows: renameSync fails with EPERM/ENOENT when target is locked
+    // (antivirus, concurrent hook instances). Fallback to direct write.
+    try { fs.unlinkSync(tempPath); } catch {}
+    fs.writeFileSync(filePath, content, 'utf8');
+  }
 }
 
 function getTimestamp() {
@@ -103,9 +111,7 @@ function updateIndex(archivePath, tokens, memoryDir, dateRange) {
   index.rotatedFiles.push(entry);
   index.stats.totalRotations++;
   index.stats.lastRotation = new Date().toISOString();
-  const tempPath = indexPath + '.tmp';
-  fs.writeFileSync(tempPath, JSON.stringify(index, null, 2));
-  fs.renameSync(tempPath, indexPath);
+  writeJson(indexPath, index);
 }
 
 function acquireLock(memoryDir) {

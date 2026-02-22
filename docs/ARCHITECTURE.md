@@ -195,6 +195,7 @@ Save to *.summary.json
 
 | Version | Key Changes |
 |---------|-------------|
+| 16.0.1 | Fix: writeJson() Windows EPERM fallback, unified all index writes through safe writeJson() |
 | 16.0.0 | Fix: getProjectDir walk-up removal, session-aware delta extraction, conditional delta_temp.txt preservation, async check() with session_id |
 | 15.4.0 | Change: MIN_DELTA_SIZE 40KB → 10KB |
 | 15.3.0 | Fix: stable hook-runner.js eliminates version-specific paths in settings.json |

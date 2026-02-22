@@ -1,7 +1,7 @@
 // scripts/inject-rules.js
 const fs = require('fs');
 const path = require('path');
-const { getProjectDir, readJsonOrDefault, readIndexSafe } = require('./utils');
+const { getProjectDir, readJsonOrDefault, readIndexSafe, writeJson } = require('./utils');
 
 const RULES = `
 ## CRITICAL RULES (Core Principles Alignment)
@@ -192,7 +192,7 @@ function main() {
     // Update counter if frequency > 1 (need to track)
     if (frequency > 1) {
       index.rulesInjectionCount = count;
-      fs.writeFileSync(indexPath, JSON.stringify(index, null, 2));
+      writeJson(indexPath, index);
     }
 
     // Check if should inject

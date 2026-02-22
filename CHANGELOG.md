@@ -1,5 +1,9 @@
 # Changelog
 
+## v16.0.1 (2026-02-22)
+- **fix**: `writeJson()` Windows EPERM fallback — atomic rename fails when file locked by antivirus/concurrent hooks, now falls back to direct write
+- **fix**: Unified all raw `fs.writeFileSync(indexPath, ...)` calls in inject-rules.js, extract-delta.js, init.js to use safe `writeJson()` from utils
+
 ## v16.0.0 (2026-02-22)
 - **fix**: Remove `getProjectDir()` walk-up traversal — prevents cross-project counter contamination when subdirectory has `.claude/`
 - **fix**: `extractDelta(sessionId)` — session-aware L1 file selection prevents cross-session data contamination
