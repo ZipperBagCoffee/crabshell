@@ -104,7 +104,7 @@ function checkDeltaPending(projectDir) {
   const deltaPath = path.join(projectDir, '.claude', 'memory', 'delta_temp.txt');
   if (!fs.existsSync(deltaPath)) return false;
   const size = fs.statSync(deltaPath).size;
-  const MIN_DELTA_SIZE = 20 * 1024; // 20KB
+  const MIN_DELTA_SIZE = 10 * 1024; // 10KB
   return size >= MIN_DELTA_SIZE;
 }
 

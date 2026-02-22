@@ -1,5 +1,8 @@
 # Changelog
 
+## v16.0.4 (2026-02-22)
+- **revert**: MIN_DELTA_SIZE 20KB → 10KB (20KB blocked legitimate deltas)
+
 ## v16.0.3 (2026-02-22)
 - **change**: DEFAULT_INTERVAL 30 → 15 (tool use count before L1/delta trigger)
 
