@@ -9,7 +9,7 @@ const { MEMORY_DIR, MEMORY_FILE, SESSIONS_DIR } = require('./constants');
 
 const CONFIG_PATH = path.join(process.cwd(), '.claude', 'memory', 'config.json');
 const GLOBAL_CONFIG_PATH = path.join(os.homedir(), '.claude', 'memory-keeper', 'config.json');
-const DEFAULT_INTERVAL = 30;
+const DEFAULT_INTERVAL = 15;
 
 // Get logs directory (ensures it exists)
 function getLogsDir() {
