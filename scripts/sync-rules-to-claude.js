@@ -2,16 +2,7 @@
 // Syncs RULES from inject-rules.js to CLAUDE.md
 const fs = require('fs');
 const path = require('path');
-
-function getProjectDir() {
-  if (process.env.PROJECT_DIR) return process.env.PROJECT_DIR;
-  let dir = process.cwd();
-  while (dir !== path.dirname(dir)) {
-    if (fs.existsSync(path.join(dir, '.claude'))) return dir;
-    dir = path.dirname(dir);
-  }
-  return process.cwd();
-}
+const { getProjectDir } = require('./utils');
 
 function extractRulesFromInjectRules(filePath) {
   const content = fs.readFileSync(filePath, 'utf8');

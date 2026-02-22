@@ -50,43 +50,41 @@ function getConfig() {
   return config;
 }
 
-// Read hook data from stdin using async/await
-function readStdin() {
+// Read hook data from stdin using async/await with timeout
+function readStdin(timeoutMs = 1000) {
   return new Promise((resolve) => {
     let data = '';
+    let resolved = false;
+    const done = (result) => { if (!resolved) { resolved = true; resolve(result); } };
 
-    // Set encoding
+    // Safety timeout — PostToolUse closes stdin quickly, 1s is sufficient
+    const timer = setTimeout(() => {
+      done(data.trim() ? (() => { try { return JSON.parse(data.trim()); } catch { return {}; } })() : {});
+    }, timeoutMs);
+
     process.stdin.setEncoding('utf8');
 
-    // Handle data chunks
-    process.stdin.on('data', (chunk) => {
-      data += chunk;
-    });
+    process.stdin.on('data', (chunk) => { data += chunk; });
 
-    // Handle end of input
     process.stdin.on('end', () => {
+      clearTimeout(timer);
       if (data.trim()) {
-        try {
-          resolve(JSON.parse(data.trim()));
-        } catch (e) {
-          // Log parse error
+        try { done(JSON.parse(data.trim())); }
+        catch (e) {
           const debugPath = path.join(getLogsDir(), 'stdin-parse-error.log');
           fs.appendFileSync(debugPath, `${new Date().toISOString()}: ${e.message}\nData: ${data.substring(0, 500)}\n`);
-          resolve({});
+          done({});
         }
-      } else {
-        resolve({});
-      }
+      } else { done({}); }
     });
 
-    // Handle error
     process.stdin.on('error', (e) => {
+      clearTimeout(timer);
       const debugPath = path.join(getLogsDir(), 'stdin-error.log');
       fs.appendFileSync(debugPath, `${new Date().toISOString()}: ${e.message}\n`);
-      resolve({});
+      done({});
     });
 
-    // Resume stdin (important for piped input)
     process.stdin.resume();
   });
 }
@@ -106,7 +104,11 @@ function setCounter(value) {
   writeJson(indexPath, index);
 }
 
-function check() {
+async function check() {
+  const hookData = await readStdin();
+  const sessionId = hookData.session_id || null;
+  const sessionId8 = sessionId ? sessionId.substring(0, 8) : null;
+
   const config = getConfig();
   const interval = config.saveInterval || DEFAULT_INTERVAL;
 
@@ -126,7 +128,11 @@ function check() {
     const sessionsDir = path.join(getProjectDir(), '.claude', SESSIONS_DIR);
 
     // Step 1: Create/update L1 from current transcript
-    const transcriptPath = findTranscriptPath();
+    // Prefer transcript_path from hookData, fallback to findTranscriptPath()
+    const transcriptPath = (hookData.transcript_path && hookData.transcript_path !== '')
+      ? hookData.transcript_path
+      : findTranscriptPath();
+
     if (transcriptPath) {
       try {
         const transcriptMtime = fs.statSync(transcriptPath).mtimeMs;
@@ -135,7 +141,9 @@ function check() {
         if (!idx.lastL1TranscriptMtime || transcriptMtime > idx.lastL1TranscriptMtime) {
           const ts = getTimestamp();
           ensureDir(sessionsDir);
-          const l1Dest = path.join(sessionsDir, `${ts}.l1.jsonl`);
+          // Include session_id prefix in L1 filename for session isolation
+          const l1Name = sessionId8 ? `${ts}_${sessionId8}.l1.jsonl` : `${ts}.l1.jsonl`;
+          const l1Dest = path.join(sessionsDir, l1Name);
           refineRawSync(transcriptPath, l1Dest);
           cleanupDuplicateL1(l1Dest);
           idx.lastL1TranscriptMtime = transcriptMtime;
@@ -147,8 +155,8 @@ function check() {
       }
     }
 
-    // Step 2: Try delta extraction
-    const deltaResult = extractDelta();
+    // Step 2: Try delta extraction (pass sessionId for session-aware L1 selection)
+    const deltaResult = extractDelta(sessionId8);
 
     if (deltaResult.success) {
       // Set deltaReady flag so inject-rules.js knows this is a legitimate delta
@@ -610,9 +618,7 @@ const args = process.argv.slice(3);
 
 switch (command) {
   case 'check':
-    try {
-      check();
-    } catch (e) {
+    check().catch(e => {
       // Log crash to file so we can diagnose PostToolUse failures
       try {
         const logsDir = getLogsDir();
@@ -620,7 +626,7 @@ switch (command) {
           `${new Date().toISOString()} | CHECK CRASHED: ${e.message}\n${e.stack}\n`);
       } catch {}
       console.error(`[MEMORY_KEEPER] check error: ${e.message}`);
-    }
+    });
     break;
   case 'final':
     final().catch(e => {

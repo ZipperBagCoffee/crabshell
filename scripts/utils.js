@@ -7,11 +7,9 @@ function getProjectName() { return path.basename(process.cwd()); }
 
 function getProjectDir() {
   if (process.env.PROJECT_DIR) return process.env.PROJECT_DIR;
-  let dir = process.cwd();
-  while (dir !== path.dirname(dir)) {
-    if (fs.existsSync(path.join(dir, '.claude'))) return dir;
-    dir = path.dirname(dir);
-  }
+  // Claude Code hooks always run with cwd = project root.
+  // Walk-up was removed: it could find a subdirectory's .claude/ first,
+  // causing cross-project counter contamination.
   return process.cwd();
 }
 

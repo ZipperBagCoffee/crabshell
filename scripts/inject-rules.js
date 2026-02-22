@@ -1,6 +1,7 @@
 // scripts/inject-rules.js
 const fs = require('fs');
 const path = require('path');
+const { getProjectDir, readJsonOrDefault, readIndexSafe } = require('./utils');
 
 const RULES = `
 ## CRITICAL RULES (Core Principles Alignment)
@@ -97,51 +98,7 @@ After delta processing (if any), before responding to user:
 This is a SYSTEM MAINTENANCE TASK. You CANNOT skip this.
 `;
 
-function getProjectDir() {
-  // Same logic as utils.js - find project root by .claude folder
-  if (process.env.PROJECT_DIR) return process.env.PROJECT_DIR;
-  let dir = process.cwd();
-  while (dir !== path.dirname(dir)) {
-    if (fs.existsSync(path.join(dir, '.claude'))) return dir;
-    dir = path.dirname(dir);
-  }
-  return process.cwd();
-}
-
-function readJsonSafe(filePath, defaultValue) {
-  try {
-    if (fs.existsSync(filePath)) {
-      return JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    }
-  } catch (e) {}
-  return defaultValue;
-}
-
-// Safe index reader - ALWAYS returns complete structure, preserving existing values
-// Uses spread to auto-preserve new optional fields (deltaReady, pendingLastProcessedTs, etc.)
-function readIndexSafe(indexPath) {
-  const defaults = {
-    version: 1,
-    current: 'memory.md',
-    rotatedFiles: [],
-    stats: { totalRotations: 0, lastRotation: null },
-    counter: 0,
-    lastMemoryUpdateTs: null
-  };
-  try {
-    if (!fs.existsSync(indexPath)) return defaults;
-    const existing = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
-    return {
-      ...defaults,
-      ...existing,
-      // Array/object fields need safe validation
-      rotatedFiles: Array.isArray(existing.rotatedFiles) ? existing.rotatedFiles : defaults.rotatedFiles,
-      stats: existing.stats ?? defaults.stats,
-    };
-  } catch {
-    return defaults;
-  }
-}
+// getProjectDir, readJsonOrDefault, readIndexSafe imported from utils.js
 
 function checkDeltaPending(projectDir) {
   const deltaPath = path.join(projectDir, '.claude', 'memory', 'delta_temp.txt');
@@ -153,7 +110,7 @@ function checkDeltaPending(projectDir) {
 
 function checkRotationPending(projectDir) {
   const indexPath = path.join(projectDir, '.claude', 'memory', 'memory-index.json');
-  const index = readJsonSafe(indexPath, {});
+  const index = readJsonOrDefault(indexPath, {});
   const rotatedFiles = index.rotatedFiles || [];
   const pending = rotatedFiles.filter(f => !f.summaryGenerated);
   // Debug log
@@ -222,7 +179,7 @@ function main() {
     syncRulesToClaudeMd(projectDir);
 
     const configPath = path.join(projectDir, '.claude', 'memory', 'config.json');
-    const config = readJsonSafe(configPath, {});
+    const config = readJsonOrDefault(configPath, {});
 
     const frequency = config.rulesInjectionFrequency || 1;
 

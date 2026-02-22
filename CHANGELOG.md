@@ -1,5 +1,14 @@
 # Changelog
 
+## v16.0.0 (2026-02-22)
+- **fix**: Remove `getProjectDir()` walk-up traversal — prevents cross-project counter contamination when subdirectory has `.claude/`
+- **fix**: `extractDelta(sessionId)` — session-aware L1 file selection prevents cross-session data contamination
+- **fix**: `delta_temp.txt` conditional preservation on SessionStart — only deletes stale files (`deltaReady !== true`), preserves unprocessed deltas
+- **change**: `check()` now async with stdin reading — reads `session_id`/`transcript_path` from hook data for session isolation
+- **change**: L1 filenames include session_id prefix (`{timestamp}_{sessionId8}.l1.jsonl`) for session isolation
+- **change**: `readStdin()` now has 1-second timeout (prevents hangs on broken stdin)
+- **refactor**: Remove duplicate `getProjectDir()`/`readIndexSafe()` from inject-rules.js and sync-rules-to-claude.js — import from utils.js
+
 ## v15.4.0 (2026-02-22)
 - **change**: MIN_DELTA_SIZE 40KB → 10KB (shorter sessions can now trigger delta processing)
 

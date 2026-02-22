@@ -209,11 +209,16 @@ function loadMemory(stdinData) {
   // Workaround: register hooks as user-level hooks (plugin hooks bug)
   ensureGlobalHooks();
 
-  // Clean up stale delta_temp.txt from previous session
-  // Prevents delta instruction from firing on every prompt regardless of counter
+  // Conditional delta_temp.txt handling on SessionStart:
+  // - deltaReady=true → preserve (unprocessed delta from previous session, will be consumed)
+  // - deltaReady!=true → stale file, delete to prevent ghost triggers
   const deltaPath = path.join(memoryDir, DELTA_TEMP_FILE);
   if (fs.existsSync(deltaPath)) {
-    try { fs.unlinkSync(deltaPath); } catch {}
+    const indexPath = path.join(memoryDir, INDEX_FILE);
+    const idx = readJsonOrDefault(indexPath, {});
+    if (idx.deltaReady !== true) {
+      try { fs.unlinkSync(deltaPath); } catch {}
+    }
   }
 
   // Ensure MEMORY.md warning (Claude Code built-in vs plugin distinction)

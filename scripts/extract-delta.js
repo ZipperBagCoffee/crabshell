@@ -4,7 +4,7 @@ const path = require('path');
 const { getProjectDir, readJsonOrDefault, readIndexSafe, writeJson, estimateTokens, extractTailByTokens } = require('./utils');
 const { SESSIONS_DIR, MEMORY_DIR, MEMORY_FILE, INDEX_FILE, DELTA_TEMP_FILE, HAIKU_SAFE_TOKENS, FIRST_RUN_MAX_ENTRIES, DELTA_OUTPUT_TRUNCATE } = require('./constants');
 
-function extractDelta() {
+function extractDelta(sessionId) {
   try {
     const projectDir = getProjectDir();
     const memoryDir = path.join(projectDir, '.claude', MEMORY_DIR);
@@ -15,7 +15,7 @@ function extractDelta() {
     const index = readIndexSafe(indexPath);  // Use safe reader to preserve all fields
     const lastUpdateTs = index.lastMemoryUpdateTs || null;
 
-    // Get most recent L1 file
+    // Get L1 file — prefer session-specific file if sessionId provided
     if (!fs.existsSync(sessionsDir)) {
       return { success: false, reason: 'No sessions dir' };
     }
@@ -29,7 +29,14 @@ function extractDelta() {
       return { success: false, reason: 'No L1 files' };
     }
 
-    const l1Path = path.join(sessionsDir, l1Files[0]);
+    // Session-aware L1 selection: prefer file matching sessionId, fallback to most recent
+    let selectedL1 = l1Files[0];
+    if (sessionId) {
+      const sessionMatch = l1Files.find(f => f.includes(`_${sessionId}.l1.jsonl`));
+      if (sessionMatch) selectedL1 = sessionMatch;
+    }
+
+    const l1Path = path.join(sessionsDir, selectedL1);
     const content = fs.readFileSync(l1Path, 'utf8');
     const lines = content.split('\n').filter(l => l.trim());
 
