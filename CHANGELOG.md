@@ -1,5 +1,8 @@
 # Changelog
 
+## v16.0.2 (2026-02-22)
+- **change**: MIN_DELTA_SIZE 10KB → 20KB (delta processing threshold)
+
 ## v16.0.1 (2026-02-22)
 - **fix**: `writeJson()` Windows EPERM fallback — atomic rename fails when file locked by antivirus/concurrent hooks, now falls back to direct write
 - **fix**: Unified all raw `fs.writeFileSync(indexPath, ...)` calls in inject-rules.js, extract-delta.js, init.js to use safe `writeJson()` from utils
