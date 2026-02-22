@@ -112,8 +112,8 @@ function parseTimestamp(ts) {
 
 // Parse L1 filename to Date object
 function parseFilenameTimestamp(filename) {
-  // Format: "2026-01-13_0839.l1.jsonl"
-  const match = filename.match(/(\d{4})-(\d{2})-(\d{2})_(\d{2})(\d{2})\.l1\.jsonl/);
+  // Format: "2026-01-13_0839.l1.jsonl" or "2026-01-13_0839_abcd1234.l1.jsonl"
+  const match = filename.match(/(\d{4})-(\d{2})-(\d{2})_(\d{2})(\d{2})(?:_[a-f0-9]+)?\.l1\.jsonl/);
   if (!match) return null;
   return new Date(match[1], match[2] - 1, match[3], match[4], match[5]);
 }

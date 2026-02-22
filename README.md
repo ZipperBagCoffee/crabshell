@@ -192,6 +192,8 @@ Coding conventions: ...
 
 | Version | Changes |
 |---------|---------|
+| 17.0.0 | Fix: Central cwd isolation via hook-runner.js v2 — prevents cross-project counter contamination |
+| 16.0.x | Fix: Session isolation, writeJson EPERM fallback, walk-up removal, async check() |
 | 15.4.0 | Change: MIN_DELTA_SIZE 40KB → 10KB |
 | 15.3.0 | Fix: stable hook-runner.js eliminates version-specific paths in settings.json |
 | 15.2.0 | Fix: atomic writeJson, init.js preserves index on parse error |

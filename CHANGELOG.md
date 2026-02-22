@@ -1,5 +1,16 @@
 # Changelog
 
+## v17.0.0 (2026-02-22)
+- **fix**: Central cwd isolation via hook-runner.js v2 — reads stdin, sets `PROJECT_DIR` from `hookData.cwd` before delegating to child scripts. Eliminates all cross-project counter contamination when Bash tool changes working directory
+- **fix**: `counter.js` `check()` and `final()` set `PROJECT_DIR` from `hookData.cwd` (double safety with hook-runner.js)
+- **fix**: `counter.js` `final()` now passes `sessionId8` to `extractDelta()` and includes sessionId in L1 filename (was missing in v16.0.0)
+- **fix**: `CONFIG_PATH` moved from module-level static constant to dynamic computation in `getConfig()` — prevents stale cwd at module load time
+- **fix**: `load-memory.js` `logError()` uses `getProjectDir()` instead of raw `process.cwd()`
+- **fix**: `search.js` `parseFilenameTimestamp` regex accepts optional `_sessionId8` suffix in L1 filenames
+- **fix**: `migrate-timezone.js` `parseL1Filename` regex accepts optional `_sessionId8` suffix
+- **fix**: `readStdin()` / `readStdinAsync()` check `HOOK_DATA` env var first (set by hook-runner.js v2), eliminating redundant stdin reads
+- **test**: Added `test-cwd-isolation.js` with 20 mock tests covering PROJECT_DIR priority, HOOK_DATA parsing, regex compatibility, and session isolation
+
 ## v16.0.5 (2026-02-22)
 - **revert**: MIN_DELTA_SIZE 10KB → 20KB (restore user-requested value)
 

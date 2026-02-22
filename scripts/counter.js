@@ -7,7 +7,6 @@ const { checkAndRotate } = require('./memory-rotation');
 const { extractDelta } = require('./extract-delta');
 const { MEMORY_DIR, MEMORY_FILE, SESSIONS_DIR } = require('./constants');
 
-const CONFIG_PATH = path.join(process.cwd(), '.claude', 'memory', 'config.json');
 const GLOBAL_CONFIG_PATH = path.join(os.homedir(), '.claude', 'memory-keeper', 'config.json');
 const DEFAULT_INTERVAL = 15;
 
@@ -43,7 +42,8 @@ function findTranscriptPath() {
 }
 
 function getConfig() {
-  let config = readJsonOrDefault(CONFIG_PATH, null);
+  const configPath = path.join(getProjectDir(), '.claude', 'memory', 'config.json');
+  let config = readJsonOrDefault(configPath, null);
   if (!config) {
     config = readJsonOrDefault(GLOBAL_CONFIG_PATH, { saveInterval: DEFAULT_INTERVAL, keepRaw: false, quietStop: true });
   }
@@ -51,7 +51,14 @@ function getConfig() {
 }
 
 // Read hook data from stdin using async/await with timeout
+// If hook-runner.js already parsed stdin, reads from HOOK_DATA env var instead
 function readStdin(timeoutMs = 1000) {
+  // hook-runner.js v2 stores parsed stdin in HOOK_DATA env var
+  if (process.env.HOOK_DATA) {
+    try { return Promise.resolve(JSON.parse(process.env.HOOK_DATA)); }
+    catch { return Promise.resolve({}); }
+  }
+
   return new Promise((resolve) => {
     let data = '';
     let resolved = false;
@@ -106,6 +113,10 @@ function setCounter(value) {
 
 async function check() {
   const hookData = await readStdin();
+  // Set PROJECT_DIR from hookData.cwd for correct project isolation
+  if (hookData.cwd && !process.env.PROJECT_DIR) {
+    process.env.PROJECT_DIR = hookData.cwd;
+  }
   const sessionId = hookData.session_id || null;
   const sessionId8 = sessionId ? sessionId.substring(0, 8) : null;
 
@@ -173,6 +184,12 @@ async function check() {
 
 async function final() {
   const hookData = await readStdin();
+  // Set PROJECT_DIR from hookData.cwd for correct project isolation
+  if (hookData.cwd && !process.env.PROJECT_DIR) {
+    process.env.PROJECT_DIR = hookData.cwd;
+  }
+  const sessionId = hookData.session_id || null;
+  const sessionId8 = sessionId ? sessionId.substring(0, 8) : null;
   const projectDir = getProjectDir().replace(/\\/g, '/');
   const timestamp = getTimestamp();
   const sessionsDir = path.join(getProjectDir(), '.claude', SESSIONS_DIR);
@@ -222,7 +239,8 @@ async function final() {
   let rawSaved = '';
   if (transcriptSrc) {
     try {
-      const rawDest = path.join(sessionsDir, `${timestamp}.raw.jsonl`);
+      const rawBase = sessionId8 ? `${timestamp}_${sessionId8}` : timestamp;
+      const rawDest = path.join(sessionsDir, `${rawBase}.raw.jsonl`);
       fs.copyFileSync(transcriptSrc, rawDest);
       rawSaved = rawDest.replace(/\\/g, '/');
     } catch (e) {
@@ -261,8 +279,8 @@ async function final() {
   const scriptPath = process.argv[1].replace(/\\/g, '/');
   const config = getConfig();
 
-  // Process any remaining delta before session ends
-  const deltaResult = extractDelta();
+  // Process any remaining delta before session ends (pass sessionId for isolation)
+  const deltaResult = extractDelta(sessionId8);
   let deltaOutput = '';
   if (deltaResult.success) {
     deltaOutput = `\n[MEMORY_KEEPER_DELTA] file=${deltaResult.deltaFile}\nDelta extracted at session end: ${deltaResult.entryCount} entries.`;

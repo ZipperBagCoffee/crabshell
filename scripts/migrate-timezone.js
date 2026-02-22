@@ -20,9 +20,9 @@ function formatHeaderTimestamp(date) {
   return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}_${pad(date.getUTCHours())}${pad(date.getUTCMinutes())}`;
 }
 
-// Parse L1 filename: YYYY-MM-DD_HHMMSS.l1.jsonl -> Date
+// Parse L1 filename: YYYY-MM-DD_HHMMSS.l1.jsonl or YYYY-MM-DD_HHMMSS_sessionid.l1.jsonl -> Date
 function parseL1Filename(filename) {
-  const match = filename.match(/^(\d{4})-(\d{2})-(\d{2})_(\d{2})(\d{2})(\d{2})\.l1\.jsonl$/);
+  const match = filename.match(/^(\d{4})-(\d{2})-(\d{2})_(\d{2})(\d{2})(\d{2})(?:_[a-f0-9]+)?\.l1\.jsonl$/);
   if (!match) return null;
   const [, year, month, day, hour, minute, second] = match;
   return new Date(year, month - 1, day, hour, minute, second);

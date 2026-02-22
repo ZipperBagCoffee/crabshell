@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 16.0.5 | **Author**: TaWa | **License**: MIT
+**Version**: 17.0.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -55,6 +55,7 @@ memory-keeper-plugin/
 │   ├── migrate-timezone.js           # Legacy timestamp migration (local → UTC)
 │   ├── refine-raw.js                 # raw.jsonl -> l1.jsonl conversion
 │   ├── sync-rules-to-claude.js       # Manual CLAUDE.md sync (standalone)
+│   ├── test-cwd-isolation.js         # Mock tests for cwd isolation (v17.0.0)
 │   └── utils.js                      # Shared utilities
 │
 ├── skills/                           # Slash command skills
@@ -184,6 +185,8 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 17.0.0 | Fix: Central cwd isolation via hook-runner.js v2, PROJECT_DIR from hookData.cwd, final() session isolation, regex parser compatibility |
+| 16.0.x | Fix: Session-aware delta extraction, async check() with session_id, writeJson EPERM fallback, walk-up removal |
 | 15.4.0 | Change: MIN_DELTA_SIZE 40KB → 10KB |
 | 15.3.0 | Fix: stable hook-runner.js eliminates version-specific paths in settings.json |
 | 15.2.0 | Fix: atomic writeJson, init.js preserves index on parse error |
