@@ -3,13 +3,13 @@ const path = require('path');
 const os = require('os');
 const { INDEX_FILE, MEMORY_FILE, LOCK_FILE, LOCK_STALE_MS } = require('./constants');
 
-function getProjectName() { return path.basename(process.cwd()); }
+function getProjectName() { return path.basename(getProjectDir()); }
 
 function getProjectDir() {
+  // CLAUDE_PROJECT_DIR is set by Claude Code for hooks — always the project root,
+  // regardless of Bash cd or session restarts. This is the authoritative source.
+  if (process.env.CLAUDE_PROJECT_DIR) return process.env.CLAUDE_PROJECT_DIR;
   if (process.env.PROJECT_DIR) return process.env.PROJECT_DIR;
-  // Claude Code hooks always run with cwd = project root.
-  // Walk-up was removed: it could find a subdirectory's .claude/ first,
-  // causing cross-project counter contamination.
   return process.cwd();
 }
 

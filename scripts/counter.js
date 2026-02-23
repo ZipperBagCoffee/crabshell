@@ -17,24 +17,31 @@ function getLogsDir() {
   return logsDir;
 }
 
-// Find current session transcript by project name (reusable fallback)
+// Encode project path to Claude Code's ~/.claude/projects/ directory name format
+// C:\Users\user\Documents\OtherProject → C--Users-user-Documents-OtherProject
+function encodeProjectPath(projectDir) {
+  return projectDir.replace(/\\/g, '/').replace(/\//g, '-').replace(':', '-');
+}
+
+// Find current session transcript by exact project path match (reusable fallback)
 function findTranscriptPath() {
-  const projectName = getProjectName();
+  const projectDir = getProjectDir();
+  const encoded = encodeProjectPath(projectDir);
   const claudeProjectsDir = path.join(os.homedir(), '.claude', 'projects');
   try {
     if (!fs.existsSync(claudeProjectsDir)) return null;
     const projects = fs.readdirSync(claudeProjectsDir);
-    for (const proj of projects) {
-      if (proj.includes(projectName)) {
-        const projPath = path.join(claudeProjectsDir, proj);
-        const files = fs.readdirSync(projPath).filter(f => f.endsWith('.jsonl'));
-        if (files.length > 0) {
-          const sorted = files.map(f => ({
-            path: path.join(projPath, f),
-            mtime: fs.statSync(path.join(projPath, f)).mtime
-          })).sort((a, b) => b.mtime - a.mtime);
-          return sorted[0].path;
-        }
+    // Exact match first (case-insensitive for Windows)
+    const match = projects.find(p => p.toLowerCase() === encoded.toLowerCase());
+    if (match) {
+      const projPath = path.join(claudeProjectsDir, match);
+      const files = fs.readdirSync(projPath).filter(f => f.endsWith('.jsonl'));
+      if (files.length > 0) {
+        const sorted = files.map(f => ({
+          path: path.join(projPath, f),
+          mtime: fs.statSync(path.join(projPath, f)).mtime
+        })).sort((a, b) => b.mtime - a.mtime);
+        return sorted[0].path;
       }
     }
   } catch (e) { return null; }
@@ -113,10 +120,8 @@ function setCounter(value) {
 
 async function check() {
   const hookData = await readStdin();
-  // Set PROJECT_DIR from hookData.cwd for correct project isolation
-  if (hookData.cwd && !process.env.PROJECT_DIR) {
-    process.env.PROJECT_DIR = hookData.cwd;
-  }
+  // CLAUDE_PROJECT_DIR (set by Claude Code) is the authoritative project root.
+  // Do NOT use hookData.cwd — it changes when Bash cd's to subdirectories.
   const sessionId = hookData.session_id || null;
   const sessionId8 = sessionId ? sessionId.substring(0, 8) : null;
 
@@ -184,10 +189,7 @@ async function check() {
 
 async function final() {
   const hookData = await readStdin();
-  // Set PROJECT_DIR from hookData.cwd for correct project isolation
-  if (hookData.cwd && !process.env.PROJECT_DIR) {
-    process.env.PROJECT_DIR = hookData.cwd;
-  }
+  // CLAUDE_PROJECT_DIR (set by Claude Code) is the authoritative project root.
   const sessionId = hookData.session_id || null;
   const sessionId8 = sessionId ? sessionId.substring(0, 8) : null;
   const projectDir = getProjectDir().replace(/\\/g, '/');
