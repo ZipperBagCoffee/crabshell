@@ -176,9 +176,15 @@ function ensureAutoMemoryWarning(projectDir) {
   }
 }
 
-const POST_COMPACT_WARNING = `
+function getPostCompactWarning(projectDir) {
+  return `
 ## [POST-COMPACTION WARNING]
 Context was just compacted. Your compressed memory has CONTINUATION BIAS toward previous tasks.
+
+**PROJECT ROOT ANCHOR: ${projectDir}**
+- This is your project root. ALL file paths are relative to this directory.
+- Do NOT assume you are in a subdirectory. Do NOT cd to subdirectories unless the user explicitly asks.
+- If your compressed context mentions a subdirectory, you are NOT in it — you are in the project root above.
 
 **MANDATORY RECOVERY PROTOCOL:**
 1. STOP. Do NOT continue previous work automatically.
@@ -190,6 +196,7 @@ Context was just compacted. Your compressed memory has CONTINUATION BIAS toward 
 That feeling is the bias. The user may have moved on. CLAUDE.md rules still apply.
 Completion drive after compaction = the #1 cause of rule violations.
 `;
+}
 
 const MEMORY_TAIL_LINES = 50;
 
@@ -313,7 +320,7 @@ function loadMemory(stdinData) {
   if (sections.length > 0) {
     console.log('\n=== Memory Keeper: ' + projectName + ' ===\n');
     if (source === 'compact') {
-      console.log(POST_COMPACT_WARNING);
+      console.log(getPostCompactWarning(projectDir));
     }
     console.log(sections.join('\n\n---\n\n'));
     console.log(CLAUDE_RULES);
@@ -321,7 +328,7 @@ function loadMemory(stdinData) {
   } else {
     console.log('\n--- Memory Keeper: No memory for ' + projectName + ' ---\n');
     if (source === 'compact') {
-      console.log(POST_COMPACT_WARNING);
+      console.log(getPostCompactWarning(projectDir));
     }
     console.log(CLAUDE_RULES);
   }

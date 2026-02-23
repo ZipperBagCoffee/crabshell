@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// test-cwd-isolation.js — Mock tests for project root isolation (v17.1.0)
+// test-cwd-isolation.js — Mock tests for project root isolation (v17.2.0)
 // Verifies CLAUDE_PROJECT_DIR takes priority, hookData.cwd is NOT used
 
 const path = require('path');
@@ -207,6 +207,52 @@ test('OtherProject and OtherProject encode differently', () => {
   const parent = encodeProjectPath('C:\\Users\\user\\Documents\\OtherProject');
   const child = encodeProjectPath('C:\\Users\\user\\Documents\\OtherProject\\OtherProject');
   assert.notStrictEqual(parent, child, 'Parent and child should have different encodings');
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Test Suite 8: Project root anchor in POST_COMPACT_WARNING
+// ═══════════════════════════════════════════════════════════════
+console.log('\n=== Test Suite 8: Project root anchor in POST_COMPACT_WARNING ===');
+
+test('load-memory.js has getPostCompactWarning function', () => {
+  const source = fs.readFileSync(path.join(__dirname, 'load-memory.js'), 'utf8');
+  assert.ok(source.includes('function getPostCompactWarning(projectDir)'),
+    'Should have dynamic getPostCompactWarning function');
+});
+
+test('POST_COMPACT_WARNING includes PROJECT ROOT ANCHOR', () => {
+  const source = fs.readFileSync(path.join(__dirname, 'load-memory.js'), 'utf8');
+  assert.ok(source.includes('PROJECT ROOT ANCHOR'),
+    'Should include project root anchor text');
+});
+
+test('POST_COMPACT_WARNING warns against subdirectory assumption', () => {
+  const source = fs.readFileSync(path.join(__dirname, 'load-memory.js'), 'utf8');
+  assert.ok(source.includes('Do NOT assume you are in a subdirectory'),
+    'Should warn against subdirectory assumption');
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Test Suite 9: Project root anchor in inject-rules.js
+// ═══════════════════════════════════════════════════════════════
+console.log('\n=== Test Suite 9: Project root anchor in inject-rules.js ===');
+
+test('inject-rules.js includes Project Root Anchor in context', () => {
+  const source = fs.readFileSync(path.join(__dirname, 'inject-rules.js'), 'utf8');
+  assert.ok(source.includes('Project Root Anchor'),
+    'Should include project root anchor in additionalContext');
+});
+
+test('inject-rules.js injects projectDir into context', () => {
+  const source = fs.readFileSync(path.join(__dirname, 'inject-rules.js'), 'utf8');
+  assert.ok(source.includes('${projectDir}'),
+    'Should inject actual project directory path');
+});
+
+test('inject-rules.js warns against cd to subdirectory', () => {
+  const source = fs.readFileSync(path.join(__dirname, 'inject-rules.js'), 'utf8');
+  assert.ok(source.includes('Do NOT cd to or assume you are in a subdirectory'),
+    'Should warn against subdirectory cd');
 });
 
 // ═══════════════════════════════════════════════════════════════

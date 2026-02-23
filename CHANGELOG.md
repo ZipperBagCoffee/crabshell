@@ -1,5 +1,11 @@
 # Changelog
 
+## v17.2.0 (2026-02-23)
+- **feat**: Project root anchor injection — prevents Claude from losing directory awareness after compaction
+- **feat**: `load-memory.js` `getPostCompactWarning()` now includes `PROJECT ROOT ANCHOR` with actual project directory path, warns against subdirectory assumptions
+- **feat**: `inject-rules.js` injects `Project Root Anchor` with `projectDir` into every UserPromptSubmit `additionalContext`, continuously reinforcing correct project root
+- **test**: Added test suites 8-9 (6 new tests, 27 total) covering project root anchor in both load-memory.js and inject-rules.js
+
 ## v17.0.0 (2026-02-22)
 - **fix**: Central cwd isolation via hook-runner.js v2 — reads stdin, sets `PROJECT_DIR` from `hookData.cwd` before delegating to child scripts. Eliminates all cross-project counter contamination when Bash tool changes working directory
 - **fix**: `counter.js` `check()` and `final()` set `PROJECT_DIR` from `hookData.cwd` (double safety with hook-runner.js)
