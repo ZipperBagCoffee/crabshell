@@ -181,10 +181,11 @@ function getPostCompactWarning(projectDir) {
 ## [POST-COMPACTION WARNING]
 Context was just compacted. Your compressed memory has CONTINUATION BIAS toward previous tasks.
 
-**PROJECT ROOT ANCHOR: ${projectDir}**
-- This is your project root. ALL file paths are relative to this directory.
-- Do NOT assume you are in a subdirectory. Do NOT cd to subdirectories unless the user explicitly asks.
-- If your compressed context mentions a subdirectory, you are NOT in it — you are in the project root above.
+**PROJECT ROOT ANCHOR (OVERRIDES Primary working directory): ${projectDir}**
+- If "Primary working directory" shows a subdirectory of this path, it is WRONG (known Claude Code bug #7442 after compaction).
+- Trust THIS anchor. This value comes from CLAUDE_PROJECT_DIR set at launch — it never changes.
+- You are in \`${projectDir}\`, NOT in any subdirectory. ALL file paths are relative to this directory.
+- When asked to read CLAUDE.md → read \`${projectDir}/CLAUDE.md\`.
 
 **MANDATORY RECOVERY PROTOCOL:**
 1. STOP. Do NOT continue previous work automatically.

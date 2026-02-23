@@ -1,5 +1,9 @@
 # Changelog
 
+## v17.3.0 (2026-02-23)
+- **fix**: Anchor text now explicitly states "OVERRIDES Primary working directory" — Claude was ignoring the anchor because it trusted its system prompt's Primary working directory (which becomes wrong after compaction)
+- **fix**: Both POST_COMPACT_WARNING and UserPromptSubmit anchor now reference the known bug (#7442), explain CLAUDE_PROJECT_DIR never changes, and instruct Claude to read CLAUDE.md from the anchor path
+
 ## v17.2.0 (2026-02-23)
 - **feat**: Project root anchor injection — prevents Claude from losing directory awareness after compaction
 - **feat**: `load-memory.js` `getPostCompactWarning()` now includes `PROJECT ROOT ANCHOR` with actual project directory path, warns against subdirectory assumptions

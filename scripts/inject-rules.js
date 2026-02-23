@@ -207,7 +207,7 @@ function main() {
 
       // Build context: rules + project root anchor + optional instructions
       let context = RULES;
-      context += `\n## Project Root Anchor\nYour project root is: \`${projectDir}\`\n- ALL file operations use this as base directory.\n- Do NOT cd to or assume you are in a subdirectory unless the user explicitly asks.\n`;
+      context += `\n## Project Root Anchor (OVERRIDES Primary working directory)\nYour ACTUAL project root is: \`${projectDir}\`\n- If "Primary working directory" in your environment shows a SUBDIRECTORY of this path, it is WRONG. This is a known Claude Code bug after compaction (GitHub #7442).\n- Trust THIS anchor over Primary working directory. This value comes from CLAUDE_PROJECT_DIR which Claude Code sets at launch and never changes.\n- ALL file operations (Read, Edit, Write, Glob, Grep) use this as base directory.\n- When user says "read CLAUDE.md" → read \`${projectDir}/CLAUDE.md\`, not a subdirectory's.\n`;
       if (hasPendingDelta) {
         context += DELTA_INSTRUCTION;
       }

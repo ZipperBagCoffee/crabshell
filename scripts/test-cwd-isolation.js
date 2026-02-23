@@ -226,10 +226,10 @@ test('POST_COMPACT_WARNING includes PROJECT ROOT ANCHOR', () => {
     'Should include project root anchor text');
 });
 
-test('POST_COMPACT_WARNING warns against subdirectory assumption', () => {
+test('POST_COMPACT_WARNING explicitly overrides Primary working directory', () => {
   const source = fs.readFileSync(path.join(__dirname, 'load-memory.js'), 'utf8');
-  assert.ok(source.includes('Do NOT assume you are in a subdirectory'),
-    'Should warn against subdirectory assumption');
+  assert.ok(source.includes('OVERRIDES Primary working directory'),
+    'Should explicitly state it overrides Primary working directory');
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -249,10 +249,10 @@ test('inject-rules.js injects projectDir into context', () => {
     'Should inject actual project directory path');
 });
 
-test('inject-rules.js warns against cd to subdirectory', () => {
+test('inject-rules.js explicitly overrides Primary working directory', () => {
   const source = fs.readFileSync(path.join(__dirname, 'inject-rules.js'), 'utf8');
-  assert.ok(source.includes('Do NOT cd to or assume you are in a subdirectory'),
-    'Should warn against subdirectory cd');
+  assert.ok(source.includes('OVERRIDES Primary working directory'),
+    'Should explicitly state it overrides Primary working directory');
 });
 
 // ═══════════════════════════════════════════════════════════════
