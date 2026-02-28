@@ -3,6 +3,10 @@ description: Clear old session memories (keeps recent ones)
 allowed-tools: Bash
 ---
 
+## Node.js Path
+Use the Node.js absolute path from your context's "Node.js Path" section (injected by the plugin on every prompt).
+If not available in context, fall back to `node`.
+
 ## Script Path Resolution
 
 **IMPORTANT:** The `scripts/` folder is in the plugin directory, NOT the current project.
@@ -22,7 +26,7 @@ Based on $ARGUMENTS:
 
 For "old" option (compress 30+ day files):
 ```bash
-node "{PLUGIN_PATH}/scripts/counter.js" compress
+"{NODE_PATH}" "{PLUGIN_PATH}/scripts/counter.js" compress
 ```
 
 For "all" option (DESTRUCTIVE - ask confirmation first):

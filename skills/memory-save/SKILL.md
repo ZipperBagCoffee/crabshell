@@ -3,6 +3,10 @@ name: memory-save
 description: Execute when you see "[MEMORY_KEEPER]" in hook output. Follow the numbered steps exactly to save session memory.
 ---
 
+## Node.js Path
+Use the Node.js absolute path from your context's "Node.js Path" section (injected by the plugin on every prompt).
+If not available in context, fall back to `node`.
+
 ## Script Path Resolution
 
 **IMPORTANT:** The `scripts/` folder is in the plugin directory, NOT the current project.
@@ -52,16 +56,16 @@ printf '\n## %s\n%s\n' "$(date +%Y-%m-%d_%H%M)" "[1-2 sentence summary]" >> ".cl
 
 Additional step (use full path from above):
 ```bash
-node "{SCRIPTS_PATH}/counter.js" compress
+"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" compress
 ```
 
 ## Optional: Update Hierarchical Memory
 
 If major project understanding changed, update stable memory files (use full path):
 ```bash
-node "{SCRIPTS_PATH}/counter.js" memory-set project "Updated project description..."
-node "{SCRIPTS_PATH}/counter.js" memory-set architecture "Updated architecture..."
-node "{SCRIPTS_PATH}/counter.js" memory-set conventions "Updated conventions..."
+"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" memory-set project "Updated project description..."
+"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" memory-set architecture "Updated architecture..."
+"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" memory-set conventions "Updated conventions..."
 ```
 
 **When to update:**
@@ -71,8 +75,8 @@ node "{SCRIPTS_PATH}/counter.js" memory-set conventions "Updated conventions..."
 
 **View current memory:**
 ```bash
-node "{SCRIPTS_PATH}/counter.js" memory-list
-node "{SCRIPTS_PATH}/counter.js" memory-get project
+"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" memory-list
+"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" memory-get project
 ```
 
 ## Critical

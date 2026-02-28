@@ -1,5 +1,16 @@
 # Changelog
 
+## v18.0.0 (2026-02-28)
+- **fix**: All hook commands used bare `node` which fails on Windows Git Bash when Node.js is not in PATH — plugin was completely non-functional on affected systems
+- **feat**: New `scripts/find-node.sh` — cross-platform Node.js locator with 6-stage fallback (NODE_BIN env, PATH, Windows paths, nvm/volta/fnm, Homebrew, Linux paths), uses `exec` for zero-overhead stdin passthrough
+- **fix**: `hooks/hooks.json` — all 4 hooks changed from `node "..."` to `bash "...find-node.sh" "..."`, solving the bootstrap chicken-and-egg problem
+- **fix**: `ensureGlobalHooks()` in `load-memory.js` — uses `process.execPath` instead of bare `node`, prevents settings.json hooks from being overwritten back to bare `node` on every SessionStart
+- **fix**: `inject-rules.js` — injects absolute Node.js path into `additionalContext` so Claude can use it in Bash commands
+- **fix**: `counter.js` instruction template — uses `process.execPath` instead of bare `node`
+- **change**: SKILL.md (5 files) and commands/*.md (3 files) — `node` replaced with `{NODE_PATH}` placeholder resolved from context
+- **change**: HOOK_RUNNER_CODE updated to v4 — `process.argv[0]` uses `process.execPath`
+- **chore**: `docs/internal/` created for feedback/tickets/plans (gitignored), public docs (ARCHITECTURE.md, USER-MANUAL.md) remain in `docs/`
+
 ## v17.3.0 (2026-02-23)
 - **fix**: Anchor text now explicitly states "OVERRIDES Primary working directory" — Claude was ignoring the anchor because it trusted its system prompt's Primary working directory (which becomes wrong after compaction)
 - **fix**: Both POST_COMPACT_WARNING and UserPromptSubmit anchor now reference the known bug (#7442), explain CLAUDE_PROJECT_DIR never changes, and instruct Claude to read CLAUDE.md from the anchor path

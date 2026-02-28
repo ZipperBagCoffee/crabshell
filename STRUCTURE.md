@@ -84,6 +84,12 @@ memory-keeper-plugin/
 
 ## Core Scripts
 
+### scripts/find-node.sh
+Cross-platform Node.js locator for hook commands:
+- 6-stage fallback: NODE_BIN env → PATH → Windows paths → nvm/volta/fnm → Homebrew → Linux paths
+- Uses `exec` for zero-overhead stdin passthrough to Node.js
+- Referenced by hooks/hooks.json for all hook commands
+
 ### scripts/counter.js
 Main automation engine with commands:
 - `check`: Increment counter, create/update L1 + trigger save at threshold, check rotation
@@ -122,7 +128,7 @@ Session start loader:
 - Load hierarchical memory files
 - Load L3 summaries
 - Load rolling memory tail
-- `ensureGlobalHooks()`: Register hooks in settings.json with stable hook-runner.js (workaround for plugin hook bug)
+- `ensureGlobalHooks()`: Register hooks in settings.json with stable hook-runner.js using `process.execPath` for absolute node path (workaround for plugin hook bug)
 - `ensureAutoMemoryWarning()`: Write distinction warning to Claude Code's built-in MEMORY.md
 
 ### scripts/inject-rules.js

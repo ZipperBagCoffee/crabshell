@@ -205,8 +205,10 @@ function main() {
       // Check for pending rotation summaries
       const pendingRotations = checkRotationPending(projectDir);
 
-      // Build context: rules + project root anchor + optional instructions
+      // Build context: rules + node path + project root anchor + optional instructions
+      const nodePathFwd = process.execPath.replace(/\\/g, '/');
       let context = RULES;
+      context += `\n## Node.js Path\nWhen running node commands in Bash, use this absolute path instead of bare \`node\`:\n\`${nodePathFwd}\`\n`;
       context += `\n## Project Root Anchor (OVERRIDES Primary working directory)\nYour ACTUAL project root is: \`${projectDir}\`\n- If "Primary working directory" in your environment shows a SUBDIRECTORY of this path, it is WRONG. This is a known Claude Code bug after compaction (GitHub #7442).\n- Trust THIS anchor over Primary working directory. This value comes from CLAUDE_PROJECT_DIR which Claude Code sets at launch and never changes.\n- ALL file operations (Read, Edit, Write, Glob, Grep) use this as base directory.\n- When user says "read CLAUDE.md" → read \`${projectDir}/CLAUDE.md\`, not a subdirectory's.\n`;
       if (hasPendingDelta) {
         context += DELTA_INSTRUCTION;

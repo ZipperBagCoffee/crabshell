@@ -3,6 +3,10 @@ name: load-memory
 description: Reload memory context from files
 ---
 
+## Node.js Path
+Use the Node.js absolute path from your context's "Node.js Path" section (injected by the plugin on every prompt).
+If not available in context, fall back to `node`.
+
 ## Script Path Resolution
 
 **IMPORTANT:** The `scripts/` folder is in the plugin directory, NOT the current project.
@@ -31,7 +35,7 @@ Reload memory context into current session.
 
 Run the load-memory script (use full path from above):
 ```bash
-node "{SCRIPTS_PATH}/load-memory.js"
+"{NODE_PATH}" "{SCRIPTS_PATH}/load-memory.js"
 ```
 
 This will output the current memory state to context:

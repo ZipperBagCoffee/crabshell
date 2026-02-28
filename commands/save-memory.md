@@ -3,6 +3,10 @@ description: Manually save current session context to memory
 allowed-tools: Bash, Read, Write
 ---
 
+## Node.js Path
+Use the Node.js absolute path from your context's "Node.js Path" section (injected by the plugin on every prompt).
+If not available in context, fall back to `node`.
+
 ## Script Path Resolution
 
 **IMPORTANT:** The `scripts/` folder is in the plugin directory, NOT the current project.
@@ -18,7 +22,7 @@ Use the full path when running node commands.
 
 Trigger auto-save:
 ```bash
-node "{PLUGIN_PATH}/scripts/counter.js" check
+"{NODE_PATH}" "{PLUGIN_PATH}/scripts/counter.js" check
 ```
 
 ## Manual Save
