@@ -3,6 +3,10 @@ name: memory-delta
 description: Auto-execute when "[MEMORY_KEEPER_DELTA]" trigger detected
 ---
 
+## Node.js Path
+Use the Node.js absolute path from your context's "Node.js Path" section (injected by the plugin on every prompt).
+If not available in context, fall back to `node`.
+
 ## Script Path Resolution
 
 **IMPORTANT:** The `scripts/` folder is in the plugin directory, NOT the current project.
@@ -62,12 +66,12 @@ If you see `[MEMORY_KEEPER_DELTA]` anywhere in your context, execute this skill 
 
 5. **Update timestamp marker** (use full path from above):
    ```bash
-   node "{SCRIPTS_PATH}/extract-delta.js" mark-updated
+   "{NODE_PATH}" "{SCRIPTS_PATH}/extract-delta.js" mark-updated
    ```
 
 6. **Delete temp file** (use full path from above):
    ```bash
-   node "{SCRIPTS_PATH}/extract-delta.js" cleanup
+   "{NODE_PATH}" "{SCRIPTS_PATH}/extract-delta.js" cleanup
    ```
 
 ## Failure Handling

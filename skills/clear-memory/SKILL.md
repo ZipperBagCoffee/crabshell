@@ -3,6 +3,10 @@ name: clear-memory
 description: Clean up old memory files
 ---
 
+## Node.js Path
+Use the Node.js absolute path from your context's "Node.js Path" section (injected by the plugin on every prompt).
+If not available in context, fall back to `node`.
+
 ## Script Path Resolution
 
 **IMPORTANT:** The `scripts/` folder is in the plugin directory, NOT the current project.
@@ -32,7 +36,7 @@ Clean up old session files.
 ### Archive old files (recommended):
 Use full path from above:
 ```bash
-node "{SCRIPTS_PATH}/counter.js" compress
+"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" compress
 ```
 
 This archives session files older than 30 days into monthly archives:

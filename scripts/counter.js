@@ -279,6 +279,7 @@ async function final() {
   }
 
   const scriptPath = process.argv[1].replace(/\\/g, '/');
+  const nodePath = process.execPath.replace(/\\/g, '/');
   const config = getConfig();
 
   // Process any remaining delta before session ends (pass sessionId for isolation)
@@ -321,7 +322,7 @@ printf '\\n## %s (Session End)\\n%s\\n' "${timestamp}" "[Complete session summar
 
 **RUN compression:**
 \`\`\`bash
-node "${scriptPath}" compress
+"${nodePath}" "${scriptPath}" compress
 \`\`\`
 
 ═══════════════════════════════════════════════════════════════`;
