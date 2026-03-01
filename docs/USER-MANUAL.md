@@ -217,4 +217,5 @@ When you notice repeated patterns (2+ times), propose a lesson:
 
 | Version | Claude Code | Node.js |
 |---------|-------------|---------|
-| 13.9.x | 1.0+ | 18+ |
+| 18.0.0 | 1.0+ | 18+ |
+| 13.9.x–17.x | 1.0+ | 18+ |

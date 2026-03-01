@@ -192,6 +192,10 @@ Coding conventions: ...
 
 | Version | Changes |
 |---------|---------|
+| 18.0.0 | Fix: bare `node` PATH failure on Windows Git Bash — find-node.sh cross-platform locator, process.execPath in ensureGlobalHooks, {NODE_PATH} placeholders |
+| 17.3.0 | Fix: anchor explicitly overrides Primary working directory |
+| 17.2.0 | Feat: project root anchor injection — prevent directory loss after compaction |
+| 17.1.0 | Fix: use CLAUDE_PROJECT_DIR instead of hookData.cwd for project root |
 | 17.0.0 | Fix: Central cwd isolation via hook-runner.js v2 — prevents cross-project counter contamination |
 | 16.0.x | Fix: Session isolation, writeJson EPERM fallback, walk-up removal, async check() |
 | 15.4.0 | Change: MIN_DELTA_SIZE 40KB → 10KB |
