@@ -21,6 +21,14 @@ Example:
 
 Use this full path when running node commands below.
 
+## Project Root Resolution
+
+**IMPORTANT:** Get the project root from your context's "Project Root Anchor" section.
+Look for: `Your ACTUAL project root is: <path>`
+
+Use this value as `{PROJECT_DIR}` in all commands below.
+If not available in context, use your current working directory.
+
 ## Trigger Condition
 
 Auto-invoked when EITHER:
@@ -33,19 +41,19 @@ If you see `[MEMORY_KEEPER_DELTA]` anywhere in your context, execute this skill 
 
 1. **Verify file exists first** (DO NOT SKIP):
    ```bash
-   cat .claude/memory/delta_temp.txt | head -5
+   cat "{PROJECT_DIR}/.claude/memory/delta_temp.txt" | head -5
    ```
    If file not found or empty, STOP HERE - do not proceed.
 
 2. **Call Haiku agent for summarization**:
-   Use **absolute path** (get from pwd):
+   Use **absolute path** from Project Root Resolution:
    ```
    Task tool:
    - subagent_type: "memory-keeper:delta-summarizer"
    - model: "haiku"
-   - prompt: "Read {PWD}/.claude/memory/delta_temp.txt and summarize (1 sentence per ~200 words)."
+   - prompt: "Read {PROJECT_DIR}/.claude/memory/delta_temp.txt and summarize (1 sentence per ~200 words)."
    ```
-   Replace {PWD} with the actual current working directory (absolute path).
+   Replace {PROJECT_DIR} with the actual project root (absolute path).
 
 3. **Validate Haiku response**:
    - If response starts with "ERROR:" → STOP, do not proceed
@@ -55,7 +63,7 @@ If you see `[MEMORY_KEEPER_DELTA]` anywhere in your context, execute this skill 
 4. **Append summary to memory.md with dual timestamps**:
    Run this single command (replace {SUMMARY} with Haiku's response):
    ```bash
-   TS_UTC=$(date -u +%Y-%m-%d_%H%M) && TS_LOCAL=$(date +%m-%d_%H%M) && printf '\n## %s (local %s)\n%s\n' "$TS_UTC" "$TS_LOCAL" "{SUMMARY}" >> .claude/memory/memory.md
+   TS_UTC=$(date -u +%Y-%m-%d_%H%M) && TS_LOCAL=$(date +%m-%d_%H%M) && printf '\n## %s (local %s)\n%s\n' "$TS_UTC" "$TS_LOCAL" "{SUMMARY}" >> "{PROJECT_DIR}/.claude/memory/memory.md"
    ```
 
    **WARNING: Do NOT modify this command. Copy EXACTLY as written.**
@@ -66,12 +74,12 @@ If you see `[MEMORY_KEEPER_DELTA]` anywhere in your context, execute this skill 
 
 5. **Update timestamp marker** (use full path from above):
    ```bash
-   "{NODE_PATH}" "{SCRIPTS_PATH}/extract-delta.js" mark-updated
+   "{NODE_PATH}" "{SCRIPTS_PATH}/extract-delta.js" mark-updated --project-dir="{PROJECT_DIR}"
    ```
 
 6. **Delete temp file** (use full path from above):
    ```bash
-   "{NODE_PATH}" "{SCRIPTS_PATH}/extract-delta.js" cleanup
+   "{NODE_PATH}" "{SCRIPTS_PATH}/extract-delta.js" cleanup --project-dir="{PROJECT_DIR}"
    ```
 
 ## Failure Handling

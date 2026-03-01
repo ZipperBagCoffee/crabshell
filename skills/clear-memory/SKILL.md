@@ -21,6 +21,14 @@ Example:
 
 Use this full path when running node commands below.
 
+## Project Root Resolution
+
+**IMPORTANT:** Get the project root from your context's "Project Root Anchor" section.
+Look for: `Your ACTUAL project root is: <path>`
+
+Use this value as `{PROJECT_DIR}` in all commands below.
+If not available in context, use your current working directory.
+
 # Clear Memory
 
 Clean up old session files.
@@ -36,7 +44,7 @@ Clean up old session files.
 ### Archive old files (recommended):
 Use full path from above:
 ```bash
-"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" compress
+"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" compress --project-dir="{PROJECT_DIR}"
 ```
 
 This archives session files older than 30 days into monthly archives:
@@ -50,11 +58,11 @@ sessions/2025-10-15_0300.md -> sessions/archive/2025-10.md
 
 ```bash
 # Remove all session files
-rm -rf .claude/memory/sessions/*.md
-rm -rf .claude/memory/sessions/*.jsonl
+rm -rf "{PROJECT_DIR}/.claude/memory/sessions/"*.md
+rm -rf "{PROJECT_DIR}/.claude/memory/sessions/"*.jsonl
 
 # Optionally clear memory.md
-rm .claude/memory/memory.md
+rm "{PROJECT_DIR}/.claude/memory/memory.md"
 ```
 
 ## Recommendations

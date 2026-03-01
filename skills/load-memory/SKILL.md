@@ -21,6 +21,14 @@ Example:
 
 Use this full path when running node commands below.
 
+## Project Root Resolution
+
+**IMPORTANT:** Get the project root from your context's "Project Root Anchor" section.
+Look for: `Your ACTUAL project root is: <path>`
+
+Use this value as `{PROJECT_DIR}` in all commands below.
+If not available in context, use your current working directory.
+
 # Load Memory
 
 Reload memory context into current session.
@@ -35,7 +43,7 @@ Reload memory context into current session.
 
 Run the load-memory script (use full path from above):
 ```bash
-"{NODE_PATH}" "{SCRIPTS_PATH}/load-memory.js"
+"{NODE_PATH}" "{SCRIPTS_PATH}/load-memory.js" --project-dir="{PROJECT_DIR}"
 ```
 
 This will output the current memory state to context:

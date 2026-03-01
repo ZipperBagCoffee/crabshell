@@ -199,6 +199,7 @@ Save to *.summary.json
 
 | Version | Key Changes |
 |---------|-------------|
+| 18.1.0 | Fix: `CLAUDE_PROJECT_DIR` not propagated to Bash tool — `--project-dir` CLI arg for extract-delta.js/counter.js/load-memory.js, absolute paths and Project Root Resolution in all 6 skills |
 | 18.0.0 | Fix: bare `node` PATH failure on Windows Git Bash — find-node.sh cross-platform locator, process.execPath in ensureGlobalHooks, {NODE_PATH} placeholders in skills/commands |
 | 17.3.0 | Fix: anchor explicitly overrides Primary working directory |
 | 17.2.0 | Feat: project root anchor injection — prevent directory loss after compaction |

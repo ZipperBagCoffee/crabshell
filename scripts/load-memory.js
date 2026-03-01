@@ -361,6 +361,13 @@ function getUnreflectedL1Content(l1Path, memoryContent) {
   } catch { return null; }
 }
 
+// Support --project-dir=PATH for Bash tool invocations where CLAUDE_PROJECT_DIR is not set
+const pdIdx = process.argv.findIndex(a => a.startsWith('--project-dir='));
+if (pdIdx >= 0) {
+  process.env.CLAUDE_PROJECT_DIR = process.argv[pdIdx].slice('--project-dir='.length);
+  process.argv.splice(pdIdx, 1);
+}
+
 readStdinAsync().then((stdinData) => {
   // CLAUDE_PROJECT_DIR (set by Claude Code) is the authoritative project root.
   // Do NOT use stdinData.cwd — it changes when Bash cd's to subdirectories.

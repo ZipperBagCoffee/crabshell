@@ -1,5 +1,11 @@
 # Changelog
 
+## v18.1.0 (2026-03-01)
+- **fix**: `CLAUDE_PROJECT_DIR` not available in Bash tool environment — skills invoking scripts via Bash used `process.cwd()` fallback which breaks when Claude cd's into subdirectories (recurring bug since v16.0.0, never fixed for Bash path)
+- **feat**: `--project-dir=PATH` CLI argument added to `extract-delta.js`, `counter.js`, `load-memory.js` — sets `CLAUDE_PROJECT_DIR` env var before any `getProjectDir()` call, works in any shell
+- **fix**: All 6 skill files updated with "Project Root Resolution" section and `--project-dir="{PROJECT_DIR}"` in every Bash script invocation
+- **fix**: All skill templates changed from relative paths (`.claude/memory/...`) to absolute paths (`{PROJECT_DIR}/.claude/memory/...`)
+
 ## v18.0.0 (2026-02-28)
 - **fix**: All hook commands used bare `node` which fails on Windows Git Bash when Node.js is not in PATH — plugin was completely non-functional on affected systems
 - **feat**: New `scripts/find-node.sh` — cross-platform Node.js locator with 6-stage fallback (NODE_BIN env, PATH, Windows paths, nvm/volta/fnm, Homebrew, Linux paths), uses `exec` for zero-overhead stdin passthrough

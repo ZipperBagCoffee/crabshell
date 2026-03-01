@@ -21,6 +21,14 @@ Example:
 
 Use this full path when running node commands below.
 
+## Project Root Resolution
+
+**IMPORTANT:** Get the project root from your context's "Project Root Anchor" section.
+Look for: `Your ACTUAL project root is: <path>`
+
+Use this value as `{PROJECT_DIR}` in all commands below.
+If not available in context, use your current working directory.
+
 # Memory Save Skill (v13.1.0)
 
 This skill activates when `[MEMORY_KEEPER]` appears in conversation.
@@ -49,23 +57,23 @@ This skill activates when `[MEMORY_KEEPER]` appears in conversation.
 
 ### Step 1: Save to memory.md
 ```bash
-printf '\n## %s\n%s\n' "$(date +%Y-%m-%d_%H%M)" "[1-2 sentence summary]" >> ".claude/memory/memory.md"
+printf '\n## %s\n%s\n' "$(date +%Y-%m-%d_%H%M)" "[1-2 sentence summary]" >> "{PROJECT_DIR}/.claude/memory/memory.md"
 ```
 
 ## Session End (Stop Hook)
 
 Additional step (use full path from above):
 ```bash
-"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" compress
+"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" compress --project-dir="{PROJECT_DIR}"
 ```
 
 ## Optional: Update Hierarchical Memory
 
 If major project understanding changed, update stable memory files (use full path):
 ```bash
-"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" memory-set project "Updated project description..."
-"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" memory-set architecture "Updated architecture..."
-"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" memory-set conventions "Updated conventions..."
+"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" memory-set project "Updated project description..." --project-dir="{PROJECT_DIR}"
+"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" memory-set architecture "Updated architecture..." --project-dir="{PROJECT_DIR}"
+"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" memory-set conventions "Updated conventions..." --project-dir="{PROJECT_DIR}"
 ```
 
 **When to update:**
@@ -75,8 +83,8 @@ If major project understanding changed, update stable memory files (use full pat
 
 **View current memory:**
 ```bash
-"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" memory-list
-"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" memory-get project
+"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" memory-list --project-dir="{PROJECT_DIR}"
+"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" memory-get project --project-dir="{PROJECT_DIR}"
 ```
 
 ## Critical

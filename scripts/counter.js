@@ -633,6 +633,13 @@ function parseArg(args, key) {
   return null;
 }
 
+// Support --project-dir=PATH for Bash tool invocations where CLAUDE_PROJECT_DIR is not set
+const pdIdx = process.argv.findIndex(a => a.startsWith('--project-dir='));
+if (pdIdx >= 0) {
+  process.env.CLAUDE_PROJECT_DIR = process.argv[pdIdx].slice('--project-dir='.length);
+  process.argv.splice(pdIdx, 1);
+}
+
 // Main - handle async commands
 const command = process.argv[2];
 const args = process.argv.slice(3);

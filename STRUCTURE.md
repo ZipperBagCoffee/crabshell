@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 18.0.0 | **Author**: TaWa | **License**: MIT
+**Version**: 18.1.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -192,6 +192,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 18.1.0 | Fix: `CLAUDE_PROJECT_DIR` not propagated to Bash tool — `--project-dir` CLI arg for scripts, absolute paths in all skills |
 | 18.0.0 | Fix: bare `node` PATH failure on Windows Git Bash — find-node.sh cross-platform locator, process.execPath in ensureGlobalHooks, {NODE_PATH} placeholders |
 | 17.3.0 | Fix: anchor explicitly overrides Primary working directory |
 | 17.2.0 | Feat: project root anchor injection — prevent directory loss after compaction |

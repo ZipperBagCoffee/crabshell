@@ -21,6 +21,14 @@ Example:
 
 Use this full path when running node commands below.
 
+## Project Root Resolution
+
+**IMPORTANT:** Get the project root from your context's "Project Root Anchor" section.
+Look for: `Your ACTUAL project root is: <path>`
+
+Use this value as `{PROJECT_DIR}` in all commands below.
+If not available in context, use your current working directory.
+
 # Search Memory
 
 Search through session history and memory archives.
@@ -36,25 +44,25 @@ Search through session history and memory archives.
 Use full path from above:
 ```bash
 # Search across all memory layers
-"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" search-memory "query"
+"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" search-memory "query" --project-dir="{PROJECT_DIR}"
 
 # Include L1 raw sessions (slower but thorough)
-"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" search-memory "query" --deep
+"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" search-memory "query" --deep --project-dir="{PROJECT_DIR}"
 
 # Filter by type
-"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" search-memory --type=decision
-"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" search-memory --type=theme
-"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" search-memory --type=issue
+"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" search-memory --type=decision --project-dir="{PROJECT_DIR}"
+"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" search-memory --type=theme --project-dir="{PROJECT_DIR}"
+"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" search-memory --type=issue --project-dir="{PROJECT_DIR}"
 ```
 
 ## Examples
 
 ```bash
 # Search all memory layers for "auth"
-"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" search-memory "auth"
+"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" search-memory "auth" --project-dir="{PROJECT_DIR}"
 
 # Deep search including L1 sessions
-"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" search-memory "auth" --deep
+"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" search-memory "auth" --deep --project-dir="{PROJECT_DIR}"
 ```
 
 ## Notes
