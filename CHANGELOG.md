@@ -1,5 +1,10 @@
 # Changelog
 
+## v18.3.0 (2026-03-01)
+- **feat**: Emergency stop keywords (`아시발멈춰` / `BRAINMELT`) — when detected in user input, inject-rules.js replaces entire additionalContext with EMERGENCY_STOP_CONTEXT that halts work, forces Read of CLAUDE.md, and requires line-by-line rule explanation
+- **feat**: stdin reading added to inject-rules.js (async readStdin with HOOK_DATA env fallback)
+- **feat**: Agent utilization rule added to RULES — use Task tool with agents for many/large files
+
 ## v18.2.0 (2026-03-01)
 - **feat**: Added workflow agent enforcement rule to injected rules — "When the workflow specifies Work Agent or Review Agent, you MUST use the Task tool to launch a separate agent"
 

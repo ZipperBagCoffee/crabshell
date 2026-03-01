@@ -3,6 +3,34 @@ const fs = require('fs');
 const path = require('path');
 const { getProjectDir, readJsonOrDefault, readIndexSafe, writeJson } = require('./utils');
 
+// Emergency stop keywords - when detected, replaces entire context with EMERGENCY STOP
+const EMERGENCY_KEYWORDS = ['아시발멈춰', 'BRAINMELT'];
+
+function readStdin(timeoutMs = 1000) {
+  if (process.env.HOOK_DATA) {
+    try { return Promise.resolve(JSON.parse(process.env.HOOK_DATA)); }
+    catch (e) { return Promise.resolve({}); }
+  }
+  return new Promise((resolve) => {
+    let data = '';
+    const timer = setTimeout(() => resolve({}), timeoutMs);
+    process.stdin.setEncoding('utf8');
+    process.stdin.on('data', (chunk) => { data += chunk; });
+    process.stdin.on('end', () => {
+      clearTimeout(timer);
+      try { resolve(JSON.parse(data)); }
+      catch (e) { resolve({}); }
+    });
+    process.stdin.on('error', () => { clearTimeout(timer); resolve({}); });
+    process.stdin.resume();
+  });
+}
+
+function checkEmergencyStop(hookData) {
+  const input = (hookData && hookData.input) || '';
+  return EMERGENCY_KEYWORDS.some(kw => input.includes(kw));
+}
+
 const RULES = `
 ## CRITICAL RULES (Core Principles Alignment)
 
@@ -65,6 +93,22 @@ Watch for: completion drive, confidence w/o reading, pattern matching, efficienc
 - **Workflow:** Follow .claude/workflow/workflow.md for complex tasks. Understanding = Gap closed + Consequences predicted. When the workflow specifies Work Agent or Review Agent, you MUST use the Task tool to launch a separate agent — do not do the agent's job yourself.
 - **Lessons:** Check .claude/lessons/ for project-specific rules. Propose new lessons when patterns repeat 2+ times.
 - **After Compacting or Session Restart:** Read latest memory.md to rebuild context. If understanding feels incomplete → check relevant docs and L1 session files in .claude/memory/sessions/.
+- **Agent utilization:** When dealing with many files or large files, use the Task tool with agents to parallelize work and protect the context window. Don't try to read/process everything yourself.
+`;
+
+const EMERGENCY_STOP_CONTEXT = `
+<EXTREMELY_IMPORTANT>
+[EMERGENCY STOP] The user has triggered an emergency stop. You have been failing to follow your rules.
+
+1. STOP all current work immediately. Do NOT continue your previous task.
+2. Use the Read tool to read CLAUDE.md right now. Actually read the file — do not rely on memory.
+3. Read CLAUDE.md line by line. For EACH rule, explain in your own words what it means and how you violated it in the current session.
+4. After explaining all rules, ask the user: "What did I get wrong? What should I do differently?"
+5. Do NOT apologize. Do NOT make excuses. Demonstrate understanding through explanation.
+6. Memory operations (delta, rotation) may continue normally.
+
+This context REPLACES all normal rules. Your ONLY job right now is steps 1-5.
+</EXTREMELY_IMPORTANT>
 `;
 
 const DELTA_INSTRUCTION = `
@@ -171,12 +215,30 @@ function syncRulesToClaudeMd(projectDir) {
   }
 }
 
-function main() {
+async function main() {
   try {
+    const hookData = await readStdin();
     const projectDir = getProjectDir();
 
     // Auto-sync RULES to CLAUDE.md
     syncRulesToClaudeMd(projectDir);
+
+    // Emergency stop check — replaces entire context
+    if (checkEmergencyStop(hookData)) {
+      const nodePathFwd = process.execPath.replace(/\\/g, '/');
+      let context = EMERGENCY_STOP_CONTEXT;
+      context += `\n## Node.js Path\n\`${nodePathFwd}\`\n`;
+      context += `\n## CLAUDE.md Path\n\`${projectDir}/CLAUDE.md\`\n`;
+      const output = {
+        hookSpecificOutput: {
+          hookEventName: "UserPromptSubmit",
+          additionalContext: context
+        }
+      };
+      console.log(JSON.stringify(output));
+      console.error('[EMERGENCY STOP TRIGGERED]');
+      return;
+    }
 
     const configPath = path.join(projectDir, '.claude', 'memory', 'config.json');
     const config = readJsonOrDefault(configPath, {});
