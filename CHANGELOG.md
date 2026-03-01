@@ -1,5 +1,8 @@
 # Changelog
 
+## v18.2.0 (2026-03-01)
+- **feat**: Added workflow agent enforcement rule to injected rules — "When the workflow specifies Work Agent or Review Agent, you MUST use the Task tool to launch a separate agent"
+
 ## v18.1.0 (2026-03-01)
 - **fix**: `CLAUDE_PROJECT_DIR` not available in Bash tool environment — skills invoking scripts via Bash used `process.cwd()` fallback which breaks when Claude cd's into subdirectories (recurring bug since v16.0.0, never fixed for Bash path)
 - **feat**: `--project-dir=PATH` CLI argument added to `extract-delta.js`, `counter.js`, `load-memory.js` — sets `CLAUDE_PROJECT_DIR` env var before any `getProjectDir()` call, works in any shell

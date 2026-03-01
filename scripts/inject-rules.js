@@ -62,7 +62,7 @@ Watch for: completion drive, confidence w/o reading, pattern matching, efficienc
 ### ADDITIONAL RULES
 - Search internet if unsure.
 - When modifying files not tracked by git, always create a backup (.bak) before making changes.
-- **Workflow:** Follow .claude/workflow/workflow.md for complex tasks. Understanding = Gap closed + Consequences predicted.
+- **Workflow:** Follow .claude/workflow/workflow.md for complex tasks. Understanding = Gap closed + Consequences predicted. When the workflow specifies Work Agent or Review Agent, you MUST use the Task tool to launch a separate agent — do not do the agent's job yourself.
 - **Lessons:** Check .claude/lessons/ for project-specific rules. Propose new lessons when patterns repeat 2+ times.
 - **After Compacting or Session Restart:** Read latest memory.md to rebuild context. If understanding feels incomplete → check relevant docs and L1 session files in .claude/memory/sessions/.
 `;
