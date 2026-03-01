@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 18.3.0 | **Author**: TaWa | **License**: MIT
+**Version**: 18.4.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -192,6 +192,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 18.4.0 | Feat: agent orchestration rules — pairing, cross-talk, orchestrator insight; workflow.md parallel execution |
 | 18.3.0 | Feat: emergency stop keywords — context replacement on trigger, agent utilization rule |
 | 18.2.0 | Feat: workflow agent enforcement rule — must use Task tool for Work/Review Agent phases |
 | 18.1.0 | Fix: `CLAUDE_PROJECT_DIR` not propagated to Bash tool — `--project-dir` CLI arg for scripts, absolute paths in all skills |

@@ -1,5 +1,12 @@
 # Changelog
 
+## v18.4.0 (2026-03-01)
+- **feat**: Agent pairing rule — every Work Agent MUST have a paired Review Agent
+- **feat**: Parallel review cross-talk rule — review agents must cross-reference findings for coherence
+- **feat**: Orchestrator final review rule — must thoughtfully verify all work against user's original request
+- **feat**: Critical stance rule — Review Agents and Orchestrator must maintain skeptical posture by default
+- **feat**: workflow.md updated with Parallel Agent Execution, Context Budget, Review Mindset, Cross-talk Protocol, and 4 new anti-patterns
+
 ## v18.3.0 (2026-03-01)
 - **feat**: Emergency stop keywords (`아시발멈춰` / `BRAINMELT`) — when detected in user input, inject-rules.js replaces entire additionalContext with EMERGENCY_STOP_CONTEXT that halts work, forces Read of CLAUDE.md, and requires line-by-line rule explanation
 - **feat**: stdin reading added to inject-rules.js (async readStdin with HOOK_DATA env fallback)

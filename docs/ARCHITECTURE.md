@@ -199,6 +199,7 @@ Save to *.summary.json
 
 | Version | Key Changes |
 |---------|-------------|
+| 18.4.0 | Feat: agent orchestration rules — pairing, cross-talk, orchestrator insight; workflow.md parallel execution |
 | 18.3.0 | Feat: emergency stop keywords — context replacement on trigger, agent utilization rule |
 | 18.2.0 | Feat: workflow agent enforcement rule — must use Task tool for Work/Review Agent phases |
 | 18.1.0 | Fix: `CLAUDE_PROJECT_DIR` not propagated to Bash tool — `--project-dir` CLI arg for extract-delta.js/counter.js/load-memory.js, absolute paths and Project Root Resolution in all 6 skills |

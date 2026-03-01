@@ -192,6 +192,7 @@ Coding conventions: ...
 
 | Version | Changes |
 |---------|---------|
+| 18.4.0 | Feat: agent orchestration rules — pairing, cross-talk, orchestrator insight; workflow.md parallel execution |
 | 18.3.0 | Feat: emergency stop keywords (아시발멈춰/BRAINMELT) — context replacement + agent utilization rule |
 | 18.2.0 | Feat: workflow agent enforcement rule — must use Task tool for Work/Review Agent phases |
 | 18.1.0 | Fix: `CLAUDE_PROJECT_DIR` not propagated to Bash tool — `--project-dir` CLI arg for scripts, absolute paths in all skills |
