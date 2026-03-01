@@ -12,8 +12,8 @@ Memory Keeper is a Claude Code plugin that automatically saves session context u
 +---------------------------------------------------------------------+
 |  Hooks                                                               |
 |  +--------------+  +------------------+  +--------------+  +------+ |
-|  | SessionStart |  | UserPromptSubmit |  | PostToolUse  |  | Stop | |
-|  | load-memory  |  |  inject-rules    |  |   counter    |  |counter|
+|  | SessionStart |  | UserPromptSubmit |  | PostToolUse  |  |SessionEnd| |
+|  | load-memory  |  |  inject-rules    |  |   counter    |  | counter  |
 |  +------+-------+  +--------+---------+  +------+-------+  +--+---+ |
 +---------+------------------+-----------------+----------------+-----+
           |                  |                 |                |
@@ -36,7 +36,11 @@ Memory Keeper is a Claude Code plugin that automatically saves session context u
 |  | - extractDelta |  | - Detect pending delta → INSTRUCTION     |   |
 |  | - cleanup      |  | - Detect pending rotation → INSTRUCTION  |   |
 |  +----------------+  +------------------------------------------+   |
-|  +----------------+                                                  |
+|  +----------------+  +------------------------------------------+   |
+|  | find-node.sh   |  | Cross-platform Node.js locator (v18)     |   |
+|  | - 6-stage      |  | - Used by hooks.json for bootstrap       |   |
+|  |   fallback     |  | - exec for stdin passthrough             |   |
+|  +----------------+  +------------------------------------------+   |
 |                      +----------------+  +----------------------+    |
 |  +----------------+  | search.js      |  | memory-rotation.js   |    |
 |  | constants.js   |  | - L1/L2/L3     |  | - checkAndRotate     |    |
@@ -195,6 +199,10 @@ Save to *.summary.json
 
 | Version | Key Changes |
 |---------|-------------|
+| 18.0.0 | Fix: bare `node` PATH failure on Windows Git Bash — find-node.sh cross-platform locator, process.execPath in ensureGlobalHooks, {NODE_PATH} placeholders in skills/commands |
+| 17.3.0 | Fix: anchor explicitly overrides Primary working directory |
+| 17.2.0 | Feat: project root anchor injection — prevent directory loss after compaction |
+| 17.1.0 | Fix: use CLAUDE_PROJECT_DIR instead of hookData.cwd for project root |
 | 17.0.0 | Fix: Central cwd isolation via hook-runner.js v2 (reads stdin, sets PROJECT_DIR from hookData.cwd), final() session isolation, CONFIG_PATH dynamic, regex parser compatibility, 20 mock tests |
 | 16.0.x | Fix: writeJson() Windows EPERM fallback, getProjectDir walk-up removal, session-aware delta extraction, conditional delta_temp.txt preservation, async check() with session_id |
 | 15.4.0 | Change: MIN_DELTA_SIZE 40KB → 10KB |

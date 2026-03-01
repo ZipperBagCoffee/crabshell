@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 17.0.0 | **Author**: TaWa | **License**: MIT
+**Version**: 18.0.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -43,6 +43,7 @@ memory-keeper-plugin/
 │   └── run-hook.cmd                  # Windows hook execution wrapper
 │
 ├── scripts/                          # Core implementation (Node.js)
+│   ├── find-node.sh                  # Cross-platform Node.js locator (v18.0.0)
 │   ├── counter.js                    # Main engine
 │   ├── load-memory.js                # Load memory on session start
 │   ├── inject-rules.js               # UserPromptSubmit rules injection
@@ -191,6 +192,10 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 18.0.0 | Fix: bare `node` PATH failure on Windows Git Bash — find-node.sh cross-platform locator, process.execPath in ensureGlobalHooks, {NODE_PATH} placeholders |
+| 17.3.0 | Fix: anchor explicitly overrides Primary working directory |
+| 17.2.0 | Feat: project root anchor injection — prevent directory loss after compaction |
+| 17.1.0 | Fix: use CLAUDE_PROJECT_DIR instead of hookData.cwd for project root |
 | 17.0.0 | Fix: Central cwd isolation via hook-runner.js v2, PROJECT_DIR from hookData.cwd, final() session isolation, regex parser compatibility |
 | 16.0.x | Fix: Session-aware delta extraction, async check() with session_id, writeJson EPERM fallback, walk-up removal |
 | 15.4.0 | Change: MIN_DELTA_SIZE 40KB → 10KB |
