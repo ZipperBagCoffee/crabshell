@@ -1,5 +1,13 @@
 # Changelog
 
+## v19.1.0 (2026-03-06)
+- **feat**: Cross-Review as BLOCKING gate — Phase 3.5/6.5/9.5 added to 11-Phase workflow, meta-review cannot proceed without Cross-Review Report when 2+ reviewers ran in parallel
+- **feat**: Cross-Review output format defined — Contested Findings, Blind Spots, Consensus sections with reviewer position table
+- **feat**: Spot-check scaling — 1 reviewer→1, 2-3→2, 4+→3 spot-checks per meta-review phase
+- **feat**: "coherence check" reframed as adversarial cross-examination — reviewers challenge, contradict, and identify blind spots
+- **change**: Anti-pattern #20 strengthened — skipping cross-review explicitly marked as invalid, completion drive called out
+- **change**: inject-rules.js RULES: cross-talk rule replaced with cross-review (BLOCKING) rule including spot-check scaling
+
 ## v19.0.0 (2026-03-06)
 - **feat**: Workflow delivered via skill (`skills/workflow/SKILL.md`) instead of one-time template copy — always latest version from plugin cache
 - **feat**: Lessons management via skill (`skills/lessons/SKILL.md`) — format guidelines always up-to-date

@@ -63,7 +63,7 @@ Every stage: **Work Agent → Review Agent → Orchestrator (Intent Guardian)**
 
 | Role | Mindset |
 |------|---------|
-| **Orchestrator** | Close understanding gap before delegating. Filter reviews through original intent. Spot-check one claim per meta-review. Never aggregate — judge. |
+| **Orchestrator** | Close understanding gap before delegating. Filter reviews through original intent. Spot-check claims (scaled to reviewer count). Run cross-review when 2+ reviewers. Never aggregate — judge. |
 | **Work Agent** | Execute exactly what's specified. If reality differs from plan, STOP and report. No improvisation. |
 | **Review Agent** | Cite specific evidence. Predict behavior, don't just check text existence. PASS/FAIL only. Fresh context, no attachment to the work. |
 
@@ -72,21 +72,24 @@ Every stage: **Work Agent → Review Agent → Orchestrator (Intent Guardian)**
 ## 11-Phase Workflow
 
 ```
-Phase 1:  Understand          → Orchestrator + User
-Phase 2:  Analyze             → Work Agent
-Phase 3:  Review Analysis     → Review Agent
-Phase 4:  Meta-Review         → Orchestrator (Intent Guardian)
+Phase 1:   Understand          → Orchestrator + User
+Phase 2:   Analyze             → Work Agent
+Phase 3:   Review Analysis     → Review Agent(s)
+Phase 3.5: Cross-Review        → Review Agents (BLOCKING, if 2+ reviewers)
+Phase 4:   Meta-Review         → Orchestrator (Intent Guardian)
 
-Phase 5:  Plan                → Work Agent
-Phase 6:  Review Plan         → Review Agent
-Phase 7:  Meta-Review Plan    → Orchestrator + User
-Phase 7.5: Alternative        → Orchestrator (optional)
+Phase 5:   Plan                → Work Agent
+Phase 6:   Review Plan         → Review Agent(s)
+Phase 6.5: Cross-Review        → Review Agents (BLOCKING, if 2+ reviewers)
+Phase 7:   Meta-Review Plan    → Orchestrator + User
+Phase 7.5: Alternative         → Orchestrator (optional)
 
-Phase 8:  Implement           → Work Agent
-Phase 9:  Verify              → Review Agent
-Phase 10: Meta-Verify         → Orchestrator (Intent Guardian)
+Phase 8:   Implement           → Work Agent
+Phase 9:   Verify              → Review Agent(s)
+Phase 9.5: Cross-Review        → Review Agents (BLOCKING, if 2+ reviewers)
+Phase 10:  Meta-Verify         → Orchestrator (Intent Guardian)
 
-Phase 11: Report              → Orchestrator
+Phase 11:  Report              → Orchestrator
 ```
 
 ### Agent Prompt Template (generic)
@@ -133,16 +136,56 @@ Trace call chains, dependencies, state changes, user-visible behavior.
 - Per-item verdict: Claim → Verified YES/NO/PARTIALLY → Issue
 - Overall: COMPLETE / INCOMPLETE (with specific gaps)
 
+### Phase 3.5 / 6.5 / 9.5: Cross-Review (BLOCKING Gate)
+
+**Triggers when 2+ Review Agents ran in parallel.** The next Meta-Review phase CANNOT begin without this step. Single reviewer → skip to Meta-Review.
+
+**Procedure:**
+
+1. Orchestrator collects all review results
+2. Each reviewer receives the OTHER reviewers' findings with instructions:
+   - **Challenge**: conclusions you disagree with — explain why
+   - **Contradict**: findings that conflict with yours — cite evidence
+   - **Blind spots**: what did they miss that you caught, and vice versa?
+3. Each reviewer produces a Cross-Review Response
+4. Orchestrator synthesizes into a **Cross-Review Report** (required input for Meta-Review)
+
+**Cross-Review Report format:**
+
+```
+## Cross-Review Report
+| Finding | R1 | R2 | R3 | Conflict? |
+|---------|----|----|-----|-----------|
+| [item]  | [position + evidence] | [agrees/disagrees + why] | ... | YES/NO |
+
+## Contested Findings
+[Items where reviewers disagree — orchestrator MUST resolve in Meta-Review]
+
+## Blind Spots Identified
+[Items one reviewer caught that others missed — require orchestrator judgment]
+
+## Consensus
+[Items all reviewers agree on — lower scrutiny needed]
+```
+
+"No conflicts found" is a valid but suspicious outcome — orchestrator should verify this isn't lazy cross-review.
+
 ### Phase 4: Meta-Review (Orchestrator as Intent Guardian)
 
+**Input:** Review results + Cross-Review Report (if 2+ reviewers)
+
 1. Did reviewer cite specific evidence (not just "looks correct")?
-2. Spot-check ONE claim — read actual code yourself
-3. Intent alignment: do findings serve user's goal?
-4. **Intent Guardian judgment:**
+2. **Spot-check** — read actual code yourself:
+   - 1 reviewer → minimum 1 spot-check
+   - 2-3 reviewers → minimum 2 (highest-risk + 1 random)
+   - 4+ reviewers → minimum 3
+3. If Cross-Review Report exists: resolve all Contested Findings with your own judgment
+4. Intent alignment: do findings serve user's goal?
+5. **Intent Guardian judgment:**
    - Quality improvement + preserves intent → **accept**
    - Valid concern but fix dilutes intent → **accept concern, reject fix, find alternative**
    - Feedback redirects from user's goal → **override with explanation**
-5. Gap check:
+6. Gap check:
    - Thorough + intent-aligned → proceed to Phase 5
    - Vague or missed obvious gaps → re-launch Review Agent
    - Drifts from intent → accept valid findings, discard drift
@@ -169,11 +212,14 @@ Include regression checks with verification method.
 
 ### Phase 7: Meta-Review Plan (Orchestrator + User)
 
+**Input:** Plan review results + Cross-Review Report (if 2+ reviewers)
+
 1. Count: N gaps → N addressed in review?
-2. Spot-check highest-risk change
-3. Intent preservation: reviewer modifications still achieve user's goal?
-4. Scope drift: plan grown beyond or shrunk below original intent?
-5. Present summary → get user approval before implementing
+2. **Spot-check** (same scaling as Phase 4): verify highest-risk change(s)
+3. If Cross-Review Report exists: resolve all Contested Findings
+4. Intent preservation: reviewer modifications still achieve user's goal?
+5. Scope drift: plan grown beyond or shrunk below original intent?
+6. Present summary → get user approval before implementing
 
 ### Phase 7.5: Alternative Proposal (Optional)
 
@@ -218,12 +264,14 @@ For each criterion:
 
 ### Phase 10: Meta-Verify (Orchestrator as Intent Guardian)
 
+**Input:** Verification results + Cross-Review Report (if 2+ reviewers)
+
 1. Did reviewer predict behavior for each PASS (not just "matches")?
-2. Spot-check highest-risk item — read actual code yourself
-3. If spot-check contradicts reviewer → both verification and implementation suspect
-4. If reviewer gave vague PASS → reject, re-launch with specific instructions
-5. **Final intent check:** does combined result deliver what user wanted? Technically correct but misses the point = failure.
-6. Spot-check is **NON-NEGOTIABLE** — the ONE thing orchestrator must always do
+2. **Spot-check** (same scaling as Phase 4) — read actual code yourself. **NON-NEGOTIABLE.**
+3. If Cross-Review Report exists: resolve all Contested Findings — these are your highest-priority items
+4. If spot-check contradicts reviewer → both verification and implementation suspect
+5. If reviewer gave vague PASS → reject, re-launch with specific instructions
+6. **Final intent check:** does combined result deliver what user wanted? Technically correct but misses the point = failure.
 7. On failure, return to appropriate phase:
    - Implementation wrong → Phase 8
    - Plan was flawed → Phase 5
@@ -254,7 +302,8 @@ Final gap check: "Is this the intended result?"
 | Does | Does NOT |
 |------|----------|
 | Check reviewer cited specific evidence | Re-read all files reviewer read |
-| Spot-check 1-2 claims independently | Verify every single claim |
+| Spot-check claims (scaled to reviewer count) | Verify every single claim |
+| Run cross-review when 2+ reviewers, resolve contested findings | Skip cross-review to save time |
 | Check process quality (rules followed?) | Redo the entire review |
 | Filter review through original intent | Blindly accept reviewer suggestions |
 | Override feedback that drifts from intent | Let reviewers redirect work |
@@ -269,7 +318,7 @@ Final gap check: "Is this the intended result?"
 ```
 Batch 1:
   Work A → Review A ─┐
-  Work B → Review B ─┤── Cross-talk ── Orchestrator (intent check)
+  Work B → Review B ─┤── Cross-Review (BLOCKING) ── Orchestrator (intent check)
   Work C → Review C ─┘
 
 Batch 2 (depends on Batch 1): ...
@@ -295,17 +344,19 @@ If budget exceeds ~80-100K tokens → split further. If room → merge small tas
 
 **Orchestrator assignment:** extract tasks → build dependency graph → group into batches → estimate budget → split or merge.
 
-### Cross-talk Protocol
+### Cross-Review Protocol
 
-1. All Review Agents complete independently
-2. Orchestrator collects results
-3. Orchestrator sends each reviewer the OTHER reviewers' findings
-4. Reviewers report coherence issues
-5. Orchestrator synthesizes into coherence verdict
+Cross-review is NOT a coherence check. It is adversarial cross-examination — reviewers challenge each other's conclusions.
+
+See **Phase 3.5 / 6.5 / 9.5** for full procedure and output format.
+
+**Key principle:** Reviewers don't just check "do our findings align?" — they ask "did the other reviewer miss something I caught? Do I disagree with their verdict? Can I break their reasoning?"
+
+**BLOCKING:** Meta-Review phases (4, 7, 10) require the Cross-Review Report as input when 2+ reviewers ran in parallel. Skipping cross-review to save time is Anti-pattern #20.
 
 ### Integration Review (Intent Guardian)
 
-After cross-talk:
+After cross-review:
 1. Re-read user's original request (immovable anchor)
 2. Compare each agent's work against that request
 3. "Does all this together achieve what user asked?"
@@ -346,7 +397,7 @@ After cross-talk:
 | 17 | Vague review: "looks correct" | Require specific evidence |
 | 18 | Skipping meta-verify spot-check | Non-negotiable. Read actual code for at least 1 item |
 | 19 | Work without review | No Work Agent runs solo |
-| 20 | Isolated parallel reviews | Cross-reference for coherence |
+| 20 | Skipping cross-review | 2+ parallel reviewers → Cross-Review Report is BLOCKING. Meta-Review without it is invalid. Completion drive is not an excuse. |
 | 21 | Orchestrator as aggregator | Verify intent alignment, don't just compile |
 | 22 | Token-first splitting | Split by module/feature first, tokens second |
 | 23 | Reviewer-driven drift | Reviewers improve quality, not redefine goals |
@@ -358,15 +409,18 @@ After cross-talk:
 
 ```
 Task → Phase 1: Understand (Orchestrator + User)
-     → Phase 2-4: Analyze → Review → Meta-Review
-     → Phase 5-7: Plan → Review → Meta-Review + Approve
+     → Phase 2-4: Analyze → Review → [Cross-Review] → Meta-Review
+     → Phase 5-7: Plan → Review → [Cross-Review] → Meta-Review + Approve
      → Phase 7.5: Alternative (optional)
-     → Phase 8-10: Implement → Verify → Meta-Verify
+     → Phase 8-10: Implement → Verify → [Cross-Review] → Meta-Verify
      → Phase 11: Report
+
+[Cross-Review] = Phase 3.5/6.5/9.5 — BLOCKING when 2+ reviewers
 
 3-Layer: Work Agent → Review Agent → Orchestrator (Intent Guardian)
 Understanding = Gap closed + Consequences predicted
 Orchestrator = Synthesize + Critique + Preserve original intent
+Spot-checks scale: 1 reviewer→1, 2-3→2, 4+→3
 If gap remains → do not proceed
 If reviewer drifts from intent → accept quality, reject drift
 ```

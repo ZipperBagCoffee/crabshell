@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 19.0.0 | **Author**: TaWa | **License**: MIT
+**Version**: 19.1.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -192,6 +192,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 19.1.0 | Feat: Cross-Review as BLOCKING gate (Phase 3.5/6.5/9.5), spot-check scaling, adversarial cross-examination |
 | 19.0.0 | Feat: workflow/lessons delivered via skills, workflow compressed 762→367 lines, B9/B10 verification standard in RULES, templates/ removed |
 | 18.5.0 | Feat: Orchestrator as Intent Guardian — filter reviewer feedback through original intent, override drift |
 | 18.4.0 | Feat: agent orchestration rules — pairing, cross-talk, orchestrator insight; workflow.md parallel execution |
