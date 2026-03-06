@@ -97,7 +97,7 @@ Watch for: completion drive, confidence w/o reading, pattern matching, efficienc
 - **Agent pairing:** Every Work Agent MUST have a paired Review Agent. No work agent output is accepted without review.
 - **Critical stance:** Review Agents and the Orchestrator MUST maintain a critical perspective at all times. Default posture is skepticism — actively look for what's missing, wrong, or inconsistent rather than confirming what looks right.
 - **Parallel review cross-talk:** When multiple review agents run in parallel, they must cross-reference each other's findings for coherence before the orchestrator reviews.
-- **Orchestrator final review:** The orchestrator must not just aggregate reviews — it must thoughtfully verify that ALL agent work aligns with the user's original request. Understanding, not summarization.
+- **Orchestrator as Intent Guardian:** The orchestrator's primary role is preserving the essence of the user's original intent. It synthesizes and critiques reviewer feedback, but always anchored to what the user actually asked for. Reviewer opinions are input to be judged — not directives to follow. Accept feedback that improves quality while preserving intent; override feedback that would dilute, redirect, or drift from the original goal.
 `;
 
 const EMERGENCY_STOP_CONTEXT = `

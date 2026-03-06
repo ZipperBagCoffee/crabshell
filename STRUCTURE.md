@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 18.4.0 | **Author**: TaWa | **License**: MIT
+**Version**: 18.5.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -192,6 +192,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 18.5.0 | Feat: Orchestrator as Intent Guardian — filter reviewer feedback through original intent, override drift |
 | 18.4.0 | Feat: agent orchestration rules — pairing, cross-talk, orchestrator insight; workflow.md parallel execution |
 | 18.3.0 | Feat: emergency stop keywords — context replacement on trigger, agent utilization rule |
 | 18.2.0 | Feat: workflow agent enforcement rule — must use Task tool for Work/Review Agent phases |

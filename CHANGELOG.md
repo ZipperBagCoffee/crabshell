@@ -1,5 +1,13 @@
 # Changelog
 
+## v18.5.0 (2026-03-05)
+- **feat**: Orchestrator redefined as "Intent Guardian" — primary role is preserving user's original intent, not just verifying reviewer work
+- **feat**: workflow.md Phases 4, 7, 10 updated with intent-preservation checks and reviewer feedback filtering logic
+- **feat**: New anti-patterns #23 (Reviewer-driven drift) and #24 (Intent erosion through iterations)
+- **feat**: Orchestrator role table expanded with intent filtering and override capabilities
+- **feat**: Integration Review section rewritten — reviewer opinions are input to judge, not directives to follow
+- **feat**: inject-rules.js RULES and CLAUDE.md updated: "Orchestrator final review" → "Orchestrator as Intent Guardian"
+
 ## v18.4.0 (2026-03-01)
 - **feat**: Agent pairing rule — every Work Agent MUST have a paired Review Agent
 - **feat**: Parallel review cross-talk rule — review agents must cross-reference findings for coherence
