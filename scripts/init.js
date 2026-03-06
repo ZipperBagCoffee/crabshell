@@ -25,30 +25,6 @@ const path = require('path');
 const { MEMORY_DIR, SESSIONS_DIR, LOGS_DIR, LESSONS_DIR, WORKFLOW_DIR, INDEX_FILE, MEMORY_FILE } = require('./constants');
 const { writeJson } = require('./utils');
 
-/**
- * Get the plugin's template directory
- * Templates are stored in the plugin's templates/ folder
- */
-function getPluginTemplatesDir() {
-  // scripts/ is one level down from plugin root
-  return path.join(__dirname, '..', 'templates');
-}
-
-/**
- * Copy a template file if the destination doesn't exist
- */
-function copyTemplateIfMissing(templateName, destPath) {
-  if (fs.existsSync(destPath)) return false;
-
-  const templatesDir = getPluginTemplatesDir();
-  const templatePath = path.join(templatesDir, templateName);
-
-  if (fs.existsSync(templatePath)) {
-    fs.copyFileSync(templatePath, destPath);
-    return true;
-  }
-  return false;
-}
 
 function ensureMemoryStructure(projectDir) {
   // Memory-related directories
@@ -61,20 +37,20 @@ function ensureMemoryStructure(projectDir) {
     }
   }
 
-  // Workflow and Lessons directories
-  const workflowDir = path.join(projectDir, '.claude', WORKFLOW_DIR);
+  // Lessons directory (local project-specific storage)
   const lessonsDir = path.join(projectDir, '.claude', LESSONS_DIR);
-
-  if (!fs.existsSync(workflowDir)) {
-    fs.mkdirSync(workflowDir, { recursive: true });
-  }
   if (!fs.existsSync(lessonsDir)) {
     fs.mkdirSync(lessonsDir, { recursive: true });
   }
 
-  // Copy template files if they don't exist
-  copyTemplateIfMissing('workflow.md', path.join(workflowDir, 'workflow.md'));
-  copyTemplateIfMissing('lessons-README.md', path.join(lessonsDir, 'README.md'));
+  // Legacy: rename old workflow.md to .bak (now delivered via skill)
+  const legacyWorkflow = path.join(projectDir, '.claude', WORKFLOW_DIR, 'workflow.md');
+  if (fs.existsSync(legacyWorkflow)) {
+    const bakPath = legacyWorkflow + '.bak';
+    if (!fs.existsSync(bakPath)) {
+      fs.renameSync(legacyWorkflow, bakPath);
+    }
+  }
 
   // Memory index setup
   const indexPath = path.join(projectDir, '.claude', MEMORY_DIR, INDEX_FILE);

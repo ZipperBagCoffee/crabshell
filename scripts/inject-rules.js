@@ -90,13 +90,14 @@ Watch for: completion drive, confidence w/o reading, pattern matching, efficienc
 ### ADDITIONAL RULES
 - Search internet if unsure.
 - When modifying files not tracked by git, always create a backup (.bak) before making changes.
-- **Workflow:** Follow .claude/workflow/workflow.md for complex tasks. Understanding = Gap closed + Consequences predicted. When the workflow specifies Work Agent or Review Agent, you MUST use the Task tool to launch a separate agent — do not do the agent's job yourself.
-- **Lessons:** Check .claude/lessons/ for project-specific rules. Propose new lessons when patterns repeat 2+ times.
+- **Workflow:** For complex tasks, invoke the 'workflow' skill. Understanding = Gap closed + Consequences predicted. When the workflow specifies Work Agent or Review Agent, you MUST use the Task tool to launch a separate agent — do not do the agent's job yourself.
+- **Lessons:** Check .claude/lessons/ for project-specific rules. When proposing or creating lessons, invoke the 'lessons' skill for format guidelines. Propose new lessons when patterns repeat 2+ times.
 - **After Compacting or Session Restart:** Read latest memory.md to rebuild context. If understanding feels incomplete → check relevant docs and L1 session files in .claude/memory/sessions/.
 - **Agent utilization:** When dealing with many files or large files, use the Task tool with agents to parallelize work and protect the context window. Don't try to read/process everything yourself.
 - **Agent pairing:** Every Work Agent MUST have a paired Review Agent. No work agent output is accepted without review.
 - **Critical stance:** Review Agents and the Orchestrator MUST maintain a critical perspective at all times. Default posture is skepticism — actively look for what's missing, wrong, or inconsistent rather than confirming what looks right.
 - **Parallel review cross-talk:** When multiple review agents run in parallel, they must cross-reference each other's findings for coherence before the orchestrator reviews.
+- **Verification standard:** "File contains X" is NEVER valid verification. Always predict observable behavior. Success criteria must describe what happens, not what text exists in a file.
 - **Orchestrator as Intent Guardian:** The orchestrator's primary role is preserving the essence of the user's original intent. It synthesizes and critiques reviewer feedback, but always anchored to what the user actually asked for. Reviewer opinions are input to be judged — not directives to follow. Accept feedback that improves quality while preserving intent; override feedback that would dilute, redirect, or drift from the original goal.
 `;
 

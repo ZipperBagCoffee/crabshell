@@ -199,6 +199,7 @@ Save to *.summary.json
 
 | Version | Key Changes |
 |---------|-------------|
+| 19.0.0 | Feat: workflow/lessons delivered via skills, workflow compressed 762→367 lines, B9/B10 verification standard in RULES, templates/ removed |
 | 18.5.0 | Feat: Orchestrator as Intent Guardian — filter reviewer feedback through original intent, override drift |
 | 18.4.0 | Feat: agent orchestration rules — pairing, cross-talk, orchestrator insight; workflow.md parallel execution |
 | 18.3.0 | Feat: emergency stop keywords — context replacement on trigger, agent utilization rule |
