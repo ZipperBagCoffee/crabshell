@@ -1,26 +1,29 @@
-# Lessons
+---
+name: lessons
+description: "Create and manage project-specific lessons. Use when proposing a new lesson or when checking lesson format guidelines."
+---
+
+# Lessons Management
 
 ## Purpose
 
-This directory stores project-specific lessons learned from repeated mistakes, user feedback, and important patterns discovered during development.
+Project-specific lessons capture repeated mistakes, user feedback, and important patterns. They prevent the same issues from recurring.
 
-Lessons are distilled into CLAUDE.md project-specific rules to prevent the same issues from recurring.
+Lessons are stored locally in `.claude/lessons/` — they are project-specific and never overwritten by plugin updates.
 
 ---
 
 ## When to Create a Lesson
 
-A lesson should be created when:
-
-1. **Same mistake repeats 2+ times** — Pattern detected, needs documentation
+1. **Same mistake repeats 2+ times** — pattern detected, needs documentation
 2. **User explicitly marks something as important** — "Remember this", "Don't do X again"
 3. **Project-specific instruction is repeatedly needed** — e.g., specific pipeline, naming convention, architectural decision
 
 ---
 
-## Lesson Format
+## Lesson File Format
 
-Each lesson file: `YYYY-MM-DD_short-description.md`
+**Filename:** `YYYY-MM-DD_short-description.md`
 
 ```markdown
 # [Short Title]
@@ -42,18 +45,18 @@ Each lesson file: `YYYY-MM-DD_short-description.md`
 
 ## From Lesson to CLAUDE.md
 
-1. Write the full lesson in this directory
+1. Write the full lesson in `.claude/lessons/`
 2. Extract a 1-2 line rule for CLAUDE.md
-3. Add to CLAUDE.md under project-specific section
+3. Add to CLAUDE.md under the project-specific section (below the marker line)
 4. Reference the lesson file for full context
 
 **Warning:** Too many rules in CLAUDE.md may cause some to be ignored. Keep rules concise and prioritized.
 
 ---
 
-## LLM Proposal Protocol
+## Proposal Protocol
 
-When Claude detects a potential lesson:
+When you detect a potential lesson:
 
 ```
 "This feedback appears to be a project-specific lesson:
@@ -67,6 +70,17 @@ Should I create a lesson in .claude/lessons/ and add a rule to CLAUDE.md?"
 - Project-specific pattern that differs from general practice
 
 **Never:** Add lessons without user approval.
+
+---
+
+## When User Proposes a Lesson
+
+Do not accept blindly. Understand first:
+1. What is the lesson trying to prevent?
+2. Is it genuinely project-specific or should it be general?
+3. Does it conflict with existing rules?
+
+Confirm your understanding before adding.
 
 ---
 

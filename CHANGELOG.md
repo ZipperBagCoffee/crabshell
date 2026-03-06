@@ -1,5 +1,14 @@
 # Changelog
 
+## v19.0.0 (2026-03-06)
+- **feat**: Workflow delivered via skill (`skills/workflow/SKILL.md`) instead of one-time template copy — always latest version from plugin cache
+- **feat**: Lessons management via skill (`skills/lessons/SKILL.md`) — format guidelines always up-to-date
+- **feat**: Workflow compressed from 762 to 367 lines — removed RULES-duplicated content, merged 6 agent templates into 1
+- **feat**: B9/B10 verification standard added to inject-rules.js RULES — "File contains X" is NEVER valid verification
+- **fix**: `templates/` directory removed — `copyTemplateIfMissing` pattern replaced by skill-based delivery
+- **fix**: Legacy `workflow.md` auto-renamed to `.bak` on first run after upgrade
+- **change**: inject-rules.js RULES: workflow reference changed from file path to skill invocation, lessons reference updated with skill invocation for format guidelines
+
 ## v18.5.0 (2026-03-05)
 - **feat**: Orchestrator redefined as "Intent Guardian" — primary role is preserving user's original intent, not just verifying reviewer work
 - **feat**: workflow.md Phases 4, 7, 10 updated with intent-preservation checks and reviewer feedback filtering logic
