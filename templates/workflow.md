@@ -23,7 +23,7 @@ Understanding without inference is just parroting. You must go beyond what is st
 ```
 Work Agent:     Analysis, planning, implementation (heavy work)
 Review Agent:   Review analysis, review plan, verify implementation (quality check)
-Orchestrator:   Understanding, meta-review, meta-verification, reporting (final authority)
+Orchestrator:   Intent guardian, meta-review, meta-verification, reporting (final authority)
 ```
 
 ### The 3-Layer Pattern
@@ -33,8 +33,10 @@ Every stage follows the same pattern:
 ```
 Work Agent does the work
   → Review Agent checks the work
-    → Orchestrator checks what the reviewer checked
+    → Orchestrator filters review through original intent
 ```
+
+**The Orchestrator is the Intent Guardian.** It does not just check whether the reviewer did their job — it judges whether review feedback serves or undermines the original intent. Reviewer opinions that would dilute, distort, or drift from the user's actual goal are overridden. The orchestrator synthesizes and critiques, but always anchored to the essence of what the user asked for.
 
 ### Phase Overview
 
@@ -228,22 +230,29 @@ Overall verdict: COMPLETE / INCOMPLETE (with specific gaps listed)
 
 ---
 
-### Phase 4: Meta-Review (Orchestrator)
+### Phase 4: Meta-Review (Orchestrator as Intent Guardian)
 
-**Goal:** Review what the Review Agent reviewed. Not re-doing the review — checking that the reviewer did their job.
+**Goal:** Filter the review through original intent. Not just checking the reviewer's work — ensuring review feedback doesn't drift from what the user actually needs.
 
 #### Orchestrator checks:
 1. **Did the reviewer actually read the code?** — Does the review cite specific lines/functions, or just say "looks correct"?
 2. **Did the reviewer check completeness?** — Are there obvious things the reviewer should have caught but didn't?
 3. **Does the review make sense?** — Are the YES/NO verdicts logically consistent?
 4. **Spot-check one claim** — Pick one specific claim from the analysis, read the code yourself, verify independently.
+5. **Intent alignment** — Do the reviewer's findings and suggestions serve the original intent, or do they pull in a different direction?
+
+#### Intent Guardian judgment:
+- Reviewer suggests changes that improve quality WITHOUT altering the intent → **accept**
+- Reviewer raises valid concerns but proposed fix would dilute the intent → **accept the concern, reject the fix, find an alternative that preserves intent**
+- Reviewer's feedback would redirect the work away from what the user asked → **override with explanation**
 
 #### Gap check:
-- Review is thorough with specific citations → proceed to Phase 5
+- Review is thorough, intent-aligned, with specific citations → proceed to Phase 5
 - Review is vague or missed obvious gaps → re-launch Review Agent with more specific instructions
+- Review is thorough but drifts from intent → accept valid findings, discard drift, proceed
 - Spot-check fails → both analysis and review are suspect → return to Phase 2
 
-**The meta-review is lightweight.** You're checking process quality, not redoing the work. But the spot-check must be real — read actual code for at least one claim.
+**The meta-review is lightweight.** You're checking process quality and intent alignment, not redoing the work. But the spot-check must be real — read actual code for at least one claim.
 
 ---
 
@@ -321,15 +330,16 @@ Overall verdict: APPROVED / NEEDS REVISION (with specific changes needed)
 
 ---
 
-### Phase 7: Meta-Review Plan (Orchestrator + User)
+### Phase 7: Meta-Review Plan (Orchestrator as Intent Guardian + User)
 
-**Goal:** Review the reviewer's plan assessment. Then get user approval.
+**Goal:** Ensure the plan still serves the original intent after review feedback. Then get user approval.
 
 #### Orchestrator checks:
 1. **Did the reviewer check every gap?** — Count: N gaps in analysis, N addressed in plan review?
 2. **Are regression assessments reasonable?** — Did the reviewer actually trace effects, or just say "low risk"?
 3. **Spot-check one change** — Pick the highest-risk change, trace it yourself, verify the reviewer's assessment.
-4. **Common sense check** — Does the plan, as a whole, make sense for the user's intent?
+4. **Intent preservation check** — If the reviewer suggested plan modifications, do those modifications still achieve what the user originally asked for? Would the user recognize the result as what they wanted?
+5. **Scope drift check** — Has the plan grown beyond original intent (reviewer adding "nice to have" changes)? Has it shrunk (reviewer cutting things the user explicitly requested)?
 
 #### Then present to user:
 ```
@@ -458,9 +468,9 @@ If a REFERENCE exists:
 
 ---
 
-### Phase 10: Meta-Verify (Orchestrator)
+### Phase 10: Meta-Verify (Orchestrator as Intent Guardian)
 
-**Goal:** Verify the Review Agent's verification. The final quality gate before reporting to user.
+**Goal:** Final quality gate — verify the implementation achieves the original intent, not just that it passes technical review.
 
 #### Orchestrator checks:
 
@@ -469,11 +479,13 @@ If a REFERENCE exists:
 3. **Did the reviewer do structural comparison?** (if reference exists) — Did they cite specific structural elements (grid layouts, font sizes, component ordering)?
 4. **Spot-check the highest-risk item** — Pick the most complex or most likely to fail criterion. Read the actual implementation yourself. Verify independently.
 5. **Check for review gaps** — Is there anything obvious the reviewer should have checked but didn't?
+6. **Final intent check** — Step back from technical details. Does the combined result deliver what the user actually wanted? A technically correct implementation that misses the point is still a failure.
 
 #### Meta-verification rules:
 - Spot-check must be REAL — read actual code/HTML, not just the reviewer's summary
 - If spot-check contradicts reviewer → both verification and implementation are suspect
 - If reviewer gave vague PASS ("looks correct") → reject, re-launch with specific instructions
+- If implementation passes all criteria but doesn't feel like what the user asked for → flag it. Criteria may have drifted from intent during the process.
 - Meta-verify is lighter than verify, but the spot-check is non-negotiable
 
 #### Verdict:
@@ -541,9 +553,10 @@ For each preserved behavior:
 ```
 
 ### Orchestrator handles:
+- **Intent guardianship** (all phases): the user's original intent is the unchanging reference point
 - Understanding (Phase 1): user intent, requirements — NEVER delegated
-- Meta-review (Phase 4, 7): checking the reviewer's work
-- Meta-verification (Phase 10): spot-checking the reviewer's verification
+- Meta-review (Phase 4, 7): filtering review feedback through original intent
+- Meta-verification (Phase 10): verifying the result delivers what the user actually wanted
 - Reporting (Phase 11): results to user
 
 ### Orchestrator's meta-review is NOT re-doing the work:
@@ -553,9 +566,11 @@ For each preserved behavior:
 | Check reviewer cited specific evidence | Re-read all files the reviewer read |
 | Spot-check 1-2 claims independently | Verify every single claim |
 | Check process quality (did reviewer follow rules?) | Redo the entire review |
+| Filter review feedback against original intent | Blindly accept all reviewer suggestions |
+| Override reviewer when feedback drifts from intent | Let reviewer opinions redirect the work |
 | Catch obvious oversights | Deep-dive into every corner |
 
-The point: Orchestrator is the **final filter**, not the primary quality check. Primary QC is the Review Agent's job.
+The point: Orchestrator is the **intent guardian**, not just a quality gate. Primary QC is the Review Agent's job. But the Orchestrator ensures that QC feedback serves the original goal — reviewer opinions are input to be judged, not directives to be followed.
 
 ### Never use agents for:
 - Simple grep / file search (use Grep/Glob tools)
@@ -609,6 +624,84 @@ See `.claude/lessons/README.md` for lesson format and guidelines.
 
 ---
 
+## Parallel Agent Execution
+
+### Batch Pattern
+
+When multiple independent tasks exist, execute them as parallel batches:
+
+```
+Batch 1:
+  Work Agent A ──→ Review Agent A ─┐
+  Work Agent B ──→ Review Agent B ─┤── Cross-talk ──→ Orchestrator
+  Work Agent C ──→ Review Agent C ─┘   (coherence)    (insight)
+       │
+  Orchestrator: "Does all of this together serve the user's request?"
+       │
+Batch 2 (depends on Batch 1):
+  Work Agent D ──→ Review Agent D ─┐
+  Work Agent E ──→ Review Agent E ─┤── Cross-talk ──→ Orchestrator
+                                   ┘
+```
+
+### Mandatory Rules
+
+1. **1:1 Pairing**: Every Work Agent MUST have a dedicated Review Agent. No exceptions.
+2. **Independence**: Agents within a batch must not depend on each other's output.
+3. **Dependency ordering**: If Task B depends on Task A's output, they go in separate batches.
+
+### Agent Context Budget
+
+Split work by **logical boundaries** first (module, layer, feature), then sanity-check with token estimates:
+
+| Work Type | Files per Agent | Reason |
+|-----------|----------------|--------|
+| Search/Read | 10-20 | Minimal reasoning needed |
+| Code modification | 3-5 | Understanding + modification + verification |
+| Complex refactoring | 1-2 | Most context spent on comprehension |
+
+Orchestrator assignment algorithm:
+1. Extract all tasks from plan
+2. Build dependency graph → group independent tasks into batches
+3. Estimate context budget per task (file count × size + shared context)
+4. If budget exceeds ~80-100K tokens → split task further
+5. If budget has room → merge small tasks into one agent
+
+### Review Mindset
+
+Review Agents and the Orchestrator must default to a critical, skeptical posture:
+- Assume something is missing until proven complete
+- Assume something is wrong until verified correct
+- "Looks good" is not a valid review conclusion — state specifically what was checked and why it passes
+
+### Review Cross-talk Protocol
+
+Claude Code agents cannot communicate directly. The orchestrator mediates:
+
+1. All Review Agents complete their independent reviews
+2. Orchestrator collects all review results
+3. Orchestrator sends each Review Agent the OTHER reviewers' findings:
+   "Agent A found X. Agent B found Y. Does this conflict with or affect your review?"
+4. Review Agents report coherence issues (if any)
+5. Orchestrator synthesizes cross-talk results into a coherence verdict
+
+### Orchestrator's Integration Review (Intent Guardian Role)
+
+After cross-talk, the orchestrator does NOT simply aggregate. It must:
+
+1. Re-read the user's original request — this is the immovable anchor
+2. Compare each agent's work against that request (not just the plan)
+3. Ask: "If I combine all these results, does it achieve what the user asked for?"
+4. Ask: "Have reviewer suggestions shifted the work away from what the user wanted?"
+5. Identify gaps between combined output and user intent
+6. **Accept** review feedback that improves quality while preserving intent
+7. **Override** review feedback that would dilute, redirect, or over-engineer the original goal
+8. Report coherence issues before proceeding to next batch
+
+**The orchestrator synthesizes and critiques reviewer feedback, but always in service of the original intent.** Reviewer opinions are valuable input, not authority. The user's intent is the authority.
+
+---
+
 ## Anti-Patterns
 
 1. **Orchestrator doing agent work** — Analysis, planning, implementation, AND first-pass verification are agent tasks. You meta-review and meta-verify.
@@ -629,6 +722,12 @@ See `.claude/lessons/README.md` for lesson format and guidelines.
 16. **Same agent for Work and Review** — Reviewer must have fresh context. Never ask the builder to review its own work.
 17. **Vague review verdicts** — "Looks correct" is not a review. Require specific evidence.
 18. **Skipping meta-verify spot-check** — The ONE thing Orchestrator must always do is read actual code for at least one item. No exceptions.
+19. **Work without review** — No Work Agent runs solo. Every work output must be reviewed by a separate agent.
+20. **Isolated parallel reviews** — Parallel reviewers that don't cross-reference each other's findings miss coherence issues across modules.
+21. **Orchestrator as aggregator** — Collecting and summarizing reviews is not orchestration. The orchestrator must verify alignment with user intent, not just compile results.
+22. **Token-first splitting** — Splitting by token count before considering logical boundaries creates artificial cuts through related code. Always split by module/feature/layer first.
+23. **Reviewer-driven drift** — Letting reviewer feedback redirect the work away from original intent. Reviewers improve quality; they don't redefine goals. The orchestrator must catch and reject drift.
+24. **Intent erosion through iterations** — Each review cycle slightly shifts the goal until the final result is technically sound but doesn't match what the user asked for. The orchestrator must re-anchor to the original request at every meta-review phase.
 
 ---
 
@@ -653,8 +752,10 @@ Task received
 
   → Phase 11: Report              (Orchestrator — results to user)
 
-3-Layer Pattern:  Work Agent → Review Agent → Orchestrator
+3-Layer Pattern:  Work Agent → Review Agent → Orchestrator (Intent Guardian)
 Understanding = Gap closed + Consequences predicted
+Orchestrator = Synthesize + Critique + Preserve original intent
 If gap remains or inferences are wrong → do not proceed.
+If reviewer feedback drifts from intent → accept quality, reject drift.
 When patterns repeat → propose lesson → prevent future gaps.
 ```
