@@ -1,5 +1,9 @@
 # Changelog
 
+## v19.2.0 (2026-03-07)
+- **fix**: Emergency stop keyword detection — `hookData.input` changed to `hookData.prompt` (correct Claude Code UserPromptSubmit field name)
+- **fix**: Emergency stop (`아시발멈춰`/`BRAINMELT`) was never actually triggered by hook; Claude recognized keyword from message text, not from injected EMERGENCY_STOP_CONTEXT
+
 ## v19.1.0 (2026-03-06)
 - **feat**: Cross-Review as BLOCKING gate — Phase 3.5/6.5/9.5 added to 11-Phase workflow, meta-review cannot proceed without Cross-Review Report when 2+ reviewers ran in parallel
 - **feat**: Cross-Review output format defined — Contested Findings, Blind Spots, Consensus sections with reviewer position table
