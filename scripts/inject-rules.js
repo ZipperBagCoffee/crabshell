@@ -27,7 +27,7 @@ function readStdin(timeoutMs = 1000) {
 }
 
 function checkEmergencyStop(hookData) {
-  const input = (hookData && hookData.input) || '';
+  const input = (hookData && (hookData.prompt || hookData.input)) || '';
   return EMERGENCY_KEYWORDS.some(kw => input.includes(kw));
 }
 
