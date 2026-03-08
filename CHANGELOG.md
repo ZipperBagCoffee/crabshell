@@ -1,5 +1,14 @@
 # Changelog
 
+## v19.3.0 (2026-03-08)
+- **feat**: Intent Anchor mechanism — Phase 1 produces numbered IA-N list of non-negotiable requirements, carried through all phases
+- **feat**: Intent Comparison Protocol — meta-review gates (Phase 4/7/10) require per-recommendation `ALIGNED/CONFLICTS` comparison against Intent Anchor with documented reasoning
+- **feat**: Self-enforcement Checklist — mandatory 6-item checklist at each meta-review gate before proceeding
+- **feat**: Agent Prompt Template includes `## Intent Anchor (DO NOT violate)` section
+- **change**: Integration Review anchored to IA-N items instead of vague "user's original request"
+- **change**: Anti-pattern #24 updated to reference Intent Comparison Protocol
+- **change**: Quick Reference updated with Intent Anchor and Intent Comparison at every gate
+
 ## v19.2.0 (2026-03-07)
 - **fix**: Emergency stop keyword detection — `hookData.input` changed to `hookData.prompt` (correct Claude Code UserPromptSubmit field name)
 - **fix**: Emergency stop (`아시발멈춰`/`BRAINMELT`) was never actually triggered by hook; Claude recognized keyword from message text, not from injected EMERGENCY_STOP_CONTEXT

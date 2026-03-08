@@ -100,6 +100,11 @@ All agent prompts follow this structure:
 ## Background
 [Why this is needed — Phase 1 understanding + relevant prior phase outputs]
 
+## Intent Anchor (DO NOT violate)
+IA-1: [requirement]
+IA-2: [requirement]
+...
+
 ## Task
 [WORK or REVIEW — never both in one prompt]
 [Specific instructions for this phase]
@@ -120,8 +125,15 @@ State your understanding before working.
 
 1. State understanding explicitly: current state, desired state, must preserve, constraints
 2. Infer implicit requirements — what would a reasonable person expect even if not mentioned?
-3. Confirm with user: "Is this understanding correct?"
-4. User corrects → gap found → adjust → confirm again
+3. Produce **Intent Anchor** — numbered list of non-negotiable requirements (3-7 items):
+   ```
+   IA-1: [requirement]
+   IA-2: [requirement]
+   ...
+   ```
+   These are the things that CANNOT be violated. Every meta-review gate re-reads this list.
+4. Confirm with user: "Is this understanding correct? Are these the right Intent Anchor items?"
+5. User corrects → gap found → adjust Intent Anchor → confirm again
 
 ### Phase 2: Analyze (Work Agent)
 
@@ -180,16 +192,23 @@ Trace call chains, dependencies, state changes, user-visible behavior.
    - 2-3 reviewers → minimum 2 (highest-risk + 1 random)
    - 4+ reviewers → minimum 3
 3. If Cross-Review Report exists: resolve all Contested Findings with your own judgment
-4. Intent alignment: do findings serve user's goal?
-5. **Intent Guardian judgment:**
-   - Quality improvement + preserves intent → **accept**
-   - Valid concern but fix dilutes intent → **accept concern, reject fix, find alternative**
-   - Feedback redirects from user's goal → **override with explanation**
-6. Gap check:
+4. **Intent Comparison Protocol** — for each agent recommendation:
+   - Re-read Intent Anchor (list IA-1 through IA-N)
+   - Write: `Recommendation X → IA-N: ALIGNED/CONFLICTS — [reason]`
+   - Any CONFLICTS → reject recommendation or find alternative that preserves intent
+   - Record WHY each acceptance/rejection was made
+5. Gap check:
    - Thorough + intent-aligned → proceed to Phase 5
    - Vague or missed obvious gaps → re-launch Review Agent
-   - Drifts from intent → accept valid findings, discard drift
    - Spot-check fails → both analysis and review suspect → return to Phase 2
+
+**Self-enforcement Checklist (MUST complete before proceeding):**
+- [ ] Intent Anchor listed? (cite IA-1 through IA-N)
+- [ ] Each recommendation compared against Intent Anchor? (show comparison)
+- [ ] Accept/reject reasoning documented?
+- [ ] Spot-checks completed? (needed: X, done: Y)
+- [ ] Cross-review report referenced? (if 2+ reviewers)
+- [ ] Overall: intent preserved? (YES with evidence / NO → do not proceed)
 
 ### Phase 5: Plan (Work Agent)
 
@@ -217,9 +236,13 @@ Include regression checks with verification method.
 1. Count: N gaps → N addressed in review?
 2. **Spot-check** (same scaling as Phase 4): verify highest-risk change(s)
 3. If Cross-Review Report exists: resolve all Contested Findings
-4. Intent preservation: reviewer modifications still achieve user's goal?
+4. **Intent Comparison Protocol** — for each planned change:
+   - Re-read Intent Anchor (list IA-1 through IA-N)
+   - Write: `Change X → IA-N: ALIGNED/CONFLICTS — [reason]`
+   - Any CONFLICTS → revise plan to preserve intent
 5. Scope drift: plan grown beyond or shrunk below original intent?
-6. Present summary → get user approval before implementing
+6. **Self-enforcement Checklist** (same as Phase 4 — MUST complete before presenting to user)
+7. Present summary + Intent Anchor comparison → get user approval before implementing
 
 ### Phase 7.5: Alternative Proposal (Optional)
 
@@ -271,8 +294,12 @@ For each criterion:
 3. If Cross-Review Report exists: resolve all Contested Findings — these are your highest-priority items
 4. If spot-check contradicts reviewer → both verification and implementation suspect
 5. If reviewer gave vague PASS → reject, re-launch with specific instructions
-6. **Final intent check:** does combined result deliver what user wanted? Technically correct but misses the point = failure.
-7. On failure, return to appropriate phase:
+6. **Final Intent Comparison Protocol** — for the implemented result:
+   - Re-read Intent Anchor (list IA-1 through IA-N)
+   - For each IA item: `IA-N → SATISFIED/VIOLATED — [evidence from implementation]`
+   - Any VIOLATED → return to appropriate phase
+7. **Self-enforcement Checklist** (same as Phase 4 — MUST complete before proceeding to Report)
+8. On failure, return to appropriate phase:
    - Implementation wrong → Phase 8
    - Plan was flawed → Phase 5
    - Analysis was wrong → Phase 2
@@ -357,11 +384,11 @@ See **Phase 3.5 / 6.5 / 9.5** for full procedure and output format.
 ### Integration Review (Intent Guardian)
 
 After cross-review:
-1. Re-read user's original request (immovable anchor)
-2. Compare each agent's work against that request
-3. "Does all this together achieve what user asked?"
-4. "Have reviewer suggestions shifted the work?"
-5. **Accept** quality improvements; **override** drift from intent
+1. Re-read Intent Anchor (IA-1 through IA-N) — this IS the immovable anchor
+2. For each agent's work: `Agent output → IA-N: ALIGNED/CONFLICTS — [reason]`
+3. "Does all this together satisfy every IA item?"
+4. "Have reviewer suggestions shifted any IA item?"
+5. **Accept** quality improvements that preserve all IA items; **override** drift
 
 ---
 
@@ -401,26 +428,27 @@ After cross-review:
 | 21 | Orchestrator as aggregator | Verify intent alignment, don't just compile |
 | 22 | Token-first splitting | Split by module/feature first, tokens second |
 | 23 | Reviewer-driven drift | Reviewers improve quality, not redefine goals |
-| 24 | Intent erosion through iterations | Re-anchor to original request every meta-review |
+| 24 | Intent erosion through iterations | Re-anchor to Intent Anchor (IA-N items) every meta-review — run Intent Comparison Protocol |
 
 ---
 
 ## Quick Reference
 
 ```
-Task → Phase 1: Understand (Orchestrator + User)
-     → Phase 2-4: Analyze → Review → [Cross-Review] → Meta-Review
-     → Phase 5-7: Plan → Review → [Cross-Review] → Meta-Review + Approve
+Task → Phase 1: Understand + Intent Anchor (IA-1..N)
+     → Phase 2-4: Analyze → Review → [Cross-Review] → Meta-Review + Intent Comparison
+     → Phase 5-7: Plan → Review → [Cross-Review] → Meta-Review + Intent Comparison + Approve
      → Phase 7.5: Alternative (optional)
-     → Phase 8-10: Implement → Verify → [Cross-Review] → Meta-Verify
+     → Phase 8-10: Implement → Verify → [Cross-Review] → Meta-Verify + Intent Comparison
      → Phase 11: Report
 
 [Cross-Review] = Phase 3.5/6.5/9.5 — BLOCKING when 2+ reviewers
+Intent Comparison = re-read IA items, compare each recommendation, document ALIGNED/CONFLICTS
 
 3-Layer: Work Agent → Review Agent → Orchestrator (Intent Guardian)
 Understanding = Gap closed + Consequences predicted
-Orchestrator = Synthesize + Critique + Preserve original intent
+Orchestrator = Synthesize + Critique + Preserve Intent Anchor
 Spot-checks scale: 1 reviewer→1, 2-3→2, 4+→3
 If gap remains → do not proceed
-If reviewer drifts from intent → accept quality, reject drift
+If recommendation CONFLICTS with any IA item → reject or find alternative
 ```
