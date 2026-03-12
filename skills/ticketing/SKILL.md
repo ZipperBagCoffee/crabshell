@@ -25,8 +25,13 @@ Read `docs/plan/INDEX.md`. Find the row for the given Plan ID.
 
 ### Step 2: Ensure ticket folder exists
 
-Check if `docs/ticket/` exists. If not, create it and create `docs/ticket/INDEX.md`:
+Check if `docs/ticket/` exists.
 
+- **Folder does not exist:** Create it and create `docs/ticket/INDEX.md` with content below.
+- **Folder exists but INDEX.md does NOT exist:** Pre-existing files detected. Create `docs/ticket/backup/`, move ALL existing files into it, then create INDEX.md. Report to user: "Moved N existing files to docs/ticket/backup/"
+- **Folder exists and INDEX.md exists:** Already managed. Proceed.
+
+INDEX.md content:
 ```
 # Ticket Index
 
