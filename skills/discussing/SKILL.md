@@ -20,8 +20,13 @@ When argument is a title string (not a D-prefixed ID):
 
 ### Step 1: Ensure folder exists
 
-Check if `docs/discussion/` exists. If not, create it and create `docs/discussion/INDEX.md` with this content:
+Check if `docs/discussion/` exists.
 
+- **Folder does not exist:** Create it and create `docs/discussion/INDEX.md` with content below.
+- **Folder exists but INDEX.md does NOT exist:** Pre-existing files detected. Create `docs/discussion/backup/`, move ALL existing files into it, then create INDEX.md. Report to user: "Moved N existing files to docs/discussion/backup/"
+- **Folder exists and INDEX.md exists:** Already managed. Proceed.
+
+INDEX.md content:
 ```
 # Discussion Index
 

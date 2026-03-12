@@ -18,8 +18,13 @@ When argument is a title string (not an R-prefixed ID):
 
 ### Step 1: Ensure folder exists
 
-Check if `docs/research/` exists. If not, create it and create `docs/research/INDEX.md`:
+Check if `docs/research/` exists.
 
+- **Folder does not exist:** Create it and create `docs/research/INDEX.md` with content below.
+- **Folder exists but INDEX.md does NOT exist:** Pre-existing files detected. Create `docs/research/backup/`, move ALL existing files into it, then create INDEX.md. Report to user: "Moved N existing files to docs/research/backup/"
+- **Folder exists and INDEX.md exists:** Already managed. Proceed.
+
+INDEX.md content:
 ```
 # Research Index
 
