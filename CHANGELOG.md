@@ -1,5 +1,13 @@
 # Changelog
 
+## v19.4.0 (2026-03-12)
+- **feat**: 4 document management skills — `/discussing`, `/planning`, `/ticketing`, `/researching`
+- **feat**: Append-only document system with INDEX.md status tracking per folder
+- **feat**: Discussion (D001), Plan (P001), Ticket (P001_T001), Research (R001) document types with templates
+- **feat**: Auto-incrementing IDs, cross-referencing between document types
+- **feat**: Ticket inherits from Plan with parent validation, verification-at-creation (TDD principle)
+- **feat**: Per-type status enums (Discussion: open/concluded, Plan: draft/approved/in-progress/done, Ticket: todo/in-progress/done/verified, Research: open/concluded)
+
 ## v19.3.0 (2026-03-08)
 - **feat**: Intent Anchor mechanism — Phase 1 produces numbered IA-N list of non-negotiable requirements, carried through all phases
 - **feat**: Intent Comparison Protocol — meta-review gates (Phase 4/7/10) require per-recommendation `ALIGNED/CONFLICTS` comparison against Intent Anchor with documented reasoning
