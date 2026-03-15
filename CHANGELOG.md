@@ -1,5 +1,9 @@
 # Changelog
 
+## v19.5.0 (2026-03-14)
+- **feat**: Ticket-Workflow 1:1 mapping rule — each ticket gets its own independent workflow execution
+- **feat**: Post-Workflow documentation step — mandatory skill-based documentation after workflow completion
+
 ## v19.4.0 (2026-03-12)
 - **feat**: 4 document management skills — `/discussing`, `/planning`, `/ticketing`, `/researching`
 - **feat**: Append-only document system with INDEX.md status tracking per folder
