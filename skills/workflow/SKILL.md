@@ -318,6 +318,10 @@ Per behavior: description, verdict
 
 ## User Testing Needed
 [What cannot be verified statically]
+
+## Post-Workflow Documentation
+- [ ] Ticket updated: `/ticketing P{NNN}_T{NNN}` (if executing from ticket)
+- [ ] Other documents updated: `/discussing`, `/researching`, `/planning` (as needed)
 ```
 
 Final gap check: "Is this the intended result?"

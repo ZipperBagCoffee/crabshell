@@ -76,6 +76,10 @@ Then create `docs/ticket/P{NNN}_T{NNN}-{slug}.md`:
 {criterion 1}: {how to verify — command to run, behavior to observe}
 {criterion 2}: {how to verify}
 
+## Execution
+- 이 티켓은 단독 워크플로우로 실행 (1 Ticket = 1 Workflow)
+- 실행: `/workflow` 스킬 호출
+
 ## Log
 
 ---

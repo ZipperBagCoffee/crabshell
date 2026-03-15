@@ -1,5 +1,8 @@
 # Changelog
 
+## v19.5.1 (2026-03-15)
+- **feat**: Document templates now include execution rules — ticket template has `## Execution` section (1 Ticket = 1 Workflow), workflow Phase 11 report template has `## Post-Workflow Documentation` checklist
+
 ## v19.5.0 (2026-03-14)
 - **feat**: Ticket-Workflow 1:1 mapping rule — each ticket gets its own independent workflow execution
 - **feat**: Post-Workflow documentation step — mandatory skill-based documentation after workflow completion
