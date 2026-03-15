@@ -322,6 +322,17 @@ Per behavior: description, verdict
 
 Final gap check: "Is this the intended result?"
 
+### Post-Workflow: Document (mandatory)
+
+After workflow completion, document the work using the appropriate skill:
+
+- `/ticketing P{NNN}_T{NNN}` — update ticket with work log entry (if executing from a ticket)
+- `/discussing "topic"` — record decisions or dialogue outcomes
+- `/researching "topic"` — record investigation findings or analysis results
+- `/planning "topic"` — record if a new plan was derived
+
+At minimum, the relevant ticket's work log (`/ticketing` update) MUST be updated.
+
 ---
 
 ## Orchestrator Scope

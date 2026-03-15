@@ -158,3 +158,4 @@ If yes → update parent plan INDEX.md status to `done` and append log entry to 
 5. **"File contains X" is forbidden** in Verification section. Must describe observable behavior or runnable commands.
 6. **INDEX.md** is the only file where existing content may be modified.
 7. **Plan propagation:** When all tickets verified → auto-update plan status.
+8. **1 Ticket = 1 Workflow:** Each ticket is executed as a separate, independent workflow invocation. Never batch multiple tickets into a single workflow run. 3 tickets = 3 separate workflow executions.
