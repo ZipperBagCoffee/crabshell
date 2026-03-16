@@ -134,4 +134,6 @@ Update status column and/or Tickets column in `docs/plan/INDEX.md`.
 2. **Tickets section:** Only receives appended lines like `- P{NNN}_T{NNN}: {title}` when ticketing skill creates a ticket.
 3. **Plan checkboxes:** Never modify. Progress is tracked in Log entries.
 4. **INDEX.md** is the only file where status may be modified.
-5. When plan comes from a discussion, note `D{NNN}` in INDEX.md Related column and add to first log entry.
+5. When plan comes from a discussion/research, note `D{NNN}` or `R{NNN}` in INDEX.md Related column and add to first log entry.
+6. **하위 미완료 시 상위 전환 금지:** P는 관련 티켓이 전부 `verified`일 때만 `done`으로 전환 가능. 티켓이 하나라도 미완료면 `done` 전환 거부.
+7. **완료 시 상위 자동 종결:** P가 `done`이 되면 → Related 컬럼의 D/R을 자동으로 `concluded`로 업데이트하고 해당 문서에 로그 추가. (ticketing cascade에서 트리거됨)

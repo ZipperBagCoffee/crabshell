@@ -119,3 +119,5 @@ Update status column in `docs/research/INDEX.md`.
 2. **결론 entry** must answer each Question from the Questions section individually, with evidence and limitations.
 3. **INDEX.md** is the only file where existing content may be modified.
 4. When research leads to a discussion or plan, note in log: "→ See D{NNN}" or "→ See P{NNN}" and update INDEX.md Related column.
+5. **하위 미완료 시 상위 전환 금지:** Related P가 존재하고 아직 `done`이 아니면 → R을 `concluded`로 전환 금지. 관련 플랜이 완료되어야만 종결 가능.
+6. **자동 종결:** 관련 P가 `done`이 되면 ticketing cascade에 의해 R이 자동으로 `concluded` 처리됨. 수동 종결 불필요.

@@ -140,8 +140,18 @@ Entry types:
 
 Update ticket INDEX.md status column.
 
-If ticket status → `verified`, also check: are ALL tickets for parent plan now verified?
-If yes → update parent plan INDEX.md status to `done` and append log entry to plan document.
+### Step 4: Status cascade (on verified)
+
+If ticket status → `verified`:
+
+1. **Check parent plan:** Read `docs/ticket/INDEX.md`, find ALL tickets for the same parent plan. Are ALL of them `verified`?
+   - If NO → stop here.
+   - If YES → continue cascade.
+2. **Close parent plan:** Update parent plan's status to `done` in `docs/plan/INDEX.md`. Append log entry to plan document: `상태변경: in-progress → done (모든 티켓 verified)`
+3. **Cascade to D/R:** Read parent plan's `Related` column in `docs/plan/INDEX.md`. For each related D/R ID:
+   - **Cross-check:** Read that D/R's Related column in its INDEX.md. If it references OTHER plans besides the one just completed, check those plans' statuses too. ALL related plans must be `done` before concluding.
+   - If all related plans done → update D/R status to `concluded`, append log entry: `상태변경: open → concluded (관련 플랜 모두 완료)`
+   - If other related plans still open → skip, do not conclude. Log: `P{NNN} 완료, 다른 관련 플랜 미완료로 종결 보류`
 
 ### Status Transitions
 
