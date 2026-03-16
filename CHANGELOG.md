@@ -1,5 +1,15 @@
 # Changelog
 
+## [19.7.0] - 2026-03-16
+### Added
+- Status cascade: ticket verified → auto-check all sibling tickets → auto-close parent plan → auto-conclude related D/R
+- Reverse propagation constraint: parent document cannot be closed while child documents are incomplete
+- Planning Rule 6: P cannot transition to `done` unless ALL related tickets are `verified`
+- Planning Rule 7: P `done` auto-concludes related D/R (triggered by ticketing cascade)
+- Discussing Rule 5-6: D cannot be manually concluded while related P is not `done`; auto-concluded on cascade
+- Researching Rule 5-6: R cannot be manually concluded while related P is not `done`; auto-concluded on cascade
+- Multi-plan cross-check: D/R with multiple related plans only concludes when ALL plans are `done`
+
 ## [19.6.0] - 2026-03-15
 ### Added
 - Runtime verification as mandatory 4th verification element in workflow (Phase 8, 9, 10)
