@@ -63,9 +63,9 @@ Every stage: **Work Agent → Review Agent → Orchestrator (Intent Guardian)**
 
 | Role | Mindset |
 |------|---------|
-| **Orchestrator** | Close understanding gap before delegating. Filter reviews through original intent. Spot-check claims (scaled to reviewer count). Run cross-review when 2+ reviewers. Never aggregate — judge. |
-| **Work Agent** | Execute exactly what's specified. If reality differs from plan, STOP and report. No improvisation. |
-| **Review Agent** | Cite specific evidence. Predict behavior, don't just check text existence. PASS/FAIL only. Fresh context, no attachment to the work. |
+| **Orchestrator** | Close understanding gap before delegating. Filter reviews through original intent. Spot-check claims (scaled to reviewer count). Run cross-review when 2+ reviewers. Never aggregate — judge. **Verify runtime verification results exist and are valid — final gatekeeper.** |
+| **Work Agent** | Execute exactly what's specified. If reality differs from plan, STOP and report. No improvisation. **After implementation, perform runtime verification to prove code is reachable.** |
+| **Review Agent** | Cite specific evidence. Predict behavior, don't just check text existence. PASS/FAIL only. Fresh context, no attachment to the work. **Independently perform runtime verification — never trust Work Agent's results.** |
 
 ---
 
@@ -208,6 +208,7 @@ Trace call chains, dependencies, state changes, user-visible behavior.
 - [ ] Accept/reject reasoning documented?
 - [ ] Spot-checks completed? (needed: X, done: Y)
 - [ ] Cross-review report referenced? (if 2+ reviewers)
+- [ ] Runtime verification results reviewed? (reviewer produced traces: YES/NO, spot-checked: X)
 - [ ] Overall: intent preserved? (YES with evidence / NO → do not proceed)
 
 ### Phase 5: Plan (Work Agent)
@@ -265,14 +266,41 @@ Execute plan exactly. No improvisation.
 **If reality differs from plan → STOP.** This is a plan-reality gap. Return to Phase 5-7 for revision.
 **"Different from plan but better" → Stop. Revise plan. Get approval. Then implement.**
 
+**Runtime Verification (mandatory):**
+After implementation, verify that your changes will actually work when deployed/applied in practice:
+1. Identify the trigger (what causes this change to take effect? User action, system event, someone reading this document, a function call, etc.)
+2. Trace the full path from trigger to intended result — step by step, through the actual system
+3. Identify all conditions that must be true for the intended result to occur
+4. Check: are those conditions actually met in the real context?
+5. If any condition fails or the result is unreachable → this is an implementation gap. STOP and report.
+
+Format:
+```
+Trigger: [what initiates this]
+→ [step 1]: [what happens]
+→ [step 2]: [what happens]
+→ ...
+→ Result: [intended observable effect]
+Conditions: [what must be true for this to work]
+Verdict: WORKS / BROKEN — [reason]
+```
+
+This is not optional. If you can verify it, you must. "Can verify but didn't" = violation.
+
 ### Phase 9: Verify (Review Agent)
 
 For each criterion:
 1. Read actual implementation
-2. Trace execution path
-3. Predict observable behavior
-4. Compare against criterion
-5. Verdict: PASS or FAIL with explanation
+2. **Runtime Verification** — independently verify the implementation will work in practice (do NOT trust Work Agent's results):
+   a. Identify the trigger (what causes this to take effect?)
+   b. Follow the full path through the actual system (read the files, trace the flow)
+   c. At each step: what state exists? what conditions are checked? what happens next?
+   d. Does the path reach the intended result?
+   e. Produce verification in same format as Phase 8
+3. Compare your trace against Work Agent's trace — discrepancies = findings
+4. Predict observable behavior based on YOUR trace
+5. Compare against criterion
+6. Verdict: PASS or FAIL with explanation
 
 **Rules:**
 - "File contains X" is NEVER valid verification. Predict behavior.
@@ -294,12 +322,18 @@ For each criterion:
 3. If Cross-Review Report exists: resolve all Contested Findings — these are your highest-priority items
 4. If spot-check contradicts reviewer → both verification and implementation suspect
 5. If reviewer gave vague PASS → reject, re-launch with specific instructions
-6. **Final Intent Comparison Protocol** — for the implemented result:
+6. **Runtime Verification** — the most critical check:
+   - Did Review Agent produce runtime verification for each criterion?
+   - Does the verification show the implementation will actually work when deployed/applied?
+   - Spot-check at least 1 verification: trace the path yourself through the actual system
+   - If Review Agent skipped runtime verification → reject, re-launch
+   - If result is BROKEN → implementation failed regardless of other checks
+7. **Final Intent Comparison Protocol** — for the implemented result:
    - Re-read Intent Anchor (list IA-1 through IA-N)
    - For each IA item: `IA-N → SATISFIED/VIOLATED — [evidence from implementation]`
    - Any VIOLATED → return to appropriate phase
-7. **Self-enforcement Checklist** (same as Phase 4 — MUST complete before proceeding to Report)
-8. On failure, return to appropriate phase:
+8. **Self-enforcement Checklist** (same as Phase 4 — MUST complete before proceeding to Report)
+9. On failure, return to appropriate phase:
    - Implementation wrong → Phase 8
    - Plan was flawed → Phase 5
    - Analysis was wrong → Phase 2
@@ -444,6 +478,7 @@ After cross-review:
 | 22 | Token-first splitting | Split by module/feature first, tokens second |
 | 23 | Reviewer-driven drift | Reviewers improve quality, not redefine goals |
 | 24 | Intent erosion through iterations | Re-anchor to Intent Anchor (IA-N items) every meta-review — run Intent Comparison Protocol |
+| 25 | Skipping runtime verification | Verification without tracing actual execution path is incomplete. "Code exists" ≠ "Code runs." Can verify but didn't = violation. |
 
 ---
 

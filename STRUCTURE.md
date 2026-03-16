@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 19.5.1 | **Author**: TaWa | **License**: MIT
+**Version**: 19.6.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -192,6 +192,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 19.6.0 | Feat: Runtime verification added to workflow (Phase 8/9/10) — mandatory 4th verification element |
 | 19.5.1 | Feat: Document templates include execution rules (ticket Execution section, workflow Post-Workflow checklist) |
 | 19.5.0 | Feat: Ticket-Workflow 1:1 mapping, post-workflow mandatory documentation |
 | 19.4.0 | Feat: 4 document management skills (/discussing, /planning, /ticketing, /researching) with append-only documents and INDEX.md tracking |

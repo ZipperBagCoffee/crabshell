@@ -84,6 +84,7 @@ Orchestrator   →  Intent guardian, meta-review, final authority
 Key features:
 - **Intent Anchor** - Non-negotiable requirements defined in Phase 1, enforced at every gate
 - **Cross-Review** - When 2+ reviewers run in parallel, adversarial cross-examination is mandatory
+- **Runtime Verification** - Mandatory runtime verification in Phase 8/9/10 (not just static checks)
 - **1 Ticket = 1 Workflow** - Each ticket gets its own independent workflow execution
 
 ## CLAUDE.md Integration
@@ -171,6 +172,7 @@ memory.md                 - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 19.6.0 | Feat: Runtime verification added to workflow (Phase 8/9/10) — mandatory 4th verification element |
 | 19.5.1 | Feat: Document templates include execution rules (ticket Execution section, workflow Post-Workflow checklist) |
 | 19.5.0 | Feat: Ticket-Workflow 1:1 mapping, post-workflow mandatory documentation |
 | 19.4.0 | Feat: 4 document management skills (/discussing, /planning, /ticketing, /researching) with append-only documents and INDEX.md tracking |

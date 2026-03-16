@@ -1,5 +1,17 @@
 # Changelog
 
+## [19.6.0] - 2026-03-15
+### Added
+- Runtime verification as mandatory 4th verification element in workflow (Phase 8, 9, 10)
+- Work Agent must verify implementation works in practice after coding
+- Review Agent independently verifies runtime behavior
+- Orchestrator as final gatekeeper for runtime verification
+- Anti-pattern #25: skipping runtime verification
+- Updated RULES verification standard with runtime verification mandate
+### Changed
+- Verification terminology: "runtime path tracing" → "runtime verification" (실행 검증)
+- Phase 8/9/10 procedures use general-purpose language (not code-only)
+
 ## v19.5.1 (2026-03-15)
 - **feat**: Document templates now include execution rules — ticket template has `## Execution` section (1 Ticket = 1 Workflow), workflow Phase 11 report template has `## Post-Workflow Documentation` checklist
 
