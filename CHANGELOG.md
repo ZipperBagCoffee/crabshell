@@ -1,5 +1,9 @@
 # Changelog
 
+## [19.8.0] - 2026-03-17
+### Added
+- Mandatory work log rule: all D/P/T/R documents require log append after any related work, regardless of explicit skill invocation
+
 ## [19.7.0] - 2026-03-16
 ### Added
 - Status cascade: ticket verified → auto-check all sibling tickets → auto-close parent plan → auto-conclude related D/R

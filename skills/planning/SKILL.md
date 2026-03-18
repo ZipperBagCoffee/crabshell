@@ -137,3 +137,4 @@ Update status column and/or Tickets column in `docs/plan/INDEX.md`.
 5. When plan comes from a discussion/research, note `D{NNN}` or `R{NNN}` in INDEX.md Related column and add to first log entry.
 6. **하위 미완료 시 상위 전환 금지:** P는 관련 티켓이 전부 `verified`일 때만 `done`으로 전환 가능. 티켓이 하나라도 미완료면 `done` 전환 거부.
 7. **완료 시 상위 자동 종결:** P가 `done`이 되면 → Related 컬럼의 D/R을 자동으로 `concluded`로 업데이트하고 해당 문서에 로그 추가. (ticketing cascade에서 트리거됨)
+8. **Mandatory work log:** After performing any work related to this document, append a log entry to the Log section using the existing format (`### [{YYYY-MM-DD HH:MM}] {entry_type}`). This applies regardless of whether this skill was explicitly invoked — if the work touched or advanced this plan's purpose, log it.

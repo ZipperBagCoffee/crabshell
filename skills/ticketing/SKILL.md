@@ -173,3 +173,4 @@ If ticket status → `verified`:
 6. **INDEX.md** is the only file where existing content may be modified.
 7. **Plan propagation:** When all tickets verified → auto-update plan status.
 8. **1 Ticket = 1 Workflow:** Each ticket is executed as a separate, independent workflow invocation. Never batch multiple tickets into a single workflow run. 3 tickets = 3 separate workflow executions.
+9. **Mandatory work log:** After performing any work related to this document, append a log entry to the Log section using the existing format (`### [{YYYY-MM-DD HH:MM}] {entry_type}`). This applies regardless of whether this skill was explicitly invoked — if the work touched or advanced this ticket's purpose, log it.
