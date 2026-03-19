@@ -100,10 +100,14 @@ All agent prompts follow this structure:
 ## Background
 [Why this is needed — Phase 1 understanding + relevant prior phase outputs]
 
-## Intent Anchor (DO NOT violate)
+## Intent Anchor (READ-ONLY — DO NOT REINTERPRET)
 IA-1: [requirement]
 IA-2: [requirement]
 ...
+
+These are your evaluation criteria. You may NOT add, remove, or reinterpret them.
+If you believe an IA item conflicts with reality, STOP and report to orchestrator.
+Do NOT silently reinterpret IA to match reality.
 
 ## Task
 [WORK or REVIEW — never both in one prompt]
@@ -211,6 +215,30 @@ Trace call chains, dependencies, state changes, user-visible behavior.
 - [ ] Runtime verification results reviewed? (reviewer produced traces: YES/NO, spot-checked: X)
 - [ ] Overall: intent preserved? (YES with evidence / NO → do not proceed)
 
+### Compaction Protocol (after Meta-Review)
+
+After completing Phase 4 meta-review, compress previous phases for the next agent batch:
+
+```
+## Phase Summary (compacted at Phase 4)
+### Intent Anchor (NEVER compress — include verbatim)
+IA-1: [exact text]
+IA-2: [exact text]
+...
+
+### Phase 1-4 Summary
+- Analysis findings: [key discoveries, 3-5 lines]
+- Review verdict: [COMPLETE/INCOMPLETE + key issues]
+- Meta-review decision: [proceed/return + reasoning, 1 line]
+- Contested findings resolved: [if cross-review occurred]
+```
+
+**Rules:**
+- Intent Anchor is NEVER compressed — always include full original text
+- Summary replaces detailed phase outputs in next agent prompts only
+- Full originals are preserved in conversation history / files
+- If next agent reports missing context, provide the original (not re-summarize)
+
 ### Phase 5: Plan (Work Agent)
 
 For each gap: file, change, why, predicted effect.
@@ -244,6 +272,25 @@ Include regression checks with verification method.
 5. Scope drift: plan grown beyond or shrunk below original intent?
 6. **Self-enforcement Checklist** (same as Phase 4 — MUST complete before presenting to user)
 7. Present summary + Intent Anchor comparison → get user approval before implementing
+
+### Compaction Protocol (after Meta-Review)
+
+Same protocol as Phase 4. Compress Phase 1-7 for Phase 8+ agents:
+
+```
+## Phase Summary (compacted at Phase 7)
+### Intent Anchor (NEVER compress — include verbatim)
+[full IA text]
+
+### Phase 1-4 Summary
+[from Phase 4 compaction]
+
+### Phase 5-7 Summary
+- Plan changes: [key changes, 3-5 lines]
+- Review verdict: [APPROVED/NEEDS REVISION + key issues]
+- Meta-review decision: [approved/revised + reasoning, 1 line]
+- User approval: [YES/NO + any conditions]
+```
 
 ### Phase 7.5: Alternative Proposal (Optional)
 
@@ -286,6 +333,27 @@ Verdict: WORKS / BROKEN — [reason]
 ```
 
 This is not optional. If you can verify it, you must. "Can verify but didn't" = violation.
+
+### Internal Iteration Protocol (Work Agent)
+
+When an implementation attempt fails at the execution level (syntax error, runtime error, simple typo):
+
+1. **Log the failure:** Record what was tried and why it failed
+2. **Classify the failure:**
+   - **Execution-level** (syntax error, missing import, typo, runtime exception) → iterate internally
+   - **Plan-level** (different approach needed, architectural change, scope change) → STOP and report to Orchestrator
+3. **Re-attempt** with the execution-level fix (max 3 internal iterations)
+4. **If still failing after 3 attempts** → STOP and report to Orchestrator with all attempt logs
+
+**Boundary rule:** "I need to try a different approach" = plan-level = STOP. "I need to fix this typo/import/syntax" = execution-level = iterate.
+
+**All internal iterations must be logged** for post-hoc review by Review Agent in Phase 9. Format:
+```
+Internal Iteration Log:
+| # | What failed | Classification | Fix applied | Result |
+|---|-------------|---------------|-------------|--------|
+| 1 | [error] | execution-level | [fix] | PASS/FAIL |
+```
 
 ### Phase 9: Verify (Review Agent)
 
@@ -338,6 +406,21 @@ For each criterion:
    - Plan was flawed → Phase 5
    - Analysis was wrong → Phase 2
 
+### Partial Failure Protocol (Graceful Degradation)
+
+When Phase 10 detects partial failure (some criteria PASS, some FAIL):
+
+1. **Separate results:** Identify which criteria PASSED and which FAILED
+2. **Accept passed criteria** — these results are confirmed and not re-verified (unless rework could affect them)
+3. **Scope the rework** — "Phase 8 re-run for criteria X and Y only"
+4. **Re-run targets only failed criteria** (not the entire phase)
+5. **Regression check** — if rework could affect previously passed criteria, flag them for re-verification
+
+**Critical distinction:**
+- **Verification verdicts** remain strictly PASS/FAIL (Anti-Pattern #9 unchanged)
+- **Work product preservation** allows partial progress — passed work is kept, only failed parts are reworked
+- "Graceful degradation" applies to work scope, NEVER to verdict quality
+
 ### Phase 11: Report (Orchestrator)
 
 ```
@@ -349,6 +432,13 @@ Per criterion: description, reviewer verdict, my spot-check
 
 ## Regression Check Results
 Per behavior: description, verdict
+
+## Experiment Log (if phase rework occurred)
+| Attempt | Phase | What was tried | Result | Why it failed |
+|---------|-------|----------------|--------|---------------|
+| [N] | [phase#] | [approach description] | FAIL/PASS | [root cause] |
+
+Note: Only populated when Phase 10 → Phase 8/5/2 rework occurred. Empty if workflow proceeded without rework.
 
 ## User Testing Needed
 [What cannot be verified statically]
@@ -420,6 +510,17 @@ If budget exceeds ~80-100K tokens → split further. If room → merge small tas
 
 **Orchestrator assignment:** extract tasks → build dependency graph → group into batches → estimate budget → split or merge.
 
+### Agent Call Classification
+
+| Classification | Criteria | Review Requirement |
+|---------------|----------|-------------------|
+| **Light call** | Single file, no judgment needed, verifiable result (e.g., format check, existence check, simple comparison) | Orchestrator spot-check only (no separate Review Agent) |
+| **Full agent** | Multiple files, judgment required, architectural decisions, code changes | 1:1 Review Agent mandatory (existing rule) |
+
+**Default rule:** When in doubt, classify as Full agent. Misclassifying Full work as Light risks bypassing review.
+
+**Orchestrator decides** the classification before spawning. Document the reasoning: "Light because [criteria met]" or "Full because [criteria not met]."
+
 ### Cross-Review Protocol
 
 Cross-review is NOT a coherence check. It is adversarial cross-examination — reviewers challenge each other's conclusions.
@@ -479,6 +580,8 @@ After cross-review:
 | 23 | Reviewer-driven drift | Reviewers improve quality, not redefine goals |
 | 24 | Intent erosion through iterations | Re-anchor to Intent Anchor (IA-N items) every meta-review — run Intent Comparison Protocol |
 | 25 | Skipping runtime verification | Verification without tracing actual execution path is incomplete. "Code exists" ≠ "Code runs." Can verify but didn't = violation. |
+| 26 | Internal iteration for plan changes | "Different approach" is plan-level, not execution-level. STOP and report. Only syntax/runtime fixes qualify for internal iteration. |
+| 27 | Accepting partial verdicts | Graceful degradation preserves work products, not verdicts. Each criterion is still PASS or FAIL. No "partial pass." |
 
 ---
 
@@ -501,4 +604,8 @@ Orchestrator = Synthesize + Critique + Preserve Intent Anchor
 Spot-checks scale: 1 reviewer→1, 2-3→2, 4+→3
 If gap remains → do not proceed
 If recommendation CONFLICTS with any IA item → reject or find alternative
+Compaction = Phase 4/7 meta-review후 이전 phase 요약. IA는 절대 압축 안 함.
+Light/Full = agent 분류. Light: 단일파일+판단불필요→spot-check만. Full: 기존 1:1 Review 필수. 의심→Full.
+Internal Iteration = Phase 8 실행 에러만 max 3회 재시도. 계획 변경→STOP. 로그 필수.
+Graceful Degradation = Phase 10 부분 실패 시 PASS 확정 + FAIL만 재작업. 판정은 PASS/FAIL 유지.
 ```

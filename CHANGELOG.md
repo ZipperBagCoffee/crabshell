@@ -1,5 +1,17 @@
 # Changelog
 
+## [19.9.0] - 2026-03-18
+### Added
+- Intent Anchor READ-ONLY structural isolation in Agent Prompt Template (from autoresearch immutable evaluation pattern)
+- Phase 4/7 Compaction Protocol for inter-phase context compression (from rlm compaction pattern)
+- Light/Full Agent Call Classification in Context Budget (from rlm dual-depth call pattern)
+- Experiment Log in Phase 11 Report for failure history accumulation (from autoresearch results.tsv pattern)
+- Internal Iteration Protocol in Phase 8: max 3 retries for execution-level failures (from rlm iteration loop)
+- Graceful Degradation Protocol in Phase 10: partial failure handling with work preservation (from rlm graceful degradation)
+- Anti-Patterns #26 (internal iteration for plan changes) and #27 (accepting partial verdicts)
+- Three new RULES: Intent Anchor READ-ONLY, Agent call classification, Internal iteration boundary
+- Quick Reference entries for compaction, agent classification, internal iteration, graceful degradation
+
 ## [19.8.0] - 2026-03-17
 ### Added
 - Mandatory work log rule: all D/P/T/R documents require log append after any related work, regardless of explicit skill invocation
