@@ -1,5 +1,15 @@
 # Changelog
 
+## [19.10.0] - 2026-03-20
+### Changed
+- Skill descriptions improved: search-memory, clear-memory, load-memory now include "Use when..." trigger conditions for better skill discovery
+- "Task tool" → "Agent tool" terminology fix in memory-delta, memory-rotate SKILL.md
+- RULES session recovery: "read memory.md" → "invoke load-memory skill" with fallback
+- memory-save skill renamed to memory-autosave; [MEMORY_KEEPER] auto-save trigger → [MEMORY_KEEPER_SAVE] to eliminate prefix collision
+- workflow SKILL.md split: 611-line monolith → SKILL.md (294 lines) + ANALYSIS-PHASES.md + EXECUTION-PHASES.md + COMPACTION.md using progressive disclosure
+- Added D/P/T/R document type definitions to RULES
+- Removed stale version 13.8.3 from boilerplate examples
+
 ## [19.9.0] - 2026-03-18
 ### Added
 - Intent Anchor READ-ONLY structural isolation in Agent Prompt Template (from autoresearch immutable evaluation pattern)

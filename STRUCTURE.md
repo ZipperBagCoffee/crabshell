@@ -60,7 +60,7 @@ memory-keeper-plugin/
 │   └── utils.js                      # Shared utilities
 │
 ├── skills/                           # Slash command skills
-│   ├── memory-save/SKILL.md          # Auto-trigger memory save
+│   ├── memory-autosave/SKILL.md      # Auto-trigger memory save
 │   ├── memory-delta/SKILL.md         # Auto-trigger delta summarization
 │   ├── save-memory/SKILL.md          # /memory-keeper:save-memory
 │   ├── load-memory/SKILL.md          # /memory-keeper:load-memory

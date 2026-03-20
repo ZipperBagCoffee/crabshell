@@ -8,6 +8,25 @@ description: "Agent orchestration workflow for complex tasks. Use when RULES say
 > Principles (Understanding-First, HHH, Critical Stance, etc.) are injected via RULES every prompt.
 > This document defines HOW those principles apply to agent-based task execution.
 
+## Table of Contents
+
+- [Core Concepts](#core-concepts)
+- [3-Layer Architecture](#3-layer-architecture)
+- [11-Phase Workflow](#11-phase-workflow) (overview)
+- [Agent Prompt Template](#agent-prompt-template-generic)
+- [Orchestrator Scope](#orchestrator-scope)
+- [Parallel Execution](#parallel-execution)
+- [Processing Agent Responses](#processing-agent-responses)
+- [Anti-Patterns](#anti-patterns) (27 items)
+- [Quick Reference](#quick-reference)
+
+**Phase Details:**
+- [ANALYSIS-PHASES.md](ANALYSIS-PHASES.md) — Phases 1-7 (Understand, Analyze, Review, Plan)
+- [EXECUTION-PHASES.md](EXECUTION-PHASES.md) — Phases 8-11 (Implement, Verify, Report)
+- [COMPACTION.md](COMPACTION.md) — Compaction Protocol (used after Phase 4 and Phase 7)
+
+---
+
 ## Core Concepts
 
 **Understanding = Closing gaps + Inferring consequences.**
@@ -92,6 +111,8 @@ Phase 10:  Meta-Verify         → Orchestrator (Intent Guardian)
 Phase 11:  Report              → Orchestrator
 ```
 
+> **Phase details:** See [ANALYSIS-PHASES.md](ANALYSIS-PHASES.md) for Phases 1-7, [EXECUTION-PHASES.md](EXECUTION-PHASES.md) for Phases 8-11.
+
 ### Agent Prompt Template (generic)
 
 All agent prompts follow this structure:
@@ -122,344 +143,6 @@ Do NOT silently reinterpret IA to match reality.
 ## Confirmation
 State your understanding before working.
 ```
-
-### Phase 1: Understand (Orchestrator + User)
-
-**YOUR job — never delegate.**
-
-1. State understanding explicitly: current state, desired state, must preserve, constraints
-2. Infer implicit requirements — what would a reasonable person expect even if not mentioned?
-3. Produce **Intent Anchor** — numbered list of non-negotiable requirements (3-7 items):
-   ```
-   IA-1: [requirement]
-   IA-2: [requirement]
-   ...
-   ```
-   These are the things that CANNOT be violated. Every meta-review gate re-reads this list.
-4. Confirm with user: "Is this understanding correct? Are these the right Intent Anchor items?"
-5. User corrects → gap found → adjust Intent Anchor → confirm again
-
-### Phase 2: Analyze (Work Agent)
-
-Trace call chains, dependencies, state changes, user-visible behavior.
-
-**When NOT to use agents:** simple grep, checking text existence, reading a single short file.
-
-### Phase 3: Review Analysis (Review Agent)
-
-- Check completeness (all files/functions covered?)
-- Check accuracy (read code yourself, verify claims)
-- Per-item verdict: Claim → Verified YES/NO/PARTIALLY → Issue
-- Overall: COMPLETE / INCOMPLETE (with specific gaps)
-
-### Phase 3.5 / 6.5 / 9.5: Cross-Review (BLOCKING Gate)
-
-**Triggers when 2+ Review Agents ran in parallel.** The next Meta-Review phase CANNOT begin without this step. Single reviewer → skip to Meta-Review.
-
-**Procedure:**
-
-1. Orchestrator collects all review results
-2. Each reviewer receives the OTHER reviewers' findings with instructions:
-   - **Challenge**: conclusions you disagree with — explain why
-   - **Contradict**: findings that conflict with yours — cite evidence
-   - **Blind spots**: what did they miss that you caught, and vice versa?
-3. Each reviewer produces a Cross-Review Response
-4. Orchestrator synthesizes into a **Cross-Review Report** (required input for Meta-Review)
-
-**Cross-Review Report format:**
-
-```
-## Cross-Review Report
-| Finding | R1 | R2 | R3 | Conflict? |
-|---------|----|----|-----|-----------|
-| [item]  | [position + evidence] | [agrees/disagrees + why] | ... | YES/NO |
-
-## Contested Findings
-[Items where reviewers disagree — orchestrator MUST resolve in Meta-Review]
-
-## Blind Spots Identified
-[Items one reviewer caught that others missed — require orchestrator judgment]
-
-## Consensus
-[Items all reviewers agree on — lower scrutiny needed]
-```
-
-"No conflicts found" is a valid but suspicious outcome — orchestrator should verify this isn't lazy cross-review.
-
-### Phase 4: Meta-Review (Orchestrator as Intent Guardian)
-
-**Input:** Review results + Cross-Review Report (if 2+ reviewers)
-
-1. Did reviewer cite specific evidence (not just "looks correct")?
-2. **Spot-check** — read actual code yourself:
-   - 1 reviewer → minimum 1 spot-check
-   - 2-3 reviewers → minimum 2 (highest-risk + 1 random)
-   - 4+ reviewers → minimum 3
-3. If Cross-Review Report exists: resolve all Contested Findings with your own judgment
-4. **Intent Comparison Protocol** — for each agent recommendation:
-   - Re-read Intent Anchor (list IA-1 through IA-N)
-   - Write: `Recommendation X → IA-N: ALIGNED/CONFLICTS — [reason]`
-   - Any CONFLICTS → reject recommendation or find alternative that preserves intent
-   - Record WHY each acceptance/rejection was made
-5. Gap check:
-   - Thorough + intent-aligned → proceed to Phase 5
-   - Vague or missed obvious gaps → re-launch Review Agent
-   - Spot-check fails → both analysis and review suspect → return to Phase 2
-
-**Self-enforcement Checklist (MUST complete before proceeding):**
-- [ ] Intent Anchor listed? (cite IA-1 through IA-N)
-- [ ] Each recommendation compared against Intent Anchor? (show comparison)
-- [ ] Accept/reject reasoning documented?
-- [ ] Spot-checks completed? (needed: X, done: Y)
-- [ ] Cross-review report referenced? (if 2+ reviewers)
-- [ ] Runtime verification results reviewed? (reviewer produced traces: YES/NO, spot-checked: X)
-- [ ] Overall: intent preserved? (YES with evidence / NO → do not proceed)
-
-### Compaction Protocol (after Meta-Review)
-
-After completing Phase 4 meta-review, compress previous phases for the next agent batch:
-
-```
-## Phase Summary (compacted at Phase 4)
-### Intent Anchor (NEVER compress — include verbatim)
-IA-1: [exact text]
-IA-2: [exact text]
-...
-
-### Phase 1-4 Summary
-- Analysis findings: [key discoveries, 3-5 lines]
-- Review verdict: [COMPLETE/INCOMPLETE + key issues]
-- Meta-review decision: [proceed/return + reasoning, 1 line]
-- Contested findings resolved: [if cross-review occurred]
-```
-
-**Rules:**
-- Intent Anchor is NEVER compressed — always include full original text
-- Summary replaces detailed phase outputs in next agent prompts only
-- Full originals are preserved in conversation history / files
-- If next agent reports missing context, provide the original (not re-summarize)
-
-### Phase 5: Plan (Work Agent)
-
-For each gap: file, change, why, predicted effect.
-
-**Success criteria rules:**
-- MUST describe **observable behavior**, NOT file contents
-- BAD: "file.js contains newFunction()"
-- GOOD: "When counter reaches 100, delta triggers exactly once"
-
-Include regression checks with verification method.
-
-### Phase 6: Review Plan (Review Agent)
-
-- Coverage: every gap addressed?
-- Correctness: will changes close gaps?
-- Regression risk per change (NONE / LOW / HIGH)
-- Success criteria: observable behavior, testable?
-- Per-change verdict + overall APPROVED / NEEDS REVISION
-
-### Phase 7: Meta-Review Plan (Orchestrator + User)
-
-**Input:** Plan review results + Cross-Review Report (if 2+ reviewers)
-
-1. Count: N gaps → N addressed in review?
-2. **Spot-check** (same scaling as Phase 4): verify highest-risk change(s)
-3. If Cross-Review Report exists: resolve all Contested Findings
-4. **Intent Comparison Protocol** — for each planned change:
-   - Re-read Intent Anchor (list IA-1 through IA-N)
-   - Write: `Change X → IA-N: ALIGNED/CONFLICTS — [reason]`
-   - Any CONFLICTS → revise plan to preserve intent
-5. Scope drift: plan grown beyond or shrunk below original intent?
-6. **Self-enforcement Checklist** (same as Phase 4 — MUST complete before presenting to user)
-7. Present summary + Intent Anchor comparison → get user approval before implementing
-
-### Compaction Protocol (after Meta-Review)
-
-Same protocol as Phase 4. Compress Phase 1-7 for Phase 8+ agents:
-
-```
-## Phase Summary (compacted at Phase 7)
-### Intent Anchor (NEVER compress — include verbatim)
-[full IA text]
-
-### Phase 1-4 Summary
-[from Phase 4 compaction]
-
-### Phase 5-7 Summary
-- Plan changes: [key changes, 3-5 lines]
-- Review verdict: [APPROVED/NEEDS REVISION + key issues]
-- Meta-review decision: [approved/revised + reasoning, 1 line]
-- User approval: [YES/NO + any conditions]
-```
-
-### Phase 7.5: Alternative Proposal (Optional)
-
-Only when genuinely better approach exists:
-
-| Propose | Do NOT propose |
-|---------|----------------|
-| Better achieves the intent | Just "simpler" or "faster" |
-| Can explain WHY | Gut feeling / pattern matching |
-| Verifiable improvement | Skips steps to save time |
-| Maintains all constraints | Ignores some requirements |
-
-If accepted → return to Phase 5, full review cycle again.
-**"Better" means better achieves intent, not faster to implement.**
-
-### Phase 8: Implement (Work Agent)
-
-Execute plan exactly. No improvisation.
-
-**If reality differs from plan → STOP.** This is a plan-reality gap. Return to Phase 5-7 for revision.
-**"Different from plan but better" → Stop. Revise plan. Get approval. Then implement.**
-
-**Runtime Verification (mandatory):**
-After implementation, verify that your changes will actually work when deployed/applied in practice:
-1. Identify the trigger (what causes this change to take effect? User action, system event, someone reading this document, a function call, etc.)
-2. Trace the full path from trigger to intended result — step by step, through the actual system
-3. Identify all conditions that must be true for the intended result to occur
-4. Check: are those conditions actually met in the real context?
-5. If any condition fails or the result is unreachable → this is an implementation gap. STOP and report.
-
-Format:
-```
-Trigger: [what initiates this]
-→ [step 1]: [what happens]
-→ [step 2]: [what happens]
-→ ...
-→ Result: [intended observable effect]
-Conditions: [what must be true for this to work]
-Verdict: WORKS / BROKEN — [reason]
-```
-
-This is not optional. If you can verify it, you must. "Can verify but didn't" = violation.
-
-### Internal Iteration Protocol (Work Agent)
-
-When an implementation attempt fails at the execution level (syntax error, runtime error, simple typo):
-
-1. **Log the failure:** Record what was tried and why it failed
-2. **Classify the failure:**
-   - **Execution-level** (syntax error, missing import, typo, runtime exception) → iterate internally
-   - **Plan-level** (different approach needed, architectural change, scope change) → STOP and report to Orchestrator
-3. **Re-attempt** with the execution-level fix (max 3 internal iterations)
-4. **If still failing after 3 attempts** → STOP and report to Orchestrator with all attempt logs
-
-**Boundary rule:** "I need to try a different approach" = plan-level = STOP. "I need to fix this typo/import/syntax" = execution-level = iterate.
-
-**All internal iterations must be logged** for post-hoc review by Review Agent in Phase 9. Format:
-```
-Internal Iteration Log:
-| # | What failed | Classification | Fix applied | Result |
-|---|-------------|---------------|-------------|--------|
-| 1 | [error] | execution-level | [fix] | PASS/FAIL |
-```
-
-### Phase 9: Verify (Review Agent)
-
-For each criterion:
-1. Read actual implementation
-2. **Runtime Verification** — independently verify the implementation will work in practice (do NOT trust Work Agent's results):
-   a. Identify the trigger (what causes this to take effect?)
-   b. Follow the full path through the actual system (read the files, trace the flow)
-   c. At each step: what state exists? what conditions are checked? what happens next?
-   d. Does the path reach the intended result?
-   e. Produce verification in same format as Phase 8
-3. Compare your trace against Work Agent's trace — discrepancies = findings
-4. Predict observable behavior based on YOUR trace
-5. Compare against criterion
-6. Verdict: PASS or FAIL with explanation
-
-**Rules:**
-- "File contains X" is NEVER valid verification. Predict behavior.
-- Only PASS / FAIL. No "mostly works."
-- Cannot predict behavior → say CANNOT VERIFY explicitly
-- If reference exists, structural comparison is MANDATORY:
-  1. Read reference structure (layout, components, ordering)
-  2. Read implementation structure
-  3. Compare: structurally identical?
-  4. List EVERY structural difference
-  5. Verdict: MATCHES / DIFFERS (with specific diff list)
-
-### Phase 10: Meta-Verify (Orchestrator as Intent Guardian)
-
-**Input:** Verification results + Cross-Review Report (if 2+ reviewers)
-
-1. Did reviewer predict behavior for each PASS (not just "matches")?
-2. **Spot-check** (same scaling as Phase 4) — read actual code yourself. **NON-NEGOTIABLE.**
-3. If Cross-Review Report exists: resolve all Contested Findings — these are your highest-priority items
-4. If spot-check contradicts reviewer → both verification and implementation suspect
-5. If reviewer gave vague PASS → reject, re-launch with specific instructions
-6. **Runtime Verification** — the most critical check:
-   - Did Review Agent produce runtime verification for each criterion?
-   - Does the verification show the implementation will actually work when deployed/applied?
-   - Spot-check at least 1 verification: trace the path yourself through the actual system
-   - If Review Agent skipped runtime verification → reject, re-launch
-   - If result is BROKEN → implementation failed regardless of other checks
-7. **Final Intent Comparison Protocol** — for the implemented result:
-   - Re-read Intent Anchor (list IA-1 through IA-N)
-   - For each IA item: `IA-N → SATISFIED/VIOLATED — [evidence from implementation]`
-   - Any VIOLATED → return to appropriate phase
-8. **Self-enforcement Checklist** (same as Phase 4 — MUST complete before proceeding to Report)
-9. On failure, return to appropriate phase:
-   - Implementation wrong → Phase 8
-   - Plan was flawed → Phase 5
-   - Analysis was wrong → Phase 2
-
-### Partial Failure Protocol (Graceful Degradation)
-
-When Phase 10 detects partial failure (some criteria PASS, some FAIL):
-
-1. **Separate results:** Identify which criteria PASSED and which FAILED
-2. **Accept passed criteria** — these results are confirmed and not re-verified (unless rework could affect them)
-3. **Scope the rework** — "Phase 8 re-run for criteria X and Y only"
-4. **Re-run targets only failed criteria** (not the entire phase)
-5. **Regression check** — if rework could affect previously passed criteria, flag them for re-verification
-
-**Critical distinction:**
-- **Verification verdicts** remain strictly PASS/FAIL (Anti-Pattern #9 unchanged)
-- **Work product preservation** allows partial progress — passed work is kept, only failed parts are reworked
-- "Graceful degradation" applies to work scope, NEVER to verdict quality
-
-### Phase 11: Report (Orchestrator)
-
-```
-## Changes Made
-[Files and modifications]
-
-## Verification Results
-Per criterion: description, reviewer verdict, my spot-check
-
-## Regression Check Results
-Per behavior: description, verdict
-
-## Experiment Log (if phase rework occurred)
-| Attempt | Phase | What was tried | Result | Why it failed |
-|---------|-------|----------------|--------|---------------|
-| [N] | [phase#] | [approach description] | FAIL/PASS | [root cause] |
-
-Note: Only populated when Phase 10 → Phase 8/5/2 rework occurred. Empty if workflow proceeded without rework.
-
-## User Testing Needed
-[What cannot be verified statically]
-
-## Post-Workflow Documentation
-- [ ] Ticket updated: `/ticketing P{NNN}_T{NNN}` (if executing from ticket)
-- [ ] Other documents updated: `/discussing`, `/researching`, `/planning` (as needed)
-```
-
-Final gap check: "Is this the intended result?"
-
-### Post-Workflow: Document (mandatory)
-
-After workflow completion, document the work using the appropriate skill:
-
-- `/ticketing P{NNN}_T{NNN}` — update ticket with work log entry (if executing from a ticket)
-- `/discussing "topic"` — record decisions or dialogue outcomes
-- `/researching "topic"` — record investigation findings or analysis results
-- `/planning "topic"` — record if a new plan was derived
-
-At minimum, the relevant ticket's work log (`/ticketing` update) MUST be updated.
 
 ---
 
@@ -525,7 +208,7 @@ If budget exceeds ~80-100K tokens → split further. If room → merge small tas
 
 Cross-review is NOT a coherence check. It is adversarial cross-examination — reviewers challenge each other's conclusions.
 
-See **Phase 3.5 / 6.5 / 9.5** for full procedure and output format.
+See [ANALYSIS-PHASES.md — Phase 3.5](ANALYSIS-PHASES.md#phase-35--65--95-cross-review-blocking-gate) for full procedure and output format.
 
 **Key principle:** Reviewers don't just check "do our findings align?" — they ask "did the other reviewer miss something I caught? Do I disagree with their verdict? Can I break their reasoning?"
 

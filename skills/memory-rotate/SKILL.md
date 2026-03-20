@@ -12,7 +12,7 @@ Auto-invoked when hook outputs `[MEMORY_KEEPER_ROTATE] file=memory_XXXXXXXX_XXXX
 1. **Parse file path**: Extract filename after `file=` from trigger message
 2. **Call Haiku agent**:
    ```
-   Task tool:
+   Agent tool:
    - subagent_type: "memory-keeper:memory-summarizer"
    - model: "haiku"
    - prompt: "Read and summarize: .claude/memory/{filename}"

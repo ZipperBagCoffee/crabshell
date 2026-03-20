@@ -1,6 +1,6 @@
 ---
 name: search-memory
-description: Search past sessions and memory
+description: Searches past sessions, memory archives, and session history for keywords, decisions, or context. Use when looking up previous session content, finding historical decisions, or querying memory by topic.
 ---
 
 ## Node.js Path
@@ -15,9 +15,7 @@ From "Base directory for this skill:" above, derive the scripts path:
 - Remove `/skills/search-memory` from the end
 - Add `/scripts/` to get the scripts directory
 
-Example:
-- Base: `~/.claude/plugins/cache/memory-keeper-marketplace/memory-keeper/13.8.3/skills/search-memory`
-- Scripts: `~/.claude/plugins/cache/memory-keeper-marketplace/memory-keeper/13.8.3/scripts/`
+Example: if Base directory is `~/.claude/plugins/cache/.../skills/search-memory`, then Scripts path is derived by removing `/skills/search-memory` and appending `/scripts/`.
 
 Use this full path when running node commands below.
 

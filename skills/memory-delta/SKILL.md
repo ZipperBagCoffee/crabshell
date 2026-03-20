@@ -15,9 +15,7 @@ From "Base directory for this skill:" above, derive the scripts path:
 - Remove `/skills/memory-delta` from the end
 - Add `/scripts/` to get the scripts directory
 
-Example:
-- Base: `~/.claude/plugins/cache/memory-keeper-marketplace/memory-keeper/13.8.3/skills/memory-delta`
-- Scripts: `~/.claude/plugins/cache/memory-keeper-marketplace/memory-keeper/13.8.3/scripts/`
+Example: if Base directory is `~/.claude/plugins/cache/.../skills/memory-delta`, then Scripts path is derived by removing `/skills/memory-delta` and appending `/scripts/`.
 
 Use this full path when running node commands below.
 
@@ -48,7 +46,7 @@ If you see `[MEMORY_KEEPER_DELTA]` anywhere in your context, execute this skill 
 2. **Call Haiku agent for summarization**:
    Use **absolute path** from Project Root Resolution:
    ```
-   Task tool:
+   Agent tool:
    - subagent_type: "memory-keeper:delta-summarizer"
    - model: "haiku"
    - prompt: "Read {PROJECT_DIR}/.claude/memory/delta_temp.txt and summarize (1 sentence per ~200 words)."
@@ -86,5 +84,5 @@ If you see `[MEMORY_KEEPER_DELTA]` anywhere in your context, execute this skill 
 
 - If file doesn't exist in step 1: STOP immediately
 - If Haiku returns ERROR or empty: STOP, don't update/cleanup
-- If Task tool fails: Don't update timestamp, don't delete temp file
+- If Agent tool fails: Don't update timestamp, don't delete temp file
 - Next trigger will retry with accumulated content (temp file overwritten)

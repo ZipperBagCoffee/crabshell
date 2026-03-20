@@ -1,6 +1,6 @@
 ---
 name: clear-memory
-description: Clean up old memory files
+description: Archives or clears old memory session files to manage storage. Use when memory files accumulate and need cleanup, compression, or archival.
 ---
 
 ## Node.js Path
@@ -15,9 +15,7 @@ From "Base directory for this skill:" above, derive the scripts path:
 - Remove `/skills/clear-memory` from the end
 - Add `/scripts/` to get the scripts directory
 
-Example:
-- Base: `~/.claude/plugins/cache/memory-keeper-marketplace/memory-keeper/13.8.3/skills/clear-memory`
-- Scripts: `~/.claude/plugins/cache/memory-keeper-marketplace/memory-keeper/13.8.3/scripts/`
+Example: if Base directory is `~/.claude/plugins/cache/.../skills/clear-memory`, then Scripts path is derived by removing `/skills/clear-memory` and appending `/scripts/`.
 
 Use this full path when running node commands below.
 

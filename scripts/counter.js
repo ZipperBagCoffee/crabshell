@@ -296,7 +296,7 @@ async function final() {
 
   // Quiet mode by default - only show brief message
   if (config.quietStop !== false) {
-    let systemMsg = `[MEMORY_KEEPER] Session saved. L1: ${rawSaved ? 'OK' : 'SKIP'}`;
+    let systemMsg = `[MEMORY_KEEPER_SAVE] Session saved. L1: ${rawSaved ? 'OK' : 'SKIP'}`;
     if (deltaOutput) {
       systemMsg += deltaOutput;
     }
@@ -310,7 +310,7 @@ async function final() {
 
   const instructions = `
 ═══════════════════════════════════════════════════════════════
-[MEMORY_KEEPER] SESSION ENDING - Final Save Required
+[MEMORY_KEEPER_SAVE] SESSION ENDING - Final Save Required
 ═══════════════════════════════════════════════════════════════
 
 ${rawSaved ? `✓ Raw transcript saved: ${rawSaved}` : '⚠ Raw transcript not saved'}

@@ -1,6 +1,6 @@
 ---
-name: memory-save
-description: Execute when you see "[MEMORY_KEEPER]" in hook output. Follow the numbered steps exactly to save session memory.
+name: memory-autosave
+description: Execute when you see "[MEMORY_KEEPER_SAVE]" in hook output. Follow the numbered steps exactly to save session memory.
 ---
 
 ## Node.js Path
@@ -12,12 +12,10 @@ If not available in context, fall back to `node`.
 **IMPORTANT:** The `scripts/` folder is in the plugin directory, NOT the current project.
 
 From "Base directory for this skill:" above, derive the scripts path:
-- Remove `/skills/memory-save` from the end
+- Remove `/skills/memory-autosave` from the end
 - Add `/scripts/` to get the scripts directory
 
-Example:
-- Base: `~/.claude/plugins/cache/memory-keeper-marketplace/memory-keeper/13.8.3/skills/memory-save`
-- Scripts: `~/.claude/plugins/cache/memory-keeper-marketplace/memory-keeper/13.8.3/scripts/`
+Example: if Base directory is `~/.claude/plugins/cache/.../skills/memory-autosave`, then Scripts path is derived by removing `/skills/memory-autosave` and appending `/scripts/`.
 
 Use this full path when running node commands below.
 
@@ -31,7 +29,7 @@ If not available in context, use your current working directory.
 
 # Memory Save Skill (v13.1.0)
 
-This skill activates when `[MEMORY_KEEPER]` appears in conversation.
+This skill activates when `[MEMORY_KEEPER_SAVE]` appears in conversation.
 
 ## Memory Structure
 
@@ -49,7 +47,7 @@ This skill activates when `[MEMORY_KEEPER]` appears in conversation.
 
 ```
 ═══════════════════════════════════════════════════════════════
-[MEMORY_KEEPER] AUTO-SAVE TRIGGERED - N tool uses reached
+[MEMORY_KEEPER_SAVE] AUTO-SAVE TRIGGERED - N tool uses reached
 ═══════════════════════════════════════════════════════════════
 ```
 
