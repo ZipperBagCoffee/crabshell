@@ -104,6 +104,7 @@ Watch for: completion drive, confidence w/o reading, pattern matching, efficienc
 - **Intent Anchor READ-ONLY:** Agent prompts must treat Intent Anchor items as read-only evaluation criteria. Agents may NOT add, remove, or reinterpret IA items. If reality conflicts with an IA item, STOP and report — do not silently reinterpret.
 - **Agent call classification:** Classify agent calls as Light (single file, no judgment, verifiable result → Orchestrator spot-check only) or Full (multiple files, judgment required → 1:1 Review Agent mandatory). When in doubt, default to Full. See workflow skill for details.
 - **Internal iteration boundary:** Work Agent may retry execution-level failures (syntax, runtime errors) up to 3 times internally. Plan-level changes (different approach, architecture) require STOP and Orchestrator report. "Different approach" = STOP, "fix typo" = iterate.
+- **docs/ 보호:** docs/ 아래 문서(D/P/T/R 등)는 로컬 산출물이므로 git에 커밋하지 않는다. untrack 시 \`git rm --cached\`만 사용하고 로컬 파일은 절대 삭제하지 않는다. git filter-repo 등 history 정리 시에도 현재 로컬 파일을 삭제하지 않는다.
 `;
 
 const EMERGENCY_STOP_CONTEXT = `
