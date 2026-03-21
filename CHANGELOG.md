@@ -1,5 +1,10 @@
 # Changelog
 
+## [19.11.0] - 2026-03-21
+### Added
+- Regressing skill: autonomous D→P→T loop with verification-based optimization (`/regressing "topic" N` runs N cycles)
+- Regressing rule added to RULES in inject-rules.js
+
 ## [19.10.0] - 2026-03-20
 ### Changed
 - Skill descriptions improved: search-memory, clear-memory, load-memory now include "Use when..." trigger conditions for better skill discovery

@@ -76,9 +76,45 @@ Then create `docs/ticket/P{NNN}_T{NNN}-{slug}.md`:
 {criterion 1}: {how to verify — command to run, behavior to observe}
 {criterion 2}: {how to verify}
 
+## Agent Execution (에이전트 실행)
+
+이 티켓은 다음 agent 구조로 실행된다:
+
+### Step A: Work Agent — 실행
+- 계획(P)에 따라 작업 실행
+- 각 작업 항목별 결과 기록
+- 결과를 `## 실행 결과` 섹션에 append
+
+### Step B: Review Agent — 검증
+- 각 작업 항목의 실동작 확인 (trigger → path → result)
+- 변경이 기존 기능을 깨뜨리지 않는지 확인
+- edge case, 예외 상황 처리 확인
+- 결과를 `## 검증 결과` 섹션에 append
+
+### Step C: Orchestrator — 최종 검증
+- Review Agent의 검증을 재검증 (가능한 전수조사)
+- "검증했다고 주장하지만 실제로 안 한 것" 적발
+- 3요소 평가:
+  1. **정확성**: 제대로 됐는가?
+  2. **개선 기회**: 더 나은 방법은 없었는가?
+  3. **다음 방향**: 다음에 뭘 해야 하는가?
+- 결과를 `## 최종 검증` 섹션에 append
+
 ## Execution
 - 이 티켓은 단독 워크플로우로 실행 (1 Ticket = 1 Workflow)
 - 실행: `/workflow` 스킬 호출
+
+## 실행 결과 (Work Agent)
+(에이전트 실행 후 append)
+
+## 검증 결과 (Review Agent)
+(에이전트 실행 후 append)
+
+## 최종 검증 (Orchestrator)
+(에이전트 실행 후 append)
+### 정확성
+### 개선 기회
+### 다음 방향
 
 ## Log
 
@@ -165,7 +201,7 @@ If ticket status → `verified`:
 
 ## Rules
 
-1. **NEVER modify existing content.** Only append to Log section.
+1. **NEVER modify existing content.** Only append to Log section and agent result sections (실행 결과, 검증 결과, 최종 검증).
 2. **Acceptance criteria checkboxes:** Never modify. Completion tracked in Log entries.
 3. **`done` ≠ `verified`:** Work completion and verification are separate events with separate log entries.
 4. **Verification at creation:** The Verification section MUST be filled at ticket creation time (before work starts). This is the TDD principle — define how you'll check before you build.
@@ -174,3 +210,6 @@ If ticket status → `verified`:
 7. **Plan propagation:** When all tickets verified → auto-update plan status.
 8. **1 Ticket = 1 Workflow:** Each ticket is executed as a separate, independent workflow invocation. Never batch multiple tickets into a single workflow run. 3 tickets = 3 separate workflow executions.
 9. **Mandatory work log:** After performing any work related to this document, append a log entry to the Log section using the existing format (`### [{YYYY-MM-DD HH:MM}] {entry_type}`). This applies regardless of whether this skill was explicitly invoked — if the work touched or advanced this ticket's purpose, log it.
+10. **검증 결과 append 의무:** Work Agent, Review Agent, Orchestrator는 각자의 실행 결과를 T 문서의 해당 섹션(실행 결과, 검증 결과, 최종 검증)에 반드시 append해야 한다. 문서에 기록되지 않은 검증은 수행하지 않은 것과 동일하다.
+11. **전수조사 검증 기준:** 검증은 실동작 확인 수준이어야 한다. 직접 검증 가능 → 직접 실행, 간접만 가능 → 모든 간접 수단, 불가 → "미검증" 명시.
+12. **Regressing context 전달:** regressing 루프에서 이 T 문서의 `## 최종 검증 > 다음 방향` 내용은 다음 cycle D(n+1) 문서의 `## Context (배경)` 섹션으로 전달된다. Orchestrator는 이 전달을 명시적으로 수행해야 한다.
