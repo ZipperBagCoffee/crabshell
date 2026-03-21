@@ -55,6 +55,7 @@ With this setup, **Claude starts every new session knowing this information**.
 | `/memory-keeper:planning "topic"` | Create/update a plan document |
 | `/memory-keeper:ticketing P001 "topic"` | Create/update a ticket tied to a plan |
 | `/memory-keeper:researching "topic"` | Create/update a research document |
+| `/memory-keeper:regressing "topic" N` | Run N cycles of D→P→T with verification-based optimization |
 | `/memory-keeper:workflow` | Run the 11-phase agent orchestration workflow |
 | `/memory-keeper:lessons` | Check/create project-specific lessons |
 
@@ -172,6 +173,7 @@ memory.md                 - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 19.11.0 | Feat: Regressing skill — autonomous D→P→T loop with verification-based optimization |
 | 19.10.0 | Feat: Skill precision optimization — descriptions, trigger patterns, workflow split, terminology fixes |
 | 19.9.0 | Feat: Mandatory work log — all D/P/T/R documents require log append after any related work |
 | 19.7.0 | Feat: Status cascade — ticket verified auto-closes parent plan and related D/R; reverse propagation constraints prevent premature closure |

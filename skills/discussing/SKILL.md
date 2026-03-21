@@ -49,6 +49,7 @@ Filename: `docs/discussion/D{NNN}-{slug}.md`
 Ask the user:
 1. **Intent:** Why is this discussion needed? What decision is being made?
 2. **Context:** Related files, issues, prior discussions?
+3. **Intent Anchor:** What are the specific, measurable outcomes? (IA items)
 
 Then create the document:
 
@@ -60,6 +61,11 @@ Then create the document:
 
 ## Context (배경)
 {user's answer about context}
+
+## Intent Anchor
+- IA-1: {first intent anchor item}
+- IA-2: {second intent anchor item}
+(사용자와 확인 후 확정)
 
 ## Discussion Log
 
@@ -127,3 +133,5 @@ If the entry includes a status change, update the status column in `docs/discuss
 5. **하위 미완료 시 상위 전환 금지:** Related P가 존재하고 아직 `done`이 아니면 → D를 `concluded`로 전환 금지. 관련 플랜이 완료되어야만 종결 가능.
 6. **자동 종결:** 관련 P가 `done`이 되면 ticketing cascade에 의해 D가 자동으로 `concluded` 처리됨. 수동 종결 불필요.
 7. **Mandatory work log:** After performing any work related to this document, append a log entry to the Discussion Log section using the existing format (`### [{YYYY-MM-DD HH:MM}] {entry_type}`). This applies regardless of whether this skill was explicitly invoked — if the work touched or advanced this discussion's purpose, log it.
+8. **Orchestrator 참조 의무:** Orchestrator는 P(계획), T(실행) 단계에서 반드시 이 D 문서의 Intent Anchor를 참조해야 한다. IA 항목은 read-only 평가 기준이며 변경 불가.
+9. **Regressing context 전달:** regressing 루프에서 cycle 2+ 시, D 문서의 `## Context (배경)` 섹션에는 이전 cycle T 문서의 Orchestrator 최종 검증 결과(정확성/개선기회/다음방향)가 포함되어야 한다. Cycle 1에서는 사용자가 직접 Context를 제공한다.

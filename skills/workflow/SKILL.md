@@ -5,6 +5,11 @@ description: "Agent orchestration workflow for complex tasks. Use when RULES say
 
 # Agent Orchestration Workflow
 
+> **경량 레퍼런스 모드:** 이 workflow 스킬은 단독 1회성 작업에 적합한 경량 실행 모드입니다.
+> 문서 추적이 필요한 반복 작업에는 D/P/T 기반의 `/regressing` 스킬을 사용하세요.
+> - `/regressing "주제" N` — N회 자율 순환 (D→P→T 루프, 검증 기반 최적화)
+> - `/discussing`, `/planning`, `/ticketing` — 개별 문서 생성 스킬
+
 > Principles (Understanding-First, HHH, Critical Stance, etc.) are injected via RULES every prompt.
 > This document defines HOW those principles apply to agent-based task execution.
 
