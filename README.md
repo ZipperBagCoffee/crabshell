@@ -173,6 +173,11 @@ memory.md                 - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 19.18.0 | Feat: Regressing quality enforcement — anti-pattern rules, agent independence via Task tool, enriched feedback structure, anti-partitioning, cross-review integration, Devil's Advocate for single reviewers |
+| 19.17.0 | Feat: Anthropic best practices skill optimization — 14 skill descriptions rewritten to 3rd person with trigger phrases, fabricated params removed |
+| 19.16.0 | Feat: Rename researching → investigating, new I(Investigation) document type with multi-agent multi-source design |
+| 19.15.0 | Feat: Restructure regressing to D-PT loop — single Discussion wraps all cycles, P-T pairs repeat per cycle |
+| 19.14.0 | Feat: Rename workflow → light-workflow, remove stale workflow references across project |
 | 19.13.0 | Changed: i18n — translated all Korean text in 6 skill documents to English (no meaning changes) |
 | 19.12.0 | Changed: Verification philosophy — redefined verification standard, added observation evidence gates to workflow phases |
 | 19.11.0 | Feat: Regressing skill — autonomous D→P→T loop with verification-based optimization |
