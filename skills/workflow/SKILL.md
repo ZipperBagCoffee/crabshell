@@ -241,6 +241,8 @@ After cross-review:
 
 ## Anti-Patterns
 
+> **검증 철학 (Verification Philosophy):** 검증 = 믿음과 현실 사이의 간극을 관찰로 닫는 것. 아래 안티패턴 #3, #9, #15, #25의 공통 근본 원인은 관찰 부재다. 직접 실행 + 관찰이 최우선, 간접 수단은 직접 실행이 어려울 때만.
+
 | # | Pattern | Rule |
 |---|---------|------|
 | 1 | Orchestrator doing agent work | Analysis/planning/implementation/verification = agent tasks |

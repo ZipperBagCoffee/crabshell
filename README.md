@@ -173,6 +173,7 @@ memory.md                 - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 19.12.0 | Changed: Verification philosophy — redefined verification standard, added observation evidence gates to workflow phases |
 | 19.11.0 | Feat: Regressing skill — autonomous D→P→T loop with verification-based optimization |
 | 19.10.0 | Feat: Skill precision optimization — descriptions, trigger patterns, workflow split, terminology fixes |
 | 19.9.0 | Feat: Mandatory work log — all D/P/T/R documents require log append after any related work |

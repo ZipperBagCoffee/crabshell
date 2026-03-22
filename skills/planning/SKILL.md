@@ -170,4 +170,4 @@ Update status column and/or Tickets column in `docs/plan/INDEX.md`.
 7. **완료 시 상위 자동 종결:** P가 `done`이 되면 → Related 컬럼의 D/R을 자동으로 `concluded`로 업데이트하고 해당 문서에 로그 추가. (ticketing cascade에서 트리거됨)
 8. **Mandatory work log:** After performing any work related to this document, append a log entry to the Log section using the existing format (`### [{YYYY-MM-DD HH:MM}] {entry_type}`). This applies regardless of whether this skill was explicitly invoked — if the work touched or advanced this plan's purpose, log it.
 9. **검증 결과 append 의무:** Work Agent, Review Agent, Orchestrator는 각자의 실행 결과를 P 문서의 해당 섹션(분석 결과, 리뷰 결과, 의도 점검)에 반드시 append해야 한다. 구두 보고만으로는 불충분하며, 문서에 기록되지 않은 검증은 수행하지 않은 것과 동일하다.
-10. **전수조사 검증 기준:** 검증은 "파일에 존재한다" 수준이 아닌, 실제 실행 가능성과 동작을 확인하는 수준이어야 한다. 직접 검증 가능한 것은 직접, 간접만 가능한 것은 모든 간접 수단 동원, 검증 불가한 것은 "미검증" 명시.
+10. **전수조사 검증 기준:** **검증 정의:** 검증 = 믿음과 현실 사이의 간극을 관찰로 닫는 것. 직접 실행 + 관찰이 최우선, 간접 수단은 직접 실행이 어려울 때만. — 검증은 "파일에 존재한다" 수준이 아닌, 실제 실행 가능성과 동작을 확인하는 수준이어야 한다. 직접 검증 가능한 것은 직접, 간접만 가능한 것은 모든 간접 수단 동원, 검증 불가한 것은 "미검증" 명시.

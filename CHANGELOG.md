@@ -1,5 +1,12 @@
 # Changelog
 
+## 19.12.0 (2026-03-21)
+
+### Changed
+- **Verification philosophy**: Redefined verification standard across project — "Verification = closing the gap between belief and reality through observation." Priority: (1) direct execution + observation; (2) indirect methods when impractical.
+- **Workflow EXECUTION-PHASES**: Added Verification Priority to Phase 8, Observation Evidence Gate to Phase 9, evidence gate to Phase 10.
+- **Skill documents**: Added verification philosophy references to workflow, ticketing, planning, regressing SKILL.md.
+
 ## [19.11.0] - 2026-03-21
 ### Added
 - Regressing skill: autonomous D→P→T loop with verification-based optimization (`/regressing "topic" N` runs N cycles)
