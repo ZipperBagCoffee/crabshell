@@ -1,6 +1,6 @@
 ---
 name: planning
-description: "Create and update plan documents. Use when establishing a structured plan for implementation. Invoke with /planning \"topic\" to create, or /planning P001 to update."
+description: "Creates and updates structured plan documents with agent-verified execution strategy. Use when establishing an implementation plan after a discussion, or when breaking work into steps before ticketing. Invoke with /planning \"topic\" to create, or /planning P001 to update. Not for direct execution — create tickets first."
 ---
 
 # Plan Document Skill

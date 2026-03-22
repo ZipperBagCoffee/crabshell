@@ -1,6 +1,6 @@
 ---
 name: ticketing
-description: "Create and update ticket documents tied to a plan. Use when breaking a plan into session-sized work units. Invoke with /ticketing P001 \"topic\" to create, or /ticketing P001_T001 to update."
+description: "Creates and updates ticket documents as executable work units tied to a plan. Use when breaking a plan into session-sized tasks with acceptance criteria and verification steps. Invoke with /ticketing P001 \"topic\" to create, or /ticketing P001_T001 to update. Each ticket executes independently with Work Agent, Review Agent, and Orchestrator."
 ---
 
 # Ticket Document Skill

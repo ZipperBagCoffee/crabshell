@@ -1,6 +1,6 @@
 ---
 name: investigating
-description: "Multi-agent investigation with structured documentation. Use when thorough investigation of a topic is needed with internet + local sources, multi-agent review, and I-document output. Invoke with /investigating \"topic\" to create, or /investigating I001 to update."
+description: "Conducts multi-agent investigations using internet, local, and user-specified sources with cross-review and structured I-document output. Use when thorough investigation of a topic is needed with evidence from multiple sources. Invoke with /investigating \"topic\" to create, or /investigating I001 to update. Not for quick questions — use normal conversation instead."
 ---
 
 # Investigation Document Skill

@@ -1,6 +1,6 @@
 ---
 name: clear-memory
-description: Archives or clears old memory session files to manage storage. Use when memory files accumulate and need cleanup, compression, or archival.
+description: "Archives or clears old memory session files to manage storage. Use when memory files accumulate and need cleanup, compression, or archival. Invoke with /clear-memory."
 ---
 
 ## Node.js Path

@@ -1,6 +1,6 @@
 ---
 name: search-memory
-description: Searches past sessions, memory archives, and session history for keywords, decisions, or context. Use when looking up previous session content, finding historical decisions, or querying memory by topic.
+description: "Searches past sessions, memory archives, and session history for keywords, decisions, or context. Use when looking up previous session content, finding historical decisions, or querying memory by topic. Invoke with /search-memory \"keyword\"."
 ---
 
 ## Node.js Path

@@ -1,6 +1,6 @@
 ---
 name: memory-autosave
-description: Execute when you see "[MEMORY_KEEPER_SAVE]" in hook output. Follow the numbered steps exactly to save session memory.
+description: "Auto-executes when the [MEMORY_KEEPER_SAVE] trigger is detected in hook output. Saves session memory following a numbered step sequence. Not user-invocable — triggered automatically by the plugin system."
 ---
 
 ## Node.js Path
@@ -27,7 +27,7 @@ Look for: `Your ACTUAL project root is: <path>`
 Use this value as `{PROJECT_DIR}` in all commands below.
 If not available in context, use your current working directory.
 
-# Memory Save Skill (v13.1.0)
+# Memory Save Skill
 
 This skill activates when `[MEMORY_KEEPER_SAVE]` appears in conversation.
 

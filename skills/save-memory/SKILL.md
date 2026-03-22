@@ -1,6 +1,6 @@
 ---
 name: save-memory
-description: Manually save current session memory to files
+description: "Manually saves the current session context to memory files on demand. Use when explicitly asked to save progress, or when important decisions need to be preserved immediately rather than waiting for auto-save. Invoke with /save-memory. Not for routine saves — memory-autosave handles those automatically via triggers."
 ---
 
 ## Project Root Resolution
