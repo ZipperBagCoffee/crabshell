@@ -1,5 +1,14 @@
 # Changelog
 
+## 19.15.0 (2026-03-22)
+
+### Changed
+- **Regressing**: Restructured from D-per-cycle to single-D wrapper (D-PT-PT-PT-D loop)
+- **Regressing SKILL.md**: Complete rewrite — one Discussion wraps all cycles, cycles create P→T pairs only
+- **Discussing SKILL.md**: Rule 9 updated for regressing top-level container mode
+- **Ticketing SKILL.md**: Rule 12 updated for T→P direct feedback transfer
+- **inject-rules.js/CLAUDE.md**: Regressing rule updated to "P→T wrapped by a single Discussion"
+
 ## 19.14.0 (2026-03-21)
 
 ### Changed
