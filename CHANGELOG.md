@@ -1,5 +1,14 @@
 # Changelog
 
+## 19.16.0 (2026-03-22)
+
+### Changed
+- **Rename**: researching skill → investigating (multi-agent investigation with structured I-document output)
+- **New document type**: I(Investigation) replaces R(Research) — multi-source, multi-agent, cross-review
+- **Legacy**: docs/research/ and R documents preserved as legacy, not deleted
+- **Regressing**: Pre-check updated R→I
+- **inject-rules.js**: Document types updated R→I
+
 ## 19.15.0 (2026-03-22)
 
 ### Changed

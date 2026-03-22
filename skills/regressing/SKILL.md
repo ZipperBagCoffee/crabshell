@@ -39,9 +39,9 @@ Create ONE Discussion document that wraps the entire regressing session:
 
 ### Step 3: Pre-check (optional)
 
-- Check if related Research (R) documents exist
-- R is independent — may or may not be included, at discretion
-- R is pre-work outside the cycle loop
+- Check if related Investigation (I) documents exist
+- I is independent — may or may not be included, at discretion
+- I is pre-work outside the cycle loop
 
 ### Step 4: Cycle Loop
 
