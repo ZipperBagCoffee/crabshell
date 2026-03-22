@@ -1,6 +1,6 @@
 ---
 name: regressing
-description: "Autonomous D-PT loop with verification-based optimization. Use when iterative improvement is needed. Invoke with /regressing \"topic\" N to run N cycles of plan→ticket→execute→feedback, wrapped by a single Discussion."
+description: "Runs autonomous iterative optimization cycles wrapped by a single Discussion. Use when a topic needs repeated improvement through plan-execute-verify-feedback loops. Invoke with /regressing \"topic\" N to run N cycles of P→T. Not for one-shot tasks — use light-workflow instead."
 ---
 
 # Regressing Skill

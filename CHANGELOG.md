@@ -1,5 +1,14 @@
 # Changelog
 
+## 19.17.0 (2026-03-22)
+
+### Changed
+- **All skills**: Descriptions rewritten to 3rd person with trigger phrases, invocation format, and anti-patterns per Anthropic best practices
+- **save-memory**: Description enhanced with explicit differentiation from memory-autosave
+- **memory-rotate/delta**: Removed fabricated subagent_type parameters, replaced with agent definition references
+- **memory-autosave**: Removed stale v13.1.0 version reference
+- **All SKILL.md**: Verified under 500-line limit
+
 ## 19.16.0 (2026-03-22)
 
 ### Changed

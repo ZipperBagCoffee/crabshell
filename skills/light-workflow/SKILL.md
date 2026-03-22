@@ -1,6 +1,6 @@
 ---
 name: light-workflow
-description: "Lightweight agent orchestration for standalone one-shot tasks. Use for simple tasks that don't need D/P/T document trail. For complex iterative work, use regressing skill instead."
+description: "Provides lightweight agent orchestration for standalone one-shot tasks without document trail. Use when a simple task needs Work Agent + Review Agent + Orchestrator but does not require D/P/T documentation. Invoke with /light-workflow. Not for iterative work — use regressing instead."
 ---
 
 # Agent Orchestration Workflow

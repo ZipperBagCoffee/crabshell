@@ -1,6 +1,6 @@
 ---
 name: lessons
-description: "Create and manage project-specific lessons. Use when proposing a new lesson or when checking lesson format guidelines."
+description: "Creates and manages project-specific lessons stored in .claude/lessons/. Use when proposing a new lesson after patterns repeat 2+ times, or when checking lesson format guidelines. Invoke with /lessons."
 ---
 
 # Lessons Management

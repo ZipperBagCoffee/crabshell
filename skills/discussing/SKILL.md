@@ -1,6 +1,6 @@
 ---
 name: discussing
-description: "Create and update discussion documents. Use when starting a discussion with the user or recording an ongoing dialogue. Invoke with /discussing \"topic\" to create, or /discussing D001 to update."
+description: "Creates and updates discussion documents for recording decisions and ongoing dialogues. Use when starting a new discussion, recording a decision, or when the regressing skill needs a top-level container. Invoke with /discussing \"topic\" to create, or /discussing D001 to update. Not for investigation — use investigating skill instead."
 ---
 
 # Discussion Document Skill

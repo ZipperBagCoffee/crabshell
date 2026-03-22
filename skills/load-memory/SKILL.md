@@ -1,6 +1,6 @@
 ---
 name: load-memory
-description: Loads full hierarchical memory context including project info, conventions, L3 summaries, and rolling memory. Use after session restart, context compaction, or when memory context feels incomplete or stale.
+description: "Loads full hierarchical memory context including project info, conventions, L3 summaries, and rolling memory. Use after session restart, context compaction, or when memory context feels incomplete or stale. Invoke with /load-memory."
 ---
 
 ## Node.js Path

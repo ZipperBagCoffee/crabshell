@@ -1,6 +1,6 @@
 ---
 name: memory-delta
-description: Auto-execute when "[MEMORY_KEEPER_DELTA]" trigger detected
+description: "Auto-executes when the [MEMORY_KEEPER_DELTA] trigger is detected, summarizing recent conversation deltas and appending to memory.md. Calls Haiku agent for proportional summarization. Not user-invocable — triggered automatically."
 ---
 
 ## Node.js Path
@@ -43,14 +43,9 @@ If you see `[MEMORY_KEEPER_DELTA]` anywhere in your context, execute this skill 
    ```
    If file not found or empty, STOP HERE - do not proceed.
 
-2. **Call Haiku agent for summarization**:
-   Use **absolute path** from Project Root Resolution:
-   ```
-   Agent tool:
-   - subagent_type: "memory-keeper:delta-summarizer"
-   - model: "haiku"
-   - prompt: "Read {PROJECT_DIR}/.claude/memory/delta_temp.txt and summarize (1 sentence per ~200 words)."
-   ```
+2. **Call delta-summarizer agent**:
+   Use the `delta-summarizer` agent (defined in `agents/delta-summarizer.md`).
+   Prompt: "Read {PROJECT_DIR}/.claude/memory/delta_temp.txt and summarize (1 sentence per ~200 words)."
    Replace {PROJECT_DIR} with the actual project root (absolute path).
 
 3. **Validate Haiku response**:
@@ -84,5 +79,5 @@ If you see `[MEMORY_KEEPER_DELTA]` anywhere in your context, execute this skill 
 
 - If file doesn't exist in step 1: STOP immediately
 - If Haiku returns ERROR or empty: STOP, don't update/cleanup
-- If Agent tool fails: Don't update timestamp, don't delete temp file
+- If agent call fails: Don't update timestamp, don't delete temp file
 - Next trigger will retry with accumulated content (temp file overwritten)
