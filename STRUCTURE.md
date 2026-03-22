@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 19.6.0 | **Author**: TaWa | **License**: MIT
+**Version**: 19.18.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -192,6 +192,17 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 19.18.0 | Feat: Regressing quality enforcement — anti-pattern rules, agent independence, enriched feedback, anti-partitioning, cross-review integration |
+| 19.17.0 | Feat: Anthropic best practices — 14 skill descriptions rewritten, fabricated params removed |
+| 19.16.0 | Feat: Rename researching → investigating, new I(Investigation) document type |
+| 19.15.0 | Feat: Regressing D-PT loop — single Discussion wraps all cycles |
+| 19.14.0 | Feat: Rename workflow → light-workflow, remove stale references |
+| 19.13.0 | Changed: i18n — translated Korean text in 6 skill documents to English |
+| 19.12.0 | Changed: Verification philosophy — observation evidence gates |
+| 19.11.0 | Feat: Regressing skill — autonomous D→P→T loop |
+| 19.10.0 | Feat: Skill precision optimization — descriptions, triggers, workflow split |
+| 19.9.0 | Feat: Mandatory work log for D/P/T/R documents |
+| 19.7.0 | Feat: Status cascade — ticket verified auto-closes parent |
 | 19.6.0 | Feat: Runtime verification added to workflow (Phase 8/9/10) — mandatory 4th verification element |
 | 19.5.1 | Feat: Document templates include execution rules (ticket Execution section, workflow Post-Workflow checklist) |
 | 19.5.0 | Feat: Ticket-Workflow 1:1 mapping, post-workflow mandatory documentation |
