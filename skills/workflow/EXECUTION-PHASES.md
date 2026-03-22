@@ -13,7 +13,14 @@ Execute plan exactly. No improvisation.
 **"Different from plan but better" → Stop. Revise plan. Get approval. Then implement.**
 
 **Runtime Verification (mandatory):**
-After implementation, verify that your changes will actually work when deployed/applied in practice:
+After implementation, verify that your changes will actually work when deployed/applied in practice.
+
+**Verification Priority:**
+1. **Can you directly execute/trigger this and observe the result? → Do it.** Attach the output as evidence (execution log, screenshot, diff, test result). This is the gold standard.
+2. **Direct execution impractical?** → Trace the path using the procedure below: trigger → path → conditions → result.
+3. **Whatever method used, observation evidence is required.** A claim of "verified" or "confirmed" without attached evidence is not verification.
+
+**Path-tracing procedure (method 2, or supplement to method 1):**
 1. Identify the trigger (what causes this change to take effect? User action, system event, someone reading this document, a function call, etc.)
 2. Trace the full path from trigger to intended result — step by step, through the actual system
 3. Identify all conditions that must be true for the intended result to occur
@@ -69,6 +76,11 @@ For each criterion:
 5. Compare against criterion
 6. Verdict: PASS or FAIL with explanation
 
+**Observation Evidence Gate:**
+- Does the Work Agent's verification include observation evidence (execution output, diff, log, test result)?
+- If YES: evaluate the evidence — is it authentic, relevant, and sufficient?
+- If NO (only text claims like "verified", "confirmed", "works correctly" without attached evidence): **automatic FAIL.** Request re-verification with observation evidence.
+
 **Rules:**
 - "File contains X" is NEVER valid verification. Predict behavior.
 - Only PASS / FAIL. No "mostly works."
@@ -96,6 +108,7 @@ Same procedure as Phase 3.5. See [ANALYSIS-PHASES.md — Phase 3.5](ANALYSIS-PHA
 6. **Runtime Verification** — the most critical check:
    - Did Review Agent produce runtime verification for each criterion?
    - Does the verification show the implementation will actually work when deployed/applied?
+   - **Does the verification report contain observation evidence (execution output, diff, log)?** If text-only claims without evidence → reject, re-launch with explicit instruction to provide observation evidence.
    - Spot-check at least 1 verification: trace the path yourself through the actual system
    - If Review Agent skipped runtime verification → reject, re-launch
    - If result is BROKEN → implementation failed regardless of other checks

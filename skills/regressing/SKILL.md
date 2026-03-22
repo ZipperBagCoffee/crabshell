@@ -7,6 +7,8 @@ description: "Autonomous D→P→T loop with verification-based optimization. Us
 
 ## Core Philosophy: Verification-based Optimization
 
+> **검증 정의 (Verification Philosophy):** 검증 = 믿음과 현실 사이의 간극을 관찰로 닫는 것. 직접 실행 + 관찰이 최우선, 간접 수단은 직접 실행이 어려울 때만.
+
 > 검증을 기반으로 한 최적화 — 매 사이클의 검증 결과가 다음 사이클의 최적화 방향을 결정한다.
 
 ### 3가지 철학 기반

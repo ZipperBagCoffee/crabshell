@@ -211,5 +211,5 @@ If ticket status → `verified`:
 8. **1 Ticket = 1 Workflow:** Each ticket is executed as a separate, independent workflow invocation. Never batch multiple tickets into a single workflow run. 3 tickets = 3 separate workflow executions.
 9. **Mandatory work log:** After performing any work related to this document, append a log entry to the Log section using the existing format (`### [{YYYY-MM-DD HH:MM}] {entry_type}`). This applies regardless of whether this skill was explicitly invoked — if the work touched or advanced this ticket's purpose, log it.
 10. **검증 결과 append 의무:** Work Agent, Review Agent, Orchestrator는 각자의 실행 결과를 T 문서의 해당 섹션(실행 결과, 검증 결과, 최종 검증)에 반드시 append해야 한다. 문서에 기록되지 않은 검증은 수행하지 않은 것과 동일하다.
-11. **전수조사 검증 기준:** 검증은 실동작 확인 수준이어야 한다. 직접 검증 가능 → 직접 실행, 간접만 가능 → 모든 간접 수단, 불가 → "미검증" 명시.
+11. **전수조사 검증 기준:** **검증 정의:** 검증 = 믿음과 현실 사이의 간극을 관찰로 닫는 것. 직접 실행 + 관찰이 최우선, 간접 수단은 직접 실행이 어려울 때만. — 검증은 실동작 확인 수준이어야 한다. 직접 검증 가능 → 직접 실행, 간접만 가능 → 모든 간접 수단, 불가 → "미검증" 명시.
 12. **Regressing context 전달:** regressing 루프에서 이 T 문서의 `## 최종 검증 > 다음 방향` 내용은 다음 cycle D(n+1) 문서의 `## Context (배경)` 섹션으로 전달된다. Orchestrator는 이 전달을 명시적으로 수행해야 한다.
