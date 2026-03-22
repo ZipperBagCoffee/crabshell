@@ -19,6 +19,20 @@ description: "Runs autonomous iterative optimization cycles wrapped by a single 
 | **Agent Structure + Verification** | workflow | Work/Review/Orchestrator pattern, runtime verification |
 | **Document Tracing** | D/P/T | Every step is documented, enabling full traceability |
 
+## Anti-Patterns (PROHIBITED)
+
+The following patterns indicate regressing has degenerated into sequential batch execution:
+
+| Anti-Pattern | What it looks like | Correct alternative |
+|---|---|---|
+| **Pre-partitioning** | P(1) divides total work into N equal parts, assigning each to a cycle | P(1) addresses all work. P(2+) respond to verification findings |
+| **Sequential pipeline** | Cycle 1 = modify, Cycle 2 = sync, Cycle 3 = version bump | Each cycle is a complete implement-verify-improve loop |
+| **Copy-paste feedback** | Next Direction says "continue with remaining items" | Next Direction diagnoses specific problems with evidence |
+| **Role collapse** | Orchestrator performs Work Agent or Review Agent tasks directly | Each role is a separate Task tool invocation |
+| **Rubber-stamp verification** | "ALL PASS — no improvement opportunities" | Orchestrator enumerates what was examined and why no improvements apply |
+
+If any of these patterns are detected during execution, the Orchestrator MUST halt and restructure before proceeding.
+
 ## Execution Procedure
 
 ### Step 1: Initialize
@@ -55,10 +69,12 @@ for cycle in 1..N:
 
 #### Step 4a: Planning — Create P(n)
 - Invoke `/planning`, formulate plan based on D's IA
-- Cycle 2+: P(n) Context includes T(n-1)'s `## Final Verification > Next Direction`
-- Work Agent: analysis + planning → append to P document
-- Review Agent: plan verification → append to P document
-- Orchestrator: intent check against D's IA → append to P document
+- **Cycle 1**: Plan addresses the highest-impact improvements for the CURRENT state. MUST NOT pre-allocate or partition work across future cycles. Plan should be completable in this single cycle.
+- **Cycle 2+**: P(n) Context MUST include T(n-1)'s `## Final Verification > Next Direction`. Plan MUST directly respond to diagnosed problems from the previous cycle — not continue a pre-determined schedule.
+- Work Agent (separate Task tool call): analysis + planning → append to P document
+- Review Agent (separate Task tool call): plan verification + CHECK that plan does not pre-partition work across future cycles → append to P document
+- Orchestrator: intent check against D's IA. REJECT plans that pre-allocate future cycle work → append to P document
+- **Quality Gate (BLOCKING):** Plan agent sections (Analysis Results, Review Results, Intent Check) MUST ALL be populated before proceeding to Step 4b. Empty agent sections indicate the Plan quality gate was bypassed — the Orchestrator MUST halt and run the missing agents.
 - After approval, proceed to ticket creation
 
 #### Step 4b: Ticketing — Create T(n)
@@ -68,14 +84,23 @@ for cycle in 1..N:
 - Execute T(n) using ticketing's built-in agent structure (Work Agent → Review Agent → Orchestrator)
 - Work Agent: execute tasks → append to T document
 - Review Agent: runtime verification (exhaustive level) → append to T document
-- Orchestrator: final verification → append to T document
-  - Correctness: Was it done correctly?
-  - Improvement Opportunities: Was there a better approach?
-  - Next Direction: What should be done next?
+- Orchestrator: final verification → append to T document. MUST critically evaluate both Work and Review Agent outputs. Default posture: skepticism — "ALL PASS" requires more justification than "FAIL". Must provide substantive evaluation, not rubber-stamp approval.
+  - Correctness: Was it done correctly? Cite specific evidence (command output, observed behavior).
+  - Improvement Opportunities: What gaps remain? What was attempted but didn't work well? (Orchestrator MUST enumerate what was examined. "No improvements" requires detailed justification of what was checked and why no improvements apply — minimum 3 sentences referencing specific aspects.)
+  - Next Direction (cycles 1 through N-1 only; cycle N uses Final Report instead):
+    - **Problems Found**: Specific problems or shortcomings observed in THIS cycle's output, with evidence.
+    - **Root Cause Hypothesis**: Why did these problems occur?
+    - **Recommended Focus**: What should the next cycle prioritize and why?
+    - (If this section reads like a generic TODO list without referencing specific observations from this cycle, it is INVALID — rewrite with evidence.)
 
-#### Step 4d: Feedback Transfer
+#### Step 4d: Feedback Transfer (Quality Gate)
 - Extract T(n)'s `## Final Verification > Next Direction`
-- Pass directly to next cycle P(n+1)'s Context
+- **Quality check before transfer:** The Orchestrator MUST verify Next Direction contains:
+  (1) Specific problems diagnosed with evidence from this cycle
+  (2) Root cause hypothesis
+  (3) Recommended focus with rationale
+  If Next Direction is a generic TODO list without cycle-specific observations → REJECT and require re-evaluation.
+- Pass validated feedback to next cycle P(n+1)'s Context
 - This transfer is explicitly performed by the Orchestrator
 
 ### Step 5: Close Discussion (D) + Final Report
@@ -143,3 +168,7 @@ D (closed with final report)
 7. **Early termination only on user request.** No automatic convergence detection (v1).
 8. **Light-workflow is a lightweight reference.** Regressing is the primary mode; light-workflow is for standalone one-off tasks.
 9. **D's IA is the constant anchor.** All P and T documents reference D's IA as read-only evaluation criteria throughout all cycles.
+10. **Agent independence via Task tool.** Work Agent and Review Agent MUST each be launched as separate Task tool invocations. The Orchestrator (main conversation) MUST NOT perform Work or Review tasks itself. Collapsing roles violates agent pairing.
+11. **Orchestrator anti-rubber-stamp.** The Orchestrator MUST provide substantive evaluation for each cycle. "No improvement opportunities" and "ALL PASS" without detailed justification are INVALID. When the Orchestrator genuinely finds no improvements, it must enumerate what was specifically examined and provide a reasoned argument (minimum 3 sentences) for why the output is optimal.
+12. **Cycles are iterative, not partitioned.** Each P(n) MUST plan work for ONE cycle only. P(1) MUST NOT pre-allocate work across all N cycles. If P(n) divides total work into equal parts or references "what cycle N+1 will do," it is INVALID. The scope of cycle N+1 is unknown until cycle N's verification completes.
+13. **Cross-review integration.** When ticket or plan execution involves 2+ parallel review agents, cross-review is MANDATORY before Orchestrator evaluation. The Orchestrator must verify whether cross-review conditions were met. When only 1 Review Agent runs, it MUST include a "Devil's Advocate" section articulating the strongest counter-argument to its own conclusions.

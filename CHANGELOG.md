@@ -1,5 +1,18 @@
 # Changelog
 
+## 19.18.0 (2026-03-21)
+
+### Changed
+- **Regressing SKILL.md**: Added Anti-Patterns (PROHIBITED) table — Pre-partitioning, Sequential pipeline, Copy-paste feedback, Role collapse, Rubber-stamp verification
+- **Regressing SKILL.md**: Rule 10 — Agent independence via Task tool (Work/Review Agents MUST be launched as separate Task tool invocations)
+- **Regressing SKILL.md**: Rule 11 — Orchestrator anti-rubber-stamp (must enumerate what was examined; "ALL PASS" without justification prohibited)
+- **Regressing SKILL.md**: Rule 12 — Cycles are iterative, not partitioned (P(1) must not pre-allocate work across cycles; each cycle responds to prior verification findings)
+- **Regressing SKILL.md**: Rule 13 — Cross-review integration + Devil's Advocate (single Review Agent must provide Devil's Advocate; 2+ reviewers require cross-review before meta-review)
+- **Regressing SKILL.md**: Next Direction enriched with mandatory Problems Found / Root Cause / Recommended Focus structure
+- **Ticketing SKILL.md**: Task tool launch directives, Devil's Advocate in Step B, Step B.5 Cross-Review, enriched 3-factor evaluation, Next Direction sub-headers
+- **Planning SKILL.md**: Orchestrator Critical Evaluation section, Rule 11 anti-partitioning
+- **inject-rules.js/CLAUDE.md**: Agent pairing requires separate Task tool call + Devil's Advocate, cross-review applicability check, anti-partitioning rule added to RULES block
+
 ## 19.17.0 (2026-03-22)
 
 ### Changed

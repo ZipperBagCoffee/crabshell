@@ -81,23 +81,37 @@ Excluded: {excluded}
 This ticket is executed with the following agent structure:
 
 ### Step A: Work Agent — Execution
+**Launch:** Use Task tool to create a Work Agent with the task description below.
 - Execute tasks according to the plan (P)
 - Record results for each work item
 - Append results to `## Execution Results` section
 
 ### Step B: Review Agent — Verification
+**Launch:** Use Task tool to create a NEW Review Agent (separate from Work Agent) with the task description below.
 - Verify runtime behavior of each work item (trigger → path → result)
 - Confirm changes do not break existing functionality
 - Confirm edge case and exception handling
+- **Devil's Advocate (single reviewer):** When only 1 Review Agent runs, it MUST include a Devil's Advocate section articulating the strongest counter-argument to its own PASS verdict. This prevents rubber-stamp reviews.
 - Append results to `## Verification Results` section
 
+### Step B.5: Cross-Review (when applicable)
+- **Trigger:** If 2+ Review Agents ran independently (e.g., reviewing different work items in parallel), cross-review is MANDATORY before Step C.
+- Review Agents read each other's findings and produce a Cross-Review Report (Contested Findings, Blind Spots, Consensus).
+- Step C cannot proceed without this report when the trigger condition is met.
+- The Orchestrator must explicitly determine whether cross-review was required.
+
 ### Step C: Orchestrator — Final Verification
+**Performed by:** The Orchestrator (main conversation) — reads Work and Review Agent outputs, then evaluates independently.
 - Re-verify the Review Agent's verification (exhaustive where possible)
 - Catch cases where "verification was claimed but not actually performed"
 - 3-factor evaluation:
-  1. **Correctness**: Was it done correctly?
-  2. **Improvement Opportunities**: Was there a better approach?
-  3. **Next Direction**: What should be done next?
+  1. **Correctness**: Was it done correctly? Cite specific evidence (command output, observed behavior).
+  2. **Improvement Opportunities**: What gaps remain? What didn't work well? (MUST enumerate what was examined. "No improvements" requires 3+ sentences explaining what was checked and why no improvements apply.)
+  3. **Next Direction** (for regressing cycles 1 through N-1; cycle N uses Final Report):
+     - **Problems Found**: Specific issues observed in THIS cycle, with evidence.
+     - **Root Cause Hypothesis**: Why did these problems occur?
+     - **Recommended Focus**: What should the next cycle prioritize?
+     - (Generic TODO lists without cycle-specific observations are INVALID.)
 - Append results to `## Final Verification` section
 
 ## Execution
@@ -115,6 +129,12 @@ This ticket is executed with the following agent structure:
 ### Correctness
 ### Improvement Opportunities
 ### Next Direction
+#### Problems Found
+#### Root Cause Hypothesis
+#### Recommended Focus
+
+## Cross-Review Report (if applicable)
+(Populated when 2+ Review Agents ran independently. Contains: Contested Findings, Blind Spots, Consensus.)
 
 ## Log
 

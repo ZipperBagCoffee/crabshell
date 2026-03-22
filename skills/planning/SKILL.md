@@ -79,10 +79,11 @@ This plan is executed using the following agent structure:
 - Identify risks and missing items
 - Append results to `## Review Results` section
 
-### Step C: Orchestrator — Intent Check
+### Step C: Orchestrator — Intent Check (Critical Evaluation)
 - Compare against D document's Intent Anchor (IA)
 - Confirm plan has not deviated from original intent
-- Decide to approve or reject
+- Identify at least ONE risk, gap, or concern in the plan (even if approving). "No concerns" requires 3+ sentences of justification referencing specific aspects examined.
+- Decide to approve or reject with substantive reasoning
 - Append results to `## Intent Check` section
 
 ## Tickets
@@ -171,3 +172,4 @@ Update status column and/or Tickets column in `docs/plan/INDEX.md`.
 8. **Mandatory work log:** After performing any work related to this document, append a log entry to the Log section using the existing format (`### [{YYYY-MM-DD HH:MM}] {entry_type}`). This applies regardless of whether this skill was explicitly invoked — if the work touched or advanced this plan's purpose, log it.
 9. **Mandatory verification result append:** Work Agent, Review Agent, and Orchestrator MUST append their execution results to the corresponding sections of the P document (Analysis Results, Review Results, Intent Check). Verbal reporting alone is insufficient — verification not recorded in the document is equivalent to verification not performed.
 10. **Exhaustive verification standard:** **Definition of verification:** Verification = closing the gap between belief and reality through observation. Direct execution + observation is the top priority; indirect means only when direct execution is not feasible. — Verification must go beyond "exists in file" to confirming actual executability and behavior. What can be directly verified, verify directly; what can only be indirectly verified, use all available indirect means; what cannot be verified, explicitly mark as "unverified".
+11. **Anti-partitioning (regressing context):** When this plan is part of a regressing cycle, it MUST plan work for the current cycle only. Plans that reference or pre-allocate work for future cycles (e.g., "Cycle 2 will handle X") are INVALID and must be rejected by the Review Agent and Orchestrator.
