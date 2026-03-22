@@ -89,4 +89,4 @@ Confirm your understanding before adding.
 Periodically review lessons for:
 - Obsolete rules (no longer applicable)
 - Redundant rules (covered by other rules)
-- Rules that should be generalized (move to workflow or critical rules)
+- Rules that should be generalized (move to light-workflow or critical rules)

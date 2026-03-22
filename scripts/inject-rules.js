@@ -90,7 +90,7 @@ Watch for: completion drive, confidence w/o reading, pattern matching, efficienc
 ### ADDITIONAL RULES
 - Search internet if unsure.
 - When modifying files not tracked by git, always create a backup (.bak) before making changes.
-- **Workflow:** For complex tasks, invoke the 'workflow' skill. Understanding = Gap closed + Consequences predicted. When the workflow specifies Work Agent or Review Agent, you MUST use the Task tool to launch a separate agent — do not do the agent's job yourself.
+- **Light-workflow:** For simple standalone tasks that don't need D/P/T document trail, invoke the 'light-workflow' skill. For complex iterative work, use the regressing skill instead. When the light-workflow specifies Work Agent or Review Agent, you MUST use the Task tool to launch a separate agent — do not do the agent's job yourself.
 - **Lessons:** Check .claude/lessons/ for project-specific rules. When proposing or creating lessons, invoke the 'lessons' skill for format guidelines. Propose new lessons when patterns repeat 2+ times.
 - **After Compacting or Session Restart:** Invoke the load-memory skill to rebuild full context. If the skill is unavailable, read latest memory.md as fallback. If understanding feels incomplete → check relevant docs and L1 session files in .claude/memory/sessions/.
 - **Agent utilization:** When dealing with many files or large files, use the Task tool with agents to parallelize work and protect the context window. Don't try to read/process everything yourself.
@@ -102,10 +102,10 @@ Watch for: completion drive, confidence w/o reading, pattern matching, efficienc
 - **Mandatory work log:** After performing any work related to a tracked document (D/P/T/R), append a log entry to that document's Log section using its existing format. This applies regardless of whether the skill was explicitly invoked — if the work touched or advanced the document's purpose, log it.
 - **Document types:** Discussion(D), Plan(P), Ticket(T), Research(R). Hierarchy: D/R → P → T. Status cascades upward on completion.
 - **Intent Anchor READ-ONLY:** Agent prompts must treat Intent Anchor items as read-only evaluation criteria. Agents may NOT add, remove, or reinterpret IA items. If reality conflicts with an IA item, STOP and report — do not silently reinterpret.
-- **Agent call classification:** Classify agent calls as Light (single file, no judgment, verifiable result → Orchestrator spot-check only) or Full (multiple files, judgment required → 1:1 Review Agent mandatory). When in doubt, default to Full. See workflow skill for details.
+- **Agent call classification:** Classify agent calls as Light (single file, no judgment, verifiable result → Orchestrator spot-check only) or Full (multiple files, judgment required → 1:1 Review Agent mandatory). When in doubt, default to Full. See light-workflow skill for details.
 - **Internal iteration boundary:** Work Agent may retry execution-level failures (syntax, runtime errors) up to 3 times internally. Plan-level changes (different approach, architecture) require STOP and Orchestrator report. "Different approach" = STOP, "fix typo" = iterate.
 - **docs/ 보호:** docs/ 아래 문서(D/P/T/R 등)는 로컬 산출물이므로 git에 커밋하지 않는다. untrack 시 \`git rm --cached\`만 사용하고 로컬 파일은 절대 삭제하지 않는다. git filter-repo 등 history 정리 시에도 현재 로컬 파일을 삭제하지 않는다.
-- **Regressing:** For iterative improvement tasks requiring document tracing, invoke the 'regressing' skill. \`/regressing "topic" N\` runs N cycles of D→P→T with verification-based optimization. Each cycle produces new documents. Use workflow skill for standalone 1-shot tasks without document trail.
+- **Regressing:** For iterative improvement tasks requiring document tracing, invoke the 'regressing' skill. \`/regressing "topic" N\` runs N cycles of D→P→T with verification-based optimization. Each cycle produces new documents. Use light-workflow skill for standalone 1-shot tasks without document trail.
 `;
 
 const EMERGENCY_STOP_CONTEXT = `

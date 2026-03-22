@@ -101,8 +101,8 @@ This ticket is executed with the following agent structure:
 - Append results to `## Final Verification` section
 
 ## Execution
-- This ticket is executed as a standalone workflow (1 Ticket = 1 Workflow)
-- Execute by invoking the `/workflow` skill
+- This ticket is executed using the built-in agent structure above (Step A → Step B → Step C)
+- 1 Ticket = 1 independent execution cycle
 
 ## Execution Results (Work Agent)
 (appended after agent execution)
@@ -143,7 +143,7 @@ Also update `docs/plan/INDEX.md` Tickets column to include the new ticket ID.
 
 ### Step 7: Confirm
 
-Tell user: "Created P{NNN}_T{NNN}. Status: todo. Invoke workflow skill to begin execution."
+Tell user: "Created P{NNN}_T{NNN}. Status: todo. Ready for execution."
 
 ---
 
@@ -208,7 +208,7 @@ If ticket status → `verified`:
 5. **"File contains X" is forbidden** in Verification section. Must describe observable behavior or runnable commands.
 6. **INDEX.md** is the only file where existing content may be modified.
 7. **Plan propagation:** When all tickets verified → auto-update plan status.
-8. **1 Ticket = 1 Workflow:** Each ticket is executed as a separate, independent workflow invocation. Never batch multiple tickets into a single workflow run. 3 tickets = 3 separate workflow executions.
+8. **1 Ticket = 1 independent execution cycle:** Each ticket is executed as a separate, independent agent cycle. Never batch multiple tickets into a single execution. 3 tickets = 3 separate executions.
 9. **Mandatory work log:** After performing any work related to this document, append a log entry to the Log section using the existing format (`### [{YYYY-MM-DD HH:MM}] {entry_type}`). This applies regardless of whether this skill was explicitly invoked — if the work touched or advanced this ticket's purpose, log it.
 10. **Mandatory append of results:** Work Agent, Review Agent, and Orchestrator must each append their execution results to the corresponding section of the T document (Execution Results, Verification Results, Final Verification). Verification not recorded in the document is treated as not performed.
 11. **Exhaustive verification standard:** **Verification definition:** Verification = closing the gap between belief and reality through observation. Direct execution + observation is the top priority; indirect means only when direct execution is impractical. — Verification must be at the level of confirming actual runtime behavior. If direct verification is possible → execute directly; if only indirect is possible → use all indirect means; if impossible → explicitly state "unverified".

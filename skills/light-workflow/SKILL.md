@@ -1,11 +1,11 @@
 ---
-name: workflow
-description: "Agent orchestration workflow for complex tasks. Use when RULES say 'invoke workflow skill' or user requests structured workflow execution."
+name: light-workflow
+description: "Lightweight agent orchestration for standalone one-shot tasks. Use for simple tasks that don't need D/P/T document trail. For complex iterative work, use regressing skill instead."
 ---
 
 # Agent Orchestration Workflow
 
-> **Lightweight reference mode:** This workflow skill is a lightweight execution mode suited for standalone one-shot tasks.
+> **Lightweight reference mode:** This light-workflow skill is a lightweight execution mode suited for standalone one-shot tasks.
 > For iterative tasks requiring document tracing, use the D/P/T-based `/regressing` skill.
 > - `/regressing "topic" N` — N autonomous cycles (D→P→T loop, verification-based optimization)
 > - `/discussing`, `/planning`, `/ticketing` — individual document creation skills

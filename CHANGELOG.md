@@ -1,5 +1,13 @@
 # Changelog
 
+## 19.14.0 (2026-03-21)
+
+### Changed
+- **Rename**: workflow skill → light-workflow (D/P/T 체계와 혼동 방지)
+- **Remove**: regressing/ticketing SKILL.md에서 `/workflow` 호출 제거 — D/P/T 자체 agent 구조로 실행
+- **Fix**: 모든 스킬에서 stale "workflow" 참조 정리 (6건 수정)
+- **Sync**: inject-rules.js, CLAUDE.md, 캐시 전체 동기화
+
 ## 19.13.0 (2026-03-21)
 
 ### Changed
