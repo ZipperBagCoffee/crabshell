@@ -173,6 +173,7 @@ memory.md                 - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 19.13.0 | Changed: i18n — translated all Korean text in 6 skill documents to English (no meaning changes) |
 | 19.12.0 | Changed: Verification philosophy — redefined verification standard, added observation evidence gates to workflow phases |
 | 19.11.0 | Feat: Regressing skill — autonomous D→P→T loop with verification-based optimization |
 | 19.10.0 | Feat: Skill precision optimization — descriptions, trigger patterns, workflow split, terminology fixes |

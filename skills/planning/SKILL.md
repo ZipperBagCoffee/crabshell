@@ -7,7 +7,7 @@ description: "Create and update plan documents. Use when establishing a structur
 
 ## Modes
 
-- **Create mode:** `/planning "제목"` — creates a new plan document
+- **Create mode:** `/planning "title"` — creates a new plan document
 - **Update mode:** `/planning P001` — appends a log entry to an existing plan
 
 ---
@@ -51,59 +51,59 @@ Then create `docs/plan/P{NNN}-{slug}.md`:
 ```
 # P{NNN} - {title}
 
-## Intent (의도)
+## Intent
 {user's answer}
 
-## Scope (범위)
-포함: {included}
-제외: {excluded}
+## Scope
+Included: {included}
+Excluded: {excluded}
 
-## Plan (계획)
-- [ ] 단계 1: {step}
-- [ ] 단계 2: {step}
+## Plan
+- [ ] Step 1: {step}
+- [ ] Step 2: {step}
 ...
 
-## Agent Execution (에이전트 실행)
+## Agent Execution
 
-이 계획은 다음 agent 구조로 실행된다:
+This plan is executed using the following agent structure:
 
-### Step A: Work Agent — 분석 + 계획 작성
-- 관련 코드/시스템 분석
-- 의존성, 영향 범위 파악
-- 구체적 실행 계획 작성
-- 결과를 `## 분석 결과` 섹션에 append
+### Step A: Work Agent — Analysis + Plan Writing
+- Analyze related code/system
+- Identify dependencies and impact scope
+- Write concrete execution plan
+- Append results to `## Analysis Results` section
 
-### Step B: Review Agent — 계획 품질 검증
-- 분석의 완전성과 정확성 검증
-- 계획의 실행 가능성 검토
-- 리스크 및 누락 사항 식별
-- 결과를 `## 리뷰 결과` 섹션에 append
+### Step B: Review Agent — Plan Quality Verification
+- Verify completeness and accuracy of analysis
+- Review feasibility of plan
+- Identify risks and missing items
+- Append results to `## Review Results` section
 
-### Step C: Orchestrator — 의도 점검
-- D 문서의 Intent Anchor(IA)와 대조
-- 계획이 원래 의도에서 이탈하지 않았는지 확인
-- 승인 또는 반려 결정
-- 결과를 `## 의도 점검` 섹션에 append
+### Step C: Orchestrator — Intent Check
+- Compare against D document's Intent Anchor (IA)
+- Confirm plan has not deviated from original intent
+- Decide to approve or reject
+- Append results to `## Intent Check` section
 
 ## Tickets
-(티켓 생성 시 자동 기록)
+(Automatically recorded when tickets are created)
 
-## 분석 결과 (Work Agent)
-(에이전트 실행 후 append)
+## Analysis Results (Work Agent)
+(Appended after agent execution)
 
-## 리뷰 결과 (Review Agent)
-(에이전트 실행 후 append)
+## Review Results (Review Agent)
+(Appended after agent execution)
 
-## 의도 점검 (Orchestrator)
-(에이전트 실행 후 append)
+## Intent Check (Orchestrator)
+(Appended after agent execution)
 
-## Verification Criteria (검증 기준)
+## Verification Criteria
 {user's answer — must describe observable behavior}
 
 ## Log
 
 ---
-### [{YYYY-MM-DD HH:MM}] 생성
+### [{YYYY-MM-DD HH:MM}] Created
 {background/motivation for this plan}
 ```
 
@@ -142,9 +142,9 @@ Append to end of document:
 
 Entry types:
 - General update (default)
-- `승인` — user approved the plan
-- `상태변경: {old} → {new}`
-- `티켓 추가: P{NNN}_T{NNN}` — when a ticket is created (auto-appended by ticketing skill)
+- `Approved` — user approved the plan
+- `Status change: {old} → {new}`
+- `Ticket added: P{NNN}_T{NNN}` — when a ticket is created (auto-appended by ticketing skill)
 
 ### Step 3: Update INDEX.md if needed
 
@@ -161,13 +161,13 @@ Update status column and/or Tickets column in `docs/plan/INDEX.md`.
 
 ## Rules
 
-1. **NEVER modify existing content.** Only append to Log section, Tickets section, and agent result sections (분석 결과, 리뷰 결과, 의도 점검).
+1. **NEVER modify existing content.** Only append to Log section, Tickets section, and agent result sections (Analysis Results, Review Results, Intent Check).
 2. **Tickets section:** Only receives appended lines like `- P{NNN}_T{NNN}: {title}` when ticketing skill creates a ticket.
 3. **Plan checkboxes:** Never modify. Progress is tracked in Log entries.
 4. **INDEX.md** is the only file where status may be modified.
 5. When plan comes from a discussion/research, note `D{NNN}` or `R{NNN}` in INDEX.md Related column and add to first log entry.
-6. **하위 미완료 시 상위 전환 금지:** P는 관련 티켓이 전부 `verified`일 때만 `done`으로 전환 가능. 티켓이 하나라도 미완료면 `done` 전환 거부.
-7. **완료 시 상위 자동 종결:** P가 `done`이 되면 → Related 컬럼의 D/R을 자동으로 `concluded`로 업데이트하고 해당 문서에 로그 추가. (ticketing cascade에서 트리거됨)
+6. **No parent transition while children incomplete:** P can only transition to `done` when ALL related tickets are `verified`. If any ticket is incomplete, refuse `done` transition.
+7. **Auto-conclude parent on completion:** When P becomes `done` → automatically update D/R in Related column to `concluded` and append log to those documents. (Triggered by ticketing cascade)
 8. **Mandatory work log:** After performing any work related to this document, append a log entry to the Log section using the existing format (`### [{YYYY-MM-DD HH:MM}] {entry_type}`). This applies regardless of whether this skill was explicitly invoked — if the work touched or advanced this plan's purpose, log it.
-9. **검증 결과 append 의무:** Work Agent, Review Agent, Orchestrator는 각자의 실행 결과를 P 문서의 해당 섹션(분석 결과, 리뷰 결과, 의도 점검)에 반드시 append해야 한다. 구두 보고만으로는 불충분하며, 문서에 기록되지 않은 검증은 수행하지 않은 것과 동일하다.
-10. **전수조사 검증 기준:** **검증 정의:** 검증 = 믿음과 현실 사이의 간극을 관찰로 닫는 것. 직접 실행 + 관찰이 최우선, 간접 수단은 직접 실행이 어려울 때만. — 검증은 "파일에 존재한다" 수준이 아닌, 실제 실행 가능성과 동작을 확인하는 수준이어야 한다. 직접 검증 가능한 것은 직접, 간접만 가능한 것은 모든 간접 수단 동원, 검증 불가한 것은 "미검증" 명시.
+9. **Mandatory verification result append:** Work Agent, Review Agent, and Orchestrator MUST append their execution results to the corresponding sections of the P document (Analysis Results, Review Results, Intent Check). Verbal reporting alone is insufficient — verification not recorded in the document is equivalent to verification not performed.
+10. **Exhaustive verification standard:** **Definition of verification:** Verification = closing the gap between belief and reality through observation. Direct execution + observation is the top priority; indirect means only when direct execution is not feasible. — Verification must go beyond "exists in file" to confirming actual executability and behavior. What can be directly verified, verify directly; what can only be indirectly verified, use all available indirect means; what cannot be verified, explicitly mark as "unverified".

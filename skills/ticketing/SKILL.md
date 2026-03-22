@@ -7,7 +7,7 @@ description: "Create and update ticket documents tied to a plan. Use when breaki
 
 ## Modes
 
-- **Create mode:** `/ticketing P001 "제목"` — creates a new ticket under plan P001
+- **Create mode:** `/ticketing P001 "title"` — creates a new ticket under plan P001
 - **Update mode:** `/ticketing P001_T001` — appends a log entry to an existing ticket
 
 ---
@@ -61,65 +61,65 @@ Then create `docs/ticket/P{NNN}_T{NNN}-{slug}.md`:
 ## Parent
 - Plan: P{NNN} - {plan title}
 
-## Intent (의도)
+## Intent
 {user's answer}
 
-## Scope (범위)
-할 것: {included}
-안 할 것: {excluded}
+## Scope
+Included: {included}
+Excluded: {excluded}
 
-## Acceptance Criteria (완료 조건)
+## Acceptance Criteria
 - [ ] {criterion 1}
 - [ ] {criterion 2}
 
-## Verification (검증)
+## Verification
 {criterion 1}: {how to verify — command to run, behavior to observe}
 {criterion 2}: {how to verify}
 
-## Agent Execution (에이전트 실행)
+## Agent Execution
 
-이 티켓은 다음 agent 구조로 실행된다:
+This ticket is executed with the following agent structure:
 
-### Step A: Work Agent — 실행
-- 계획(P)에 따라 작업 실행
-- 각 작업 항목별 결과 기록
-- 결과를 `## 실행 결과` 섹션에 append
+### Step A: Work Agent — Execution
+- Execute tasks according to the plan (P)
+- Record results for each work item
+- Append results to `## Execution Results` section
 
-### Step B: Review Agent — 검증
-- 각 작업 항목의 실동작 확인 (trigger → path → result)
-- 변경이 기존 기능을 깨뜨리지 않는지 확인
-- edge case, 예외 상황 처리 확인
-- 결과를 `## 검증 결과` 섹션에 append
+### Step B: Review Agent — Verification
+- Verify runtime behavior of each work item (trigger → path → result)
+- Confirm changes do not break existing functionality
+- Confirm edge case and exception handling
+- Append results to `## Verification Results` section
 
-### Step C: Orchestrator — 최종 검증
-- Review Agent의 검증을 재검증 (가능한 전수조사)
-- "검증했다고 주장하지만 실제로 안 한 것" 적발
-- 3요소 평가:
-  1. **정확성**: 제대로 됐는가?
-  2. **개선 기회**: 더 나은 방법은 없었는가?
-  3. **다음 방향**: 다음에 뭘 해야 하는가?
-- 결과를 `## 최종 검증` 섹션에 append
+### Step C: Orchestrator — Final Verification
+- Re-verify the Review Agent's verification (exhaustive where possible)
+- Catch cases where "verification was claimed but not actually performed"
+- 3-factor evaluation:
+  1. **Correctness**: Was it done correctly?
+  2. **Improvement Opportunities**: Was there a better approach?
+  3. **Next Direction**: What should be done next?
+- Append results to `## Final Verification` section
 
 ## Execution
-- 이 티켓은 단독 워크플로우로 실행 (1 Ticket = 1 Workflow)
-- 실행: `/workflow` 스킬 호출
+- This ticket is executed as a standalone workflow (1 Ticket = 1 Workflow)
+- Execute by invoking the `/workflow` skill
 
-## 실행 결과 (Work Agent)
-(에이전트 실행 후 append)
+## Execution Results (Work Agent)
+(appended after agent execution)
 
-## 검증 결과 (Review Agent)
-(에이전트 실행 후 append)
+## Verification Results (Review Agent)
+(appended after agent execution)
 
-## 최종 검증 (Orchestrator)
-(에이전트 실행 후 append)
-### 정확성
-### 개선 기회
-### 다음 방향
+## Final Verification (Orchestrator)
+(appended after agent execution)
+### Correctness
+### Improvement Opportunities
+### Next Direction
 
 ## Log
 
 ---
-### [{YYYY-MM-DD HH:MM}] 생성
+### [{YYYY-MM-DD HH:MM}] Created
 {work plan for this ticket}
 ```
 
@@ -167,10 +167,10 @@ Append to end of document:
 ```
 
 Entry types:
-- `작업 기록` — work notes, files changed, decisions made
-- `검증 실행` — verification run with commands and results
-- `검증 완료` — verification passed/failed with evidence
-- `상태변경: {old} → {new}`
+- `Work Log` — work notes, files changed, decisions made
+- `Verification Run` — verification run with commands and results
+- `Verification Complete` — verification passed/failed with evidence
+- `Status Change: {old} → {new}`
 
 ### Step 3: Update INDEX.md if status changed
 
@@ -183,11 +183,11 @@ If ticket status → `verified`:
 1. **Check parent plan:** Read `docs/ticket/INDEX.md`, find ALL tickets for the same parent plan. Are ALL of them `verified`?
    - If NO → stop here.
    - If YES → continue cascade.
-2. **Close parent plan:** Update parent plan's status to `done` in `docs/plan/INDEX.md`. Append log entry to plan document: `상태변경: in-progress → done (모든 티켓 verified)`
+2. **Close parent plan:** Update parent plan's status to `done` in `docs/plan/INDEX.md`. Append log entry to plan document: `Status Change: in-progress → done (all tickets verified)`
 3. **Cascade to D/R:** Read parent plan's `Related` column in `docs/plan/INDEX.md`. For each related D/R ID:
    - **Cross-check:** Read that D/R's Related column in its INDEX.md. If it references OTHER plans besides the one just completed, check those plans' statuses too. ALL related plans must be `done` before concluding.
-   - If all related plans done → update D/R status to `concluded`, append log entry: `상태변경: open → concluded (관련 플랜 모두 완료)`
-   - If other related plans still open → skip, do not conclude. Log: `P{NNN} 완료, 다른 관련 플랜 미완료로 종결 보류`
+   - If all related plans done → update D/R status to `concluded`, append log entry: `Status Change: open → concluded (all related plans completed)`
+   - If other related plans still open → skip, do not conclude. Log: `P{NNN} completed, conclusion deferred due to other related plans still incomplete`
 
 ### Status Transitions
 
@@ -201,7 +201,7 @@ If ticket status → `verified`:
 
 ## Rules
 
-1. **NEVER modify existing content.** Only append to Log section and agent result sections (실행 결과, 검증 결과, 최종 검증).
+1. **NEVER modify existing content.** Only append to Log section and agent result sections (Execution Results, Verification Results, Final Verification).
 2. **Acceptance criteria checkboxes:** Never modify. Completion tracked in Log entries.
 3. **`done` ≠ `verified`:** Work completion and verification are separate events with separate log entries.
 4. **Verification at creation:** The Verification section MUST be filled at ticket creation time (before work starts). This is the TDD principle — define how you'll check before you build.
@@ -210,6 +210,6 @@ If ticket status → `verified`:
 7. **Plan propagation:** When all tickets verified → auto-update plan status.
 8. **1 Ticket = 1 Workflow:** Each ticket is executed as a separate, independent workflow invocation. Never batch multiple tickets into a single workflow run. 3 tickets = 3 separate workflow executions.
 9. **Mandatory work log:** After performing any work related to this document, append a log entry to the Log section using the existing format (`### [{YYYY-MM-DD HH:MM}] {entry_type}`). This applies regardless of whether this skill was explicitly invoked — if the work touched or advanced this ticket's purpose, log it.
-10. **검증 결과 append 의무:** Work Agent, Review Agent, Orchestrator는 각자의 실행 결과를 T 문서의 해당 섹션(실행 결과, 검증 결과, 최종 검증)에 반드시 append해야 한다. 문서에 기록되지 않은 검증은 수행하지 않은 것과 동일하다.
-11. **전수조사 검증 기준:** **검증 정의:** 검증 = 믿음과 현실 사이의 간극을 관찰로 닫는 것. 직접 실행 + 관찰이 최우선, 간접 수단은 직접 실행이 어려울 때만. — 검증은 실동작 확인 수준이어야 한다. 직접 검증 가능 → 직접 실행, 간접만 가능 → 모든 간접 수단, 불가 → "미검증" 명시.
-12. **Regressing context 전달:** regressing 루프에서 이 T 문서의 `## 최종 검증 > 다음 방향` 내용은 다음 cycle D(n+1) 문서의 `## Context (배경)` 섹션으로 전달된다. Orchestrator는 이 전달을 명시적으로 수행해야 한다.
+10. **Mandatory append of results:** Work Agent, Review Agent, and Orchestrator must each append their execution results to the corresponding section of the T document (Execution Results, Verification Results, Final Verification). Verification not recorded in the document is treated as not performed.
+11. **Exhaustive verification standard:** **Verification definition:** Verification = closing the gap between belief and reality through observation. Direct execution + observation is the top priority; indirect means only when direct execution is impractical. — Verification must be at the level of confirming actual runtime behavior. If direct verification is possible → execute directly; if only indirect is possible → use all indirect means; if impossible → explicitly state "unverified".
+12. **Regressing context transfer:** In the regressing loop, this T document's `## Final Verification > Next Direction` content is passed to the next cycle D(n+1) document's `## Context` section. The Orchestrator must explicitly perform this transfer.

@@ -1,5 +1,10 @@
 # Changelog
 
+## 19.13.0 (2026-03-21)
+
+### Changed
+- **i18n**: Translated all Korean text in 6 skill documents to English (regressing, ticketing, planning, discussing, researching, workflow SKILL.md). No meaning changes.
+
 ## 19.12.0 (2026-03-21)
 
 ### Changed

@@ -5,10 +5,10 @@ description: "Agent orchestration workflow for complex tasks. Use when RULES say
 
 # Agent Orchestration Workflow
 
-> **경량 레퍼런스 모드:** 이 workflow 스킬은 단독 1회성 작업에 적합한 경량 실행 모드입니다.
-> 문서 추적이 필요한 반복 작업에는 D/P/T 기반의 `/regressing` 스킬을 사용하세요.
-> - `/regressing "주제" N` — N회 자율 순환 (D→P→T 루프, 검증 기반 최적화)
-> - `/discussing`, `/planning`, `/ticketing` — 개별 문서 생성 스킬
+> **Lightweight reference mode:** This workflow skill is a lightweight execution mode suited for standalone one-shot tasks.
+> For iterative tasks requiring document tracing, use the D/P/T-based `/regressing` skill.
+> - `/regressing "topic" N` — N autonomous cycles (D→P→T loop, verification-based optimization)
+> - `/discussing`, `/planning`, `/ticketing` — individual document creation skills
 
 > Principles (Understanding-First, HHH, Critical Stance, etc.) are injected via RULES every prompt.
 > This document defines HOW those principles apply to agent-based task execution.
@@ -241,7 +241,7 @@ After cross-review:
 
 ## Anti-Patterns
 
-> **검증 철학 (Verification Philosophy):** 검증 = 믿음과 현실 사이의 간극을 관찰로 닫는 것. 아래 안티패턴 #3, #9, #15, #25의 공통 근본 원인은 관찰 부재다. 직접 실행 + 관찰이 최우선, 간접 수단은 직접 실행이 어려울 때만.
+> **Verification Philosophy:** Verification = closing the gap between belief and reality through observation. The common root cause of anti-patterns #3, #9, #15, #25 below is absence of observation. Direct execution + observation is the top priority; indirect means only when direct execution is impractical.
 
 | # | Pattern | Rule |
 |---|---------|------|
@@ -294,8 +294,8 @@ Orchestrator = Synthesize + Critique + Preserve Intent Anchor
 Spot-checks scale: 1 reviewer→1, 2-3→2, 4+→3
 If gap remains → do not proceed
 If recommendation CONFLICTS with any IA item → reject or find alternative
-Compaction = Phase 4/7 meta-review후 이전 phase 요약. IA는 절대 압축 안 함.
-Light/Full = agent 분류. Light: 단일파일+판단불필요→spot-check만. Full: 기존 1:1 Review 필수. 의심→Full.
-Internal Iteration = Phase 8 실행 에러만 max 3회 재시도. 계획 변경→STOP. 로그 필수.
-Graceful Degradation = Phase 10 부분 실패 시 PASS 확정 + FAIL만 재작업. 판정은 PASS/FAIL 유지.
+Compaction = Summarize previous phases after Phase 4/7 meta-review. IA is never compressed.
+Light/Full = agent classification. Light: single file + no judgment needed → spot-check only. Full: existing 1:1 Review mandatory. When in doubt → Full.
+Internal Iteration = Only Phase 8 execution errors, max 3 retries. Plan change → STOP. Logging mandatory.
+Graceful Degradation = On partial failure in Phase 10, keep confirmed PASS + rework only FAIL items. Verdicts remain PASS/FAIL.
 ```

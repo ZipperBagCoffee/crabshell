@@ -9,7 +9,7 @@ description: "Create and update discussion documents. Use when starting a discus
 
 This skill has two modes based on arguments:
 
-- **Create mode:** `/discussing "제목"` — creates a new discussion document
+- **Create mode:** `/discussing "title"` — creates a new discussion document
 - **Update mode:** `/discussing D001` — appends a log entry to an existing discussion
 
 ---
@@ -44,7 +44,7 @@ If no files exist, start at 001.
 ### Step 3: Create discussion document
 
 Filename: `docs/discussion/D{NNN}-{slug}.md`
-- `{slug}` = title converted to kebab-case (Korean titles: keep Korean as-is with hyphens for spaces)
+- `{slug}` = title converted to kebab-case (non-English titles: keep as-is with hyphens for spaces)
 
 Ask the user:
 1. **Intent:** Why is this discussion needed? What decision is being made?
@@ -56,21 +56,21 @@ Then create the document:
 ```
 # D{NNN} - {title}
 
-## Intent (의도)
+## Intent
 {user's answer about intent}
 
-## Context (배경)
+## Context
 {user's answer about context}
 
 ## Intent Anchor
 - IA-1: {first intent anchor item}
 - IA-2: {second intent anchor item}
-(사용자와 확인 후 확정)
+(Finalized after confirmation with user)
 
 ## Discussion Log
 
 ---
-### [{YYYY-MM-DD HH:MM}] 시작
+### [{YYYY-MM-DD HH:MM}] Started
 {Initial discussion topic or opening statement}
 ```
 
@@ -110,8 +110,8 @@ Append to the end of the document:
 
 Where `entry_type` is one of:
 - A summary of the discussion point (default)
-- `결론` — when a conclusion is reached
-- `상태변경: {old} → {new}` — when status changes
+- `Conclusion` — when a conclusion is reached
+- `Status change: {old} → {new}` — when status changes
 
 ### Step 3: Update INDEX.md if status changed
 
@@ -130,8 +130,8 @@ If the entry includes a status change, update the status column in `docs/discuss
 2. **Timestamps** use local time: `[YYYY-MM-DD HH:MM]`
 3. **INDEX.md** is the only file where existing content may be modified (status column updates).
 4. When the discussion leads to a plan, note in the log: "→ See P{NNN}" and update INDEX.md Related column.
-5. **하위 미완료 시 상위 전환 금지:** Related P가 존재하고 아직 `done`이 아니면 → D를 `concluded`로 전환 금지. 관련 플랜이 완료되어야만 종결 가능.
-6. **자동 종결:** 관련 P가 `done`이 되면 ticketing cascade에 의해 D가 자동으로 `concluded` 처리됨. 수동 종결 불필요.
+5. **No parent transition while children incomplete:** If a related P exists and is not yet `done` → do not transition D to `concluded`. Can only conclude when related plan is completed.
+6. **Auto-conclude:** When related P becomes `done`, D is automatically set to `concluded` by ticketing cascade. No manual conclusion needed.
 7. **Mandatory work log:** After performing any work related to this document, append a log entry to the Discussion Log section using the existing format (`### [{YYYY-MM-DD HH:MM}] {entry_type}`). This applies regardless of whether this skill was explicitly invoked — if the work touched or advanced this discussion's purpose, log it.
-8. **Orchestrator 참조 의무:** Orchestrator는 P(계획), T(실행) 단계에서 반드시 이 D 문서의 Intent Anchor를 참조해야 한다. IA 항목은 read-only 평가 기준이며 변경 불가.
-9. **Regressing context 전달:** regressing 루프에서 cycle 2+ 시, D 문서의 `## Context (배경)` 섹션에는 이전 cycle T 문서의 Orchestrator 최종 검증 결과(정확성/개선기회/다음방향)가 포함되어야 한다. Cycle 1에서는 사용자가 직접 Context를 제공한다.
+8. **Orchestrator reference obligation:** Orchestrator MUST reference this D document's Intent Anchor during P (planning) and T (execution) stages. IA items are read-only evaluation criteria and cannot be modified.
+9. **Regressing context passing:** In regressing loops at cycle 2+, the D document's `## Context` section must include the previous cycle's T document Orchestrator final verification results (accuracy/improvement opportunities/next direction). In cycle 1, the user provides Context directly.
