@@ -54,9 +54,10 @@ With this setup, **Claude starts every new session knowing this information**.
 | `/memory-keeper:discussing "topic"` | Create/update a discussion document |
 | `/memory-keeper:planning "topic"` | Create/update a plan document |
 | `/memory-keeper:ticketing P001 "topic"` | Create/update a ticket tied to a plan |
-| `/memory-keeper:researching "topic"` | Create/update a research document |
+| `/memory-keeper:investigating "topic"` | Multi-source multi-agent investigation |
 | `/memory-keeper:regressing "topic" N` | Run N cycles of D→P→T with verification-based optimization |
-| `/memory-keeper:workflow` | Run the 11-phase agent orchestration workflow |
+| `/memory-keeper:light-workflow` | Run the 11-phase agent orchestration workflow (standalone tasks) |
+| `/memory-keeper:verifying` | Create/run project-specific verification tools |
 | `/memory-keeper:lessons` | Check/create project-specific lessons |
 
 ## Document Management (4-Skill System)
@@ -68,13 +69,13 @@ Track project work through structured, append-only documents:
 | `/discussing` | D001 | open, concluded | Decisions, dialogues, conclusions |
 | `/planning` | P001 | draft, approved, in-progress, done | Implementation plans with steps |
 | `/ticketing` | P001_T001 | todo, in-progress, done, verified | Session-sized work units tied to plans |
-| `/researching` | R001 | open, concluded | Investigations, analysis, findings |
+| `/investigating` | I001 | open, concluded | Multi-source investigations with cross-review |
 
 Each document type has its own folder under `docs/` with an `INDEX.md` for status tracking. Tickets inherit from plans and require verification-at-creation (TDD principle).
 
 ## Agent Orchestration Workflow
 
-For complex tasks, the workflow skill runs an 11-phase process with 3-layer architecture:
+For complex tasks, the light-workflow skill runs an 11-phase process with 3-layer architecture:
 
 ```
 Work Agent     →  Analysis, planning, implementation
@@ -87,6 +88,15 @@ Key features:
 - **Cross-Review** - When 2+ reviewers run in parallel, adversarial cross-examination is mandatory
 - **Runtime Verification** - Mandatory runtime verification in Phase 8/9/10 (not just static checks)
 - **1 Ticket = 1 Workflow** - Each ticket gets its own independent workflow execution
+
+## Regressing (Iterative Optimization)
+
+For tasks requiring multiple improvement cycles, `/regressing "topic" N` runs N cycles of Plan→Ticket→Verify:
+
+- Each cycle's verification results determine the next cycle's direction
+- **Phase Tracker** (v19.23.0): Hook-based auto-enforcement of Skill tool usage — UserPromptSubmit injects phase-specific reminders, PostToolUse auto-advances phase on Skill tool detection
+- Anti-partitioning: each cycle plans current work only (no pre-dividing across cycles)
+- Single Discussion wraps all cycles, auto-concludes when all plans complete
 
 ## CLAUDE.md Integration
 
@@ -129,7 +139,7 @@ Coding conventions: ...
 │   └── INDEX.md
 ├── ticket/                # Ticket documents (P001_T001...)
 │   └── INDEX.md
-└── research/              # Research documents (R001, R002...)
+└── investigation/         # Investigation documents (I001, I002...)
     └── INDEX.md
 ```
 
@@ -173,6 +183,7 @@ memory.md                 - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 19.23.0 | Feat: Regressing phase tracker — hook-based auto-enforcement of Skill tool usage via UserPromptSubmit reminders + PostToolUse auto-phase-advance |
 | 19.22.0 | Feat: Verification tool check procedure in regressing/ticketing/light-workflow — /verifying invoked as procedural step, not rule |
 | 19.21.0 | Feat: Verifying skill — create/run project-specific verification tools; inline verification definitions replaced with VERIFICATION-FIRST reference |
 | 19.20.0 | Feat: RA Independence Protocol + Planning E/A/G verification + Orchestrator cross-reference step |
