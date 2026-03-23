@@ -51,6 +51,11 @@ Create ONE Discussion document that wraps the entire regressing session:
 - This D stays open throughout all cycles and closes at the end
 - Metadata: `[regressing: {N} cycles]`
 
+After creating the Discussion document, write the regressing state file:
+- Path: `.claude/memory/regressing-state.json`
+- Content: `{ "active": true, "discussion": "{D-ID}", "cycle": 1, "totalCycles": {N}, "phase": "planning", "planId": null, "ticketId": null, "startedAt": "{ISO}", "lastUpdatedAt": "{ISO}" }`
+- Use Bash tool: `echo '...' > .claude/memory/regressing-state.json`
+
 ### Step 3: Pre-check (optional)
 
 - Check if related Investigation (I) documents exist
@@ -77,8 +82,14 @@ for cycle in 1..N:
 - **Quality Gate (BLOCKING):** Plan agent sections (Analysis Results, Review Results, Intent Check) MUST ALL be populated before proceeding to Step 4b. Empty agent sections indicate the Plan quality gate was bypassed — the Orchestrator MUST halt and run the missing agents.
 - After approval, proceed to ticket creation
 
+After /planning completes, update regressing state:
+- Set `"planId": "{P-ID}"`, `"lastUpdatedAt": "{ISO}"` (phase transition is automatic via PostToolUse hook)
+
 #### Step 4b: Ticketing — Create T(n)
 - Invoke `/ticketing`, create ticket from P(n)
+
+After /ticketing completes, update regressing state:
+- Set `"ticketId": "{T-ID}"`, `"lastUpdatedAt": "{ISO}"` (phase transition is automatic via PostToolUse hook)
 
 #### Step 4c: Ticket Execution
 - Execute T(n) using ticketing's built-in agent structure (Work Agent → Review Agent → Orchestrator)
@@ -128,6 +139,9 @@ for cycle in 1..N:
     - **Recommended Focus**: What should the next cycle prioritize and why?
     - (If this section reads like a generic TODO list without referencing specific observations from this cycle, it is INVALID — rewrite with evidence.)
 
+After ticket execution completes, update regressing state:
+- Set `"phase": "feedback"`, `"lastUpdatedAt": "{ISO}"`
+
 #### Step 4d: Feedback Transfer (Quality Gate)
 - Extract T(n)'s `## Final Verification > Next Direction`
 - **Quality check before transfer:** The Orchestrator MUST verify Next Direction contains:
@@ -138,12 +152,19 @@ for cycle in 1..N:
 - Pass validated feedback to next cycle P(n+1)'s Context
 - This transfer is explicitly performed by the Orchestrator
 
+After feedback transfer:
+- If cycle < totalCycles: Set `"cycle": cycle+1`, `"phase": "planning"`, `"planId": null`, `"ticketId": null`
+- If cycle = totalCycles: proceed to Step 5
+
 ### Step 5: Close Discussion (D) + Final Report
 
 After completing N cycles, return to the D document:
 
 1. Append the Final Report to D's Discussion Log
 2. Transition D to `concluded`
+
+After final report, clean up regressing state:
+- Delete `.claude/memory/regressing-state.json`
 
 Final Report format:
 

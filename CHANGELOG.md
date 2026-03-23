@@ -1,5 +1,13 @@
 # Changelog
 
+## 19.23.0
+- Feat: Regressing phase tracker — `regressing-state.json` tracks active regressing session phase
+- Feat: UserPromptSubmit hook injects phase-specific reminders forcing Skill tool usage for /planning and /ticketing
+- Feat: PostToolUse hook auto-advances regressing phase on Skill tool call detection (planning→ticketing→execution)
+- Feat: Stale regressing state detection (24h) in SessionStart (load-memory.js)
+- Changed: planning/ticketing SKILL.md manual phase transition replaced by automatic PostToolUse hook transition
+- New file: `scripts/regressing-state.js` — getRegressingState, buildRegressingReminder, detectRegressingSkillCall, advancePhase
+
 ## 19.22.0
 - Feat: Verification tool check procedure in regressing/ticketing/light-workflow — /verifying invoked as procedural step, not rule
 

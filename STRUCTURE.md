@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 19.22.0 | **Author**: TaWa | **License**: MIT
+**Version**: 19.23.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -56,6 +56,7 @@ memory-keeper-plugin/
 │   ├── migrate-timezone.js           # Legacy timestamp migration (local → UTC)
 │   ├── refine-raw.js                 # raw.jsonl -> l1.jsonl conversion
 │   ├── sync-rules-to-claude.js       # Manual CLAUDE.md sync (standalone)
+│   ├── regressing-state.js            # Regressing phase tracker (v19.23.0)
 │   ├── test-cwd-isolation.js         # Mock tests for cwd isolation (v17.0.0)
 │   └── utils.js                      # Shared utilities
 │
@@ -91,9 +92,16 @@ Cross-platform Node.js locator for hook commands:
 - Uses `exec` for zero-overhead stdin passthrough to Node.js
 - Referenced by hooks/hooks.json for all hook commands
 
+### scripts/regressing-state.js
+Regressing phase tracker (v19.23.0):
+- `getRegressingState()`: Read `.claude/memory/regressing-state.json`, return null if inactive
+- `buildRegressingReminder()`: Build phase-specific reminder for UserPromptSubmit injection
+- `detectRegressingSkillCall()`: Detect Skill tool calls for planning/ticketing/discussing from PostToolUse hookData
+- `advancePhase()`: Auto-advance regressing phase on skill detection (planning→ticketing→execution)
+
 ### scripts/counter.js
 Main automation engine with commands:
-- `check`: Increment counter, create/update L1 + trigger save at threshold, check rotation
+- `check`: Increment counter, create/update L1 + trigger save at threshold, check rotation, detect regressing skill calls
 - `final`: Session end handler, create L1, cleanup duplicates
 - `reset`: Reset counter to 0
 - `search-memory`: Search L1/L2/L3 layers (--deep for L1)
@@ -115,6 +123,7 @@ Centralized configuration:
 - `CARRYOVER_TOKENS`: 2375 (2500 * 0.95)
 - `MEMORY_DIR`, `SESSIONS_DIR`, `INDEX_FILE`, `MEMORY_FILE`
 - `DELTA_TEMP_FILE`, `HAIKU_SAFE_TOKENS`, `FIRST_RUN_MAX_ENTRIES`
+- `REGRESSING_STATE_FILE`: regressing-state.json (v19.23.0)
 
 ### scripts/memory-rotation.js
 Token-based rotation logic:
@@ -139,6 +148,7 @@ UserPromptSubmit hook:
 - Auto-sync rules to CLAUDE.md via `syncRulesToClaudeMd()` (marker-based)
 - Detect pending delta → inject DELTA_INSTRUCTION
 - Detect pending rotation → inject ROTATION_INSTRUCTION
+- Detect active regressing session → inject phase-specific reminder (v19.23.0)
 
 ### scripts/extract-delta.js
 L1 delta extraction:
@@ -173,10 +183,13 @@ L1 generation:
        │   └─> If yes: Inject DELTA_INSTRUCTION → Claude executes memory-delta skill
        ├─> Check for pending rotation (summaryGenerated: false)
        │   └─> If yes: Inject ROTATION_INSTRUCTION → Claude executes memory-rotate skill
+       ├─> Check for active regressing session (regressing-state.json)
+       │   └─> If yes: Inject phase-specific reminder (planning/ticketing → MANDATORY SKILL TOOL CALL)
        └─> Output indicator: [rules injected], [rules + delta pending], [rules + rotation pending]
 
 3. PostToolUse
    └─> counter.js check
+       ├─> Detect regressing skill calls → auto-advance phase (v19.23.0)
        ├─> Increment counter
        ├─> checkAndRotate() - archive if > 23,750 tokens
        └─> At threshold: create/update L1 → extractDelta() → creates delta_temp.txt

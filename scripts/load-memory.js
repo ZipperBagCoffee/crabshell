@@ -2,7 +2,7 @@ const path = require('path');
 const fs = require('fs');
 const { getProjectDir, getProjectName, readFileOrDefault, readJsonOrDefault, estimateTokens } = require('./utils');
 const { ensureMemoryStructure } = require('./init');
-const { MEMORY_DIR, SESSIONS_DIR, INDEX_FILE, MEMORY_FILE, LOGS_DIR, DELTA_TEMP_FILE } = require('./constants');
+const { MEMORY_DIR, SESSIONS_DIR, INDEX_FILE, MEMORY_FILE, LOGS_DIR, DELTA_TEMP_FILE, REGRESSING_STATE_FILE } = require('./constants');
 
 // Workaround: Claude Code plugin hooks (PostToolUse, UserPromptSubmit) don't fire
 // reliably from plugin hooks.json (GitHub issues #10225, #6305).
@@ -249,6 +249,18 @@ function loadMemory(stdinData) {
     const idx = readJsonOrDefault(indexPath, {});
     if (idx.deltaReady !== true) {
       try { fs.unlinkSync(deltaPath); } catch {}
+    }
+  }
+
+  // Check for stale regressing state
+  const regressingStatePath = path.join(memoryDir, REGRESSING_STATE_FILE);
+  const regressingState = readJsonOrDefault(regressingStatePath, null);
+  if (regressingState && regressingState.active === true && regressingState.lastUpdatedAt) {
+    const updatedTime = new Date(regressingState.lastUpdatedAt).getTime();
+    const now = Date.now();
+    const twentyFourHours = 24 * 60 * 60 * 1000;
+    if (!isNaN(updatedTime) && (now - updatedTime) > twentyFourHours) {
+      console.error(`[MEMORY_KEEPER] WARNING: Regressing state is stale (last updated: ${regressingState.lastUpdatedAt}). Verify with user before continuing.`);
     }
   }
 

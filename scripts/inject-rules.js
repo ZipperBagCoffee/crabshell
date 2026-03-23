@@ -2,6 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 const { getProjectDir, readJsonOrDefault, readIndexSafe, writeJson } = require('./utils');
+const { buildRegressingReminder } = require('./regressing-state');
 
 // Emergency stop keywords - when detected, replaces entire context with EMERGENCY STOP
 const EMERGENCY_KEYWORDS = ['아시발멈춰', 'BRAINMELT'];
@@ -328,6 +329,12 @@ async function main() {
         context += `\nFiles: ${pendingRotations.map(f => f.file).join(', ')}`;
       }
 
+      // Check for active regressing session
+      const regressingReminder = buildRegressingReminder(projectDir);
+      if (regressingReminder) {
+        context += regressingReminder;
+      }
+
       // Output rules via additionalContext (hidden from user, seen by Claude)
       const output = {
         hookSpecificOutput: {
@@ -343,6 +350,9 @@ async function main() {
       }
       if (pendingRotations.length > 0) {
         console.error(`[MEMORY_KEEPER_ROTATE] pending=${pendingRotations.length}`);
+      }
+      if (regressingReminder) {
+        console.error('[REGRESSING ACTIVE]');
       }
       if (!hasPendingDelta && pendingRotations.length === 0) {
         console.error('[rules injected]');

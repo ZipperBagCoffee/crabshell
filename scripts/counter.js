@@ -6,6 +6,7 @@ const { refineRaw, refineRawSync } = require('./refine-raw');
 const { checkAndRotate } = require('./memory-rotation');
 const { extractDelta } = require('./extract-delta');
 const { MEMORY_DIR, MEMORY_FILE, SESSIONS_DIR } = require('./constants');
+const { detectRegressingSkillCall, advancePhase } = require('./regressing-state');
 
 const GLOBAL_CONFIG_PATH = path.join(os.homedir(), '.claude', 'memory-keeper', 'config.json');
 const DEFAULT_INTERVAL = 15;
@@ -124,6 +125,21 @@ async function check() {
   // Do NOT use hookData.cwd — it changes when Bash cd's to subdirectories.
   const sessionId = hookData.session_id || null;
   const sessionId8 = sessionId ? sessionId.substring(0, 8) : null;
+
+  // Regressing: auto-advance phase on skill invocation
+  try {
+    const detectedSkill = detectRegressingSkillCall(hookData);
+    if (detectedSkill) {
+      const projectDir = getProjectDir();
+      const newPhase = advancePhase(detectedSkill, projectDir);
+      if (newPhase) {
+        console.error(`[REGRESSING PHASE] ${detectedSkill} -> ${newPhase}`);
+      }
+    }
+  } catch (e) {
+    // Non-fatal: must not break counter/delta pipeline
+    console.error(`[REGRESSING PHASE ERROR] ${e.message}`);
+  }
 
   const config = getConfig();
   const interval = config.saveInterval || DEFAULT_INTERVAL;
