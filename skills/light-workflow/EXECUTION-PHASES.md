@@ -100,6 +100,14 @@ Same procedure as Phase 3.5. See [ANALYSIS-PHASES.md — Phase 3.5](ANALYSIS-PHA
 
 **Input:** Verification results + Cross-Review Report (if 2+ reviewers)
 
+**Verification Tool Check (BEFORE evaluation):**
+1. Check if `.claude/verification/manifest.json` exists in the project
+2. If YES → run `/verifying run` to execute verification tools against acceptance criteria. Include runner output in evaluation below.
+3. If NO → invoke `/verifying` to create a verification manifest for this project. Then run `/verifying run`.
+4. If the project has no executable runtime (e.g., pure documentation) → skip with explicit note: "Verification tool N/A: {reason}"
+
+This step is PROCEDURAL — it happens every time, not when the Orchestrator "remembers" the rule.
+
 1. Did reviewer predict behavior for each PASS (not just "matches")?
 2. **Spot-check** (same scaling as Phase 4) — read actual code yourself. **NON-NEGOTIABLE.**
 3. If Cross-Review Report exists: resolve all Contested Findings — these are your highest-priority items

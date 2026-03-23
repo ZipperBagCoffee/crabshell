@@ -101,6 +101,11 @@ for cycle in 1..N:
     - If direct execution is impossible: state "Indirect: {method}" + why direct is impossible
     - Empty Observation or Gap fields → entire verification is INVALID
     ```
+- **Verification Tool Check (BEFORE Orchestrator evaluation):**
+  1. Check if `.claude/verification/manifest.json` exists
+  2. If YES → `/verifying run` and include results in evaluation
+  3. If NO → `/verifying` to create manifest, then `/verifying run`
+  4. No executable runtime → skip with note
 - Orchestrator: final verification → append to T document. MUST critically evaluate both Work and Review Agent outputs. Default posture: skepticism — "ALL PASS" requires more justification than "FAIL". Must provide substantive evaluation, not rubber-stamp approval.
   - Correctness: Was it done correctly? Cite specific evidence (command output, observed behavior).
   - Improvement Opportunities: What gaps remain? What was attempted but didn't work well? (Orchestrator MUST enumerate what was examined. "No improvements" requires detailed justification of what was checked and why no improvements apply — minimum 3 sentences referencing specific aspects.)

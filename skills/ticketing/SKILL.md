@@ -117,6 +117,15 @@ This ticket is executed with the following agent structure:
 - Step C cannot proceed without this report when the trigger condition is met.
 - The Orchestrator must explicitly determine whether cross-review was required.
 
+### Step B.9: Verification Tool Check (Orchestrator — BEFORE Step C)
+**Before starting Step C**, the Orchestrator MUST check:
+1. Does `.claude/verification/manifest.json` exist in the project?
+2. If YES → run `/verifying run` to execute verification tools against acceptance criteria. Include runner output in Step C evaluation.
+3. If NO → invoke `/verifying` to create a verification manifest for this project. Then run `/verifying run`.
+4. If the project has no executable runtime (e.g., pure documentation) → skip with explicit note: "Verification tool N/A: {reason}"
+
+This step is PROCEDURAL — it happens every time, not when the Orchestrator "remembers" the rule.
+
 ### Step C: Orchestrator — Final Verification
 **Performed by:** The Orchestrator (main conversation) — reads Work and Review Agent outputs, then evaluates independently.
 - Re-verify the Review Agent's verification (exhaustive where possible)

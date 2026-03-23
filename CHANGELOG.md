@@ -1,5 +1,8 @@
 # Changelog
 
+## 19.22.0
+- Feat: Verification tool check procedure in regressing/ticketing/light-workflow — /verifying invoked as procedural step, not rule
+
 ## 19.21.0
 - Feat: Verifying skill — create/run project-specific verification tools
 - Feat: VERIFICATION-FIRST section references verifying skill
