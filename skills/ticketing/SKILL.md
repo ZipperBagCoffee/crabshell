@@ -88,6 +88,7 @@ This ticket is executed with the following agent structure:
 
 ### Step B: Review Agent — Verification
 **Launch:** Use Task tool to create a NEW Review Agent (separate from Work Agent) with the task description below.
+- **Independence Protocol (MANDATORY):** The Review Agent prompt MUST NOT include Work Agent's Execution Results. Provide only: (1) ticket's Acceptance Criteria and Verification sections, (2) the P/O/G template below. The Review Agent performs independent verification first. After Review Agent completes, the Orchestrator cross-references RA findings against WA Execution Results — discrepancies are findings.
 - Verify runtime behavior of each work item (trigger → path → result)
 - **Review Agent prompt MUST include this philosophical context and verification output template:**
   ```
@@ -127,6 +128,12 @@ This ticket is executed with the following agent structure:
   □ Is Prediction ≠ Observation? (copy detection)
   □ For indirect verification: is the reason stated?
   → If ANY check fails: REJECT Review Agent results and request re-verification
+- **RA/WA Cross-Reference (after Evidence Gate):**
+  Compare Review Agent's independent findings against Work Agent's Execution Results.
+  1. Read RA's P/O/G table findings
+  2. Read WA's Execution Results
+  3. Identify discrepancies — items where RA found problems WA didn't report, or where WA claimed success but RA found issues
+  4. Discrepancies are the highest-priority findings and must be addressed in Correctness evaluation
 - 3-factor evaluation:
   1. **Correctness**: Was it done correctly? Cite specific evidence (command output, observed behavior).
   2. **Improvement Opportunities**: What gaps remain? What didn't work well? (MUST enumerate what was examined. "No improvements" requires 3+ sentences explaining what was checked and why no improvements apply.)
