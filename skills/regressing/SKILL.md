@@ -83,10 +83,33 @@ for cycle in 1..N:
 #### Step 4c: Ticket Execution
 - Execute T(n) using ticketing's built-in agent structure (Work Agent → Review Agent → Orchestrator)
 - Work Agent: execute tasks → append to T document
-- Review Agent: runtime verification (exhaustive level) → append to T document
+- Review Agent (separate Task tool call): runtime verification (exhaustive level) → append to T document
+  - **Review Agent prompt MUST include this philosophical context and verification output template:**
+    ```
+    Verification = closing the gap between belief and reality through observation.
+    Fill Prediction BEFORE looking at the code. Fill Observation ONLY from tool output.
+    The Gap column is where real findings live — if Gap is always "none", you are confirming, not verifying.
+
+    For each verification item, provide ALL THREE fields:
+    | Item | Prediction (before observation) | Observation (tool output required) | Gap |
+    |------|-------------------------------|-----------------------------------|-----|
+
+    Rules:
+    - Observation MUST include tool output (Bash execution, Read result, diff, etc.)
+    - If Prediction and Observation are identical text → INVALID (no actual observation occurred)
+    - If direct execution is impossible: state "Indirect: {method}" + why direct is impossible
+    - Empty Observation or Gap fields → entire verification is INVALID
+    ```
 - Orchestrator: final verification → append to T document. MUST critically evaluate both Work and Review Agent outputs. Default posture: skepticism — "ALL PASS" requires more justification than "FAIL". Must provide substantive evaluation, not rubber-stamp approval.
   - Correctness: Was it done correctly? Cite specific evidence (command output, observed behavior).
   - Improvement Opportunities: What gaps remain? What was attempted but didn't work well? (Orchestrator MUST enumerate what was examined. "No improvements" requires detailed justification of what was checked and why no improvements apply — minimum 3 sentences referencing specific aspects.)
+  - **Evidence Gate (BLOCKING — check BEFORE evaluating content):**
+    Agents generate text that looks like verification without actual observation. Your gate exists to catch this.
+    □ Does each verification item have Prediction, Observation, AND Gap fields?
+    □ Does Observation contain tool output evidence? (for directly-executable items)
+    □ Is Prediction ≠ Observation? (copy detection)
+    □ For indirect verification: is the reason stated?
+    → If ANY check fails: REJECT Review Agent results and request re-verification
   - Next Direction (cycles 1 through N-1 only; cycle N uses Final Report instead):
     - **Problems Found**: Specific problems or shortcomings observed in THIS cycle's output, with evidence.
     - **Root Cause Hypothesis**: Why did these problems occur?

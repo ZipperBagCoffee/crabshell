@@ -89,6 +89,22 @@ This ticket is executed with the following agent structure:
 ### Step B: Review Agent — Verification
 **Launch:** Use Task tool to create a NEW Review Agent (separate from Work Agent) with the task description below.
 - Verify runtime behavior of each work item (trigger → path → result)
+- **Review Agent prompt MUST include this philosophical context and verification output template:**
+  ```
+  Verification = closing the gap between belief and reality through observation.
+  Fill Prediction BEFORE looking at the code. Fill Observation ONLY from tool output.
+  The Gap column is where real findings live — if Gap is always "none", you are confirming, not verifying.
+
+  For each verification item, provide ALL THREE fields:
+  | Item | Prediction (before observation) | Observation (tool output required) | Gap |
+  |------|-------------------------------|-----------------------------------|-----|
+
+  Rules:
+  - Observation MUST include tool output (Bash execution, Read result, diff, etc.)
+  - If Prediction and Observation are identical text → INVALID (no actual observation occurred)
+  - If direct execution is impossible: state "Indirect: {method}" + why direct is impossible
+  - Empty Observation or Gap fields → entire verification is INVALID
+  ```
 - Confirm changes do not break existing functionality
 - Confirm edge case and exception handling
 - **Devil's Advocate (single reviewer):** When only 1 Review Agent runs, it MUST include a Devil's Advocate section articulating the strongest counter-argument to its own PASS verdict. This prevents rubber-stamp reviews.
@@ -104,6 +120,13 @@ This ticket is executed with the following agent structure:
 **Performed by:** The Orchestrator (main conversation) — reads Work and Review Agent outputs, then evaluates independently.
 - Re-verify the Review Agent's verification (exhaustive where possible)
 - Catch cases where "verification was claimed but not actually performed"
+- **Evidence Gate (BLOCKING — check BEFORE evaluating content):**
+  Agents generate text that looks like verification without actual observation. Your gate exists to catch this.
+  □ Does each verification item have Prediction, Observation, AND Gap fields?
+  □ Does Observation contain tool output evidence? (for directly-executable items)
+  □ Is Prediction ≠ Observation? (copy detection)
+  □ For indirect verification: is the reason stated?
+  → If ANY check fails: REJECT Review Agent results and request re-verification
 - 3-factor evaluation:
   1. **Correctness**: Was it done correctly? Cite specific evidence (command output, observed behavior).
   2. **Improvement Opportunities**: What gaps remain? What didn't work well? (MUST enumerate what was examined. "No improvements" requires 3+ sentences explaining what was checked and why no improvements apply.)
