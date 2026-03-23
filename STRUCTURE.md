@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 19.20.0 | **Author**: TaWa | **License**: MIT
+**Version**: 19.21.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -192,6 +192,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 19.21.0 | Feat: Verifying skill — create/run project-specific verification tools; inline verification definitions replaced with VERIFICATION-FIRST reference |
 | 19.20.0 | Feat: RA Independence Protocol + Planning E/A/G verification + Orchestrator cross-reference step |
 | 19.19.0 | Feat: Verification philosophy operationalization — P/O/G template + Evidence Gate + observation evidence mandate |
 | 19.18.0 | Feat: Regressing quality enforcement — anti-pattern rules, agent independence, enriched feedback, anti-partitioning, cross-review integration |

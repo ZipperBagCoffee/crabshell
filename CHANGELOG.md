@@ -1,5 +1,10 @@
 # Changelog
 
+## 19.21.0
+- Feat: Verifying skill — create/run project-specific verification tools
+- Feat: VERIFICATION-FIRST section references verifying skill
+- Changed: Inline verification definitions in 4 skills replaced with VERIFICATION-FIRST reference
+
 ## 19.20.0
 - Feat: RA Independence Protocol — Review Agent prompt must exclude Work Agent output for independent verification (regressing, ticketing, planning SKILL.md)
 - Feat: Planning skill verification structure — Expected/Actual/Gap format + Evidence Gate for Orchestrator

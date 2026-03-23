@@ -241,7 +241,7 @@ After cross-review:
 
 ## Anti-Patterns
 
-> **Verification Philosophy:** Verification = closing the gap between belief and reality through observation. The common root cause of anti-patterns #3, #9, #15, #25 below is absence of observation. Direct execution + observation is the top priority; indirect means only when direct execution is impractical.
+> **Verification Philosophy:** Follows VERIFICATION-FIRST principle from RULES (Predict → Execute → Compare). When no project verification tool exists, invoke the 'verifying' skill. The common root cause of anti-patterns #3, #9, #15, #25 below is absence of observation.
 
 | # | Pattern | Rule |
 |---|---------|------|

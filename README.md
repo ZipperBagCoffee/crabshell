@@ -173,6 +173,7 @@ memory.md                 - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 19.21.0 | Feat: Verifying skill — create/run project-specific verification tools; inline verification definitions replaced with VERIFICATION-FIRST reference |
 | 19.20.0 | Feat: RA Independence Protocol + Planning E/A/G verification + Orchestrator cross-reference step |
 | 19.19.0 | Feat: Verification philosophy operationalization — P/O/G template + Evidence Gate for Review Agent/Orchestrator in regressing/ticketing, inject-rules.js observation evidence mandate |
 | 19.18.0 | Feat: Regressing quality enforcement — anti-pattern rules, agent independence via Task tool, enriched feedback structure, anti-partitioning, cross-review integration, Devil's Advocate for single reviewers |

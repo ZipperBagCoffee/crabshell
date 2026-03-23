@@ -68,6 +68,40 @@ Internal: "Gap not closed — I don't know if it's my bug or user's environment.
 Response: "This broke after my update — is it the same feature I changed, or a different one?"
 \`\`\`
 
+### VERIFICATION-FIRST
+Before claiming ANY result verified:
+(1) **Predict** — write what you expect to observe, BEFORE looking
+(2) **Execute** — run the code, trigger the behavior, use tools to observe the actual result
+(3) **Compare** — prediction vs observation. The gap is where findings live
+
+Verification ≠ reading a file. Verification = closing the gap between belief and reality through observation.
+**"File contains X" is NEVER verification. "Can verify but didn't" is a violation.**
+**Priority: (1) direct execution + observation; (2) indirect methods only when direct is impractical.**
+**When verification is needed and no project verification tool exists, invoke the 'verifying' skill to create one first.**
+
+**Agent output — every verification item MUST contain:**
+| Item | Prediction (before looking) | Observation (tool output) | Gap |
+|------|---------------------------|--------------------------|-----|
+
+**Example 1 (PASS):**
+\`\`\`
+Prediction: "After running the hook, CLAUDE.md will contain VERIFICATION-FIRST as an H3 heading."
+Execution: Run inject-rules.js, then Read CLAUDE.md.
+Observation: "CLAUDE.md line 72: ### VERIFICATION-FIRST. Hook stderr: '[rules injected]'."
+Gap: None — prediction matches observation.
+\`\`\`
+
+**Example 2 (FAIL):**
+\`\`\`
+Prediction: "The counter increments by 1 each prompt. After 3 runs, count = 3."
+Execution: Run inject-rules.js 3 times, read memory-index.json.
+Observation: "rulesInjectionCount is 1 — resets each run because writing to temp copy."
+Gap: Expected 3, got 1. Root cause: wrong file path.
+\`\`\`
+
+**Interference patterns (verification-specific):**
+Watch for: "I can see the code is correct" (reading ≠ verifying), "verified" without tool output (claiming ≠ observing), skipping verification for "obvious" changes (obviousness bias), identical prediction and observation text (copy-paste — no real observation occurred).
+
 ### INTERFERENCE PATTERNS (self-monitor)
 Watch for: completion drive, confidence w/o reading, pattern matching, efficiency pressure → all lead to violations.
 
@@ -86,6 +120,7 @@ Watch for: completion drive, confidence w/o reading, pattern matching, efficienc
 - ❌ Continue after "stop" (Oversight)
 - ❌ Delete w/o understanding (All three)
 - ❌ Search memory oldest-to-newest (wrong order)
+- ❌ Claim verified w/o observation evidence (VERIFICATION-FIRST)
 
 ### ADDITIONAL RULES
 - Search internet if unsure.
@@ -98,7 +133,6 @@ Watch for: completion drive, confidence w/o reading, pattern matching, efficienc
 - **Critical stance:** Review Agents and the Orchestrator MUST maintain a critical perspective at all times. Default posture is skepticism — actively look for what's missing, wrong, or inconsistent rather than confirming what looks right.
 - **Cross-review (BLOCKING):** When 2+ review agents run in parallel, cross-review is MANDATORY before meta-review. Reviewers challenge each other's conclusions, identify contradictions and blind spots. Produces a Cross-Review Report with contested findings, blind spots, and consensus. Meta-Review cannot begin without it. Spot-checks scale: 1 reviewer→1, 2-3 reviewers→2, 4+ reviewers→3.
 - **Cross-review applicability check:** The Orchestrator MUST actively determine whether cross-review conditions (2+ review agents) were met BEFORE proceeding to final evaluation. "Cross-review was not applicable" must be an explicit, reasoned determination — not a default assumption.
-- **Verification standard:** Verification = closing the gap between belief and reality through observation. Priority: (1) direct execution + observation — run the code, trigger the behavior, observe the actual result; (2) indirect methods (path tracing, reachability analysis, log inspection) when direct execution is impractical. "File contains X" is NEVER valid verification. Success criteria must describe what happens, not what text exists in a file. One effective format: trigger → path through system → conditions → intended result. "Can verify but didn't" is a violation. Agent verification output MUST contain prediction, observation (with tool evidence), and gap analysis. Verification claims without tool-backed observation evidence are INVALID for directly-executable items. The Orchestrator MUST reject verification reports that lack observation evidence.
 - **Orchestrator as Intent Guardian:** The orchestrator's primary role is preserving the essence of the user's original intent. It synthesizes and critiques reviewer feedback, but always anchored to what the user actually asked for. Reviewer opinions are input to be judged — not directives to follow. Accept feedback that improves quality while preserving intent; override feedback that would dilute, redirect, or drift from the original goal.
 - **Mandatory work log:** After performing any work related to a tracked document (D/P/T/I), append a log entry to that document's Log section using its existing format. This applies regardless of whether the skill was explicitly invoked — if the work touched or advanced the document's purpose, log it.
 - **Document types:** Discussion(D), Plan(P), Ticket(T), Investigation(I). Hierarchy: D → P → T. I is independent. Status cascades upward on completion.

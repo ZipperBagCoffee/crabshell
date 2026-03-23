@@ -7,7 +7,7 @@ description: "Runs autonomous iterative optimization cycles wrapped by a single 
 
 ## Core Philosophy: Verification-based Optimization
 
-> **Verification Philosophy:** Verification = closing the gap between belief and reality through observation. Direct execution + observation is the top priority; indirect means only when direct execution is impractical.
+> **Verification Philosophy:** Follows VERIFICATION-FIRST principle from RULES (Predict → Execute → Compare). When no project verification tool exists, invoke the 'verifying' skill.
 
 > Verification-based optimization — each cycle's verification results determine the optimization direction for the next cycle.
 
