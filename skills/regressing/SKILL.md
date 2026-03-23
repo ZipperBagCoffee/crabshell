@@ -84,6 +84,7 @@ for cycle in 1..N:
 - Execute T(n) using ticketing's built-in agent structure (Work Agent → Review Agent → Orchestrator)
 - Work Agent: execute tasks → append to T document
 - Review Agent (separate Task tool call): runtime verification (exhaustive level) → append to T document
+  - **Independence Protocol (MANDATORY):** The Review Agent prompt MUST NOT include Work Agent's Execution Results. Provide only: (1) Plan ID and acceptance criteria, (2) Verification criteria from ticket, (3) the P/O/G template below. The Review Agent performs independent verification first. After Review Agent completes, the Orchestrator cross-references RA findings against WA Execution Results — discrepancies are findings.
   - **Review Agent prompt MUST include this philosophical context and verification output template:**
     ```
     Verification = closing the gap between belief and reality through observation.
@@ -110,6 +111,12 @@ for cycle in 1..N:
     □ Is Prediction ≠ Observation? (copy detection)
     □ For indirect verification: is the reason stated?
     → If ANY check fails: REJECT Review Agent results and request re-verification
+  - **RA/WA Cross-Reference (after Evidence Gate):**
+    Compare Review Agent's independent findings against Work Agent's Execution Results.
+    1. Read RA's P/O/G table findings
+    2. Read WA's Execution Results
+    3. Identify discrepancies — items where RA found problems WA didn't report, or where WA claimed success but RA found issues
+    4. Discrepancies are the highest-priority findings and must be addressed in Correctness evaluation
   - Next Direction (cycles 1 through N-1 only; cycle N uses Final Report instead):
     - **Problems Found**: Specific problems or shortcomings observed in THIS cycle's output, with evidence.
     - **Root Cause Hypothesis**: Why did these problems occur?

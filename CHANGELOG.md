@@ -1,5 +1,10 @@
 # Changelog
 
+## 19.20.0
+- Feat: RA Independence Protocol — Review Agent prompt must exclude Work Agent output for independent verification (regressing, ticketing, planning SKILL.md)
+- Feat: Planning skill verification structure — Expected/Actual/Gap format + Evidence Gate for Orchestrator
+- Feat: Orchestrator RA/WA cross-reference step added to regressing and ticketing
+
 ## 19.19.0 (2026-03-23)
 
 ### Changed

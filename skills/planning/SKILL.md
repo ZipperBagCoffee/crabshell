@@ -74,14 +74,35 @@ This plan is executed using the following agent structure:
 - Append results to `## Analysis Results` section
 
 ### Step B: Review Agent — Plan Quality Verification
-- Verify completeness and accuracy of analysis
-- Review feasibility of plan
+- **Independence Protocol (MANDATORY):** The Review Agent prompt MUST NOT include Work Agent's Analysis Results. Provide only: (1) Plan's Intent, Scope, and Verification Criteria sections, (2) the E/A/G template below. The Review Agent independently assesses the plan. After Review Agent completes, the Orchestrator cross-references RA findings against WA Analysis Results.
+- Verify completeness and accuracy of the plan
+- Review feasibility against codebase reality
 - Identify risks and missing items
+- **Review output MUST use Expected/Actual/Gap format:**
+  ```
+  For each plan element, provide ALL THREE fields:
+  | Plan Element | Expected (from Intent + Scope) | Actual (from independent analysis) | Gap |
+  |-------------|-------------------------------|-----------------------------------|-----|
+
+  Rules:
+  - Expected: derive from Intent and Scope — what SHOULD the plan address?
+  - Actual: independently verify — read the relevant code/system, trace dependencies
+  - Gap: where Expected ≠ Actual, this is a finding. If Gap is always "none", you are confirming, not reviewing.
+  - Evidence MUST be cited (file path, function name, specific observation from reading the code)
+  ```
+- **Devil's Advocate (single reviewer):** When only 1 Review Agent runs, it MUST include a Devil's Advocate section articulating the strongest counter-argument to its own conclusions.
 - Append results to `## Review Results` section
 
 ### Step C: Orchestrator — Intent Check (Critical Evaluation)
 - Compare against D document's Intent Anchor (IA)
 - Confirm plan has not deviated from original intent
+- **Evidence Gate (BLOCKING — check BEFORE evaluating content):**
+  Review Agents generate text that looks like analysis without actual investigation. Your gate exists to catch this.
+  □ Does each plan element review have Expected, Actual, AND Gap fields?
+  □ Does Actual contain evidence from independent analysis? (file paths, function names, specific code observations)
+  □ Is Expected ≠ Actual check performed? (rubber-stamp detection)
+  □ For items where Gap = "none": is the justification substantive?
+  → If ANY check fails: REJECT Review Agent results and request re-review
 - Identify at least ONE risk, gap, or concern in the plan (even if approving). "No concerns" requires 3+ sentences of justification referencing specific aspects examined.
 - Decide to approve or reject with substantive reasoning
 - Append results to `## Intent Check` section
