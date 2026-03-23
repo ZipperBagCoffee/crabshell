@@ -1,5 +1,19 @@
 # Changelog
 
+## 19.19.0 (2026-03-23)
+
+### Changed
+- **Regressing SKILL.md**: P/O/G (Prediction/Observation/Gap) verification output template added to Review Agent prompt — mandatory with 4 validation rules
+- **Regressing SKILL.md**: Orchestrator Evidence Gate (BLOCKING) — 4-checkbox gate rejects verification without observation evidence
+- **Regressing SKILL.md**: Philosophical context (3 sentences) added to Review Agent + Orchestrator sections
+- **Ticketing SKILL.md**: Identical P/O/G template + Evidence Gate + philosophical context
+- **inject-rules.js/CLAUDE.md**: Verification standard augmented — agent verification output must contain prediction/observation/gap; Orchestrator must reject evidence-free reports
+
+### Added
+- D019: Verification philosophy operationalization failure analysis (3-layer root cause)
+- D020 + I002: Comprehensive investigation — 3 Work Agents + 2 Review Agents + cross-review
+- P026: Implementation plan for verification enforcement
+
 ## 19.18.0 (2026-03-21)
 
 ### Changed
