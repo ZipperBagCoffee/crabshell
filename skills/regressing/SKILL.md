@@ -94,6 +94,7 @@ After /ticketing completes, update regressing state:
 #### Step 4c: Ticket Execution
 - Execute T(n) using ticketing's built-in agent structure (Work Agent → Review Agent → Orchestrator)
 - Work Agent: execute tasks → append to T document
+  - **Framing:** Agent prompts follow the parent skill's (ticketing/planning) framing and verification standards. See CLAUDE.md SCOPE DEFINITIONS.
 - Review Agent (separate Task tool call): runtime verification (exhaustive level) → append to T document
   - **Independence Protocol (MANDATORY):** The Review Agent prompt MUST NOT include Work Agent's Execution Results. Provide only: (1) Plan ID and acceptance criteria, (2) Verification criteria from ticket, (3) the P/O/G template below. The Review Agent performs independent verification first. After Review Agent completes, the Orchestrator cross-references RA findings against WA Execution Results — discrepancies are findings.
   - **Review Agent prompt MUST include this philosophical context and verification output template:**

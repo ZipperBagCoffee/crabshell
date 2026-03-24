@@ -130,12 +130,8 @@ process.on('uncaughtException', (err) => {
 
 // CRITICAL WARNING - Must be in SessionStart hook for Claude to see
 const CLAUDE_RULES = `
-## CRITICAL RULES FOR CLAUDE
-- NEVER delete files without explicit user permission. REPORT first, ASK permission.
-- Think objectively. Don't just agree with user - verify claims independently.
-- Don't assume, verify. Even if you think you know a better way, check the specified method first.
-- When you make a mistake, don't apologize. Explain your actual reasoning process - what logic led you to that action.
-- If you don't know or want a better approach, search the internet.
+## Memory Keeper Operational Notes
+- When you make a mistake, explain your actual reasoning process — what logic led to that action. Do not apologize.
 - memory-index.json format: see scripts/init.js in plugin directory.
 
 ## Memory Timestamp Format

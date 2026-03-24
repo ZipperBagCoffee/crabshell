@@ -83,6 +83,7 @@ This ticket is executed with the following agent structure:
 ### Step A: Work Agent — Execution
 **Launch:** Use Task tool to create a Work Agent with the task description below.
 - Execute tasks according to the plan (P)
+- **Scope Note (from project RULES):** Conciseness applies to communication style, not to verification steps. P/O/G tables and evidence citations are required work product, not verbose output. Evidence IS the answer — "verified" without tool output is not verification. Fill Prediction before looking; fill Observation only from tool output.
 - Record results for each work item
 - Append results to `## Execution Results` section
 
@@ -90,6 +91,7 @@ This ticket is executed with the following agent structure:
 **Launch:** Use Task tool to create a NEW Review Agent (separate from Work Agent) with the task description below.
 - **Independence Protocol (MANDATORY):** The Review Agent prompt MUST NOT include Work Agent's Execution Results. Provide only: (1) ticket's Acceptance Criteria and Verification sections, (2) the P/O/G template below. The Review Agent performs independent verification first. After Review Agent completes, the Orchestrator cross-references RA findings against WA Execution Results — discrepancies are findings.
 - Verify runtime behavior of each work item (trigger → path → result)
+- **Scope Note (from project RULES):** Conciseness applies to communication style, not to verification steps. P/O/G tables and evidence citations are required work product, not verbose output. Evidence IS the answer — "verified" without tool output is not verification. Fill Prediction before looking; fill Observation only from tool output.
 - **Review Agent prompt MUST include this philosophical context and verification output template:**
   ```
   Verification = closing the gap between belief and reality through observation.

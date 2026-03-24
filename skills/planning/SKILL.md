@@ -69,6 +69,7 @@ This plan is executed using the following agent structure:
 
 ### Step A: Work Agent — Analysis + Plan Writing
 - Analyze related code/system
+- **Scope Note (from project RULES):** Conciseness applies to communication style, not to verification steps. P/O/G tables and evidence citations are required work product, not verbose output. Evidence IS the answer — "verified" without tool output is not verification. Fill Prediction before looking; fill Observation only from tool output.
 - Identify dependencies and impact scope
 - Write concrete execution plan
 - Append results to `## Analysis Results` section
@@ -76,6 +77,7 @@ This plan is executed using the following agent structure:
 ### Step B: Review Agent — Plan Quality Verification
 - **Independence Protocol (MANDATORY):** The Review Agent prompt MUST NOT include Work Agent's Analysis Results. Provide only: (1) Plan's Intent, Scope, and Verification Criteria sections, (2) the E/A/G template below. The Review Agent independently assesses the plan. After Review Agent completes, the Orchestrator cross-references RA findings against WA Analysis Results.
 - Verify completeness and accuracy of the plan
+- **Scope Note (from project RULES):** Conciseness applies to communication style, not to verification steps. P/O/G tables and evidence citations are required work product, not verbose output. Evidence IS the answer — "verified" without tool output is not verification. Fill Prediction before looking; fill Observation only from tool output.
 - Review feasibility against codebase reality
 - Identify risks and missing items
 - **Review output MUST use Expected/Actual/Gap format:**
