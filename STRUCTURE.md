@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 19.24.0 | **Author**: TaWa | **License**: MIT
+**Version**: 19.25.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -213,6 +213,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 19.25.0 | Regressing 1:N Plan:Ticket — ticketIds array, multi-ticket execution/feedback, P→T(1..M) rule |
 | 19.24.0 | SCOPE DEFINITIONS framing + COMPRESSED_CHECKLIST + regressing-guard PreToolUse + skill Scope Notes |
 | 19.23.0 | Regressing phase tracker — hook-based auto-enforcement of Skill tool usage |
 | 19.22.0 | Feat: Verification tool check procedure in regressing/ticketing/light-workflow — /verifying invoked as procedural step, not rule |

@@ -1,5 +1,10 @@
 # Changelog
 
+## 19.25.0
+- Feat: Regressing 1:N Plan:Ticket — `ticketId` → `ticketIds` array in regressing-state.js with backward compat
+- Feat: Execution/feedback phases display all ticket IDs; feedback synthesizes from multiple tickets
+- Changed: Regressing rule in RULES/CLAUDE.md updated to P→T(1..M) notation
+
 ## 19.24.0
 - Feat: SCOPE DEFINITIONS section in RULES — reframes built-in system prompt directives for project context
 - Feat: COMPRESSED_CHECKLIST replaces full RULES in additionalContext (77% token reduction per prompt)

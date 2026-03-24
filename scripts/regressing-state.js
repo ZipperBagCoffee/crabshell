@@ -24,7 +24,11 @@ function buildRegressingReminder(projectDir) {
   const state = getRegressingState(projectDir);
   if (!state) return '';
 
-  const { phase, cycle, totalCycles, discussion, planId, ticketId, lastUpdatedAt } = state;
+  // Backward compat: convert old singular ticketId to ticketIds array
+  if (state.ticketId && !state.ticketIds) {
+    state.ticketIds = [state.ticketId];
+  }
+  const { phase, cycle, totalCycles, discussion, planId, ticketIds, lastUpdatedAt } = state;
   let message = '';
 
   switch (phase) {
@@ -50,15 +54,19 @@ function buildRegressingReminder(projectDir) {
         `- Phase will not advance until /ticketing is invoked via Skill tool.\n`;
       break;
 
-    case 'execution':
-      message = `\n## REGRESSING ACTIVE — Phase: Execution (Cycle ${cycle}/${totalCycles}, ${discussion}, Ticket: ${ticketId})\n\n` +
-        `Executing ${ticketId}. Follow the ticket's agent structure (Work Agent \u2192 Review Agent \u2192 Orchestrator).\n`;
+    case 'execution': {
+      const ticketList = (ticketIds && ticketIds.length > 0) ? ticketIds.join(', ') : '(none assigned)';
+      message = `\n## REGRESSING ACTIVE — Phase: Execution (Cycle ${cycle}/${totalCycles}, ${discussion}, Tickets: ${ticketList})\n\n` +
+        `Executing tickets: ${ticketList}. Follow each ticket's agent structure (Work Agent \u2192 Review Agent \u2192 Orchestrator).\n`;
       break;
+    }
 
-    case 'feedback':
+    case 'feedback': {
+      const ticketListFb = (ticketIds && ticketIds.length > 0) ? ticketIds.join(', ') : '(none)';
       message = `\n## REGRESSING ACTIVE — Phase: Feedback Transfer (Cycle ${cycle}/${totalCycles}, ${discussion})\n\n` +
-        `Extract ${ticketId}'s Final Verification > Next Direction and transfer to next cycle's planning context.\n`;
+        `Synthesize Final Verification > Next Direction from all tickets (${ticketListFb}) and transfer to next cycle's planning context.\n`;
       break;
+    }
 
     default:
       return '';

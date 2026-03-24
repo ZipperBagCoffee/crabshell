@@ -53,7 +53,7 @@ Create ONE Discussion document that wraps the entire regressing session:
 
 After creating the Discussion document, write the regressing state file:
 - Path: `.claude/memory/regressing-state.json`
-- Content: `{ "active": true, "discussion": "{D-ID}", "cycle": 1, "totalCycles": {N}, "phase": "planning", "planId": null, "ticketId": null, "startedAt": "{ISO}", "lastUpdatedAt": "{ISO}" }`
+- Content: `{ "active": true, "discussion": "{D-ID}", "cycle": 1, "totalCycles": {N}, "phase": "planning", "planId": null, "ticketIds": [], "startedAt": "{ISO}", "lastUpdatedAt": "{ISO}" }`
 - Use Bash tool: `echo '...' > .claude/memory/regressing-state.json`
 
 ### Step 3: Pre-check (optional)
@@ -85,14 +85,17 @@ for cycle in 1..N:
 After /planning completes, update regressing state:
 - Set `"planId": "{P-ID}"`, `"lastUpdatedAt": "{ISO}"` (phase transition is automatic via PostToolUse hook)
 
-#### Step 4b: Ticketing — Create T(n)
-- Invoke `/ticketing`, create ticket from P(n)
+#### Step 4b: Ticketing — Create T(n,1..M)
+- Invoke `/ticketing` one or more times per plan to create tickets from P(n)
+- Ticket sizing: 3-5 acceptance criteria per ticket. Independent work items are separate tickets.
+- A plan with a single coherent work item produces one ticket. A plan with multiple independent work items produces multiple tickets.
 
-After /ticketing completes, update regressing state:
-- Set `"ticketId": "{T-ID}"`, `"lastUpdatedAt": "{ISO}"` (phase transition is automatic via PostToolUse hook)
+After each /ticketing invocation, update regressing state:
+- Append the new ticket's ID to `"ticketIds"` array, update `"lastUpdatedAt": "{ISO}"` (phase transition is automatic via PostToolUse hook)
 
 #### Step 4c: Ticket Execution
-- Execute T(n) using ticketing's built-in agent structure (Work Agent → Review Agent → Orchestrator)
+- Execute each T(n,m) sequentially using ticketing's built-in agent structure (Work Agent → Review Agent → Orchestrator)
+- Each ticket is an independent execution cycle
 - Work Agent: execute tasks → append to T document
   - **Framing:** Agent prompts follow the parent skill's (ticketing/planning) framing and verification standards. See CLAUDE.md SCOPE DEFINITIONS.
 - Review Agent (separate Task tool call): runtime verification (exhaustive level) → append to T document
@@ -144,8 +147,9 @@ After ticket execution completes, update regressing state:
 - Set `"phase": "feedback"`, `"lastUpdatedAt": "{ISO}"`
 
 #### Step 4d: Feedback Transfer (Quality Gate)
-- Extract T(n)'s `## Final Verification > Next Direction`
-- **Quality check before transfer:** The Orchestrator MUST verify Next Direction contains:
+- **Single ticket:** Extract T(n,1)'s `## Final Verification > Next Direction` directly.
+- **Multiple tickets:** The Orchestrator synthesizes all tickets' `## Final Verification` sections into a unified Next Direction. The synthesis must integrate findings across tickets, not merely concatenate them.
+- **Quality check before transfer:** The Orchestrator MUST verify the Next Direction (whether extracted or synthesized) contains:
   (1) Specific problems diagnosed with evidence from this cycle
   (2) Root cause hypothesis
   (3) Recommended focus with rationale
@@ -154,7 +158,7 @@ After ticket execution completes, update regressing state:
 - This transfer is explicitly performed by the Orchestrator
 
 After feedback transfer:
-- If cycle < totalCycles: Set `"cycle": cycle+1`, `"phase": "planning"`, `"planId": null`, `"ticketId": null`
+- If cycle < totalCycles: Set `"cycle": cycle+1`, `"phase": "planning"`, `"planId": null`, `"ticketIds": []`
 - If cycle = totalCycles: proceed to Step 5
 
 ### Step 5: Close Discussion (D) + Final Report
@@ -191,14 +195,14 @@ Total {N} cycles completed
 
 ## Document Structure
 
-One D wraps the entire session. Each cycle creates one P + one T:
+One D wraps the entire session. Each cycle creates one P + one or more T:
 
 ```
 D (open)
-  → P(1) → T(1)    [cycle 1]
-  → P(2) → T(2)    [cycle 2]
+  → P(1) → T(1,1), T(1,2), ...    [cycle 1]
+  → P(2) → T(2,1)                  [cycle 2]
   → ...
-  → P(N) → T(N)    [cycle N]
+  → P(N) → T(N,1), T(N,2), ...    [cycle N]
 D (closed with final report)
 ```
 
@@ -206,7 +210,7 @@ D (closed with final report)
 |----------|-------|------|
 | D | 1 | Top-level container: intent, IA, final report |
 | P | N | One per cycle: plan based on D's IA + previous feedback |
-| T | N | One per cycle: execution + verification |
+| T | >= N | One or more per cycle: execution + verification |
 
 ## User Interaction
 
@@ -216,7 +220,7 @@ D (closed with final report)
 
 ## Rules
 
-1. **1 cycle = 1 P + 1 T.** No steps may be skipped.
+1. **1 cycle = 1 P + 1..M T.** Each cycle produces exactly one plan and one or more tickets. Ticket sizing: 3-5 acceptance criteria per ticket, independent work items are separate tickets. No steps may be skipped.
 2. **One D wraps all cycles.** D opens at start, closes with final report at end. Do NOT create a new D per cycle.
 3. **Verification-based Optimization.** No iteration without verification. Must verify at the end of each cycle, and verification results determine the next cycle.
 4. **T→P context transfer is mandatory.** The Orchestrator must explicitly pass T(n)'s final verification results as Context to P(n+1).
