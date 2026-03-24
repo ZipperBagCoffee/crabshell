@@ -73,11 +73,19 @@ memory-keeper-plugin/
 │   ├── workflow.md                   # Understanding-First workflow template
 │   └── lessons-README.md             # Lessons system README template
 │
-├── docs/                             # Documentation
-│   ├── ARCHITECTURE.md               # System architecture
-│   ├── USER-MANUAL.md                # User manual
-│   └── plans/                        # Version design documents
+├── docs/                             # Local work artifacts (gitignored)
+│   ├── discussion/                   # Discussion documents (D001, D002...)
+│   │   └── INDEX.md
+│   ├── plan/                         # Plan documents (P001, P002...)
+│   │   └── INDEX.md
+│   ├── ticket/                       # Ticket documents (P001_T001...)
+│   │   └── INDEX.md
+│   ├── investigation/                # Investigation documents (I001, I002...)
+│   │   └── INDEX.md
+│   └── internal/                     # Legacy internal docs
 │
+├── ARCHITECTURE.md                   # System architecture
+├── USER-MANUAL.md                    # User manual
 ├── CLAUDE.md                         # Critical rules (auto-managed by plugin)
 ├── README.md                         # Project documentation
 ├── CHANGELOG.md                      # Version history

@@ -132,7 +132,7 @@ Coding conventions: ...
 └── sessions/
     └── *.l1.jsonl         # L1 session transcripts (deduplicated)
 
-[project]/docs/
+[project]/docs/                        # Local work artifacts (gitignored)
 ├── discussion/            # Discussion documents (D001, D002...)
 │   └── INDEX.md
 ├── plan/                  # Plan documents (P001, P002...)
@@ -176,8 +176,9 @@ memory.md                 - Active rolling memory (loaded at startup)
 
 ## Documentation
 
-- [User Manual](docs/USER-MANUAL.md) - Detailed usage
-- [Architecture](docs/ARCHITECTURE.md) - System design
+- [User Manual](USER-MANUAL.md) - Detailed usage guide
+- [Architecture](ARCHITECTURE.md) - System design
+- [Structure](STRUCTURE.md) - Directory layout & version history
 
 ## Version
 
