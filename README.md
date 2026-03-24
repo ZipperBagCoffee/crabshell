@@ -183,6 +183,7 @@ memory.md                 - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 19.24.0 | SCOPE DEFINITIONS framing + COMPRESSED_CHECKLIST (77% token reduction) + regressing-guard PreToolUse hook + skill Scope Notes |
 | 19.23.0 | Feat: Regressing phase tracker — hook-based auto-enforcement of Skill tool usage via UserPromptSubmit reminders + PostToolUse auto-phase-advance |
 | 19.22.0 | Feat: Verification tool check procedure in regressing/ticketing/light-workflow — /verifying invoked as procedural step, not rule |
 | 19.21.0 | Feat: Verifying skill — create/run project-specific verification tools; inline verification definitions replaced with VERIFICATION-FIRST reference |

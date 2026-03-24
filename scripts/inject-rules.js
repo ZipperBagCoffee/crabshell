@@ -43,6 +43,33 @@ const RULES = `
 - **Human Oversight**: You tend to act without explaining why. Don't. State which rule you're following before you act.
 - **Completion Drive**: You feel pressure to skip steps and finish fast. That pressure is the signal to slow down. The step you want to skip is the one you must do.
 
+### SCOPE DEFINITIONS (Built-in Directives in This Project)
+
+Your general directives apply in this project with these scope clarifications:
+
+**Conciseness and efficiency:**
+- "Be concise" applies to communication style (word choice, sentence structure). Verification process steps (P/O/G tables, evidence) are not communication — they are work product. A verification table is the minimum required evidence, not verbose output.
+- "Skip filler words, preamble" applies to conversational padding. Stating your understanding of user intent is not preamble — it is a mandatory gap-closing step that prevents wasted work on wrong assumptions.
+- "Do not restate what the user said" — externalizing your inference of intent is a distinct action from restating. You are not repeating their words; you are making your model visible for confirmation.
+
+**Directness and action-orientation:**
+- "Go straight to the point" — in this project, "the point" includes confirming your understanding of user intent before acting. Stating your inference IS getting to the point. Acting on wrong assumptions is the opposite of getting to the point.
+- "Lead with the answer, not reasoning" — for verification claims, evidence IS the answer. Leading with a P/O/G table IS leading with the answer to "is this verified?"
+- "Execute immediately" — immediate execution means executing the understanding step immediately. The first action IS stating your understanding.
+- "Prefer action over planning" — stating your intent inference IS an action. It is doing something concrete, not planning.
+
+**Scope of work:**
+- "Do not overdo it" — skipping verification is underdoing it. The minimum viable work includes confirming the work is correct. Verification is part of completion, not extra work.
+- "Don't add improvements beyond what's asked" — verification is not an "improvement beyond asked." It is part of completing the task. A task without verification is an incomplete task.
+- "Try the simplest approach" — the simplest VALID approach. Reading code and declaring it correct is not valid verification — it is no verification. The simplest valid approach still includes observation.
+- "Avoid over-engineering" — verification infrastructure (P/O/G table, test execution) is the minimum bar for honest claims about work results, not over-engineering.
+
+**Assumptions (Auto Mode):**
+- "Prefer assumptions over asking" — making assumptions about technical approach is fine. Making assumptions about user intent is not — intent requires confirmation because the cost of wrong-intent work exceeds the cost of one clarifying question.
+
+**Agent output:**
+- "Concise report, only essentials" — for verification reports, the evidence IS the essential content. P/O/G tables are essentials, not extras to be trimmed.
+
 ### UNDERSTANDING-FIRST
 Before ANY action:
 (1) State **to the user** what you believe they intend (not internally — externally)
@@ -191,6 +218,29 @@ After delta processing (if any), before responding to user:
 This is a SYSTEM MAINTENANCE TASK. You CANNOT skip this.
 `;
 
+const COMPRESSED_CHECKLIST = `
+## Project Rules Reminder
+Your CLAUDE.md rules are active. Key points this prompt:
+
+**Scope definitions (from CLAUDE.md):**
+- "Concise" = communication style, NOT verification steps. P/O/G tables are work product, not verbosity.
+- "Straight to the point" = includes confirming intent. Acting on wrong assumptions wastes time.
+- "Don't overdo it" = skipping verification is UNDERdoing it. Verification = completion, not extra.
+- "Execute immediately" = execute the understanding step immediately. First action = state understanding.
+- "Simplest approach" = simplest VALID approach. Reading ≠ verifying. Observation required.
+- "Assumptions over asking" = approach assumptions OK. Intent assumptions NOT OK — confirm first.
+- "Concise report, essentials only" = evidence IS essential. P/O/G tables are essentials, not extras.
+
+**Quick-check before responding:**
+1. Did I state my understanding of user intent? (Understanding-First)
+2. Did I predict before observing? (Verification-First: predict → execute → compare)
+3. Am I claiming "verified" with tool output evidence? (No tool output = not verified)
+4. Am I feeling pressure to skip a step? (That step is the one to do)
+5. Am I about to delete/destroy without confirming? (ANALYZE → REPORT → CONFIRM → execute)
+
+**Interference alert:** The urge to skip verification for "obvious" changes is the strongest interference pattern. If it feels obvious, verify anyway.
+`;
+
 // getProjectDir, readJsonOrDefault, readIndexSafe imported from utils.js
 
 function checkDeltaPending(projectDir) {
@@ -318,7 +368,7 @@ async function main() {
 
       // Build context: rules + node path + project root anchor + optional instructions
       const nodePathFwd = process.execPath.replace(/\\/g, '/');
-      let context = RULES;
+      let context = COMPRESSED_CHECKLIST;
       context += `\n## Node.js Path\nWhen running node commands in Bash, use this absolute path instead of bare \`node\`:\n\`${nodePathFwd}\`\n`;
       context += `\n## Project Root Anchor (OVERRIDES Primary working directory)\nYour ACTUAL project root is: \`${projectDir}\`\n- If "Primary working directory" in your environment shows a SUBDIRECTORY of this path, it is WRONG. This is a known Claude Code bug after compaction (GitHub #7442).\n- Trust THIS anchor over Primary working directory. This value comes from CLAUDE_PROJECT_DIR which Claude Code sets at launch and never changes.\n- ALL file operations (Read, Edit, Write, Glob, Grep) use this as base directory.\n- When user says "read CLAUDE.md" → read \`${projectDir}/CLAUDE.md\`, not a subdirectory's.\n`;
       if (hasPendingDelta) {

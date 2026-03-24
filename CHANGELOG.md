@@ -1,5 +1,13 @@
 # Changelog
 
+## 19.24.0
+- Feat: SCOPE DEFINITIONS section in RULES — reframes built-in system prompt directives for project context
+- Feat: COMPRESSED_CHECKLIST replaces full RULES in additionalContext (77% token reduction per prompt)
+- Feat: regressing-guard.js PreToolUse hook — phase-based hard block for unauthorized plan/ticket writes
+- Changed: CLAUDE_RULES in load-memory.js reduced to operational notes only (removed 4 duplicate rules)
+- Changed: 5 skill SKILL.md files gain Scope Note preamble for agent verification framing
+- Fixed: regressing-state.js synced to cache (missing since v19.23.0)
+
 ## 19.23.0
 - Feat: Regressing phase tracker — `regressing-state.json` tracks active regressing session phase
 - Feat: UserPromptSubmit hook injects phase-specific reminders forcing Skill tool usage for /planning and /ticketing
