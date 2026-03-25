@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 19.33.0 | **Author**: TaWa | **License**: MIT
+**Version**: 19.34.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -60,7 +60,8 @@ memory-keeper-plugin/
 │   ├── sycophancy-guard.js           # Stop hook sycophancy detection (v19.29.0)
 │   ├── path-guard.js                # PreToolUse .claude/memory/ path validation (v19.31.0)
 │   ├── docs-guard.js                # PreToolUse docs/ skill bypass prevention (v19.33.0)
-│   ├── skill-tracker.js             # PostToolUse skill-active flag setter (v19.33.0)
+│   ├── verify-guard.js              # PreToolUse Final Verification /verifying run enforcement (v19.34.0)
+│   ├── skill-tracker.js             # PostToolUse skill-active flag setter (v19.33.0) + verifying-called flag (v19.34.0)
 │   ├── test-cwd-isolation.js         # Mock tests for cwd isolation (v17.0.0)
 │   └── utils.js                      # Shared utilities
 │
@@ -136,6 +137,7 @@ Centralized configuration:
 - `MEMORY_DIR`, `SESSIONS_DIR`, `INDEX_FILE`, `MEMORY_FILE`
 - `DELTA_TEMP_FILE`, `HAIKU_SAFE_TOKENS`, `FIRST_RUN_MAX_ENTRIES`
 - `REGRESSING_STATE_FILE`: regressing-state.json (v19.23.0)
+- `VERIFYING_CALLED_FILE`: verifying-called.json (v19.34.0)
 
 ### scripts/memory-rotation.js
 Token-based rotation logic:
@@ -168,6 +170,13 @@ PreToolUse path validation (v19.31.0):
 - Bash command string inspection: regex extraction of `.claude/memory/` paths within command strings
 - Fail-open on parse errors (user experience protection)
 - Windows path normalization (backslash → forward slash)
+
+### scripts/verify-guard.js
+PreToolUse Final Verification enforcement (v19.34.0):
+- Block Write/Edit to `docs/ticket/P###_T###*` containing `## Final Verification` without prior `/verifying run`
+- Check `verifying-called.json` flag (TTL 5min, set by skill-tracker.js)
+- "Verification tool N/A:" exception for projects without verification tools
+- Fail-open on parse errors (user experience protection)
 
 ### scripts/extract-delta.js
 L1 delta extraction:
@@ -206,27 +215,35 @@ L1 generation:
        │   └─> If yes: Inject phase-specific reminder (planning/ticketing → MANDATORY SKILL TOOL CALL)
        └─> Output indicator: [rules injected], [rules + delta pending], [rules + rotation pending]
 
-3. PreToolUse (Read/Grep/Glob/Bash)
+3. PreToolUse (Write/Edit — ticket Final Verification)
+   └─> verify-guard.js (v19.34.0)
+       ├─> Check if file matches docs/ticket/P###_T###
+       ├─> Check if content contains ## Final Verification
+       ├─> Allow if "Verification tool N/A:" found (exception)
+       ├─> Check verifying-called.json flag (TTL 5min)
+       └─> Block with /verifying run instruction if flag missing
+
+4. PreToolUse (Read/Grep/Glob/Bash)
    └─> path-guard.js (v19.31.0)
        ├─> Check if tool call targets .claude/memory/ path
        ├─> Verify path is under CLAUDE_PROJECT_DIR
        ├─> Bash: regex scan command string for .claude/memory/ paths
        └─> Block with correction message if wrong project root
 
-4. PostToolUse
+5. PostToolUse
    └─> counter.js check
        ├─> Detect regressing skill calls → auto-advance phase (v19.23.0)
        ├─> Increment counter
        ├─> checkAndRotate() - archive if > 23,750 tokens
        └─> At threshold: create/update L1 → extractDelta() → creates delta_temp.txt
 
-5. Stop
+6. Stop
    └─> sycophancy-guard.js (v19.29.0)
        ├─> Detect agreement-without-verification patterns in stop_response
        ├─> Check for evidence exemptions (P/O/G table, tool output references)
        └─> Block with re-examination instruction if sycophancy detected
 
-6. SessionEnd
+7. SessionEnd
    └─> counter.js final
        ├─> Create final L1 session transcript (last chance)
        ├─> Cleanup duplicate L1 files
@@ -237,6 +254,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 19.34.0 | verify-guard PreToolUse hook (block Final Verification without /verifying run) + skill-tracker verifying-called flag + N/A exception |
 | 19.33.0 | docs-guard PreToolUse hook (block docs/ Write/Edit without skill flag) + skill-tracker PostToolUse hook (set flag on Skill calls) + TTL cleanup |
 | 19.32.0 | RA pairing enforcement (WA N = RA N), concrete coherence verification methods, overcorrection SCOPE DEFINITIONS framing |
 | 19.31.0 | PreToolUse path-guard hook — block Read/Grep/Glob/Bash targeting wrong .claude/memory/ path, Bash command string inspection |

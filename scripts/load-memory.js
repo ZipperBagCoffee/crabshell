@@ -2,7 +2,7 @@ const path = require('path');
 const fs = require('fs');
 const { getProjectDir, getProjectName, readFileOrDefault, readJsonOrDefault, estimateTokens } = require('./utils');
 const { ensureMemoryStructure } = require('./init');
-const { MEMORY_DIR, SESSIONS_DIR, INDEX_FILE, MEMORY_FILE, LOGS_DIR, DELTA_TEMP_FILE, REGRESSING_STATE_FILE, SKILL_ACTIVE_FILE } = require('./constants');
+const { MEMORY_DIR, SESSIONS_DIR, INDEX_FILE, MEMORY_FILE, LOGS_DIR, DELTA_TEMP_FILE, REGRESSING_STATE_FILE, SKILL_ACTIVE_FILE, VERIFYING_CALLED_FILE } = require('./constants');
 
 // Workaround: Claude Code plugin hooks (PostToolUse, UserPromptSubmit) don't fire
 // reliably from plugin hooks.json (GitHub issues #10225, #6305).
@@ -69,6 +69,7 @@ function ensureGlobalHooks() {
     const sycophancyCmd = `"${nodePath}" "${runnerPathFwd}" sycophancy-guard.js`;
     const pathGuardCmd = `"${nodePath}" "${runnerPathFwd}" path-guard.js`;
     const docsGuardCmd = `"${nodePath}" "${runnerPathFwd}" docs-guard.js`;
+    const verifyGuardCmd = `"${nodePath}" "${runnerPathFwd}" verify-guard.js`;
     const skillTrackerCmd = `"${nodePath}" "${runnerPathFwd}" skill-tracker.js`;
 
     let settings = {};
@@ -82,7 +83,7 @@ function ensureGlobalHooks() {
     // Known script names for deduplication in ensureHook
     const KNOWN_SCRIPTS = [
       'counter.js', 'inject-rules.js', 'sycophancy-guard.js',
-      'path-guard.js', 'docs-guard.js', 'skill-tracker.js'
+      'path-guard.js', 'docs-guard.js', 'verify-guard.js', 'skill-tracker.js'
     ];
 
     function ensureHook(eventName, matcher, command) {
@@ -112,6 +113,7 @@ function ensureGlobalHooks() {
     ensureHook('Stop', '', sycophancyCmd);
     ensureHook('PreToolUse', 'Read|Grep|Glob|Bash', pathGuardCmd);
     ensureHook('PreToolUse', 'Write|Edit', docsGuardCmd);
+    ensureHook('PreToolUse', 'Write|Edit', verifyGuardCmd);
 
     if (modified) {
       if (fs.existsSync(settingsPath)) {
@@ -267,6 +269,12 @@ function loadMemory(stdinData) {
   const skillActivePath = path.join(memoryDir, SKILL_ACTIVE_FILE);
   if (fs.existsSync(skillActivePath)) {
     try { fs.unlinkSync(skillActivePath); } catch {}
+  }
+
+  // Clean up stale verifying-called.json on SessionStart
+  const verifyingCalledPath = path.join(memoryDir, VERIFYING_CALLED_FILE);
+  if (fs.existsSync(verifyingCalledPath)) {
+    try { fs.unlinkSync(verifyingCalledPath); } catch {}
   }
 
   // Check for stale regressing state

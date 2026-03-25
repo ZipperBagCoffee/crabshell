@@ -1,5 +1,12 @@
 # Changelog
 
+## 19.34.0
+- Feat: verify-guard PreToolUse hook — block Final Verification writes to ticket files without prior /verifying run call
+- Feat: skill-tracker extension — detect /verifying run calls and write verifying-called.json flag (create vs run distinction)
+- Feat: "Verification tool N/A:" exception for projects where verification tools are impractical
+- Feat: ensureGlobalHooks registers verify-guard (PreToolUse Write|Edit) in settings.json
+- Feat: Session start cleanup for verifying-called.json (load-memory.js)
+
 ## 19.33.0
 - Feat: docs-guard PreToolUse hook — block Write/Edit to docs/{discussion,plan,ticket,investigation}/ without active skill flag
 - Feat: skill-tracker PostToolUse hook — set skill-active flag on Skill tool calls (discussing, planning, ticketing, investigating, regressing, light-workflow, verifying)

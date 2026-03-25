@@ -2,7 +2,7 @@
 
 const path = require('path');
 const fs = require('fs');
-const { SKILL_ACTIVE_FILE } = require('./constants');
+const { SKILL_ACTIVE_FILE, VERIFYING_CALLED_FILE } = require('./constants');
 
 function getProjectDir() {
   return process.env.CLAUDE_PROJECT_DIR || process.env.PROJECT_DIR || process.cwd();
@@ -62,6 +62,45 @@ function detectDocsSkillCall(hookData) {
 }
 
 /**
+ * Detect if a Skill call is specifically "/verifying run" (not "create").
+ * Returns true if args contain "run".
+ */
+function isVerifyingRun(hookData) {
+  if (!hookData || hookData.tool_name !== 'Skill') return false;
+  const input = hookData.tool_input;
+  if (!input || typeof input !== 'object') return false;
+  const skill = input.skill;
+  if (typeof skill !== 'string') return false;
+
+  const skillName = skill.includes(':') ? skill.split(':').pop() : skill;
+  if (skillName !== 'verifying') return false;
+
+  const args = input.args;
+  if (typeof args !== 'string') return false;
+  // "run" must appear as a word (not substring of e.g. "runtime")
+  return /\brun\b/i.test(args);
+}
+
+/**
+ * Set the verifying-called flag file.
+ */
+function setVerifyingCalled(projectDir) {
+  const memoryDir = path.join(projectDir, '.claude', 'memory');
+  if (!fs.existsSync(memoryDir)) {
+    fs.mkdirSync(memoryDir, { recursive: true });
+  }
+
+  const flagPath = path.join(memoryDir, VERIFYING_CALLED_FILE);
+  const data = {
+    calledAt: new Date().toISOString(),
+    mode: 'run',
+    ttl: DEFAULT_TTL_MS
+  };
+
+  fs.writeFileSync(flagPath, JSON.stringify(data, null, 2));
+}
+
+/**
  * Set the skill-active flag file.
  */
 function setSkillActive(projectDir, skillName) {
@@ -90,7 +129,14 @@ async function main() {
 
   const projectDir = getProjectDir();
   setSkillActive(projectDir, detectedSkill);
-  process.stderr.write(`[SKILL_TRACKER] Activated: ${detectedSkill}\n`);
+
+  // Additionally track /verifying run calls for verify-guard
+  if (isVerifyingRun(hookData)) {
+    setVerifyingCalled(projectDir);
+    process.stderr.write(`[SKILL_TRACKER] Activated: ${detectedSkill} (verifying-called flag set)\n`);
+  } else {
+    process.stderr.write(`[SKILL_TRACKER] Activated: ${detectedSkill}\n`);
+  }
   process.exit(0);
 }
 

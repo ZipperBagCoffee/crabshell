@@ -61,6 +61,15 @@
         ]
       },
       {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/verify-guard.js\""
+          }
+        ]
+      },
+      {
         "matcher": "Read|Grep|Glob|Bash",
         "hooks": [
           {
