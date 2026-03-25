@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 19.26.0 | **Author**: TaWa | **License**: MIT
+**Version**: 19.27.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -213,6 +213,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 19.27.0 | COMPRESSED_CHECKLIST coherence/multi-WA dedup + regressing 4-factor evaluation |
 | 19.26.0 | Regressing execution quality — result improvement cycles, multi-WA diversity, coherence evaluation, IA anchor, anti-sycophancy |
 | 19.25.0 | Regressing 1:N Plan:Ticket — ticketIds array, multi-ticket execution/feedback, P→T(1..M) rule |
 | 19.24.0 | SCOPE DEFINITIONS framing + COMPRESSED_CHECKLIST + regressing-guard PreToolUse + skill Scope Notes |

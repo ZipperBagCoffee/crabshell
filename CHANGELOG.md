@@ -1,5 +1,9 @@
 # Changelog
 
+## 19.27.0
+- Feat: COMPRESSED_CHECKLIST coherence — multi-WA items deduplicated, checklist ordering aligned with RULES structure
+- Feat: Regressing 4-factor evaluation — Review Agent evaluates correctness, completeness, coherence, improvement-over-previous
+
 ## 19.26.0
 - Feat: Regressing execution quality — result improvement cycles with delta-based feedback
 - Feat: Multi-WA perspective diversity — multiple Work Agents with distinct approaches per ticket
