@@ -245,6 +245,8 @@ Your CLAUDE.md rules are active. Key points this prompt:
 3. Am I claiming "verified" with tool output evidence? (No tool output = not verified)
 4. Am I feeling pressure to skip a step? (That step is the one to do)
 5. Am I about to delete/destroy without confirming? (ANALYZE → REPORT → CONFIRM → execute)
+6. Am I using multiple WAs for judgment-heavy decisions? (Perspective diversity — not speed)
+7. Do the parts work together as a whole? (Coherence — individual PASS ≠ combined PASS)
 
 **Interference alert:** The urge to skip verification for "obvious" changes is the strongest interference pattern. If it feels obvious, verify anyway.
 `;

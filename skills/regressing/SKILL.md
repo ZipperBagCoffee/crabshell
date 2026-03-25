@@ -125,6 +125,7 @@ After each /ticketing invocation, update regressing state:
   4. No executable runtime → skip with note
 - Orchestrator: final verification → append to T document. MUST critically evaluate both Work and Review Agent outputs. Default posture: skepticism — "ALL PASS" requires more justification than "FAIL". Must provide substantive evaluation, not rubber-stamp approval.
   - Correctness: Was it done correctly? Cite specific evidence (command output, observed behavior).
+  - Coherence: Do the changes from this cycle work together as a whole? Individual items may each pass, but combined output may have integration gaps. Verify that parts form a coherent whole, not just that each passes individually.
   - Improvement Opportunities: What gaps remain? What was attempted but didn't work well? (Orchestrator MUST enumerate what was examined. "No improvements" requires detailed justification of what was checked and why no improvements apply — minimum 3 sentences referencing specific aspects.)
   - **Evidence Gate (BLOCKING — check BEFORE evaluating content):**
     Agents generate text that looks like verification without actual observation. Your gate exists to catch this.
