@@ -105,6 +105,7 @@ Each Work Agent appends findings to their designated section in the I document.
 
 Launch Review Agents (paired with Work Agents per CLAUDE.md rules):
 
+- **Independence Protocol (MANDATORY):** Each Review Agent prompt MUST NOT include the Work Agent's findings it is reviewing. Provide only: (1) the investigation's Topic and Questions sections, (2) the source type/focus area assigned to the Work Agent. The Review Agent independently investigates the same focus area first. After Review Agent completes, the Orchestrator cross-references RA findings against WA findings — discrepancies are findings.
 - Each Review Agent reviews findings from a different Work Agent
 - Review Agents challenge each other's conclusions, identify contradictions and blind spots
 - Cross-Review section is populated with contested findings, consensus, and blind spots

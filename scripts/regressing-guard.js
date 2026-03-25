@@ -57,18 +57,20 @@ async function main() {
   const { phase } = state;
 
   if (phase === 'planning' && isPlanDoc) {
-    console.log(
-      'BLOCKED: Regressing phase "planning" requires /planning skill invocation first. ' +
-      'Use Skill tool with skill="memory-keeper:planning" instead of writing the plan document directly.'
-    );
+    const output = {
+      decision: "block",
+      reason: 'Regressing phase "planning" requires /planning skill invocation first. Use Skill tool with skill="memory-keeper:planning" instead of writing the plan document directly.'
+    };
+    console.log(JSON.stringify(output));
     process.exit(2);
   }
 
   if (phase === 'ticketing' && isTicketDoc) {
-    console.log(
-      'BLOCKED: Regressing phase "ticketing" requires /ticketing skill invocation first. ' +
-      'Use Skill tool with skill="memory-keeper:ticketing" instead of writing the ticket document directly.'
-    );
+    const output = {
+      decision: "block",
+      reason: 'Regressing phase "ticketing" requires /ticketing skill invocation first. Use Skill tool with skill="memory-keeper:ticketing" instead of writing the ticket document directly.'
+    };
+    console.log(JSON.stringify(output));
     process.exit(2);
   }
 

@@ -75,21 +75,21 @@ This plan is executed using the following agent structure:
 - Append results to `## Analysis Results` section
 
 ### Step B: Review Agent — Plan Quality Verification
-- **Independence Protocol (MANDATORY):** The Review Agent prompt MUST NOT include Work Agent's Analysis Results. Provide only: (1) Plan's Intent, Scope, and Verification Criteria sections, (2) the E/A/G template below. The Review Agent independently assesses the plan. After Review Agent completes, the Orchestrator cross-references RA findings against WA Analysis Results.
+- **Independence Protocol (MANDATORY):** The Review Agent prompt MUST NOT include Work Agent's Analysis Results. Provide only: (1) Plan's Intent, Scope, and Verification Criteria sections, (2) the P/O/G template below. The Review Agent independently assesses the plan. After Review Agent completes, the Orchestrator cross-references RA findings against WA Analysis Results.
 - Verify completeness and accuracy of the plan
 - **Scope Note (from project RULES):** Conciseness applies to communication style, not to verification steps. P/O/G tables and evidence citations are required work product, not verbose output. Evidence IS the answer — "verified" without tool output is not verification. Fill Prediction before looking; fill Observation only from tool output.
 - Review feasibility against codebase reality
 - Identify risks and missing items
-- **Review output MUST use Expected/Actual/Gap format:**
+- **Review output MUST use Prediction/Observation/Gap format:**
   ```
   For each plan element, provide ALL THREE fields:
-  | Plan Element | Expected (from Intent + Scope) | Actual (from independent analysis) | Gap |
+  | Plan Element | Prediction (from Intent + Scope) | Observation (from independent analysis) | Gap |
   |-------------|-------------------------------|-----------------------------------|-----|
 
   Rules:
-  - Expected: derive from Intent and Scope — what SHOULD the plan address?
-  - Actual: independently verify — read the relevant code/system, trace dependencies
-  - Gap: where Expected ≠ Actual, this is a finding. If Gap is always "none", you are confirming, not reviewing.
+  - Prediction: derive from Intent and Scope — what SHOULD the plan address?
+  - Observation: independently verify — read the relevant code/system, trace dependencies
+  - Gap: where Prediction ≠ Observation, this is a finding. If Gap is always "none", you are confirming, not reviewing.
   - Evidence MUST be cited (file path, function name, specific observation from reading the code)
   ```
 - **Devil's Advocate (single reviewer):** When only 1 Review Agent runs, it MUST include a Devil's Advocate section articulating the strongest counter-argument to its own conclusions.
@@ -101,7 +101,7 @@ This plan is executed using the following agent structure:
 - Verify plan coherence: do the plan steps work together as a whole? Individual steps may each be sound, but combined they may have ordering issues, dependency conflicts, or scope gaps. The plan must be coherent as a system, not just individually valid steps.
 - **Evidence Gate (BLOCKING — check BEFORE evaluating content):**
   Review Agents generate text that looks like analysis without actual investigation. Your gate exists to catch this.
-  □ Does each plan element review have Expected, Actual, AND Gap fields?
+  □ Does each plan element review have Prediction, Observation, AND Gap fields?
   □ Does Actual contain evidence from independent analysis? (file paths, function names, specific code observations)
   □ Is Expected ≠ Actual check performed? (rubber-stamp detection)
   □ For items where Gap = "none": is the justification substantive?
@@ -190,9 +190,9 @@ Update status column and/or Tickets column in `docs/plan/INDEX.md`.
 2. **Tickets section:** Only receives appended lines like `- P{NNN}_T{NNN}: {title}` when ticketing skill creates a ticket.
 3. **Plan checkboxes:** Never modify. Progress is tracked in Log entries.
 4. **INDEX.md** is the only file where status may be modified.
-5. When plan comes from a discussion/research, note `D{NNN}` or `R{NNN}` in INDEX.md Related column and add to first log entry.
+5. When plan comes from a discussion/investigation, note `D{NNN}` or `I{NNN}` in INDEX.md Related column and add to first log entry.
 6. **No parent transition while children incomplete:** P can only transition to `done` when ALL related tickets are `verified`. If any ticket is incomplete, refuse `done` transition.
-7. **Auto-conclude parent on completion:** When P becomes `done` → automatically update D/R in Related column to `concluded` and append log to those documents. (Triggered by ticketing cascade)
+7. **Auto-conclude parent on completion:** When P becomes `done` → automatically update D/I in Related column to `concluded` and append log to those documents. (Triggered by ticketing cascade)
 8. **Mandatory work log:** After performing any work related to this document, append a log entry to the Log section using the existing format (`### [{YYYY-MM-DD HH:MM}] {entry_type}`). This applies regardless of whether this skill was explicitly invoked — if the work touched or advanced this plan's purpose, log it.
 9. **Mandatory verification result append:** Work Agent, Review Agent, and Orchestrator MUST append their execution results to the corresponding sections of the P document (Analysis Results, Review Results, Intent Check). Verbal reporting alone is insufficient — verification not recorded in the document is equivalent to verification not performed.
 10. **Exhaustive verification standard:** Verification follows the VERIFICATION-FIRST principle in RULES (Predict → Execute → Compare). When no project verification tool exists, invoke the 'verifying' skill. Direct → indirect → explicitly "unverified".

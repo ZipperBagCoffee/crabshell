@@ -50,7 +50,8 @@ Work Agent appends results as:
 
 ### Step 3: Review analysis
 
-Launch a Review Agent (Task tool, SEPARATE from Work Agent) to verify the analysis independently. Devil's Advocate required.
+- **Independence Protocol (MANDATORY):** The Review Agent prompt MUST NOT include Work Agent's Project Analysis results. Provide only: (1) the project directory path, (2) instruction to independently determine runtime type, entry points, test infrastructure, and build/run/test commands. After Review Agent completes, the Orchestrator cross-references RA findings against WA Project Analysis — discrepancies are findings.
+- Launch a Review Agent (Task tool, SEPARATE from Work Agent) to verify the analysis independently. Devil's Advocate required.
 
 ### Step 4: Create verification manifest
 

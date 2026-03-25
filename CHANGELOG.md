@@ -1,5 +1,8 @@
 # Changelog
 
+## 19.30.0
+- Feat: Best practices fixes — P/O/G unification, R→I stale refs, stop_hook_active guard, regressing-guard JSON block, RA Independence Protocol
+
 ## 19.29.0
 - Feat: Stop hook sycophancy guard — detect agreement-without-verification patterns in Stop responses, block with re-examination instruction
 - Feat: Hook registration in hooks.json + ensureGlobalHooks() for sycophancy-guard.js
