@@ -97,6 +97,7 @@ After each /ticketing invocation, update regressing state:
 #### Step 4c: Ticket Execution
 - Execute each T(n,m) sequentially using ticketing's built-in agent structure (Work Agent → Review Agent → Orchestrator)
 - Each ticket is an independent execution cycle
+- **Ticket execution ordering:** Dependent tickets (e.g., T002 depends on T001's file changes) MUST execute sequentially — T001 completes before T002 starts. Independent tickets MAY execute in parallel. The Orchestrator determines dependency order before execution begins.
 - **Agent flow:** Planning phase (Step 4a) is serial — WA analysis then RA review. Execution phase uses ticketing's agent structure which allows multiple WAs for perspective diversity.
 - Work Agent: execute tasks → append to T document
   - **Framing:** Agent prompts follow the parent skill's (ticketing/planning) framing and verification standards. See CLAUDE.md SCOPE DEFINITIONS.

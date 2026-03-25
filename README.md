@@ -184,6 +184,7 @@ memory.md                 - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 19.28.0 | Ticket execution ordering guide + final coherence verification (D025) |
 | 19.27.0 | COMPRESSED_CHECKLIST coherence/multi-WA dedup + regressing 4-factor evaluation (correctness, completeness, coherence, improvement) |
 | 19.26.0 | Regressing execution quality — result improvement cycles, multi-WA perspective diversity, 4-factor coherence evaluation, /verifying IA anchor, anti-sycophancy framing |
 | 19.25.0 | Regressing 1:N Plan:Ticket — ticketIds array, multi-ticket execution/feedback phases, P→T(1..M) rule notation |

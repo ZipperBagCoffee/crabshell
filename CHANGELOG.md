@@ -1,5 +1,9 @@
 # Changelog
 
+## 19.28.0
+- Feat: Ticket execution ordering guide — dependent tickets sequential, independent tickets parallel
+- Feat: Final coherence verification for regressing execution quality (D025)
+
 ## 19.27.0
 - Feat: COMPRESSED_CHECKLIST coherence — multi-WA items deduplicated, checklist ordering aligned with RULES structure
 - Feat: Regressing 4-factor evaluation — Review Agent evaluates correctness, completeness, coherence, improvement-over-previous
