@@ -5,11 +5,11 @@ description: "Runs autonomous iterative optimization cycles wrapped by a single 
 
 # Regressing Skill
 
-## Core Philosophy: Verification-based Optimization
+## Core Philosophy: Result Improvement Through Iteration
 
 > **Verification Philosophy:** Follows VERIFICATION-FIRST principle from RULES (Predict → Execute → Compare). When no project verification tool exists, invoke the 'verifying' skill.
 
-> Verification-based optimization — each cycle's verification results determine the optimization direction for the next cycle.
+> Cycles exist to improve the quality of results, not to progress through a work queue. Each cycle produces a complete result, verifies it, and the next cycle improves that result based on verified gaps.
 
 ### 3 Foundational Philosophies
 
@@ -30,6 +30,7 @@ The following patterns indicate regressing has degenerated into sequential batch
 | **Copy-paste feedback** | Next Direction says "continue with remaining items" | Next Direction diagnoses specific problems with evidence |
 | **Role collapse** | Orchestrator performs Work Agent or Review Agent tasks directly | Each role is a separate Task tool invocation |
 | **Rubber-stamp verification** | "ALL PASS — no improvement opportunities" | Orchestrator enumerates what was examined and why no improvements apply |
+| **Single WA** | One Work Agent handles all analysis/execution with no perspective diversity | Use multiple WAs with distinct analytical perspectives for complex tasks. Cross-review surfaces blind spots. |
 
 If any of these patterns are detected during execution, the Orchestrator MUST halt and restructure before proceeding.
 
@@ -96,6 +97,7 @@ After each /ticketing invocation, update regressing state:
 #### Step 4c: Ticket Execution
 - Execute each T(n,m) sequentially using ticketing's built-in agent structure (Work Agent → Review Agent → Orchestrator)
 - Each ticket is an independent execution cycle
+- **Agent flow:** Planning phase (Step 4a) is serial — WA analysis then RA review. Execution phase uses ticketing's agent structure which allows multiple WAs for perspective diversity.
 - Work Agent: execute tasks → append to T document
   - **Framing:** Agent prompts follow the parent skill's (ticketing/planning) framing and verification standards. See CLAUDE.md SCOPE DEFINITIONS.
 - Review Agent (separate Task tool call): runtime verification (exhaustive level) → append to T document
@@ -231,5 +233,5 @@ D (closed with final report)
 9. **D's IA is the constant anchor.** All P and T documents reference D's IA as read-only evaluation criteria throughout all cycles.
 10. **Agent independence via Task tool.** Work Agent and Review Agent MUST each be launched as separate Task tool invocations. The Orchestrator (main conversation) MUST NOT perform Work or Review tasks itself. Collapsing roles violates agent pairing.
 11. **Orchestrator anti-rubber-stamp.** The Orchestrator MUST provide substantive evaluation for each cycle. "No improvement opportunities" and "ALL PASS" without detailed justification are INVALID. When the Orchestrator genuinely finds no improvements, it must enumerate what was specifically examined and provide a reasoned argument (minimum 3 sentences) for why the output is optimal.
-12. **Cycles are iterative, not partitioned.** Each P(n) MUST plan work for ONE cycle only. P(1) MUST NOT pre-allocate work across all N cycles. If P(n) divides total work into equal parts or references "what cycle N+1 will do," it is INVALID. The scope of cycle N+1 is unknown until cycle N's verification completes.
+12. **Cycles are for result improvement, not sequential work progression.** Each cycle produces a complete result and verifies it. The next cycle's purpose is to improve the previous cycle's output based on verified gaps — not to continue with remaining work. P(1) MUST NOT pre-allocate work across all N cycles. If P(n) divides total work into equal parts or references "what cycle N+1 will do," it is INVALID. The scope of cycle N+1 is unknown until cycle N's verification reveals what needs improvement.
 13. **Cross-review integration.** When ticket or plan execution involves 2+ parallel review agents, cross-review is MANDATORY before Orchestrator evaluation. The Orchestrator must verify whether cross-review conditions were met. When only 1 Review Agent runs, it MUST include a "Devil's Advocate" section articulating the strongest counter-argument to its own conclusions.

@@ -1,5 +1,12 @@
 # Changelog
 
+## 19.26.0
+- Feat: Regressing execution quality — result improvement cycles with delta-based feedback
+- Feat: Multi-WA perspective diversity — multiple Work Agents with distinct approaches per ticket
+- Feat: 4-factor coherence evaluation — verify changes are coherent, not just individually correct
+- Feat: /verifying IA anchor — verification tool intent preserved as read-only evaluation criterion
+- Feat: Anti-sycophancy framing — Review Agent prompt explicitly counters agreement bias
+
 ## 19.25.0
 - Feat: Regressing 1:N Plan:Ticket — `ticketId` → `ticketIds` array in regressing-state.js with backward compat
 - Feat: Execution/feedback phases display all ticket IDs; feedback synthesizes from multiple tickets

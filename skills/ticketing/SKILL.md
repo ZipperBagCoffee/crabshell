@@ -87,6 +87,13 @@ This ticket is executed with the following agent structure:
 - Record results for each work item
 - Append results to `## Execution Results` section
 
+**Multiple Work Agents (perspective diversity):**
+When a ticket involves complex analysis or judgment-heavy decisions, the Orchestrator MAY launch 2+ Work Agents with **distinct analytical perspectives** — not for speed, but to surface different viewpoints:
+- Each WA receives the SAME task but a different **analytical lens** (e.g., WA1="correctness focus" vs WA2="coherence focus" vs WA3="edge case focus")
+- The Orchestrator synthesizes WA outputs, selecting the strongest elements from each perspective
+- This is OPTIONAL — single-WA is the default for straightforward execution tasks
+- When multiple WAs run, each WA's output still gets independent RA verification
+
 ### Step B: Review Agent — Verification
 **Launch:** Use Task tool to create a NEW Review Agent (separate from Work Agent) with the task description below.
 - **Independence Protocol (MANDATORY):** The Review Agent prompt MUST NOT include Work Agent's Execution Results. Provide only: (1) ticket's Acceptance Criteria and Verification sections, (2) the P/O/G template below. The Review Agent performs independent verification first. After Review Agent completes, the Orchestrator cross-references RA findings against WA Execution Results — discrepancies are findings.
@@ -145,10 +152,11 @@ This step is PROCEDURAL — it happens every time, not when the Orchestrator "re
   2. Read WA's Execution Results
   3. Identify discrepancies — items where RA found problems WA didn't report, or where WA claimed success but RA found issues
   4. Discrepancies are the highest-priority findings and must be addressed in Correctness evaluation
-- 3-factor evaluation:
+- 4-factor evaluation:
   1. **Correctness**: Was it done correctly? Cite specific evidence (command output, observed behavior).
-  2. **Improvement Opportunities**: What gaps remain? What didn't work well? (MUST enumerate what was examined. "No improvements" requires 3+ sentences explaining what was checked and why no improvements apply.)
-  3. **Next Direction** (for regressing cycles 1 through N-1; cycle N uses Final Report):
+  2. **Coherence**: Do the changes work together as a whole? Individual ACs may each pass, but the combined result may have inconsistencies, contradictions, or integration gaps. The Orchestrator MUST verify that the parts form a coherent whole — not just that each part individually passes. (If only 1 AC exists, state "Single AC — coherence N/A" with brief justification.)
+  3. **Improvement Opportunities**: What gaps remain? What didn't work well? (MUST enumerate what was examined. "No improvements" requires 3+ sentences explaining what was checked and why no improvements apply.)
+  4. **Next Direction** (for regressing cycles 1 through N-1; cycle N uses Final Report):
      - **Problems Found**: Specific issues observed in THIS cycle, with evidence.
      - **Root Cause Hypothesis**: Why did these problems occur?
      - **Recommended Focus**: What should the next cycle prioritize?
@@ -168,6 +176,7 @@ This step is PROCEDURAL — it happens every time, not when the Orchestrator "re
 ## Final Verification (Orchestrator)
 (appended after agent execution)
 ### Correctness
+### Coherence
 ### Improvement Opportunities
 ### Next Direction
 #### Problems Found

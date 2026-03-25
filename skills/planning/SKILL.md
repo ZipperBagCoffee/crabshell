@@ -98,6 +98,7 @@ This plan is executed using the following agent structure:
 ### Step C: Orchestrator — Intent Check (Critical Evaluation)
 - Compare against D document's Intent Anchor (IA)
 - Confirm plan has not deviated from original intent
+- Verify plan coherence: do the plan steps work together as a whole? Individual steps may each be sound, but combined they may have ordering issues, dependency conflicts, or scope gaps. The plan must be coherent as a system, not just individually valid steps.
 - **Evidence Gate (BLOCKING — check BEFORE evaluating content):**
   Review Agents generate text that looks like analysis without actual investigation. Your gate exists to catch this.
   □ Does each plan element review have Expected, Actual, AND Gap fields?
