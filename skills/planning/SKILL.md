@@ -102,8 +102,8 @@ This plan is executed using the following agent structure:
 - **Evidence Gate (BLOCKING — check BEFORE evaluating content):**
   Review Agents generate text that looks like analysis without actual investigation. Your gate exists to catch this.
   □ Does each plan element review have Prediction, Observation, AND Gap fields?
-  □ Does Actual contain evidence from independent analysis? (file paths, function names, specific code observations)
-  □ Is Expected ≠ Actual check performed? (rubber-stamp detection)
+  □ Does Observation contain evidence from independent analysis? (file paths, function names, specific code observations)
+  □ Is Prediction ≠ Observation check performed? (rubber-stamp detection)
   □ For items where Gap = "none": is the justification substantive?
   → If ANY check fails: REJECT Review Agent results and request re-review
 - Identify at least ONE risk, gap, or concern in the plan (even if approving). "No concerns" requires 3+ sentences of justification referencing specific aspects examined.
