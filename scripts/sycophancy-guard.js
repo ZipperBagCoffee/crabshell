@@ -65,6 +65,9 @@ async function main() {
   const hookData = await readStdin();
   if (!hookData) process.exit(0); // fail-open: no data
 
+  // Prevent infinite loop: exit if this is a continuation from a previous stop hook block
+  if (hookData.stop_hook_active) process.exit(0);
+
   const response = hookData.stop_response || hookData.last_assistant_message || '';
 
   // Short response exemption: < 100 chars is likely brief acknowledgment

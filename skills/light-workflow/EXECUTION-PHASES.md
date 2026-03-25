@@ -169,7 +169,7 @@ Note: Only populated when Phase 10 → Phase 8/5/2 rework occurred. Empty if wor
 
 ## Post-Workflow Documentation
 - [ ] Ticket updated: `/ticketing P{NNN}_T{NNN}` (if executing from ticket)
-- [ ] Other documents updated: `/discussing`, `/researching`, `/planning` (as needed)
+- [ ] Other documents updated: `/discussing`, `/investigating`, `/planning` (as needed)
 ```
 
 Final gap check: "Is this the intended result?"
@@ -180,7 +180,7 @@ After workflow completion, document the work using the appropriate skill:
 
 - `/ticketing P{NNN}_T{NNN}` — update ticket with work log entry (if executing from a ticket)
 - `/discussing "topic"` — record decisions or dialogue outcomes
-- `/researching "topic"` — record investigation findings or analysis results
+- `/investigating "topic"` — record investigation findings or analysis results
 - `/planning "topic"` — record if a new plan was derived
 
 At minimum, the relevant ticket's work log (`/ticketing` update) MUST be updated.

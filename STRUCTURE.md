@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 19.29.0 | **Author**: TaWa | **License**: MIT
+**Version**: 19.30.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -220,6 +220,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 19.30.0 | Best practices fixes — P/O/G unification, R→I stale refs, stop_hook_active guard, regressing-guard JSON block, RA Independence Protocol |
 | 19.29.0 | Stop hook sycophancy guard — detect agreement-without-verification in Stop responses, block with re-examination |
 | 19.28.0 | Ticket execution ordering guide + final coherence verification (D025) |
 | 19.27.0 | COMPRESSED_CHECKLIST coherence/multi-WA dedup + regressing 4-factor evaluation |

@@ -254,9 +254,9 @@ If ticket status → `verified`:
    - If NO → stop here.
    - If YES → continue cascade.
 2. **Close parent plan:** Update parent plan's status to `done` in `docs/plan/INDEX.md`. Append log entry to plan document: `Status Change: in-progress → done (all tickets verified)`
-3. **Cascade to D/R:** Read parent plan's `Related` column in `docs/plan/INDEX.md`. For each related D/R ID:
-   - **Cross-check:** Read that D/R's Related column in its INDEX.md. If it references OTHER plans besides the one just completed, check those plans' statuses too. ALL related plans must be `done` before concluding.
-   - If all related plans done → update D/R status to `concluded`, append log entry: `Status Change: open → concluded (all related plans completed)`
+3. **Cascade to D/I:** Read parent plan's `Related` column in `docs/plan/INDEX.md`. For each related D/I ID:
+   - **Cross-check:** Read that D/I's Related column in its INDEX.md. If it references OTHER plans besides the one just completed, check those plans' statuses too. ALL related plans must be `done` before concluding.
+   - If all related plans done → update D/I status to `concluded`, append log entry: `Status Change: open → concluded (all related plans completed)`
    - If other related plans still open → skip, do not conclude. Log: `P{NNN} completed, conclusion deferred due to other related plans still incomplete`
 
 ### Status Transitions
