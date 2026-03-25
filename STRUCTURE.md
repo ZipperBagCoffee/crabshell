@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 19.28.0 | **Author**: TaWa | **License**: MIT
+**Version**: 19.29.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -57,6 +57,7 @@ memory-keeper-plugin/
 │   ├── refine-raw.js                 # raw.jsonl -> l1.jsonl conversion
 │   ├── sync-rules-to-claude.js       # Manual CLAUDE.md sync (standalone)
 │   ├── regressing-state.js            # Regressing phase tracker (v19.23.0)
+│   ├── sycophancy-guard.js           # Stop hook sycophancy detection (v19.29.0)
 │   ├── test-cwd-isolation.js         # Mock tests for cwd isolation (v17.0.0)
 │   └── utils.js                      # Shared utilities
 │
@@ -203,6 +204,12 @@ L1 generation:
        └─> At threshold: create/update L1 → extractDelta() → creates delta_temp.txt
 
 4. Stop
+   └─> sycophancy-guard.js (v19.29.0)
+       ├─> Detect agreement-without-verification patterns in stop_response
+       ├─> Check for evidence exemptions (P/O/G table, tool output references)
+       └─> Block with re-examination instruction if sycophancy detected
+
+5. SessionEnd
    └─> counter.js final
        ├─> Create final L1 session transcript (last chance)
        ├─> Cleanup duplicate L1 files
@@ -213,6 +220,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 19.29.0 | Stop hook sycophancy guard — detect agreement-without-verification in Stop responses, block with re-examination |
 | 19.28.0 | Ticket execution ordering guide + final coherence verification (D025) |
 | 19.27.0 | COMPRESSED_CHECKLIST coherence/multi-WA dedup + regressing 4-factor evaluation |
 | 19.26.0 | Regressing execution quality — result improvement cycles, multi-WA diversity, coherence evaluation, IA anchor, anti-sycophancy |

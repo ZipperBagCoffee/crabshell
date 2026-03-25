@@ -87,11 +87,11 @@ This ticket is executed with the following agent structure:
 - Record results for each work item
 - Append results to `## Execution Results` section
 
-**Multiple Work Agents (perspective diversity):**
-When a ticket involves complex analysis or judgment-heavy decisions, the Orchestrator MAY launch 2+ Work Agents with **distinct analytical perspectives** — not for speed, but to surface different viewpoints:
-- Each WA receives the SAME task but a different **analytical lens** (e.g., WA1="correctness focus" vs WA2="coherence focus" vs WA3="edge case focus")
+**Parallel Work Agents (DEFAULT):**
+The Orchestrator MUST launch 2+ Work Agents with **distinct analytical perspectives** — not for speed, but to surface different viewpoints:
+- Each WA receives the SAME task but a different **analytical lens** (e.g., WA1="correctness focus" vs WA2="edge case focus")
 - The Orchestrator synthesizes WA outputs, selecting the strongest elements from each perspective
-- This is OPTIONAL — single-WA is the default for straightforward execution tasks
+- Single-WA is the EXCEPTION — requires explicit justification: "Single-WA because {reason}" (e.g., single-file mechanical change, no judgment involved)
 - When multiple WAs run, each WA's output still gets independent RA verification
 
 ### Step B: Review Agent — Verification

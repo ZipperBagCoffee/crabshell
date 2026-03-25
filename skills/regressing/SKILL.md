@@ -30,7 +30,7 @@ The following patterns indicate regressing has degenerated into sequential batch
 | **Copy-paste feedback** | Next Direction says "continue with remaining items" | Next Direction diagnoses specific problems with evidence |
 | **Role collapse** | Orchestrator performs Work Agent or Review Agent tasks directly | Each role is a separate Task tool invocation |
 | **Rubber-stamp verification** | "ALL PASS — no improvement opportunities" | Orchestrator enumerates what was examined and why no improvements apply |
-| **Single WA** | One Work Agent handles all analysis/execution with no perspective diversity | Use multiple WAs with distinct analytical perspectives for complex tasks. Cross-review surfaces blind spots. |
+| **Single WA without justification** | One Work Agent handles all execution without stating why parallel WA does not apply | Parallel WA is the default. Single-WA requires explicit justification: "Single-WA because {reason}" |
 
 If any of these patterns are detected during execution, the Orchestrator MUST halt and restructure before proceeding.
 
@@ -98,7 +98,7 @@ After each /ticketing invocation, update regressing state:
 - Execute each T(n,m) sequentially using ticketing's built-in agent structure (Work Agent → Review Agent → Orchestrator)
 - Each ticket is an independent execution cycle
 - **Ticket execution ordering:** Dependent tickets (e.g., T002 depends on T001's file changes) MUST execute sequentially — T001 completes before T002 starts. Independent tickets MAY execute in parallel. The Orchestrator determines dependency order before execution begins.
-- **Agent flow:** Planning phase (Step 4a) is serial — WA analysis then RA review. Execution phase uses ticketing's agent structure which allows multiple WAs for perspective diversity.
+- **Agent flow:** Planning phase (Step 4a) is serial — WA analysis then RA review. Execution phase uses parallel WAs by default (ticketing Step A). Single-WA requires explicit justification in the Orchestrator's ticket execution log.
 - Work Agent: execute tasks → append to T document
   - **Framing:** Agent prompts follow the parent skill's (ticketing/planning) framing and verification standards. See CLAUDE.md SCOPE DEFINITIONS.
 - Review Agent (separate Task tool call): runtime verification (exhaustive level) → append to T document

@@ -184,6 +184,7 @@ memory.md                 - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 19.29.0 | Stop hook sycophancy guard — detect agreement-without-verification in Stop responses, block with re-examination |
 | 19.28.0 | Ticket execution ordering guide + final coherence verification (D025) |
 | 19.27.0 | COMPRESSED_CHECKLIST coherence/multi-WA dedup + regressing 4-factor evaluation (correctness, completeness, coherence, improvement) |
 | 19.26.0 | Regressing execution quality — result improvement cycles, multi-WA perspective diversity, 4-factor coherence evaluation, /verifying IA anchor, anti-sycophancy framing |

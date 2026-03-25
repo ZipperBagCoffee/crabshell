@@ -1,5 +1,9 @@
 # Changelog
 
+## 19.29.0
+- Feat: Stop hook sycophancy guard — detect agreement-without-verification patterns in Stop responses, block with re-examination instruction
+- Feat: Hook registration in hooks.json + ensureGlobalHooks() for sycophancy-guard.js
+
 ## 19.28.0
 - Feat: Ticket execution ordering guide — dependent tickets sequential, independent tickets parallel
 - Feat: Final coherence verification for regressing execution quality (D025)

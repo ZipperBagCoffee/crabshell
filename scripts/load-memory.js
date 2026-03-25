@@ -66,6 +66,7 @@ function ensureGlobalHooks() {
     const nodePath = process.execPath.replace(/\\/g, '/');
     const counterCmd = `"${nodePath}" "${runnerPathFwd}" counter.js check`;
     const injectCmd = `"${nodePath}" "${runnerPathFwd}" inject-rules.js`;
+    const sycophancyCmd = `"${nodePath}" "${runnerPathFwd}" sycophancy-guard.js`;
 
     let settings = {};
     if (fs.existsSync(settingsPath)) {
@@ -77,7 +78,9 @@ function ensureGlobalHooks() {
 
     function ensureHook(eventName, matcher, command) {
       if (!settings.hooks[eventName]) settings.hooks[eventName] = [];
-      const scriptName = command.includes('counter.js') ? 'counter.js' : 'inject-rules.js';
+      const scriptName = command.includes('counter.js') ? 'counter.js'
+        : command.includes('sycophancy-guard.js') ? 'sycophancy-guard.js'
+        : 'inject-rules.js';
       const existingIdx = settings.hooks[eventName].findIndex(group =>
         (group.hooks || []).some(h => h.command && h.command.includes(scriptName))
       );
@@ -98,6 +101,7 @@ function ensureGlobalHooks() {
 
     ensureHook('PostToolUse', '.*', counterCmd);
     ensureHook('UserPromptSubmit', '*', injectCmd);
+    ensureHook('Stop', '', sycophancyCmd);
 
     if (modified) {
       if (fs.existsSync(settingsPath)) {
