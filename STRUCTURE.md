@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 19.34.0 | **Author**: TaWa | **License**: MIT
+**Version**: 19.35.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -30,7 +30,8 @@ memory-keeper-plugin/
 │
 ├── agents/                           # Background agent definitions
 │   ├── memory-summarizer.md          # L3 summary generator (haiku)
-│   └── delta-summarizer.md           # Delta content summarizer (haiku)
+│   ├── delta-summarizer.md           # Delta content summarizer (haiku, foreground fallback)
+│   └── delta-processor.md            # Delta pipeline processor (haiku, background)
 │
 ├── commands/                         # CLI commands
 │   ├── save-memory.md                # Manual save command
@@ -254,6 +255,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 19.35.0 | delta-processor background agent — non-blocking delta processing + lock file race condition prevention + foreground fallback |
 | 19.34.0 | verify-guard PreToolUse hook (block Final Verification without /verifying run) + skill-tracker verifying-called flag + N/A exception |
 | 19.33.0 | docs-guard PreToolUse hook (block docs/ Write/Edit without skill flag) + skill-tracker PostToolUse hook (set flag on Skill calls) + TTL cleanup |
 | 19.32.0 | RA pairing enforcement (WA N = RA N), concrete coherence verification methods, overcorrection SCOPE DEFINITIONS framing |

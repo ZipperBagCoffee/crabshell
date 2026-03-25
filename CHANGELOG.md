@@ -1,5 +1,10 @@
 # Changelog
 
+## 19.35.0
+- Feat: delta-processor background agent — non-blocking delta processing (summarize + validate + append + mark-updated + cleanup)
+- Feat: memory-delta SKILL.md rewritten to use delta-processor with run_in_background, lock file check, foreground fallback
+- Feat: DELTA_PROCESSING_LOCK + DELTA_LOCK_STALE_MS constants for race condition prevention
+
 ## 19.34.0
 - Feat: verify-guard PreToolUse hook — block Final Verification writes to ticket files without prior /verifying run call
 - Feat: skill-tracker extension — detect /verifying run calls and write verifying-called.json flag (create vs run distinction)
