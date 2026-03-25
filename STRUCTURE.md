@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 19.32.0 | **Author**: TaWa | **License**: MIT
+**Version**: 19.33.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -59,6 +59,8 @@ memory-keeper-plugin/
 │   ├── regressing-state.js            # Regressing phase tracker (v19.23.0)
 │   ├── sycophancy-guard.js           # Stop hook sycophancy detection (v19.29.0)
 │   ├── path-guard.js                # PreToolUse .claude/memory/ path validation (v19.31.0)
+│   ├── docs-guard.js                # PreToolUse docs/ skill bypass prevention (v19.33.0)
+│   ├── skill-tracker.js             # PostToolUse skill-active flag setter (v19.33.0)
 │   ├── test-cwd-isolation.js         # Mock tests for cwd isolation (v17.0.0)
 │   └── utils.js                      # Shared utilities
 │
@@ -235,6 +237,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 19.33.0 | docs-guard PreToolUse hook (block docs/ Write/Edit without skill flag) + skill-tracker PostToolUse hook (set flag on Skill calls) + TTL cleanup |
 | 19.32.0 | RA pairing enforcement (WA N = RA N), concrete coherence verification methods, overcorrection SCOPE DEFINITIONS framing |
 | 19.31.0 | PreToolUse path-guard hook — block Read/Grep/Glob/Bash targeting wrong .claude/memory/ path, Bash command string inspection |
 | 19.30.0 | Best practices fixes — P/O/G unification, R→I stale refs, stop_hook_active guard, regressing-guard JSON block, RA Independence Protocol |

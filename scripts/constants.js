@@ -23,6 +23,7 @@ module.exports = {
   INDEX_FILE: 'memory-index.json',
   LOCK_FILE: '.rotation.lock',
   REGRESSING_STATE_FILE: 'regressing-state.json',
+  SKILL_ACTIVE_FILE: 'skill-active.json',
 
   // Lock settings
   LOCK_STALE_MS: 60000,  // 60 seconds
