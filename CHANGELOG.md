@@ -1,5 +1,8 @@
 # Changelog
 
+## 19.32.0
+- Feat: RA pairing enforcement (WA N = RA N), concrete coherence verification methods (4 methods, minimum 2 required), overcorrection SCOPE DEFINITIONS framing
+
 ## 19.31.0
 - Feat: PreToolUse path-guard hook — block Read/Grep/Glob/Bash targeting wrong .claude/memory/ path, including Bash command string inspection
 

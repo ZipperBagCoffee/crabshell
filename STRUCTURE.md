@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 19.31.0 | **Author**: TaWa | **License**: MIT
+**Version**: 19.32.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -235,6 +235,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 19.32.0 | RA pairing enforcement (WA N = RA N), concrete coherence verification methods, overcorrection SCOPE DEFINITIONS framing |
 | 19.31.0 | PreToolUse path-guard hook — block Read/Grep/Glob/Bash targeting wrong .claude/memory/ path, Bash command string inspection |
 | 19.30.0 | Best practices fixes — P/O/G unification, R→I stale refs, stop_hook_active guard, regressing-guard JSON block, RA Independence Protocol |
 | 19.29.0 | Stop hook sycophancy guard — detect agreement-without-verification in Stop responses, block with re-examination |

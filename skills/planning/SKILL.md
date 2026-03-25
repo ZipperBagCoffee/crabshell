@@ -99,6 +99,11 @@ This plan is executed using the following agent structure:
 - Compare against D document's Intent Anchor (IA)
 - Confirm plan has not deviated from original intent
 - Verify plan coherence: do the plan steps work together as a whole? Individual steps may each be sound, but combined they may have ordering issues, dependency conflicts, or scope gaps. The plan must be coherent as a system, not just individually valid steps.
+  **Coherence verification methods (minimum 2 of the following):**
+  - **Cross-file sync check:** When the same concept appears across planned target files, grep for the concept and confirm consistent wording/semantics.
+  - **Reference integrity:** When plan steps reference content across files, verify the reference targets will hold after changes.
+  - **Contradiction scan:** Check for conflicting plan steps or contradictory instructions between planned changes.
+  "Coherent" one-liner without method execution = INVALID.
 - **Evidence Gate (BLOCKING — check BEFORE evaluating content):**
   Review Agents generate text that looks like analysis without actual investigation. Your gate exists to catch this.
   □ Does each plan element review have Prediction, Observation, AND Gap fields?
