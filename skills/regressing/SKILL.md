@@ -102,6 +102,7 @@ After each /ticketing invocation, update regressing state:
 - Work Agent: execute tasks → append to T document
   - **Framing:** Agent prompts follow the parent skill's (ticketing/planning) framing and verification standards. See CLAUDE.md SCOPE DEFINITIONS.
 - Review Agent (separate Task tool call): runtime verification (exhaustive level) → append to T document
+  - **RA Count Rule:** RA count MUST equal WA count. WA 2개 → RA 2개. Each WA's output is reviewed by its own dedicated RA. Single RA reviewing multiple WAs' outputs is a pairing violation.
   - **Independence Protocol (MANDATORY):** The Review Agent prompt MUST NOT include Work Agent's Execution Results. Provide only: (1) Plan ID and acceptance criteria, (2) Verification criteria from ticket, (3) the P/O/G template below. The Review Agent performs independent verification first. After Review Agent completes, the Orchestrator cross-references RA findings against WA Execution Results — discrepancies are findings.
   - **Review Agent prompt MUST include this philosophical context and verification output template:**
     ```
@@ -127,6 +128,12 @@ After each /ticketing invocation, update regressing state:
 - Orchestrator: final verification → append to T document. MUST critically evaluate both Work and Review Agent outputs. Default posture: skepticism — "ALL PASS" requires more justification than "FAIL". Must provide substantive evaluation, not rubber-stamp approval.
   - Correctness: Was it done correctly? Cite specific evidence (command output, observed behavior).
   - Coherence: Do the changes from this cycle work together as a whole? Individual items may each pass, but combined output may have integration gaps. Verify that parts form a coherent whole, not just that each passes individually.
+    **Coherence verification methods (minimum 2 of the following):**
+    - **Cross-file sync check:** When the same concept appears in multiple files, grep for the concept in all locations and confirm consistent wording/semantics.
+    - **Reference integrity:** When file A references file B's content, verify the reference target actually exists and matches.
+    - **Integration test:** Run the changed code/hook and verify that outputs from multiple changed files interact correctly.
+    - **Contradiction scan:** Explicitly check whether any two changes give contradictory instructions.
+    "Coherent" or "일관됨" as a one-line verdict without executing any of the above methods is INVALID.
   - Improvement Opportunities: What gaps remain? What was attempted but didn't work well? (Orchestrator MUST enumerate what was examined. "No improvements" requires detailed justification of what was checked and why no improvements apply — minimum 3 sentences referencing specific aspects.)
   - **Evidence Gate (BLOCKING — check BEFORE evaluating content):**
     Agents generate text that looks like verification without actual observation. Your gate exists to catch this.
