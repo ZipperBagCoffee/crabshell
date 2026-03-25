@@ -1,5 +1,11 @@
 # Changelog
 
+## 19.33.0
+- Feat: docs-guard PreToolUse hook — block Write/Edit to docs/{discussion,plan,ticket,investigation}/ without active skill flag
+- Feat: skill-tracker PostToolUse hook — set skill-active flag on Skill tool calls (discussing, planning, ticketing, investigating, regressing, light-workflow, verifying)
+- Feat: TTL-based flag cleanup (5min expiry) + session start cleanup in load-memory.js
+- Feat: ensureGlobalHooks registers docs-guard (PreToolUse Write|Edit) + skill-tracker (PostToolUse Skill) in settings.json
+
 ## 19.32.0
 - Feat: RA pairing enforcement (WA N = RA N), concrete coherence verification methods (4 methods, minimum 2 required), overcorrection SCOPE DEFINITIONS framing
 

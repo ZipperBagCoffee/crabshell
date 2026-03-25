@@ -2,7 +2,7 @@ const path = require('path');
 const fs = require('fs');
 const { getProjectDir, getProjectName, readFileOrDefault, readJsonOrDefault, estimateTokens } = require('./utils');
 const { ensureMemoryStructure } = require('./init');
-const { MEMORY_DIR, SESSIONS_DIR, INDEX_FILE, MEMORY_FILE, LOGS_DIR, DELTA_TEMP_FILE, REGRESSING_STATE_FILE } = require('./constants');
+const { MEMORY_DIR, SESSIONS_DIR, INDEX_FILE, MEMORY_FILE, LOGS_DIR, DELTA_TEMP_FILE, REGRESSING_STATE_FILE, SKILL_ACTIVE_FILE } = require('./constants');
 
 // Workaround: Claude Code plugin hooks (PostToolUse, UserPromptSubmit) don't fire
 // reliably from plugin hooks.json (GitHub issues #10225, #6305).
@@ -68,6 +68,8 @@ function ensureGlobalHooks() {
     const injectCmd = `"${nodePath}" "${runnerPathFwd}" inject-rules.js`;
     const sycophancyCmd = `"${nodePath}" "${runnerPathFwd}" sycophancy-guard.js`;
     const pathGuardCmd = `"${nodePath}" "${runnerPathFwd}" path-guard.js`;
+    const docsGuardCmd = `"${nodePath}" "${runnerPathFwd}" docs-guard.js`;
+    const skillTrackerCmd = `"${nodePath}" "${runnerPathFwd}" skill-tracker.js`;
 
     let settings = {};
     if (fs.existsSync(settingsPath)) {
@@ -77,12 +79,15 @@ function ensureGlobalHooks() {
 
     let modified = false;
 
+    // Known script names for deduplication in ensureHook
+    const KNOWN_SCRIPTS = [
+      'counter.js', 'inject-rules.js', 'sycophancy-guard.js',
+      'path-guard.js', 'docs-guard.js', 'skill-tracker.js'
+    ];
+
     function ensureHook(eventName, matcher, command) {
       if (!settings.hooks[eventName]) settings.hooks[eventName] = [];
-      const scriptName = command.includes('counter.js') ? 'counter.js'
-        : command.includes('sycophancy-guard.js') ? 'sycophancy-guard.js'
-        : command.includes('path-guard.js') ? 'path-guard.js'
-        : 'inject-rules.js';
+      const scriptName = KNOWN_SCRIPTS.find(s => command.includes(s)) || 'unknown.js';
       const existingIdx = settings.hooks[eventName].findIndex(group =>
         (group.hooks || []).some(h => h.command && h.command.includes(scriptName))
       );
@@ -102,9 +107,11 @@ function ensureGlobalHooks() {
     }
 
     ensureHook('PostToolUse', '.*', counterCmd);
+    ensureHook('PostToolUse', 'Skill', skillTrackerCmd);
     ensureHook('UserPromptSubmit', '*', injectCmd);
     ensureHook('Stop', '', sycophancyCmd);
     ensureHook('PreToolUse', 'Read|Grep|Glob|Bash', pathGuardCmd);
+    ensureHook('PreToolUse', 'Write|Edit', docsGuardCmd);
 
     if (modified) {
       if (fs.existsSync(settingsPath)) {
@@ -253,6 +260,13 @@ function loadMemory(stdinData) {
     if (idx.deltaReady !== true) {
       try { fs.unlinkSync(deltaPath); } catch {}
     }
+  }
+
+  // Clean up stale skill-active.json on SessionStart
+  // Previous session's flag should never persist — always start fresh
+  const skillActivePath = path.join(memoryDir, SKILL_ACTIVE_FILE);
+  if (fs.existsSync(skillActivePath)) {
+    try { fs.unlinkSync(skillActivePath); } catch {}
   }
 
   // Check for stale regressing state
