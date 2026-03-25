@@ -34,10 +34,37 @@ const MEMORY_PATH_PATTERN = /\.claude[/\\]memory[/\\]/;
 const MEMORY_PATH_SEGMENT = '.claude/memory/';
 
 /**
- * Normalize a path: backslash → forward slash, resolve to absolute.
+ * Normalize a path: backslash → forward slash.
  */
 function normalizePath(p) {
   return p.replace(/\\/g, '/');
+}
+
+/**
+ * Resolve '..' and '.' segments in a normalized (forward-slash) path.
+ * Does NOT use path.resolve() to avoid prepending cwd for relative paths.
+ */
+function resolveDotsInPath(normalizedPath) {
+  const parts = normalizedPath.split('/');
+  const resolved = [];
+  for (const part of parts) {
+    if (part === '..') {
+      if (resolved.length > 0 && resolved[resolved.length - 1] !== '..') {
+        resolved.pop();
+      }
+    } else if (part !== '.') {
+      resolved.push(part);
+    }
+  }
+  return resolved.join('/');
+}
+
+/**
+ * Check if a path contains unresolvable shell constructs ($VAR, ~, etc.)
+ * that make static analysis impossible.
+ */
+function hasShellVariable(p) {
+  return /^\$|\/\$|^\~\/|^\~$/.test(p);
 }
 
 /**
@@ -52,16 +79,25 @@ function checkPath(filePath, projectDir) {
     return { targets: false, valid: true }; // Not a .claude/memory/ path — irrelevant
   }
 
-  // Check if path starts with projectDir/.claude/memory/
-  const expectedPrefix = normalizedProject.replace(/\/+$/, '') + '/' + MEMORY_PATH_SEGMENT;
-  // Also allow relative .claude/memory/ (starts with .claude/memory/ without preceding directory)
-  if (normalized.startsWith(expectedPrefix)) {
+  // Allow paths with unresolvable shell variables ($HOME, ~, $CLAUDE_PROJECT_DIR, etc.)
+  // These can't be validated at hook time — fail-open to avoid false positives
+  if (hasShellVariable(normalized)) {
+    return { targets: true, valid: true };
+  }
+
+  // Resolve .. segments before comparison
+  const resolvedPath = resolveDotsInPath(normalized);
+  const resolvedProject = resolveDotsInPath(normalizedProject);
+
+  // Check if resolved path starts with projectDir/.claude/memory/
+  const expectedPrefix = resolvedProject.replace(/\/+$/, '') + '/' + MEMORY_PATH_SEGMENT;
+  if (resolvedPath.startsWith(expectedPrefix)) {
     return { targets: true, valid: true };
   }
 
   // Allow relative paths: .claude/memory/... or ./.claude/memory/...
-  if (normalized === '.claude/memory/' || normalized.startsWith('.claude/memory/') ||
-      normalized === './.claude/memory/' || normalized.startsWith('./.claude/memory/')) {
+  if (resolvedPath === '.claude/memory/' || resolvedPath.startsWith('.claude/memory/') ||
+      resolvedPath === './.claude/memory/' || resolvedPath.startsWith('./.claude/memory/')) {
     return { targets: true, valid: true };
   }
 
