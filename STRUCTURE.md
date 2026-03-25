@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 19.30.0 | **Author**: TaWa | **License**: MIT
+**Version**: 19.31.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -58,6 +58,7 @@ memory-keeper-plugin/
 │   ├── sync-rules-to-claude.js       # Manual CLAUDE.md sync (standalone)
 │   ├── regressing-state.js            # Regressing phase tracker (v19.23.0)
 │   ├── sycophancy-guard.js           # Stop hook sycophancy detection (v19.29.0)
+│   ├── path-guard.js                # PreToolUse .claude/memory/ path validation (v19.31.0)
 │   ├── test-cwd-isolation.js         # Mock tests for cwd isolation (v17.0.0)
 │   └── utils.js                      # Shared utilities
 │
@@ -159,6 +160,13 @@ UserPromptSubmit hook:
 - Detect pending rotation → inject ROTATION_INSTRUCTION
 - Detect active regressing session → inject phase-specific reminder (v19.23.0)
 
+### scripts/path-guard.js
+PreToolUse path validation (v19.31.0):
+- Block Read/Grep/Glob/Bash calls targeting `.claude/memory/` outside `CLAUDE_PROJECT_DIR`
+- Bash command string inspection: regex extraction of `.claude/memory/` paths within command strings
+- Fail-open on parse errors (user experience protection)
+- Windows path normalization (backslash → forward slash)
+
 ### scripts/extract-delta.js
 L1 delta extraction:
 - `extractDelta()`: Extract changes since last memory.md update
@@ -196,20 +204,27 @@ L1 generation:
        │   └─> If yes: Inject phase-specific reminder (planning/ticketing → MANDATORY SKILL TOOL CALL)
        └─> Output indicator: [rules injected], [rules + delta pending], [rules + rotation pending]
 
-3. PostToolUse
+3. PreToolUse (Read/Grep/Glob/Bash)
+   └─> path-guard.js (v19.31.0)
+       ├─> Check if tool call targets .claude/memory/ path
+       ├─> Verify path is under CLAUDE_PROJECT_DIR
+       ├─> Bash: regex scan command string for .claude/memory/ paths
+       └─> Block with correction message if wrong project root
+
+4. PostToolUse
    └─> counter.js check
        ├─> Detect regressing skill calls → auto-advance phase (v19.23.0)
        ├─> Increment counter
        ├─> checkAndRotate() - archive if > 23,750 tokens
        └─> At threshold: create/update L1 → extractDelta() → creates delta_temp.txt
 
-4. Stop
+5. Stop
    └─> sycophancy-guard.js (v19.29.0)
        ├─> Detect agreement-without-verification patterns in stop_response
        ├─> Check for evidence exemptions (P/O/G table, tool output references)
        └─> Block with re-examination instruction if sycophancy detected
 
-5. SessionEnd
+6. SessionEnd
    └─> counter.js final
        ├─> Create final L1 session transcript (last chance)
        ├─> Cleanup duplicate L1 files
@@ -220,6 +235,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 19.31.0 | PreToolUse path-guard hook — block Read/Grep/Glob/Bash targeting wrong .claude/memory/ path, Bash command string inspection |
 | 19.30.0 | Best practices fixes — P/O/G unification, R→I stale refs, stop_hook_active guard, regressing-guard JSON block, RA Independence Protocol |
 | 19.29.0 | Stop hook sycophancy guard — detect agreement-without-verification in Stop responses, block with re-examination |
 | 19.28.0 | Ticket execution ordering guide + final coherence verification (D025) |

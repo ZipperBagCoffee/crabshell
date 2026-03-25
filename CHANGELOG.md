@@ -1,5 +1,8 @@
 # Changelog
 
+## 19.31.0
+- Feat: PreToolUse path-guard hook — block Read/Grep/Glob/Bash targeting wrong .claude/memory/ path, including Bash command string inspection
+
 ## 19.30.0
 - Feat: Best practices fixes — P/O/G unification, R→I stale refs, stop_hook_active guard, regressing-guard JSON block, RA Independence Protocol
 

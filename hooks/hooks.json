@@ -41,6 +41,15 @@
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/regressing-guard.js\""
           }
         ]
+      },
+      {
+        "matcher": "Read|Grep|Glob|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/path-guard.js\""
+          }
+        ]
       }
     ],
     "Stop": [
