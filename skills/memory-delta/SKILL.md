@@ -1,6 +1,6 @@
 ---
 name: memory-delta
-description: "Auto-executes when the [MEMORY_KEEPER_DELTA] trigger is detected, summarizing recent conversation deltas and appending to memory.md. Calls Haiku agent for proportional summarization. Not user-invocable — triggered automatically."
+description: "Auto-executes when the [MEMORY_KEEPER_DELTA] trigger is detected. Launches delta-processor background agent to summarize and append to memory.md without blocking. Not user-invocable — triggered automatically."
 ---
 
 ## Node.js Path
@@ -43,34 +43,71 @@ If you see `[MEMORY_KEEPER_DELTA]` anywhere in your context, execute this skill 
    ```
    If file not found or empty, STOP HERE - do not proceed.
 
-2. **Call delta-summarizer agent**:
-   Use the `delta-summarizer` agent (defined in `agents/delta-summarizer.md`).
+2. **Check processing lock** (race condition prevention):
+   ```bash
+   cat "{PROJECT_DIR}/.claude/memory/delta_processing.lock" 2>/dev/null
+   ```
+   - If lock file exists AND is less than 5 minutes old → STOP (another processor is running). Log: "Delta processing already in progress, skipping."
+   - If lock file exists AND is older than 5 minutes → stale lock, proceed (will be overwritten by agent).
+   - If lock file does not exist → proceed.
+
+   To check lock age:
+   ```bash
+   find "{PROJECT_DIR}/.claude/memory/" -name "delta_processing.lock" -mmin -5 2>/dev/null
+   ```
+   If this returns the file path, the lock is fresh — STOP. If empty output, proceed.
+
+3. **Call delta-processor background agent**:
+   Use the `delta-processor` agent (defined in `agents/delta-processor.md`).
+   Call with `run_in_background: true`.
+
+   Prompt (replace all placeholders with actual resolved paths):
+   ```
+   Process the delta file and append summary to memory.md.
+
+   DELTA_PATH: {PROJECT_DIR}/.claude/memory/delta_temp.txt
+   MEMORY_PATH: {PROJECT_DIR}/.claude/memory/memory.md
+   NODE_PATH: {NODE_PATH}
+   SCRIPTS_PATH: {SCRIPTS_PATH}
+   PROJECT_DIR: {PROJECT_DIR}
+   LOCK_PATH: {PROJECT_DIR}/.claude/memory/delta_processing.lock
+   ```
+
+   The agent runs in the background and handles steps 2-6 of the old flow:
+   - Summarize (1 sentence per ~200 words)
+   - Validate summary
+   - Append to memory.md with dual timestamps
+   - Run mark-updated
+   - Run cleanup
+   - Release lock
+
+4. **Done** — the main conversation is not blocked. The delta-processor agent will complete in the background and results will be delivered when ready.
+
+## Foreground Fallback
+
+If the delta-processor agent call fails (e.g., agent not found, background execution not supported), fall back to the legacy foreground flow:
+
+**Fallback Step 2**: Call `delta-summarizer` agent (foreground):
    Prompt: "Read {PROJECT_DIR}/.claude/memory/delta_temp.txt and summarize (1 sentence per ~200 words)."
-   Replace {PROJECT_DIR} with the actual project root (absolute path).
 
-3. **Validate Haiku response**:
-   - If response starts with "ERROR:" → STOP, do not proceed
-   - If response is empty or says "file not found" → STOP, do not proceed
-   - Only continue if you have actual summary content
+**Fallback Step 3**: Validate response:
+   - If response starts with "ERROR:" → STOP
+   - If response is empty → STOP
 
-4. **Append summary to memory.md with dual timestamps**:
-   Run this single command (replace {SUMMARY} with Haiku's response):
+**Fallback Step 4**: Append summary to memory.md:
    ```bash
    TS_UTC=$(date -u +%Y-%m-%d_%H%M) && TS_LOCAL=$(date +%m-%d_%H%M) && printf '\n## %s (local %s)\n%s\n' "$TS_UTC" "$TS_LOCAL" "{SUMMARY}" >> "{PROJECT_DIR}/.claude/memory/memory.md"
    ```
 
    **WARNING: Do NOT modify this command. Copy EXACTLY as written.**
    - The date format uses single `%` (e.g. `%Y`), NOT `%%Y`
-   - `%%` in date means "literal %" which outputs format strings instead of dates
 
-   Example output: `## 2026-02-01_1727 (local 02-01_0927)`
-
-5. **Update timestamp marker** (use full path from above):
+**Fallback Step 5**: Update timestamp marker:
    ```bash
    "{NODE_PATH}" "{SCRIPTS_PATH}/extract-delta.js" mark-updated --project-dir="{PROJECT_DIR}"
    ```
 
-6. **Delete temp file** (use full path from above):
+**Fallback Step 6**: Delete temp file:
    ```bash
    "{NODE_PATH}" "{SCRIPTS_PATH}/extract-delta.js" cleanup --project-dir="{PROJECT_DIR}"
    ```
@@ -78,6 +115,7 @@ If you see `[MEMORY_KEEPER_DELTA]` anywhere in your context, execute this skill 
 ## Failure Handling
 
 - If file doesn't exist in step 1: STOP immediately
-- If Haiku returns ERROR or empty: STOP, don't update/cleanup
-- If agent call fails: Don't update timestamp, don't delete temp file
+- If lock is fresh in step 2: STOP (another processor running)
+- If background agent call fails in step 3: Use Foreground Fallback above
+- If fallback also fails: Don't update timestamp, don't delete temp file
 - Next trigger will retry with accumulated content (temp file overwritten)
