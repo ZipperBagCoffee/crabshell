@@ -1,5 +1,8 @@
 # Changelog
 
+## 19.43.0
+- fix: remove ensureGlobalHooks() from load-memory.js — was auto-registering duplicate hooks in global ~/.claude/settings.json on every SessionStart
+
 ## 19.42.0
 - feat: lessons skill enforces actionable rule format — Problem/Rule/Example template, prohibits reflective narratives and abstract principles
 
