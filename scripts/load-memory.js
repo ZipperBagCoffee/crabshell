@@ -2,7 +2,7 @@ const path = require('path');
 const fs = require('fs');
 const { getProjectDir, getProjectName, readFileOrDefault, readJsonOrDefault, estimateTokens } = require('./utils');
 const { ensureMemoryStructure } = require('./init');
-const { MEMORY_DIR, SESSIONS_DIR, INDEX_FILE, MEMORY_FILE, LOGS_DIR, DELTA_TEMP_FILE, REGRESSING_STATE_FILE, SKILL_ACTIVE_FILE, VERIFYING_CALLED_FILE } = require('./constants');
+const { MEMORY_DIR, SESSIONS_DIR, INDEX_FILE, MEMORY_FILE, LOGS_DIR, DELTA_TEMP_FILE, REGRESSING_STATE_FILE, SKILL_ACTIVE_FILE } = require('./constants');
 
 // Workaround: Claude Code plugin hooks (PostToolUse, UserPromptSubmit) don't fire
 // reliably from plugin hooks.json (GitHub issues #10225, #6305).
@@ -269,12 +269,6 @@ function loadMemory(stdinData) {
   const skillActivePath = path.join(memoryDir, SKILL_ACTIVE_FILE);
   if (fs.existsSync(skillActivePath)) {
     try { fs.unlinkSync(skillActivePath); } catch {}
-  }
-
-  // Clean up stale verifying-called.json on SessionStart
-  const verifyingCalledPath = path.join(memoryDir, VERIFYING_CALLED_FILE);
-  if (fs.existsSync(verifyingCalledPath)) {
-    try { fs.unlinkSync(verifyingCalledPath); } catch {}
   }
 
   // Check for stale regressing state

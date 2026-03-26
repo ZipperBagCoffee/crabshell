@@ -1,5 +1,8 @@
 # Changelog
 
+## 19.40.0
+- chore: remove orphaned verifying-called.json flag code from skill-tracker, load-memory, constants
+
 ## 19.39.0
 - feat: verify-guard deterministic execution — execSync runs run-verify.js directly, blocks on FAIL
 - feat: P/O/G Type column (behavioral/structural) with Evidence Gate behavioral≥1 check

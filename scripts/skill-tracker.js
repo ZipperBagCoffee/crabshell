@@ -2,7 +2,7 @@
 
 const path = require('path');
 const fs = require('fs');
-const { SKILL_ACTIVE_FILE, VERIFYING_CALLED_FILE } = require('./constants');
+const { SKILL_ACTIVE_FILE } = require('./constants');
 
 function getProjectDir() {
   return process.env.CLAUDE_PROJECT_DIR || process.env.PROJECT_DIR || process.cwd();
@@ -82,25 +82,6 @@ function isVerifyingRun(hookData) {
 }
 
 /**
- * Set the verifying-called flag file.
- */
-function setVerifyingCalled(projectDir) {
-  const memoryDir = path.join(projectDir, '.claude', 'memory');
-  if (!fs.existsSync(memoryDir)) {
-    fs.mkdirSync(memoryDir, { recursive: true });
-  }
-
-  const flagPath = path.join(memoryDir, VERIFYING_CALLED_FILE);
-  const data = {
-    calledAt: new Date().toISOString(),
-    mode: 'run',
-    ttl: DEFAULT_TTL_MS
-  };
-
-  fs.writeFileSync(flagPath, JSON.stringify(data, null, 2));
-}
-
-/**
  * Set the skill-active flag file.
  */
 function setSkillActive(projectDir, skillName) {
@@ -130,13 +111,7 @@ async function main() {
   const projectDir = getProjectDir();
   setSkillActive(projectDir, detectedSkill);
 
-  // Additionally track /verifying run calls for verify-guard
-  if (isVerifyingRun(hookData)) {
-    setVerifyingCalled(projectDir);
-    process.stderr.write(`[SKILL_TRACKER] Activated: ${detectedSkill} (verifying-called flag set)\n`);
-  } else {
-    process.stderr.write(`[SKILL_TRACKER] Activated: ${detectedSkill}\n`);
-  }
+  process.stderr.write(`[SKILL_TRACKER] Activated: ${detectedSkill}\n`);
   process.exit(0);
 }
 
