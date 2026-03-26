@@ -3,41 +3,88 @@ const path = require('path');
 const { getProjectDir, readJsonOrDefault } = require('./utils');
 const { MEMORY_DIR, SESSIONS_DIR, INDEX_FILE, MEMORY_FILE } = require('./constants');
 
+// --- Helpers ---
+
+/**
+ * Creates a matcher object with a test(text) method.
+ * @param {string} query - search term or regex pattern
+ * @param {object} options - { regex: boolean }
+ * @returns {{ test: (text: string) => boolean }}
+ */
+function createMatcher(query, options = {}) {
+  if (options.regex) {
+    const re = new RegExp(query, 'i');
+    return { test: (text) => re.test(text) };
+  }
+  const q = query.toLowerCase();
+  return { test: (text) => text.toLowerCase().includes(q) };
+}
+
+/**
+ * Extracts searchable text from an L1 JSONL entry object.
+ * Combines text, output, name, target, and pattern fields.
+ */
+function getSearchableText(entry) {
+  const parts = [];
+  if (entry.text) parts.push(entry.text);
+  if (entry.output) parts.push(entry.output);
+  if (entry.name) parts.push(entry.name);
+  if (entry.target) parts.push(entry.target);
+  if (entry.pattern) parts.push(entry.pattern);
+  return parts.join(' ');
+}
+
+/**
+ * Truncates text to maxLen characters, appending '...' if truncated.
+ */
+function truncate(text, maxLen) {
+  if (!text || text.length <= maxLen) return text || '';
+  return text.substring(0, maxLen) + '...';
+}
+
+// --- Main search ---
+
 function searchMemory(query, options = {}) {
   const projectDir = getProjectDir();
   const memoryDir = path.join(projectDir, '.claude', MEMORY_DIR);
   const results = [];
-  const queryLower = query.toLowerCase();
+  const matcher = createMatcher(query, options);
 
-  const memoryMatches = searchCurrentMemory(memoryDir, queryLower);
+  const memoryMatches = searchCurrentMemory(memoryDir, matcher);
   if (memoryMatches.length > 0) results.push({ source: 'memory.md', matches: memoryMatches });
 
-  const l3Matches = searchL3Summaries(memoryDir, queryLower);
+  const l3Matches = searchL3Summaries(memoryDir, matcher);
   if (l3Matches.length > 0) results.push({ source: 'L3 summaries', matches: l3Matches });
 
-  const l2Matches = searchL2Archives(memoryDir, queryLower);
+  const l2Matches = searchL2Archives(memoryDir, matcher);
   if (l2Matches.length > 0) results.push({ source: 'L2 archives', matches: l2Matches });
 
   if (options.deep) {
-    const l1Matches = searchL1Sessions(projectDir, queryLower);
+    const l1Matches = searchL1Sessions(projectDir, matcher, options);
     if (l1Matches.length > 0) results.push({ source: 'L1 sessions', matches: l1Matches });
   }
 
   return results;
 }
 
-function searchCurrentMemory(memoryDir, query) {
+// --- Layer-specific search functions ---
+
+function searchCurrentMemory(memoryDir, matcher) {
+  // Accept both matcher object and legacy string
+  if (typeof matcher === 'string') matcher = createMatcher(matcher);
   const memoryPath = path.join(memoryDir, MEMORY_FILE);
   if (!fs.existsSync(memoryPath)) return [];
   const lines = fs.readFileSync(memoryPath, 'utf8').split('\n');
   const matches = [];
   lines.forEach((line, i) => {
-    if (line.toLowerCase().includes(query)) matches.push({ line: i + 1, text: line.trim() });
+    if (matcher.test(line)) matches.push({ line: i + 1, text: line.trim() });
   });
   return matches;
 }
 
-function searchL3Summaries(memoryDir, query) {
+function searchL3Summaries(memoryDir, matcher) {
+  // Accept both matcher object and legacy string
+  if (typeof matcher === 'string') matcher = createMatcher(matcher);
   const indexPath = path.join(memoryDir, INDEX_FILE);
   const index = readJsonOrDefault(indexPath, { rotatedFiles: [] });
   const matches = [];
@@ -52,53 +99,122 @@ function searchL3Summaries(memoryDir, query) {
 
     if (summary.themes) {
       for (const theme of summary.themes) {
-        if (theme.name.toLowerCase().includes(query) || theme.summary.toLowerCase().includes(query)) {
+        if (matcher.test(theme.name) || matcher.test(theme.summary)) {
           matches.push({ file: entry.file, type: 'theme', content: theme.name, detail: theme.summary });
         }
       }
     }
     if (summary.keyDecisions) {
       for (const dec of summary.keyDecisions) {
-        if (dec.decision.toLowerCase().includes(query)) {
+        if (matcher.test(dec.decision)) {
           matches.push({ file: entry.file, type: 'decision', content: dec.decision, reason: dec.reason });
         }
       }
     }
     if (summary.issues) {
       for (const issue of summary.issues) {
-        if (issue.issue.toLowerCase().includes(query)) {
+        if (matcher.test(issue.issue)) {
           matches.push({ file: entry.file, type: 'issue', content: issue.issue, status: issue.status });
         }
       }
     }
-    if (summary.overallSummary && summary.overallSummary.toLowerCase().includes(query)) {
-      matches.push({ file: entry.file, type: 'summary', content: summary.overallSummary.substring(0, 200) + '...' });
+    if (summary.overallSummary && matcher.test(summary.overallSummary)) {
+      matches.push({ file: entry.file, type: 'summary', content: truncate(summary.overallSummary, 200) });
     }
   }
   return matches;
 }
 
-function searchL2Archives(memoryDir, query) {
+function searchL2Archives(memoryDir, matcher) {
+  // Accept both matcher object and legacy string
+  if (typeof matcher === 'string') matcher = createMatcher(matcher);
   const files = fs.readdirSync(memoryDir).filter(f => f.startsWith('memory_') && f.endsWith('.md'));
   const matches = [];
   for (const file of files) {
     const lines = fs.readFileSync(path.join(memoryDir, file), 'utf8').split('\n');
     lines.forEach((line, i) => {
-      if (line.toLowerCase().includes(query)) matches.push({ file, line: i + 1, text: line.trim() });
+      if (matcher.test(line)) matches.push({ file, line: i + 1, text: line.trim() });
     });
   }
   return matches;
 }
 
-function searchL1Sessions(projectDir, query) {
+/**
+ * Search L1 session JSONL files with two-pass optimization.
+ * Pass 1: whole-file includes check (skip files without any match).
+ * Pass 2: line-by-line JSONL parse on hits, returning structured entries + context.
+ *
+ * @param {string} projectDir - project root
+ * @param {object|string} matcher - matcher object or query string (legacy compat)
+ * @param {object} options - { contextWindow: number (default 2) }
+ * @returns {Array<{ file, matchIndex, entry: {ts, role, text}, context: [{ts, role, text}] }>}
+ */
+function searchL1Sessions(projectDir, matcher, options = {}) {
+  // Accept both matcher object and legacy string
+  if (typeof matcher === 'string') matcher = createMatcher(matcher);
+  const contextWindow = options.contextWindow != null ? options.contextWindow : 2;
   const sessionsDir = path.join(projectDir, '.claude', SESSIONS_DIR);
   if (!fs.existsSync(sessionsDir)) return [];
-  const files = fs.readdirSync(sessionsDir).filter(f => f.endsWith('.l1.jsonl'));
+
+  // Get files sorted newest-first by filename timestamp
+  const files = fs.readdirSync(sessionsDir)
+    .filter(f => f.endsWith('.l1.jsonl'))
+    .sort((a, b) => b.localeCompare(a));
+
   const matches = [];
+  const TEXT_MAX = 200;
+
   for (const file of files) {
-    const content = fs.readFileSync(path.join(sessionsDir, file), 'utf8');
-    if (content.toLowerCase().includes(query)) matches.push({ file, found: true });
+    const filePath = path.join(sessionsDir, file);
+    const content = fs.readFileSync(filePath, 'utf8');
+
+    // Pass 1: whole-file pre-check — skip if no match anywhere in the raw text
+    if (!matcher.test(content)) continue;
+
+    // Pass 2: line-by-line JSONL parse
+    const lines = content.split('\n');
+    const entries = [];
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      try {
+        entries.push(JSON.parse(line));
+      } catch (e) {
+        // skip malformed lines
+      }
+    }
+
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i];
+      const searchable = getSearchableText(entry);
+      if (!matcher.test(searchable)) continue;
+
+      // Build context window (entries before and after the match)
+      const ctxStart = Math.max(0, i - contextWindow);
+      const ctxEnd = Math.min(entries.length - 1, i + contextWindow);
+      const context = [];
+      for (let j = ctxStart; j <= ctxEnd; j++) {
+        if (j === i) continue; // skip the match itself
+        const ctxEntry = entries[j];
+        context.push({
+          ts: ctxEntry.ts,
+          role: ctxEntry.role,
+          text: truncate(getSearchableText(ctxEntry), TEXT_MAX)
+        });
+      }
+
+      matches.push({
+        file,
+        matchIndex: i,
+        entry: {
+          ts: entry.ts,
+          role: entry.role,
+          text: truncate(searchable, TEXT_MAX)
+        },
+        context
+      });
+    }
   }
+
   return matches;
 }
 
@@ -143,4 +259,4 @@ function findL1ForTimestamp(timestamp, sessionsDir) {
   return l1Files.find(l1 => targetTime >= l1.start && targetTime <= l1.end);
 }
 
-module.exports = { searchMemory, searchL3Summaries, searchL2Archives, findL1ForTimestamp };
+module.exports = { searchMemory, searchL3Summaries, searchL2Archives, searchL1Sessions, findL1ForTimestamp, createMatcher };

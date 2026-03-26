@@ -332,6 +332,135 @@ function syncRulesToClaudeMd(projectDir) {
   }
 }
 
+// --- Prompt-aware memory loading ---
+
+const ENGLISH_STOP_WORDS = new Set([
+  'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
+  'of', 'with', 'by', 'from', 'is', 'are', 'was', 'were', 'be', 'been',
+  'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would',
+  'could', 'should', 'may', 'might', 'shall', 'can', 'not', 'no', 'nor',
+  'so', 'if', 'then', 'than', 'that', 'this', 'these', 'those', 'it',
+  'its', 'my', 'your', 'his', 'her', 'our', 'their', 'what', 'which',
+  'who', 'whom', 'how', 'when', 'where', 'why', 'all', 'each', 'every',
+  'both', 'few', 'more', 'most', 'other', 'some', 'such', 'any', 'only',
+  'same', 'too', 'very', 'just', 'about', 'above', 'after', 'again',
+  'also', 'because', 'before', 'between', 'during', 'into', 'through',
+  'under', 'until', 'while', 'out', 'up', 'down', 'off', 'over', 'own',
+  'here', 'there', 'once', 'use', 'used', 'using', 'file', 'files',
+  'please', 'want', 'need', 'like', 'make', 'get', 'let', 'see', 'try'
+]);
+
+function parseMemorySections(content) {
+  const sections = [];
+  const lines = content.split('\n');
+  let currentHeading = null;
+  let currentBody = [];
+
+  for (const line of lines) {
+    if (line.startsWith('## ')) {
+      if (currentHeading !== null) {
+        sections.push({ heading: currentHeading, body: currentBody.join('\n').trim() });
+      }
+      currentHeading = line.slice(3).trim();
+      currentBody = [];
+    } else {
+      currentBody.push(line);
+    }
+  }
+  // Push last section
+  if (currentHeading !== null) {
+    sections.push({ heading: currentHeading, body: currentBody.join('\n').trim() });
+  }
+
+  return sections;
+}
+
+function extractKeywords(prompt) {
+  if (!prompt || prompt.length < 10) return [];
+
+  // Split on whitespace and punctuation, keeping Korean chars
+  const tokens = prompt
+    .toLowerCase()
+    .split(/[\s\-_.,;:!?'"()\[\]{}<>\/\\|@#$%^&*+=~`]+/)
+    .filter(Boolean);
+
+  const keywords = [];
+  for (const token of tokens) {
+    if (token.length < 3) continue;
+    // Check if token contains Korean characters (가-힣)
+    const hasKorean = /[\uAC00-\uD7A3]/.test(token);
+    if (hasKorean) {
+      keywords.push(token);
+    } else if (!ENGLISH_STOP_WORDS.has(token)) {
+      keywords.push(token);
+    }
+    if (keywords.length >= 10) break;
+  }
+  return keywords;
+}
+
+function getRelevantMemorySnippets(projectDir, userPrompt) {
+  const keywords = extractKeywords(userPrompt);
+  if (keywords.length === 0) return null;
+
+  const memoryPath = path.join(projectDir, '.claude', 'memory', 'memory.md');
+  if (!fs.existsSync(memoryPath)) return null;
+
+  let content;
+  try {
+    content = fs.readFileSync(memoryPath, 'utf8');
+  } catch (e) {
+    return null;
+  }
+
+  const sections = parseMemorySections(content);
+  if (sections.length === 0) return null;
+
+  // Score each section by keyword overlap in body content
+  const scored = sections.map(section => {
+    const bodyLower = section.body.toLowerCase();
+    let score = 0;
+    for (const kw of keywords) {
+      // Count occurrences of keyword in body
+      let idx = 0;
+      while ((idx = bodyLower.indexOf(kw, idx)) !== -1) {
+        score++;
+        idx += kw.length;
+      }
+    }
+    return { ...section, score };
+  });
+
+  // Filter sections with score > 0 and sort descending
+  const matched = scored
+    .filter(s => s.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3);
+
+  if (matched.length === 0) return null;
+
+  // Build result with 2000 char cap
+  let result = '\n## Relevant Memory Snippets\n';
+  let charCount = result.length;
+  const CAP = 2000;
+
+  for (const section of matched) {
+    const snippet = `### ${section.heading}\n${section.body}\n\n`;
+    if (charCount + snippet.length > CAP) {
+      // Truncate to fit within cap
+      const remaining = CAP - charCount;
+      if (remaining > 50) {
+        result += snippet.slice(0, remaining - 4) + '...\n';
+      }
+      break;
+    }
+    result += snippet;
+    charCount += snippet.length;
+  }
+
+  return result;
+}
+
 async function main() {
   try {
     const hookData = await readStdin();
@@ -401,6 +530,13 @@ async function main() {
       const regressingReminder = buildRegressingReminder(projectDir);
       if (regressingReminder) {
         context += regressingReminder;
+      }
+
+      // Prompt-aware memory loading
+      const userPrompt = (hookData && (hookData.prompt || hookData.input)) || '';
+      const memorySnippets = getRelevantMemorySnippets(projectDir, userPrompt);
+      if (memorySnippets) {
+        context += memorySnippets;
       }
 
       // Output rules via additionalContext (hidden from user, seen by Claude)

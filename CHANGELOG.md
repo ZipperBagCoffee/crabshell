@@ -1,5 +1,8 @@
 # Changelog
 
+## 19.37.0
+- Feat: search-memory CLI enhancements — `--regex` flag, `--context=N`, `--limit=N` options; L1 structured output with entry/context display; increased default display limit to 20
+
 ## 19.36.0
 - Fix: sycophancy-guard.js HOOK_DATA fallback — guard failed silently when invoked through hook-runner.js (global settings path) because stdin was already consumed; added HOOK_DATA env var check matching pattern used by all other guard scripts
 

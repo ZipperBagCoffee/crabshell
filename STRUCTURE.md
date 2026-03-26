@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 19.35.0 | **Author**: TaWa | **License**: MIT
+**Version**: 19.37.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -255,6 +255,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 19.37.0 | search-memory CLI enhancements — `--regex`, `--context=N`, `--limit=N` flags; L1 structured entry/context display |
 | 19.36.0 | Fix: sycophancy-guard HOOK_DATA fallback — guard failed silently via hook-runner.js path; added env var check matching other guard scripts |
 | 19.35.0 | delta-processor background agent — non-blocking delta processing + lock file race condition prevention + foreground fallback |
 | 19.34.0 | verify-guard PreToolUse hook (block Final Verification without /verifying run) + skill-tracker verifying-called flag + N/A exception |

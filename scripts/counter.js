@@ -711,23 +711,39 @@ switch (command) {
     {
       const { searchMemory } = require('./search');
       const deep = args.includes('--deep');
+      const useRegex = args.includes('--regex');
+      const contextSize = parseInt(parseArg(args, 'context') || '2');
+      const limit = parseInt(parseArg(args, 'limit') || '20');
       const query = args.filter(a => !a.startsWith('--'))[0];
       if (!query) {
-        console.log('[MEMORY_KEEPER] Usage: search-memory <query> [--deep]');
+        console.log('[MEMORY_KEEPER] Usage: search-memory <query> [--deep] [--regex] [--context=N] [--limit=N]');
         break;
       }
-      const results = searchMemory(query, { deep });
+      const results = searchMemory(query, { deep, regex: useRegex, contextWindow: contextSize });
       if (results.length === 0) {
         console.log('[MEMORY_KEEPER] No results for "' + query + '"');
       } else {
         for (const r of results) {
-          console.log('\n[' + r.source + ']');
-          for (const m of r.matches.slice(0, 5)) {
-            if (m.line) console.log('  L' + m.line + ': ' + m.text);
-            else if (m.type) console.log('  [' + m.type + '] ' + m.content);
-            else console.log('  ' + m.file);
+          console.log('\n[' + r.source + '] (' + r.matches.length + ' matches)');
+          for (const m of r.matches.slice(0, limit)) {
+            if (m.entry) {
+              // L1 result with structured entry
+              console.log('  ' + m.file + ':');
+              console.log('    >>> [' + (m.entry.ts || '?') + '] ' + (m.entry.role || '?') + ': "' + m.entry.text + '"');
+              if (m.context && m.context.length > 0) {
+                for (const c of m.context) {
+                  console.log('    [ctx] [' + (c.ts || '?') + '] ' + (c.role || '?') + ': "' + c.text + '"');
+                }
+              }
+            } else if (m.line) {
+              console.log('  L' + m.line + ': ' + m.text);
+            } else if (m.type) {
+              console.log('  [' + m.type + '] ' + m.content);
+            } else {
+              console.log('  ' + m.file);
+            }
           }
-          if (r.matches.length > 5) console.log('  ... and ' + (r.matches.length - 5) + ' more');
+          if (r.matches.length > limit) console.log('  ... and ' + (r.matches.length - limit) + ' more');
         }
       }
     }
