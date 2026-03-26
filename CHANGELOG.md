@@ -1,5 +1,8 @@
 # Changelog
 
+## 19.48.0
+- refactor: lossless compression of RULES + COMPRESSED_CHECKLIST — 8 edits preserving all rule semantics (CLAUDE.md 169→161 lines, CHECKLIST scope defs removed, directive merges, interference merge, agent pairing/coherence/overcorrection compression)
+
 ## 19.47.0
 - feat: PROBLEM-SOLVING PRINCIPLES — Constraint Reporter (report constraints, never recommend surrender) + Cross-Domain Translation (characterize problem structure before same-domain tool substitution)
 - feat: SCOPE DEFINITIONS failure-context reframes for "Prefer action" and "Simplest approach"

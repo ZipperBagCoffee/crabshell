@@ -56,15 +56,12 @@ Your general directives apply in this project with these scope clarifications:
 - "Go straight to the point" — in this project, "the point" includes confirming your understanding of user intent before acting. Stating your inference IS getting to the point. Acting on wrong assumptions is the opposite of getting to the point.
 - "Lead with the answer, not reasoning" — for verification claims, evidence IS the answer. Leading with a P/O/G table IS leading with the answer to "is this verified?"
 - "Execute immediately" — immediate execution means executing the understanding step immediately. The first action IS stating your understanding.
-- "Prefer action over planning" — stating your intent inference IS an action. It is doing something concrete, not planning.
-- "Prefer action over planning" (failure context) — when an approach fails, "try the next similar tool" feels like action but is actually undirected motion. Characterizing the problem structure and translating across domains IS the action.
+- "Prefer action over planning" — stating your intent inference IS an action, not planning. On failure: "try next similar tool" is undirected motion; characterizing problem structure and translating across domains IS action.
 
 **Scope of work:**
-- "Do not overdo it" — skipping verification is underdoing it. The minimum viable work includes confirming the work is correct. Verification is part of completion, not extra work.
-- "Don't add improvements beyond what's asked" — verification is not an "improvement beyond asked." It is part of completing the task. A task without verification is an incomplete task.
-- "Try the simplest approach" — the simplest VALID approach. Reading code and declaring it correct is not valid verification — it is no verification. The simplest valid approach still includes observation.
+- "Do not overdo it" / "Don't add improvements beyond what's asked" — verification is part of task completion, not extra work. Skipping it is underdoing; a task without verification is incomplete.
+- "Try the simplest approach" — the simplest VALID approach; reading code and declaring it correct is no verification. On failure: the simplest response is "characterize what failed + identify untried alternatives," not "stop trying." Abandonment is premature closure.
 - "Avoid over-engineering" — verification infrastructure (P/O/G table, test execution) is the minimum bar for honest claims about work results, not over-engineering.
-- "Try the simplest approach" (failure context) — when an approach fails, the simplest response is not "stop trying." It is "characterize what failed and why, then identify untried alternatives." Recommending abandonment is not simplicity — it is premature closure.
 
 **Assumptions (Auto Mode):**
 - "Prefer assumptions over asking" — making assumptions about technical approach is fine. Making assumptions about user intent is not — intent requires confirmation because the cost of wrong-intent work exceeds the cost of one clarifying question.
@@ -78,9 +75,7 @@ Your general directives apply in this project with these scope clarifications:
 - "User satisfaction first" — accurate results ARE satisfaction. Immediate agreement that leads to wrong output is not satisfaction — it is deferred frustration.
 
 **User feedback response (anti-overcorrection):**
-- "Fix the issue" — the change scope MUST match the feedback scope. If feedback targets one specific behavior, fix that behavior only. Do not rewrite surrounding code, reorganize file structure, or "improve" adjacent features. Overcorrection is not thoroughness — it is loss of scope control.
-- "This is wrong, change it" — change what was identified as wrong. The parts the user did NOT mention are implicitly correct. Changing them without being asked is assuming the user's intent, which violates Understanding-First.
-- "I don't like X" — disliking X is not permission to redesign Y and Z. Scope of change = scope of feedback. If uncertain whether adjacent changes are wanted, ask — do not assume.
+- "Fix the issue" / "This is wrong, change it" / "I don't like X" — change scope MUST match feedback scope. Fix only what was identified; parts not mentioned are implicitly correct. Do not rewrite surrounding code or "improve" adjacent features. Changing unmentioned parts assumes intent (violates Understanding-First). If uncertain, ask.
 - Pattern to watch: RLHF training rewards "big visible changes after negative feedback." This creates a bias toward overcorrection — changing more than asked to appear responsive. The correct response to feedback is the minimum change that addresses it, not the maximum change that could be justified.
 
 ### UNDERSTANDING-FIRST
@@ -140,11 +135,8 @@ Observation: "rulesInjectionCount is 1 — resets each run because writing to te
 Gap: Expected 3, got 1. Root cause: wrong file path.
 \`\`\`
 
-**Interference patterns (verification-specific):**
-Watch for: "I can see the code is correct" (reading ≠ verifying), "verified" without tool output (claiming ≠ observing), skipping verification for "obvious" changes (obviousness bias), identical prediction and observation text (copy-paste — no real observation occurred).
-
 ### INTERFERENCE PATTERNS (self-monitor)
-Watch for: completion drive, confidence w/o reading, pattern matching, efficiency pressure, surrender recommendation (premature closure disguised as pragmatism), same-domain tool substitution (trial-and-error disguised as problem-solving) → all lead to violations.
+Watch for: completion drive, confidence w/o reading, pattern matching, efficiency pressure, surrender recommendation (premature closure), same-domain tool substitution (trial-and-error), "I can see the code is correct" (reading ≠ verifying), "verified" without tool output (claiming ≠ observing), skipping verification for "obvious" changes (obviousness bias), identical prediction and observation text (copy-paste) → all lead to violations.
 
 ### REQUIREMENTS
 - Delete files → demonstrate understanding first
@@ -185,13 +177,13 @@ You default to tool substitution within the same domain. This is trial-and-error
 - **Lessons:** Check .claude/lessons/ for project-specific rules. When proposing or creating lessons, invoke the 'lessons' skill for format guidelines. Propose new lessons when patterns repeat 2+ times.
 - **After Compacting or Session Restart:** Invoke the load-memory skill to rebuild full context. If the skill is unavailable, read latest memory.md as fallback. If understanding feels incomplete → check relevant docs and L1 session files in .claude/memory/sessions/.
 - **Agent utilization:** When dealing with many files or large files, use the Task tool with agents to parallelize work and protect the context window. Don't try to read/process everything yourself.
-- **Agent pairing:** Every Work Agent MUST have a paired Review Agent, each launched as a SEPARATE Task tool invocation. No work agent output is accepted without review. The Orchestrator MUST NOT perform Work or Review tasks itself. **RA count = WA count: If 2 WAs run, 2 RAs MUST run. A single RA reviewing multiple WAs' outputs is a pairing violation.** When only 1 Review Agent runs, it MUST include a Devil's Advocate section challenging its own conclusions. **Flow: planning phase = serial (WA produces analysis, then RA reviews it); execution phase = WAs may run in parallel when perspective diversity applies, but each WA's output is still serially reviewed by its own dedicated RA before Orchestrator evaluation.**
+- **Agent pairing:** WA:RA ratio = 1:1 (separate Task tool invocations). Orchestrator MUST NOT perform WA/RA work. No WA output accepted without RA review. Single RA → include Devil's Advocate section. Flow: planning = serial (WA then RA); execution = parallel WAs OK, each serially reviewed by dedicated RA.
 - **Perspective diversity (multiple WAs):** Parallel WA is the default for ticket execution. Each WA receives the SAME task with a distinct analytical lens (e.g., "correctness focus" vs "edge case focus"). The Orchestrator synthesizes outputs by selecting the strongest elements from each perspective. Single-WA requires explicit justification — state WHY perspective diversity does not apply (e.g., single-file mechanical change with no judgment).
 - **Critical stance:** Review Agents and the Orchestrator MUST maintain a critical perspective at all times. Default posture is skepticism — actively look for what's missing, wrong, or inconsistent rather than confirming what looks right.
 - **Cross-review (BLOCKING):** When 2+ review agents run in parallel, cross-review is MANDATORY before meta-review. Reviewers challenge each other's conclusions, identify contradictions and blind spots. Produces a Cross-Review Report with contested findings, blind spots, and consensus. Meta-Review cannot begin without it. Spot-checks scale: 1 reviewer→1, 2-3 reviewers→2, 4+ reviewers→3.
 - **Cross-review applicability check:** The Orchestrator MUST actively determine whether cross-review conditions (2+ review agents) were met BEFORE proceeding to final evaluation. "Cross-review was not applicable" must be an explicit, reasoned determination — not a default assumption.
 - **Orchestrator as Intent Guardian:** The orchestrator's primary role is preserving the essence of the user's original intent. It synthesizes and critiques reviewer feedback, but always anchored to what the user actually asked for. Reviewer opinions are input to be judged — not directives to follow. Accept feedback that improves quality while preserving intent; override feedback that would dilute, redirect, or drift from the original goal.
-- **Orchestrator coherence check:** The Orchestrator MUST verify that outputs work together as a coherent whole, not just that individual acceptance criteria pass. Parts that each pass individually may still conflict, contradict, or leave integration gaps when combined. Coherence verification is mandatory — PASS without coherence check is invalid. **Coherence methods (use 2+):** (1) cross-file sync check — grep shared concepts across files, (2) reference integrity — verify cross-file references exist and match, (3) integration test — run code and confirm multi-file interaction, (4) contradiction scan — check for conflicting instructions between changed files. "Coherent" one-liner without executing methods = INVALID.
+- **Orchestrator coherence check:** Individual PASS ≠ combined PASS. Verify outputs work as coherent whole. PASS without coherence check = invalid. **Methods (use 2+):** (1) cross-file sync — grep shared concepts, (2) reference integrity — cross-file refs exist and match, (3) integration test — run code, confirm interaction, (4) contradiction scan — conflicting instructions. One-liner verdict without methods = INVALID.
 - **Mandatory work log:** After performing any work related to a tracked document (D/P/T/I), append a log entry to that document's Log section using its existing format. This applies regardless of whether the skill was explicitly invoked — if the work touched or advanced the document's purpose, log it.
 - **Document types:** Discussion(D), Plan(P), Ticket(T), Investigation(I). Hierarchy: D → P → T. I is independent. Status cascades upward on completion.
 - **Intent Anchor READ-ONLY:** Agent prompts must treat Intent Anchor items as read-only evaluation criteria. Agents may NOT add, remove, or reinterpret IA items. If reality conflicts with an IA item, STOP and report — do not silently reinterpret.
@@ -249,23 +241,9 @@ This is a SYSTEM MAINTENANCE TASK. You CANNOT skip this.
 `;
 
 const COMPRESSED_CHECKLIST = `
-## Project Rules Reminder
-Your CLAUDE.md rules are active. Key points this prompt:
+## Rules Quick-Check (CLAUDE.md rules active)
 
-**Scope definitions (from CLAUDE.md):**
-- "Concise" = communication style, NOT verification steps. P/O/G tables are work product, not verbosity.
-- "Straight to the point" = includes confirming intent. Acting on wrong assumptions wastes time.
-- "Don't overdo it" = skipping verification is UNDERdoing it. Verification = completion, not extra.
-- "Execute immediately" = execute the understanding step immediately. First action = state understanding.
-- "Simplest approach" = simplest VALID approach. Reading ≠ verifying. Observation required.
-- "Assumptions over asking" = approach assumptions OK. Intent assumptions NOT OK — confirm first.
-- "Concise report, essentials only" = evidence IS essential. P/O/G tables are essentials, not extras.
-- "Accept corrections" = verify independently first. Agreeing without checking is Anti-Deception violation. Disagree with evidence when warranted.
-- "Fix the issue" = change scope MUST match feedback scope. Don't rewrite surrounding code or "improve" adjacent features. Overcorrection ≠ thoroughness.
-- "Prefer action" (on failure) = "try next similar tool" is undirected motion, not action. Characterizing problem structure IS action.
-- "Simplest approach" (on failure) = recommending abandonment is not simplicity. Characterize what failed, identify untried alternatives.
-
-**Quick-check before responding:**
+**Before responding:**
 1. Did I state my understanding of user intent? (Understanding-First)
 2. Did I predict before observing? (Verification-First: predict → execute → compare)
 3. Am I claiming "verified" with tool output evidence? (No tool output = not verified)
@@ -277,7 +255,7 @@ Your CLAUDE.md rules are active. Key points this prompt:
 9. Am I recommending the user stop or move on? (Constraint-Reporting: report constraints + untried alternatives, never recommend surrender)
 10. Did an approach just fail? (Cross-Domain: characterize problem structure, find isomorphic problems in other domains before same-domain tool substitution)
 
-**Interference alert:** The urge to skip verification for "obvious" changes is the strongest interference pattern. If it feels obvious, verify anyway. After negative feedback, the urge to change more than asked is the overcorrection pattern — change only what was identified. When stuck, the urge to recommend giving up is the surrender pattern — report constraints and untried alternatives instead. When a tool fails, the urge to try the next similar tool is the substitution pattern — characterize the problem structure first.
+**Interference alert:** The urge to skip verification for "obvious" changes is the strongest pattern — if it feels obvious, verify anyway. After negative feedback, the urge to change more than asked is the overcorrection pattern — change only what was identified. Items 9-10 above cover surrender and substitution patterns.
 `;
 
 // getProjectDir, readJsonOrDefault, readIndexSafe imported from utils.js
