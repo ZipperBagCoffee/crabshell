@@ -1,5 +1,8 @@
 # Changelog
 
+## 19.36.0
+- Fix: sycophancy-guard.js HOOK_DATA fallback — guard failed silently when invoked through hook-runner.js (global settings path) because stdin was already consumed; added HOOK_DATA env var check matching pattern used by all other guard scripts
+
 ## 19.35.0
 - Feat: delta-processor background agent — non-blocking delta processing (summarize + validate + append + mark-updated + cleanup)
 - Feat: memory-delta SKILL.md rewritten to use delta-processor with run_in_background, lock file check, foreground fallback
