@@ -1,4 +1,4 @@
-# Memory Keeper Architecture (v19.24.0)
+# Memory Keeper Architecture (v19.49.0)
 
 ## Overview
 
@@ -24,6 +24,11 @@ The plugin's RULES section includes Scope Definitions that reframe Claude's buil
 - "Don't overdo it" — skipping verification is underdoing it
 - "Simplest approach" — simplest VALID approach; reading is not verifying
 
+### PROBLEM-SOLVING PRINCIPLES
+Two meta-principles guide Claude's approach to obstacles:
+- **Constraint Reporting**: When hitting a limitation, report the constraint clearly — never recommend surrendering or abandoning the goal. The user decides whether to change direction.
+- **Cross-Domain Translation**: Before substituting a same-domain tool, characterize the problem's abstract structure first. This enables finding solutions from adjacent domains that may fit better.
+
 ### Dual Injection Optimization
 - **CLAUDE.md** (session start): Full RULES text (~5000 tokens) synced via `syncRulesToClaudeMd()` with marker-based replacement
 - **additionalContext** (every prompt): COMPRESSED_CHECKLIST (~300 tokens) — a lightweight reminder of key rules, scope definitions, and quick-check questions
@@ -39,14 +44,19 @@ The plugin's RULES section includes Scope Definitions that reframe Claude's buil
 |  +---------------+  +-------------------+  +--------------+  +----------+|
 |  | SessionStart  |  | UserPromptSubmit  |  | PostToolUse  |  |SessionEnd||
 |  | load-memory   |  | inject-rules      |  | counter check|  |counter   ||
-|  +-------+-------+  +--------+----------+  +------+-------+  |  final   ||
-|  |               |                  |                |         +----+-----+|
-|  |  +-----------+--+                |                |              |      |
-|  |  | PreToolUse   |                |                |              |      |
-|  |  | (Write|Edit) |                |                |              |      |
-|  |  | regressing-  |                |                |              |      |
-|  |  | guard.js     |                |                |              |      |
-|  |  +------+-------+                |                |              |      |
+|  +-------+-------+  +--------+----------+  | skill-tracker|  |  final   ||
+|  |               |                  |       +------+-------+  +----+-----+|
+|  |  +-----------+--+  +----------+  |              |              |      |
+|  |  | PreToolUse   |  | Stop     |  |              |              |      |
+|  |  | (Write|Edit) |  |sycophancy|  |              |              |      |
+|  |  | regressing-  |  | -guard.js|  |              |              |      |
+|  |  | guard.js     |  +----------+  |              |              |      |
+|  |  | docs-guard.js|                |              |              |      |
+|  |  | verify-guard |                |              |              |      |
+|  |  | (Read|Grep|  |                |              |              |      |
+|  |  |  Glob|Bash)  |                |              |              |      |
+|  |  | path-guard.js|                |              |              |      |
+|  |  +------+-------+                |              |              |      |
 +----------+-+------------------------+----------------+--------------+-----+
              |                        |                |              |
              v                        v                v              v
@@ -58,10 +68,12 @@ The plugin's RULES section includes Scope Definitions that reframe Claude's buil
 |  | - Load memory.md   |  | - syncRulesToClaudeMd() (RULES→CLAUDE.md) |  |
 |  | - Load L3 summaries|  | - Inject COMPRESSED_CHECKLIST per prompt   |  |
 |  | - Load project.md  |  |   (~300 tokens via additionalContext)      |  |
-|  | - ensureGlobalHooks|  | - Full RULES only on error fallback       |  |
-|  | - Write MEMORY.md  |  | - Detect pending delta → INSTRUCTION      |  |
-|  |   warning          |  | - Detect pending rotation → INSTRUCTION   |  |
-|  +--------------------+  | - Detect regressing → phase reminder      |  |
+|  | - Write MEMORY.md  |  | - Inject Project Concept (first 3 lines)  |  |
+|  |   warning          |  | - Inject prompt-aware memory snippets     |  |
+|  +--------------------+  | - Full RULES only on error fallback       |  |
+|                          | - Detect pending delta → INSTRUCTION      |  |
+|                          | - Detect pending rotation → INSTRUCTION   |  |
+|                          | - Detect regressing → phase reminder      |  |
 |                          +--------------------------------------------+  |
 |  +--------------------+  +--------------------------------------------+  |
 |  | counter.js         |  | regressing-guard.js (PreToolUse)          |  |
@@ -152,7 +164,6 @@ The plugin's RULES section includes Scope Definitions that reframe Claude's buil
 1. SessionStart
    └─> load-memory.js
        ├─> Load memory.md + L3 summaries + project files
-       ├─> ensureGlobalHooks() — register hooks in settings.json
        └─> ensureAutoMemoryWarning() — write MEMORY.md warning
 
 2. UserPromptSubmit (every prompt)
@@ -160,6 +171,8 @@ The plugin's RULES section includes Scope Definitions that reframe Claude's buil
        ├─> syncRulesToClaudeMd() — sync full RULES to CLAUDE.md (marker-based)
        ├─> Inject COMPRESSED_CHECKLIST (~300 tokens) via additionalContext
        │   (Full RULES ~5000 tokens only on error fallback)
+       ├─> Inject Project Concept (first 3 lines of project.md) via additionalContext
+       ├─> Inject prompt-aware memory snippets (keyword-match top 3 sections)
        ├─> Check for pending delta (delta_temp.txt exists + deltaReady flag)
        │   └─> If yes: Inject DELTA_INSTRUCTION → Claude executes memory-delta skill
        ├─> Check for pending rotation (summaryGenerated: false)
@@ -170,21 +183,32 @@ The plugin's RULES section includes Scope Definitions that reframe Claude's buil
        └─> Output indicator: [rules injected], [rules + delta pending],
             [rules + rotation pending], [REGRESSING ACTIVE]
 
-3. PreToolUse (Write|Edit) — v19.23.0+
-   └─> regressing-guard.js
-       ├─> Read regressing-state.json
-       ├─> If regressing active + phase=planning + target is docs/plan/
-       │   └─> BLOCK (exit 2): must use /planning skill instead
-       ├─> If regressing active + phase=ticketing + target is docs/ticket/
-       │   └─> BLOCK (exit 2): must use /ticketing skill instead
-       └─> Otherwise: allow (exit 0), fail-open on errors
+3. PreToolUse — multiple guards
+   ├─> regressing-guard.js (Write|Edit) — v19.23.0+
+   │   ├─> If regressing active + phase=planning + target is docs/plan/
+   │   │   └─> BLOCK (exit 2): must use /planning skill instead
+   │   ├─> If regressing active + phase=ticketing + target is docs/ticket/
+   │   │   └─> BLOCK (exit 2): must use /ticketing skill instead
+   │   └─> Otherwise: allow (exit 0), fail-open on errors
+   ├─> docs-guard.js (Write|Edit) — v19.33.0+
+   │   └─> Block writes to docs/ subdirectories without active skill flag
+   ├─> verify-guard.js (Write|Edit) — v19.34.0+
+   │   └─> Block Final Verification writes without prior /verifying run call
+   └─> path-guard.js (Read|Grep|Glob|Bash) — v19.31.0+
+       └─> Block operations targeting wrong .claude/memory/ path
+
+3.5. Stop — v19.29.0+
+   └─> sycophancy-guard.js
+       └─> Detect agreement-without-verification patterns → block with re-examination
 
 4. PostToolUse (all tools)
-   └─> counter.js check
-       ├─> Detect regressing skill calls → auto-advance phase (v19.23.0)
-       ├─> Increment counter
-       ├─> checkAndRotate() — archive if > 23,750 tokens
-       └─> At threshold: create/update L1 → extractDelta() → creates delta_temp.txt
+   ├─> counter.js check
+   │   ├─> Detect regressing skill calls → auto-advance phase (v19.23.0)
+   │   ├─> Increment counter
+   │   ├─> checkAndRotate() — archive if > 23,750 tokens
+   │   └─> At threshold: create/update L1 → extractDelta() → creates delta_temp.txt
+   └─> skill-tracker.js (Skill) — v19.33.0+
+       └─> Set skill-active flag on Skill tool calls (TTL-based, 5min expiry)
 
 5. SessionEnd
    └─> counter.js final
@@ -251,15 +275,22 @@ For complex work, the plugin enforces a 3-layer agent architecture:
     +--------------------+
 ```
 
+Agent orchestration rules (11 rules covering pairing, cross-review, coherence, critical stance, overcorrection, etc.) are extracted to `.claude/rules/agent-orchestration.md` — an always-loaded rules file that provides structural separation from CLAUDE.md (v19.49.0).
+
 ## Scripts Reference
 
 | Script | Hook | Purpose |
 |--------|------|---------|
 | `find-node.sh` | (bootstrap) | Cross-platform Node.js locator, 6-stage fallback, `exec` passthrough |
-| `load-memory.js` | SessionStart | Load memory hierarchy, register hooks, MEMORY.md warning |
+| `load-memory.js` | SessionStart | Load memory hierarchy, MEMORY.md warning |
 | `inject-rules.js` | UserPromptSubmit | Dual injection (CLAUDE.md + additionalContext), delta/rotation/regressing detection |
 | `counter.js` | PostToolUse, SessionEnd | Main engine: counter, L1 creation, rotation, regressing phase detection |
 | `regressing-guard.js` | PreToolUse (Write\|Edit) | Block direct plan/ticket writes during active regressing; force Skill tool |
+| `docs-guard.js` | PreToolUse (Write\|Edit) | Block writes to docs/ subdirectories without active skill flag |
+| `verify-guard.js` | PreToolUse (Write\|Edit) | Block Final Verification writes without prior /verifying run call |
+| `path-guard.js` | PreToolUse (Read\|Grep\|Glob\|Bash) | Block Read/Grep/Glob/Bash targeting wrong .claude/memory/ path |
+| `sycophancy-guard.js` | Stop | Detect agreement-without-verification patterns; block with re-examination instruction |
+| `skill-tracker.js` | PostToolUse (Skill) | Set skill-active flag on Skill tool calls (TTL-based, 5min expiry) |
 | `regressing-state.js` | (library) | Phase tracker: getState, buildReminder, detectSkillCall, advancePhase |
 | `extract-delta.js` | (library) | L1 delta extraction, timestamp watermarks, temp file management |
 | `memory-rotation.js` | (library) | Token-based rotation: archive at 23,750 tokens, 2,375 token carryover |
@@ -283,6 +314,9 @@ For complex work, the plugin enforces a 3-layer agent architecture:
 | INDEX_FILE | memory-index.json | Rotation tracking + counter |
 | MEMORY_FILE | memory.md | Active memory file |
 | REGRESSING_STATE_FILE | regressing-state.json | Regressing cycle tracker |
+| SKILL_ACTIVE_FILE | skill-active.json | TTL-based skill flag for docs-guard/verify-guard |
+| DELTA_PROCESSING_LOCK | delta-processing.lock | Lock file for delta-processor background agent |
+| DELTA_LOCK_STALE_MS | 300000 (5min) | Stale lock threshold for race condition prevention |
 
 ## Memory Rotation Flow
 
@@ -368,6 +402,31 @@ Save to *.summary.json
 
 | Version | Key Changes |
 |---------|-------------|
+| 19.49.0 | Per-prompt project concept anchor; extract 11 agent orchestration rules to .claude/rules/agent-orchestration.md; reduce emphasis markers 19→5 |
+| 19.48.0 | Lossless compression of RULES + COMPRESSED_CHECKLIST — 8 edits preserving all rule semantics (CLAUDE.md 169→161 lines) |
+| 19.47.0 | PROBLEM-SOLVING PRINCIPLES — Constraint Reporter + Cross-Domain Translation; SCOPE DEFINITIONS failure-context reframes |
+| 19.46.0 | Fix: replace Bash write/delete with Node.js fs in all SKILL.md files |
+| 19.45.0 | Feat: sycophancy-guard context-aware detection with position-based evidence, zone stripping, 2-pass detection |
+| 19.44.0 | Fix: path-guard regex handles spaces in quoted paths — two-phase extraction method |
+| 19.43.0 | Fix: remove ensureGlobalHooks() — was auto-registering duplicate hooks in global settings.json |
+| 19.42.0 | Feat: lessons skill enforces actionable rule format — Problem/Rule/Example template |
+| 19.41.0 | Fix: replace Bash rm with Node fs.unlinkSync in clear-memory/delta-processor to avoid permission prompts |
+| 19.40.0 | Chore: remove orphaned verifying-called.json flag code from skill-tracker, load-memory, constants |
+| 19.39.0 | Feat: verify-guard deterministic execution; P/O/G Type column (behavioral/structural) with Evidence Gate; IA Source Mapping Table |
+| 19.38.0 | Fix: HOOK_DATA fallback for path-guard.js and regressing-guard.js; sync-rules-to-claude.js duplicate MARKER_START |
+| 19.37.0 | Feat: search-memory CLI enhancements — --regex, --context=N, --limit=N; L1 structured output |
+| 19.36.0 | Fix: sycophancy-guard.js HOOK_DATA fallback for hook-runner.js invocation path |
+| 19.35.0 | Feat: delta-processor background agent — non-blocking delta processing; DELTA_PROCESSING_LOCK + DELTA_LOCK_STALE_MS constants |
+| 19.34.0 | Feat: verify-guard PreToolUse hook — block Final Verification writes without /verifying run; skill-tracker extension |
+| 19.33.0 | Feat: docs-guard PreToolUse hook + skill-tracker PostToolUse hook — TTL-based skill flag (5min expiry) |
+| 19.32.0 | Feat: RA pairing enforcement (WA N = RA N), concrete coherence verification methods, overcorrection SCOPE DEFINITIONS |
+| 19.31.0 | Feat: path-guard PreToolUse hook — block Read/Grep/Glob/Bash targeting wrong .claude/memory/ path |
+| 19.30.0 | Feat: P/O/G unification, R→I stale refs fix, stop_hook_active guard, RA Independence Protocol |
+| 19.29.0 | Feat: Stop hook sycophancy guard — detect agreement-without-verification patterns |
+| 19.28.0 | Feat: ticket execution ordering guide; final coherence verification for regressing |
+| 19.27.0 | Feat: COMPRESSED_CHECKLIST coherence; regressing 4-factor evaluation (correctness/completeness/coherence/improvement) |
+| 19.26.0 | Feat: regressing execution quality — result improvement cycles, multi-WA perspective diversity, anti-sycophancy framing |
+| 19.25.0 | Feat: regressing 1:N Plan:Ticket — ticketIds array; execution/feedback phases display all ticket IDs |
 | 19.24.0 | SCOPE DEFINITIONS framing + COMPRESSED_CHECKLIST (~300 token per-prompt injection) + regressing-guard PreToolUse hook + skill Scope Notes |
 | 19.23.0 | Regressing phase tracker — hook-based auto-enforcement of Skill tool usage, regressing-state.js, regressing-guard.js |
 | 19.22.0 | Feat: Verification tool check procedure in regressing/ticketing/light-workflow — /verifying invoked as procedural step, not rule |

@@ -1,4 +1,4 @@
-# Memory Keeper User Manual (v19.24.0)
+# Memory Keeper User Manual (v19.49.0)
 
 ## Why Do You Need This?
 
@@ -39,6 +39,8 @@ Memory Keeper solves this problem.
 - Auto-rotation when `memory.md` exceeds ~23,750 tokens
 - Rules re-injected every prompt via COMPRESSED_CHECKLIST
 - CLAUDE.md rules section kept in sync automatically
+- Project concept anchor: `project.md` injected into context every prompt for drift prevention
+- Prompt-aware memory snippets loaded into context based on relevance
 
 **3. Session End:**
 - Full conversation backed up (`.l1.jsonl`)
@@ -92,7 +94,7 @@ All available skills (slash commands):
 |---------|-------------|
 | `/memory-keeper:save-memory` | Trigger an immediate memory save |
 | `/memory-keeper:load-memory` | Reload memory context (useful after manual edits or compaction) |
-| `/memory-keeper:search-memory keyword` | Search past sessions across L1/L2/L3 layers |
+| `/memory-keeper:search-memory keyword` | Search past sessions across L1/L2/L3 layers. Flags: `--regex`, `--context=N`, `--limit=N` |
 | `/memory-keeper:clear-memory` | Clean up old memory files |
 
 ### Structured Work (D/P/T/I Documents)
@@ -189,7 +191,28 @@ The plugin uses Claude Code hooks to run automatically:
 | `SessionStart` | `load-memory.js` | Session begins | Loads memory.md, L3 summaries, project files into context |
 | `PostToolUse` | `counter.js check` | After each tool use | Increments counter; triggers auto-save + delta extraction at interval |
 | `PreToolUse` | `regressing-guard.js` | Before Write/Edit | Enforces phase-based restrictions during active regressing sessions |
+| `Stop` | `sycophancy-guard.js` | Before response finalized | Detects agreement-without-verification patterns in responses |
+| `PreToolUse` | `docs-guard.js` | Before Write/Edit to docs/ | Blocks writes to docs/ directories without active skill flag |
+| `PreToolUse` | `verify-guard.js` | Before Write/Edit to tickets | Blocks Final Verification writes without prior `/verifying` run |
+| `PreToolUse` | `path-guard.js` | Before Read/Grep/Glob/Bash | Blocks operations targeting wrong `.claude/memory/` path |
+| `PostToolUse` | `skill-tracker.js` | After Skill tool call | Sets skill-active flag on Skill tool calls for guard scripts |
 | `SessionEnd` | `counter.js final` | Session ends | Creates final L1 backup, extracts remaining delta |
+
+---
+
+## Guards
+
+Guard scripts are PreToolUse/Stop hooks that prevent common mistakes:
+
+| Guard | What It Protects Against |
+|-------|------------------------|
+| `sycophancy-guard.js` | Claude agreeing with user claims without independently verifying them first |
+| `docs-guard.js` | Direct writes to `docs/` directories outside of an active skill (discussing, planning, ticketing, etc.) |
+| `verify-guard.js` | Writing "Final Verification" results to ticket files without actually running `/verifying` first |
+| `path-guard.js` | File operations targeting a wrong `.claude/memory/` path (e.g., a different project's memory directory) |
+| `skill-tracker.js` | Supporting guard: sets the `skill-active` flag when a Skill tool call is detected, so `docs-guard` and `verify-guard` know when writes are authorized |
+
+Guards run automatically via hooks. No configuration needed.
 
 ---
 
@@ -206,8 +229,9 @@ The plugin automatically manages a rules section in your project's `CLAUDE.md`:
 - Your project rule 2
 ```
 
-- **Above the line**: Auto-managed by the plugin. Updated every prompt via `syncRulesToClaudeMd()`. Contains PRINCIPLES, SCOPE DEFINITIONS, UNDERSTANDING-FIRST, VERIFICATION-FIRST, INTERFERENCE PATTERNS, REQUIREMENTS, VIOLATIONS, and ADDITIONAL RULES.
+- **Above the line**: Auto-managed by the plugin. Updated every prompt via `syncRulesToClaudeMd()`. Contains PRINCIPLES, SCOPE DEFINITIONS, UNDERSTANDING-FIRST, VERIFICATION-FIRST, PROBLEM-SOLVING PRINCIPLES, INTERFERENCE PATTERNS, REQUIREMENTS, VIOLATIONS, and ADDITIONAL RULES.
 - **Below the line**: Your project-specific content. The plugin never modifies anything below this marker.
+- **Agent rules**: `.claude/rules/agent-orchestration.md` contains 11 agent orchestration rules (pairing, perspective diversity, cross-review, coherence, etc.) and is always loaded by Claude Code automatically.
 
 ### Dual Injection
 
@@ -261,6 +285,7 @@ When Claude notices repeated patterns (2+ times), it proposes a lesson:
 - Saved to `.claude/lessons/` as markdown files
 - Checked on each session for project-specific rules
 - Use `/memory-keeper:lessons` for format guidelines when creating lessons manually
+- Lessons must follow the **Problem/Rule/Example** format — reflective narratives and abstract principles are rejected
 
 ---
 
@@ -291,6 +316,31 @@ L1 files are deduplicated automatically when created, but manual cleanup may som
 
 | Version | Claude Code | Node.js |
 |---------|-------------|---------|
+| 19.49.0 | 1.0+ | 18+ |
+| 19.48.0 | 1.0+ | 18+ |
+| 19.47.0 | 1.0+ | 18+ |
+| 19.46.0 | 1.0+ | 18+ |
+| 19.45.0 | 1.0+ | 18+ |
+| 19.44.0 | 1.0+ | 18+ |
+| 19.43.0 | 1.0+ | 18+ |
+| 19.42.0 | 1.0+ | 18+ |
+| 19.41.0 | 1.0+ | 18+ |
+| 19.40.0 | 1.0+ | 18+ |
+| 19.39.0 | 1.0+ | 18+ |
+| 19.38.0 | 1.0+ | 18+ |
+| 19.37.0 | 1.0+ | 18+ |
+| 19.36.0 | 1.0+ | 18+ |
+| 19.35.0 | 1.0+ | 18+ |
+| 19.34.0 | 1.0+ | 18+ |
+| 19.33.0 | 1.0+ | 18+ |
+| 19.32.0 | 1.0+ | 18+ |
+| 19.31.0 | 1.0+ | 18+ |
+| 19.30.0 | 1.0+ | 18+ |
+| 19.29.0 | 1.0+ | 18+ |
+| 19.28.0 | 1.0+ | 18+ |
+| 19.27.0 | 1.0+ | 18+ |
+| 19.26.0 | 1.0+ | 18+ |
+| 19.25.0 | 1.0+ | 18+ |
 | 19.24.0 | 1.0+ | 18+ |
 | 19.22.0 | 1.0+ | 18+ |
 | 19.20.0 | 1.0+ | 18+ |

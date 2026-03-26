@@ -55,7 +55,7 @@ With this setup, **Claude starts every new session knowing this information**.
 | `/memory-keeper:planning "topic"` | Create/update a plan document |
 | `/memory-keeper:ticketing P001 "topic"` | Create/update a ticket tied to a plan |
 | `/memory-keeper:investigating "topic"` | Multi-source multi-agent investigation |
-| `/memory-keeper:regressing "topic" N` | Run N cycles of D→P→T with verification-based optimization |
+| `/memory-keeper:regressing "topic" N` | Run N cycles of P→T wrapped by a single Discussion, with verification-based optimization |
 | `/memory-keeper:light-workflow` | Run the 11-phase agent orchestration workflow (standalone tasks) |
 | `/memory-keeper:verifying` | Create/run project-specific verification tools |
 | `/memory-keeper:lessons` | Check/create project-specific lessons |
@@ -112,7 +112,7 @@ Build pipeline: src → build → dist
 Coding conventions: ...
 ```
 
-- **Above the line**: Auto-managed by the plugin (updated on every session start)
+- **Above the line**: Auto-managed by the plugin (updated on every prompt)
 - **Below the line**: Your project-specific content (never modified by the plugin)
 
 > **Note:** The plugin also writes a warning to Claude Code's built-in `MEMORY.md` (at `~/.claude/projects/{project}/memory/MEMORY.md`) to prevent confusion between the two memory systems. This is separate from the plugin's own `memory.md`.
@@ -145,7 +145,9 @@ Coding conventions: ...
 
 ## Configuration
 
-`~/.claude/memory-keeper/config.json`:
+Global: `~/.claude/memory-keeper/config.json`
+Project: `.claude/memory/config.json` (takes precedence over global)
+
 ```json
 {
   "saveInterval": 15,
@@ -172,7 +174,7 @@ memory.md                 - Active rolling memory (loaded at startup)
 - **L1**: Raw transcripts refined to keep only meaningful content
 - **L2**: memory.md auto-rotates when too large, archives preserved
 - **L3**: AI-generated summaries of archived content
-- **Search**: `search-memory` traverses L3 → L2 → memory.md (add `--deep` for L1)
+- **Search**: `search-memory` traverses memory.md → L3 → L2 (add `--deep` for L1)
 
 ## Documentation
 
@@ -184,6 +186,12 @@ memory.md                 - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 19.49.0 | feat: per-prompt project concept anchor + refactor: extract agent orchestration rules to .claude/rules/, reduce emphasis markers, remove redundant negation clauses |
+| 19.48.0 | refactor: lossless compression of RULES + COMPRESSED_CHECKLIST — 8 edits preserving all rule semantics |
+| 19.47.0 | feat: PROBLEM-SOLVING PRINCIPLES — Constraint Reporter + Cross-Domain Translation; SCOPE DEFINITIONS failure-context reframes |
+| 19.46.0 | fix: replace Bash write/delete with Node.js fs in all SKILL.md files |
+| 19.45.0 | feat: sycophancy-guard context-aware detection with position-based evidence |
+| 19.44.0 | fix: path-guard regex handles spaces in quoted paths |
 | 19.43.0 | fix: remove ensureGlobalHooks() — duplicate hook registration in global settings.json on every SessionStart |
 | 19.42.0 | feat: lessons skill enforces actionable rule format — Problem/Rule/Example template, prohibits reflective narratives |
 | 19.41.0 | fix: replace Bash rm with Node fs.unlinkSync in clear-memory skill and delta-processor agent to avoid sensitive file permission prompts |
