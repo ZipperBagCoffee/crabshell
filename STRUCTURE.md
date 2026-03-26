@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 19.42.0 | **Author**: TaWa | **License**: MIT
+**Version**: 19.43.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -152,7 +152,6 @@ Session start loader:
 - Load hierarchical memory files
 - Load L3 summaries
 - Load rolling memory tail
-- `ensureGlobalHooks()`: Register hooks in settings.json with stable hook-runner.js using `process.execPath` for absolute node path (workaround for plugin hook bug)
 - `ensureAutoMemoryWarning()`: Write distinction warning to Claude Code's built-in MEMORY.md
 
 ### scripts/inject-rules.js
@@ -254,6 +253,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 19.43.0 | fix: remove ensureGlobalHooks() — duplicate hook registration in global settings.json on every SessionStart |
 | 19.42.0 | feat: lessons skill enforces actionable rule format — Problem/Rule/Example template, prohibits reflective narratives |
 | 19.41.0 | fix: replace Bash rm with Node fs.unlinkSync in clear-memory skill and delta-processor agent to avoid sensitive file permission prompts |
 | 19.40.0 | chore: remove orphaned verifying-called.json flag code (skill-tracker, load-memory, constants) |
