@@ -153,6 +153,7 @@ function searchL1Sessions(projectDir, matcher, options = {}) {
   // Accept both matcher object and legacy string
   if (typeof matcher === 'string') matcher = createMatcher(matcher);
   const contextWindow = options.contextWindow != null ? options.contextWindow : 2;
+  const maxPerFile = options.maxPerFile != null ? options.maxPerFile : 5;
   const sessionsDir = path.join(projectDir, '.claude', SESSIONS_DIR);
   if (!fs.existsSync(sessionsDir)) return [];
 
@@ -183,10 +184,12 @@ function searchL1Sessions(projectDir, matcher, options = {}) {
       }
     }
 
+    let fileMatchCount = 0;
     for (let i = 0; i < entries.length; i++) {
       const entry = entries[i];
       const searchable = getSearchableText(entry);
       if (!matcher.test(searchable)) continue;
+      if (++fileMatchCount > maxPerFile) break;
 
       // Build context window (entries before and after the match)
       const ctxStart = Math.max(0, i - contextWindow);
