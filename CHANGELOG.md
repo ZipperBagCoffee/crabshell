@@ -1,5 +1,8 @@
 # Changelog
 
+## 19.42.0
+- feat: lessons skill enforces actionable rule format — Problem/Rule/Example template, prohibits reflective narratives and abstract principles
+
 ## 19.41.0
 - fix: replace Bash rm with Node fs.unlinkSync in clear-memory skill and delta-processor agent to avoid sensitive file permission prompts
 

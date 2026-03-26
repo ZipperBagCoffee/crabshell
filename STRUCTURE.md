@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 19.41.0 | **Author**: TaWa | **License**: MIT
+**Version**: 19.42.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -254,6 +254,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 19.42.0 | feat: lessons skill enforces actionable rule format — Problem/Rule/Example template, prohibits reflective narratives |
 | 19.41.0 | fix: replace Bash rm with Node fs.unlinkSync in clear-memory skill and delta-processor agent to avoid sensitive file permission prompts |
 | 19.40.0 | chore: remove orphaned verifying-called.json flag code (skill-tracker, load-memory, constants) |
 | 19.39.0 | verify-guard deterministic execution (execSync run-verify.js, blocks on FAIL) + P/O/G Type column (behavioral/structural) + IA Source Mapping Table |

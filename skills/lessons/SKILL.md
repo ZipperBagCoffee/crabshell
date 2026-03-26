@@ -25,21 +25,30 @@ Lessons are stored locally in `.claude/lessons/` — they are project-specific a
 
 **Filename:** `YYYY-MM-DD_short-description.md`
 
-```markdown
-# [Short Title]
+**Required format for every lesson:**
 
-## Context
-[What happened, what was the task]
+```markdown
+# {Title — action verb, not description}
 
 ## Problem
-[What went wrong or what was repeatedly needed]
+{What went wrong — 1-2 sentences max}
 
-## Lesson
-[One or two sentences — the takeaway]
+## Rule
+{DO this / DON'T do that — imperative, context-free}
 
-## CLAUDE.md Rule (if applicable)
-[Condensed version for CLAUDE.md project-specific section]
+## Example
+Bad: {concrete example of the wrong way}
+Good: {concrete example of the right way}
 ```
+
+**Prohibited content:**
+- Reflective narratives ("completion drive caused...", "RLHF bias led to...")
+- Context-dependent explanations that require knowing the original failure
+- Abstract principles without concrete action ("be more careful about...", "be more mindful of...")
+- `## Context` / `## Lesson` sections (replaced by Problem / Rule / Example)
+
+**Quality test:** "Would a Claude in a completely different project understand what to DO from this lesson?"
+If NO → rewrite as context-free rule.
 
 ---
 
