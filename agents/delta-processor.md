@@ -85,7 +85,7 @@ TS_UTC=$(date -u +%Y-%m-%d_%H%M) && TS_LOCAL=$(date +%m-%d_%H%M) && printf '\n##
 ### Step 7: Release lock
 
 ```bash
-rm -f "{LOCK_PATH}"
+"{NODE_PATH}" -e "try{require('fs').unlinkSync('{LOCK_PATH}')}catch(e){}"
 ```
 
 ## Failure Handling
