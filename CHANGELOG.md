@@ -1,5 +1,9 @@
 # Changelog
 
+## 19.38.0
+- Fix: HOOK_DATA fallback for path-guard.js and regressing-guard.js
+- Fix: sync-rules-to-claude.js duplicate MARKER_START header
+
 ## 19.37.0
 - Feat: search-memory CLI enhancements — `--regex` flag, `--context=N`, `--limit=N` options; L1 structured output with entry/context display; increased default display limit to 20
 
