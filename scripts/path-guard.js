@@ -115,21 +115,36 @@ function checkPath(filePath, projectDir) {
  */
 function extractMemoryPathsFromCommand(command) {
   const paths = [];
-  // Match quoted and unquoted path-like strings containing .claude/memory/
-  // Pattern: optional prefix chars, then something/.claude/memory/something
-  const regex = /(?:["']?)([^\s"']*\.claude[/\\]memory[/\\][^\s"']*)/g;
   let match;
-  while ((match = regex.exec(command)) !== null) {
+
+  // Phase 1: Extract paths from quoted strings (handles spaces in paths)
+  // Match the full quoted content, then extract the path portion starting
+  // with a path-like prefix (drive letter, /, ., ~, $) through .claude/memory/...
+  const quotedRegex = /(["'])((?:(?!\1).)*)\1/g;
+  while ((match = quotedRegex.exec(command)) !== null) {
+    const content = match[2];
+    const pathMatch = content.match(/(?:[A-Za-z]:[/\\]|[/\\~$.])[^"']*?\.claude[/\\]memory[/\\]?[^"']*/);
+    if (pathMatch) {
+      paths.push(pathMatch[0]);
+    }
+  }
+
+  // Phase 2: Strip quoted strings, then extract unquoted paths (no spaces)
+  const stripped = command.replace(/(["'])(?:(?!\1).)*\1/g, ' ');
+
+  const unquotedRegex = /([^\s"']*\.claude[/\\]memory[/\\][^\s"']*)/g;
+  while ((match = unquotedRegex.exec(stripped)) !== null) {
     paths.push(match[1]);
   }
-  // Also check for paths where .claude/memory/ appears without trailing content
-  const simpleRegex = /(?:["']?)([^\s"']*\.claude[/\\]memory)\b/g;
-  while ((match = simpleRegex.exec(command)) !== null) {
-    // Avoid duplicates
+
+  // Phase 3: Paths ending at .claude/memory (no trailing content)
+  const unquotedSimple = /([^\s"']*\.claude[/\\]memory)\b/g;
+  while ((match = unquotedSimple.exec(stripped)) !== null) {
     if (!paths.some(p => p.startsWith(match[1]))) {
       paths.push(match[1] + '/');
     }
   }
+
   return paths;
 }
 

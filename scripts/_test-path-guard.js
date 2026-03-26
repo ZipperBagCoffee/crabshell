@@ -165,3 +165,57 @@ runTest('Glob: correct project path (allow)',
   { tool_name: 'Glob', tool_input: { path: 'C:/Users/chulg/Documents/memory-keeper-plugin/.claude/memory/', pattern: '*.md' } },
   false
 );
+
+// --- Cycle 3: Quoted paths with spaces ---
+
+function runTestWithDir(name, hookData, expectBlock, customProjectDir) {
+  const json = JSON.stringify(hookData);
+  try {
+    const result = execSync(
+      `"${nodePath}" "${scriptPath}"`,
+      {
+        input: json,
+        env: { ...process.env, CLAUDE_PROJECT_DIR: customProjectDir },
+        timeout: 5000,
+        encoding: 'utf8'
+      }
+    );
+    if (expectBlock) {
+      console.log(`FAIL: ${name} — expected block but got allow. stdout: ${result}`);
+    } else {
+      console.log(`PASS: ${name} — allowed (exit 0)`);
+    }
+  } catch (e) {
+    if (e.status === 2 && expectBlock) {
+      console.log(`PASS: ${name} — blocked (exit 2)`);
+    } else if (e.status === 2 && !expectBlock) {
+      console.log(`FAIL: ${name} — expected allow but got block. stdout: ${e.stdout}`);
+    } else {
+      console.log(`FAIL: ${name} — unexpected exit ${e.status}`);
+    }
+  }
+}
+
+runTestWithDir('Bash: double-quoted path with spaces (correct project — allow)',
+  { tool_name: 'Bash', tool_input: { command: 'cat "D:/Public Analysis/.claude/memory/file.md"' } },
+  false,
+  'D:/Public Analysis'
+);
+
+runTestWithDir('Bash: double-quoted path with spaces (wrong project — block)',
+  { tool_name: 'Bash', tool_input: { command: 'cat "D:/Other Project/.claude/memory/file.md"' } },
+  true,
+  'D:/Public Analysis'
+);
+
+runTestWithDir('Bash: single-quoted path with spaces (correct project — allow)',
+  { tool_name: 'Bash', tool_input: { command: "cat 'D:/Public Analysis/.claude/memory/file.md'" } },
+  false,
+  'D:/Public Analysis'
+);
+
+runTestWithDir('Bash: backslash quoted path with spaces (correct project — allow)',
+  { tool_name: 'Bash', tool_input: { command: 'cat "D:\\Public Analysis\\.claude\\memory\\file.md"' } },
+  false,
+  'D:/Public Analysis'
+);
