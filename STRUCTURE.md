@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 19.38.0 | **Author**: TaWa | **License**: MIT
+**Version**: 19.39.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -255,6 +255,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 19.39.0 | verify-guard deterministic execution (execSync run-verify.js, blocks on FAIL) + P/O/G Type column (behavioral/structural) + IA Source Mapping Table |
 | 19.38.0 | Fix: HOOK_DATA fallback for path-guard.js and regressing-guard.js; sync-rules-to-claude.js duplicate MARKER_START header |
 | 19.37.0 | search-memory CLI enhancements — `--regex`, `--context=N`, `--limit=N` flags; L1 structured entry/context display |
 | 19.36.0 | Fix: sycophancy-guard HOOK_DATA fallback — guard failed silently via hook-runner.js path; added env var check matching other guard scripts |

@@ -67,6 +67,13 @@ Then create the document:
 - IA-2: {second intent anchor item}
 (Finalized after confirmation with user)
 
+## IA Source Mapping
+| IA Item | User Statement (verbatim or near-verbatim) | Mapping Type |
+|---------|---------------------------------------------|-------------|
+
+**Unmapped check:** Every user-stated goal MUST map to at least one IA item. If any user statement has no IA mapping → HALT and ask user to confirm exclusion.
+Mapping Type: `direct` (user explicitly stated) or `inferred` (derived from context, requires user confirmation)
+
 ## Discussion Log
 
 ---
@@ -136,3 +143,4 @@ If the entry includes a status change, update the status column in `docs/discuss
 8. **Orchestrator reference obligation:** Orchestrator MUST reference this D document's Intent Anchor during P (planning) and T (execution) stages. IA items are read-only evaluation criteria and cannot be modified.
 9. **Regressing context passing:** In regressing mode, this D document serves as the top-level container for all cycles. The D stays open throughout all cycles and closes with the final report. Cycle feedback (T(n) → P(n+1)) bypasses D and goes directly between T and P documents. **When created for regressing mode, the Intent Anchor MUST include an item requiring '/verifying each cycle' — this anchors the verification tool check as a first-class IA requirement, not just a procedural step.**
 10. **Scope Note:** In this project, verification means closing the gap between belief and reality through observation (Predict → Execute → Compare). Evidence citations are required work product, not verbose output.
+11. **IA Source Mapping is mandatory for regressing mode.** Every IA item must trace to a user statement. The IA Source Mapping table must be populated before proceeding to the first cycle.
