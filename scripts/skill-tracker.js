@@ -62,26 +62,6 @@ function detectDocsSkillCall(hookData) {
 }
 
 /**
- * Detect if a Skill call is specifically "/verifying run" (not "create").
- * Returns true if args contain "run".
- */
-function isVerifyingRun(hookData) {
-  if (!hookData || hookData.tool_name !== 'Skill') return false;
-  const input = hookData.tool_input;
-  if (!input || typeof input !== 'object') return false;
-  const skill = input.skill;
-  if (typeof skill !== 'string') return false;
-
-  const skillName = skill.includes(':') ? skill.split(':').pop() : skill;
-  if (skillName !== 'verifying') return false;
-
-  const args = input.args;
-  if (typeof args !== 'string') return false;
-  // "run" must appear as a word (not substring of e.g. "runtime")
-  return /\brun\b/i.test(args);
-}
-
-/**
  * Set the skill-active flag file.
  */
 function setSkillActive(projectDir, skillName) {
