@@ -96,7 +96,7 @@ If the delta-processor agent call fails (e.g., agent not found, background execu
 
 **Fallback Step 4**: Append summary to memory.md:
    ```bash
-   TS_UTC=$(date -u +%Y-%m-%d_%H%M) && TS_LOCAL=$(date +%m-%d_%H%M) && printf '\n## %s (local %s)\n%s\n' "$TS_UTC" "$TS_LOCAL" "{SUMMARY}" >> "{PROJECT_DIR}/.claude/memory/memory.md"
+   "{NODE_PATH}" -e "const fs=require('fs');const d=new Date();const p=n=>String(n).padStart(2,'0');const u=d.getUTCFullYear()+'-'+p(d.getUTCMonth()+1)+'-'+p(d.getUTCDate())+'_'+p(d.getUTCHours())+p(d.getUTCMinutes());const l=p(d.getMonth()+1)+'-'+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes());fs.appendFileSync('{PROJECT_DIR}/.claude/memory/memory.md','\\n## '+u+' (local '+l+')\\n'+'{SUMMARY}'+'\\n')"
    ```
 
    **WARNING: Do NOT modify this command. Copy EXACTLY as written.**

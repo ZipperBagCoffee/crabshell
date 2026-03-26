@@ -25,31 +25,12 @@ Force immediate save of session memory.
 
 1. **Save to memory.md:**
 ```bash
-printf '\n## %s\n%s\n' "$(date +%Y-%m-%d_%H%M)" "[Summary of current session progress]" >> "{PROJECT_DIR}/.claude/memory/memory.md"
+"{NODE_PATH}" -e "const fs=require('fs');const d=new Date();const p=n=>String(n).padStart(2,'0');const ts=d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes());fs.appendFileSync('{PROJECT_DIR}/.claude/memory/memory.md','\\n## '+ts+'\\n'+'[Summary of current session progress]'+'\\n')"
 ```
 
 2. **Create session file:**
 ```bash
-cat > "{PROJECT_DIR}/.claude/memory/sessions/$(date +%Y-%m-%d_%H%M).md" << 'ENDSESSION'
-# Session TIMESTAMP
-
-## Summary
-[What has been accomplished so far]
-
-## Decisions
-- [type] Decision: Reason
-  - files: affected files
-  - concepts: relevant concepts
-
-## Patterns
-- [type] Pattern observed
-  - concepts: tags
-
-## Issues
-- [type] Issue: open|resolved
-  - files: affected files
-
-ENDSESSION
+"{NODE_PATH}" -e "const fs=require('fs');const path=require('path');const d=new Date();const p=n=>String(n).padStart(2,'0');const ts=d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes());const dir='{PROJECT_DIR}/.claude/memory/sessions';if(!fs.existsSync(dir))fs.mkdirSync(dir,{recursive:true});fs.writeFileSync(path.join(dir,ts+'.md'),'# Session '+ts+'\\n\\n## Summary\\n[What has been accomplished so far]\\n\\n## Decisions\\n- [type] Decision: Reason\\n  - files: affected files\\n  - concepts: relevant concepts\\n\\n## Patterns\\n- [type] Pattern observed\\n  - concepts: tags\\n\\n## Issues\\n- [type] Issue: open|resolved\\n  - files: affected files\\n')"
 ```
 
 ## Notes

@@ -55,7 +55,7 @@ This skill activates when `[MEMORY_KEEPER_SAVE]` appears in conversation.
 
 ### Step 1: Save to memory.md
 ```bash
-printf '\n## %s\n%s\n' "$(date +%Y-%m-%d_%H%M)" "[1-2 sentence summary]" >> "{PROJECT_DIR}/.claude/memory/memory.md"
+"{NODE_PATH}" -e "const fs=require('fs');const d=new Date();const p=n=>String(n).padStart(2,'0');const ts=d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes());fs.appendFileSync('{PROJECT_DIR}/.claude/memory/memory.md','\\n## '+ts+'\\n'+'[1-2 sentence summary]'+'\\n')"
 ```
 
 ## Session End (Stop Hook)
