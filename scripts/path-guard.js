@@ -35,7 +35,7 @@ function readStdin(timeoutMs = 500) {
 
 // --- Path validation logic ---
 
-const MEMORY_PATH_PATTERN = /\.claude[/\\]memory[/\\]/;
+const MEMORY_PATH_PATTERN = /\.claude[/\\]memory[/\\](?!keeper)/;
 const MEMORY_PATH_SEGMENT = '.claude/memory/';
 
 /**
