@@ -84,12 +84,12 @@ Should I create a lesson in .claude/lessons/ and add a rule to CLAUDE.md?"
 
 ## When User Proposes a Lesson
 
-Do not accept blindly. Understand first:
+Before adding, verify:
 1. What is the lesson trying to prevent?
 2. Is it genuinely project-specific or should it be general?
 3. Does it conflict with existing rules?
 
-Confirm your understanding before adding.
+Add directly without asking for permission. Do NOT ask "should I add this lesson?" — just add it.
 
 ---
 
