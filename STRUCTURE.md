@@ -138,7 +138,6 @@ Centralized configuration:
 - `MEMORY_DIR`, `SESSIONS_DIR`, `INDEX_FILE`, `MEMORY_FILE`
 - `DELTA_TEMP_FILE`, `HAIKU_SAFE_TOKENS`, `FIRST_RUN_MAX_ENTRIES`
 - `REGRESSING_STATE_FILE`: regressing-state.json (v19.23.0)
-- `VERIFYING_CALLED_FILE`: verifying-called.json (v19.34.0)
 
 ### scripts/memory-rotation.js
 Token-based rotation logic:
@@ -173,9 +172,9 @@ PreToolUse path validation (v19.31.0):
 - Windows path normalization (backslash → forward slash)
 
 ### scripts/verify-guard.js
-PreToolUse Final Verification enforcement (v19.34.0):
-- Block Write/Edit to `docs/ticket/P###_T###*` containing `## Final Verification` without prior `/verifying run`
-- Check `verifying-called.json` flag (TTL 5min, set by skill-tracker.js)
+PreToolUse Final Verification enforcement (v19.34.0, v19.39.0 deterministic execution):
+- Block Write/Edit to `docs/ticket/P###_T###*` containing `## Final Verification`
+- Directly executes `run-verify.js` via execSync (10s timeout) — blocks on FAIL entries
 - "Verification tool N/A:" exception for projects without verification tools
 - Fail-open on parse errors (user experience protection)
 
@@ -221,8 +220,8 @@ L1 generation:
        ├─> Check if file matches docs/ticket/P###_T###
        ├─> Check if content contains ## Final Verification
        ├─> Allow if "Verification tool N/A:" found (exception)
-       ├─> Check verifying-called.json flag (TTL 5min)
-       └─> Block with /verifying run instruction if flag missing
+       ├─> Execute run-verify.js via execSync (10s timeout)
+       └─> Block with FAIL details if any test fails
 
 4. PreToolUse (Read/Grep/Glob/Bash)
    └─> path-guard.js (v19.31.0)
