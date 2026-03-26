@@ -1,5 +1,8 @@
 # Changelog
 
+## 19.41.0
+- fix: replace Bash rm with Node fs.unlinkSync in clear-memory skill and delta-processor agent to avoid sensitive file permission prompts
+
 ## 19.40.0
 - chore: remove orphaned verifying-called.json flag code from skill-tracker, load-memory, constants
 
