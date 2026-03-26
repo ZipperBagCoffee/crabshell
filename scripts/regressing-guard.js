@@ -8,6 +8,11 @@ function getProjectDir() {
 }
 
 function readStdin(timeoutMs = 500) {
+  // hook-runner.js v2 stores parsed stdin in HOOK_DATA env var
+  if (process.env.HOOK_DATA) {
+    try { return Promise.resolve(JSON.parse(process.env.HOOK_DATA)); }
+    catch { return Promise.resolve({}); }
+  }
   return new Promise((resolve) => {
     let data = '';
     let resolved = false;

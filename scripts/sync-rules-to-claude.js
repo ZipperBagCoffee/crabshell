@@ -19,7 +19,7 @@ const MARKER_END = '---Add your project-specific rules below this line---';
 
 function updateClaudeMd(claudePath, rulesContent) {
   let content = fs.readFileSync(claudePath, 'utf8');
-  const rulesBlock = MARKER_START + '\n\n' + rulesContent + '\n\n' + MARKER_END;
+  const rulesBlock = rulesContent + '\n\n' + MARKER_END;
 
   const startIdx = content.indexOf(MARKER_START);
   const endIdx = content.indexOf(MARKER_END);
