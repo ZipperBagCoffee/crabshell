@@ -157,8 +157,11 @@ node .claude/verification/run-verify.js
 
 ### Step 3: Parse and report as P/O/G
 
-| Item | Prediction (from manifest expected) | Observation (from runner output) | Gap |
-|------|-------------------------------------|----------------------------------|-----|
+| Item | Type | Prediction (from manifest expected) | Observation (from runner output) | Gap |
+|------|------|-------------------------------------|----------------------------------|-----|
+
+Type: `behavioral` = runtime execution observed (ran command, triggered feature, checked output)
+Type: `structural` = static check (grep, file read, code inspection)
 
 ### Step 4: Summary
 

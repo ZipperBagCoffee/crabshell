@@ -106,9 +106,12 @@ The Orchestrator MUST launch 2+ Work Agents with **distinct analytical perspecti
   Fill Prediction BEFORE looking at the code. Fill Observation ONLY from tool output.
   The Gap column is where real findings live — if Gap is always "none", you are confirming, not verifying.
 
-  For each verification item, provide ALL THREE fields:
-  | Item | Prediction (before observation) | Observation (tool output required) | Gap |
-  |------|-------------------------------|-----------------------------------|-----|
+  For each verification item, provide ALL fields:
+  | Item | Type | Prediction (before observation) | Observation (tool output required) | Gap |
+  |------|------|-------------------------------|-----------------------------------|-----|
+
+  Type: `behavioral` = runtime execution observed (ran command, triggered feature, checked output)
+  Type: `structural` = static check (grep, file read, code inspection)
 
   Rules:
   - Observation MUST include tool output (Bash execution, Read result, diff, etc.)
@@ -146,6 +149,7 @@ This step is PROCEDURAL — it happens every time, not when the Orchestrator "re
   □ Does Observation contain tool output evidence? (for directly-executable items)
   □ Is Prediction ≠ Observation? (copy detection)
   □ For indirect verification: is the reason stated?
+  □ Does at least 1 verification item have Type = behavioral? (structural-only = insufficient for runtime features)
   → If ANY check fails: REJECT Review Agent results and request re-verification
 - **RA/WA Cross-Reference (after Evidence Gate):**
   Compare Review Agent's independent findings against Work Agent's Execution Results.

@@ -1,5 +1,10 @@
 # Changelog
 
+## 19.39.0
+- feat: verify-guard deterministic execution — execSync runs run-verify.js directly, blocks on FAIL
+- feat: P/O/G Type column (behavioral/structural) with Evidence Gate behavioral≥1 check
+- feat: IA Source Mapping Table in discussing skill for regressing mode
+
 ## 19.38.0
 - Fix: HOOK_DATA fallback for path-guard.js and regressing-guard.js
 - Fix: sync-rules-to-claude.js duplicate MARKER_START header
