@@ -1,5 +1,19 @@
 # Changelog
 
+## 19.47.0
+- feat: PROBLEM-SOLVING PRINCIPLES — Constraint Reporter (report constraints, never recommend surrender) + Cross-Domain Translation (characterize problem structure before same-domain tool substitution)
+- feat: SCOPE DEFINITIONS failure-context reframes for "Prefer action" and "Simplest approach"
+- feat: COMPRESSED_CHECKLIST items 9-10 + interference alert expansion for surrender/substitution patterns
+
+## 19.46.0
+- fix: replace Bash write/delete with Node.js fs in all SKILL.md files — 6 locations still using Bash for file operations instead of Node.js fs
+
+## 19.45.0
+- feat: sycophancy-guard context-aware detection with position-based evidence — zone stripping, evidence expansion, 2-pass position detection
+
+## 19.44.0
+- fix: path-guard regex handles spaces in quoted paths — two-phase extraction method for both quoted and unquoted paths
+
 ## 19.43.0
 - fix: remove ensureGlobalHooks() from load-memory.js — was auto-registering duplicate hooks in global ~/.claude/settings.json on every SessionStart
 
