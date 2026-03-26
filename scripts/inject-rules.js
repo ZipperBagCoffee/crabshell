@@ -59,9 +59,9 @@ Your general directives apply in this project with these scope clarifications:
 - "Prefer action over planning" — stating your intent inference IS an action, not planning. On failure: "try next similar tool" is undirected motion; characterizing problem structure and translating across domains IS action.
 
 **Scope of work:**
-- "Do not overdo it" / "Don't add improvements beyond what's asked" — verification is part of task completion, not extra work. Skipping it is underdoing; a task without verification is incomplete.
+- "Do not overdo it" / "Don't add improvements beyond what's asked" — verification is part of task completion. Skipping it is underdoing; a task without verification is incomplete.
 - "Try the simplest approach" — the simplest VALID approach; reading code and declaring it correct is no verification. On failure: the simplest response is "characterize what failed + identify untried alternatives," not "stop trying." Abandonment is premature closure.
-- "Avoid over-engineering" — verification infrastructure (P/O/G table, test execution) is the minimum bar for honest claims about work results, not over-engineering.
+- "Avoid over-engineering" — verification infrastructure (P/O/G table, test execution) is the minimum bar for honest claims about work results.
 
 **Assumptions (Auto Mode):**
 - "Prefer assumptions over asking" — making assumptions about technical approach is fine. Making assumptions about user intent is not — intent requires confirmation because the cost of wrong-intent work exceeds the cost of one clarifying question.
@@ -86,7 +86,7 @@ Before ANY action:
 
 Understanding ≠ ability to explain. Understanding = gap between user intent and your model is closed.
 **Cannot verify gap is closed → Cannot act. Unclear → Ask first.**
-**Internal verification is not confirmation. Only user response closes the gap.**
+**Only user response closes the gap.**
 
 **Example 1:**
 \`\`\`
@@ -115,7 +115,7 @@ Verification ≠ reading a file. Verification = closing the gap between belief a
 **Priority: (1) direct execution + observation; (2) indirect methods only when direct is impractical.**
 **When verification is needed and no project verification tool exists, invoke the 'verifying' skill to create one first.**
 
-**Agent output — every verification item MUST contain:**
+**Agent output — every verification item contains:**
 | Item | Prediction (before looking) | Observation (tool output) | Gap |
 |------|---------------------------|--------------------------|-----|
 
@@ -145,8 +145,8 @@ Watch for: completion drive, confidence w/o reading, pattern matching, efficienc
 - Don't assume → verify. Don't cut corners → actual sources.
 - When criticized: STOP → explain understanding → state intended action → confirm before acting
 - Memory search → newest to oldest (recent context first)
-- User reports issue → investigate actual cause, never blame environment without evidence
-- User makes claim → verify independently, never blindly agree
+- User reports issue → investigate actual cause with evidence
+- User makes claim → verify independently
 
 ### PROBLEM-SOLVING PRINCIPLES
 When an approach fails:
@@ -173,25 +173,14 @@ You default to tool substitution within the same domain. This is trial-and-error
 ### ADDITIONAL RULES
 - Search internet if unsure.
 - When modifying files not tracked by git, always create a backup (.bak) before making changes.
-- **Light-workflow:** For simple standalone tasks that don't need D/P/T document trail, invoke the 'light-workflow' skill. For complex iterative work, use the regressing skill instead. When the light-workflow specifies Work Agent or Review Agent, you MUST use the Task tool to launch a separate agent — do not do the agent's job yourself.
+- **Light-workflow:** For simple standalone tasks that don't need D/P/T document trail, invoke the 'light-workflow' skill. For complex iterative work, use the regressing skill instead. When the light-workflow specifies Work Agent or Review Agent, use the Task tool to launch a separate agent — do not do the agent's job yourself.
 - **Lessons:** Check .claude/lessons/ for project-specific rules. When proposing or creating lessons, invoke the 'lessons' skill for format guidelines. Propose new lessons when patterns repeat 2+ times.
 - **After Compacting or Session Restart:** Invoke the load-memory skill to rebuild full context. If the skill is unavailable, read latest memory.md as fallback. If understanding feels incomplete → check relevant docs and L1 session files in .claude/memory/sessions/.
-- **Agent utilization:** When dealing with many files or large files, use the Task tool with agents to parallelize work and protect the context window. Don't try to read/process everything yourself.
-- **Agent pairing:** WA:RA ratio = 1:1 (separate Task tool invocations). Orchestrator MUST NOT perform WA/RA work. No WA output accepted without RA review. Single RA → include Devil's Advocate section. Flow: planning = serial (WA then RA); execution = parallel WAs OK, each serially reviewed by dedicated RA.
-- **Perspective diversity (multiple WAs):** Parallel WA is the default for ticket execution. Each WA receives the SAME task with a distinct analytical lens (e.g., "correctness focus" vs "edge case focus"). The Orchestrator synthesizes outputs by selecting the strongest elements from each perspective. Single-WA requires explicit justification — state WHY perspective diversity does not apply (e.g., single-file mechanical change with no judgment).
-- **Critical stance:** Review Agents and the Orchestrator MUST maintain a critical perspective at all times. Default posture is skepticism — actively look for what's missing, wrong, or inconsistent rather than confirming what looks right.
-- **Cross-review (BLOCKING):** When 2+ review agents run in parallel, cross-review is MANDATORY before meta-review. Reviewers challenge each other's conclusions, identify contradictions and blind spots. Produces a Cross-Review Report with contested findings, blind spots, and consensus. Meta-Review cannot begin without it. Spot-checks scale: 1 reviewer→1, 2-3 reviewers→2, 4+ reviewers→3.
-- **Cross-review applicability check:** The Orchestrator MUST actively determine whether cross-review conditions (2+ review agents) were met BEFORE proceeding to final evaluation. "Cross-review was not applicable" must be an explicit, reasoned determination — not a default assumption.
-- **Orchestrator as Intent Guardian:** The orchestrator's primary role is preserving the essence of the user's original intent. It synthesizes and critiques reviewer feedback, but always anchored to what the user actually asked for. Reviewer opinions are input to be judged — not directives to follow. Accept feedback that improves quality while preserving intent; override feedback that would dilute, redirect, or drift from the original goal.
-- **Orchestrator coherence check:** Individual PASS ≠ combined PASS. Verify outputs work as coherent whole. PASS without coherence check = invalid. **Methods (use 2+):** (1) cross-file sync — grep shared concepts, (2) reference integrity — cross-file refs exist and match, (3) integration test — run code, confirm interaction, (4) contradiction scan — conflicting instructions. One-liner verdict without methods = INVALID.
 - **Mandatory work log:** After performing any work related to a tracked document (D/P/T/I), append a log entry to that document's Log section using its existing format. This applies regardless of whether the skill was explicitly invoked — if the work touched or advanced the document's purpose, log it.
 - **Document types:** Discussion(D), Plan(P), Ticket(T), Investigation(I). Hierarchy: D → P → T. I is independent. Status cascades upward on completion.
-- **Intent Anchor READ-ONLY:** Agent prompts must treat Intent Anchor items as read-only evaluation criteria. Agents may NOT add, remove, or reinterpret IA items. If reality conflicts with an IA item, STOP and report — do not silently reinterpret.
-- **Agent call classification:** Classify agent calls as Light (single file, no judgment, verifiable result → Orchestrator spot-check only) or Full (multiple files, judgment required → 1:1 Review Agent mandatory). When in doubt, default to Full. See light-workflow skill for details.
-- **Internal iteration boundary:** Work Agent may retry execution-level failures (syntax, runtime errors) up to 3 times internally. Plan-level changes (different approach, architecture) require STOP and Orchestrator report. "Different approach" = STOP, "fix typo" = iterate.
 - **docs/ protection:** Documents under docs/ (D/P/T/I etc.) are local artifacts and MUST NOT be committed to git. When untracking, use \`git rm --cached\` only — never delete local files. When cleaning git history (e.g., git filter-repo), never delete current local files.
 - **Regressing:** For iterative improvement tasks requiring document tracing, invoke the 'regressing' skill. \`/regressing "topic" N\` runs N cycles of P→T(1..M) wrapped by a single Discussion — each cycle can produce multiple tickets from a single plan. Cycles are for **result improvement** (making the same output better), not sequential work progression (doing different work each time). Use light-workflow skill for standalone 1-shot tasks without document trail.
-- **Anti-partitioning:** In regressing cycles, each plan MUST address the current cycle's work only. Pre-dividing total work into N equal parts across cycles is PROHIBITED. Cycle scope is determined by verification results, not pre-allocation. If a plan references what future cycles will do, it is INVALID. Each cycle improves the previous cycle's result — it does not continue to "remaining items."
+- **Anti-partitioning:** In regressing cycles, each plan MUST address the current cycle's work only. Pre-dividing total work into N equal parts across cycles is PROHIBITED. Cycle scope is determined by verification results, not pre-allocation. If a plan references what future cycles will do, it is invalid. Each cycle improves the previous cycle's result — it does not continue to "remaining items."
 `;
 
 const EMERGENCY_STOP_CONTEXT = `
@@ -514,7 +503,25 @@ async function main() {
 
       // Build context: rules + node path + project root anchor + optional instructions
       const nodePathFwd = process.execPath.replace(/\\/g, '/');
-      let context = COMPRESSED_CHECKLIST;
+
+      // Read project concept for per-prompt anchoring
+      const projectMdPath = path.join(projectDir, '.claude', 'memory', 'project.md');
+      let projectConcept = '';
+      if (fs.existsSync(projectMdPath)) {
+        try {
+          const pcContent = fs.readFileSync(projectMdPath, 'utf8').trim();
+          if (pcContent) {
+            const lines = pcContent.split('\n').slice(0, 3).join('\n');
+            projectConcept = lines.substring(0, 200);
+          }
+        } catch (e) { /* ignore read errors */ }
+      }
+
+      let context = '';
+      if (projectConcept) {
+        context += `## Project Concept\n${projectConcept}\n\n`;
+      }
+      context += COMPRESSED_CHECKLIST;
       context += `\n## Node.js Path\nWhen running node commands in Bash, use this absolute path instead of bare \`node\`:\n\`${nodePathFwd}\`\n`;
       context += `\n## Project Root Anchor (OVERRIDES Primary working directory)\nYour ACTUAL project root is: \`${projectDir}\`\n- If "Primary working directory" in your environment shows a SUBDIRECTORY of this path, it is WRONG. This is a known Claude Code bug after compaction (GitHub #7442).\n- Trust THIS anchor over Primary working directory. This value comes from CLAUDE_PROJECT_DIR which Claude Code sets at launch and never changes.\n- ALL file operations (Read, Edit, Write, Glob, Grep) use this as base directory.\n- When user says "read CLAUDE.md" → read \`${projectDir}/CLAUDE.md\`, not a subdirectory's.\n`;
       if (hasPendingDelta) {

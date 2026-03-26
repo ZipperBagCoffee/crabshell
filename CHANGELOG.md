@@ -1,5 +1,11 @@
 # Changelog
 
+## 19.49.0
+- feat: per-prompt project concept anchor — reads project.md and injects into additionalContext for drift prevention
+- refactor: extract 11 agent orchestration rules to .claude/rules/agent-orchestration.md (always loaded, structural separation)
+- refactor: reduce emphasis markers 19→5 (MUST/NEVER/CRITICAL/PROHIBITED on safety-critical rules only)
+- refactor: remove 5 redundant negation clauses where positive framing already present
+
 ## 19.48.0
 - refactor: lossless compression of RULES + COMPRESSED_CHECKLIST — 8 edits preserving all rule semantics (CLAUDE.md 169→161 lines, CHECKLIST scope defs removed, directive merges, interference merge, agent pairing/coherence/overcorrection compression)
 
