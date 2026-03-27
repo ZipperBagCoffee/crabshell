@@ -33,8 +33,6 @@ If there's information you want Claude to know every session, **directly edit th
 ```bash
 # Create/edit files in your project's .claude/memory/ folder
 echo "React + TypeScript web app." > .claude/memory/project.md
-echo "src/ - components, hooks, services" > .claude/memory/architecture.md
-echo "Functional components only" > .claude/memory/conventions.md
 ```
 
 Or just ask Claude: "Save the project info to project.md"
@@ -126,8 +124,6 @@ Coding conventions: ...
 ├── *.summary.json         # L3 summaries (Haiku-generated)
 ├── memory-index.json      # Rotation tracking & counter
 ├── project.md             # Project overview (optional)
-├── architecture.md        # Architecture (optional)
-├── conventions.md         # Coding rules (optional)
 ├── logs/                  # Refine logs
 └── sessions/
     └── *.l1.jsonl         # L1 session transcripts (deduplicated)
@@ -186,6 +182,7 @@ memory.md                 - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 19.52.0 | feat: setup-project skill, fix counter.js path bug, remove architecture.md/conventions.md |
 | 19.51.0 | feat: regressing skill — default 10 cycles, early convergence termination, 10-cycle checkpoint, sequential tasks in same cycle |
 | 19.50.0 | feat: feedback pressure detection — L0-L3 escalating intervention, pressure-guard.js Write/Edit blocking at L3, TaskCreate auto-reset |
 | 19.49.0 | feat: per-prompt project concept anchor + refactor: extract agent orchestration rules to .claude/rules/, reduce emphasis markers, remove redundant negation clauses |

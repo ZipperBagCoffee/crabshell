@@ -35,9 +35,7 @@ This skill activates when `[MEMORY_KEEPER_SAVE]` appears in conversation.
 
 ```
 .claude/memory/
-  project.md        <- Project overview (stable)
-  architecture.md   <- Architecture decisions (stable)
-  conventions.md    <- Coding conventions (stable)
+  project.md        <- Project overview (per-prompt injected)
   memory.md         <- Rolling session log (last 50 lines loaded)
   sessions/         <- L1 session transcripts (auto-generated)
   logs/             <- Debug and error logs
@@ -70,14 +68,10 @@ Additional step (use full path from above):
 If major project understanding changed, update stable memory files (use full path):
 ```bash
 "{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" memory-set project "Updated project description..." --project-dir="{PROJECT_DIR}"
-"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" memory-set architecture "Updated architecture..." --project-dir="{PROJECT_DIR}"
-"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" memory-set conventions "Updated conventions..." --project-dir="{PROJECT_DIR}"
 ```
 
 **When to update:**
 - `project.md`: New project scope, goals, or tech stack
-- `architecture.md`: New architecture decisions or patterns
-- `conventions.md`: New coding standards or workflows
 
 **View current memory:**
 ```bash

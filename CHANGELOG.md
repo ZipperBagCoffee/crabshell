@@ -1,5 +1,10 @@
 # Changelog
 
+## 19.52.0
+- feat: setup-project skill — auto-generates project.md from package.json/README.md for per-prompt drift prevention
+- fix: counter.js memory-set path bug — was writing to {root}/project.md instead of {root}/.claude/memory/project.md
+- refactor: remove architecture.md/conventions.md — SessionStart-only, useless after compaction, never per-prompt injected
+
 ## 19.51.0
 - feat: regressing skill — default 10 cycles (no asking), early termination on convergence, 10-cycle checkpoint for defaulted N, userSpecifiedN state field, "operational steps as separate cycles" anti-pattern, sequential tasks belong in same cycle as code change (CLAUDE.md + SKILL.md)
 

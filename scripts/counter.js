@@ -542,15 +542,13 @@ function compress() {
 
 // Memory file management (v7.0.0)
 const MEMORY_FILES = {
-  project: { file: 'project.md', title: 'Project Overview' },
-  architecture: { file: 'architecture.md', title: 'Architecture' },
-  conventions: { file: 'conventions.md', title: 'Conventions' }
+  project: { file: 'project.md', title: 'Project Overview' }
 };
 
 function memorySet(name, content) {
   if (!name) {
     console.log('[MEMORY_KEEPER] Error: memory name required');
-    console.log('  Valid names: project, architecture, conventions');
+    console.log('  Valid names: project');
     return;
   }
 
@@ -559,7 +557,7 @@ function memorySet(name, content) {
 
   if (!memConfig) {
     console.log(`[MEMORY_KEEPER] Unknown memory file: ${name}`);
-    console.log('  Valid names: project, architecture, conventions');
+    console.log('  Valid names: project');
     return;
   }
 
@@ -570,11 +568,12 @@ function memorySet(name, content) {
   }
 
   const projectDir = getProjectDir();
-  ensureDir(projectDir);
-  const filePath = path.join(projectDir, memConfig.file);
+  const memDir = path.join(projectDir, '.claude', 'memory');
+  ensureDir(memDir);
+  const filePath = path.join(memDir, memConfig.file);
 
   writeFile(filePath, content);
-  console.log(`[MEMORY_KEEPER] Saved ${memConfig.title} to ${memConfig.file}`);
+  console.log(`[MEMORY_KEEPER] Saved ${memConfig.title} to .claude/memory/${memConfig.file}`);
 }
 
 function memoryGet(name) {
@@ -583,8 +582,9 @@ function memoryGet(name) {
   if (!name) {
     // Show all memory files
     console.log('[MEMORY_KEEPER] Memory Files:');
+    const memDir = path.join(projectDir, '.claude', 'memory');
     Object.entries(MEMORY_FILES).forEach(([key, config]) => {
-      const filePath = path.join(projectDir, config.file);
+      const filePath = path.join(memDir, config.file);
       if (fs.existsSync(filePath)) {
         const content = readFileOrDefault(filePath, '').trim();
         const lines = content.split('\n').length;
@@ -603,11 +603,12 @@ function memoryGet(name) {
 
   if (!memConfig) {
     console.log(`[MEMORY_KEEPER] Unknown memory file: ${name}`);
-    console.log('  Valid names: project, architecture, conventions');
+    console.log('  Valid names: project');
     return;
   }
 
-  const filePath = path.join(projectDir, memConfig.file);
+  const memDir = path.join(projectDir, '.claude', 'memory');
+  const filePath = path.join(memDir, memConfig.file);
   if (!fs.existsSync(filePath)) {
     console.log(`[MEMORY_KEEPER] ${memConfig.title} not created yet.`);
     console.log(`  Create with: memory-set ${key} "content"`);
@@ -623,11 +624,12 @@ function memoryGet(name) {
 
 function memoryList() {
   const projectDir = getProjectDir();
+  const memDir = path.join(projectDir, '.claude', 'memory');
   console.log('[MEMORY_KEEPER] Memory Structure:');
 
   let total = 0;
   Object.entries(MEMORY_FILES).forEach(([key, config]) => {
-    const filePath = path.join(projectDir, config.file);
+    const filePath = path.join(memDir, config.file);
     if (fs.existsSync(filePath)) {
       const stats = fs.statSync(filePath);
       const content = readFileOrDefault(filePath, '');
@@ -650,7 +652,7 @@ function memoryList() {
     console.log(`  ○ memory.md - not created [rolling]`);
   }
 
-  console.log(`\nHierarchical files: ${total}/3 created`);
+  console.log(`\nHierarchical files: ${total}/1 created`);
 }
 
 // Parse --key=value from arguments
@@ -788,7 +790,7 @@ Core Commands:
   reset                  Reset counter to 0
 
 Memory Management:
-  memory-set <name> <content>   Set memory file (project|architecture|conventions)
+  memory-set <name> <content>   Set memory file (project)
   memory-get [name]             Get memory file content
   memory-list                   List all memory files
 

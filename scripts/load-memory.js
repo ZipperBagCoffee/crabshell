@@ -42,9 +42,7 @@ Session headers use: \`## YYYY-MM-DD_HHMM (local MM-DD_HHMM)\`
 `;
 
 const MEMORY_FILES = [
-  { name: 'project.md', title: 'Project Overview' },
-  { name: 'architecture.md', title: 'Architecture' },
-  { name: 'conventions.md', title: 'Conventions' }
+  { name: 'project.md', title: 'Project Overview' }
 ];
 
 const MEMORY_MD_WARNING = `## Memory Keeper Plugin

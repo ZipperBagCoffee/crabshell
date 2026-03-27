@@ -30,7 +30,7 @@ Memory Keeper solves this problem.
 **1. Session Start:**
 - Previous session summary (`memory.md`) loaded into Claude's context
 - L3 summaries of archived memory loaded
-- Project info you set (`project.md`, `architecture.md`, `conventions.md`) loaded
+- Project info you set (`project.md`) loaded
 - CLAUDE.md rules synced and injected
 
 **2. During Work:**
@@ -56,8 +56,6 @@ Memory Keeper solves this problem.
 ├── memory-index.json    # Rotation tracking & counter
 ├── config.json          # Per-project configuration
 ├── project.md           # Project overview (optional)
-├── architecture.md      # Architecture (optional)
-├── conventions.md       # Coding rules (optional)
 ├── logs/                # Debug and refine logs
 └── sessions/            # Per-session records (auto)
     └── *.l1.jsonl       # L1 session transcripts (deduplicated)
@@ -273,8 +271,6 @@ Set information you want Claude to know at the start of every session.
 **Option 2: Edit files directly**
 ```bash
 echo "Next.js 14 + TypeScript + Prisma" > .claude/memory/project.md
-echo "src/app - App Router, src/components - UI" > .claude/memory/architecture.md
-echo "Functional components, kebab-case files" > .claude/memory/conventions.md
 ```
 
 ---

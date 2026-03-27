@@ -1,6 +1,6 @@
 ---
 name: load-memory
-description: "Loads full hierarchical memory context including project info, conventions, L3 summaries, and rolling memory. Use after session restart, context compaction, or when memory context feels incomplete or stale. Invoke with /load-memory."
+description: "Loads full hierarchical memory context including project info, L3 summaries, and rolling memory. Use after session restart, context compaction, or when memory context feels incomplete or stale. Invoke with /load-memory."
 ---
 
 ## Node.js Path
@@ -47,9 +47,7 @@ Run the load-memory script (use full path from above):
 This will output the current memory state to context:
 
 1. **Hierarchical Memory** (if exists):
-   - `project.md` - Project overview
-   - `architecture.md` - Architecture decisions
-   - `conventions.md` - Coding conventions
+   - `project.md` - Project overview (per-prompt injected by inject-rules.js)
 
 2. **L3 Summaries**:
    - JSON summaries of rotated memory archives
