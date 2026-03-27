@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 19.49.0 | **Author**: TaWa | **License**: MIT
+**Version**: 19.54.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -251,6 +251,8 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 19.54.0 | feat: contradiction detection — 3-level verification framework (Local/Related pipeline/System-wide), pipeline contradiction scan in coherence methods |
+| 19.53.0 | fix: Bash escaping/permission — 9 files fixed; feat: regressing convergence loop; feat: feedback assessment-mode detection |
 | 19.52.0 | feat: setup-project skill, fix counter.js path bug, remove architecture.md/conventions.md |
 | 19.51.0 | feat: regressing skill — default 10 cycles, early convergence termination, 10-cycle checkpoint, sequential tasks in same cycle |
 | 19.50.0 | feat: feedback pressure detection — L0-L3 escalating intervention, pressure-guard.js Write/Edit blocking at L3, TaskCreate auto-reset |

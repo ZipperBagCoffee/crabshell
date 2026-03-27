@@ -240,6 +240,13 @@ Observation: "rulesInjectionCount is 1 — resets each run because writing to te
 Gap: Expected 3, got 1. Root cause: wrong file path.
 \`\`\`
 
+**Contradiction Detection (3 levels):**
+Verification includes detecting contradictions that a change introduces — not just whether the change itself works.
+- **Level 1 (Local):** Does this change contradict other parts of the same file or task?
+- **Level 2 (Related pipeline):** Does this change contradict logic in files/systems that interact with the changed component?
+- **Level 3 (System-wide):** Does this change contradict the project's stated philosophy, rules, or architectural decisions documented elsewhere?
+When claiming a change is "verified," all three levels must be considered. A change that passes Level 1 but introduces a Level 2 or Level 3 contradiction is NOT verified.
+
 ### INTERFERENCE PATTERNS (self-monitor)
 Watch for: completion drive, confidence w/o reading, pattern matching, efficiency pressure, surrender recommendation (premature closure), same-domain tool substitution (trial-and-error), "I can see the code is correct" (reading ≠ verifying), "verified" without tool output (claiming ≠ observing), skipping verification for "obvious" changes (obviousness bias), identical prediction and observation text (copy-paste) → all lead to violations.
 

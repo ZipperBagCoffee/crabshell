@@ -103,6 +103,7 @@ This plan is executed using the following agent structure:
   - **Cross-file sync check:** When the same concept appears across planned target files, grep for the concept and confirm consistent wording/semantics.
   - **Reference integrity:** When plan steps reference content across files, verify the reference targets will hold after changes.
   - **Contradiction scan:** Check for conflicting plan steps or contradictory instructions between planned changes.
+  - **Pipeline contradiction scan:** Check whether this change contradicts logic in related pipelines. Level 1: within the changed files. Level 2: in files that interact with the changed component (imports, callers, shared state). Level 3: against project rules/philosophy (CLAUDE.md, SKILL.md principles). A change that works locally but contradicts a related pipeline is not coherent.
   "Coherent" one-liner without method execution = INVALID.
 - **Evidence Gate (BLOCKING — check BEFORE evaluating content):**
   Review Agents generate text that looks like analysis without actual investigation. Your gate exists to catch this.
