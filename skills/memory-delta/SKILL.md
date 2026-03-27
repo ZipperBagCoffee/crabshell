@@ -38,24 +38,19 @@ If you see `[MEMORY_KEEPER_DELTA]` anywhere in your context, execute this skill 
 ## Execution Steps
 
 1. **Verify file exists first** (DO NOT SKIP):
-   ```bash
-   cat "{PROJECT_DIR}/.claude/memory/delta_temp.txt" | head -5
-   ```
-   If file not found or empty, STOP HERE - do not proceed.
+   Use the Read tool to read `{PROJECT_DIR}/.claude/memory/delta_temp.txt` (limit 5 lines). If file not found or empty, STOP HERE - do not proceed.
 
 2. **Check processing lock** (race condition prevention):
-   ```bash
-   cat "{PROJECT_DIR}/.claude/memory/delta_processing.lock" 2>/dev/null
-   ```
+   Use the Read tool to read `{PROJECT_DIR}/.claude/memory/delta_processing.lock`. If not found, proceed.
    - If lock file exists AND is less than 5 minutes old → STOP (another processor is running). Log: "Delta processing already in progress, skipping."
    - If lock file exists AND is older than 5 minutes → stale lock, proceed (will be overwritten by agent).
    - If lock file does not exist → proceed.
 
    To check lock age:
    ```bash
-   find "{PROJECT_DIR}/.claude/memory/" -name "delta_processing.lock" -mmin -5 2>/dev/null
+   "{NODE_PATH}" -e "const fs=require('fs');try{const s=fs.statSync('{PROJECT_DIR}/.claude/memory/delta_processing.lock');const age=(Date.now()-s.mtimeMs)/60000;console.log(age<5?'FRESH':'STALE')}catch(e){console.log('NONE')}"
    ```
-   If this returns the file path, the lock is fresh — STOP. If empty output, proceed.
+   If output is `FRESH`, the lock is active — STOP. If `STALE` or `NONE`, proceed.
 
 3. **Call delta-processor background agent**:
    Use the `delta-processor` agent (defined in `agents/delta-processor.md`).
@@ -95,12 +90,12 @@ If the delta-processor agent call fails (e.g., agent not found, background execu
    - If response is empty → STOP
 
 **Fallback Step 4**: Append summary to memory.md:
+   Write the summary to a temp file first, then use append-memory.js:
+   1. Use the Write tool to save the summary to `{PROJECT_DIR}/.claude/memory/delta_summary_temp.txt`
+   2. Run:
    ```bash
-   "{NODE_PATH}" -e "const fs=require('fs');const d=new Date();const p=n=>String(n).padStart(2,'0');const u=d.getUTCFullYear()+'-'+p(d.getUTCMonth()+1)+'-'+p(d.getUTCDate())+'_'+p(d.getUTCHours())+p(d.getUTCMinutes());const l=p(d.getMonth()+1)+'-'+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes());fs.appendFileSync('{PROJECT_DIR}/.claude/memory/memory.md','\\n## '+u+' (local '+l+')\\n'+'{SUMMARY}'+'\\n')"
+   "{NODE_PATH}" "{SCRIPTS_PATH}/append-memory.js" --project-dir="{PROJECT_DIR}"
    ```
-
-   **WARNING: Do NOT modify this command. Copy EXACTLY as written.**
-   - The date format uses single `%` (e.g. `%Y`), NOT `%%Y`
 
 **Fallback Step 5**: Update timestamp marker:
    ```bash

@@ -2,7 +2,7 @@
 name: delta-processor
 description: Background agent that processes memory delta files (summarize + validate + append + mark-updated + cleanup)
 background: true
-tools: Read, Bash
+tools: Read, Write, Bash
 model: haiku
 ---
 
@@ -25,7 +25,7 @@ You will receive a prompt containing:
 ### Step 1: Acquire lock
 
 ```bash
-echo "$$" > "{LOCK_PATH}"
+"{NODE_PATH}" -e "require('fs').writeFileSync('{LOCK_PATH}', String(process.pid))"
 ```
 
 If the lock file already exists, check if it is stale (older than 5 minutes). If stale, overwrite it. If fresh, STOP — another processor is running.
@@ -61,14 +61,13 @@ Then delete the lock file and STOP.
 
 ### Step 4: Append summary to memory.md
 
-Run this single command (replace {SUMMARY} with the summary text from Step 2):
-
+1. Use the Write tool to save the summary text to `{PROJECT_DIR}/.claude/memory/delta_summary_temp.txt`
+2. Run:
 ```bash
-TS_UTC=$(date -u +%Y-%m-%d_%H%M) && TS_LOCAL=$(date +%m-%d_%H%M) && printf '\n## %s (local %s)\n%s\n' "$TS_UTC" "$TS_LOCAL" "{SUMMARY}" >> "{MEMORY_PATH}"
+"{NODE_PATH}" "{SCRIPTS_PATH}/append-memory.js" --project-dir="{PROJECT_DIR}"
 ```
 
-**WARNING: Do NOT modify this command. Copy EXACTLY as written.**
-- The date format uses single `%` (e.g. `%Y`), NOT `%%Y`
+The append-memory.js script reads the temp file, generates dual timestamps, appends to memory.md, and cleans up.
 
 ### Step 5: Update timestamp marker
 
@@ -85,7 +84,7 @@ TS_UTC=$(date -u +%Y-%m-%d_%H%M) && TS_LOCAL=$(date +%m-%d_%H%M) && printf '\n##
 ### Step 7: Release lock
 
 ```bash
-"{NODE_PATH}" -e "try{require('fs').unlinkSync('{LOCK_PATH}')}catch(e){}"
+"{NODE_PATH}" -e "try{require('fs').unlinkSync(process.argv[1])}catch(e){}" "{LOCK_PATH}"
 ```
 
 ## Failure Handling

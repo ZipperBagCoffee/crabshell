@@ -1,6 +1,6 @@
 ---
 name: regressing
-description: "Runs autonomous iterative optimization cycles wrapped by a single Discussion. Use when a topic needs repeated improvement through plan-execute-verify-feedback loops. Invoke with /regressing \"topic\" N to run N cycles of P→T. Not for one-shot tasks — use light-workflow instead."
+description: "Runs convergence-based iterative optimization cycles wrapped by a single Discussion. Use when a topic needs repeated improvement through plan-execute-verify-feedback loops. Invoke with /regressing \"topic\" N (N = cycle cap, not target). Cycles continue until convergence or cap. Not for one-shot tasks — use light-workflow instead."
 ---
 
 # Regressing Skill
@@ -25,7 +25,7 @@ The following patterns indicate regressing has degenerated into sequential batch
 
 | Anti-Pattern | What it looks like | Correct alternative |
 |---|---|---|
-| **Pre-partitioning** | P(1) divides total work into N equal parts, assigning each to a cycle | P(1) addresses all work. P(2+) respond to verification findings |
+| **Pre-partitioning** | P(1) divides total work into N equal parts, assigning each to a cycle | P(1) addresses highest-impact improvements. P(2+) respond to verification gaps. Cycle count is emergent, not planned |
 | **Sequential pipeline** | Cycle 1 = modify, Cycle 2 = sync, Cycle 3 = version bump | Sequential tasks (version bump, cache sync, deploy) belong in the SAME cycle as separate tickets — NOT as separate cycles. Each cycle is a complete implement-verify-improve loop |
 | **Copy-paste feedback** | Next Direction says "continue with remaining items" | Next Direction diagnoses specific problems with evidence |
 | **Role collapse** | Orchestrator performs Work Agent or Review Agent tasks directly | Each role is a separate Task tool invocation |
@@ -41,8 +41,8 @@ If any of these patterns are detected during execution, the Orchestrator MUST ha
 
 User invokes with `/regressing "topic"` or `/regressing "topic" N`.
 
-- If N is not specified: default to 10 cycles. Do not ask.
-- If N is specified: use the user-specified value
+- If N is not specified: run until convergence (Rule 7), with safety cap at 10 cycles. Do not ask.
+- If N is specified: use as the cycle cap (maximum, not target)
 
 ### Step 2: Open Discussion (D)
 
@@ -51,7 +51,7 @@ Create ONE Discussion document that wraps the entire regressing session:
 - Invoke `/discussing "topic"`
 - D contains: Intent, Context, Intent Anchor (IA), goals, expected results
 - This D stays open throughout all cycles and closes at the end
-- Metadata: `[regressing: {N} cycles]`
+- Metadata: `[regressing: cap {N}]`
 
 After creating the Discussion document, write the regressing state file:
 - Path: `.claude/memory/regressing-state.json`
@@ -67,7 +67,7 @@ After creating the Discussion document, write the regressing state file:
 ### Step 4: Cycle Loop
 
 ```
-for cycle in 1..N:
+repeat until convergence or cap reached:
   Step 4a: Planning (P)
   Step 4b: Ticketing (T)
   Step 4c: Ticket Execution
@@ -153,7 +153,7 @@ After each /ticketing invocation, update regressing state:
     2. Read WA's Execution Results
     3. Identify discrepancies — items where RA found problems WA didn't report, or where WA claimed success but RA found issues
     4. Discrepancies are the highest-priority findings and must be addressed in Correctness evaluation
-  - Next Direction (cycles 1 through N-1 only; cycle N uses Final Report instead):
+  - Next Direction (while verification finds gaps and cycle < cap; final cycle uses Final Report instead):
     - **Problems Found**: Specific problems or shortcomings observed in THIS cycle's output, with evidence.
     - **Root Cause Hypothesis**: Why did these problems occur?
     - **Recommended Focus**: What should the next cycle prioritize and why?
@@ -174,13 +174,13 @@ After ticket execution completes, update regressing state:
 - This transfer is explicitly performed by the Orchestrator
 
 After feedback transfer:
-- If cycle < totalCycles: Set fields using: `"{NODE_PATH}" -e "const f='{PROJECT_DIR}/.claude/memory/regressing-state.json';const s=JSON.parse(require('fs').readFileSync(f,'utf8'));s.cycle++;s.phase='planning';s.planId=null;s.ticketIds=[];s.lastUpdatedAt=new Date().toISOString();require('fs').writeFileSync(f,JSON.stringify(s,null,2))"`
-- **If cycle = totalCycles AND totalCycles was defaulted (not user-specified):** Present a progress report to the user summarizing what was achieved and what gaps remain. User decides: approve another 10 cycles or stop. If approved, update totalCycles: `s.totalCycles = s.cycle + 10`.
-- If cycle = totalCycles (user-specified): proceed to Step 5
+- If verification found gaps AND cycle < cap: Set fields using: `"{NODE_PATH}" -e "const f='{PROJECT_DIR}/.claude/memory/regressing-state.json';const s=JSON.parse(require('fs').readFileSync(f,'utf8'));s.cycle++;s.phase='planning';s.planId=null;s.ticketIds=[];s.lastUpdatedAt=new Date().toISOString();require('fs').writeFileSync(f,JSON.stringify(s,null,2))"`
+- **If cycle = cap AND cap was defaulted (not user-specified):** Present a progress report to the user summarizing what was achieved and what gaps remain. User decides: approve another 10 cycles (raises cap) or stop. If approved, update totalCycles: `s.totalCycles = s.cycle + 10`.
+- If converged (Rule 7) OR cycle = cap (user-specified): proceed to Step 5
 
 ### Step 5: Close Discussion (D) + Final Report
 
-After completing N cycles, return to the D document:
+After convergence or reaching the cap, return to the D document:
 
 1. Append the Final Report to D's Discussion Log
 2. Transition D to `concluded`
@@ -192,13 +192,14 @@ Final Report format:
 
 ```
 ### [{timestamp}] Regressing Final Report
-Total {N} cycles completed
+Converged after {actual} cycles (cap: {N})
+Termination reason: {convergence | cap reached | user stop}
 
-**IA Achievement:**
-| Cycle | IA-1 | IA-2 | ... | Overall |
-|-------|------|------|-----|---------|
-| 1     | ...  | ...  |     | ...     |
-| N     | ...  | ...  |     | ...     |
+**Gap Reduction:**
+| Cycle | Gaps Identified | Gaps Resolved | Key Improvement |
+|-------|----------------|---------------|-----------------|
+| 1     | ...            | ...           | ...             |
+| ...   | ...            | ...           | ...             |
 
 **Improvement Trajectory:**
 - Cycle 1→2: {key changes}
@@ -206,7 +207,7 @@ Total {N} cycles completed
 
 **Final State:**
 - Achieved: ...
-- Not achieved: ...
+- Remaining gaps: ...
 - Future recommendations: ...
 ```
 
@@ -231,9 +232,9 @@ D (closed with final report)
 
 ## User Interaction
 
-- **At start**: Confirm topic. If user specified N, use it. If not, default to 10 cycles (no asking).
-- **During**: Fully autonomous. Early termination on convergence (Rule 7). At every 10-cycle boundary (when N was defaulted), present progress report — user approves another 10 or stops.
-- **At end**: Present final report in D → user requests additional cycles or terminates
+- **At start**: Confirm topic. If user specified N, use as cap. If not, cap defaults to 10 (no asking).
+- **During**: Fully autonomous. Terminates on convergence (Rule 7) or when cap is reached. At every 10-cycle boundary (when cap was defaulted), present progress report — user approves raising cap by 10 or stops.
+- **At end**: Present final report in D → user requests raising cap or terminates
 
 ## Rules
 
@@ -248,5 +249,5 @@ D (closed with final report)
 9. **D's IA is the constant anchor.** All P and T documents reference D's IA as read-only evaluation criteria throughout all cycles.
 10. **Agent independence via Task tool.** Work Agent and Review Agent MUST each be launched as separate Task tool invocations. The Orchestrator (main conversation) MUST NOT perform Work or Review tasks itself. Collapsing roles violates agent pairing.
 11. **Orchestrator anti-rubber-stamp.** The Orchestrator MUST provide substantive evaluation for each cycle. "No improvement opportunities" and "ALL PASS" without detailed justification are INVALID. When the Orchestrator genuinely finds no improvements, it must enumerate what was specifically examined and provide a reasoned argument (minimum 3 sentences) for why the output is optimal.
-12. **Cycles are for result improvement, not sequential work progression.** Each cycle produces a complete result and verifies it. The next cycle's purpose is to improve the previous cycle's output based on verified gaps — not to continue with remaining work. P(1) MUST NOT pre-allocate work across all N cycles. If P(n) divides total work into equal parts or references "what cycle N+1 will do," it is INVALID. The scope of cycle N+1 is unknown until cycle N's verification reveals what needs improvement. **Sequential tasks (version bump, cache sync, deploy) belong in the SAME cycle as the code change, as separate tickets — NOT as separate cycles.** A cycle is incomplete if it produces a code change without its operational follow-through.
+12. **Cycles are for result improvement, not sequential work progression.** Each cycle produces a complete result and verifies it. The next cycle's purpose is to improve the previous cycle's output based on verified gaps — not to continue with remaining work. P(1) MUST NOT pre-allocate work across cycles. If P(n) divides total work into equal parts or references "what cycle N+1 will do," it is INVALID. The scope of cycle N+1 is unknown until cycle N's verification reveals what needs improvement. Cycle count is emergent — N is a safety cap, not a quota to fill. **Sequential tasks (version bump, cache sync, deploy) belong in the SAME cycle as the code change, as separate tickets — NOT as separate cycles.** A cycle is incomplete if it produces a code change without its operational follow-through.
 13. **Cross-review integration.** When ticket or plan execution involves 2+ parallel review agents, cross-review is MANDATORY before Orchestrator evaluation. The Orchestrator must verify whether cross-review conditions were met. When only 1 Review Agent runs, it MUST include a "Devil's Advocate" section articulating the strongest counter-argument to its own conclusions.

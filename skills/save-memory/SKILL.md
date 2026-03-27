@@ -24,14 +24,41 @@ Force immediate save of session memory.
 ## Actions
 
 1. **Save to memory.md:**
-```bash
-"{NODE_PATH}" -e "const fs=require('fs');const d=new Date();const p=n=>String(n).padStart(2,'0');const ts=d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes());fs.appendFileSync('{PROJECT_DIR}/.claude/memory/memory.md','\\n## '+ts+'\\n'+'[Summary of current session progress]'+'\\n')"
-```
+   Generate a timestamp and summary, then use the Write tool or the append-memory.js script:
+   ```bash
+   "{NODE_PATH}" -e "const fs=require('fs');const d=new Date();const p=n=>String(n).padStart(2,'0');const ts=d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes());fs.appendFileSync('{PROJECT_DIR}/.claude/memory/memory.md','\\n## '+ts+'\\n')"
+   ```
+   Then use the Read tool to read `{PROJECT_DIR}/.claude/memory/memory.md`, append the session summary using the Edit tool.
 
 2. **Create session file:**
-```bash
-"{NODE_PATH}" -e "const fs=require('fs');const path=require('path');const d=new Date();const p=n=>String(n).padStart(2,'0');const ts=d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes());const dir='{PROJECT_DIR}/.claude/memory/sessions';if(!fs.existsSync(dir))fs.mkdirSync(dir,{recursive:true});fs.writeFileSync(path.join(dir,ts+'.md'),'# Session '+ts+'\\n\\n## Summary\\n[What has been accomplished so far]\\n\\n## Decisions\\n- [type] Decision: Reason\\n  - files: affected files\\n  - concepts: relevant concepts\\n\\n## Patterns\\n- [type] Pattern observed\\n  - concepts: tags\\n\\n## Issues\\n- [type] Issue: open|resolved\\n  - files: affected files\\n')"
-```
+   First, ensure the sessions directory exists:
+   ```bash
+   "{NODE_PATH}" -e "require('fs').mkdirSync('{PROJECT_DIR}/.claude/memory/sessions',{recursive:true})"
+   ```
+   Then generate a timestamp for the filename:
+   ```bash
+   "{NODE_PATH}" -e "const d=new Date();const p=n=>String(n).padStart(2,'0');console.log(d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes()))"
+   ```
+   Use the Write tool to create `{PROJECT_DIR}/.claude/memory/sessions/{timestamp}.md` with content:
+   ```
+   # Session {timestamp}
+
+   ## Summary
+   [What has been accomplished so far]
+
+   ## Decisions
+   - [type] Decision: Reason
+     - files: affected files
+     - concepts: relevant concepts
+
+   ## Patterns
+   - [type] Pattern observed
+     - concepts: tags
+
+   ## Issues
+   - [type] Issue: open|resolved
+     - files: affected files
+   ```
 
 ## Notes
 

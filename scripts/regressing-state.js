@@ -33,11 +33,11 @@ function buildRegressingReminder(projectDir) {
 
   switch (phase) {
     case 'discussing':
-      message = `\n## REGRESSING ACTIVE — Phase: Discussion Setup (Cycle ${cycle}/${totalCycles})\n\nCreate/confirm the Discussion document using Skill tool: skill="memory-keeper:discussing"\n`;
+      message = `\n## REGRESSING ACTIVE — Phase: Discussion Setup (Cycle ${cycle} (cap: ${totalCycles}))\n\nCreate/confirm the Discussion document using Skill tool: skill="memory-keeper:discussing"\n`;
       break;
 
     case 'planning':
-      message = `\n## REGRESSING ACTIVE — Phase: Planning (Cycle ${cycle}/${totalCycles}, ${discussion})\n\n` +
+      message = `\n## REGRESSING ACTIVE — Phase: Planning (Cycle ${cycle} (cap: ${totalCycles}), ${discussion})\n\n` +
         `\u26A0 MANDATORY SKILL TOOL CALL REQUIRED.\n` +
         `You MUST invoke the Skill tool with skill="memory-keeper:planning" to create this cycle's plan.\n` +
         `- DO NOT write plan documents directly. DO NOT formulate plans inline.\n` +
@@ -46,7 +46,7 @@ function buildRegressingReminder(projectDir) {
       break;
 
     case 'ticketing':
-      message = `\n## REGRESSING ACTIVE — Phase: Ticketing (Cycle ${cycle}/${totalCycles}, ${discussion}, Plan: ${planId})\n\n` +
+      message = `\n## REGRESSING ACTIVE — Phase: Ticketing (Cycle ${cycle} (cap: ${totalCycles}), ${discussion}, Plan: ${planId})\n\n` +
         `\u26A0 MANDATORY SKILL TOOL CALL REQUIRED.\n` +
         `You MUST invoke the Skill tool with skill="memory-keeper:ticketing" to create this cycle's ticket from ${planId}.\n` +
         `- DO NOT write ticket documents directly. DO NOT execute work without a ticket.\n` +
@@ -56,14 +56,14 @@ function buildRegressingReminder(projectDir) {
 
     case 'execution': {
       const ticketList = (ticketIds && ticketIds.length > 0) ? ticketIds.join(', ') : '(none assigned)';
-      message = `\n## REGRESSING ACTIVE — Phase: Execution (Cycle ${cycle}/${totalCycles}, ${discussion}, Tickets: ${ticketList})\n\n` +
+      message = `\n## REGRESSING ACTIVE — Phase: Execution (Cycle ${cycle} (cap: ${totalCycles}), ${discussion}, Tickets: ${ticketList})\n\n` +
         `Executing tickets: ${ticketList}. Follow each ticket's agent structure (Work Agent \u2192 Review Agent \u2192 Orchestrator).\n`;
       break;
     }
 
     case 'feedback': {
       const ticketListFb = (ticketIds && ticketIds.length > 0) ? ticketIds.join(', ') : '(none)';
-      message = `\n## REGRESSING ACTIVE — Phase: Feedback Transfer (Cycle ${cycle}/${totalCycles}, ${discussion})\n\n` +
+      message = `\n## REGRESSING ACTIVE — Phase: Feedback Transfer (Cycle ${cycle} (cap: ${totalCycles}), ${discussion})\n\n` +
         `Synthesize Final Verification > Next Direction from all tickets (${ticketListFb}) and transfer to next cycle's planning context.\n`;
       break;
     }

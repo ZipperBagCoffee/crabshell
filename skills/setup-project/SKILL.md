@@ -43,9 +43,10 @@ Show the generated text. User approves, edits, or rejects.
 
 ### Step 5: Write project.md
 Save approved content to `{PROJECT_DIR}/.claude/memory/project.md`.
-Use Node.js fs.writeFileSync (not Bash) for .claude/ path safety:
+Use the Write tool to create `{PROJECT_DIR}/.claude/memory/project.md` with the approved content.
+If the directory doesn't exist, create it first:
 ```bash
-"{NODE_PATH}" -e "const fs=require('fs');const path=require('path');const dir='{PROJECT_DIR}/.claude/memory';if(!fs.existsSync(dir))fs.mkdirSync(dir,{recursive:true});fs.writeFileSync(path.join(dir,'project.md'),APPROVED_CONTENT)"
+"{NODE_PATH}" -e "require('fs').mkdirSync('{PROJECT_DIR}/.claude/memory',{recursive:true})"
 ```
 
 ### Step 6: Verify

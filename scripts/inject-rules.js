@@ -43,6 +43,7 @@ const NEGATIVE_EXCLUSIONS = [
 ];
 
 const NEGATIVE_PATTERNS = [
+  // Command-mode (existing)
   /아닌데/, /잘못\s*(했|됐|된|만든|이해)/, /틀렸/,
   /다시\s*(해|하|작성|만들|시작)/, /이게\s*아니/,
   /왜\s*이렇게/, /안\s*돼/, /제대로\s*(해|하|안|못)/,
@@ -50,6 +51,18 @@ const NEGATIVE_PATTERNS = [
   /\bwrong\b/i, /\bincorrect\b/i, /\bthat'?s\s+not\b/i,
   /\byou\s+broke\b/i, /not\s+what\s+I\s+asked/i,
   /\btry\s+again\b/i, /\b(undo|revert)\b/i,
+  // Assessment-mode Korean
+  /이해를?\s*(안|못)\s*(하|했)/i,                       // "이해를 안하고", "이해 못했"
+  /뭔\s*말인지|무슨\s*말인지/i,                         // "뭔 말인지 모르겠", "무슨 말인지"
+  /파악을?\s*(안|못)/i,                                  // "파악을 안하고", "파악 못하고"
+  /설명하는게\s*맞/i,                                    // "이걸 이렇게 설명하는게 맞는거임"
+  /도움이\s*(안|못)\s*됨?|도움이\s*안\s*되/i,            // "도움이 안됩니다"
+  // Assessment-mode English
+  /you\s+(don'?t|do\s+not)\s+understand/i,               // "you don't understand"
+  /that'?s\s+not\s+what\s+I('?m|\s+am)\s+(asking|saying|talking)/i, // "that's not what I'm asking"
+  /you('?re|\s+are)\s+missing\s+the\s+point/i,           // "you're missing the point"
+  /not\s+helpful/i,                                       // "not helpful"
+  /you('?re|\s+are)\s+not\s+(listening|understanding|getting)/i, // "you're not listening"
 ];
 
 function stripCodeBlocks(text) {
@@ -271,8 +284,8 @@ You default to tool substitution within the same domain. This is trial-and-error
 - **Mandatory work log:** After performing any work related to a tracked document (D/P/T/I), append a log entry to that document's Log section using its existing format. This applies regardless of whether the skill was explicitly invoked — if the work touched or advanced the document's purpose, log it.
 - **Document types:** Discussion(D), Plan(P), Ticket(T), Investigation(I). Hierarchy: D → P → T. I is independent. Status cascades upward on completion.
 - **docs/ protection:** Documents under docs/ (D/P/T/I etc.) are local artifacts and MUST NOT be committed to git. When untracking, use \`git rm --cached\` only — never delete local files. When cleaning git history (e.g., git filter-repo), never delete current local files.
-- **Regressing:** For iterative improvement tasks requiring document tracing, invoke the 'regressing' skill. \`/regressing "topic" N\` runs N cycles of P→T(1..M) wrapped by a single Discussion — each cycle can produce multiple tickets from a single plan. Cycles are for **result improvement** (making the same output better), not sequential work progression (doing different work each time). Sequential operational steps (version bump, cache sync, commit) belong in the same cycle as the code change — not as separate cycles. Use light-workflow skill for standalone 1-shot tasks without document trail.
-- **Anti-partitioning:** In regressing cycles, each plan MUST address the current cycle's work only. Pre-dividing total work into N equal parts across cycles is PROHIBITED. Cycle scope is determined by verification results, not pre-allocation. If a plan references what future cycles will do, it is invalid. Each cycle improves the previous cycle's result — it does not continue to "remaining items." Sequential tasks (version bump, cache sync, deploy) are part of the current cycle's tickets, not future cycles.
+- **Regressing:** For iterative improvement tasks requiring document tracing, invoke the 'regressing' skill. \`/regressing "topic" N\` runs convergence-based cycles of P→T(1..M) wrapped by a single Discussion (N is a cap, not a target) — each cycle can produce multiple tickets from a single plan. Cycles are for **result improvement** (making the same output better), not sequential work progression (doing different work each time). Cycles continue while verification finds gaps and stop on convergence or cap. Sequential operational steps (version bump, cache sync, commit) belong in the same cycle as the code change — not as separate cycles. Use light-workflow skill for standalone 1-shot tasks without document trail.
+- **Anti-partitioning:** In regressing cycles, each plan MUST address the current cycle's work only. Pre-dividing total work into N equal parts across cycles is PROHIBITED. Cycle scope is determined by verification results, not pre-allocation. If a plan references what future cycles will do, it is invalid. Each cycle improves the previous cycle's result — it does not continue to "remaining items." Cycle count is emergent, not planned — N is a safety cap, not a target to fill. Sequential tasks (version bump, cache sync, deploy) are part of the current cycle's tickets, not future cycles.
 `;
 
 const EMERGENCY_STOP_CONTEXT = `

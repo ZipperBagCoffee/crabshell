@@ -1,5 +1,10 @@
 # Changelog
 
+## 19.53.0
+- fix: Bash escaping/permission — 9 files fixed (setup-project, memory-delta, delta-processor, save-memory, memory-autosave), `cat`/`find`→Read tool, `{SUMMARY}` shell injection→append-memory.js script, `!fs.existsSync`→`mkdirSync({recursive:true})`
+- feat: regressing Loop→Convergence — `for 1..N`→`repeat until convergence or cap`, `Cycle X/Y`→`Cycle X (cap: Y)`, `[regressing: N cycles]`→`[regressing: cap N]`, N is safety cap not target
+- feat: feedback assessment-mode detection — 10 new patterns (5 Korean + 5 English) for meta-cognitive criticism ("이해를 안하고", "you don't understand", etc.)
+
 ## 19.52.0
 - feat: setup-project skill — auto-generates project.md from package.json/README.md for per-prompt drift prevention
 - fix: counter.js memory-set path bug — was writing to {root}/project.md instead of {root}/.claude/memory/project.md
