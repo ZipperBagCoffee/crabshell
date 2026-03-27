@@ -32,6 +32,98 @@ function checkEmergencyStop(hookData) {
   return EMERGENCY_KEYWORDS.some(kw => input.includes(kw));
 }
 
+// --- Feedback Pressure Detection ---
+const NEGATIVE_EXCLUSIONS = [
+  /don'?t\s+forget/i,
+  /don'?t\s+worry/i,
+  /no\s+problem/i,
+  /no\s+need/i,
+  /if\s+(it'?s?\s+|.{0,20})wrong/i,
+  /잘못된\s*게\s*아니/,
+];
+
+const NEGATIVE_PATTERNS = [
+  /아닌데/, /잘못\s*(했|됐|된|만든|이해)/, /틀렸/,
+  /다시\s*(해|하|작성|만들|시작)/, /이게\s*아니/,
+  /왜\s*이렇게/, /안\s*돼/, /제대로\s*(해|하|안|못)/,
+  /그만\b/, /멈춰/,
+  /\bwrong\b/i, /\bincorrect\b/i, /\bthat'?s\s+not\b/i,
+  /\byou\s+broke\b/i, /not\s+what\s+I\s+asked/i,
+  /\btry\s+again\b/i, /\b(undo|revert)\b/i,
+];
+
+function stripCodeBlocks(text) {
+  let s = text;
+  s = s.replace(/```[\s\S]*?```/g, ' ');
+  s = s.replace(/`[^`]+`/g, ' ');
+  return s;
+}
+
+function detectNegativeFeedback(prompt) {
+  if (!prompt || prompt.length < 2) return false;
+  const stripped = stripCodeBlocks(prompt);
+  for (const exc of NEGATIVE_EXCLUSIONS) {
+    if (exc.test(stripped)) return false;
+  }
+  for (const pat of NEGATIVE_PATTERNS) {
+    if (pat.test(stripped)) return true;
+  }
+  return false;
+}
+
+function updateFeedbackPressure(index, isNegative) {
+  if (!index.feedbackPressure) {
+    index.feedbackPressure = { level: 0, consecutiveCount: 0, lastDetectedAt: null, decayCounter: 0 };
+  }
+  const fp = index.feedbackPressure;
+  if (isNegative) {
+    fp.consecutiveCount++;
+    fp.level = Math.min(3, fp.consecutiveCount);
+    fp.lastDetectedAt = new Date().toISOString();
+    fp.decayCounter = 0;
+  } else {
+    fp.decayCounter++;
+    if (fp.decayCounter >= 3 && fp.level > 0) {
+      fp.level = Math.max(0, fp.level - 1);
+      fp.consecutiveCount = Math.max(0, fp.consecutiveCount - 1);
+      fp.decayCounter = 0;
+    }
+  }
+  return fp.level;
+}
+
+const PRESSURE_L1 = `
+## Feedback Pressure Alert (Level 1)
+User gave negative feedback. Before responding:
+1. Re-read the user's last message — what EXACTLY are they correcting?
+2. Fix the SPECIFIC issue only. Do NOT apologize at length.
+3. Anti-overcorrection: change ONLY what the user identified as wrong.
+`;
+
+const PRESSURE_L2 = `
+## Repeated Negative Feedback (Level 2)
+Multiple consecutive negative feedbacks detected. You are likely drifting from intent.
+
+MANDATORY BEFORE RESPONDING:
+1. State what the user's ORIGINAL task/intent is (Understanding-First)
+2. State what specifically went wrong in your previous response
+3. Ask the user to confirm your understanding before proceeding
+4. Do NOT continue executing — STOP and re-align first
+`;
+
+const PRESSURE_L3 = `
+## CRITICAL: Task Delegation Required (Level 3)
+3+ consecutive negative feedback signals. Direct execution is BLOCKED.
+
+YOU MUST:
+1. Use the Task tool to delegate your current work to a sub-agent
+2. Provide the sub-agent with: (a) original intent, (b) what went wrong, (c) specific task
+3. Write/Edit tools are BLOCKED until you delegate via Task tool
+4. After Task agent completes, review its output before presenting to user
+
+To unblock: use TaskCreate to delegate work. This resets pressure to Level 0.
+`;
+
 const RULES = `
 ## CRITICAL RULES (Core Principles Alignment)
 
@@ -483,11 +575,27 @@ async function main() {
     const indexPath = path.join(projectDir, '.claude', 'memory', 'memory-index.json');
     const index = readIndexSafe(indexPath);  // Use safe reader to preserve all fields
 
+    // Extract user prompt early (for feedback detection + memory snippets)
+    const userPrompt = (hookData && (hookData.prompt || hookData.input)) || '';
+
+    // Feedback pressure detection
+    const isNegativeFeedback = detectNegativeFeedback(userPrompt);
+    const pressureLevel = updateFeedbackPressure(index, isNegativeFeedback);
+    if (pressureLevel > 0) {
+      console.error(`[PRESSURE L${pressureLevel}]`);
+    }
+
     let count = (index.rulesInjectionCount || 0) + 1;
 
     // Update counter if frequency > 1 (need to track)
     if (frequency > 1) {
       index.rulesInjectionCount = count;
+    }
+
+    // Persist index if pressure was updated or frequency tracking needed
+    if (isNegativeFeedback || index.feedbackPressure) {
+      writeJson(indexPath, index);
+    } else if (frequency > 1) {
       writeJson(indexPath, index);
     }
 
@@ -539,10 +647,18 @@ async function main() {
       }
 
       // Prompt-aware memory loading
-      const userPrompt = (hookData && (hookData.prompt || hookData.input)) || '';
       const memorySnippets = getRelevantMemorySnippets(projectDir, userPrompt);
       if (memorySnippets) {
         context += memorySnippets;
+      }
+
+      // Pressure level context injection
+      if (pressureLevel === 3) {
+        context += PRESSURE_L3;
+      } else if (pressureLevel === 2) {
+        context += PRESSURE_L2;
+      } else if (pressureLevel === 1) {
+        context += PRESSURE_L1;
       }
 
       // Output rules via additionalContext (hidden from user, seen by Claude)

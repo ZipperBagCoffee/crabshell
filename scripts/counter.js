@@ -148,6 +148,21 @@ async function check() {
   counter++;
   setCounter(counter);
 
+  // Pressure reset on Task delegation
+  if (hookData.tool_name === 'TaskCreate') {
+    try {
+      const idxPath = path.join(getProjectDir(), '.claude', MEMORY_DIR, 'memory-index.json');
+      const idx = JSON.parse(fs.readFileSync(idxPath, 'utf8'));
+      if (idx.feedbackPressure && idx.feedbackPressure.level > 0) {
+        idx.feedbackPressure.level = 0;
+        idx.feedbackPressure.consecutiveCount = 0;
+        idx.feedbackPressure.decayCounter = 0;
+        fs.writeFileSync(idxPath, JSON.stringify(idx, null, 2));
+        console.error('[PRESSURE RESET] Task delegation detected — pressure reset to L0');
+      }
+    } catch (e) { /* fail-open */ }
+  }
+
   // Check rotation before auto-save
   const memoryPath = path.join(getProjectDir(), ".claude", MEMORY_DIR, MEMORY_FILE);
   const rotationResult = checkAndRotate(memoryPath, config);
