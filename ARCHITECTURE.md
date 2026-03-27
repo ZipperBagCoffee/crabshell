@@ -117,10 +117,8 @@ Two meta-principles guide Claude's approach to obstacles:
 |  | - memory-index.json (rotation/counter)     |  | logs/             |    |
 |  | - regressing-state.json (cycle tracker)    |  | - refine.log      |    |
 |  |                                            |  | - inject-debug.log|    |
-|  | Optional (create with memory-set):         |  +-------------------+    |
-|  | - project.md                               |                           |
-|  | - architecture.md                          |                           |
-|  | - conventions.md                           |                           |
+|  | Optional (create with /setup-project):     |  +-------------------+    |
+|  | - project.md (per-prompt injected)         |                           |
 |  +-------------------------------------------+                           |
 +--------------------------------------------------------------------------+
           |
