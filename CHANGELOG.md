@@ -1,5 +1,11 @@
 # Changelog
 
+## 19.50.0
+- feat: feedback pressure detection system — L0-L3 escalating intervention with mechanical Write/Edit blocking at Level 3
+- feat: pressure-guard.js PreToolUse hook — blocks direct editing when 3+ consecutive negative feedback detected, requires Task delegation
+- feat: inject-rules.js negative feedback detection — 17 Korean/English patterns with 6 exclusions, code block stripping, pressure state tracking in memory-index.json
+- feat: counter.js TaskCreate pressure reset — delegates work to fresh agent context, automatically resets pressure to L0
+
 ## 19.49.0
 - feat: per-prompt project concept anchor — reads project.md and injects into additionalContext for drift prevention
 - refactor: extract 11 agent orchestration rules to .claude/rules/agent-orchestration.md (always loaded, structural separation)
