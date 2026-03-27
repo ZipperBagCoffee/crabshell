@@ -186,6 +186,7 @@ memory.md                 - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 19.51.0 | feat: regressing skill — default 10 cycles, early convergence termination, 10-cycle checkpoint, sequential tasks in same cycle |
 | 19.50.0 | feat: feedback pressure detection — L0-L3 escalating intervention, pressure-guard.js Write/Edit blocking at L3, TaskCreate auto-reset |
 | 19.49.0 | feat: per-prompt project concept anchor + refactor: extract agent orchestration rules to .claude/rules/, reduce emphasis markers, remove redundant negation clauses |
 | 19.48.0 | refactor: lossless compression of RULES + COMPRESSED_CHECKLIST — 8 edits preserving all rule semantics |

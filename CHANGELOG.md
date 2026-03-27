@@ -1,5 +1,8 @@
 # Changelog
 
+## 19.51.0
+- feat: regressing skill — default 10 cycles (no asking), early termination on convergence, 10-cycle checkpoint for defaulted N, userSpecifiedN state field, "operational steps as separate cycles" anti-pattern, sequential tasks belong in same cycle as code change (CLAUDE.md + SKILL.md)
+
 ## 19.50.0
 - feat: feedback pressure detection system — L0-L3 escalating intervention with mechanical Write/Edit blocking at Level 3
 - feat: pressure-guard.js PreToolUse hook — blocks direct editing when 3+ consecutive negative feedback detected, requires Task delegation
