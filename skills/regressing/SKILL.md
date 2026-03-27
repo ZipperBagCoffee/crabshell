@@ -137,6 +137,7 @@ After each /ticketing invocation, update regressing state:
     - **Reference integrity:** When file A references file B's content, verify the reference target actually exists and matches.
     - **Integration test:** Run the changed code/hook and verify that outputs from multiple changed files interact correctly.
     - **Contradiction scan:** Explicitly check whether any two changes give contradictory instructions.
+    - **Pipeline contradiction scan:** Check whether this change contradicts logic in related pipelines. Level 1: within the changed files. Level 2: in files that interact with the changed component (imports, callers, shared state). Level 3: against project rules/philosophy (CLAUDE.md, SKILL.md principles). A change that works locally but contradicts a related pipeline is not coherent.
     "Coherent" or "일관됨" as a one-line verdict without executing any of the above methods is INVALID.
   - Improvement Opportunities: What gaps remain? What was attempted but didn't work well? (Orchestrator MUST enumerate what was examined. "No improvements" requires detailed justification of what was checked and why no improvements apply — minimum 3 sentences referencing specific aspects.)
   - **Evidence Gate (BLOCKING — check BEFORE evaluating content):**

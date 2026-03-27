@@ -165,6 +165,7 @@ This step is PROCEDURAL — it happens every time, not when the Orchestrator "re
      - **Reference integrity:** When file A references file B's content (e.g., skill referencing CLAUDE.md rules), verify the reference target actually exists and matches.
      - **Integration test:** Run the changed code/hook and verify that outputs from multiple changed files interact correctly (e.g., inject-rules.js produces CLAUDE.md that contains all expected sections).
      - **Contradiction scan:** Explicitly check whether any two changes give contradictory instructions (e.g., one file says "RA count = WA count" while another says "single RA is fine").
+     - **Pipeline contradiction scan:** Check whether this change contradicts logic in related pipelines. Level 1: within the changed files. Level 2: in files that interact with the changed component (imports, callers, shared state). Level 3: against project rules/philosophy (CLAUDE.md, SKILL.md principles). A change that works locally but contradicts a related pipeline is not coherent.
      "Coherent" or "일관됨" as a one-line verdict without executing any of the above methods is INVALID.
   3. **Improvement Opportunities**: What gaps remain? What didn't work well? (MUST enumerate what was examined. "No improvements" requires 3+ sentences explaining what was checked and why no improvements apply.)
   4. **Next Direction** (for regressing cycles 1 through N-1; cycle N uses Final Report):

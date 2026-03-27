@@ -1,5 +1,8 @@
 # Changelog
 
+## 19.54.0
+- feat: contradiction detection as formal verification role — 3-level framework (Local/Related pipeline/System-wide) in VERIFICATION-FIRST section, pipeline contradiction scan method added to ticketing/planning/regressing coherence verification
+
 ## 19.53.0
 - fix: Bash escaping/permission — 9 files fixed (setup-project, memory-delta, delta-processor, save-memory, memory-autosave), `cat`/`find`→Read tool, `{SUMMARY}` shell injection→append-memory.js script, `!fs.existsSync`→`mkdirSync({recursive:true})`
 - feat: regressing Loop→Convergence — `for 1..N`→`repeat until convergence or cap`, `Cycle X/Y`→`Cycle X (cap: Y)`, `[regressing: N cycles]`→`[regressing: cap N]`, N is safety cap not target
