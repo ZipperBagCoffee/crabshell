@@ -107,10 +107,52 @@ function ensureGitignore(projectDir) {
 function ensureCrabshellReadme(storageRoot) {
   try {
     const readmePath = path.join(storageRoot, 'README.md');
-    if (!fs.existsSync(readmePath)) {
-      fs.mkdirSync(storageRoot, { recursive: true });
-      fs.writeFileSync(readmePath, 'This directory is managed by the crabshell plugin. Do not edit files here manually.\n');
-    }
+    // Always rewrite to keep content up-to-date
+    fs.mkdirSync(storageRoot, { recursive: true });
+    fs.writeFileSync(readmePath, `# .crabshell/
+This directory is managed by the **crabshell** plugin. Do not edit files here manually.
+
+## What is Crabshell?
+Claude Code plugin with three pillars:
+1. **Session memory** — Auto-saves context across sessions (delta extraction, Haiku summarization, token-based rotation)
+2. **Behavioral correction** — Injects verification-first rules and interference pattern detection every prompt. Guard hooks block sycophancy, overcorrection, and shortcuts at runtime
+3. **Structured workflows** — D/P/T/I document system with skills for planning, investigating, and iterative improvement
+
+## Available Skills
+- \`/crabshell:save-memory\` — Manual memory save
+- \`/crabshell:load-memory\` — Load full memory context
+- \`/crabshell:search-memory\` — Search past sessions
+- \`/crabshell:clear-memory\` — Archive old memory files
+- \`/crabshell:setup-project\` — Generate project.md concept
+- \`/crabshell:discussing\` — Create/update discussion documents
+- \`/crabshell:planning\` — Create/update plan documents
+- \`/crabshell:ticketing\` — Create/update ticket documents
+- \`/crabshell:investigating\` — Multi-agent investigation
+- \`/crabshell:regressing\` — Iterative optimization cycles
+- \`/crabshell:light-workflow\` — One-shot agent orchestration
+- \`/crabshell:verifying\` — Verification tool management
+- \`/crabshell:lessons\` — Project-specific lessons
+
+## Folder Structure
+\`\`\`
+.crabshell/
+├── project.md          # Project concept (injected every prompt)
+├── README.md           # This file
+├── memory/             # Session memory (memory.md, index, sessions, delta)
+├── lessons/            # Project-specific lessons
+├── verification/       # Verification manifest and tools
+├── discussion/         # D-documents (decisions, dialogues)
+├── plan/               # P-documents (implementation plans)
+├── ticket/             # T-documents (executable work units)
+└── investigation/      # I-documents (multi-agent investigations)
+\`\`\`
+
+## Auto-managed
+- Memory saves automatically (no manual action needed)
+- Rules injected into CLAUDE.md on every prompt
+- Guard hooks run on PreToolUse/Stop events
+- .crabshell/ is gitignored
+`);
   } catch (e) {
     // Silently fail
   }
