@@ -639,8 +639,8 @@ async function main() {
         try {
           const pcContent = fs.readFileSync(projectMdPath, 'utf8').trim();
           if (pcContent) {
-            const lines = pcContent.split('\n').slice(0, 3).join('\n');
-            projectConcept = lines.substring(0, 200);
+            const lines = pcContent.split('\n').slice(0, 10).join('\n');
+            projectConcept = lines.substring(0, 500);
           }
         } catch (e) { /* ignore read errors */ }
       }

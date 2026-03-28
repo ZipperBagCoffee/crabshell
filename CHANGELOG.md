@@ -1,5 +1,8 @@
 # Changelog
 
+## 19.56.0
+- feat: project.md injection expanded to 10 lines/500 chars, CLAUDE_RULES practical guidelines (AI slop avoidance, config externalization)
+
 ## 19.55.0
 - feat: delta-processor Bash dependency removal — all 5 Bash steps replaced with Read+Write tool operations, JSON content-based lock protocol, inline timestamp generation with TZ_OFFSET, memoryAppendedInThisRun flag guard, memory-delta SKILL.md foreground fallback also Bash-free, orphaned Node.js/Script path sections removed
 

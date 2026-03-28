@@ -16,7 +16,7 @@ If not available in context, use your current working directory.
 Generate `.claude/memory/project.md` — a 2-3 sentence project concept injected every prompt by inject-rules.js for drift prevention.
 
 ## Format Constraint
-- First 3 lines, max 200 characters total (inject-rules.js truncation)
+- Max 10 lines, 500 characters total (inject-rules.js truncation)
 - Content: What is this project? What does it do? What tech stack?
 - Example: "Memory Keeper is a Claude Code plugin that auto-saves session context. Provides hierarchical memory rotation, rules injection, and integrated search. Built with Node.js, runs as hooks."
 
@@ -33,7 +33,7 @@ Read available sources in order of priority:
 4. Top-level directory names — detect framework/stack
 
 ### Step 3: Generate project concept
-From extracted info, compose 2-3 sentences (under 200 chars total):
+From extracted info, compose 2-3 sentences (under 500 chars total):
 - Line 1: "{name} is a {type} that {purpose}."
 - Line 2: "{key features or tech stack}."
 - Line 3 (optional): "{additional context}."
@@ -52,5 +52,5 @@ If the directory doesn't exist, create it first:
 ### Step 6: Verify
 Read back the file and confirm inject-rules.js would pick it up:
 - File exists at correct path
-- Content is 3 lines or fewer
-- Total length under 200 chars
+- Content is 10 lines or fewer
+- Total length under 500 chars

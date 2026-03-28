@@ -1,6 +1,6 @@
 # Memory-Keeper Plugin Structure
 
-**Version**: 19.55.0 | **Author**: TaWa | **License**: MIT
+**Version**: 19.56.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -251,6 +251,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 19.56.0 | feat: project.md injection expanded to 10 lines/500 chars, CLAUDE_RULES practical guidelines (AI slop avoidance, config externalization) |
 | 19.55.0 | feat: delta-processor Bash removal — Read+Write only, JSON lock protocol, inline timestamps, memoryAppendedInThisRun flag, SKILL.md fallback Bash-free |
 | 19.54.0 | feat: contradiction detection — 3-level verification framework (Local/Related pipeline/System-wide), pipeline contradiction scan in coherence methods |
 | 19.53.0 | fix: Bash escaping/permission — 9 files fixed; feat: regressing convergence loop; feat: feedback assessment-mode detection |
