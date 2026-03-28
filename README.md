@@ -127,7 +127,8 @@ Coding conventions: ...
 ├── memory.md              # Active rolling memory (auto-rotates at 23,750 tokens)
 ├── memory_*.md            # Rotated archives (L2)
 ├── *.summary.json         # L3 summaries (Haiku-generated)
-├── memory-index.json      # Rotation tracking & counter
+├── memory-index.json      # Rotation tracking & delta state
+├── counter.json           # PostToolUse counter
 ├── project.md             # Project overview (optional)
 ├── logs/                  # Refine logs
 └── sessions/

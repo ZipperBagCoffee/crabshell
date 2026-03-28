@@ -15,7 +15,8 @@ crabshell/
 │   │   ├── memory.md                 # Rolling session summary (auto-rotates)
 │   │   ├── memory_*.md               # Rotated archives (L2)
 │   │   ├── *.summary.json            # L3 summaries (Haiku-generated)
-│   │   ├── memory-index.json         # Rotation tracking & counter
+│   │   ├── memory-index.json         # Rotation tracking & delta state
+│   │   ├── counter.json              # PostToolUse counter (separated v20.5.0)
 │   │   ├── project.md                # Project overview (optional)
 │   │   ├── logs/                     # Refine logs
 │   │   └── sessions/                 # Per-session archive

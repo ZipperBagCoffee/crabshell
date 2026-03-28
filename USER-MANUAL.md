@@ -53,7 +53,8 @@ Crabshell solves this problem.
 ├── memory.md            # Active rolling memory (auto-rotates)
 ├── memory_*.md          # Rotated archives (L2)
 ├── *.summary.json       # L3 summaries (Haiku-generated)
-├── memory-index.json    # Rotation tracking & counter
+├── memory-index.json    # Rotation tracking & delta state
+├── counter.json         # PostToolUse counter
 ├── config.json          # Per-project configuration
 ├── project.md           # Project overview (optional)
 ├── logs/                # Debug and refine logs
@@ -293,7 +294,7 @@ When Claude notices repeated patterns (2+ times), it proposes a lesson:
 3. Run `/crabshell:load-memory`
 
 ### Auto-save Not Triggering
-1. Check counter in `.crabshell/memory/memory-index.json`
+1. Check counter in `.crabshell/memory/counter.json`
 2. Ask Claude: "Reset the memory counter"
 
 ### L1 Files Taking Too Much Space

@@ -114,7 +114,8 @@ Two meta-principles guide Claude's approach to obstacles:
 |  | - memory.md (rolling, auto-rotates)        |  | - *.l1.jsonl      |    |
 |  | - memory_*.md (L2 archives)                |  +-------------------+    |
 |  | - *.summary.json (L3 summaries)            |  +-------------------+    |
-|  | - memory-index.json (rotation/counter)     |  | logs/             |    |
+|  | - memory-index.json (rotation/delta state) |
+|  | - counter.json (PostToolUse counter)       |  | logs/             |    |
 |  | - regressing-state.json (cycle tracker)    |  | - refine.log      |    |
 |  |                                            |  | - inject-debug.log|    |
 |  | Optional (create with /setup-project):     |  +-------------------+    |
@@ -314,7 +315,8 @@ Agent orchestration rules (11 rules covering pairing, cross-review, coherence, c
 | CARRYOVER_TOKENS | 2375 | Carryover on rotation (2500 * 0.95) |
 | MEMORY_DIR | memory | Memory storage directory |
 | SESSIONS_DIR | sessions | Session storage directory |
-| INDEX_FILE | memory-index.json | Rotation tracking + counter |
+| INDEX_FILE | memory-index.json | Rotation tracking + delta state |
+| COUNTER_FILE | counter.json | PostToolUse counter (separated from index) |
 | MEMORY_FILE | memory.md | Active memory file |
 | REGRESSING_STATE_FILE | regressing-state.json | Regressing cycle tracker |
 | SKILL_ACTIVE_FILE | skill-active.json | TTL-based skill flag for docs-guard/verify-guard |
@@ -366,7 +368,6 @@ Save to *.summary.json
     "totalRotations": 0,
     "lastRotation": null
   },
-  "counter": 0,
   "lastMemoryUpdateTs": "2026-02-01T12:00:00.000Z",
   "deltaCreatedAtMemoryMtime": 1234567890123.456
 }
@@ -379,6 +380,16 @@ Save to *.summary.json
 | deltaReady | Flag: true when delta_temp.txt is ready for processing |
 | pendingLastProcessedTs | Temp: max L1 entry ts from last extractDelta(), used by markMemoryUpdated() |
 | lastL1TranscriptMtime | Transcript file mtime at last L1 creation (skip redundant L1 creation) |
+
+### counter.json Structure (v20.5.0)
+
+```json
+{
+  "counter": 0
+}
+```
+
+Separated from memory-index.json to eliminate Write race condition during delta processing. counter.js writes this on every PostToolUse; memory-index.json is now only written during rotation/delta operations.
 
 ## L3 Summary Structure
 
