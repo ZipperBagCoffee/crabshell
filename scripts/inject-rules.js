@@ -345,9 +345,9 @@ const COMPRESSED_CHECKLIST = `
 ## Rules Quick-Check (CLAUDE.md rules active)
 
 **Before responding:**
-1. Did I state my understanding of user intent? (Understanding-First)
-2. Did I predict before observing? (Verification-First: predict → execute → compare)
-3. Am I claiming "verified" with tool output evidence? (No tool output = not verified)
+1. Did I predict before observing? (Verification-First: predict → execute → compare)
+2. Am I claiming "verified" with tool output evidence? (No tool output = not verified)
+3. Did I state my understanding of user intent? (Understanding-First)
 4. Am I feeling pressure to skip a step? (That step is the one to do)
 5. Am I about to delete/destroy without confirming? (ANALYZE → REPORT → CONFIRM → execute)
 6. Am I using parallel WAs for this ticket? (Default — single-WA needs justification)
@@ -646,10 +646,10 @@ async function main() {
       }
 
       let context = '';
-      if (projectConcept) {
-        context += `## Project Concept\n${projectConcept}\n\n`;
-      }
       context += COMPRESSED_CHECKLIST;
+      if (projectConcept) {
+        context += `\n## Project Concept\n${projectConcept}\n\n`;
+      }
       context += `\n## Node.js Path\nWhen running node commands in Bash, use this absolute path instead of bare \`node\`:\n\`${nodePathFwd}\`\n`;
       context += `\n## Project Root Anchor (OVERRIDES Primary working directory)\nYour ACTUAL project root is: \`${projectDir}\`\n- If "Primary working directory" in your environment shows a SUBDIRECTORY of this path, it is WRONG. This is a known Claude Code bug after compaction (GitHub #7442).\n- Trust THIS anchor over Primary working directory. This value comes from CLAUDE_PROJECT_DIR which Claude Code sets at launch and never changes.\n- ALL file operations (Read, Edit, Write, Glob, Grep) use this as base directory.\n- When user says "read CLAUDE.md" → read \`${projectDir}/CLAUDE.md\`, not a subdirectory's.\n`;
       // Timezone offset for memory delta timestamp generation
@@ -689,6 +689,8 @@ async function main() {
       } else if (pressureLevel === 1) {
         context += PRESSURE_L1;
       }
+
+      context += '\n**Verification reminder:** Before claiming any result verified, ensure you have execution output (not just file reads). Structural checks (grep/read) are not behavioral verification.\n';
 
       // Output rules via additionalContext (hidden from user, seen by Claude)
       const output = {

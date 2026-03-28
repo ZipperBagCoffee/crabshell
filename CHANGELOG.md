@@ -1,5 +1,9 @@
 # Changelog
 
+## 20.4.0
+- feat: sycophancy-guard evidence type split — behavioral (execution/test output) vs structural (grep/read) evidence, distinct block messaging for structural-only cases
+- feat: inject-rules.js positional optimization — COMPRESSED_CHECKLIST before project concept, predict/verify items promoted to #1/#2, verification reminder appended to context
+
 ## 20.3.0
 - feat: path-guard blocks Edit on memory.md (append-only enforcement)
 - feat: verify-guard requires at least 1 behavioral (direct type) AC in manifest before allowing Final Verification
