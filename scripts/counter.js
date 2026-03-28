@@ -5,7 +5,7 @@ const os = require('os');
 const { refineRaw, refineRawSync } = require('./refine-raw');
 const { checkAndRotate } = require('./memory-rotation');
 const { extractDelta } = require('./extract-delta');
-const { MEMORY_DIR, MEMORY_FILE, SESSIONS_DIR } = require('./constants');
+const { MEMORY_DIR, MEMORY_FILE, SESSIONS_DIR, COUNTER_FILE } = require('./constants');
 const { detectRegressingSkillCall, advancePhase } = require('./regressing-state');
 
 const GLOBAL_CONFIG_PATH = path.join(os.homedir(), '.crabshell', 'config.json');
@@ -105,18 +105,16 @@ function readStdin(timeoutMs = 1000) {
 }
 
 
-// Counter stored in memory-index.json
+// Counter stored in counter.json (separated from memory-index.json)
 function getCounter() {
-  const indexPath = path.join(getStorageRoot(), MEMORY_DIR, 'memory-index.json');
-  const index = readJsonOrDefault(indexPath, { counter: 0 });
-  return index.counter || 0;
+  const counterPath = path.join(getStorageRoot(), MEMORY_DIR, COUNTER_FILE);
+  const data = readJsonOrDefault(counterPath, { counter: 0 });
+  return data.counter || 0;
 }
 
 function setCounter(value) {
-  const indexPath = path.join(getStorageRoot(), MEMORY_DIR, 'memory-index.json');
-  const index = readIndexSafe(indexPath);  // Use safe reader to preserve all fields
-  index.counter = value;
-  writeJson(indexPath, index);
+  const counterPath = path.join(getStorageRoot(), MEMORY_DIR, COUNTER_FILE);
+  writeJson(counterPath, { counter: value });
 }
 
 async function check() {

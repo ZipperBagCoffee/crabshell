@@ -28,6 +28,7 @@ module.exports = {
   // File names
   MEMORY_FILE: 'memory.md',
   INDEX_FILE: 'memory-index.json',
+  COUNTER_FILE: 'counter.json',
   LOCK_FILE: '.rotation.lock',
   REGRESSING_STATE_FILE: 'regressing-state.json',
   SKILL_ACTIVE_FILE: 'skill-active.json',

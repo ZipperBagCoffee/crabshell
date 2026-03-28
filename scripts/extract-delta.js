@@ -190,14 +190,34 @@ function cleanupDeltaTemp() {
 
     fs.unlinkSync(deltaPath);
 
-    // Clear deltaReady flag so inject-rules.js stops triggering
+    // Clear deltaReady flag and memoryAppendedInThisRun so inject-rules.js stops triggering
     index.deltaReady = false;
+    delete index.memoryAppendedInThisRun;
     writeJson(indexPath, index);
 
     console.log('[CRABSHELL] Delta temp file cleaned up');
     return true;
   } catch (e) {
     console.error('[CRABSHELL] Failed to cleanup delta temp:', e.message);
+    return false;
+  }
+}
+
+// Set memoryAppendedInThisRun flag in memory-index.json
+function markMemoryAppended() {
+  try {
+    const projectDir = getProjectDir();
+    const memoryDir = path.join(getStorageRoot(projectDir), MEMORY_DIR);
+    const indexPath = path.join(memoryDir, INDEX_FILE);
+
+    const index = readIndexSafe(indexPath);
+    index.memoryAppendedInThisRun = true;
+    writeJson(indexPath, index);
+
+    console.log('[CRABSHELL] memoryAppendedInThisRun set to true');
+    return true;
+  } catch (e) {
+    console.error('[CRABSHELL] Failed to mark memory appended:', e.message);
     return false;
   }
 }
@@ -218,6 +238,9 @@ if (require.main === module) {
       const result = extractDelta();
       console.log(JSON.stringify(result));
       break;
+    case 'mark-appended':
+      markMemoryAppended();
+      break;
     case 'mark-updated':
       markMemoryUpdated();
       break;
@@ -225,8 +248,8 @@ if (require.main === module) {
       cleanupDeltaTemp();
       break;
     default:
-      console.log('Usage: extract-delta.js <extract|mark-updated|cleanup>');
+      console.log('Usage: extract-delta.js <extract|mark-appended|mark-updated|cleanup>');
   }
 }
 
-module.exports = { extractDelta, markMemoryUpdated, cleanupDeltaTemp };
+module.exports = { extractDelta, markMemoryAppended, markMemoryUpdated, cleanupDeltaTemp };

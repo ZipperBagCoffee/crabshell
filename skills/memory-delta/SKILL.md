@@ -31,28 +31,22 @@ If you see `[CRABSHELL_DELTA]` anywhere in your context, execute this skill imme
    - If response starts with "ERROR:" → STOP
    - If response is empty → STOP
 
-**Step 4**: Append summary to memory.md:
+**Step 4**: Append summary to memory.md and mark appended:
    1. Use the Read tool to read `{PROJECT_DIR}/.crabshell/memory/memory.md` to get existing content.
    2. Generate dual timestamps from current time. TZ_OFFSET is available from your context's "Timezone" section.
       - UTC: `YYYY-MM-DD_HHmm` format (e.g., `2026-03-28_0700`)
       - Local: `MM-DD_HHmm` format (e.g., `03-28_1600`) — use the TZ_OFFSET to compute local time
    3. Use the Write tool to write `{PROJECT_DIR}/.crabshell/memory/memory.md` with: `{existing content}\n\n## {utc_timestamp} (local {local_timestamp})\n{summary}\n`
-   4. Use the Read tool to read `{PROJECT_DIR}/.crabshell/memory/memory-index.json`, parse the JSON.
-   5. Set `memoryAppendedInThisRun` to `true` in the JSON object.
-   6. Use the Write tool to write `{PROJECT_DIR}/.crabshell/memory/memory-index.json` back (preserve ALL other fields, 2-space indentation).
+   4. Run via Bash: `"C:/Program Files/nodejs/node.exe" "{PLUGIN_ROOT}/scripts/extract-delta.js" mark-appended --project-dir="{PROJECT_DIR}"`
+      (Sets `memoryAppendedInThisRun=true` in memory-index.json)
 
 **Step 5**: Update timestamp marker:
-   1. Use the Read tool to read `{PROJECT_DIR}/.crabshell/memory/memory-index.json`, parse the JSON.
-   2. If `pendingLastProcessedTs` exists: set `lastMemoryUpdateTs` to its value, remove `pendingLastProcessedTs`.
-   3. Else: set `lastMemoryUpdateTs` to current ISO timestamp.
-   4. Use the Write tool to write `{PROJECT_DIR}/.crabshell/memory/memory-index.json` back (preserve ALL other fields, 2-space indentation).
+   Run via Bash: `"C:/Program Files/nodejs/node.exe" "{PLUGIN_ROOT}/scripts/extract-delta.js" mark-updated --project-dir="{PROJECT_DIR}"`
+   (Moves `pendingLastProcessedTs` → `lastMemoryUpdateTs`, or uses current ISO timestamp as fallback)
 
 **Step 6**: Clean up temp file:
-   1. Use the Read tool to read `{PROJECT_DIR}/.crabshell/memory/memory-index.json`, parse the JSON.
-   2. Verify `memoryAppendedInThisRun` is `true`. If not → STOP (don't clean up).
-   3. Use the Write tool to write `{PROJECT_DIR}/.crabshell/memory/delta_temp.txt` with empty content `""`.
-   4. In the index JSON: set `deltaReady` to `false`, remove `memoryAppendedInThisRun`, remove `deltaCreatedAtMemoryMtime`.
-   5. Use the Write tool to write `{PROJECT_DIR}/.crabshell/memory/memory-index.json` back (preserve ALL other fields, 2-space indentation).
+   Run via Bash: `"C:/Program Files/nodejs/node.exe" "{PLUGIN_ROOT}/scripts/extract-delta.js" cleanup --project-dir="{PROJECT_DIR}"`
+   (Verifies memory.md was updated, deletes delta_temp.txt, clears `deltaReady` and `memoryAppendedInThisRun`)
 
 ## Failure Handling
 

@@ -1,5 +1,10 @@
 # Changelog
 
+## 20.5.0
+- feat: counter file separation — counter.json replaces memory-index.json counter field, migration on init, getDefaultIndex() cleaned
+- feat: extract-delta.js CLI — mark-appended command sets memoryAppendedInThisRun flag, cleanup also clears memoryAppendedInThisRun
+- feat: memory-delta SKILL.md Steps 4-6 rewritten to use Bash CLI calls to extract-delta.js instead of Read/Write tools on memory-index.json
+
 ## 20.4.0
 - feat: sycophancy-guard evidence type split — behavioral (execution/test output) vs structural (grep/read) evidence, distinct block messaging for structural-only cases
 - feat: inject-rules.js positional optimization — COMPRESSED_CHECKLIST before project concept, predict/verify items promoted to #1/#2, verification reminder appended to context

@@ -16,13 +16,14 @@
  *       "dateRange": { "start": "ISO", "end": "ISO" }
  *     }
  *   ],
- *   "stats": { "totalRotations": 0, "lastRotation": null },
- *   "counter": 0
+ *   "stats": { "totalRotations": 0, "lastRotation": null }
  * }
+ *
+ * counter.json format: { "counter": 0 }
  */
 const fs = require('fs');
 const path = require('path');
-const { STORAGE_ROOT, MEMORY_DIR, SESSIONS_DIR, LOGS_DIR, LESSONS_DIR, WORKFLOW_DIR, DISCUSSION_DIR, PLAN_DIR, TICKET_DIR, INVESTIGATION_DIR, INDEX_FILE, MEMORY_FILE } = require('./constants');
+const { STORAGE_ROOT, MEMORY_DIR, SESSIONS_DIR, LOGS_DIR, LESSONS_DIR, WORKFLOW_DIR, DISCUSSION_DIR, PLAN_DIR, TICKET_DIR, INVESTIGATION_DIR, INDEX_FILE, COUNTER_FILE, MEMORY_FILE } = require('./constants');
 const { writeJson } = require('./utils');
 
 
@@ -208,7 +209,7 @@ function ensureMemoryStructure(projectDir) {
   const indexPath = path.join(storageRoot, MEMORY_DIR, INDEX_FILE);
 
   // Create new or migrate old index structure
-  const defaults = { version: 1, current: MEMORY_FILE, rotatedFiles: [], stats: { totalRotations: 0, lastRotation: null }, counter: 0 };
+  const defaults = { version: 1, current: MEMORY_FILE, rotatedFiles: [], stats: { totalRotations: 0, lastRotation: null } };
 
   if (fs.existsSync(indexPath)) {
     try {
@@ -228,6 +229,20 @@ function ensureMemoryStructure(projectDir) {
     }
   } else {
     fs.writeFileSync(indexPath, JSON.stringify(defaults, null, 2));
+  }
+
+  // Counter file setup (migrated from memory-index.json)
+  const counterPath = path.join(storageRoot, MEMORY_DIR, COUNTER_FILE);
+  if (!fs.existsSync(counterPath)) {
+    // Migrate counter from memory-index.json if it exists
+    let counterValue = 0;
+    try {
+      const existingIndex = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
+      if (existingIndex.counter !== undefined) {
+        counterValue = existingIndex.counter;
+      }
+    } catch (e) { /* use default 0 */ }
+    writeJson(counterPath, { counter: counterValue });
   }
 }
 

@@ -1,4 +1,4 @@
-# Crabshell Architecture (v20.4.0)
+# Crabshell Architecture (v20.5.0)
 
 ## Overview
 
@@ -403,6 +403,7 @@ Save to *.summary.json
 
 | Version | Key Changes |
 |---------|-------------|
+| 20.5.0 | Counter file separation (counter.json), extract-delta.js mark-appended CLI, memory-delta SKILL.md Bash CLI steps |
 | 20.4.0 | Sycophancy-guard evidence type split (behavioral vs structural), inject-rules.js positional optimization (COMPRESSED_CHECKLIST first, verify items #1/#2, verification reminder) |
 | 20.3.0 | Enforcement guards — path-guard Edit block on memory.md, verify-guard behavioral AC requirement, sycophancy-guard "맞다." + English "Correct."/"Right." patterns |
 | 20.2.0 | Delta foreground conversion — remove background delta-processor agent, TZ_OFFSET auto-injection in inject-rules.js, foreground-only memory-delta SKILL.md |

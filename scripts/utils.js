@@ -41,7 +41,6 @@ function getDefaultIndex() {
     current: MEMORY_FILE,
     rotatedFiles: [],
     stats: { totalRotations: 0, lastRotation: null },
-    counter: 0,
     lastMemoryUpdateTs: null
   };
 }

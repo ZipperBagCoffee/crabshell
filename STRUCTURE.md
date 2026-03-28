@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 20.4.0 | **Author**: TaWa | **License**: MIT
+**Version**: 20.5.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -256,6 +256,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 20.5.0 | feat: counter file separation (counter.json), extract-delta.js mark-appended CLI, memory-delta SKILL.md Bash CLI steps |
 | 20.4.0 | feat: sycophancy-guard evidence type split (behavioral vs structural), inject-rules.js positional optimization (COMPRESSED_CHECKLIST first, verify items #1/#2, verification reminder) |
 | 20.3.0 | feat: enforcement guards — path-guard Edit block on memory.md, verify-guard behavioral AC requirement, sycophancy-guard "맞다." + English "Correct."/"Right." patterns |
 | 20.2.0 | feat: delta foreground conversion — remove background delta-processor, TZ_OFFSET auto-injection in inject-rules.js, foreground-only memory-delta SKILL.md |
