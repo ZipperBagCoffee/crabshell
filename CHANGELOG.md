@@ -3,7 +3,7 @@
 ## 20.3.0
 - feat: path-guard blocks Edit on memory.md (append-only enforcement)
 - feat: verify-guard requires at least 1 behavioral (direct type) AC in manifest before allowing Final Verification
-- feat: sycophancy-guard adds "사용자가 맞다" Korean pattern
+- feat: sycophancy-guard pattern update — "맞다." Korean + "Correct." "Right." English patterns
 
 ## 20.2.0
 - feat: delta foreground conversion — remove background delta-processor agent, promote foreground flow to primary in memory-delta SKILL.md

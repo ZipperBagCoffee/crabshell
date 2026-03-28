@@ -1,15 +1,15 @@
 # Crabshell Plugin Structure
 
-**Version**: 20.1.0 | **Author**: TaWa | **License**: MIT
+**Version**: 20.3.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
-Crabshell is a Claude Code plugin that automatically saves and manages session memory. Supports token-based rotation, L3 Haiku summaries, hierarchical L1-L2-L3 structure, and integrated search.
+Crabshell is a Claude Code plugin with two pillars: (1) session memory — L1 delta extraction, Haiku summarization, memory.md rotation, auto-restore on restart; (2) LLM behavioral correction — injects VERIFICATION-FIRST, UNDERSTANDING-FIRST, INTERFERENCE PATTERNS every prompt, six guard hooks block violations at runtime. D/P/T/I document system, 16 skills, Node.js hooks. All output under .crabshell/.
 
 ## Directory Structure
 
 ```
-memory-keeper-plugin/
+crabshell/
 ├── .crabshell/                       # Crabshell local storage
 │   ├── memory/                       # Project memory storage
 │   │   ├── memory.md                 # Rolling session summary (auto-rotates)
@@ -33,9 +33,9 @@ memory-keeper-plugin/
 │   ├── plugin.json                   # Plugin metadata
 │   └── marketplace.json              # Marketplace registration
 │
-├── agents/                           # Background agent definitions
-│   ├── memory-summarizer.md          # L3 summary generator (haiku)
-│   └── delta-summarizer.md           # Delta content summarizer (haiku)
+├── agents/                           # Agent definitions
+│   ├── memory-summarizer.md          # L3 summary generator (claude-haiku-4-5-20251001)
+│   └── delta-summarizer.md           # Delta content summarizer (claude-haiku-4-5-20251001)
 │
 ├── commands/                         # CLI commands
 │   ├── save-memory.md                # Manual save command
@@ -62,29 +62,39 @@ memory-keeper-plugin/
 │   ├── refine-raw.js                 # raw.jsonl -> l1.jsonl conversion
 │   ├── sync-rules-to-claude.js       # Manual CLAUDE.md sync (standalone)
 │   ├── regressing-state.js            # Regressing phase tracker (v19.23.0)
+│   ├── append-memory.js              # Atomic memory.md append (v19.53.0)
+│   ├── regressing-guard.js           # PreToolUse regressing skill enforcement (v19.23.0)
 │   ├── sycophancy-guard.js           # Stop hook sycophancy detection (v19.29.0)
-│   ├── path-guard.js                # PreToolUse .crabshell/ path validation (v19.31.0)
-│   ├── docs-guard.js                # PreToolUse .crabshell/ D/P/T/I skill bypass prevention (v19.33.0)
-│   ├── verify-guard.js              # PreToolUse Final Verification /verifying run enforcement (v19.34.0)
+│   ├── path-guard.js                # PreToolUse path validation + memory.md Edit block (v19.31.0, v20.3.0)
+│   ├── docs-guard.js                # PreToolUse D/P/T/I skill bypass prevention (v19.33.0)
+│   ├── verify-guard.js              # PreToolUse Final Verification + behavioral AC (v19.34.0, v20.3.0)
+│   ├── pressure-guard.js            # PreToolUse feedback pressure detection (v19.47.0)
 │   ├── skill-tracker.js             # PostToolUse skill-active flag setter (v19.33.0)
 │   ├── test-cwd-isolation.js         # Mock tests for cwd isolation (v17.0.0)
-│   └── utils.js                      # Shared utilities
+│   └── utils.js                      # Shared utilities (getStorageRoot, getProjectDir)
 │
-├── skills/                           # Slash command skills
+├── skills/                           # Slash command skills (16 total)
 │   ├── memory-autosave/SKILL.md      # Auto-trigger memory save
-│   ├── memory-delta/SKILL.md         # Auto-trigger delta summarization
+│   ├── memory-delta/SKILL.md         # Auto-trigger delta summarization (foreground)
+│   ├── memory-rotate/SKILL.md        # Auto-trigger L3 generation
 │   ├── save-memory/SKILL.md          # /crabshell:save-memory
 │   ├── load-memory/SKILL.md          # /crabshell:load-memory
 │   ├── search-memory/SKILL.md        # /crabshell:search-memory
 │   ├── clear-memory/SKILL.md         # /crabshell:clear-memory
-│   └── memory-rotate/SKILL.md        # Auto-trigger L3 generation
+│   ├── setup-project/SKILL.md        # /crabshell:setup-project
+│   ├── discussing/SKILL.md           # /crabshell:discussing (D documents)
+│   ├── planning/SKILL.md             # /crabshell:planning (P documents)
+│   ├── ticketing/SKILL.md            # /crabshell:ticketing (T documents)
+│   ├── investigating/SKILL.md        # /crabshell:investigating (I documents)
+│   ├── regressing/SKILL.md           # /crabshell:regressing (D→P→T cycles)
+│   ├── light-workflow/SKILL.md       # /crabshell:light-workflow (one-shot)
+│   ├── verifying/SKILL.md            # /crabshell:verifying (verification tools)
+│   └── lessons/SKILL.md              # /crabshell:lessons (project rules)
 │
 ├── templates/                        # Auto-init templates (v13.9.20)
 │   ├── workflow.md                   # Understanding-First workflow template
 │   └── lessons-README.md             # Lessons system README template
 │
-├── docs/                             # Local documentation (gitignored)
-│   └── internal/                     # Legacy internal docs
 │
 ├── ARCHITECTURE.md                   # System architecture
 ├── USER-MANUAL.md                    # User manual
@@ -160,16 +170,18 @@ UserPromptSubmit hook:
 - Detect active regressing session → inject phase-specific reminder (v19.23.0)
 
 ### scripts/path-guard.js
-PreToolUse path validation (v19.31.0):
+PreToolUse path validation (v19.31.0, v20.3.0 Edit block):
 - Block Read/Grep/Glob/Bash calls targeting `.crabshell/` outside `CLAUDE_PROJECT_DIR`
+- Block Edit on `memory/memory.md` — memory.md is append-only (Write only)
 - Bash command string inspection: regex extraction of `.crabshell/` paths within command strings
 - Fail-open on parse errors (user experience protection)
 - Windows path normalization (backslash → forward slash)
 
 ### scripts/verify-guard.js
-PreToolUse Final Verification enforcement (v19.34.0, v19.39.0 deterministic execution):
+PreToolUse Final Verification enforcement (v19.34.0, v19.39.0 deterministic, v20.3.0 behavioral AC):
 - Block Write/Edit to `.crabshell/ticket/P###_T###*` containing `## Final Verification`
 - Directly executes `run-verify.js` via execSync (10s timeout) — blocks on FAIL entries
+- Require at least 1 behavioral (type: "direct") AC in verification manifest — structural-only is insufficient
 - "Verification tool N/A:" exception for projects without verification tools
 - Fail-open on parse errors (user experience protection)
 
@@ -210,20 +222,15 @@ L1 generation:
        │   └─> If yes: Inject phase-specific reminder (planning/ticketing → MANDATORY SKILL TOOL CALL)
        └─> Output indicator: [rules injected], [rules + delta pending], [rules + rotation pending]
 
-3. PreToolUse (Write/Edit — ticket Final Verification)
-   └─> verify-guard.js (v19.34.0)
-       ├─> Check if file matches .crabshell/ticket/P###_T###
-       ├─> Check if content contains ## Final Verification
-       ├─> Allow if "Verification tool N/A:" found (exception)
-       ├─> Execute run-verify.js via execSync (10s timeout)
-       └─> Block with FAIL details if any test fails
-
-4. PreToolUse (Read/Grep/Glob/Bash)
-   └─> path-guard.js (v19.31.0)
-       ├─> Check if tool call targets .crabshell/ path
-       ├─> Verify path is under CLAUDE_PROJECT_DIR
-       ├─> Bash: regex scan command string for .crabshell/ paths
-       └─> Block with correction message if wrong project root
+3. PreToolUse — multiple guards
+   ├─> regressing-guard.js (Write|Edit) — block direct plan/ticket writes during active regressing
+   ├─> docs-guard.js (Write|Edit) — block writes to .crabshell/ D/P/T/I without active skill flag
+   ├─> verify-guard.js (Write|Edit) — block Final Verification without /verifying run
+   │   └─> Require at least 1 behavioral (type: "direct") AC in manifest (v20.3.0)
+   ├─> path-guard.js (Read|Grep|Glob|Bash|Edit) — block wrong project root
+   │   └─> Block Edit on memory/memory.md — append-only enforcement (v20.3.0)
+   ├─> pressure-guard.js (Write|Edit) — detect feedback pressure escalation
+   └─> skill-tracker.js (PostToolUse) — set TTL-based skill-active flag
 
 5. PostToolUse
    └─> counter.js check
@@ -249,7 +256,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
-| 20.3.0 | feat: enforcement guards — path-guard Edit block on memory.md, verify-guard behavioral AC requirement, sycophancy-guard "사용자가 맞다" pattern |
+| 20.3.0 | feat: enforcement guards — path-guard Edit block on memory.md, verify-guard behavioral AC requirement, sycophancy-guard "맞다." + English "Correct."/"Right." patterns |
 | 20.2.0 | feat: delta foreground conversion — remove background delta-processor, TZ_OFFSET auto-injection in inject-rules.js, foreground-only memory-delta SKILL.md |
 | 20.1.0 | feat: D/P/T/I documents consolidated under .crabshell/ — docs/discussion,plan,ticket,investigation → .crabshell/discussion,plan,ticket,investigation; init.js auto-creates directories; all guards/skills updated |
 | 20.0.0 | **BREAKING**: memory-keeper → crabshell rename, .claude/memory/ → .crabshell/ path migration, auto-migration on SessionStart, STORAGE_ROOT centralization |

@@ -187,7 +187,7 @@ memory.md                 - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
-| 20.3.0 | feat: enforcement guards — path-guard Edit block on memory.md, verify-guard behavioral AC requirement, sycophancy-guard "사용자가 맞다" pattern |
+| 20.3.0 | feat: enforcement guards — path-guard Edit block on memory.md, verify-guard behavioral AC requirement, sycophancy-guard "맞다." + English "Correct."/"Right." patterns |
 | 20.2.0 | feat: delta foreground conversion — remove background delta-processor, TZ_OFFSET auto-injection, foreground-only SKILL.md |
 | 20.1.0 | feat: D/P/T/I documents consolidated under .crabshell/ — all document paths, guards, and skills updated |
 | 20.0.0 | **BREAKING**: memory-keeper → crabshell rename, .claude/memory/ → .crabshell/ path migration, auto-migration on SessionStart, STORAGE_ROOT centralization |

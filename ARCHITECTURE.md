@@ -1,4 +1,4 @@
-# Crabshell Architecture (v20.1.0)
+# Crabshell Architecture (v20.3.0)
 
 ## Overview
 
@@ -191,9 +191,13 @@ Two meta-principles guide Claude's approach to obstacles:
    ├─> docs-guard.js (Write|Edit) — v19.33.0+
    │   └─> Block writes to .crabshell/ D/P/T/I subdirectories without active skill flag
    ├─> verify-guard.js (Write|Edit) — v19.34.0+
-   │   └─> Block Final Verification writes without prior /verifying run call
-   └─> path-guard.js (Read|Grep|Glob|Bash) — v19.31.0+
-       └─> Block operations targeting wrong .crabshell/ path
+   │   ├─> Block Final Verification writes without prior /verifying run call
+   │   └─> Require at least 1 behavioral (type: "direct") AC in manifest (v20.3.0)
+   ├─> pressure-guard.js (Write|Edit) — v19.47.0+
+   │   └─> Detect feedback pressure escalation patterns
+   └─> path-guard.js (Read|Grep|Glob|Bash|Edit) — v19.31.0+
+       ├─> Block operations targeting wrong .crabshell/ path
+       └─> Block Edit on memory/memory.md — append-only enforcement (v20.3.0)
 
 3.5. Stop — v19.29.0+
    └─> sycophancy-guard.js
@@ -285,8 +289,9 @@ Agent orchestration rules (11 rules covering pairing, cross-review, coherence, c
 | `counter.js` | PostToolUse, SessionEnd | Main engine: counter, L1 creation, rotation, regressing phase detection |
 | `regressing-guard.js` | PreToolUse (Write\|Edit) | Block direct plan/ticket writes during active regressing; force Skill tool |
 | `docs-guard.js` | PreToolUse (Write\|Edit) | Block writes to .crabshell/ D/P/T/I subdirectories without active skill flag |
-| `verify-guard.js` | PreToolUse (Write\|Edit) | Block Final Verification writes without prior /verifying run call |
-| `path-guard.js` | PreToolUse (Read\|Grep\|Glob\|Bash) | Block Read/Grep/Glob/Bash targeting wrong .crabshell/ path |
+| `verify-guard.js` | PreToolUse (Write\|Edit) | Block Final Verification writes without /verifying run; require behavioral AC in manifest |
+| `pressure-guard.js` | PreToolUse (Write\|Edit) | Detect feedback pressure escalation patterns |
+| `path-guard.js` | PreToolUse (Read\|Grep\|Glob\|Bash\|Edit) | Block wrong .crabshell/ path; block Edit on memory.md (append-only) |
 | `sycophancy-guard.js` | Stop | Detect agreement-without-verification patterns; block with re-examination instruction |
 | `skill-tracker.js` | PostToolUse (Skill) | Set skill-active flag on Skill tool calls (TTL-based, 5min expiry) |
 | `regressing-state.js` | (library) | Phase tracker: getState, buildReminder, detectSkillCall, advancePhase |
@@ -333,7 +338,7 @@ Rotate    (continue)
 1. Archive to memory_YYYYMMDD_HHMMSS.md
 2. Keep last 2,375 tokens as carryover
 3. Update index.json
-4. Output [MEMORY_KEEPER_ROTATE] trigger
+4. Output [CRABSHELL_ROTATE] trigger
     |
     v
 Haiku agent generates L3 summary
@@ -398,7 +403,7 @@ Save to *.summary.json
 
 | Version | Key Changes |
 |---------|-------------|
-| 20.3.0 | Enforcement guards — path-guard Edit block on memory.md, verify-guard behavioral AC requirement, sycophancy-guard "사용자가 맞다" pattern |
+| 20.3.0 | Enforcement guards — path-guard Edit block on memory.md, verify-guard behavioral AC requirement, sycophancy-guard "맞다." + English "Correct."/"Right." patterns |
 | 20.2.0 | Delta foreground conversion — remove background delta-processor agent, TZ_OFFSET auto-injection in inject-rules.js, foreground-only memory-delta SKILL.md |
 | 20.1.0 | D/P/T/I documents consolidated under .crabshell/ — all guards, skills, and paths updated; init.js auto-creates directories |
 | 19.49.0 | Per-prompt project concept anchor; extract 11 agent orchestration rules to .claude/rules/agent-orchestration.md; reduce emphasis markers 19→5 |

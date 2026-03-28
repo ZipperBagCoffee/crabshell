@@ -41,6 +41,7 @@ const SYCOPHANCY_PATTERNS = [
   /말씀이\s*맞/i,
   /그\s*점은\s*인정/i,
   /맞다\./,
+  /맞음\./,
   // English
   /^Correct\./m,
   /^Right\./m,
