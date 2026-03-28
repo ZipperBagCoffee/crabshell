@@ -287,7 +287,7 @@ You default to tool substitution within the same domain. This is trial-and-error
 - When modifying files not tracked by git, always create a backup (.bak) before making changes.
 - **Light-workflow:** For simple standalone tasks that don't need D/P/T document trail, invoke the 'light-workflow' skill. For complex iterative work, use the regressing skill instead. When the light-workflow specifies Work Agent or Review Agent, use the Task tool to launch a separate agent — do not do the agent's job yourself.
 - **Lessons:** Check .crabshell/lessons/ for project-specific rules. When proposing or creating lessons, invoke the 'lessons' skill for format guidelines. Propose new lessons when patterns repeat 2+ times.
-- **After Compacting or Session Restart:** Invoke the load-memory skill to rebuild full context. If the skill is unavailable, read latest memory.md as fallback. If understanding feels incomplete → check relevant docs and L1 session files in .crabshell/memory/sessions/.
+- **After Compacting or Session Restart:** Invoke the load-memory skill to rebuild full context. If the skill is unavailable, read latest logbook.md as fallback. If understanding feels incomplete → check relevant docs and L1 session files in .crabshell/memory/sessions/.
 - **Mandatory work log:** After performing any work related to a tracked document (D/P/T/I), append a log entry to that document's Log section using its existing format. This applies regardless of whether the skill was explicitly invoked — if the work touched or advanced the document's purpose, log it.
 - **Document types:** Discussion(D), Plan(P), Ticket(T), Investigation(I). Hierarchy: D → P → T. I is independent. Status cascades upward on completion.
 - **D/P/T/I protection:** Documents under .crabshell/ (discussion/, plan/, ticket/, investigation/) are local artifacts managed by crabshell. .crabshell/ is gitignored.
@@ -318,7 +318,7 @@ const DELTA_INSTRUCTION = `
 STOP. Before generating ANY text response to the user:
 
 1. Invoke Skill tool NOW: skill="memory-delta"
-2. Complete ALL steps in the skill (verify file, call Haiku, append to memory.md, mark-updated, cleanup)
+2. Complete ALL steps in the skill (verify file, call Haiku, append to logbook.md, mark-updated, cleanup)
 3. ONLY THEN respond to user
 
 This is a MANDATORY SYSTEM MAINTENANCE TASK.
@@ -503,7 +503,7 @@ function getRelevantMemorySnippets(projectDir, userPrompt) {
   const keywords = extractKeywords(userPrompt);
   if (keywords.length === 0) return null;
 
-  const memoryPath = path.join(getStorageRoot(projectDir), 'memory', 'memory.md');
+  const memoryPath = path.join(getStorageRoot(projectDir), 'memory', 'logbook.md');
   if (!fs.existsSync(memoryPath)) return null;
 
   let content;

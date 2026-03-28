@@ -344,9 +344,9 @@ async function final() {
 
 ${rawSaved ? `✓ Raw transcript saved: ${rawSaved}` : '⚠ Raw transcript not saved'}
 
-**APPEND complete summary to memory.md:**
+**APPEND complete summary to logbook.md:**
 \`\`\`bash
-printf '\\n## %s (Session End)\\n%s\\n' "${timestamp}" "[Complete session summary - be thorough]" >> "${projectDir}/.crabshell/memory/memory.md"
+printf '\\n## %s (Session End)\\n%s\\n' "${timestamp}" "[Complete session summary - be thorough]" >> "${projectDir}/.crabshell/memory/logbook.md"
 \`\`\`
 
 **RUN compression:**
@@ -639,15 +639,15 @@ function memoryList() {
     }
   });
 
-  // Also show memory.md (rolling)
+  // Also show logbook.md (rolling)
   const memoryPath = path.join(getStorageRoot(projectDir), MEMORY_DIR, MEMORY_FILE);
   if (fs.existsSync(memoryPath)) {
     const stats = fs.statSync(memoryPath);
     const content = readFileOrDefault(memoryPath, '');
     const lines = content.trim().split('\n').length;
-    console.log(`  ✓ memory.md (${lines} lines, ${stats.size} bytes) [rolling]`);
+    console.log(`  ✓ logbook.md (${lines} lines, ${stats.size} bytes) [rolling]`);
   } else {
-    console.log(`  ○ memory.md - not created [rolling]`);
+    console.log(`  ○ logbook.md - not created [rolling]`);
   }
 
   console.log(`\nHierarchical files: ${total}/1 created`);
@@ -766,7 +766,7 @@ switch (command) {
   case 'migrate-legacy':
     {
       const { splitLegacyMemory } = require('./legacy-migration');
-      const mp = path.join(getStorageRoot(), 'memory', 'memory.md');
+      const mp = path.join(getStorageRoot(), 'memory', MEMORY_FILE);
       const result = splitLegacyMemory(mp);
       if (result) {
         console.log('[CRABSHELL] Legacy split: ' + result.archives.length + ' archives created');
@@ -795,7 +795,7 @@ Memory Management:
 Memory Rotation (v13.0.0):
   search-memory <query> [--deep]  Search L3/L2/L1 hierarchically
   generate-l3 <archive-file>      Manual L3 summary generation
-  migrate-legacy                  Split oversized legacy memory.md
+  migrate-legacy                  Split oversized legacy logbook.md
   compress                        Archive old sessions (30+ days)
   refine-all                      Process raw.jsonl to L1
   dedupe-l1                       Remove duplicate L1 files (keep largest)

@@ -41,7 +41,7 @@ runTest('Read: wrong forward slash path',
 );
 
 runTest('Read: correct forward slash path',
-  { tool_name: 'Read', tool_input: { file_path: 'C:/Users/user/Documents/memory-keeper-plugin/.crabshell/memory/memory.md' } },
+  { tool_name: 'Read', tool_input: { file_path: 'C:/Users/user/Documents/memory-keeper-plugin/.crabshell/memory/logbook.md' } },
   false
 );
 
@@ -56,7 +56,7 @@ runTest('Read: correct backslash path',
 );
 
 runTest('Read: relative path',
-  { tool_name: 'Read', tool_input: { file_path: '.crabshell/memory/memory.md' } },
+  { tool_name: 'Read', tool_input: { file_path: '.crabshell/memory/logbook.md' } },
   false
 );
 
@@ -94,7 +94,7 @@ runTest('Bash: correct path in command',
 );
 
 runTest('Bash: mixed correct+wrong paths',
-  { tool_name: 'Bash', tool_input: { command: 'cat C:/Users/user/Documents/OtherProject/.crabshell/memory/file.md && cat C:/Users/user/Documents/memory-keeper-plugin/.crabshell/memory/memory.md' } },
+  { tool_name: 'Bash', tool_input: { command: 'cat C:/Users/user/Documents/OtherProject/.crabshell/memory/file.md && cat C:/Users/user/Documents/memory-keeper-plugin/.crabshell/memory/logbook.md' } },
   true
 );
 
@@ -142,7 +142,7 @@ runTest('Bash: ${CLAUDE_PROJECT_DIR}/.crabshell/memory/ (env var braces — allo
 );
 
 runTest('Read: parent traversal resolving to correct project (allow)',
-  { tool_name: 'Read', tool_input: { file_path: 'C:/Users/user/Documents/memory-keeper-plugin/scripts/../.crabshell/memory/memory.md' } },
+  { tool_name: 'Read', tool_input: { file_path: 'C:/Users/user/Documents/memory-keeper-plugin/scripts/../.crabshell/memory/logbook.md' } },
   false
 );
 

@@ -1,6 +1,6 @@
 ---
 name: memory-rotate
-description: "Auto-executes when the [CRABSHELL_ROTATE] trigger is detected, rotating memory.md when it exceeds token limits. Calls Haiku agent for summarization of rotated content. Not user-invocable — triggered automatically."
+description: "Auto-executes when the [CRABSHELL_ROTATE] trigger is detected, rotating logbook.md when it exceeds token limits. Calls Haiku agent for summarization of rotated content. Not user-invocable — triggered automatically."
 ---
 
 ## Trigger Condition

@@ -26,7 +26,7 @@ module.exports = {
   INVESTIGATION_DIR: 'investigation',
 
   // File names
-  MEMORY_FILE: 'memory.md',
+  MEMORY_FILE: 'logbook.md',
   INDEX_FILE: 'memory-index.json',
   COUNTER_FILE: 'counter.json',
   LOCK_FILE: '.rotation.lock',

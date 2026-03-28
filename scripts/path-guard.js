@@ -207,18 +207,46 @@ async function main() {
     return;
   }
 
-  // --- Edit on memory.md: block (append-only via Write) ---
+  // --- Edit on logbook.md: block (append-only via Write) ---
   if (toolName === 'Edit') {
     const filePath = normalizePath(input.file_path || '');
-    if (filePath.endsWith('memory/memory.md')) {
+    if (filePath.endsWith('memory/logbook.md')) {
       const output = {
         decision: "block",
-        reason: "memory.md is append-only. Use Write tool to append content, not Edit. Edit modifies existing content which violates the append-only constraint."
+        reason: "logbook.md is append-only. Use Write tool to append content, not Edit. Edit modifies existing content which violates the append-only constraint."
       };
-      process.stderr.write(`[PATH_GUARD] Blocked Edit on memory.md: ${filePath}\n`);
+      process.stderr.write(`[PATH_GUARD] Blocked Edit on logbook.md: ${filePath}\n`);
       console.log(JSON.stringify(output));
       process.exit(2);
       return;
+    }
+  }
+
+  // --- Write shrink guard on logbook.md: block if new content has fewer lines ---
+  if (toolName === 'Write') {
+    const filePath = normalizePath(input.file_path || '');
+    if (filePath.endsWith('memory/logbook.md')) {
+      const newContent = input.content || '';
+      const newLineCount = newContent.split('\n').length;
+      const fs = require('fs');
+      if (fs.existsSync(filePath.replace(/\//g, path.sep))) {
+        try {
+          const existing = fs.readFileSync(filePath.replace(/\//g, path.sep), 'utf8');
+          const existingLineCount = existing.split('\n').length;
+          if (newLineCount < existingLineCount) {
+            const output = {
+              decision: "block",
+              reason: `logbook.md shrink detected: existing ${existingLineCount} lines → new ${newLineCount} lines. logbook.md is append-only — content must not be removed. Add new content without removing existing entries.`
+            };
+            process.stderr.write(`[PATH_GUARD] Blocked Write shrink on logbook.md: ${existingLineCount} → ${newLineCount} lines\n`);
+            console.log(JSON.stringify(output));
+            process.exit(2);
+            return;
+          }
+        } catch (e) {
+          // fail-open: if we can't read existing file, allow the write
+        }
+      }
     }
   }
 

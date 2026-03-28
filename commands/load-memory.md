@@ -5,9 +5,9 @@ allowed-tools: Bash, Read, Glob
 
 Read session files from .crabshell/memory/
 
-1. Read memory.md for rolling summary:
+1. Read logbook.md for rolling summary:
    ```bash
-   cat .crabshell/memory/memory.md
+   cat .crabshell/memory/logbook.md
    ```
 
 2. List L3 summaries:

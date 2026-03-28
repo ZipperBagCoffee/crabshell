@@ -1,5 +1,5 @@
 // scripts/migrate-timezone.js
-// Migrate local timestamps to UTC in memory.md headers and L1 filenames
+// Migrate local timestamps to UTC in logbook.md headers and L1 filenames
 
 const fs = require('fs');
 const path = require('path');
@@ -34,11 +34,11 @@ function formatL1Filename(date) {
   return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}_${pad(date.getUTCHours())}${pad(date.getUTCMinutes())}${pad(date.getUTCSeconds())}.l1.jsonl`;
 }
 
-// Migrate memory.md headers
+// Migrate logbook.md headers
 function migrateMemoryMd(projectDir, offsetHours, dryRun = true, beforeTs = null) {
-  const memoryPath = path.join(getStorageRoot(projectDir), MEMORY_DIR, 'memory.md');
+  const memoryPath = path.join(getStorageRoot(projectDir), MEMORY_DIR, 'logbook.md');
   if (!fs.existsSync(memoryPath)) {
-    console.log('memory.md not found');
+    console.log('logbook.md not found');
     return { changes: 0 };
   }
 
@@ -82,7 +82,7 @@ function migrateMemoryMd(projectDir, offsetHours, dryRun = true, beforeTs = null
     console.log(`Backup created: ${backupPath}`);
 
     fs.writeFileSync(memoryPath, newLines.join('\n'));
-    console.log(`Written ${changes} changes to memory.md (skipped ${skipped})`);
+    console.log(`Written ${changes} changes to logbook.md (skipped ${skipped})`);
   }
 
   return { changes, skipped };
@@ -153,7 +153,7 @@ if (require.main === module) {
   console.log(`Mode: ${dryRun ? 'DRY RUN' : 'APPLY'}`);
   console.log('');
 
-  console.log('=== memory.md headers ===');
+  console.log('=== logbook.md headers ===');
   const memResult = migrateMemoryMd(projectDir, offset, dryRun, beforeTs);
 
   console.log('');

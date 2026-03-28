@@ -110,7 +110,7 @@ function extractDelta(sessionId) {
       fs.writeFileSync(deltaPath, truncated);
     }
 
-    // Record memory.md mtime + pendingLastProcessedTs for L1-based timestamp
+    // Record logbook.md mtime + pendingLastProcessedTs for L1-based timestamp
     const memoryPath = path.join(memoryDir, MEMORY_FILE);
     {
       const idx = readIndexSafe(indexPath);
@@ -135,7 +135,7 @@ function extractDelta(sessionId) {
   }
 }
 
-// Update timestamp after memory.md is updated
+// Update timestamp after logbook.md is updated
 // Uses L1 entry timestamp (pendingLastProcessedTs) instead of wall clock time
 // This prevents gaps where entries created between processing and marking get skipped
 function markMemoryUpdated() {
@@ -164,7 +164,7 @@ function markMemoryUpdated() {
   }
 }
 
-// Delete temp file (only if memory.md was physically updated since delta creation)
+// Delete temp file (only if logbook.md was physically updated since delta creation)
 function cleanupDeltaTemp() {
   try {
     const projectDir = getProjectDir();
@@ -178,13 +178,13 @@ function cleanupDeltaTemp() {
       return true;
     }
 
-    // Verify memory.md was physically updated since delta was created
+    // Verify logbook.md was physically updated since delta was created
     const index = readIndexSafe(indexPath);
     const deltaCreatedMtime = index.deltaCreatedAtMemoryMtime || 0;
     const currentMemoryMtime = fs.existsSync(memoryPath) ? fs.statSync(memoryPath).mtimeMs : 0;
 
     if (currentMemoryMtime <= deltaCreatedMtime) {
-      console.error('[CRABSHELL] BLOCKED: memory.md not updated since delta creation. Write to memory.md first!');
+      console.error('[CRABSHELL] BLOCKED: logbook.md not updated since delta creation. Write to logbook.md first!');
       return false;
     }
 

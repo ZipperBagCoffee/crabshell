@@ -49,8 +49,8 @@ const MEMORY_FILES = [
 
 const MEMORY_MD_WARNING = `## Crabshell Plugin
 - This MEMORY.md = Claude Code built-in auto memory (200-line limit, auto-loaded in system prompt)
-- .crabshell/memory/memory.md = Crabshell plugin memory (25K token rotation, loaded via hooks)
-- These are SEPARATE systems. Do NOT apply 200-line limit to plugin memory.md
+- .crabshell/memory/logbook.md = Crabshell plugin memory (25K token rotation, loaded via hooks)
+- These are SEPARATE systems. Do NOT apply 200-line limit to plugin logbook.md
 - Do NOT confuse rotation/archival rules between them`;
 
 function ensureAutoMemoryWarning(projectDir) {

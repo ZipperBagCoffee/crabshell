@@ -27,7 +27,7 @@ After installation, **you don't need to do anything**. It works automatically.
 ## What Gets Saved
 
 ### Automatic (No action needed)
-- `memory.md` - Session summaries accumulate here (auto-rotates at 23,750 tokens)
+- `logbook.md` - Session summaries accumulate here (auto-rotates at 23,750 tokens)
 - `memory_*.md` - Rotated archives (L2)
 - `*.summary.json` - L3 summaries (Haiku-generated)
 - `sessions/*.l1.jsonl` - Detailed session transcripts (L1)
@@ -118,13 +118,13 @@ Coding conventions: ...
 - **Above the line**: Auto-managed by the plugin (updated on every prompt)
 - **Below the line**: Your project-specific content (never modified by the plugin)
 
-> **Note:** The plugin also writes a warning to Claude Code's built-in `MEMORY.md` (at `~/.claude/projects/{project}/memory/MEMORY.md`) to prevent confusion between the two memory systems. This is separate from the plugin's own `memory.md`.
+> **Note:** The plugin also writes a warning to Claude Code's built-in `MEMORY.md` (at `~/.claude/projects/{project}/memory/MEMORY.md`) to prevent confusion between the two memory systems. This is separate from the plugin's own `logbook.md`.
 
 ## Storage Location
 
 ```
 [project]/.crabshell/memory/
-├── memory.md              # Active rolling memory (auto-rotates at 23,750 tokens)
+├── logbook.md             # Active rolling memory (auto-rotates at 23,750 tokens)
 ├── memory_*.md            # Rotated archives (L2)
 ├── *.summary.json         # L3 summaries (Haiku-generated)
 ├── memory-index.json      # Rotation tracking & delta state
@@ -170,13 +170,13 @@ L2 (memory_*.md)          - Rotated archives (auto at 23,750 tokens)
      ↓
 L3 (*.summary.json)       - Haiku-generated summaries
      ↓
-memory.md                 - Active rolling memory (loaded at startup)
+logbook.md                - Active rolling memory (loaded at startup)
 ```
 
 - **L1**: Raw transcripts refined to keep only meaningful content
-- **L2**: memory.md auto-rotates when too large, archives preserved
+- **L2**: logbook.md auto-rotates when too large, archives preserved
 - **L3**: AI-generated summaries of archived content
-- **Search**: `search-memory` traverses memory.md → L3 → L2 (add `--deep` for L1)
+- **Search**: `search-memory` traverses logbook.md → L3 → L2 (add `--deep` for L1)
 
 ## Documentation
 
@@ -188,9 +188,10 @@ memory.md                 - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 20.6.0 | feat: memory.md → logbook.md rename (docs, skills, commands), memory-delta SKILL.md Step 4 append-memory.js CLI |
 | 20.5.0 | feat: counter file separation (counter.json), extract-delta.js mark-appended CLI, memory-delta SKILL.md Bash CLI steps |
 | 20.4.0 | feat: sycophancy-guard evidence type split (behavioral vs structural), inject-rules.js positional optimization (COMPRESSED_CHECKLIST first, verify items #1/#2, verification reminder) |
-| 20.3.0 | feat: enforcement guards — path-guard Edit block on memory.md, verify-guard behavioral AC requirement, sycophancy-guard "맞다." + English "Correct."/"Right." patterns |
+| 20.3.0 | feat: enforcement guards — path-guard Edit block on logbook.md, verify-guard behavioral AC requirement, sycophancy-guard "맞다." + English "Correct."/"Right." patterns |
 | 20.2.0 | feat: delta foreground conversion — remove background delta-processor, TZ_OFFSET auto-injection, foreground-only SKILL.md |
 | 20.1.0 | feat: D/P/T/I documents consolidated under .crabshell/ — all document paths, guards, and skills updated |
 | 20.0.0 | **BREAKING**: memory-keeper → crabshell rename, .claude/memory/ → .crabshell/ path migration, auto-migration on SessionStart, STORAGE_ROOT centralization |

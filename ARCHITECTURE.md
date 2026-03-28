@@ -1,4 +1,4 @@
-# Crabshell Architecture (v20.5.0)
+# Crabshell Architecture (v20.6.0)
 
 ## Overview
 
@@ -65,7 +65,7 @@ Two meta-principles guide Claude's approach to obstacles:
 |                                                                           |
 |  +--------------------+  +--------------------------------------------+  |
 |  | load-memory.js     |  | inject-rules.js                           |  |
-|  | - Load memory.md   |  | - syncRulesToClaudeMd() (RULES→CLAUDE.md) |  |
+|  | - Load logbook.md  |  | - syncRulesToClaudeMd() (RULES→CLAUDE.md) |  |
 |  | - Load L3 summaries|  | - Inject COMPRESSED_CHECKLIST per prompt   |  |
 |  | - Load project.md  |  |   (~300 tokens via additionalContext)      |  |
 |  | - Write MEMORY.md  |  | - Inject Project Concept (10 lines/500ch) |  |
@@ -111,7 +111,7 @@ Two meta-principles guide Claude's approach to obstacles:
 |  .crabshell/memory/ (Project Storage)                                     |
 |  +-------------------------------------------+  +-------------------+    |
 |  | Auto-created:                              |  | sessions/         |    |
-|  | - memory.md (rolling, auto-rotates)        |  | - *.l1.jsonl      |    |
+|  | - logbook.md (rolling, auto-rotates)        |  | - *.l1.jsonl      |    |
 |  | - memory_*.md (L2 archives)                |  +-------------------+    |
 |  | - *.summary.json (L3 summaries)            |  +-------------------+    |
 |  | - memory-index.json (rotation/delta state) |
@@ -148,7 +148,7 @@ Two meta-principles guide Claude's approach to obstacles:
 |  - sessions/*.l1.jsonl (refined conversation logs)                        |
 +--------------------------------------------------------------------------+
 |  L2: Rolling Memory (auto-rotates at 23,750 tokens)                       |
-|  - memory.md (active, grows with each session)                            |
+|  - logbook.md (active, grows with each session)                           |
 |  - memory_YYYYMMDD_HHMMSS.md (archived when rotated)                      |
 +--------------------------------------------------------------------------+
 |  L3: Compressed Summaries (Haiku-generated JSON)                          |
@@ -162,7 +162,7 @@ Two meta-principles guide Claude's approach to obstacles:
 ```
 1. SessionStart
    └─> load-memory.js
-       ├─> Load memory.md + L3 summaries + project files
+       ├─> Load logbook.md + L3 summaries + project files
        └─> ensureAutoMemoryWarning() — write MEMORY.md warning
 
 2. UserPromptSubmit (every prompt)
@@ -198,7 +198,7 @@ Two meta-principles guide Claude's approach to obstacles:
    │   └─> Detect feedback pressure escalation patterns
    └─> path-guard.js (Read|Grep|Glob|Bash|Edit) — v19.31.0+
        ├─> Block operations targeting wrong .crabshell/ path
-       └─> Block Edit on memory/memory.md — append-only enforcement (v20.3.0)
+       └─> Block Edit on memory/logbook.md — append-only enforcement (v20.3.0)
 
 3.5. Stop — v19.29.0+
    └─> sycophancy-guard.js
@@ -292,7 +292,7 @@ Agent orchestration rules (11 rules covering pairing, cross-review, coherence, c
 | `docs-guard.js` | PreToolUse (Write\|Edit) | Block writes to .crabshell/ D/P/T/I subdirectories without active skill flag |
 | `verify-guard.js` | PreToolUse (Write\|Edit) | Block Final Verification writes without /verifying run; require behavioral AC in manifest |
 | `pressure-guard.js` | PreToolUse (Write\|Edit) | Detect feedback pressure escalation patterns |
-| `path-guard.js` | PreToolUse (Read\|Grep\|Glob\|Bash\|Edit) | Block wrong .crabshell/ path; block Edit on memory.md (append-only) |
+| `path-guard.js` | PreToolUse (Read\|Grep\|Glob\|Bash\|Edit) | Block wrong .crabshell/ path; block Edit on logbook.md (append-only) |
 | `sycophancy-guard.js` | Stop | Detect agreement-without-verification patterns; block with re-examination instruction |
 | `skill-tracker.js` | PostToolUse (Skill) | Set skill-active flag on Skill tool calls (TTL-based, 5min expiry) |
 | `regressing-state.js` | (library) | Phase tracker: getState, buildReminder, detectSkillCall, advancePhase |
@@ -317,14 +317,14 @@ Agent orchestration rules (11 rules covering pairing, cross-review, coherence, c
 | SESSIONS_DIR | sessions | Session storage directory |
 | INDEX_FILE | memory-index.json | Rotation tracking + delta state |
 | COUNTER_FILE | counter.json | PostToolUse counter (separated from index) |
-| MEMORY_FILE | memory.md | Active memory file |
+| MEMORY_FILE | logbook.md | Active memory file |
 | REGRESSING_STATE_FILE | regressing-state.json | Regressing cycle tracker |
 | SKILL_ACTIVE_FILE | skill-active.json | TTL-based skill flag for docs-guard/verify-guard |
 
 ## Memory Rotation Flow
 
 ```
-memory.md grows with session summaries
+logbook.md grows with session summaries
         |
         v
 checkAndRotate() called on each check
@@ -354,7 +354,7 @@ Save to *.summary.json
 ```json
 {
   "version": 1,
-  "current": "memory.md",
+  "current": "logbook.md",
   "rotatedFiles": [
     {
       "file": "memory_20260113_120000.md",
@@ -376,7 +376,7 @@ Save to *.summary.json
 | Field | Description |
 |-------|-------------|
 | lastMemoryUpdateTs | ISO timestamp of last processed L1 entry (for delta extraction) |
-| deltaCreatedAtMemoryMtime | memory.md mtime when delta was created (for cleanup validation) |
+| deltaCreatedAtMemoryMtime | logbook.md mtime when delta was created (for cleanup validation) |
 | deltaReady | Flag: true when delta_temp.txt is ready for processing |
 | pendingLastProcessedTs | Temp: max L1 entry ts from last extractDelta(), used by markMemoryUpdated() |
 | lastL1TranscriptMtime | Transcript file mtime at last L1 creation (skip redundant L1 creation) |
@@ -414,9 +414,10 @@ Separated from memory-index.json to eliminate Write race condition during delta 
 
 | Version | Key Changes |
 |---------|-------------|
+| 20.6.0 | memory.md → logbook.md rename (docs, skills, commands), memory-delta SKILL.md Step 4 append-memory.js CLI |
 | 20.5.0 | Counter file separation (counter.json), extract-delta.js mark-appended CLI, memory-delta SKILL.md Bash CLI steps |
 | 20.4.0 | Sycophancy-guard evidence type split (behavioral vs structural), inject-rules.js positional optimization (COMPRESSED_CHECKLIST first, verify items #1/#2, verification reminder) |
-| 20.3.0 | Enforcement guards — path-guard Edit block on memory.md, verify-guard behavioral AC requirement, sycophancy-guard "맞다." + English "Correct."/"Right." patterns |
+| 20.3.0 | Enforcement guards — path-guard Edit block on logbook.md, verify-guard behavioral AC requirement, sycophancy-guard "맞다." + English "Correct."/"Right." patterns |
 | 20.2.0 | Delta foreground conversion — remove background delta-processor agent, TZ_OFFSET auto-injection in inject-rules.js, foreground-only memory-delta SKILL.md |
 | 20.1.0 | D/P/T/I documents consolidated under .crabshell/ — all guards, skills, and paths updated; init.js auto-creates directories |
 | 19.49.0 | Per-prompt project concept anchor; extract 11 agent orchestration rules to .claude/rules/agent-orchestration.md; reduce emphasis markers 19→5 |
@@ -514,7 +515,7 @@ Separated from memory-index.json to eliminate Write race condition during delta 
 | 13.9.7 | lastMemoryUpdateTs preservation fix in init.js |
 | 13.9.5 | Dual timestamp headers (UTC + local) |
 | 13.9.4 | Delta extraction append mode, UTC timestamp headers |
-| 13.9.3 | Delta cleanup blocked unless memory.md physically updated |
+| 13.9.3 | Delta cleanup blocked unless logbook.md physically updated |
 | 13.9.2 | UTC timestamp unification, migrate-timezone.js tool, interval 5->25 |
 | 13.8.7 | Removed experimental context warning feature |
 | 13.8.6 | Proportional delta summarization (1 sentence per ~200 words) |

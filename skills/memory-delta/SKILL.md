@@ -1,6 +1,6 @@
 ---
 name: memory-delta
-description: "Auto-executes when the [CRABSHELL_DELTA] trigger is detected. Calls delta-summarizer agent in foreground to summarize and append to memory.md. Not user-invocable — triggered automatically."
+description: "Auto-executes when the [CRABSHELL_DELTA] trigger is detected. Calls delta-summarizer agent in foreground to summarize and append to logbook.md. Not user-invocable — triggered automatically."
 ---
 
 ## Project Root Resolution
@@ -31,13 +31,11 @@ If you see `[CRABSHELL_DELTA]` anywhere in your context, execute this skill imme
    - If response starts with "ERROR:" → STOP
    - If response is empty → STOP
 
-**Step 4**: Append summary to memory.md and mark appended:
-   1. Use the Read tool to read `{PROJECT_DIR}/.crabshell/memory/memory.md` to get existing content.
-   2. Generate dual timestamps from current time. TZ_OFFSET is available from your context's "Timezone" section.
-      - UTC: `YYYY-MM-DD_HHmm` format (e.g., `2026-03-28_0700`)
-      - Local: `MM-DD_HHmm` format (e.g., `03-28_1600`) — use the TZ_OFFSET to compute local time
-   3. Use the Write tool to write `{PROJECT_DIR}/.crabshell/memory/memory.md` with: `{existing content}\n\n## {utc_timestamp} (local {local_timestamp})\n{summary}\n`
-   4. Run via Bash: `"C:/Program Files/nodejs/node.exe" "{PLUGIN_ROOT}/scripts/extract-delta.js" mark-appended --project-dir="{PROJECT_DIR}"`
+**Step 4**: Append summary to logbook.md and mark appended:
+   1. Write the summary text to a temp file: Use Write tool to save ONLY the summary text (the new entry with timestamp header) to `{PROJECT_DIR}/.crabshell/memory/delta_summary_temp.txt`
+   2. Run via Bash: `"C:/Program Files/nodejs/node.exe" "{PLUGIN_ROOT}/scripts/append-memory.js" --project-dir="{PROJECT_DIR}"`
+      (Reads delta_summary_temp.txt, appends to logbook.md with dual timestamps, cleans up temp file)
+   3. Run via Bash: `"C:/Program Files/nodejs/node.exe" "{PLUGIN_ROOT}/scripts/extract-delta.js" mark-appended --project-dir="{PROJECT_DIR}"`
       (Sets `memoryAppendedInThisRun=true` in memory-index.json)
 
 **Step 5**: Update timestamp marker:
@@ -46,7 +44,7 @@ If you see `[CRABSHELL_DELTA]` anywhere in your context, execute this skill imme
 
 **Step 6**: Clean up temp file:
    Run via Bash: `"C:/Program Files/nodejs/node.exe" "{PLUGIN_ROOT}/scripts/extract-delta.js" cleanup --project-dir="{PROJECT_DIR}"`
-   (Verifies memory.md was updated, deletes delta_temp.txt, clears `deltaReady` and `memoryAppendedInThisRun`)
+   (Verifies logbook.md was updated, deletes delta_temp.txt, clears `deltaReady` and `memoryAppendedInThisRun`)
 
 ## Failure Handling
 

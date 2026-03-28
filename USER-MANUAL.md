@@ -1,4 +1,4 @@
-# Crabshell User Manual (v20.5.0)
+# Crabshell User Manual (v20.6.0)
 
 ## Why Do You Need This?
 
@@ -28,15 +28,15 @@ Crabshell solves this problem.
 ### What Happens After Installation
 
 **1. Session Start:**
-- Previous session summary (`memory.md`) loaded into Claude's context
+- Previous session summary (`logbook.md`) loaded into Claude's context
 - L3 summaries of archived memory loaded
 - Project info you set (`project.md`) loaded
 - CLAUDE.md rules synced and injected
 
 **2. During Work:**
 - Auto-save triggers every 15 tool uses (configurable)
-- Delta extracted from L1 session log, Haiku summarizes it, appended to `memory.md`
-- Auto-rotation when `memory.md` exceeds ~23,750 tokens
+- Delta extracted from L1 session log, Haiku summarizes it, appended to `logbook.md`
+- Auto-rotation when `logbook.md` exceeds ~23,750 tokens
 - Rules re-injected every prompt via COMPRESSED_CHECKLIST
 - CLAUDE.md rules section kept in sync automatically
 - Project concept anchor: `project.md` injected into context every prompt for drift prevention
@@ -50,7 +50,7 @@ Crabshell solves this problem.
 
 ```
 .crabshell/memory/
-├── memory.md            # Active rolling memory (auto-rotates)
+├── logbook.md           # Active rolling memory (auto-rotates)
 ├── memory_*.md          # Rotated archives (L2)
 ├── *.summary.json       # L3 summaries (Haiku-generated)
 ├── memory-index.json    # Rotation tracking & delta state
@@ -66,7 +66,7 @@ Crabshell solves this problem.
 
 ## Memory Rotation
 
-When `memory.md` grows beyond **23,750 tokens** (~95KB):
+When `logbook.md` grows beyond **23,750 tokens** (~95KB):
 1. Current content archived to `memory_YYYYMMDD_HHMMSS.md`
 2. Last **2,375 tokens** kept as carryover
 3. Haiku agent generates L3 JSON summary of the archived content
@@ -187,7 +187,7 @@ The plugin uses Claude Code hooks to run automatically:
 | Hook | Script | When It Runs | What It Does |
 |------|--------|-------------|-------------|
 | `UserPromptSubmit` | `inject-rules.js` | Every prompt | Syncs rules to CLAUDE.md; injects COMPRESSED_CHECKLIST + delta/rotation instructions into context |
-| `SessionStart` | `load-memory.js` | Session begins | Loads memory.md, L3 summaries, project files into context |
+| `SessionStart` | `load-memory.js` | Session begins | Loads logbook.md, L3 summaries, project files into context |
 | `PostToolUse` | `counter.js check` | After each tool use | Increments counter; triggers auto-save + delta extraction at interval |
 | `PreToolUse` | `regressing-guard.js` | Before Write/Edit | Enforces phase-based restrictions during active regressing sessions |
 | `Stop` | `sycophancy-guard.js` | Before response finalized | Detects agreement-without-verification patterns in responses |
@@ -290,7 +290,7 @@ When Claude notices repeated patterns (2+ times), it proposes a lesson:
 
 ### Memory Not Loading
 1. Check `.crabshell/memory/` folder exists
-2. Check `memory.md` file exists
+2. Check `logbook.md` file exists
 3. Run `/crabshell:load-memory`
 
 ### Auto-save Not Triggering

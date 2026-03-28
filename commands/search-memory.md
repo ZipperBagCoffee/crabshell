@@ -31,9 +31,9 @@ For deep search (includes L1 sessions):
 
 ## Manual Search
 
-1. Search memory.md:
+1. Search logbook.md:
    ```bash
-   grep -i "$ARGUMENTS" .crabshell/memory/memory.md 2>/dev/null || echo "No matches in memory.md"
+   grep -i "$ARGUMENTS" .crabshell/memory/logbook.md 2>/dev/null || echo "No matches in logbook.md"
    ```
 
 2. Search L3 summaries:

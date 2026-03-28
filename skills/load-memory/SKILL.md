@@ -53,7 +53,7 @@ This will output the current memory state to context:
    - JSON summaries of rotated memory archives
 
 3. **Rolling Memory**:
-   - Last 50 lines of `memory.md`
+   - Last 50 lines of `logbook.md`
 
 ## When to Use
 

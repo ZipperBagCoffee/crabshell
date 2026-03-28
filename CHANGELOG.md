@@ -1,5 +1,9 @@
 # Changelog
 
+## 20.6.0
+- feat: memory.md → logbook.md rename across all docs, skills, and commands
+- feat: memory-delta SKILL.md Step 4 rewritten to use append-memory.js via Bash CLI (no direct Write to logbook.md)
+
 ## 20.5.0
 - feat: counter file separation — counter.json replaces memory-index.json counter field, migration on init, getDefaultIndex() cleaned
 - feat: extract-delta.js CLI — mark-appended command sets memoryAppendedInThisRun flag, cleanup also clears memoryAppendedInThisRun

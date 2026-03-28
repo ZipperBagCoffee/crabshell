@@ -1,6 +1,6 @@
 ---
 name: delta-summarizer
-description: Summarize delta content proportionally to memory.md
+description: Summarize delta content proportionally to logbook.md
 tools: Read
 model: claude-haiku-4-5-20251001
 ---

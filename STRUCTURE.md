@@ -1,10 +1,10 @@
 # Crabshell Plugin Structure
 
-**Version**: 20.5.0 | **Author**: TaWa | **License**: MIT
+**Version**: 20.6.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
-Crabshell is a Claude Code plugin with two pillars: (1) session memory — L1 delta extraction, Haiku summarization, memory.md rotation, auto-restore on restart; (2) LLM behavioral correction — injects VERIFICATION-FIRST, UNDERSTANDING-FIRST, INTERFERENCE PATTERNS every prompt, six guard hooks block violations at runtime. D/P/T/I document system, 16 skills, Node.js hooks. All output under .crabshell/.
+Crabshell is a Claude Code plugin with two pillars: (1) session memory — L1 delta extraction, Haiku summarization, logbook.md rotation, auto-restore on restart; (2) LLM behavioral correction — injects VERIFICATION-FIRST, UNDERSTANDING-FIRST, INTERFERENCE PATTERNS every prompt, six guard hooks block violations at runtime. D/P/T/I document system, 16 skills, Node.js hooks. All output under .crabshell/.
 
 ## Directory Structure
 
@@ -12,7 +12,7 @@ Crabshell is a Claude Code plugin with two pillars: (1) session memory — L1 de
 crabshell/
 ├── .crabshell/                       # Crabshell local storage
 │   ├── memory/                       # Project memory storage
-│   │   ├── memory.md                 # Rolling session summary (auto-rotates)
+│   │   ├── logbook.md                # Rolling session summary (auto-rotates)
 │   │   ├── memory_*.md               # Rotated archives (L2)
 │   │   ├── *.summary.json            # L3 summaries (Haiku-generated)
 │   │   ├── memory-index.json         # Rotation tracking & delta state
@@ -63,10 +63,10 @@ crabshell/
 │   ├── refine-raw.js                 # raw.jsonl -> l1.jsonl conversion
 │   ├── sync-rules-to-claude.js       # Manual CLAUDE.md sync (standalone)
 │   ├── regressing-state.js            # Regressing phase tracker (v19.23.0)
-│   ├── append-memory.js              # Atomic memory.md append (v19.53.0)
+│   ├── append-memory.js              # Atomic logbook.md append (v19.53.0)
 │   ├── regressing-guard.js           # PreToolUse regressing skill enforcement (v19.23.0)
 │   ├── sycophancy-guard.js           # Stop hook sycophancy detection (v19.29.0)
-│   ├── path-guard.js                # PreToolUse path validation + memory.md Edit block (v19.31.0, v20.3.0)
+│   ├── path-guard.js                # PreToolUse path validation + logbook.md Edit block (v19.31.0, v20.3.0)
 │   ├── docs-guard.js                # PreToolUse D/P/T/I skill bypass prevention (v19.33.0)
 │   ├── verify-guard.js              # PreToolUse Final Verification + behavioral AC (v19.34.0, v20.3.0)
 │   ├── pressure-guard.js            # PreToolUse feedback pressure detection (v19.47.0)
@@ -173,7 +173,7 @@ UserPromptSubmit hook:
 ### scripts/path-guard.js
 PreToolUse path validation (v19.31.0, v20.3.0 Edit block):
 - Block Read/Grep/Glob/Bash calls targeting `.crabshell/` outside `CLAUDE_PROJECT_DIR`
-- Block Edit on `memory/memory.md` — memory.md is append-only (Write only)
+- Block Edit on `memory/logbook.md` — logbook.md is append-only (Write only)
 - Bash command string inspection: regex extraction of `.crabshell/` paths within command strings
 - Fail-open on parse errors (user experience protection)
 - Windows path normalization (backslash → forward slash)
@@ -188,7 +188,7 @@ PreToolUse Final Verification enforcement (v19.34.0, v19.39.0 deterministic, v20
 
 ### scripts/extract-delta.js
 L1 delta extraction:
-- `extractDelta()`: Extract changes since last memory.md update
+- `extractDelta()`: Extract changes since last logbook.md update
 - `markMemoryUpdated()`: Update timestamp watermark
 - `cleanupDeltaTemp()`: Remove temp file after processing
 
@@ -201,7 +201,7 @@ L1 generation:
 | Layer | File | Description |
 |-------|------|-------------|
 | L1 | `sessions/*.l1.jsonl` | Raw session transcripts |
-| L2 | `memory.md` | Active rolling memory (auto-rotates at 23,750 tokens) |
+| L2 | `logbook.md` | Active rolling memory (auto-rotates at 23,750 tokens) |
 | L2 | `memory_*.md` | Archived memory files |
 | L3 | `*.summary.json` | Haiku-generated JSON summaries |
 
@@ -210,7 +210,7 @@ L1 generation:
 ```
 1. SessionStart
    └─> load-memory.js
-       └─> Load memory.md + L3 summaries + project files
+       └─> Load logbook.md + L3 summaries + project files
 
 2. UserPromptSubmit (every prompt)
    └─> inject-rules.js
@@ -229,7 +229,7 @@ L1 generation:
    ├─> verify-guard.js (Write|Edit) — block Final Verification without /verifying run
    │   └─> Require at least 1 behavioral (type: "direct") AC in manifest (v20.3.0)
    ├─> path-guard.js (Read|Grep|Glob|Bash|Edit) — block wrong project root
-   │   └─> Block Edit on memory/memory.md — append-only enforcement (v20.3.0)
+   │   └─> Block Edit on memory/logbook.md — append-only enforcement (v20.3.0)
    ├─> pressure-guard.js (Write|Edit) — detect feedback pressure escalation
    └─> skill-tracker.js (PostToolUse) — set TTL-based skill-active flag
 
@@ -257,9 +257,10 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 20.6.0 | feat: memory.md → logbook.md rename (docs, skills, commands), memory-delta SKILL.md Step 4 append-memory.js CLI |
 | 20.5.0 | feat: counter file separation (counter.json), extract-delta.js mark-appended CLI, memory-delta SKILL.md Bash CLI steps |
 | 20.4.0 | feat: sycophancy-guard evidence type split (behavioral vs structural), inject-rules.js positional optimization (COMPRESSED_CHECKLIST first, verify items #1/#2, verification reminder) |
-| 20.3.0 | feat: enforcement guards — path-guard Edit block on memory.md, verify-guard behavioral AC requirement, sycophancy-guard "맞다." + English "Correct."/"Right." patterns |
+| 20.3.0 | feat: enforcement guards — path-guard Edit block on logbook.md, verify-guard behavioral AC requirement, sycophancy-guard "맞다." + English "Correct."/"Right." patterns |
 | 20.2.0 | feat: delta foreground conversion — remove background delta-processor, TZ_OFFSET auto-injection in inject-rules.js, foreground-only memory-delta SKILL.md |
 | 20.1.0 | feat: D/P/T/I documents consolidated under .crabshell/ — docs/discussion,plan,ticket,investigation → .crabshell/discussion,plan,ticket,investigation; init.js auto-creates directories; all guards/skills updated |
 | 20.0.0 | **BREAKING**: memory-keeper → crabshell rename, .claude/memory/ → .crabshell/ path migration, auto-migration on SessionStart, STORAGE_ROOT centralization |
@@ -359,7 +360,7 @@ L1 generation:
 | 13.9.7 | lastMemoryUpdateTs preservation fix in init.js |
 | 13.9.5 | Dual timestamp headers (UTC + local) |
 | 13.9.4 | Delta extraction append mode, UTC timestamp headers |
-| 13.9.3 | Delta cleanup blocked unless memory.md physically updated |
+| 13.9.3 | Delta cleanup blocked unless logbook.md physically updated |
 | 13.9.2 | UTC timestamp unification, migrate-timezone.js, interval 5→25 |
 | 13.8.7 | Removed experimental context warning feature |
 | 13.8.6 | Proportional delta summarization (1 sentence per ~200 words) |

@@ -4,7 +4,7 @@
  *
  * {
  *   "version": 1,
- *   "current": "memory.md",
+ *   "current": "logbook.md",
  *   "rotatedFiles": [
  *     {
  *       "file": "memory_YYYYMMDD_HHMMSS.md",
@@ -139,7 +139,7 @@ Claude Code plugin with three pillars:
 .crabshell/
 ├── project.md          # Project concept (injected every prompt)
 ├── README.md           # This file
-├── memory/             # Session memory (memory.md, index, sessions, delta)
+├── memory/             # Session memory (logbook.md, index, sessions, delta)
 ├── lessons/            # Project-specific lessons
 ├── verification/       # Verification manifest and tools
 ├── discussion/         # D-documents (decisions, dialogues)
@@ -159,11 +159,48 @@ Claude Code plugin with three pillars:
   }
 }
 
+/**
+ * Migrate memory.md to logbook.md (v21 rename).
+ * Only runs if memory.md exists AND logbook.md does NOT.
+ */
+function migrateMemoryToLogbook(projectDir) {
+  try {
+    const memoryDir = path.join(projectDir, STORAGE_ROOT, MEMORY_DIR);
+    const oldPath = path.join(memoryDir, 'memory.md');
+    const newPath = path.join(memoryDir, MEMORY_FILE); // 'logbook.md'
+
+    if (!fs.existsSync(oldPath) || fs.existsSync(newPath)) return;
+
+    fs.renameSync(oldPath, newPath);
+    console.error(`[CRABSHELL] Renamed memory.md -> ${MEMORY_FILE}`);
+
+    // Update memory-index.json "current" field
+    const indexPath = path.join(memoryDir, INDEX_FILE);
+    if (fs.existsSync(indexPath)) {
+      try {
+        const index = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
+        if (index.current === 'memory.md') {
+          index.current = MEMORY_FILE;
+          fs.writeFileSync(indexPath, JSON.stringify(index, null, 2));
+          console.error(`[CRABSHELL] Updated memory-index.json current -> ${MEMORY_FILE}`);
+        }
+      } catch (e) {
+        console.error(`[CRABSHELL] Failed to update memory-index.json: ${e.message}`);
+      }
+    }
+  } catch (e) {
+    console.error(`[CRABSHELL] memory.md -> logbook.md migration error: ${e.message}`);
+  }
+}
+
 function ensureMemoryStructure(projectDir) {
   const storageRoot = path.join(projectDir, STORAGE_ROOT);
 
   // Run legacy migration before creating structure
   migrateFromLegacy(projectDir);
+
+  // Run memory.md -> logbook.md migration
+  migrateMemoryToLogbook(projectDir);
 
   // Memory-related directories
   const memoryDirs = [MEMORY_DIR, SESSIONS_DIR, LOGS_DIR];

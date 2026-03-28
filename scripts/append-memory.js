@@ -1,15 +1,16 @@
 #!/usr/bin/env node
 /**
- * append-memory.js — Safely append a summary to memory.md
+ * append-memory.js — Safely append a summary to logbook.md
  *
  * Reads summary from delta_summary_temp.txt, generates dual timestamps,
- * appends to memory.md, and cleans up the temp file.
+ * appends to logbook.md, and cleans up the temp file.
  *
  * Usage: node append-memory.js --project-dir=/path/to/project
  */
 
 const fs = require('fs');
 const path = require('path');
+const { STORAGE_ROOT, MEMORY_FILE } = require('./constants');
 
 function getProjectDir() {
   const args = process.argv.slice(2);
@@ -29,10 +30,9 @@ function getTimestamps() {
 
 function main() {
   const projectDir = getProjectDir();
-  const { STORAGE_ROOT } = require('./constants');
   const memoryDir = path.join(projectDir, STORAGE_ROOT, 'memory');
   const summaryPath = path.join(memoryDir, 'delta_summary_temp.txt');
-  const memoryPath = path.join(memoryDir, 'memory.md');
+  const memoryPath = path.join(memoryDir, MEMORY_FILE);
 
   // Read summary
   if (!fs.existsSync(summaryPath)) {
@@ -49,10 +49,10 @@ function main() {
   // Generate timestamps
   const ts = getTimestamps();
 
-  // Append to memory.md
+  // Append to logbook.md
   const entry = `\n## ${ts.utc} (local ${ts.local})\n${summary}\n`;
   fs.appendFileSync(memoryPath, entry, 'utf8');
-  console.log(`Appended to memory.md: ## ${ts.utc} (local ${ts.local})`);
+  console.log(`Appended to ${MEMORY_FILE}: ## ${ts.utc} (local ${ts.local})`);
 
   // Clean up temp file
   try { fs.unlinkSync(summaryPath); } catch (e) { /* ignore */ }

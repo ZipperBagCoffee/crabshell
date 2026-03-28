@@ -23,12 +23,12 @@ Force immediate save of session memory.
 
 ## Actions
 
-1. **Save to memory.md:**
+1. **Save to logbook.md:**
    Generate a timestamp and summary, then use the Write tool or the append-memory.js script:
    ```bash
-   "{NODE_PATH}" -e "const fs=require('fs');const d=new Date();const p=n=>String(n).padStart(2,'0');const ts=d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes());fs.appendFileSync('{PROJECT_DIR}/.crabshell/memory/memory.md','\\n## '+ts+'\\n')"
+   "{NODE_PATH}" -e "const fs=require('fs');const d=new Date();const p=n=>String(n).padStart(2,'0');const ts=d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes());fs.appendFileSync('{PROJECT_DIR}/.crabshell/memory/logbook.md','\\n## '+ts+'\\n')"
    ```
-   Then use the Read tool to read `{PROJECT_DIR}/.crabshell/memory/memory.md`, append the session summary using the Edit tool.
+   Then use the Read tool to read `{PROJECT_DIR}/.crabshell/memory/logbook.md`, append the session summary using the Edit tool.
 
 ## Notes
 

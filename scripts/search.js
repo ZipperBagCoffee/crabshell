@@ -51,7 +51,7 @@ function searchMemory(query, options = {}) {
   const matcher = createMatcher(query, options);
 
   const memoryMatches = searchCurrentMemory(memoryDir, matcher);
-  if (memoryMatches.length > 0) results.push({ source: 'memory.md', matches: memoryMatches });
+  if (memoryMatches.length > 0) results.push({ source: 'logbook.md', matches: memoryMatches });
 
   const l3Matches = searchL3Summaries(memoryDir, matcher);
   if (l3Matches.length > 0) results.push({ source: 'L3 summaries', matches: l3Matches });

@@ -27,9 +27,9 @@ Trigger auto-save:
 
 ## Manual Save
 
-Append directly to memory.md (works from any project):
+Append directly to logbook.md (works from any project):
 ```bash
-TS_UTC=$(date -u +%Y-%m-%d_%H%M) && TS_LOCAL=$(date +%m-%d_%H%M) && printf '\n## %s (local %s)\n%s\n' "$TS_UTC" "$TS_LOCAL" "[Your summary here]" >> .crabshell/memory/memory.md
+TS_UTC=$(date -u +%Y-%m-%d_%H%M) && TS_LOCAL=$(date +%m-%d_%H%M) && printf '\n## %s (local %s)\n%s\n' "$TS_UTC" "$TS_LOCAL" "[Your summary here]" >> .crabshell/memory/logbook.md
 ```
 
 ## What to Record
