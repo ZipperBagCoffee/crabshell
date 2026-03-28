@@ -1,8 +1,13 @@
 # Crabshell
 
-**Claude Code forgets everything when a session ends.** What decisions you made yesterday, what bugs you fixed, how your project is structured - you have to explain it all over again every new session.
+**Claude Code plugin that makes Claude remember, verify, and self-correct.**
 
-Crabshell solves this. **It automatically saves session content and loads it in the next session.**
+Three pillars:
+1. **Session memory** — Auto-saves context across sessions. Delta extraction, Haiku summarization, token-based rotation. No manual setup.
+2. **Behavioral correction** — Injects verification-first rules and interference pattern detection every prompt. Six guard hooks block sycophancy, overcorrection, and shortcuts at runtime.
+3. **Structured workflows** — D/P/T/I document system with 16 skills for planning, investigating, and iterative improvement (regressing).
+
+All plugin output lives under `.crabshell/` — gitignored, clean project root.
 
 ## Installation
 
