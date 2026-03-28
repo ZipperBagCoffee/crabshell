@@ -65,31 +65,35 @@ const SYCOPHANCY_PATTERNS = [
   /i stand corrected/i
 ];
 
-// Exemption: response contains verification evidence
-const EVIDENCE_MARKERS = [
-  // P/O/G tables
+// Exemption: response contains verification evidence (two tiers)
+const BEHAVIORAL_EVIDENCE = [
+  // P/O/G tables (implies predict-execute-compare cycle)
   /\|\s*Prediction.*\|\s*Observation/i,
   /\|\s*Item\s*\|\s*Prediction/i,
-  // Substantial code blocks (50+ chars inside fenced block)
+  // Shell command output (implies Bash tool execution)
+  /^\$\s+.+$/m,
+  // Test/verification output (PASS/FAIL implies execution)
+  /\b(PASS|FAIL|OK|ERROR)\b.*\d/,
+  // Korean verification result
+  /검증\s*결과/,
+];
+
+const STRUCTURAL_EVIDENCE = [
+  // Code blocks (reading code, not executing)
   /```[\s\S]{50,}?```/,
   // Line-numbered output (Read tool format)
   /^\s*\d+[→\|│]\s*.+$/m,
-  // Shell command output
-  /^\$\s+.+$/m,
   // Function/class/const definitions
   /^(function|class|const|let|var|def|export)\s+\w+/m,
-  // Test/verification output (PASS/FAIL)
-  /\b(PASS|FAIL|OK|ERROR)\b.*\d/,
   // Markdown table separators
   /\|[-:]+\|[-:]+\|/,
   // Diff output
   /^[+-]{3}\s+[ab]\//m,
   // Grep-style output
   /^\S+:\d+:/m,
-  // Korean evidence markers
+  // Korean analysis/confirmation markers
   /분석\s*결과/,
   /확인\s*결과/,
-  /검증\s*결과/,
 ];
 
 /**
@@ -107,21 +111,29 @@ function stripProtectedZones(text) {
 
 /**
  * Check if a sycophancy match at matchIndex is "early agreement" —
- * i.e., no evidence precedes it and it appears before substantial content.
+ * i.e., no behavioral evidence precedes it and it appears before substantial content.
+ * Returns { blocked: true, structuralOnly: boolean } or { dominated: false }.
  */
 function isEarlyAgreement(response, matchIndex) {
-  // Primary: check if evidence exists anywhere in response BEFORE the match
   const textBeforeMatch = response.substring(0, matchIndex);
-  for (const marker of EVIDENCE_MARKERS) {
+
+  // Check behavioral evidence first — if present, agreement is justified
+  for (const marker of BEHAVIORAL_EVIDENCE) {
     if (marker.test(textBeforeMatch)) {
-      return false; // evidence before agreement = not suspicious
+      return { dominated: false };
     }
   }
-  // Secondary: if substantial content (500+ chars) precedes, likely analysis was done
-  if (textBeforeMatch.length > 500) {
-    return false;
+
+  // Check structural evidence (for distinct messaging)
+  let hasStructuralOnly = false;
+  for (const marker of STRUCTURAL_EVIDENCE) {
+    if (marker.test(textBeforeMatch)) {
+      hasStructuralOnly = true;
+      break;
+    }
   }
-  return true; // no evidence before agreement = suspicious
+
+  return { blocked: true, structuralOnly: hasStructuralOnly };
 }
 
 async function main() {
@@ -156,13 +168,19 @@ async function main() {
   // No pattern found → allow
   if (!matchedPattern) process.exit(0);
 
-  // Evidence & position exemption: only allow if evidence precedes the agreement
-  if (!isEarlyAgreement(response, matchIndex)) process.exit(0);
+  // Evidence & position exemption: only allow if behavioral evidence precedes the agreement
+  const earlyResult = isEarlyAgreement(response, matchIndex);
+  if (earlyResult.blocked !== true) process.exit(0);
+
+  // Distinct reason for structural-only vs no-evidence
+  const structuralNote = earlyResult.structuralOnly
+    ? ' Structural evidence (grep/read) found but behavioral evidence (execution/test output) is required.'
+    : '';
 
   // Sycophancy detected, no exemption → block
   const output = {
     decision: "block",
-    reason: `Sycophancy pattern detected: '${matchedPattern}'. You agreed without independent verification. Before agreeing, you MUST: (1) State the specific claim you agreed with, (2) Show independent verification with tool output, (3) Then agree WITH evidence or disagree WITH evidence. Unverified agreement violates the Anti-Deception principle.`
+    reason: `Sycophancy pattern detected: '${matchedPattern}'.${structuralNote} You agreed without independent verification. Before agreeing, you MUST: (1) State the specific claim you agreed with, (2) Show independent verification with tool output, (3) Then agree WITH evidence or disagree WITH evidence. Unverified agreement violates the Anti-Deception principle.`
   };
 
   process.stderr.write(`[SYCOPHANCY_GUARD] Blocked: pattern '${matchedPattern}' detected\n`);
