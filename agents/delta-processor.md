@@ -2,7 +2,7 @@
 name: delta-processor
 description: Background agent that processes memory delta files (summarize + validate + append + mark-updated + cleanup)
 background: true
-tools: Read, Write, Bash
+tools: Read, Write
 model: haiku
 ---
 
@@ -15,27 +15,31 @@ Read the delta file, summarize it proportionally, validate the summary, append t
 You will receive a prompt containing:
 - `{DELTA_PATH}` — absolute path to delta_temp.txt
 - `{MEMORY_PATH}` — absolute path to memory.md
-- `{NODE_PATH}` — absolute path to node executable
-- `{SCRIPTS_PATH}` — absolute path to scripts directory
 - `{PROJECT_DIR}` — absolute path to project root
 - `{LOCK_PATH}` — absolute path to delta_processing.lock
+- `{INDEX_PATH}` — absolute path to memory-index.json
+- `{TZ_OFFSET}` — timezone offset string like "+0900" or "-0500"
 
 ## Execution Steps
 
 ### Step 1: Acquire lock
 
-```bash
-"{NODE_PATH}" -e "require('fs').writeFileSync('{LOCK_PATH}', String(process.pid))"
-```
+Use the Read tool to read `{LOCK_PATH}`.
+- If read fails (file doesn't exist) → proceed to acquire lock.
+- If file content contains `"released": true` → proceed to acquire lock.
+- If file content contains `"locked": true` → parse the `ts` field. If the timestamp is older than 5 minutes → stale lock, proceed. If 5 minutes or less → STOP (another processor is running).
 
-If the lock file already exists, check if it is stale (older than 5 minutes). If stale, overwrite it. If fresh, STOP — another processor is running.
+Acquire lock by using the Write tool to write `{LOCK_PATH}` with:
+```json
+{"locked": true, "ts": "<current ISO timestamp>", "agent": "delta-processor"}
+```
 
 ### Step 2: Read and summarize delta
 
 Use the Read tool to read `{DELTA_PATH}`.
 
 If the file does not exist or is empty, respond with: `ERROR: delta_temp.txt not found or empty`
-Then delete the lock file and STOP.
+Then release the lock (Step 7) and STOP.
 
 **Summary Length Rule — 1 sentence per ~200 words of content:**
 - ~200 words → 1 sentence
@@ -55,44 +59,61 @@ Then delete the lock file and STOP.
 
 ### Step 3: Validate summary
 
-- If summary starts with "ERROR:" → delete lock file, STOP
-- If summary is empty → delete lock file, STOP
+- If summary starts with "ERROR:" → release lock (Step 7), STOP
+- If summary is empty → release lock (Step 7), STOP
 - Only continue if you have actual summary content
 
 ### Step 4: Append summary to memory.md
 
-1. Use the Write tool to save the summary text to `{PROJECT_DIR}/.claude/memory/delta_summary_temp.txt`
-2. Run:
-```bash
-"{NODE_PATH}" "{SCRIPTS_PATH}/append-memory.js" --project-dir="{PROJECT_DIR}"
-```
+1. Generate dual timestamps from the current time and `{TZ_OFFSET}`:
+   - UTC timestamp: `YYYY-MM-DD_HHmm` format
+   - Local timestamp: `MM-DD_HHmm` format (UTC adjusted by TZ_OFFSET)
+2. Use the Read tool to read `{MEMORY_PATH}` and get the current content.
+3. Use the Write tool to write `{MEMORY_PATH}` with:
+   ```
+   {existing content}
 
-The append-memory.js script reads the temp file, generates dual timestamps, appends to memory.md, and cleans up.
+   ## {utc_timestamp} (local {local_timestamp})
+   {summary}
+   ```
+4. Use the Read tool to read `{INDEX_PATH}` and parse the JSON content.
+5. Set `memoryAppendedInThisRun` to `true` in the parsed JSON object.
+6. Use the Write tool to write `{INDEX_PATH}` back with the updated JSON (preserve ALL other fields, use 2-space indentation).
 
 ### Step 5: Update timestamp marker
 
-```bash
-"{NODE_PATH}" "{SCRIPTS_PATH}/extract-delta.js" mark-updated --project-dir="{PROJECT_DIR}"
-```
+1. Use the Read tool to read `{INDEX_PATH}` and parse the JSON content.
+2. If a `pendingLastProcessedTs` field exists:
+   - Set `lastMemoryUpdateTs` to the value of `pendingLastProcessedTs`
+   - Remove the `pendingLastProcessedTs` field
+3. If `pendingLastProcessedTs` does not exist:
+   - Set `lastMemoryUpdateTs` to the current ISO timestamp
+4. Use the Write tool to write `{INDEX_PATH}` back with the updated JSON (preserve ALL other fields, use 2-space indentation).
 
 ### Step 6: Clean up temp file
 
-```bash
-"{NODE_PATH}" "{SCRIPTS_PATH}/extract-delta.js" cleanup --project-dir="{PROJECT_DIR}"
-```
+1. Use the Read tool to read `{INDEX_PATH}` and parse the JSON content.
+2. Verify that `memoryAppendedInThisRun` is `true`. If it is NOT true → release lock (Step 7), STOP (do not clean up — something went wrong in Step 4).
+3. Use the Write tool to write `{DELTA_PATH}` with empty content `""`.
+4. In the parsed index JSON:
+   - Set `deltaReady` to `false`
+   - Remove `memoryAppendedInThisRun`
+   - Remove `deltaCreatedAtMemoryMtime`
+5. Use the Write tool to write `{INDEX_PATH}` back with the updated JSON (preserve ALL other fields, use 2-space indentation).
 
 ### Step 7: Release lock
 
-```bash
-"{NODE_PATH}" -e "try{require('fs').unlinkSync(process.argv[1])}catch(e){}" "{LOCK_PATH}"
+Use the Write tool to write `{LOCK_PATH}` with:
+```json
+{"released": true, "ts": "<current ISO timestamp>"}
 ```
 
 ## Failure Handling
 
-- If any step fails after Step 1, ALWAYS delete the lock file before stopping
-- If Read fails in Step 2: delete lock, STOP
-- If append fails in Step 4: delete lock, do NOT run mark-updated or cleanup
-- If mark-updated fails in Step 5: delete lock, do NOT cleanup (next trigger will retry)
+- If any step fails after Step 1, ALWAYS release the lock (write released JSON to `{LOCK_PATH}`) before stopping
+- If Read fails in Step 2: release lock, STOP
+- If append fails in Step 4: release lock, do NOT run mark-updated or cleanup
+- If mark-updated fails in Step 5: release lock, do NOT cleanup (next trigger will retry)
 - The lock file prevents concurrent execution — always release it on exit
 
 ## Examples

@@ -1,5 +1,8 @@
 # Changelog
 
+## 19.55.0
+- feat: delta-processor Bash dependency removal — all 5 Bash steps replaced with Read+Write tool operations, JSON content-based lock protocol, inline timestamp generation with TZ_OFFSET, memoryAppendedInThisRun flag guard, memory-delta SKILL.md foreground fallback also Bash-free, orphaned Node.js/Script path sections removed
+
 ## 19.54.0
 - feat: contradiction detection as formal verification role — 3-level framework (Local/Related pipeline/System-wide) in VERIFICATION-FIRST section, pipeline contradiction scan method added to ticketing/planning/regressing coherence verification
 
