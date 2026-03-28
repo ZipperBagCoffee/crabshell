@@ -1,5 +1,5 @@
 {
-  "name": "memory-keeper-marketplace",
+  "name": "crabshell-marketplace",
   "owner": {
     "name": "TaWa"
   },
@@ -9,7 +9,7 @@
   },
   "plugins": [
     {
-      "name": "memory-keeper",
+      "name": "crabshell",
       "source": "./",
       "description": "Auto-save memory with background agent summarization. Saves summary + original, facts.json for search, tiered storage.",
       "version": "6.3.0",

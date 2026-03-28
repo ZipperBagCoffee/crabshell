@@ -1,8 +1,8 @@
-# Memory Keeper Architecture (v19.49.0)
+# Crabshell Architecture (v20.0.0)
 
 ## Overview
 
-Memory Keeper is a Claude Code plugin that automatically saves session context using hooks, structured fact extraction, and tiered storage with automatic rotation. It also enforces behavioral rules (Understanding-First, Verification-First) and provides a skills-based workflow system for document management, iterative improvement (regressing), and verification.
+Crabshell is a Claude Code plugin that automatically saves session context using hooks, structured fact extraction, and tiered storage with automatic rotation. It also enforces behavioral rules (Understanding-First, Verification-First) and provides a skills-based workflow system for document management, iterative improvement (regressing), and verification.
 
 ## Core Philosophy
 
@@ -68,7 +68,7 @@ Two meta-principles guide Claude's approach to obstacles:
 |  | - Load memory.md   |  | - syncRulesToClaudeMd() (RULES→CLAUDE.md) |  |
 |  | - Load L3 summaries|  | - Inject COMPRESSED_CHECKLIST per prompt   |  |
 |  | - Load project.md  |  |   (~300 tokens via additionalContext)      |  |
-|  | - Write MEMORY.md  |  | - Inject Project Concept (first 3 lines)  |  |
+|  | - Write MEMORY.md  |  | - Inject Project Concept (10 lines/500ch) |  |
 |  |   warning          |  | - Inject prompt-aware memory snippets     |  |
 |  +--------------------+  | - Full RULES only on error fallback       |  |
 |                          | - Detect pending delta → INSTRUCTION      |  |
@@ -108,7 +108,7 @@ Two meta-principles guide Claude's approach to obstacles:
           |                    |                    |
           v                    v                    v
 +--------------------------------------------------------------------------+
-|  .claude/memory/ (Project Storage)                                        |
+|  .crabshell/memory/ (Project Storage)                                     |
 |  +-------------------------------------------+  +-------------------+    |
 |  | Auto-created:                              |  | sessions/         |    |
 |  | - memory.md (rolling, auto-rotates)        |  | - *.l1.jsonl      |    |
@@ -169,7 +169,7 @@ Two meta-principles guide Claude's approach to obstacles:
        ├─> syncRulesToClaudeMd() — sync full RULES to CLAUDE.md (marker-based)
        ├─> Inject COMPRESSED_CHECKLIST (~300 tokens) via additionalContext
        │   (Full RULES ~5000 tokens only on error fallback)
-       ├─> Inject Project Concept (first 3 lines of project.md) via additionalContext
+       ├─> Inject Project Concept (first 10 lines of project.md, max 500 chars) via additionalContext
        ├─> Inject prompt-aware memory snippets (keyword-match top 3 sections)
        ├─> Check for pending delta (delta_temp.txt exists + deltaReady flag)
        │   └─> If yes: Inject DELTA_INSTRUCTION → Claude executes memory-delta skill
@@ -193,7 +193,7 @@ Two meta-principles guide Claude's approach to obstacles:
    ├─> verify-guard.js (Write|Edit) — v19.34.0+
    │   └─> Block Final Verification writes without prior /verifying run call
    └─> path-guard.js (Read|Grep|Glob|Bash) — v19.31.0+
-       └─> Block operations targeting wrong .claude/memory/ path
+       └─> Block operations targeting wrong .crabshell/ path
 
 3.5. Stop — v19.29.0+
    └─> sycophancy-guard.js
@@ -286,7 +286,7 @@ Agent orchestration rules (11 rules covering pairing, cross-review, coherence, c
 | `regressing-guard.js` | PreToolUse (Write\|Edit) | Block direct plan/ticket writes during active regressing; force Skill tool |
 | `docs-guard.js` | PreToolUse (Write\|Edit) | Block writes to docs/ subdirectories without active skill flag |
 | `verify-guard.js` | PreToolUse (Write\|Edit) | Block Final Verification writes without prior /verifying run call |
-| `path-guard.js` | PreToolUse (Read\|Grep\|Glob\|Bash) | Block Read/Grep/Glob/Bash targeting wrong .claude/memory/ path |
+| `path-guard.js` | PreToolUse (Read\|Grep\|Glob\|Bash) | Block Read/Grep/Glob/Bash targeting wrong .crabshell/ path |
 | `sycophancy-guard.js` | Stop | Detect agreement-without-verification patterns; block with re-examination instruction |
 | `skill-tracker.js` | PostToolUse (Skill) | Set skill-active flag on Skill tool calls (TTL-based, 5min expiry) |
 | `regressing-state.js` | (library) | Phase tracker: getState, buildReminder, detectSkillCall, advancePhase |

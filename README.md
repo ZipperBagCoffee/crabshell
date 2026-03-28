@@ -1,14 +1,14 @@
-# Memory Keeper
+# Crabshell
 
 **Claude Code forgets everything when a session ends.** What decisions you made yesterday, what bugs you fixed, how your project is structured - you have to explain it all over again every new session.
 
-Memory Keeper solves this. **It automatically saves session content and loads it in the next session.**
+Crabshell solves this. **It automatically saves session content and loads it in the next session.**
 
 ## Installation
 
 ```bash
-/plugin marketplace add ZipperBagCoffee/memory-keeper-plugin
-/plugin install memory-keeper
+/plugin marketplace add ZipperBagCoffee/crabshell
+/plugin install crabshell
 ```
 
 After installation, **you don't need to do anything**. It works automatically.
@@ -31,8 +31,8 @@ After installation, **you don't need to do anything**. It works automatically.
 If there's information you want Claude to know every session, **directly edit the files**:
 
 ```bash
-# Create/edit files in your project's .claude/memory/ folder
-echo "React + TypeScript web app." > .claude/memory/project.md
+# Create/edit files in your project's .crabshell/memory/ folder
+echo "React + TypeScript web app." > .crabshell/memory/project.md
 ```
 
 Or just ask Claude: "Save the project info to project.md"
@@ -45,18 +45,18 @@ With this setup, **Claude starts every new session knowing this information**.
 
 | Command | Description |
 |---------|-------------|
-| `/memory-keeper:save-memory` | Save now (don't wait for auto-save) |
-| `/memory-keeper:load-memory` | Reload memory (after manual edits) |
-| `/memory-keeper:search-memory query` | Search past sessions |
-| `/memory-keeper:clear-memory old` | Clean up files older than 30 days |
-| `/memory-keeper:discussing "topic"` | Create/update a discussion document |
-| `/memory-keeper:planning "topic"` | Create/update a plan document |
-| `/memory-keeper:ticketing P001 "topic"` | Create/update a ticket tied to a plan |
-| `/memory-keeper:investigating "topic"` | Multi-source multi-agent investigation |
-| `/memory-keeper:regressing "topic" N` | Run N cycles of P→T wrapped by a single Discussion, with verification-based optimization |
-| `/memory-keeper:light-workflow` | Run the 11-phase agent orchestration workflow (standalone tasks) |
-| `/memory-keeper:verifying` | Create/run project-specific verification tools |
-| `/memory-keeper:lessons` | Check/create project-specific lessons |
+| `/crabshell:save-memory` | Save now (don't wait for auto-save) |
+| `/crabshell:load-memory` | Reload memory (after manual edits) |
+| `/crabshell:search-memory query` | Search past sessions |
+| `/crabshell:clear-memory old` | Clean up files older than 30 days |
+| `/crabshell:discussing "topic"` | Create/update a discussion document |
+| `/crabshell:planning "topic"` | Create/update a plan document |
+| `/crabshell:ticketing P001 "topic"` | Create/update a ticket tied to a plan |
+| `/crabshell:investigating "topic"` | Multi-source multi-agent investigation |
+| `/crabshell:regressing "topic" N` | Run N cycles of P→T wrapped by a single Discussion, with verification-based optimization |
+| `/crabshell:light-workflow` | Run the 11-phase agent orchestration workflow (standalone tasks) |
+| `/crabshell:verifying` | Create/run project-specific verification tools |
+| `/crabshell:lessons` | Check/create project-specific lessons |
 
 ## Document Management (4-Skill System)
 
@@ -118,7 +118,7 @@ Coding conventions: ...
 ## Storage Location
 
 ```
-[project]/.claude/memory/
+[project]/.crabshell/memory/
 ├── memory.md              # Active rolling memory (auto-rotates at 23,750 tokens)
 ├── memory_*.md            # Rotated archives (L2)
 ├── *.summary.json         # L3 summaries (Haiku-generated)
@@ -141,8 +141,8 @@ Coding conventions: ...
 
 ## Configuration
 
-Global: `~/.claude/memory-keeper/config.json`
-Project: `.claude/memory/config.json` (takes precedence over global)
+Global: `~/.crabshell/config.json`
+Project: `.crabshell/memory/config.json` (takes precedence over global)
 
 ```json
 {
@@ -182,6 +182,7 @@ memory.md                 - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 20.0.0 | **BREAKING**: memory-keeper → crabshell rename, .claude/memory/ → .crabshell/ path migration, auto-migration on SessionStart, STORAGE_ROOT centralization |
 | 19.56.0 | feat: project.md injection expanded to 10 lines/500 chars, CLAUDE_RULES practical guidelines (AI slop avoidance, config externalization) |
 | 19.55.0 | feat: delta-processor Bash removal — Read+Write only, JSON lock protocol, inline timestamps, SKILL.md fallback Bash-free |
 | 19.54.0 | feat: contradiction detection — 3-level verification framework (Local/Related pipeline/System-wide), pipeline contradiction scan in coherence methods |

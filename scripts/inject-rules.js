@@ -1,7 +1,7 @@
 // scripts/inject-rules.js
 const fs = require('fs');
 const path = require('path');
-const { getProjectDir, readJsonOrDefault, readIndexSafe, writeJson } = require('./utils');
+const { getProjectDir, getStorageRoot, readJsonOrDefault, readIndexSafe, writeJson } = require('./utils');
 const { buildRegressingReminder } = require('./regressing-state');
 
 // Emergency stop keywords - when detected, replaces entire context with EMERGENCY STOP
@@ -286,8 +286,8 @@ You default to tool substitution within the same domain. This is trial-and-error
 - Search internet if unsure.
 - When modifying files not tracked by git, always create a backup (.bak) before making changes.
 - **Light-workflow:** For simple standalone tasks that don't need D/P/T document trail, invoke the 'light-workflow' skill. For complex iterative work, use the regressing skill instead. When the light-workflow specifies Work Agent or Review Agent, use the Task tool to launch a separate agent — do not do the agent's job yourself.
-- **Lessons:** Check .claude/lessons/ for project-specific rules. When proposing or creating lessons, invoke the 'lessons' skill for format guidelines. Propose new lessons when patterns repeat 2+ times.
-- **After Compacting or Session Restart:** Invoke the load-memory skill to rebuild full context. If the skill is unavailable, read latest memory.md as fallback. If understanding feels incomplete → check relevant docs and L1 session files in .claude/memory/sessions/.
+- **Lessons:** Check .crabshell/lessons/ for project-specific rules. When proposing or creating lessons, invoke the 'lessons' skill for format guidelines. Propose new lessons when patterns repeat 2+ times.
+- **After Compacting or Session Restart:** Invoke the load-memory skill to rebuild full context. If the skill is unavailable, read latest memory.md as fallback. If understanding feels incomplete → check relevant docs and L1 session files in .crabshell/memory/sessions/.
 - **Mandatory work log:** After performing any work related to a tracked document (D/P/T/I), append a log entry to that document's Log section using its existing format. This applies regardless of whether the skill was explicitly invoked — if the work touched or advanced the document's purpose, log it.
 - **Document types:** Discussion(D), Plan(P), Ticket(T), Investigation(I). Hierarchy: D → P → T. I is independent. Status cascades upward on completion.
 - **docs/ protection:** Documents under docs/ (D/P/T/I etc.) are local artifacts and MUST NOT be committed to git. When untracking, use \`git rm --cached\` only — never delete local files. When cleaning git history (e.g., git filter-repo), never delete current local files.
@@ -311,9 +311,9 @@ This context REPLACES all normal rules. Your ONLY job right now is steps 1-5.
 `;
 
 const DELTA_INSTRUCTION = `
-## [MEMORY_KEEPER_DELTA] - BLOCKING PREREQUISITE
+## [CRABSHELL_DELTA] - BLOCKING PREREQUISITE
 
-**TRIGGER DETECTED: [MEMORY_KEEPER_DELTA] file=delta_temp.txt**
+**TRIGGER DETECTED: [CRABSHELL_DELTA] file=delta_temp.txt**
 
 STOP. Before generating ANY text response to the user:
 
@@ -362,7 +362,7 @@ const COMPRESSED_CHECKLIST = `
 // getProjectDir, readJsonOrDefault, readIndexSafe imported from utils.js
 
 function checkDeltaPending(projectDir) {
-  const deltaPath = path.join(projectDir, '.claude', 'memory', 'delta_temp.txt');
+  const deltaPath = path.join(getStorageRoot(projectDir), 'memory', 'delta_temp.txt');
   if (!fs.existsSync(deltaPath)) return false;
   const size = fs.statSync(deltaPath).size;
   const MIN_DELTA_SIZE = 20 * 1024; // 20KB
@@ -370,12 +370,12 @@ function checkDeltaPending(projectDir) {
 }
 
 function checkRotationPending(projectDir) {
-  const indexPath = path.join(projectDir, '.claude', 'memory', 'memory-index.json');
+  const indexPath = path.join(getStorageRoot(projectDir), 'memory', 'memory-index.json');
   const index = readJsonOrDefault(indexPath, {});
   const rotatedFiles = index.rotatedFiles || [];
   const pending = rotatedFiles.filter(f => !f.summaryGenerated);
   // Debug log
-  const logPath = path.join(projectDir, '.claude', 'memory', 'logs', 'inject-debug.log');
+  const logPath = path.join(getStorageRoot(projectDir), 'memory', 'logs', 'inject-debug.log');
   try {
     fs.appendFileSync(logPath, `${new Date().toISOString()} | rotation pending=${pending.length}\n`);
   } catch (e) {}
@@ -503,7 +503,7 @@ function getRelevantMemorySnippets(projectDir, userPrompt) {
   const keywords = extractKeywords(userPrompt);
   if (keywords.length === 0) return null;
 
-  const memoryPath = path.join(projectDir, '.claude', 'memory', 'memory.md');
+  const memoryPath = path.join(getStorageRoot(projectDir), 'memory', 'memory.md');
   if (!fs.existsSync(memoryPath)) return null;
 
   let content;
@@ -586,13 +586,13 @@ async function main() {
       return;
     }
 
-    const configPath = path.join(projectDir, '.claude', 'memory', 'config.json');
+    const configPath = path.join(getStorageRoot(projectDir), 'memory', 'config.json');
     const config = readJsonOrDefault(configPath, {});
 
     const frequency = config.rulesInjectionFrequency || 1;
 
     // Counter stored in memory-index.json
-    const indexPath = path.join(projectDir, '.claude', 'memory', 'memory-index.json');
+    const indexPath = path.join(getStorageRoot(projectDir), 'memory', 'memory-index.json');
     const index = readIndexSafe(indexPath);  // Use safe reader to preserve all fields
 
     // Extract user prompt early (for feedback detection + memory snippets)
@@ -633,7 +633,7 @@ async function main() {
       const nodePathFwd = process.execPath.replace(/\\/g, '/');
 
       // Read project concept for per-prompt anchoring
-      const projectMdPath = path.join(projectDir, '.claude', 'memory', 'project.md');
+      const projectMdPath = path.join(getStorageRoot(projectDir), 'memory', 'project.md');
       let projectConcept = '';
       if (fs.existsSync(projectMdPath)) {
         try {
@@ -692,10 +692,10 @@ async function main() {
 
       // Explicit trigger patterns to stderr (visible to Claude)
       if (hasPendingDelta) {
-        console.error(`[MEMORY_KEEPER_DELTA] file=delta_temp.txt`);
+        console.error(`[CRABSHELL_DELTA] file=delta_temp.txt`);
       }
       if (pendingRotations.length > 0) {
-        console.error(`[MEMORY_KEEPER_ROTATE] pending=${pendingRotations.length}`);
+        console.error(`[CRABSHELL_ROTATE] pending=${pendingRotations.length}`);
       }
       if (regressingReminder) {
         console.error('[REGRESSING ACTIVE]');

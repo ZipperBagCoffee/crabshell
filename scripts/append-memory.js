@@ -29,7 +29,8 @@ function getTimestamps() {
 
 function main() {
   const projectDir = getProjectDir();
-  const memoryDir = path.join(projectDir, '.claude', 'memory');
+  const { STORAGE_ROOT } = require('./constants');
+  const memoryDir = path.join(projectDir, STORAGE_ROOT, 'memory');
   const summaryPath = path.join(memoryDir, 'delta_summary_temp.txt');
   const memoryPath = path.join(memoryDir, 'memory.md');
 

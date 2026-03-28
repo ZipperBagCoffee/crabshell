@@ -34,7 +34,7 @@ Search through session history and memory archives.
 ## Usage
 
 ```
-/memory-keeper:search-memory [query]
+/crabshell:search-memory [query]
 ```
 
 ## Actions

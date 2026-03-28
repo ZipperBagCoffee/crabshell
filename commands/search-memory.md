@@ -13,7 +13,7 @@ If not available in context, fall back to `node`.
 
 Find the plugin path:
 ```bash
-ls ~/.claude/plugins/cache/memory-keeper-marketplace/memory-keeper/*/scripts/counter.js
+ls ~/.claude/plugins/cache/crabshell-marketplace/crabshell/*/scripts/counter.js
 ```
 
 ## Search Command
@@ -33,17 +33,17 @@ For deep search (includes L1 sessions):
 
 1. Search memory.md:
    ```bash
-   grep -i "$ARGUMENTS" .claude/memory/memory.md 2>/dev/null || echo "No matches in memory.md"
+   grep -i "$ARGUMENTS" .crabshell/memory/memory.md 2>/dev/null || echo "No matches in memory.md"
    ```
 
 2. Search L3 summaries:
    ```bash
-   grep -r -i "$ARGUMENTS" .claude/memory/*.summary.json 2>/dev/null || echo "No matches in summaries"
+   grep -r -i "$ARGUMENTS" .crabshell/memory/*.summary.json 2>/dev/null || echo "No matches in summaries"
    ```
 
 3. Search L1 sessions:
    ```bash
-   grep -r -i "$ARGUMENTS" .claude/memory/sessions/*.l1.jsonl 2>/dev/null || echo "No matches in sessions"
+   grep -r -i "$ARGUMENTS" .crabshell/memory/sessions/*.l1.jsonl 2>/dev/null || echo "No matches in sessions"
    ```
 
 Return matching excerpts with dates and context.

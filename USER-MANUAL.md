@@ -1,4 +1,4 @@
-# Memory Keeper User Manual (v19.49.0)
+# Crabshell User Manual (v20.0.0)
 
 ## Why Do You Need This?
 
@@ -10,13 +10,13 @@ Claude Code **forgets everything when a session ends:**
 
 Every new session, you have to repeat: "This project is built with React, uses Zustand for state management, JWT for auth..." and so on.
 
-Memory Keeper solves this problem.
+Crabshell solves this problem.
 
 ## Installation
 
 ```bash
-/plugin marketplace add ZipperBagCoffee/memory-keeper-plugin
-/plugin install memory-keeper
+/plugin marketplace add ZipperBagCoffee/crabshell
+/plugin install crabshell
 ```
 
 **That's it.** It works automatically after installation.
@@ -49,7 +49,7 @@ Memory Keeper solves this problem.
 ### What Gets Saved
 
 ```
-.claude/memory/
+.crabshell/memory/
 ├── memory.md            # Active rolling memory (auto-rotates)
 ├── memory_*.md          # Rotated archives (L2)
 ├── *.summary.json       # L3 summaries (Haiku-generated)
@@ -74,7 +74,7 @@ When `memory.md` grows beyond **23,750 tokens** (~95KB):
 
 **Use slash command (recommended):**
 ```
-/memory-keeper:search-memory auth
+/crabshell:search-memory auth
 ```
 
 **Or ask Claude directly:**
@@ -90,28 +90,28 @@ All available skills (slash commands):
 
 | Command | What It Does |
 |---------|-------------|
-| `/memory-keeper:save-memory` | Trigger an immediate memory save |
-| `/memory-keeper:load-memory` | Reload memory context (useful after manual edits or compaction) |
-| `/memory-keeper:search-memory keyword` | Search past sessions across L1/L2/L3 layers. Flags: `--regex`, `--context=N`, `--limit=N` |
-| `/memory-keeper:clear-memory` | Clean up old memory files |
+| `/crabshell:save-memory` | Trigger an immediate memory save |
+| `/crabshell:load-memory` | Reload memory context (useful after manual edits or compaction) |
+| `/crabshell:search-memory keyword` | Search past sessions across L1/L2/L3 layers. Flags: `--regex`, `--context=N`, `--limit=N` |
+| `/crabshell:clear-memory` | Clean up old memory files |
 
 ### Structured Work (D/P/T/I Documents)
 
 | Command | What It Does |
 |---------|-------------|
-| `/memory-keeper:discussing "topic"` | Create or update a Discussion document (D) |
-| `/memory-keeper:planning "topic"` | Create or update a Plan document (P) |
-| `/memory-keeper:ticketing P001 "title"` | Create or update a Ticket document (T) linked to a plan |
-| `/memory-keeper:investigating "topic"` | Run a multi-agent Investigation (I) |
+| `/crabshell:discussing "topic"` | Create or update a Discussion document (D) |
+| `/crabshell:planning "topic"` | Create or update a Plan document (P) |
+| `/crabshell:ticketing P001 "title"` | Create or update a Ticket document (T) linked to a plan |
+| `/crabshell:investigating "topic"` | Run a multi-agent Investigation (I) |
 
 ### Workflows
 
 | Command | What It Does |
 |---------|-------------|
-| `/memory-keeper:regressing "topic" N` | Iterative optimization: N cycles of Plan-then-Ticket, wrapped in a Discussion |
-| `/memory-keeper:light-workflow` | Lightweight one-shot agent orchestration for standalone tasks |
-| `/memory-keeper:verifying` | Create or run project-specific verification tools |
-| `/memory-keeper:lessons` | Manage project-specific lessons (format guidelines, creation) |
+| `/crabshell:regressing "topic" N` | Iterative optimization: N cycles of Plan-then-Ticket, wrapped in a Discussion |
+| `/crabshell:light-workflow` | Lightweight one-shot agent orchestration for standalone tasks |
+| `/crabshell:verifying` | Create or run project-specific verification tools |
+| `/crabshell:lessons` | Manage project-specific lessons (format guidelines, creation) |
 
 > **Tip:** For basic memory operations, you can also just ask Claude directly (e.g., "save memory now", "search memory for auth").
 
@@ -119,7 +119,7 @@ All available skills (slash commands):
 
 ## Document System (D/P/T/I)
 
-Memory Keeper includes a structured document system for organizing complex work.
+Crabshell includes a structured document system for organizing complex work.
 
 ### Document Types
 
@@ -143,20 +143,20 @@ I (Investigation) — independent, not part of the D→P→T chain
 
 ### Regressing (Iterative Improvement)
 
-Use `/memory-keeper:regressing "topic" N` for tasks that need multiple rounds of refinement:
+Use `/crabshell:regressing "topic" N` for tasks that need multiple rounds of refinement:
 - Creates a single Discussion (D) as wrapper
 - Runs N cycles, each consisting of Plan (P) then Ticket (T)
 - Each cycle's scope is determined by the previous cycle's verification results, not pre-allocated
 
 ### Light Workflow (One-Shot Tasks)
 
-Use `/memory-keeper:light-workflow` for simple standalone tasks that do not need the full D/P/T document trail. It provides agent orchestration (Work Agent + Review Agent) without the overhead of tracked documents.
+Use `/crabshell:light-workflow` for simple standalone tasks that do not need the full D/P/T document trail. It provides agent orchestration (Work Agent + Review Agent) without the overhead of tracked documents.
 
 ---
 
 ## Core Philosophy
 
-Memory Keeper enforces several behavioral rules via CLAUDE.md injection. You do not need to configure these; they activate automatically.
+Crabshell enforces several behavioral rules via CLAUDE.md injection. You do not need to configure these; they activate automatically.
 
 ### Understanding-First
 Claude confirms its understanding of your intent before acting. This prevents wasted work on wrong assumptions. If intent is unclear, Claude asks first rather than guessing.
@@ -192,7 +192,7 @@ The plugin uses Claude Code hooks to run automatically:
 | `Stop` | `sycophancy-guard.js` | Before response finalized | Detects agreement-without-verification patterns in responses |
 | `PreToolUse` | `docs-guard.js` | Before Write/Edit to docs/ | Blocks writes to docs/ directories without active skill flag |
 | `PreToolUse` | `verify-guard.js` | Before Write/Edit to tickets | Blocks Final Verification writes without prior `/verifying` run |
-| `PreToolUse` | `path-guard.js` | Before Read/Grep/Glob/Bash | Blocks operations targeting wrong `.claude/memory/` path |
+| `PreToolUse` | `path-guard.js` | Before Read/Grep/Glob/Bash | Blocks operations targeting wrong `.crabshell/memory/` path |
 | `PostToolUse` | `skill-tracker.js` | After Skill tool call | Sets skill-active flag on Skill tool calls for guard scripts |
 | `SessionEnd` | `counter.js final` | Session ends | Creates final L1 backup, extracts remaining delta |
 
@@ -207,7 +207,7 @@ Guard scripts are PreToolUse/Stop hooks that prevent common mistakes:
 | `sycophancy-guard.js` | Claude agreeing with user claims without independently verifying them first |
 | `docs-guard.js` | Direct writes to `docs/` directories outside of an active skill (discussing, planning, ticketing, etc.) |
 | `verify-guard.js` | Writing "Final Verification" results to ticket files without actually running `/verifying` first |
-| `path-guard.js` | File operations targeting a wrong `.claude/memory/` path (e.g., a different project's memory directory) |
+| `path-guard.js` | File operations targeting a wrong `.crabshell/memory/` path (e.g., a different project's memory directory) |
 | `skill-tracker.js` | Supporting guard: sets the `skill-active` flag when a Skill tool call is detected, so `docs-guard` and `verify-guard` know when writes are authorized |
 
 Guards run automatically via hooks. No configuration needed.
@@ -241,7 +241,7 @@ The plugin uses two injection mechanisms:
 
 ## Configuration
 
-`.claude/memory/config.json` (per-project) or `~/.claude/memory-keeper/config.json` (global):
+`.crabshell/memory/config.json` (per-project) or `~/.crabshell/config.json` (global):
 
 ```json
 {
@@ -270,7 +270,7 @@ Set information you want Claude to know at the start of every session.
 
 **Option 2: Edit files directly**
 ```bash
-echo "Next.js 14 + TypeScript + Prisma" > .claude/memory/project.md
+echo "Next.js 14 + TypeScript + Prisma" > .crabshell/memory/project.md
 ```
 
 ---
@@ -278,9 +278,9 @@ echo "Next.js 14 + TypeScript + Prisma" > .claude/memory/project.md
 ## Lessons
 
 When Claude notices repeated patterns (2+ times), it proposes a lesson:
-- Saved to `.claude/lessons/` as markdown files
+- Saved to `.crabshell/lessons/` as markdown files
 - Checked on each session for project-specific rules
-- Use `/memory-keeper:lessons` for format guidelines when creating lessons manually
+- Use `/crabshell:lessons` for format guidelines when creating lessons manually
 - Lessons must follow the **Problem/Rule/Example** format — reflective narratives and abstract principles are rejected
 
 ---
@@ -288,12 +288,12 @@ When Claude notices repeated patterns (2+ times), it proposes a lesson:
 ## Troubleshooting
 
 ### Memory Not Loading
-1. Check `.claude/memory/` folder exists
+1. Check `.crabshell/memory/` folder exists
 2. Check `memory.md` file exists
-3. Run `/memory-keeper:load-memory`
+3. Run `/crabshell:load-memory`
 
 ### Auto-save Not Triggering
-1. Check counter in `.claude/memory/memory-index.json`
+1. Check counter in `.crabshell/memory/memory-index.json`
 2. Ask Claude: "Reset the memory counter"
 
 ### L1 Files Taking Too Much Space
@@ -304,7 +304,7 @@ L1 files are deduplicated automatically when created, but manual cleanup may som
 ### Rules Not Being Injected
 1. Check that `CLAUDE.md` exists in your project root
 2. Look for the `## CRITICAL RULES (Core Principles Alignment)` marker
-3. Check `.claude/memory/logs/inject-debug.log` for errors
+3. Check `.crabshell/memory/logs/inject-debug.log` for errors
 
 ---
 

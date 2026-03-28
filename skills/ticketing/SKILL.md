@@ -132,7 +132,7 @@ The Orchestrator MUST launch 2+ Work Agents with **distinct analytical perspecti
 
 ### Step B.9: Verification Tool Check (Orchestrator — BEFORE Step C)
 **Before starting Step C**, the Orchestrator MUST check:
-1. Does `.claude/verification/manifest.json` exist in the project?
+1. Does `.crabshell/verification/manifest.json` exist in the project?
 2. If YES → run `/verifying run` to execute verification tools against acceptance criteria. Include runner output in Step C evaluation.
 3. If NO → invoke `/verifying` to create a verification manifest for this project. Then run `/verifying run`.
 4. If the project has no executable runtime (e.g., pure documentation) → skip with explicit note: "Verification tool N/A: {reason}"
@@ -295,4 +295,4 @@ If ticket status → `verified`:
 10. **Mandatory append of results:** Work Agent, Review Agent, and Orchestrator must each append their execution results to the corresponding section of the T document (Execution Results, Verification Results, Final Verification). Verification not recorded in the document is treated as not performed.
 11. **Exhaustive verification standard:** Verification follows the VERIFICATION-FIRST principle in RULES (Predict → Execute → Compare). When no project verification tool exists, invoke the 'verifying' skill. Direct → indirect → explicitly "unverified".
 12. **Regressing context transfer:** In the regressing loop, this T document's `## Final Verification > Next Direction` content is passed directly to the next cycle's P(n+1) document's Context. The Orchestrator must explicitly perform this transfer. (D is the top-level container and does not receive per-cycle context.)
-13. **Regressing state update:** If `.claude/memory/regressing-state.json` exists and is active, update it after ticket creation using: `"{NODE_PATH}" -e "const f='{PROJECT_DIR}/.claude/memory/regressing-state.json';const s=JSON.parse(require('fs').readFileSync(f,'utf8'));s.ticketIds.push('{T-ID}');s.lastUpdatedAt=new Date().toISOString();require('fs').writeFileSync(f,JSON.stringify(s,null,2))"`. Phase transition is handled automatically by the PostToolUse hook. Only applies when regressing-state.json exists — standalone ticketing usage is unaffected.
+13. **Regressing state update:** If `.crabshell/memory/regressing-state.json` exists and is active, update it after ticket creation using: `"{NODE_PATH}" -e "const f='{PROJECT_DIR}/.crabshell/memory/regressing-state.json';const s=JSON.parse(require('fs').readFileSync(f,'utf8'));s.ticketIds.push('{T-ID}');s.lastUpdatedAt=new Date().toISOString();require('fs').writeFileSync(f,JSON.stringify(s,null,2))"`. Phase transition is handled automatically by the PostToolUse hook. Only applies when regressing-state.json exists — standalone ticketing usage is unaffected.

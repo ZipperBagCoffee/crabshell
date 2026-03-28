@@ -45,7 +45,7 @@ const DEFAULT_TTL_MS = 5 * 60 * 1000;
 
 /**
  * Detect if hookData represents a docs-relevant Skill call.
- * Handles both "planning" and "memory-keeper:planning" formats.
+ * Handles both "planning" and "crabshell:planning" formats.
  * Returns normalized skill name or null.
  */
 function detectDocsSkillCall(hookData) {
@@ -55,7 +55,7 @@ function detectDocsSkillCall(hookData) {
   const skill = input.skill;
   if (typeof skill !== 'string') return null;
 
-  // Handle both "planning" and "memory-keeper:planning"
+  // Handle both "planning" and "crabshell:planning"
   const skillName = skill.includes(':') ? skill.split(':').pop() : skill;
   if (DOCS_SKILLS.includes(skillName)) return skillName;
   return null;
@@ -65,7 +65,8 @@ function detectDocsSkillCall(hookData) {
  * Set the skill-active flag file.
  */
 function setSkillActive(projectDir, skillName) {
-  const memoryDir = path.join(projectDir, '.claude', 'memory');
+  const { STORAGE_ROOT } = require('./constants');
+  const memoryDir = path.join(projectDir, STORAGE_ROOT, 'memory');
   if (!fs.existsSync(memoryDir)) {
     fs.mkdirSync(memoryDir, { recursive: true });
   }

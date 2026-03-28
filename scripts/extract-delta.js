@@ -1,14 +1,14 @@
 // scripts/extract-delta.js
 const fs = require('fs');
 const path = require('path');
-const { getProjectDir, readJsonOrDefault, readIndexSafe, writeJson, estimateTokens, extractTailByTokens } = require('./utils');
+const { getProjectDir, getStorageRoot, readJsonOrDefault, readIndexSafe, writeJson, estimateTokens, extractTailByTokens } = require('./utils');
 const { SESSIONS_DIR, MEMORY_DIR, MEMORY_FILE, INDEX_FILE, DELTA_TEMP_FILE, HAIKU_SAFE_TOKENS, FIRST_RUN_MAX_ENTRIES, DELTA_OUTPUT_TRUNCATE } = require('./constants');
 
 function extractDelta(sessionId) {
   try {
     const projectDir = getProjectDir();
-    const memoryDir = path.join(projectDir, '.claude', MEMORY_DIR);
-    const sessionsDir = path.join(projectDir, '.claude', SESSIONS_DIR);
+    const memoryDir = path.join(getStorageRoot(projectDir), MEMORY_DIR);
+    const sessionsDir = path.join(getStorageRoot(projectDir), SESSIONS_DIR);
     const indexPath = path.join(memoryDir, INDEX_FILE);
 
     // Get last update timestamp
@@ -141,7 +141,7 @@ function extractDelta(sessionId) {
 function markMemoryUpdated() {
   try {
     const projectDir = getProjectDir();
-    const memoryDir = path.join(projectDir, '.claude', MEMORY_DIR);
+    const memoryDir = path.join(getStorageRoot(projectDir), MEMORY_DIR);
     const indexPath = path.join(memoryDir, INDEX_FILE);
 
     const index = readIndexSafe(indexPath);
@@ -156,10 +156,10 @@ function markMemoryUpdated() {
 
     writeJson(indexPath, index);
 
-    console.log('[MEMORY_KEEPER] Timestamp updated:', index.lastMemoryUpdateTs);
+    console.log('[CRABSHELL] Timestamp updated:', index.lastMemoryUpdateTs);
     return true;
   } catch (e) {
-    console.error('[MEMORY_KEEPER] Failed to update timestamp:', e.message);
+    console.error('[CRABSHELL] Failed to update timestamp:', e.message);
     return false;
   }
 }
@@ -168,13 +168,13 @@ function markMemoryUpdated() {
 function cleanupDeltaTemp() {
   try {
     const projectDir = getProjectDir();
-    const memoryDir = path.join(projectDir, '.claude', MEMORY_DIR);
+    const memoryDir = path.join(getStorageRoot(projectDir), MEMORY_DIR);
     const indexPath = path.join(memoryDir, INDEX_FILE);
     const deltaPath = path.join(memoryDir, DELTA_TEMP_FILE);
     const memoryPath = path.join(memoryDir, MEMORY_FILE);
 
     if (!fs.existsSync(deltaPath)) {
-      console.log('[MEMORY_KEEPER] No delta temp file to clean');
+      console.log('[CRABSHELL] No delta temp file to clean');
       return true;
     }
 
@@ -184,7 +184,7 @@ function cleanupDeltaTemp() {
     const currentMemoryMtime = fs.existsSync(memoryPath) ? fs.statSync(memoryPath).mtimeMs : 0;
 
     if (currentMemoryMtime <= deltaCreatedMtime) {
-      console.error('[MEMORY_KEEPER] BLOCKED: memory.md not updated since delta creation. Write to memory.md first!');
+      console.error('[CRABSHELL] BLOCKED: memory.md not updated since delta creation. Write to memory.md first!');
       return false;
     }
 
@@ -194,10 +194,10 @@ function cleanupDeltaTemp() {
     index.deltaReady = false;
     writeJson(indexPath, index);
 
-    console.log('[MEMORY_KEEPER] Delta temp file cleaned up');
+    console.log('[CRABSHELL] Delta temp file cleaned up');
     return true;
   } catch (e) {
-    console.error('[MEMORY_KEEPER] Failed to cleanup delta temp:', e.message);
+    console.error('[CRABSHELL] Failed to cleanup delta temp:', e.message);
     return false;
   }
 }

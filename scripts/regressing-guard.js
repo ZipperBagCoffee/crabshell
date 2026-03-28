@@ -48,7 +48,8 @@ async function main() {
   if (!isPlanDoc && !isTicketDoc) { process.exit(0); return; }
 
   const projectDir = getProjectDir();
-  const statePath = path.join(projectDir, '.claude', 'memory', 'regressing-state.json');
+  const { STORAGE_ROOT } = require('./constants');
+  const statePath = path.join(projectDir, STORAGE_ROOT, 'memory', 'regressing-state.json');
 
   let state;
   try {
@@ -64,7 +65,7 @@ async function main() {
   if (phase === 'planning' && isPlanDoc) {
     const output = {
       decision: "block",
-      reason: 'Regressing phase "planning" requires /planning skill invocation first. Use Skill tool with skill="memory-keeper:planning" instead of writing the plan document directly.'
+      reason: 'Regressing phase "planning" requires /planning skill invocation first. Use Skill tool with skill="crabshell:planning" instead of writing the plan document directly.'
     };
     console.log(JSON.stringify(output));
     process.exit(2);
@@ -73,7 +74,7 @@ async function main() {
   if (phase === 'ticketing' && isTicketDoc) {
     const output = {
       decision: "block",
-      reason: 'Regressing phase "ticketing" requires /ticketing skill invocation first. Use Skill tool with skill="memory-keeper:ticketing" instead of writing the ticket document directly.'
+      reason: 'Regressing phase "ticketing" requires /ticketing skill invocation first. Use Skill tool with skill="crabshell:ticketing" instead of writing the ticket document directly.'
     };
     console.log(JSON.stringify(output));
     process.exit(2);

@@ -34,7 +34,7 @@ Reload memory context into current session.
 ## Usage
 
 ```
-/memory-keeper:load-memory
+/crabshell:load-memory
 ```
 
 ## Actions

@@ -33,7 +33,7 @@ function updateClaudeMd(claudePath, rulesContent) {
   }
 
   // No markers found - try legacy format
-  console.error('Could not find MEMORY_KEEPER markers in CLAUDE.md. Run inject-rules.js first to migrate.');
+  console.error('Could not find CRABSHELL markers in CLAUDE.md. Run inject-rules.js first to migrate.');
   return false;
 }
 

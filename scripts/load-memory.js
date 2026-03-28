@@ -1,6 +1,6 @@
 const path = require('path');
 const fs = require('fs');
-const { getProjectDir, getProjectName, readFileOrDefault, readJsonOrDefault, estimateTokens } = require('./utils');
+const { getProjectDir, getProjectName, getStorageRoot, readFileOrDefault, readJsonOrDefault, estimateTokens } = require('./utils');
 const { ensureMemoryStructure } = require('./init');
 const { MEMORY_DIR, SESSIONS_DIR, INDEX_FILE, MEMORY_FILE, LOGS_DIR, DELTA_TEMP_FILE, REGRESSING_STATE_FILE, SKILL_ACTIVE_FILE } = require('./constants');
 
@@ -15,7 +15,7 @@ const { MEMORY_DIR, SESSIONS_DIR, INDEX_FILE, MEMORY_FILE, LOGS_DIR, DELTA_TEMP_
 function logError(err) {
   try {
     const projectDir = getProjectDir();
-    const logDir = path.join(projectDir, '.claude', LOGS_DIR || 'memory/logs');
+    const logDir = path.join(getStorageRoot(projectDir), LOGS_DIR || 'memory/logs');
     if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
     const logPath = path.join(logDir, 'startup-error.log');
     fs.appendFileSync(logPath, `${new Date().toISOString()} | ${err.stack || err.message || err}\n`);
@@ -24,13 +24,13 @@ function logError(err) {
 
 process.on('uncaughtException', (err) => {
   logError(err);
-  console.error('[MEMORY_KEEPER ERROR] ' + (err.message || err));
+  console.error('[CRABSHELL ERROR] ' + (err.message || err));
   process.exit(1);
 });
 
 // CRITICAL WARNING - Must be in SessionStart hook for Claude to see
 const CLAUDE_RULES = `
-## Memory Keeper Operational Notes
+## Crabshell Operational Notes
 - When you make a mistake, explain your actual reasoning process — what logic led to that action. Do not apologize.
 - memory-index.json format: see scripts/init.js in plugin directory.
 
@@ -47,9 +47,9 @@ const MEMORY_FILES = [
   { name: 'project.md', title: 'Project Overview' }
 ];
 
-const MEMORY_MD_WARNING = `## Memory Keeper Plugin
+const MEMORY_MD_WARNING = `## Crabshell Plugin
 - This MEMORY.md = Claude Code built-in auto memory (200-line limit, auto-loaded in system prompt)
-- .claude/memory/memory.md = Memory Keeper plugin memory (25K token rotation, loaded via hooks)
+- .crabshell/memory/memory.md = Crabshell plugin memory (25K token rotation, loaded via hooks)
 - These are SEPARATE systems. Do NOT apply 200-line limit to plugin memory.md
 - Do NOT confuse rotation/archival rules between them`;
 
@@ -62,7 +62,7 @@ function ensureAutoMemoryWarning(projectDir) {
 
     if (fs.existsSync(memoryMdPath)) {
       const content = fs.readFileSync(memoryMdPath, 'utf8');
-      if (content.includes('Memory Keeper Plugin')) return;
+      if (content.includes('Crabshell Plugin')) return;
       fs.writeFileSync(memoryMdPath, MEMORY_MD_WARNING + '\n\n' + content);
     } else {
       fs.mkdirSync(path.dirname(memoryMdPath), { recursive: true });
@@ -126,7 +126,7 @@ function readStdinAsync() {
 function loadMemory(stdinData) {
   const projectDir = getProjectDir();
   const projectName = getProjectName();
-  const memoryDir = path.join(projectDir, '.claude', MEMORY_DIR);
+  const memoryDir = path.join(getStorageRoot(projectDir), MEMORY_DIR);
   const sections = [];
   const source = (stdinData && stdinData.source) || 'unknown';
 
@@ -160,7 +160,7 @@ function loadMemory(stdinData) {
     const now = Date.now();
     const twentyFourHours = 24 * 60 * 60 * 1000;
     if (!isNaN(updatedTime) && (now - updatedTime) > twentyFourHours) {
-      console.error(`[MEMORY_KEEPER] WARNING: Regressing state is stale (last updated: ${regressingState.lastUpdatedAt}). Verify with user before continuing.`);
+      console.error(`[CRABSHELL] WARNING: Regressing state is stale (last updated: ${regressingState.lastUpdatedAt}). Verify with user before continuing.`);
     }
   }
 
@@ -185,7 +185,7 @@ function loadMemory(stdinData) {
     // Check for pending summaries
     const pending = rotatedFiles.filter(f => !f.summaryGenerated);
     if (pending.length > 0) {
-      console.log('[MEMORY_KEEPER] ' + pending.length + ' summaries pending:');
+      console.log('[CRABSHELL] ' + pending.length + ' summaries pending:');
       pending.forEach(f => console.log('  - ' + f.file));
     }
 
@@ -204,7 +204,7 @@ function loadMemory(stdinData) {
   }
 
   // Load L1 tail (unreflected content from last session)
-  const sessionsDir = path.join(projectDir, '.claude', SESSIONS_DIR);
+  const sessionsDir = path.join(getStorageRoot(projectDir), SESSIONS_DIR);
   if (fs.existsSync(sessionsDir)) {
     const l1Files = fs.readdirSync(sessionsDir).filter(f => f.endsWith('.l1.jsonl')).sort().reverse();
     if (l1Files.length > 0) {
@@ -232,7 +232,7 @@ function loadMemory(stdinData) {
 
   // Output
   if (sections.length > 0) {
-    console.log('\n=== Memory Keeper: ' + projectName + ' ===\n');
+    console.log('\n=== Crabshell: ' + projectName + ' ===\n');
     if (source === 'compact') {
       console.log(getPostCompactWarning(projectDir));
     }
@@ -240,7 +240,7 @@ function loadMemory(stdinData) {
     console.log(CLAUDE_RULES);
     console.log('\n=== End of Memory ===\n');
   } else {
-    console.log('\n--- Memory Keeper: No memory for ' + projectName + ' ---\n');
+    console.log('\n--- Crabshell: No memory for ' + projectName + ' ---\n');
     if (source === 'compact') {
       console.log(getPostCompactWarning(projectDir));
     }
@@ -249,7 +249,7 @@ function loadMemory(stdinData) {
 
   // Log source for debugging
   if (source === 'compact') {
-    console.error('[MEMORY_KEEPER] Post-compaction recovery mode activated');
+    console.error('[CRABSHELL] Post-compaction recovery mode activated');
   }
 }
 
@@ -287,7 +287,7 @@ readStdinAsync().then((stdinData) => {
     loadMemory(stdinData);
   } catch (err) {
     logError(err);
-    console.error('[MEMORY_KEEPER ERROR] ' + (err.message || err));
+    console.error('[CRABSHELL ERROR] ' + (err.message || err));
     process.exit(1);
   }
 });

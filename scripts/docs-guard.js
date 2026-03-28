@@ -52,7 +52,8 @@ const SKILL_ACTIVE_TTL_MS = 5 * 60 * 1000;
  * Returns the skill name if valid, null otherwise.
  */
 function getActiveSkill(projectDir) {
-  const flagPath = path.join(projectDir, '.claude', 'memory', SKILL_ACTIVE_FILE);
+  const { STORAGE_ROOT } = require('./constants');
+  const flagPath = path.join(projectDir, STORAGE_ROOT, 'memory', SKILL_ACTIVE_FILE);
   try {
     if (!fs.existsSync(flagPath)) return null;
     const data = JSON.parse(fs.readFileSync(flagPath, 'utf8'));

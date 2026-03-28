@@ -54,9 +54,9 @@ Create ONE Discussion document that wraps the entire regressing session:
 - Metadata: `[regressing: cap {N}]`
 
 After creating the Discussion document, write the regressing state file:
-- Path: `.claude/memory/regressing-state.json`
+- Path: `.crabshell/memory/regressing-state.json`
 - Content: `{ "active": true, "discussion": "{D-ID}", "cycle": 1, "totalCycles": {N}, "userSpecifiedN": {true|false}, "phase": "planning", "planId": null, "ticketIds": [], "startedAt": "{ISO}", "lastUpdatedAt": "{ISO}" }`
-- Use Bash tool: `"{NODE_PATH}" -e "require('fs').writeFileSync('{PROJECT_DIR}/.claude/memory/regressing-state.json', JSON.stringify({active:true, discussion:'{D-ID}', cycle:1, totalCycles:{N}, userSpecifiedN:{true|false}, phase:'planning', planId:null, ticketIds:[], startedAt:new Date().toISOString(), lastUpdatedAt:new Date().toISOString()}, null, 2))"`
+- Use Bash tool: `"{NODE_PATH}" -e "require('fs').writeFileSync('{PROJECT_DIR}/.crabshell/memory/regressing-state.json', JSON.stringify({active:true, discussion:'{D-ID}', cycle:1, totalCycles:{N}, userSpecifiedN:{true|false}, phase:'planning', planId:null, ticketIds:[], startedAt:new Date().toISOString(), lastUpdatedAt:new Date().toISOString()}, null, 2))"`
 
 ### Step 3: Pre-check (optional)
 
@@ -85,7 +85,7 @@ repeat until convergence or cap reached:
 - After approval, proceed to ticket creation
 
 After /planning completes, update regressing state:
-- Set `"planId": "{P-ID}"`, `"lastUpdatedAt": "{ISO}"` using: `"{NODE_PATH}" -e "const f='{PROJECT_DIR}/.claude/memory/regressing-state.json';const s=JSON.parse(require('fs').readFileSync(f,'utf8'));s.planId='{P-ID}';s.lastUpdatedAt=new Date().toISOString();require('fs').writeFileSync(f,JSON.stringify(s,null,2))"` (phase transition is automatic via PostToolUse hook)
+- Set `"planId": "{P-ID}"`, `"lastUpdatedAt": "{ISO}"` using: `"{NODE_PATH}" -e "const f='{PROJECT_DIR}/.crabshell/memory/regressing-state.json';const s=JSON.parse(require('fs').readFileSync(f,'utf8'));s.planId='{P-ID}';s.lastUpdatedAt=new Date().toISOString();require('fs').writeFileSync(f,JSON.stringify(s,null,2))"` (phase transition is automatic via PostToolUse hook)
 
 #### Step 4b: Ticketing — Create T(n,1..M)
 - Invoke `/ticketing` one or more times per plan to create tickets from P(n)
@@ -93,7 +93,7 @@ After /planning completes, update regressing state:
 - A plan with a single coherent work item produces one ticket. A plan with multiple independent work items produces multiple tickets.
 
 After each /ticketing invocation, update regressing state:
-- Append the new ticket's ID to `"ticketIds"` array, update `"lastUpdatedAt": "{ISO}"` using: `"{NODE_PATH}" -e "const f='{PROJECT_DIR}/.claude/memory/regressing-state.json';const s=JSON.parse(require('fs').readFileSync(f,'utf8'));s.ticketIds.push('{T-ID}');s.lastUpdatedAt=new Date().toISOString();require('fs').writeFileSync(f,JSON.stringify(s,null,2))"` (phase transition is automatic via PostToolUse hook)
+- Append the new ticket's ID to `"ticketIds"` array, update `"lastUpdatedAt": "{ISO}"` using: `"{NODE_PATH}" -e "const f='{PROJECT_DIR}/.crabshell/memory/regressing-state.json';const s=JSON.parse(require('fs').readFileSync(f,'utf8'));s.ticketIds.push('{T-ID}');s.lastUpdatedAt=new Date().toISOString();require('fs').writeFileSync(f,JSON.stringify(s,null,2))"` (phase transition is automatic via PostToolUse hook)
 
 #### Step 4c: Ticket Execution
 - Execute each T(n,m) sequentially using ticketing's built-in agent structure (Work Agent → Review Agent → Orchestrator)
@@ -125,7 +125,7 @@ After each /ticketing invocation, update regressing state:
     - Empty Observation or Gap fields → entire verification is INVALID
     ```
 - **Verification Tool Check (BEFORE Orchestrator evaluation):**
-  1. Check if `.claude/verification/manifest.json` exists
+  1. Check if `.crabshell/verification/manifest.json` exists
   2. If YES → `/verifying run` and include results in evaluation
   3. If NO → `/verifying` to create manifest, then `/verifying run`
   4. No executable runtime → skip with note
@@ -161,7 +161,7 @@ After each /ticketing invocation, update regressing state:
     - (If this section reads like a generic TODO list without referencing specific observations from this cycle, it is INVALID — rewrite with evidence.)
 
 After ticket execution completes, update regressing state:
-- Set `"phase": "feedback"`, `"lastUpdatedAt": "{ISO}"` using: `"{NODE_PATH}" -e "const f='{PROJECT_DIR}/.claude/memory/regressing-state.json';const s=JSON.parse(require('fs').readFileSync(f,'utf8'));s.phase='feedback';s.lastUpdatedAt=new Date().toISOString();require('fs').writeFileSync(f,JSON.stringify(s,null,2))"`
+- Set `"phase": "feedback"`, `"lastUpdatedAt": "{ISO}"` using: `"{NODE_PATH}" -e "const f='{PROJECT_DIR}/.crabshell/memory/regressing-state.json';const s=JSON.parse(require('fs').readFileSync(f,'utf8'));s.phase='feedback';s.lastUpdatedAt=new Date().toISOString();require('fs').writeFileSync(f,JSON.stringify(s,null,2))"`
 
 #### Step 4d: Feedback Transfer (Quality Gate)
 - **Single ticket:** Extract T(n,1)'s `## Final Verification > Next Direction` directly.
@@ -175,7 +175,7 @@ After ticket execution completes, update regressing state:
 - This transfer is explicitly performed by the Orchestrator
 
 After feedback transfer:
-- If verification found gaps AND cycle < cap: Set fields using: `"{NODE_PATH}" -e "const f='{PROJECT_DIR}/.claude/memory/regressing-state.json';const s=JSON.parse(require('fs').readFileSync(f,'utf8'));s.cycle++;s.phase='planning';s.planId=null;s.ticketIds=[];s.lastUpdatedAt=new Date().toISOString();require('fs').writeFileSync(f,JSON.stringify(s,null,2))"`
+- If verification found gaps AND cycle < cap: Set fields using: `"{NODE_PATH}" -e "const f='{PROJECT_DIR}/.crabshell/memory/regressing-state.json';const s=JSON.parse(require('fs').readFileSync(f,'utf8'));s.cycle++;s.phase='planning';s.planId=null;s.ticketIds=[];s.lastUpdatedAt=new Date().toISOString();require('fs').writeFileSync(f,JSON.stringify(s,null,2))"`
 - **If cycle = cap AND cap was defaulted (not user-specified):** Present a progress report to the user summarizing what was achieved and what gaps remain. User decides: approve another 10 cycles (raises cap) or stop. If approved, update totalCycles: `s.totalCycles = s.cycle + 10`.
 - If converged (Rule 7) OR cycle = cap (user-specified): proceed to Step 5
 
@@ -187,7 +187,7 @@ After convergence or reaching the cap, return to the D document:
 2. Transition D to `concluded`
 
 After final report, clean up regressing state:
-- Delete state file: `"{NODE_PATH}" -e "try{require('fs').unlinkSync('{PROJECT_DIR}/.claude/memory/regressing-state.json')}catch(e){}"`
+- Delete state file: `"{NODE_PATH}" -e "try{require('fs').unlinkSync('{PROJECT_DIR}/.crabshell/memory/regressing-state.json')}catch(e){}"`
 
 Final Report format:
 

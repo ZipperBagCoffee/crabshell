@@ -1,6 +1,6 @@
 ---
 name: lessons
-description: "Creates and manages project-specific lessons stored in .claude/lessons/. Use when proposing a new lesson after patterns repeat 2+ times, or when checking lesson format guidelines. Invoke with /lessons."
+description: "Creates and manages project-specific lessons stored in .crabshell/lessons/. Use when proposing a new lesson after patterns repeat 2+ times, or when checking lesson format guidelines. Invoke with /lessons."
 ---
 
 # Lessons Management
@@ -9,7 +9,7 @@ description: "Creates and manages project-specific lessons stored in .claude/les
 
 Project-specific lessons capture repeated mistakes, user feedback, and important patterns. They prevent the same issues from recurring.
 
-Lessons are stored locally in `.claude/lessons/` — they are project-specific and never overwritten by plugin updates.
+Lessons are stored locally in `.crabshell/lessons/` — they are project-specific and never overwritten by plugin updates.
 
 ---
 
@@ -54,7 +54,7 @@ If NO → rewrite as context-free rule.
 
 ## From Lesson to CLAUDE.md
 
-1. Write the full lesson in `.claude/lessons/`
+1. Write the full lesson in `.crabshell/lessons/`
 2. Extract a 1-2 line rule for CLAUDE.md
 3. Add to CLAUDE.md under the project-specific section (below the marker line)
 4. Reference the lesson file for full context
@@ -70,7 +70,7 @@ When you detect a potential lesson:
 ```
 "This feedback appears to be a project-specific lesson:
 [One-line summary]
-Should I create a lesson in .claude/lessons/ and add a rule to CLAUDE.md?"
+Should I create a lesson in .crabshell/lessons/ and add a rule to CLAUDE.md?"
 ```
 
 **Conditions for proposing:**

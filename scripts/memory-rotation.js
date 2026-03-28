@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { estimateTokensFromFile, extractTailByTokens, updateIndex, acquireLock, releaseLock, getProjectDir } = require('./utils');
+const { estimateTokensFromFile, extractTailByTokens, updateIndex, acquireLock, releaseLock, getProjectDir, getStorageRoot } = require('./utils');
 const { ROTATION_THRESHOLD_TOKENS, CARRYOVER_TOKENS, getTimestamp, MEMORY_DIR } = require('./constants');
 
 const SAFETY_MARGIN = 0.95;
@@ -15,10 +15,10 @@ function checkAndRotate(memoryPath, config) {
   if (tokens < threshold) return null;
 
   const projectDir = getProjectDir();
-  const memoryDir = path.join(projectDir, '.claude', MEMORY_DIR);
+  const memoryDir = path.join(getStorageRoot(projectDir), MEMORY_DIR);
 
   if (!acquireLock(memoryDir)) {
-    console.log('[MEMORY_KEEPER] Another rotation in progress, skipping');
+    console.log('[CRABSHELL] Another rotation in progress, skipping');
     return null;
   }
 
@@ -44,7 +44,7 @@ function checkAndRotate(memoryPath, config) {
       rotated: true,
       archiveFile: archiveName,
       tokens: tokens,
-      hookOutput: '[MEMORY_KEEPER_ROTATE] file=' + archiveName
+      hookOutput: '[CRABSHELL_ROTATE] file=' + archiveName
     };
   } finally {
     releaseLock(memoryDir);

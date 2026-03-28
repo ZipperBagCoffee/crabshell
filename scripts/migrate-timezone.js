@@ -3,7 +3,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { getProjectDir } = require('./utils');
+const { getProjectDir, getStorageRoot } = require('./utils');
 const { MEMORY_DIR, SESSIONS_DIR } = require('./constants');
 
 // Parse header timestamp: YYYY-MM-DD_HHMM -> Date
@@ -36,7 +36,7 @@ function formatL1Filename(date) {
 
 // Migrate memory.md headers
 function migrateMemoryMd(projectDir, offsetHours, dryRun = true, beforeTs = null) {
-  const memoryPath = path.join(projectDir, '.claude', MEMORY_DIR, 'memory.md');
+  const memoryPath = path.join(getStorageRoot(projectDir), MEMORY_DIR, 'memory.md');
   if (!fs.existsSync(memoryPath)) {
     console.log('memory.md not found');
     return { changes: 0 };
@@ -90,7 +90,7 @@ function migrateMemoryMd(projectDir, offsetHours, dryRun = true, beforeTs = null
 
 // Migrate L1 filenames
 function migrateL1Files(projectDir, offsetHours, dryRun = true) {
-  const sessionsDir = path.join(projectDir, '.claude', SESSIONS_DIR);
+  const sessionsDir = path.join(getStorageRoot(projectDir), SESSIONS_DIR);
   if (!fs.existsSync(sessionsDir)) {
     console.log('sessions dir not found');
     return { changes: 0 };

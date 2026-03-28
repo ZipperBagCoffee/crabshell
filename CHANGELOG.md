@@ -1,5 +1,19 @@
 # Changelog
 
+## 20.0.0 (BREAKING)
+- **RENAME**: memory-keeper → crabshell. Plugin name, skill prefix, log tags all changed.
+- **PATH MIGRATION**: `.claude/memory/` → `.crabshell/`. Auto-migration on SessionStart for legacy projects.
+- refactor: STORAGE_ROOT constant + getStorageRoot() centralization — all 18 scripts use unified path resolution
+- feat: init.js auto-migration (copyDirRecursive .claude/memory/ → .crabshell/memory/, .claude/lessons/ → .crabshell/lessons/, .claude/verification/ → .crabshell/verification/)
+- feat: .gitignore auto-add .crabshell/, .crabshell/README.md auto-generation
+- refactor: path-guard.js rewritten for .crabshell/ paths (28 tests pass)
+- refactor: [MEMORY_KEEPER*] → [CRABSHELL*] log tags, Memory Keeper → Crabshell branding
+- refactor: memory-keeper: → crabshell: skill prefix in all skills/scripts
+- remove: save-memory session file generation (unused, auto-save covers this)
+- feat: project.md injection expanded to 10 lines/500 chars (v19.56.0)
+- feat: CLAUDE_RULES practical guidelines — AI slop avoidance + config externalization (v19.56.0)
+- feat: delta-processor Read+Write only — no Bash dependency (v19.55.0)
+
 ## 19.56.0
 - feat: project.md injection expanded to 10 lines/500 chars, CLAUDE_RULES practical guidelines (AI slop avoidance, config externalization)
 

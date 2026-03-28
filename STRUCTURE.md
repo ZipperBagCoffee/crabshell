@@ -1,17 +1,16 @@
-# Memory-Keeper Plugin Structure
+# Crabshell Plugin Structure
 
-**Version**: 19.56.0 | **Author**: TaWa | **License**: MIT
+**Version**: 20.0.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
-Memory Keeper is a Claude Code plugin that automatically saves and manages session memory. Supports token-based rotation, L3 Haiku summaries, hierarchical L1-L2-L3 structure, and integrated search.
+Crabshell is a Claude Code plugin that automatically saves and manages session memory. Supports token-based rotation, L3 Haiku summaries, hierarchical L1-L2-L3 structure, and integrated search.
 
 ## Directory Structure
 
 ```
 memory-keeper-plugin/
-├── .claude/                          # Claude Code local storage
-│   ├── settings.local.json           # Local plugin settings
+├── .crabshell/                       # Crabshell local storage
 │   └── memory/                       # Project memory storage
 │       ├── memory.md                 # Rolling session summary (auto-rotates)
 │       ├── memory_*.md               # Rotated archives (L2)
@@ -57,7 +56,7 @@ memory-keeper-plugin/
 │   ├── sync-rules-to-claude.js       # Manual CLAUDE.md sync (standalone)
 │   ├── regressing-state.js            # Regressing phase tracker (v19.23.0)
 │   ├── sycophancy-guard.js           # Stop hook sycophancy detection (v19.29.0)
-│   ├── path-guard.js                # PreToolUse .claude/memory/ path validation (v19.31.0)
+│   ├── path-guard.js                # PreToolUse .crabshell/ path validation (v19.31.0)
 │   ├── docs-guard.js                # PreToolUse docs/ skill bypass prevention (v19.33.0)
 │   ├── verify-guard.js              # PreToolUse Final Verification /verifying run enforcement (v19.34.0)
 │   ├── skill-tracker.js             # PostToolUse skill-active flag setter (v19.33.0)
@@ -67,10 +66,10 @@ memory-keeper-plugin/
 ├── skills/                           # Slash command skills
 │   ├── memory-autosave/SKILL.md      # Auto-trigger memory save
 │   ├── memory-delta/SKILL.md         # Auto-trigger delta summarization
-│   ├── save-memory/SKILL.md          # /memory-keeper:save-memory
-│   ├── load-memory/SKILL.md          # /memory-keeper:load-memory
-│   ├── search-memory/SKILL.md        # /memory-keeper:search-memory
-│   ├── clear-memory/SKILL.md         # /memory-keeper:clear-memory
+│   ├── save-memory/SKILL.md          # /crabshell:save-memory
+│   ├── load-memory/SKILL.md          # /crabshell:load-memory
+│   ├── search-memory/SKILL.md        # /crabshell:search-memory
+│   ├── clear-memory/SKILL.md         # /crabshell:clear-memory
 │   └── memory-rotate/SKILL.md        # Auto-trigger L3 generation
 │
 ├── templates/                        # Auto-init templates (v13.9.20)
@@ -106,7 +105,7 @@ Cross-platform Node.js locator for hook commands:
 
 ### scripts/regressing-state.js
 Regressing phase tracker (v19.23.0):
-- `getRegressingState()`: Read `.claude/memory/regressing-state.json`, return null if inactive
+- `getRegressingState()`: Read `.crabshell/memory/regressing-state.json`, return null if inactive
 - `buildRegressingReminder()`: Build phase-specific reminder for UserPromptSubmit injection
 - `detectRegressingSkillCall()`: Detect Skill tool calls for planning/ticketing/discussing from PostToolUse hookData
 - `advancePhase()`: Auto-advance regressing phase on skill detection (planning→ticketing→execution)
@@ -163,8 +162,8 @@ UserPromptSubmit hook:
 
 ### scripts/path-guard.js
 PreToolUse path validation (v19.31.0):
-- Block Read/Grep/Glob/Bash calls targeting `.claude/memory/` outside `CLAUDE_PROJECT_DIR`
-- Bash command string inspection: regex extraction of `.claude/memory/` paths within command strings
+- Block Read/Grep/Glob/Bash calls targeting `.crabshell/` outside `CLAUDE_PROJECT_DIR`
+- Bash command string inspection: regex extraction of `.crabshell/` paths within command strings
 - Fail-open on parse errors (user experience protection)
 - Windows path normalization (backslash → forward slash)
 
@@ -222,9 +221,9 @@ L1 generation:
 
 4. PreToolUse (Read/Grep/Glob/Bash)
    └─> path-guard.js (v19.31.0)
-       ├─> Check if tool call targets .claude/memory/ path
+       ├─> Check if tool call targets .crabshell/ path
        ├─> Verify path is under CLAUDE_PROJECT_DIR
-       ├─> Bash: regex scan command string for .claude/memory/ paths
+       ├─> Bash: regex scan command string for .crabshell/ paths
        └─> Block with correction message if wrong project root
 
 5. PostToolUse
@@ -251,6 +250,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 20.0.0 | **BREAKING**: memory-keeper → crabshell rename, .claude/memory/ → .crabshell/ path migration, auto-migration on SessionStart, STORAGE_ROOT centralization |
 | 19.56.0 | feat: project.md injection expanded to 10 lines/500 chars, CLAUDE_RULES practical guidelines (AI slop avoidance, config externalization) |
 | 19.55.0 | feat: delta-processor Bash removal — Read+Write only, JSON lock protocol, inline timestamps, memoryAppendedInThisRun flag, SKILL.md fallback Bash-free |
 | 19.54.0 | feat: contradiction detection — 3-level verification framework (Local/Related pipeline/System-wide), pipeline contradiction scan in coherence methods |

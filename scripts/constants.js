@@ -11,7 +11,10 @@ module.exports = {
   // Token calculation
   BYTES_PER_TOKEN: 4,
 
-  // Directory names (relative to .claude/)
+  // Storage root directory (project-level)
+  STORAGE_ROOT: '.crabshell',
+
+  // Directory names (relative to STORAGE_ROOT)
   MEMORY_DIR: 'memory',
   SESSIONS_DIR: 'memory/sessions',
   LOGS_DIR: 'memory/logs',

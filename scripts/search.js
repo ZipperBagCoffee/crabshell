@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { getProjectDir, readJsonOrDefault } = require('./utils');
+const { getProjectDir, getStorageRoot, readJsonOrDefault } = require('./utils');
 const { MEMORY_DIR, SESSIONS_DIR, INDEX_FILE, MEMORY_FILE } = require('./constants');
 
 // --- Helpers ---
@@ -46,7 +46,7 @@ function truncate(text, maxLen) {
 
 function searchMemory(query, options = {}) {
   const projectDir = getProjectDir();
-  const memoryDir = path.join(projectDir, '.claude', MEMORY_DIR);
+  const memoryDir = path.join(getStorageRoot(projectDir), MEMORY_DIR);
   const results = [];
   const matcher = createMatcher(query, options);
 
@@ -154,7 +154,7 @@ function searchL1Sessions(projectDir, matcher, options = {}) {
   if (typeof matcher === 'string') matcher = createMatcher(matcher);
   const contextWindow = options.contextWindow != null ? options.contextWindow : 2;
   const maxPerFile = options.maxPerFile != null ? options.maxPerFile : 5;
-  const sessionsDir = path.join(projectDir, '.claude', SESSIONS_DIR);
+  const sessionsDir = path.join(getStorageRoot(projectDir), SESSIONS_DIR);
   if (!fs.existsSync(sessionsDir)) return [];
 
   // Get files sorted newest-first by filename timestamp

@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { INDEX_FILE, MEMORY_FILE, LOCK_FILE, LOCK_STALE_MS } = require('./constants');
+const { STORAGE_ROOT, MEMORY_DIR, INDEX_FILE, MEMORY_FILE, LOCK_FILE, LOCK_STALE_MS } = require('./constants');
 
 function getProjectName() { return path.basename(getProjectDir()); }
 
@@ -13,9 +13,11 @@ function getProjectDir() {
   return process.cwd();
 }
 
-function getMemoryDir() { return path.join(getProjectDir(), '.claude', 'memory'); }
+function getStorageRoot(projectDir) { return path.join(projectDir || getProjectDir(), STORAGE_ROOT); }
 
-const MEMORY_ROOT = path.join(os.homedir(), '.claude', 'memory-keeper', 'projects');
+function getMemoryDir() { return path.join(getStorageRoot(), MEMORY_DIR); }
+
+const MEMORY_ROOT = path.join(os.homedir(), '.crabshell', 'projects');
 
 function ensureDir(dirPath) {
   if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true });
@@ -122,4 +124,4 @@ function acquireLock(memoryDir) {
 
 function releaseLock(memoryDir) { try { fs.unlinkSync(path.join(memoryDir, LOCK_FILE)); } catch {} }
 
-module.exports = { MEMORY_ROOT, getProjectName, getProjectDir, getMemoryDir, ensureDir, readFileOrDefault, readJsonOrDefault, getDefaultIndex, readIndexSafe, writeFile, writeJson, getTimestamp, estimateTokens, estimateTokensFromFile, extractTailByTokens, updateIndex, acquireLock, releaseLock };
+module.exports = { MEMORY_ROOT, getProjectName, getProjectDir, getStorageRoot, getMemoryDir, ensureDir, readFileOrDefault, readJsonOrDefault, getDefaultIndex, readIndexSafe, writeFile, writeJson, getTimestamp, estimateTokens, estimateTokensFromFile, extractTailByTokens, updateIndex, acquireLock, releaseLock };

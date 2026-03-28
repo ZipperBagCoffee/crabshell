@@ -23,7 +23,7 @@ When invoked without arguments:
 
 ### Step 1: Check for existing manifest
 
-Check if `.claude/verification/manifest.json` exists in the project root.
+Check if `.crabshell/verification/manifest.json` exists in the project root.
 
 - **Exists:** Report current manifest contents and ask: "Manifest exists with N entries. Update or run?"
 - **Does not exist:** Proceed to Step 2.
@@ -55,9 +55,9 @@ Work Agent appends results as:
 
 ### Step 4: Create verification manifest
 
-Create `.claude/verification/` directory if it doesn't exist.
+Create `.crabshell/verification/` directory if it doesn't exist.
 
-Create `.claude/verification/manifest.json`:
+Create `.crabshell/verification/manifest.json`:
 ```json
 {
   "projectType": "{runtime type}",
@@ -95,12 +95,12 @@ For each IA item in the current session, create a verification entry:
 
 ### Step 6: Create verification runner script
 
-Create `.claude/verification/run-verify.js`:
+Create `.crabshell/verification/run-verify.js`:
 
 ```javascript
 // Auto-generated verification runner
-// Run: node .claude/verification/run-verify.js [entry-id]
-// Run all: node .claude/verification/run-verify.js
+// Run: node .crabshell/verification/run-verify.js [entry-id]
+// Run all: node .crabshell/verification/run-verify.js
 
 const manifest = require('./manifest.json');
 const { execSync } = require('child_process');
@@ -147,12 +147,12 @@ When invoked with `run`:
 
 ### Step 1: Read manifest
 
-Read `.claude/verification/manifest.json`. If not found: "No manifest. Run `/verifying` first."
+Read `.crabshell/verification/manifest.json`. If not found: "No manifest. Run `/verifying` first."
 
 ### Step 2: Execute verification runner
 
 ```bash
-node .claude/verification/run-verify.js
+node .crabshell/verification/run-verify.js
 ```
 
 ### Step 3: Parse and report as P/O/G
@@ -188,6 +188,6 @@ When invoked with `add "description"`:
 1. **EXECUTABLE only.** Every entry must have a runnable command or be explicitly `manual`.
 2. **Manifest is source of truth.** All entries live in `manifest.json`.
 3. **P/O/G alignment.** Run mode produces P/O/G table rows.
-4. **No git commit.** `.claude/verification/` is local — do NOT commit.
+4. **No git commit.** `.crabshell/verification/` is local — do NOT commit.
 5. **Timeout safety.** Default 30s. Destructive commands (rm, drop) PROHIBITED.
 6. **Idempotent create.** Existing manifest is NOT overwritten.

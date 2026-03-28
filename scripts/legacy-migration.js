@@ -96,7 +96,7 @@ function splitLegacyMemory(memoryPath) {
 
     fs.writeFileSync(archiveFullPath, archiveContent);
     updateIndex(archiveFullPath, chunk.tokens, memoryDir);
-    triggers.push('[MEMORY_KEEPER_ROTATE] file=' + archiveName);
+    triggers.push('[CRABSHELL_ROTATE] file=' + archiveName);
     archives.push({ file: archiveName, tokens: chunk.tokens, dateRange: { first: chunk.sections[0].date, last: lastDate } });
   }
 

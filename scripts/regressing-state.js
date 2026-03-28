@@ -1,13 +1,13 @@
 const path = require('path');
-const { getProjectDir, readJsonOrDefault, writeJson } = require('./utils');
+const { getProjectDir, getStorageRoot, readJsonOrDefault, writeJson } = require('./utils');
 const { REGRESSING_STATE_FILE } = require('./constants');
 
 /**
- * Reads .claude/memory/regressing-state.json and returns parsed state.
+ * Reads .crabshell/memory/regressing-state.json and returns parsed state.
  * Returns null if file doesn't exist, active !== true, or required fields missing.
  */
 function getRegressingState(projectDir) {
-  const statePath = path.join(projectDir, '.claude', 'memory', REGRESSING_STATE_FILE);
+  const statePath = path.join(getStorageRoot(projectDir), 'memory', REGRESSING_STATE_FILE);
   const state = readJsonOrDefault(statePath, null);
   if (!state) return null;
   if (state.active !== true) return null;
@@ -33,24 +33,24 @@ function buildRegressingReminder(projectDir) {
 
   switch (phase) {
     case 'discussing':
-      message = `\n## REGRESSING ACTIVE — Phase: Discussion Setup (Cycle ${cycle} (cap: ${totalCycles}))\n\nCreate/confirm the Discussion document using Skill tool: skill="memory-keeper:discussing"\n`;
+      message = `\n## REGRESSING ACTIVE — Phase: Discussion Setup (Cycle ${cycle} (cap: ${totalCycles}))\n\nCreate/confirm the Discussion document using Skill tool: skill="crabshell:discussing"\n`;
       break;
 
     case 'planning':
       message = `\n## REGRESSING ACTIVE — Phase: Planning (Cycle ${cycle} (cap: ${totalCycles}), ${discussion})\n\n` +
         `\u26A0 MANDATORY SKILL TOOL CALL REQUIRED.\n` +
-        `You MUST invoke the Skill tool with skill="memory-keeper:planning" to create this cycle's plan.\n` +
+        `You MUST invoke the Skill tool with skill="crabshell:planning" to create this cycle's plan.\n` +
         `- DO NOT write plan documents directly. DO NOT formulate plans inline.\n` +
-        `- The ONLY acceptable action is: Skill tool \u2192 skill="memory-keeper:planning"\n` +
+        `- The ONLY acceptable action is: Skill tool \u2192 skill="crabshell:planning"\n` +
         `- Phase will not advance until /planning is invoked via Skill tool.\n`;
       break;
 
     case 'ticketing':
       message = `\n## REGRESSING ACTIVE — Phase: Ticketing (Cycle ${cycle} (cap: ${totalCycles}), ${discussion}, Plan: ${planId})\n\n` +
         `\u26A0 MANDATORY SKILL TOOL CALL REQUIRED.\n` +
-        `You MUST invoke the Skill tool with skill="memory-keeper:ticketing" to create this cycle's ticket from ${planId}.\n` +
+        `You MUST invoke the Skill tool with skill="crabshell:ticketing" to create this cycle's ticket from ${planId}.\n` +
         `- DO NOT write ticket documents directly. DO NOT execute work without a ticket.\n` +
-        `- The ONLY acceptable action is: Skill tool \u2192 skill="memory-keeper:ticketing"\n` +
+        `- The ONLY acceptable action is: Skill tool \u2192 skill="crabshell:ticketing"\n` +
         `- Phase will not advance until /ticketing is invoked via Skill tool.\n`;
       break;
 
@@ -96,7 +96,7 @@ function detectRegressingSkillCall(hookData) {
   if (!input || typeof input !== 'object') return null;
   const skill = input.skill;
   if (typeof skill !== 'string') return null;
-  // Handle both "planning" and "memory-keeper:planning"
+  // Handle both "planning" and "crabshell:planning"
   const skillName = skill.includes(':') ? skill.split(':').pop() : skill;
   if (['planning', 'ticketing', 'discussing'].includes(skillName)) return skillName;
   return null;
@@ -110,7 +110,7 @@ function detectRegressingSkillCall(hookData) {
  * @returns {string|null} - new phase if advanced, null otherwise
  */
 function advancePhase(detectedSkill, projectDir) {
-  const statePath = path.join(projectDir, '.claude', 'memory', REGRESSING_STATE_FILE);
+  const statePath = path.join(getStorageRoot(projectDir), 'memory', REGRESSING_STATE_FILE);
   const state = readJsonOrDefault(statePath, null);
   if (!state || state.active !== true) return null;
 

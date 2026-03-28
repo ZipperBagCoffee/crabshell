@@ -43,7 +43,8 @@ async function main() {
   if (!input) { process.exit(0); return; }
 
   const projectDir = getProjectDir();
-  const indexPath = path.join(projectDir, '.claude', 'memory', 'memory-index.json');
+  const { STORAGE_ROOT } = require('./constants');
+  const indexPath = path.join(projectDir, STORAGE_ROOT, 'memory', 'memory-index.json');
 
   let index;
   try {
@@ -55,11 +56,11 @@ async function main() {
   const fp = index.feedbackPressure;
   if (!fp || fp.level < 3) { process.exit(0); return; }
 
-  // Level 3: block Write/Edit except for docs/ and .claude/ paths
+  // Level 3: block Write/Edit except for docs/ and .crabshell/.claude/ paths
   const filePath = (input.file_path || input.path || '').replace(/\\/g, '/');
 
-  // Allow docs/ and .claude/ paths (internal plugin/document operations)
-  if (/\/docs\//.test(filePath) || /\/\.claude\//.test(filePath)) {
+  // Allow docs/ and .crabshell/.claude/ paths (internal plugin/document operations)
+  if (/\/docs\//.test(filePath) || /\/\.crabshell\//.test(filePath) || /\/\.claude\//.test(filePath)) {
     process.exit(0);
     return;
   }

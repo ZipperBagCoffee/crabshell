@@ -36,27 +36,27 @@ function runTest(name, hookData, expectBlock) {
 
 // --- Read tests ---
 runTest('Read: wrong forward slash path',
-  { tool_name: 'Read', tool_input: { file_path: 'C:/Users/user/Documents/OtherProject/.claude/memory/file.md' } },
+  { tool_name: 'Read', tool_input: { file_path: 'C:/Users/user/Documents/OtherProject/.crabshell/memory/file.md' } },
   true
 );
 
 runTest('Read: correct forward slash path',
-  { tool_name: 'Read', tool_input: { file_path: 'C:/Users/user/Documents/memory-keeper-plugin/.claude/memory/memory.md' } },
+  { tool_name: 'Read', tool_input: { file_path: 'C:/Users/user/Documents/memory-keeper-plugin/.crabshell/memory/memory.md' } },
   false
 );
 
 runTest('Read: wrong backslash path',
-  { tool_name: 'Read', tool_input: { file_path: 'C:\\Users\\user\\Documents\\OtherProject\\.claude\\memory\\file.md' } },
+  { tool_name: 'Read', tool_input: { file_path: 'C:\\Users\\user\\Documents\\OtherProject\\.crabshell\\memory\\file.md' } },
   true
 );
 
 runTest('Read: correct backslash path',
-  { tool_name: 'Read', tool_input: { file_path: 'C:\\Users\\user\\Documents\\memory-keeper-plugin\\.claude\\memory\\file.md' } },
+  { tool_name: 'Read', tool_input: { file_path: 'C:\\Users\\user\\Documents\\memory-keeper-plugin\\.crabshell\\memory\\file.md' } },
   false
 );
 
 runTest('Read: relative path',
-  { tool_name: 'Read', tool_input: { file_path: '.claude/memory/memory.md' } },
+  { tool_name: 'Read', tool_input: { file_path: '.crabshell/memory/memory.md' } },
   false
 );
 
@@ -67,34 +67,34 @@ runTest('Read: non-memory path',
 
 // --- Grep tests ---
 runTest('Grep: wrong path',
-  { tool_name: 'Grep', tool_input: { path: 'C:/Users/user/Documents/OtherProject/.claude/memory/', pattern: 'test' } },
+  { tool_name: 'Grep', tool_input: { path: 'C:/Users/user/Documents/OtherProject/.crabshell/memory/', pattern: 'test' } },
   true
 );
 
 runTest('Grep: correct path',
-  { tool_name: 'Grep', tool_input: { path: 'C:/Users/user/Documents/memory-keeper-plugin/.claude/memory/', pattern: 'test' } },
+  { tool_name: 'Grep', tool_input: { path: 'C:/Users/user/Documents/memory-keeper-plugin/.crabshell/memory/', pattern: 'test' } },
   false
 );
 
 // --- Glob tests ---
 runTest('Glob: wrong path',
-  { tool_name: 'Glob', tool_input: { path: 'C:/Users/user/Documents/OtherProject/.claude/memory/', pattern: '*.md' } },
+  { tool_name: 'Glob', tool_input: { path: 'C:/Users/user/Documents/OtherProject/.crabshell/memory/', pattern: '*.md' } },
   true
 );
 
 // --- Bash tests ---
 runTest('Bash: wrong path in command',
-  { tool_name: 'Bash', tool_input: { command: 'cat C:/Users/user/Documents/OtherProject/.claude/memory/delta_temp.txt' } },
+  { tool_name: 'Bash', tool_input: { command: 'cat C:/Users/user/Documents/OtherProject/.crabshell/memory/delta_temp.txt' } },
   true
 );
 
 runTest('Bash: correct path in command',
-  { tool_name: 'Bash', tool_input: { command: 'cat C:/Users/user/Documents/memory-keeper-plugin/.claude/memory/delta_temp.txt' } },
+  { tool_name: 'Bash', tool_input: { command: 'cat C:/Users/user/Documents/memory-keeper-plugin/.crabshell/memory/delta_temp.txt' } },
   false
 );
 
 runTest('Bash: mixed correct+wrong paths',
-  { tool_name: 'Bash', tool_input: { command: 'cat C:/Users/user/Documents/OtherProject/.claude/memory/file.md && cat C:/Users/user/Documents/memory-keeper-plugin/.claude/memory/memory.md' } },
+  { tool_name: 'Bash', tool_input: { command: 'cat C:/Users/user/Documents/OtherProject/.crabshell/memory/file.md && cat C:/Users/user/Documents/memory-keeper-plugin/.crabshell/memory/memory.md' } },
   true
 );
 
@@ -110,7 +110,7 @@ runTest('Empty input',
 );
 
 runTest('Unknown tool',
-  { tool_name: 'Write', tool_input: { file_path: 'C:/Users/user/Documents/OtherProject/.claude/memory/file.md' } },
+  { tool_name: 'Write', tool_input: { file_path: 'C:/Users/user/Documents/OtherProject/.crabshell/memory/file.md' } },
   false
 );
 
@@ -121,48 +121,48 @@ runTest('No tool_input',
 
 // --- Cycle 2 edge cases: shell variables and .. traversal ---
 
-runTest('Bash: $HOME/.claude/memory/ (shell var — allow)',
-  { tool_name: 'Bash', tool_input: { command: 'ls $HOME/.claude/memory/' } },
+runTest('Bash: $HOME/.crabshell/memory/ (shell var — allow)',
+  { tool_name: 'Bash', tool_input: { command: 'ls $HOME/.crabshell/memory/' } },
   false
 );
 
-runTest('Bash: ~/ .claude/memory/ (tilde — allow)',
-  { tool_name: 'Bash', tool_input: { command: 'cat ~/.claude/memory/something' } },
+runTest('Bash: ~/ .crabshell/memory/ (tilde — allow)',
+  { tool_name: 'Bash', tool_input: { command: 'cat ~/.crabshell/memory/something' } },
   false
 );
 
-runTest('Bash: $CLAUDE_PROJECT_DIR/.claude/memory/ (env var — allow)',
-  { tool_name: 'Bash', tool_input: { command: 'ls $CLAUDE_PROJECT_DIR/.claude/memory/' } },
+runTest('Bash: $CLAUDE_PROJECT_DIR/.crabshell/memory/ (env var — allow)',
+  { tool_name: 'Bash', tool_input: { command: 'ls $CLAUDE_PROJECT_DIR/.crabshell/memory/' } },
   false
 );
 
-runTest('Bash: ${CLAUDE_PROJECT_DIR}/.claude/memory/ (env var braces — allow)',
-  { tool_name: 'Bash', tool_input: { command: 'cat ${CLAUDE_PROJECT_DIR}/.claude/memory/file.md' } },
+runTest('Bash: ${CLAUDE_PROJECT_DIR}/.crabshell/memory/ (env var braces — allow)',
+  { tool_name: 'Bash', tool_input: { command: 'cat ${CLAUDE_PROJECT_DIR}/.crabshell/memory/file.md' } },
   false
 );
 
 runTest('Read: parent traversal resolving to correct project (allow)',
-  { tool_name: 'Read', tool_input: { file_path: 'C:/Users/user/Documents/memory-keeper-plugin/scripts/../.claude/memory/memory.md' } },
+  { tool_name: 'Read', tool_input: { file_path: 'C:/Users/user/Documents/memory-keeper-plugin/scripts/../.crabshell/memory/memory.md' } },
   false
 );
 
 runTest('Read: parent traversal resolving to wrong project (block)',
-  { tool_name: 'Read', tool_input: { file_path: 'C:/Users/user/Documents/memory-keeper-plugin/../OtherProject/.claude/memory/file.md' } },
+  { tool_name: 'Read', tool_input: { file_path: 'C:/Users/user/Documents/memory-keeper-plugin/../OtherProject/.crabshell/memory/file.md' } },
   true
 );
 
 runTest('Bash: quoted path with spaces (block)',
-  { tool_name: 'Bash', tool_input: { command: 'cat "C:/Users/some user/Documents/OtherProject/.claude/memory/file.md"' } },
+  { tool_name: 'Bash', tool_input: { command: 'cat "C:/Users/some user/Documents/OtherProject/.crabshell/memory/file.md"' } },
   true
 );
 
-runTest('Bash: echo mentioning .claude/memory/ in quoted string (allow)',
-  { tool_name: 'Bash', tool_input: { command: 'echo "Files are in .claude/memory/ directory"' } },
+runTest('Bash: echo mentioning .crabshell/memory/ in quoted string (allow)',
+  { tool_name: 'Bash', tool_input: { command: 'echo "Files are in .crabshell/memory/ directory"' } },
   false
 );
 
 runTest('Glob: correct project path (allow)',
-  { tool_name: 'Glob', tool_input: { path: 'C:/Users/user/Documents/memory-keeper-plugin/.claude/memory/', pattern: '*.md' } },
+  { tool_name: 'Glob', tool_input: { path: 'C:/Users/user/Documents/memory-keeper-plugin/.crabshell/memory/', pattern: '*.md' } },
   false
 );
 
@@ -197,25 +197,25 @@ function runTestWithDir(name, hookData, expectBlock, customProjectDir) {
 }
 
 runTestWithDir('Bash: double-quoted path with spaces (correct project — allow)',
-  { tool_name: 'Bash', tool_input: { command: 'cat "D:/Public Analysis/.claude/memory/file.md"' } },
+  { tool_name: 'Bash', tool_input: { command: 'cat "D:/Public Analysis/.crabshell/memory/file.md"' } },
   false,
   'D:/Public Analysis'
 );
 
 runTestWithDir('Bash: double-quoted path with spaces (wrong project — block)',
-  { tool_name: 'Bash', tool_input: { command: 'cat "D:/Other Project/.claude/memory/file.md"' } },
+  { tool_name: 'Bash', tool_input: { command: 'cat "D:/Other Project/.crabshell/memory/file.md"' } },
   true,
   'D:/Public Analysis'
 );
 
 runTestWithDir('Bash: single-quoted path with spaces (correct project — allow)',
-  { tool_name: 'Bash', tool_input: { command: "cat 'D:/Public Analysis/.claude/memory/file.md'" } },
+  { tool_name: 'Bash', tool_input: { command: "cat 'D:/Public Analysis/.crabshell/memory/file.md'" } },
   false,
   'D:/Public Analysis'
 );
 
 runTestWithDir('Bash: backslash quoted path with spaces (correct project — allow)',
-  { tool_name: 'Bash', tool_input: { command: 'cat "D:\\Public Analysis\\.claude\\memory\\file.md"' } },
+  { tool_name: 'Bash', tool_input: { command: 'cat "D:\\Public Analysis\\.crabshell\\memory\\file.md"' } },
   false,
   'D:/Public Analysis'
 );

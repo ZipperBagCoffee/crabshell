@@ -113,11 +113,12 @@ async function main() {
   const projectDir = getProjectDir();
 
   // Deterministic verification: execute run-verify.js directly
-  const runVerifyPath = path.join(projectDir, '.claude', 'verification', 'run-verify.js');
+  const { STORAGE_ROOT } = require('./constants');
+  const runVerifyPath = path.join(projectDir, STORAGE_ROOT, 'verification', 'run-verify.js');
   if (!fs.existsSync(runVerifyPath)) {
     const output = {
       decision: "block",
-      reason: 'Final Verification section blocked. No verification tool found at .claude/verification/run-verify.js. You MUST run /verifying to create the verification manifest first, then /verifying run. Invoke: Skill tool with skill="verifying".'
+      reason: 'Final Verification section blocked. No verification tool found at .crabshell/verification/run-verify.js. You MUST run /verifying to create the verification manifest first, then /verifying run. Invoke: Skill tool with skill="verifying".'
     };
     process.stderr.write(`[VERIFY_GUARD] Blocked ${toolName} to ${filePath} — no verification tool found\n`);
     console.log(JSON.stringify(output));

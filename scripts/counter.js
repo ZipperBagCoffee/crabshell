@@ -1,6 +1,6 @@
 const path = require('path');
 const fs = require('fs');
-const { getProjectDir, getProjectName, readFileOrDefault, writeFile, readJsonOrDefault, readIndexSafe, writeJson, ensureDir, getTimestamp } = require('./utils');
+const { getProjectDir, getProjectName, getStorageRoot, readFileOrDefault, writeFile, readJsonOrDefault, readIndexSafe, writeJson, ensureDir, getTimestamp } = require('./utils');
 const os = require('os');
 const { refineRaw, refineRawSync } = require('./refine-raw');
 const { checkAndRotate } = require('./memory-rotation');
@@ -8,12 +8,12 @@ const { extractDelta } = require('./extract-delta');
 const { MEMORY_DIR, MEMORY_FILE, SESSIONS_DIR } = require('./constants');
 const { detectRegressingSkillCall, advancePhase } = require('./regressing-state');
 
-const GLOBAL_CONFIG_PATH = path.join(os.homedir(), '.claude', 'memory-keeper', 'config.json');
+const GLOBAL_CONFIG_PATH = path.join(os.homedir(), '.crabshell', 'config.json');
 const DEFAULT_INTERVAL = 15;
 
 // Get logs directory (ensures it exists)
 function getLogsDir() {
-  const logsDir = path.join(getProjectDir(), '.claude', 'memory', 'logs');
+  const logsDir = path.join(getStorageRoot(), 'memory', 'logs');
   ensureDir(logsDir);
   return logsDir;
 }
@@ -50,7 +50,7 @@ function findTranscriptPath() {
 }
 
 function getConfig() {
-  const configPath = path.join(getProjectDir(), '.claude', 'memory', 'config.json');
+  const configPath = path.join(getStorageRoot(), 'memory', 'config.json');
   let config = readJsonOrDefault(configPath, null);
   if (!config) {
     config = readJsonOrDefault(GLOBAL_CONFIG_PATH, { saveInterval: DEFAULT_INTERVAL, keepRaw: false, quietStop: true });
@@ -107,13 +107,13 @@ function readStdin(timeoutMs = 1000) {
 
 // Counter stored in memory-index.json
 function getCounter() {
-  const indexPath = path.join(getProjectDir(), '.claude', MEMORY_DIR, 'memory-index.json');
+  const indexPath = path.join(getStorageRoot(), MEMORY_DIR, 'memory-index.json');
   const index = readJsonOrDefault(indexPath, { counter: 0 });
   return index.counter || 0;
 }
 
 function setCounter(value) {
-  const indexPath = path.join(getProjectDir(), '.claude', MEMORY_DIR, 'memory-index.json');
+  const indexPath = path.join(getStorageRoot(), MEMORY_DIR, 'memory-index.json');
   const index = readIndexSafe(indexPath);  // Use safe reader to preserve all fields
   index.counter = value;
   writeJson(indexPath, index);
@@ -151,7 +151,7 @@ async function check() {
   // Pressure reset on Task delegation
   if (hookData.tool_name === 'TaskCreate') {
     try {
-      const idxPath = path.join(getProjectDir(), '.claude', MEMORY_DIR, 'memory-index.json');
+      const idxPath = path.join(getStorageRoot(), MEMORY_DIR, 'memory-index.json');
       const idx = JSON.parse(fs.readFileSync(idxPath, 'utf8'));
       if (idx.feedbackPressure && idx.feedbackPressure.level > 0) {
         idx.feedbackPressure.level = 0;
@@ -164,15 +164,15 @@ async function check() {
   }
 
   // Check rotation before auto-save
-  const memoryPath = path.join(getProjectDir(), ".claude", MEMORY_DIR, MEMORY_FILE);
+  const memoryPath = path.join(getStorageRoot(), MEMORY_DIR, MEMORY_FILE);
   const rotationResult = checkAndRotate(memoryPath, config);
   if (rotationResult) {
     console.log(rotationResult.hookOutput);
   }
 
   if (counter >= interval) {
-    const indexPath = path.join(getProjectDir(), '.claude', MEMORY_DIR, 'memory-index.json');
-    const sessionsDir = path.join(getProjectDir(), '.claude', SESSIONS_DIR);
+    const indexPath = path.join(getStorageRoot(), MEMORY_DIR, 'memory-index.json');
+    const sessionsDir = path.join(getStorageRoot(), SESSIONS_DIR);
 
     // Step 1: Create/update L1 from current transcript
     // Prefer transcript_path from hookData, fallback to findTranscriptPath()
@@ -225,7 +225,7 @@ async function final() {
   const sessionId8 = sessionId ? sessionId.substring(0, 8) : null;
   const projectDir = getProjectDir().replace(/\\/g, '/');
   const timestamp = getTimestamp();
-  const sessionsDir = path.join(getProjectDir(), '.claude', SESSIONS_DIR);
+  const sessionsDir = path.join(getStorageRoot(), SESSIONS_DIR);
 
   ensureDir(sessionsDir);
 
@@ -317,9 +317,9 @@ async function final() {
   const deltaResult = extractDelta(sessionId8);
   let deltaOutput = '';
   if (deltaResult.success) {
-    deltaOutput = `\n[MEMORY_KEEPER_DELTA] file=${deltaResult.deltaFile}\nDelta extracted at session end: ${deltaResult.entryCount} entries.`;
+    deltaOutput = `\n[CRABSHELL_DELTA] file=${deltaResult.deltaFile}\nDelta extracted at session end: ${deltaResult.entryCount} entries.`;
     // Set deltaReady flag for next session's inject-rules.js
-    const idxPath = path.join(getProjectDir(), '.claude', MEMORY_DIR, 'memory-index.json');
+    const idxPath = path.join(getStorageRoot(), MEMORY_DIR, 'memory-index.json');
     const idx = readIndexSafe(idxPath);
     idx.deltaReady = true;
     writeJson(idxPath, idx);
@@ -327,7 +327,7 @@ async function final() {
 
   // Quiet mode by default - only show brief message
   if (config.quietStop !== false) {
-    let systemMsg = `[MEMORY_KEEPER_SAVE] Session saved. L1: ${rawSaved ? 'OK' : 'SKIP'}`;
+    let systemMsg = `[CRABSHELL_SAVE] Session saved. L1: ${rawSaved ? 'OK' : 'SKIP'}`;
     if (deltaOutput) {
       systemMsg += deltaOutput;
     }
@@ -341,14 +341,14 @@ async function final() {
 
   const instructions = `
 ═══════════════════════════════════════════════════════════════
-[MEMORY_KEEPER_SAVE] SESSION ENDING - Final Save Required
+[CRABSHELL_SAVE] SESSION ENDING - Final Save Required
 ═══════════════════════════════════════════════════════════════
 
 ${rawSaved ? `✓ Raw transcript saved: ${rawSaved}` : '⚠ Raw transcript not saved'}
 
 **APPEND complete summary to memory.md:**
 \`\`\`bash
-printf '\\n## %s (Session End)\\n%s\\n' "${timestamp}" "[Complete session summary - be thorough]" >> "${projectDir}/.claude/memory/memory.md"
+printf '\\n## %s (Session End)\\n%s\\n' "${timestamp}" "[Complete session summary - be thorough]" >> "${projectDir}/.crabshell/memory/memory.md"
 \`\`\`
 
 **RUN compression:**
@@ -368,7 +368,7 @@ printf '\\n## %s (Session End)\\n%s\\n' "${timestamp}" "[Complete session summar
 
 function reset() {
   setCounter(0);
-  console.log('[MEMORY_KEEPER] Counter reset.');
+  console.log('[CRABSHELL] Counter reset.');
 }
 
 // Remove duplicate L1 files from same session (keep only the largest/latest)
@@ -412,9 +412,9 @@ function cleanupDuplicateL1(newL1Path) {
 
 // Deduplicate all L1 files (keep largest per session)
 function dedupeL1() {
-  const sessionsDir = path.join(getProjectDir(), '.claude', SESSIONS_DIR);
+  const sessionsDir = path.join(getStorageRoot(), SESSIONS_DIR);
   if (!fs.existsSync(sessionsDir)) {
-    console.log('[MEMORY_KEEPER] No sessions directory found');
+    console.log('[CRABSHELL] No sessions directory found');
     return;
   }
 
@@ -455,17 +455,17 @@ function dedupeL1() {
   }
 
   if (deletedCount === 0) {
-    console.log('[MEMORY_KEEPER] No duplicate L1 files found');
+    console.log('[CRABSHELL] No duplicate L1 files found');
   } else {
-    console.log(`\n[MEMORY_KEEPER] Deleted: ${deletedCount} files, saved ${(savedBytes / 1024 / 1024).toFixed(2)}MB`);
+    console.log(`\n[CRABSHELL] Deleted: ${deletedCount} files, saved ${(savedBytes / 1024 / 1024).toFixed(2)}MB`);
   }
 }
 
 
 async function refineAll() {
-  const sessionsDir = path.join(getProjectDir(), '.claude', SESSIONS_DIR);
+  const sessionsDir = path.join(getStorageRoot(), SESSIONS_DIR);
   if (!fs.existsSync(sessionsDir)) {
-    console.log('[MEMORY_KEEPER] No sessions directory found');
+    console.log('[CRABSHELL] No sessions directory found');
     return;
   }
 
@@ -474,11 +474,11 @@ async function refineAll() {
     .filter(f => !fs.existsSync(path.join(sessionsDir, f.replace('.raw.jsonl', '.l1.jsonl'))));
 
   if (rawFiles.length === 0) {
-    console.log('[MEMORY_KEEPER] All raw files already have L1 versions');
+    console.log('[CRABSHELL] All raw files already have L1 versions');
     return;
   }
 
-  console.log(`[MEMORY_KEEPER] Processing ${rawFiles.length} raw files...`);
+  console.log(`[CRABSHELL] Processing ${rawFiles.length} raw files...`);
 
   let totalRaw = 0;
   let totalL1 = 0;
@@ -500,12 +500,12 @@ async function refineAll() {
   }
 
   const reduction = ((1 - totalL1 / totalRaw) * 100).toFixed(1);
-  console.log(`[MEMORY_KEEPER] Total: ${(totalRaw/1024/1024).toFixed(1)}MB → ${(totalL1/1024/1024).toFixed(1)}MB (${reduction}% reduction)`);
+  console.log(`[CRABSHELL] Total: ${(totalRaw/1024/1024).toFixed(1)}MB → ${(totalL1/1024/1024).toFixed(1)}MB (${reduction}% reduction)`);
 }
 
 function compress() {
   const projectDir = getProjectDir();
-  const sessionsDir = path.join(projectDir, '.claude', SESSIONS_DIR);
+  const sessionsDir = path.join(getStorageRoot(projectDir), SESSIONS_DIR);
 
   ensureDir(sessionsDir);
 
@@ -530,14 +530,14 @@ function compress() {
         const content = readFileOrDefault(path.join(sessionsDir, file), '');
         fs.appendFileSync(archiveFile, `\n\n---\n\n${content}`);
         fs.unlinkSync(path.join(sessionsDir, file));
-        console.log(`[MEMORY_KEEPER] Archived: ${file}`);
+        console.log(`[CRABSHELL] Archived: ${file}`);
       }
     });
   } catch (e) {
-    console.log(`[MEMORY_KEEPER] Compress error: ${e.message}`);
+    console.log(`[CRABSHELL] Compress error: ${e.message}`);
   }
 
-  console.log('[MEMORY_KEEPER] Compression complete.');
+  console.log('[CRABSHELL] Compression complete.');
 }
 
 // Memory file management (v7.0.0)
@@ -547,7 +547,7 @@ const MEMORY_FILES = {
 
 function memorySet(name, content) {
   if (!name) {
-    console.log('[MEMORY_KEEPER] Error: memory name required');
+    console.log('[CRABSHELL] Error: memory name required');
     console.log('  Valid names: project');
     return;
   }
@@ -556,24 +556,24 @@ function memorySet(name, content) {
   const memConfig = MEMORY_FILES[key];
 
   if (!memConfig) {
-    console.log(`[MEMORY_KEEPER] Unknown memory file: ${name}`);
+    console.log(`[CRABSHELL] Unknown memory file: ${name}`);
     console.log('  Valid names: project');
     return;
   }
 
   if (!content) {
-    console.log('[MEMORY_KEEPER] Error: content required');
+    console.log('[CRABSHELL] Error: content required');
     console.log(`  Usage: memory-set ${key} "Your content here"`);
     return;
   }
 
   const projectDir = getProjectDir();
-  const memDir = path.join(projectDir, '.claude', 'memory');
+  const memDir = path.join(getStorageRoot(projectDir), 'memory');
   ensureDir(memDir);
   const filePath = path.join(memDir, memConfig.file);
 
   writeFile(filePath, content);
-  console.log(`[MEMORY_KEEPER] Saved ${memConfig.title} to .claude/memory/${memConfig.file}`);
+  console.log(`[CRABSHELL] Saved ${memConfig.title} to .crabshell/memory/${memConfig.file}`);
 }
 
 function memoryGet(name) {
@@ -581,8 +581,8 @@ function memoryGet(name) {
 
   if (!name) {
     // Show all memory files
-    console.log('[MEMORY_KEEPER] Memory Files:');
-    const memDir = path.join(projectDir, '.claude', 'memory');
+    console.log('[CRABSHELL] Memory Files:');
+    const memDir = path.join(getStorageRoot(projectDir), 'memory');
     Object.entries(MEMORY_FILES).forEach(([key, config]) => {
       const filePath = path.join(memDir, config.file);
       if (fs.existsSync(filePath)) {
@@ -602,21 +602,21 @@ function memoryGet(name) {
   const memConfig = MEMORY_FILES[key];
 
   if (!memConfig) {
-    console.log(`[MEMORY_KEEPER] Unknown memory file: ${name}`);
+    console.log(`[CRABSHELL] Unknown memory file: ${name}`);
     console.log('  Valid names: project');
     return;
   }
 
-  const memDir = path.join(projectDir, '.claude', 'memory');
+  const memDir = path.join(getStorageRoot(projectDir), 'memory');
   const filePath = path.join(memDir, memConfig.file);
   if (!fs.existsSync(filePath)) {
-    console.log(`[MEMORY_KEEPER] ${memConfig.title} not created yet.`);
+    console.log(`[CRABSHELL] ${memConfig.title} not created yet.`);
     console.log(`  Create with: memory-set ${key} "content"`);
     return;
   }
 
   const content = readFileOrDefault(filePath, '');
-  console.log(`[MEMORY_KEEPER] ${memConfig.title}:`);
+  console.log(`[CRABSHELL] ${memConfig.title}:`);
   console.log('---');
   console.log(content);
   console.log('---');
@@ -624,8 +624,8 @@ function memoryGet(name) {
 
 function memoryList() {
   const projectDir = getProjectDir();
-  const memDir = path.join(projectDir, '.claude', 'memory');
-  console.log('[MEMORY_KEEPER] Memory Structure:');
+  const memDir = path.join(getStorageRoot(projectDir), 'memory');
+  console.log('[CRABSHELL] Memory Structure:');
 
   let total = 0;
   Object.entries(MEMORY_FILES).forEach(([key, config]) => {
@@ -642,7 +642,7 @@ function memoryList() {
   });
 
   // Also show memory.md (rolling)
-  const memoryPath = path.join(projectDir, '.claude', MEMORY_DIR, MEMORY_FILE);
+  const memoryPath = path.join(getStorageRoot(projectDir), MEMORY_DIR, MEMORY_FILE);
   if (fs.existsSync(memoryPath)) {
     const stats = fs.statSync(memoryPath);
     const content = readFileOrDefault(memoryPath, '');
@@ -686,12 +686,12 @@ switch (command) {
         fs.appendFileSync(path.join(logsDir, 'counter-debug.log'),
           `${new Date().toISOString()} | CHECK CRASHED: ${e.message}\n${e.stack}\n`);
       } catch {}
-      console.error(`[MEMORY_KEEPER] check error: ${e.message}`);
+      console.error(`[CRABSHELL] check error: ${e.message}`);
     });
     break;
   case 'final':
     final().catch(e => {
-      console.error(`[MEMORY_KEEPER] Final error: ${e.message}`);
+      console.error(`[CRABSHELL] Final error: ${e.message}`);
       process.exit(1);
     });
     break;
@@ -703,7 +703,7 @@ switch (command) {
     break;
   case 'refine-all':
     refineAll().catch(e => {
-      console.error(`[MEMORY_KEEPER] Refine-all error: ${e.message}`);
+      console.error(`[CRABSHELL] Refine-all error: ${e.message}`);
       process.exit(1);
     });
     break;
@@ -719,9 +719,9 @@ switch (command) {
   case 'generate-l3':
     // Manual L3 summary generation
     if (args[0]) {
-      console.log('[MEMORY_KEEPER_ROTATE] file=' + args[0]);
+      console.log('[CRABSHELL_ROTATE] file=' + args[0]);
     } else {
-      console.log('[MEMORY_KEEPER] Usage: generate-l3 <archive-file>');
+      console.log('[CRABSHELL] Usage: generate-l3 <archive-file>');
     }
     break;
   case 'search-memory':
@@ -733,12 +733,12 @@ switch (command) {
       const limit = parseInt(parseArg(args, 'limit') || '20');
       const query = args.filter(a => !a.startsWith('--'))[0];
       if (!query) {
-        console.log('[MEMORY_KEEPER] Usage: search-memory <query> [--deep] [--regex] [--context=N] [--limit=N]');
+        console.log('[CRABSHELL] Usage: search-memory <query> [--deep] [--regex] [--context=N] [--limit=N]');
         break;
       }
       const results = searchMemory(query, { deep, regex: useRegex, contextWindow: contextSize });
       if (results.length === 0) {
-        console.log('[MEMORY_KEEPER] No results for "' + query + '"');
+        console.log('[CRABSHELL] No results for "' + query + '"');
       } else {
         for (const r of results) {
           console.log('\n[' + r.source + '] (' + r.matches.length + ' matches)');
@@ -768,13 +768,13 @@ switch (command) {
   case 'migrate-legacy':
     {
       const { splitLegacyMemory } = require('./legacy-migration');
-      const mp = path.join(getProjectDir(), '.claude', 'memory', 'memory.md');
+      const mp = path.join(getStorageRoot(), 'memory', 'memory.md');
       const result = splitLegacyMemory(mp);
       if (result) {
-        console.log('[MEMORY_KEEPER] Legacy split: ' + result.archives.length + ' archives created');
+        console.log('[CRABSHELL] Legacy split: ' + result.archives.length + ' archives created');
         result.triggers.forEach(t => console.log(t));
       } else {
-        console.log('[MEMORY_KEEPER] No migration needed (under threshold)');
+        console.log('[CRABSHELL] No migration needed (under threshold)');
       }
     }
     break;

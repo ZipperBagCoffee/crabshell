@@ -13,7 +13,7 @@ If not available in context, fall back to `node`.
 
 Find the plugin path:
 ```bash
-ls ~/.claude/plugins/cache/memory-keeper-marketplace/memory-keeper/*/scripts/counter.js
+ls ~/.claude/plugins/cache/crabshell-marketplace/crabshell/*/scripts/counter.js
 ```
 
 ## Options
@@ -31,7 +31,7 @@ For "old" option (compress 30+ day files):
 
 For "all" option (DESTRUCTIVE - ask confirmation first):
 ```bash
-rm -rf .claude/memory/sessions/*.l1.jsonl
+rm -rf .crabshell/memory/sessions/*.l1.jsonl
 ```
 
 Show what will be deleted and ask for confirmation before proceeding.

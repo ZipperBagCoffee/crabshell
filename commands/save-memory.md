@@ -13,7 +13,7 @@ If not available in context, fall back to `node`.
 
 Find the plugin path:
 ```bash
-ls ~/.claude/plugins/cache/memory-keeper-marketplace/memory-keeper/*/scripts/counter.js
+ls ~/.claude/plugins/cache/crabshell-marketplace/crabshell/*/scripts/counter.js
 ```
 
 Use the full path when running node commands.
@@ -29,7 +29,7 @@ Trigger auto-save:
 
 Append directly to memory.md (works from any project):
 ```bash
-TS_UTC=$(date -u +%Y-%m-%d_%H%M) && TS_LOCAL=$(date +%m-%d_%H%M) && printf '\n## %s (local %s)\n%s\n' "$TS_UTC" "$TS_LOCAL" "[Your summary here]" >> .claude/memory/memory.md
+TS_UTC=$(date -u +%Y-%m-%d_%H%M) && TS_LOCAL=$(date +%m-%d_%H%M) && printf '\n## %s (local %s)\n%s\n' "$TS_UTC" "$TS_LOCAL" "[Your summary here]" >> .crabshell/memory/memory.md
 ```
 
 ## What to Record
