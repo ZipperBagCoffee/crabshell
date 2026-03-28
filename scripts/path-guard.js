@@ -207,6 +207,21 @@ async function main() {
     return;
   }
 
+  // --- Edit on memory.md: block (append-only via Write) ---
+  if (toolName === 'Edit') {
+    const filePath = normalizePath(input.file_path || '');
+    if (filePath.endsWith('memory/memory.md')) {
+      const output = {
+        decision: "block",
+        reason: "memory.md is append-only. Use Write tool to append content, not Edit. Edit modifies existing content which violates the append-only constraint."
+      };
+      process.stderr.write(`[PATH_GUARD] Blocked Edit on memory.md: ${filePath}\n`);
+      console.log(JSON.stringify(output));
+      process.exit(2);
+      return;
+    }
+  }
+
   // Other tools — allow
   process.exit(0);
 }

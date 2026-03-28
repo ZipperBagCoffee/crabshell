@@ -156,6 +156,26 @@ async function main() {
       return;
     }
 
+    // --- Behavioral AC enforcement: at least 1 "direct" type required ---
+    const manifestPath = path.join(projectDir, STORAGE_ROOT, 'verification', 'manifest.json');
+    try {
+      const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+      const entries = manifest.entries || [];
+      const hasDirectType = entries.some(e => e.type === 'direct');
+      if (!hasDirectType) {
+        const output = {
+          decision: "block",
+          reason: `Final Verification blocked. Manifest has ${entries.length} entries but none with type "direct" (behavioral). At least 1 behavioral AC is required. Update manifest at ${manifestPath}.`
+        };
+        process.stderr.write(`[VERIFY_GUARD] Blocked: no behavioral (direct) AC in manifest\n`);
+        console.log(JSON.stringify(output));
+        process.exit(2);
+        return;
+      }
+    } catch (manifestErr) {
+      process.stderr.write(`[VERIFY_GUARD] Warning: could not read manifest for behavioral AC check: ${manifestErr.message}\n`);
+    }
+
     // All PASS
     process.stderr.write(`[VERIFY_GUARD] Allowed: ${filePath} — all ${results.length} verification entries passed\n`);
     process.exit(0);
