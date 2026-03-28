@@ -1,5 +1,10 @@
 # Changelog
 
+## 20.2.0
+- feat: delta foreground conversion — remove background delta-processor agent, promote foreground flow to primary in memory-delta SKILL.md
+- feat: TZ_OFFSET auto-injection — inject-rules.js computes timezone offset and adds to context for delta timestamp generation
+- remove: agents/delta-processor.md deleted (background agent no longer needed)
+
 ## 20.1.0
 - feat: D/P/T/I documents consolidated under .crabshell/ — docs/{discussion,plan,ticket,investigation}/ → .crabshell/{discussion,plan,ticket,investigation}/
 - refactor: docs-guard.js, verify-guard.js, regressing-guard.js, pressure-guard.js — all regex patterns updated for .crabshell/ paths

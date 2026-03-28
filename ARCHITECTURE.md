@@ -313,8 +313,6 @@ Agent orchestration rules (11 rules covering pairing, cross-review, coherence, c
 | MEMORY_FILE | memory.md | Active memory file |
 | REGRESSING_STATE_FILE | regressing-state.json | Regressing cycle tracker |
 | SKILL_ACTIVE_FILE | skill-active.json | TTL-based skill flag for docs-guard/verify-guard |
-| DELTA_PROCESSING_LOCK | delta-processing.lock | Lock file for delta-processor background agent |
-| DELTA_LOCK_STALE_MS | 300000 (5min) | Stale lock threshold for race condition prevention |
 
 ## Memory Rotation Flow
 
@@ -400,6 +398,7 @@ Save to *.summary.json
 
 | Version | Key Changes |
 |---------|-------------|
+| 20.2.0 | Delta foreground conversion — remove background delta-processor agent, TZ_OFFSET auto-injection in inject-rules.js, foreground-only memory-delta SKILL.md |
 | 20.1.0 | D/P/T/I documents consolidated under .crabshell/ — all guards, skills, and paths updated; init.js auto-creates directories |
 | 19.49.0 | Per-prompt project concept anchor; extract 11 agent orchestration rules to .claude/rules/agent-orchestration.md; reduce emphasis markers 19→5 |
 | 19.48.0 | Lossless compression of RULES + COMPRESSED_CHECKLIST — 8 edits preserving all rule semantics (CLAUDE.md 169→161 lines) |

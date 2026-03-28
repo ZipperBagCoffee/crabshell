@@ -652,6 +652,15 @@ async function main() {
       context += COMPRESSED_CHECKLIST;
       context += `\n## Node.js Path\nWhen running node commands in Bash, use this absolute path instead of bare \`node\`:\n\`${nodePathFwd}\`\n`;
       context += `\n## Project Root Anchor (OVERRIDES Primary working directory)\nYour ACTUAL project root is: \`${projectDir}\`\n- If "Primary working directory" in your environment shows a SUBDIRECTORY of this path, it is WRONG. This is a known Claude Code bug after compaction (GitHub #7442).\n- Trust THIS anchor over Primary working directory. This value comes from CLAUDE_PROJECT_DIR which Claude Code sets at launch and never changes.\n- ALL file operations (Read, Edit, Write, Glob, Grep) use this as base directory.\n- When user says "read CLAUDE.md" → read \`${projectDir}/CLAUDE.md\`, not a subdirectory's.\n`;
+      // Timezone offset for memory delta timestamp generation
+      const tzOffsetMinutes = new Date().getTimezoneOffset();
+      const tzSign = tzOffsetMinutes <= 0 ? '+' : '-';
+      const tzAbsMinutes = Math.abs(tzOffsetMinutes);
+      const tzHours = String(Math.floor(tzAbsMinutes / 60)).padStart(2, '0');
+      const tzMins = String(tzAbsMinutes % 60).padStart(2, '0');
+      const tzOffset = `${tzSign}${tzHours}${tzMins}`;
+      context += `\n## Timezone\nTZ_OFFSET: ${tzOffset}\n`;
+
       if (hasPendingDelta) {
         context += DELTA_INSTRUCTION;
       }

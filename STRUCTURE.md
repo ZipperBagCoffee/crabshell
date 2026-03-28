@@ -35,8 +35,7 @@ memory-keeper-plugin/
 │
 ├── agents/                           # Background agent definitions
 │   ├── memory-summarizer.md          # L3 summary generator (haiku)
-│   ├── delta-summarizer.md           # Delta content summarizer (haiku, foreground fallback)
-│   └── delta-processor.md            # Delta pipeline processor (haiku, background)
+│   └── delta-summarizer.md           # Delta content summarizer (haiku)
 │
 ├── commands/                         # CLI commands
 │   ├── save-memory.md                # Manual save command
@@ -250,6 +249,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 20.2.0 | feat: delta foreground conversion — remove background delta-processor, TZ_OFFSET auto-injection in inject-rules.js, foreground-only memory-delta SKILL.md |
 | 20.1.0 | feat: D/P/T/I documents consolidated under .crabshell/ — docs/discussion,plan,ticket,investigation → .crabshell/discussion,plan,ticket,investigation; init.js auto-creates directories; all guards/skills updated |
 | 20.0.0 | **BREAKING**: memory-keeper → crabshell rename, .claude/memory/ → .crabshell/ path migration, auto-migration on SessionStart, STORAGE_ROOT centralization |
 | 19.56.0 | feat: project.md injection expanded to 10 lines/500 chars, CLAUDE_RULES practical guidelines (AI slop avoidance, config externalization) |

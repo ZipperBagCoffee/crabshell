@@ -49,10 +49,6 @@ module.exports = {
   ARCHIVE_PREFIX: 'memory_',
   SUMMARY_SUFFIX: '.summary.json',
 
-  // Delta processing lock
-  DELTA_PROCESSING_LOCK: 'delta_processing.lock',
-  DELTA_LOCK_STALE_MS: 300000,  // 5 minutes
-
   // Delta extraction settings
   DELTA_TEMP_FILE: 'delta_temp.txt',
   HAIKU_CONTEXT_LIMIT: 200000,  // 200K tokens
