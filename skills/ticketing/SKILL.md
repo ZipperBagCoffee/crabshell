@@ -18,17 +18,17 @@ When arguments are a Plan ID + title string:
 
 ### Step 1: Validate parent plan
 
-Read `docs/plan/INDEX.md`. Find the row for the given Plan ID.
+Read `.crabshell/plan/INDEX.md`. Find the row for the given Plan ID.
 - If plan not found → error: "Plan {ID} does not exist."
 - If plan status is `draft` → warn: "Plan {ID} is not yet approved. Create ticket anyway? (not recommended)"
 - If plan status is `approved` or `in-progress` → proceed
 
 ### Step 2: Ensure ticket folder exists
 
-Check if `docs/ticket/` exists.
+Check if `.crabshell/ticket/` exists.
 
-- **Folder does not exist:** Create it and create `docs/ticket/INDEX.md` with content below.
-- **Folder exists but INDEX.md does NOT exist:** Pre-existing files detected. Create `docs/ticket/backup/`, move ALL existing files into it, then create INDEX.md. Report to user: "Moved N existing files to docs/ticket/backup/"
+- **Folder does not exist:** Create it and create `.crabshell/ticket/INDEX.md` with content below.
+- **Folder exists but INDEX.md does NOT exist:** Pre-existing files detected. Create `.crabshell/ticket/backup/`, move ALL existing files into it, then create INDEX.md. Report to user: "Moved N existing files to .crabshell/ticket/backup/"
 - **Folder exists and INDEX.md exists:** Already managed. Proceed.
 
 INDEX.md content:
@@ -41,7 +41,7 @@ INDEX.md content:
 
 ### Step 3: Determine next ticket ID
 
-Glob `docs/ticket/P{NNN}_T*.md` where P{NNN} is the parent plan.
+Glob `.crabshell/ticket/P{NNN}_T*.md` where P{NNN} is the parent plan.
 Extract ticket numbers. Next = max + 1, zero-padded to 3 digits.
 If no tickets for this plan, start at 001.
 
@@ -53,7 +53,7 @@ Ask the user:
 3. **Acceptance Criteria:** Specific conditions for "done"
 4. **Verification:** How to verify each acceptance criterion? (Must be executable commands or observable behavior. "File contains X" is NOT acceptable.)
 
-Then create `docs/ticket/P{NNN}_T{NNN}-{slug}.md`:
+Then create `.crabshell/ticket/P{NNN}_T{NNN}-{slug}.md`:
 
 ```
 # P{NNN}_T{NNN} - {title}
@@ -207,7 +207,7 @@ This step is PROCEDURAL — it happens every time, not when the Orchestrator "re
 
 ### Step 5: Update ticket INDEX.md
 
-Append row to `docs/ticket/INDEX.md`:
+Append row to `.crabshell/ticket/INDEX.md`:
 
 ```
 | P{NNN}_T{NNN} | {title} | todo | {YYYY-MM-DD} | P{NNN} |
@@ -221,7 +221,7 @@ Append to the **Tickets section** of the parent plan document:
 - P{NNN}_T{NNN}: {title}
 ```
 
-Also update `docs/plan/INDEX.md` Tickets column to include the new ticket ID.
+Also update `.crabshell/plan/INDEX.md` Tickets column to include the new ticket ID.
 
 ### Step 7: Confirm
 
@@ -235,7 +235,7 @@ When argument matches `P\d{3}_T\d{3}` pattern:
 
 ### Step 1: Read existing ticket
 
-Glob `docs/ticket/P{NNN}_T{NNN}-*.md`. If not found, stop.
+Glob `.crabshell/ticket/P{NNN}_T{NNN}-*.md`. If not found, stop.
 
 ### Step 2: Append log entry
 
@@ -262,11 +262,11 @@ Update ticket INDEX.md status column.
 
 If ticket status → `verified`:
 
-1. **Check parent plan:** Read `docs/ticket/INDEX.md`, find ALL tickets for the same parent plan. Are ALL of them `verified`?
+1. **Check parent plan:** Read `.crabshell/ticket/INDEX.md`, find ALL tickets for the same parent plan. Are ALL of them `verified`?
    - If NO → stop here.
    - If YES → continue cascade.
-2. **Close parent plan:** Update parent plan's status to `done` in `docs/plan/INDEX.md`. Append log entry to plan document: `Status Change: in-progress → done (all tickets verified)`
-3. **Cascade to D/I:** Read parent plan's `Related` column in `docs/plan/INDEX.md`. For each related D/I ID:
+2. **Close parent plan:** Update parent plan's status to `done` in `.crabshell/plan/INDEX.md`. Append log entry to plan document: `Status Change: in-progress → done (all tickets verified)`
+3. **Cascade to D/I:** Read parent plan's `Related` column in `.crabshell/plan/INDEX.md`. For each related D/I ID:
    - **Cross-check:** Read that D/I's Related column in its INDEX.md. If it references OTHER plans besides the one just completed, check those plans' statuses too. ALL related plans must be `done` before concluding.
    - If all related plans done → update D/I status to `concluded`, append log entry: `Status Change: open → concluded (all related plans completed)`
    - If other related plans still open → skip, do not conclude. Log: `P{NNN} completed, conclusion deferred due to other related plans still incomplete`

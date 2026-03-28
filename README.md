@@ -69,7 +69,7 @@ Track project work through structured, append-only documents:
 | `/ticketing` | P001_T001 | todo, in-progress, done, verified | Session-sized work units tied to plans |
 | `/investigating` | I001 | open, concluded | Multi-source investigations with cross-review |
 
-Each document type has its own folder under `docs/` with an `INDEX.md` for status tracking. Tickets inherit from plans and require verification-at-creation (TDD principle).
+Each document type has its own folder under `.crabshell/` with an `INDEX.md` for status tracking. Tickets inherit from plans and require verification-at-creation (TDD principle).
 
 ## Agent Orchestration Workflow
 
@@ -128,7 +128,7 @@ Coding conventions: ...
 └── sessions/
     └── *.l1.jsonl         # L1 session transcripts (deduplicated)
 
-[project]/docs/                        # Local work artifacts (gitignored)
+[project]/.crabshell/
 ├── discussion/            # Discussion documents (D001, D002...)
 │   └── INDEX.md
 ├── plan/                  # Plan documents (P001, P002...)
@@ -182,6 +182,7 @@ memory.md                 - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 20.1.0 | feat: D/P/T/I documents consolidated under .crabshell/ — all document paths, guards, and skills updated |
 | 20.0.0 | **BREAKING**: memory-keeper → crabshell rename, .claude/memory/ → .crabshell/ path migration, auto-migration on SessionStart, STORAGE_ROOT centralization |
 | 19.56.0 | feat: project.md injection expanded to 10 lines/500 chars, CLAUDE_RULES practical guidelines (AI slop avoidance, config externalization) |
 | 19.55.0 | feat: delta-processor Bash removal — Read+Write only, JSON lock protocol, inline timestamps, SKILL.md fallback Bash-free |

@@ -56,11 +56,11 @@ async function main() {
   const fp = index.feedbackPressure;
   if (!fp || fp.level < 3) { process.exit(0); return; }
 
-  // Level 3: block Write/Edit except for docs/ and .crabshell/.claude/ paths
+  // Level 3: block Write/Edit except for .crabshell/.claude/ paths
   const filePath = (input.file_path || input.path || '').replace(/\\/g, '/');
 
-  // Allow docs/ and .crabshell/.claude/ paths (internal plugin/document operations)
-  if (/\/docs\//.test(filePath) || /\/\.crabshell\//.test(filePath) || /\/\.claude\//.test(filePath)) {
+  // Allow .crabshell/.claude/ paths (internal plugin/document operations, D/P/T/I now under .crabshell/)
+  if (/\/\.crabshell\//.test(filePath) || /\/\.claude\//.test(filePath)) {
     process.exit(0);
     return;
   }

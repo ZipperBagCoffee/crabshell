@@ -34,11 +34,10 @@ function readStdin(timeoutMs = 500) {
   });
 }
 
-// Protected docs/ subdirectories (D/P/T/I documents)
-// docs/internal/ is NOT protected — feedback files, etc.
-const PROTECTED_DOCS_PATTERN = /docs\/(discussion|plan|ticket|investigation)\//;
+// Protected .crabshell/ subdirectories (D/P/T/I documents)
+const PROTECTED_DOCS_PATTERN = /\.crabshell\/(discussion|plan|ticket|investigation)\//;
 
-// Skills that legitimately create/modify docs/ files
+// Skills that legitimately create/modify .crabshell/ D/P/T/I files
 const LEGITIMATE_SKILLS = [
   'discussing', 'planning', 'ticketing', 'investigating',
   'regressing', 'light-workflow', 'verifying'
@@ -97,7 +96,7 @@ async function main() {
   const filePath = normalizePath(input.file_path || input.path || '');
   if (!filePath) { process.exit(0); return; }
 
-  // Only guard protected docs/ paths
+  // Only guard protected .crabshell/ D/P/T/I paths
   if (!PROTECTED_DOCS_PATTERN.test(filePath)) { process.exit(0); return; }
 
   const projectDir = getProjectDir();
@@ -124,7 +123,7 @@ async function main() {
 
   const output = {
     decision: "block",
-    reason: `Direct write to docs/${category}/ blocked. You MUST invoke the Skill tool first (skill="${suggestedSkill}") before writing ${category} documents. This prevents post-compaction skill bypass where documents are created from memory without proper skill workflow.`
+    reason: `Direct write to .crabshell/${category}/ blocked. You MUST invoke the Skill tool first (skill="${suggestedSkill}") before writing ${category} documents. This prevents post-compaction skill bypass where documents are created from memory without proper skill workflow.`
   };
 
   process.stderr.write(`[DOCS_GUARD] Blocked ${toolName} to ${filePath} — no active skill\n`);

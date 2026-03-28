@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 20.0.0 | **Author**: TaWa | **License**: MIT
+**Version**: 20.1.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -11,15 +11,23 @@ Crabshell is a Claude Code plugin that automatically saves and manages session m
 ```
 memory-keeper-plugin/
 ├── .crabshell/                       # Crabshell local storage
-│   └── memory/                       # Project memory storage
-│       ├── memory.md                 # Rolling session summary (auto-rotates)
-│       ├── memory_*.md               # Rotated archives (L2)
-│       ├── *.summary.json            # L3 summaries (Haiku-generated)
-│       ├── memory-index.json         # Rotation tracking & counter
-│       ├── project.md                # Project overview (optional)
-│       ├── logs/                     # Refine logs
-│       └── sessions/                 # Per-session archive
-│           └── *.l1.jsonl            # L1 session transcripts (deduplicated)
+│   ├── memory/                       # Project memory storage
+│   │   ├── memory.md                 # Rolling session summary (auto-rotates)
+│   │   ├── memory_*.md               # Rotated archives (L2)
+│   │   ├── *.summary.json            # L3 summaries (Haiku-generated)
+│   │   ├── memory-index.json         # Rotation tracking & counter
+│   │   ├── project.md                # Project overview (optional)
+│   │   ├── logs/                     # Refine logs
+│   │   └── sessions/                 # Per-session archive
+│   │       └── *.l1.jsonl            # L1 session transcripts (deduplicated)
+│   ├── discussion/                   # Discussion documents (D001, D002...)
+│   │   └── INDEX.md
+│   ├── plan/                         # Plan documents (P001, P002...)
+│   │   └── INDEX.md
+│   ├── ticket/                       # Ticket documents (P001_T001...)
+│   │   └── INDEX.md
+│   └── investigation/                # Investigation documents (I001, I002...)
+│       └── INDEX.md
 │
 ├── .claude-plugin/                   # Plugin configuration
 │   ├── plugin.json                   # Plugin metadata
@@ -57,7 +65,7 @@ memory-keeper-plugin/
 │   ├── regressing-state.js            # Regressing phase tracker (v19.23.0)
 │   ├── sycophancy-guard.js           # Stop hook sycophancy detection (v19.29.0)
 │   ├── path-guard.js                # PreToolUse .crabshell/ path validation (v19.31.0)
-│   ├── docs-guard.js                # PreToolUse docs/ skill bypass prevention (v19.33.0)
+│   ├── docs-guard.js                # PreToolUse .crabshell/ D/P/T/I skill bypass prevention (v19.33.0)
 │   ├── verify-guard.js              # PreToolUse Final Verification /verifying run enforcement (v19.34.0)
 │   ├── skill-tracker.js             # PostToolUse skill-active flag setter (v19.33.0)
 │   ├── test-cwd-isolation.js         # Mock tests for cwd isolation (v17.0.0)
@@ -76,15 +84,7 @@ memory-keeper-plugin/
 │   ├── workflow.md                   # Understanding-First workflow template
 │   └── lessons-README.md             # Lessons system README template
 │
-├── docs/                             # Local work artifacts (gitignored)
-│   ├── discussion/                   # Discussion documents (D001, D002...)
-│   │   └── INDEX.md
-│   ├── plan/                         # Plan documents (P001, P002...)
-│   │   └── INDEX.md
-│   ├── ticket/                       # Ticket documents (P001_T001...)
-│   │   └── INDEX.md
-│   ├── investigation/                # Investigation documents (I001, I002...)
-│   │   └── INDEX.md
+├── docs/                             # Local documentation (gitignored)
 │   └── internal/                     # Legacy internal docs
 │
 ├── ARCHITECTURE.md                   # System architecture
@@ -169,7 +169,7 @@ PreToolUse path validation (v19.31.0):
 
 ### scripts/verify-guard.js
 PreToolUse Final Verification enforcement (v19.34.0, v19.39.0 deterministic execution):
-- Block Write/Edit to `docs/ticket/P###_T###*` containing `## Final Verification`
+- Block Write/Edit to `.crabshell/ticket/P###_T###*` containing `## Final Verification`
 - Directly executes `run-verify.js` via execSync (10s timeout) — blocks on FAIL entries
 - "Verification tool N/A:" exception for projects without verification tools
 - Fail-open on parse errors (user experience protection)
@@ -213,7 +213,7 @@ L1 generation:
 
 3. PreToolUse (Write/Edit — ticket Final Verification)
    └─> verify-guard.js (v19.34.0)
-       ├─> Check if file matches docs/ticket/P###_T###
+       ├─> Check if file matches .crabshell/ticket/P###_T###
        ├─> Check if content contains ## Final Verification
        ├─> Allow if "Verification tool N/A:" found (exception)
        ├─> Execute run-verify.js via execSync (10s timeout)
@@ -250,6 +250,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 20.1.0 | feat: D/P/T/I documents consolidated under .crabshell/ — docs/discussion,plan,ticket,investigation → .crabshell/discussion,plan,ticket,investigation; init.js auto-creates directories; all guards/skills updated |
 | 20.0.0 | **BREAKING**: memory-keeper → crabshell rename, .claude/memory/ → .crabshell/ path migration, auto-migration on SessionStart, STORAGE_ROOT centralization |
 | 19.56.0 | feat: project.md injection expanded to 10 lines/500 chars, CLAUDE_RULES practical guidelines (AI slop avoidance, config externalization) |
 | 19.55.0 | feat: delta-processor Bash removal — Read+Write only, JSON lock protocol, inline timestamps, memoryAppendedInThisRun flag, SKILL.md fallback Bash-free |

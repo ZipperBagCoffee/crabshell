@@ -34,8 +34,8 @@ function readStdin(timeoutMs = 500) {
   });
 }
 
-// Ticket file pattern: docs/ticket/P###_T###*
-const TICKET_FILE_PATTERN = /docs\/ticket\/P\d{3}_T\d{3}/;
+// Ticket file pattern: .crabshell/ticket/P###_T###*
+const TICKET_FILE_PATTERN = /\.crabshell\/ticket\/P\d{3}_T\d{3}/;
 
 /**
  * Normalize a file path for consistent matching.

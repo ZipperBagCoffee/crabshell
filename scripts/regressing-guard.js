@@ -43,8 +43,8 @@ async function main() {
   if (!input) { process.exit(0); return; }
 
   const filePath = (input.file_path || input.path || '').replace(/\\/g, '/');
-  const isPlanDoc = /docs\/plan\/P\d{3}/.test(filePath);
-  const isTicketDoc = /docs\/ticket\/P\d{3}_T\d{3}/.test(filePath);
+  const isPlanDoc = /\.crabshell\/plan\/P\d{3}/.test(filePath);
+  const isTicketDoc = /\.crabshell\/ticket\/P\d{3}_T\d{3}/.test(filePath);
   if (!isPlanDoc && !isTicketDoc) { process.exit(0); return; }
 
   const projectDir = getProjectDir();

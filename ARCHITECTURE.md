@@ -1,4 +1,4 @@
-# Crabshell Architecture (v20.0.0)
+# Crabshell Architecture (v20.1.0)
 
 ## Overview
 
@@ -77,8 +77,8 @@ Two meta-principles guide Claude's approach to obstacles:
 |                          +--------------------------------------------+  |
 |  +--------------------+  +--------------------------------------------+  |
 |  | counter.js         |  | regressing-guard.js (PreToolUse)          |  |
-|  | - check: counter++ |  | - Blocks Write|Edit to docs/plan/ and     |  |
-|  |   + L1 + rotation  |  |   docs/ticket/ when regressing active     |  |
+|  | - check: counter++ |  | - Blocks Write|Edit to .crabshell/plan/ and     |  |
+|  |   + L1 + rotation  |  |   .crabshell/ticket/ when regressing active     |  |
 |  |   + detect skill   |  | - Forces Skill tool invocation instead    |  |
 |  |   calls → advance  |  | - Fail-open on error (exit 0)            |  |
 |  |   regressing phase |  +--------------------------------------------+  |
@@ -183,13 +183,13 @@ Two meta-principles guide Claude's approach to obstacles:
 
 3. PreToolUse — multiple guards
    ├─> regressing-guard.js (Write|Edit) — v19.23.0+
-   │   ├─> If regressing active + phase=planning + target is docs/plan/
+   │   ├─> If regressing active + phase=planning + target is .crabshell/plan/
    │   │   └─> BLOCK (exit 2): must use /planning skill instead
-   │   ├─> If regressing active + phase=ticketing + target is docs/ticket/
+   │   ├─> If regressing active + phase=ticketing + target is .crabshell/ticket/
    │   │   └─> BLOCK (exit 2): must use /ticketing skill instead
    │   └─> Otherwise: allow (exit 0), fail-open on errors
    ├─> docs-guard.js (Write|Edit) — v19.33.0+
-   │   └─> Block writes to docs/ subdirectories without active skill flag
+   │   └─> Block writes to .crabshell/ D/P/T/I subdirectories without active skill flag
    ├─> verify-guard.js (Write|Edit) — v19.34.0+
    │   └─> Block Final Verification writes without prior /verifying run call
    └─> path-guard.js (Read|Grep|Glob|Bash) — v19.31.0+
@@ -218,7 +218,7 @@ Two meta-principles guide Claude's approach to obstacles:
 ## Skills Architecture
 
 ### Document Skills (D/P/T/I)
-Four skills manage append-only documents stored in `docs/` (gitignored):
+Four skills manage append-only documents stored in `.crabshell/` (gitignored):
 
 | Skill | Document Type | Code | Purpose |
 |-------|--------------|------|---------|
@@ -284,7 +284,7 @@ Agent orchestration rules (11 rules covering pairing, cross-review, coherence, c
 | `inject-rules.js` | UserPromptSubmit | Dual injection (CLAUDE.md + additionalContext), delta/rotation/regressing detection |
 | `counter.js` | PostToolUse, SessionEnd | Main engine: counter, L1 creation, rotation, regressing phase detection |
 | `regressing-guard.js` | PreToolUse (Write\|Edit) | Block direct plan/ticket writes during active regressing; force Skill tool |
-| `docs-guard.js` | PreToolUse (Write\|Edit) | Block writes to docs/ subdirectories without active skill flag |
+| `docs-guard.js` | PreToolUse (Write\|Edit) | Block writes to .crabshell/ D/P/T/I subdirectories without active skill flag |
 | `verify-guard.js` | PreToolUse (Write\|Edit) | Block Final Verification writes without prior /verifying run call |
 | `path-guard.js` | PreToolUse (Read\|Grep\|Glob\|Bash) | Block Read/Grep/Glob/Bash targeting wrong .crabshell/ path |
 | `sycophancy-guard.js` | Stop | Detect agreement-without-verification patterns; block with re-examination instruction |
@@ -400,6 +400,7 @@ Save to *.summary.json
 
 | Version | Key Changes |
 |---------|-------------|
+| 20.1.0 | D/P/T/I documents consolidated under .crabshell/ — all guards, skills, and paths updated; init.js auto-creates directories |
 | 19.49.0 | Per-prompt project concept anchor; extract 11 agent orchestration rules to .claude/rules/agent-orchestration.md; reduce emphasis markers 19→5 |
 | 19.48.0 | Lossless compression of RULES + COMPRESSED_CHECKLIST — 8 edits preserving all rule semantics (CLAUDE.md 169→161 lines) |
 | 19.47.0 | PROBLEM-SOLVING PRINCIPLES — Constraint Reporter + Cross-Domain Translation; SCOPE DEFINITIONS failure-context reframes |

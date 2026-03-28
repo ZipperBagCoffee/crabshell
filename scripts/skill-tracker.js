@@ -34,7 +34,7 @@ function readStdin(timeoutMs = 500) {
   });
 }
 
-// Skills that legitimately create/modify docs/ files
+// Skills that legitimately create/modify .crabshell/ D/P/T/I files
 const DOCS_SKILLS = [
   'discussing', 'planning', 'ticketing', 'investigating',
   'regressing', 'light-workflow', 'verifying'

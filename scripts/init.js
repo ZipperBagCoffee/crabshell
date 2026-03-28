@@ -22,7 +22,7 @@
  */
 const fs = require('fs');
 const path = require('path');
-const { STORAGE_ROOT, MEMORY_DIR, SESSIONS_DIR, LOGS_DIR, LESSONS_DIR, WORKFLOW_DIR, INDEX_FILE, MEMORY_FILE } = require('./constants');
+const { STORAGE_ROOT, MEMORY_DIR, SESSIONS_DIR, LOGS_DIR, LESSONS_DIR, WORKFLOW_DIR, DISCUSSION_DIR, PLAN_DIR, TICKET_DIR, INVESTIGATION_DIR, INDEX_FILE, MEMORY_FILE } = require('./constants');
 const { writeJson } = require('./utils');
 
 
@@ -136,6 +136,15 @@ function ensureMemoryStructure(projectDir) {
   const lessonsDir = path.join(storageRoot, LESSONS_DIR);
   if (!fs.existsSync(lessonsDir)) {
     fs.mkdirSync(lessonsDir, { recursive: true });
+  }
+
+  // D/P/T/I document directories
+  const docTypeDirs = [DISCUSSION_DIR, PLAN_DIR, TICKET_DIR, INVESTIGATION_DIR];
+  for (const dir of docTypeDirs) {
+    const fullPath = path.join(storageRoot, dir);
+    if (!fs.existsSync(fullPath)) {
+      fs.mkdirSync(fullPath, { recursive: true });
+    }
   }
 
   // Legacy: rename old workflow.md to .bak (now delivered via skill)

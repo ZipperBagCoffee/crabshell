@@ -18,10 +18,10 @@ When argument is a title string (not an I-prefixed ID):
 
 ### Step 1: Ensure folder exists
 
-Check if `docs/investigation/` exists.
+Check if `.crabshell/investigation/` exists.
 
-- **Folder does not exist:** Create it and create `docs/investigation/INDEX.md` with content below.
-- **Folder exists but INDEX.md does NOT exist:** Pre-existing files detected. Create `docs/investigation/backup/`, move ALL existing files into it, then create INDEX.md. Report to user: "Moved N existing files to docs/investigation/backup/"
+- **Folder does not exist:** Create it and create `.crabshell/investigation/INDEX.md` with content below.
+- **Folder exists but INDEX.md does NOT exist:** Pre-existing files detected. Create `.crabshell/investigation/backup/`, move ALL existing files into it, then create INDEX.md. Report to user: "Moved N existing files to .crabshell/investigation/backup/"
 - **Folder exists and INDEX.md exists:** Already managed. Proceed.
 
 INDEX.md content:
@@ -34,7 +34,7 @@ INDEX.md content:
 
 ### Step 2: Determine next ID
 
-Glob `docs/investigation/I*.md`.
+Glob `.crabshell/investigation/I*.md`.
 Extract numeric part. Next ID = max + 1, zero-padded to 3 digits.
 If no files exist, start at 001.
 
@@ -47,7 +47,7 @@ Ask the user:
 
 ### Step 4: Create investigation document
 
-Create `docs/investigation/I{NNN}-{slug}.md`:
+Create `.crabshell/investigation/I{NNN}-{slug}.md`:
 
 ```
 # I{NNN} - {title}
@@ -120,7 +120,7 @@ The Orchestrator:
 
 ### Step 8: Update INDEX.md
 
-Append row to `docs/investigation/INDEX.md`:
+Append row to `.crabshell/investigation/INDEX.md`:
 
 ```
 | I{NNN} | {title} | open | {YYYY-MM-DD} | |
@@ -138,7 +138,7 @@ When argument matches `I\d{3}` pattern:
 
 ### Step 1: Read existing document
 
-Glob `docs/investigation/I{NNN}-*.md`. If not found, stop.
+Glob `.crabshell/investigation/I{NNN}-*.md`. If not found, stop.
 
 ### Step 2: Append log entry
 
@@ -162,7 +162,7 @@ If new findings warrant it, re-run the multi-agent investigation (Steps 5-7 from
 
 ### Step 4: Update INDEX.md if status changed
 
-Update status column in `docs/investigation/INDEX.md`.
+Update status column in `.crabshell/investigation/INDEX.md`.
 
 ### Status Transitions
 

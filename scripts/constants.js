@@ -20,6 +20,10 @@ module.exports = {
   LOGS_DIR: 'memory/logs',
   LESSONS_DIR: 'lessons',
   WORKFLOW_DIR: 'workflow',
+  DISCUSSION_DIR: 'discussion',
+  PLAN_DIR: 'plan',
+  TICKET_DIR: 'ticket',
+  INVESTIGATION_DIR: 'investigation',
 
   // File names
   MEMORY_FILE: 'memory.md',

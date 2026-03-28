@@ -1,5 +1,13 @@
 # Changelog
 
+## 20.1.0
+- feat: D/P/T/I documents consolidated under .crabshell/ — docs/{discussion,plan,ticket,investigation}/ → .crabshell/{discussion,plan,ticket,investigation}/
+- refactor: docs-guard.js, verify-guard.js, regressing-guard.js, pressure-guard.js — all regex patterns updated for .crabshell/ paths
+- refactor: 4 SKILL.md files (discussing, planning, ticketing, investigating) — all path references updated
+- feat: init.js auto-creates .crabshell/{discussion,plan,ticket,investigation}/ directories on SessionStart
+- refactor: inject-rules.js RULES string — `docs/ protection` → `D/P/T/I protection` under .crabshell/
+- feat: constants.js — DISCUSSION_DIR, PLAN_DIR, TICKET_DIR, INVESTIGATION_DIR constants added
+
 ## 20.0.0 (BREAKING)
 - **RENAME**: memory-keeper → crabshell. Plugin name, skill prefix, log tags all changed.
 - **PATH MIGRATION**: `.claude/memory/` → `.crabshell/`. Auto-migration on SessionStart for legacy projects.
