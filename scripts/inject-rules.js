@@ -633,7 +633,7 @@ async function main() {
       const nodePathFwd = process.execPath.replace(/\\/g, '/');
 
       // Read project concept for per-prompt anchoring
-      const projectMdPath = path.join(getStorageRoot(projectDir), 'memory', 'project.md');
+      const projectMdPath = path.join(getStorageRoot(projectDir), 'project.md');
       let projectConcept = '';
       if (fs.existsSync(projectMdPath)) {
         try {

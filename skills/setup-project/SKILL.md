@@ -13,7 +13,7 @@ If not available in context, use your current working directory.
 
 # Setup Project
 
-Generate `.crabshell/memory/project.md` — a 2-3 sentence project concept injected every prompt by inject-rules.js for drift prevention.
+Generate `.crabshell/project.md` — a 2-3 sentence project concept injected every prompt by inject-rules.js for drift prevention.
 
 ## Format Constraint
 - Max 10 lines, 500 characters total (inject-rules.js truncation)
@@ -23,7 +23,7 @@ Generate `.crabshell/memory/project.md` — a 2-3 sentence project concept injec
 ## Steps
 
 ### Step 1: Check existing project.md
-Read `{PROJECT_DIR}/.crabshell/memory/project.md`. If exists, show current content and ask: "Update or keep?"
+Read `{PROJECT_DIR}/.crabshell/project.md`. If exists, show current content and ask: "Update or keep?"
 
 ### Step 2: Scan project sources
 Read available sources in order of priority:
@@ -42,8 +42,8 @@ From extracted info, compose 2-3 sentences (under 500 chars total):
 Show the generated text. User approves, edits, or rejects.
 
 ### Step 5: Write project.md
-Save approved content to `{PROJECT_DIR}/.crabshell/memory/project.md`.
-Use the Write tool to create `{PROJECT_DIR}/.crabshell/memory/project.md` with the approved content.
+Save approved content to `{PROJECT_DIR}/.crabshell/project.md`.
+Use the Write tool to create `{PROJECT_DIR}/.crabshell/project.md` with the approved content.
 If the directory doesn't exist, create it first:
 ```bash
 "{NODE_PATH}" -e "require('fs').mkdirSync('{PROJECT_DIR}/.crabshell/memory',{recursive:true})"

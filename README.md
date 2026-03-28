@@ -32,7 +32,7 @@ If there's information you want Claude to know every session, **directly edit th
 
 ```bash
 # Create/edit files in your project's .crabshell/memory/ folder
-echo "React + TypeScript web app." > .crabshell/memory/project.md
+echo "React + TypeScript web app." > .crabshell/project.md
 ```
 
 Or just ask Claude: "Save the project info to project.md"

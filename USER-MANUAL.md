@@ -270,7 +270,7 @@ Set information you want Claude to know at the start of every session.
 
 **Option 2: Edit files directly**
 ```bash
-echo "Next.js 14 + TypeScript + Prisma" > .crabshell/memory/project.md
+echo "Next.js 14 + TypeScript + Prisma" > .crabshell/project.md
 ```
 
 ---
