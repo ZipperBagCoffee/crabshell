@@ -2,7 +2,7 @@
 name: memory-summarizer
 description: Summarize rotated memory file to JSON
 tools: Read
-model: haiku
+model: claude-haiku-4-5-20251001
 ---
 
 ## Task
