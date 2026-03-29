@@ -1,5 +1,11 @@
 # Changelog
 
+## 21.0.0
+- feat: verification-sequence.js — dual-mode PostToolUse state tracker + PreToolUse gate (source file edit→test→commit enforcement, edit-grep cycle detection)
+- feat: transcript-utils.js — shared stdin/transcript/path utilities extracted from sycophancy-guard.js
+- feat: hooks.json — verification-sequence record (PostToolUse .*) + gate (PreToolUse Write|Edit|Bash), PreToolUse order optimized (path-guard first, sycophancy-guard last)
+- feat: _test-verification-sequence.js — 30 tests covering source file detection, test execution detection, gate behavior, edit-grep cycles, integration flows
+
 ## 20.7.0
 - sycophancy-guard dual-layer: removed 100-char exemption, added PreToolUse mid-turn transcript parsing
 - Fixed 5 stale test expectations in _test-sycophancy-guard.js (structural evidence should BLOCK, not ALLOW)

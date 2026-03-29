@@ -96,31 +96,13 @@ Completion drive after compaction = the #1 cause of rule violations.
 `;
 }
 
+const { readStdin: readStdinShared } = require('./transcript-utils');
+
 const MEMORY_TAIL_LINES = 50;
 
+// Use shared readStdin with 3000ms timeout for SessionStart hook
 function readStdinAsync() {
-  // hook-runner.js v2 stores parsed stdin in HOOK_DATA env var
-  if (process.env.HOOK_DATA) {
-    try { return Promise.resolve(JSON.parse(process.env.HOOK_DATA)); }
-    catch { return Promise.resolve({}); }
-  }
-
-  return new Promise((resolve) => {
-    let data = '';
-    process.stdin.setEncoding('utf8');
-    process.stdin.on('data', (chunk) => { data += chunk; });
-    process.stdin.on('end', () => {
-      try {
-        resolve(data.trim() ? JSON.parse(data) : {});
-      } catch {
-        resolve({});
-      }
-    });
-    process.stdin.on('error', () => resolve({}));
-    // Safety timeout - if stdin never closes, proceed without data
-    setTimeout(() => resolve({}), 3000);
-    process.stdin.resume();
-  });
+  return readStdinShared(3000);
 }
 
 function loadMemory(stdinData) {

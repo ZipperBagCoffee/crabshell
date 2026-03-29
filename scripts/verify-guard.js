@@ -3,46 +3,14 @@
 const path = require('path');
 const fs = require('fs');
 const { execSync } = require('child_process');
+const { readStdin, normalizePath } = require('./transcript-utils');
 
 function getProjectDir() {
   return process.env.CLAUDE_PROJECT_DIR || process.env.PROJECT_DIR || process.cwd();
 }
 
-function readStdin(timeoutMs = 500) {
-  // hook-runner.js v2 stores parsed stdin in HOOK_DATA env var
-  if (process.env.HOOK_DATA) {
-    try { return Promise.resolve(JSON.parse(process.env.HOOK_DATA)); }
-    catch { return Promise.resolve({}); }
-  }
-
-  return new Promise((resolve) => {
-    let data = '';
-    let resolved = false;
-    const done = (result) => { if (!resolved) { resolved = true; resolve(result); } };
-    const timer = setTimeout(() => {
-      done(data.trim() ? (() => { try { return JSON.parse(data.trim()); } catch { return {}; } })() : {});
-    }, timeoutMs);
-    process.stdin.setEncoding('utf8');
-    process.stdin.on('data', (chunk) => { data += chunk; });
-    process.stdin.on('end', () => {
-      clearTimeout(timer);
-      if (data.trim()) { try { done(JSON.parse(data.trim())); } catch { done({}); } }
-      else { done({}); }
-    });
-    process.stdin.on('error', () => { clearTimeout(timer); done({}); });
-    process.stdin.resume();
-  });
-}
-
 // Ticket file pattern: .crabshell/ticket/P###_T###*
 const TICKET_FILE_PATTERN = /\.crabshell\/ticket\/P\d{3}_T\d{3}/;
-
-/**
- * Normalize a file path for consistent matching.
- */
-function normalizePath(p) {
-  return p.replace(/\\/g, '/');
-}
 
 /**
  * Check if the content being written contains Final Verification section.

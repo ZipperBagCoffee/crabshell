@@ -1,10 +1,10 @@
 # Crabshell Plugin Structure
 
-**Version**: 20.7.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.0.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
-Crabshell is a Claude Code plugin with two pillars: (1) session memory — L1 delta extraction, Haiku summarization, logbook.md rotation, auto-restore on restart; (2) LLM behavioral correction — injects VERIFICATION-FIRST, UNDERSTANDING-FIRST, INTERFERENCE PATTERNS every prompt, six guard hooks block violations at runtime. D/P/T/I document system, 16 skills, Node.js hooks. All output under .crabshell/.
+Crabshell is a Claude Code plugin with two pillars: (1) session memory — L1 delta extraction, Haiku summarization, logbook.md rotation, auto-restore on restart; (2) LLM behavioral correction — injects VERIFICATION-FIRST, UNDERSTANDING-FIRST, INTERFERENCE PATTERNS every prompt, seven guard hooks block violations at runtime. D/P/T/I document system, 16 skills, Node.js hooks. All output under .crabshell/.
 
 ## Directory Structure
 
@@ -59,9 +59,8 @@ crabshell/
 │   ├── search.js                     # L1/L2/L3 integrated search
 │   ├── memory-rotation.js            # Token-based rotation
 │   ├── legacy-migration.js           # Large file splitting
-│   ├── migrate-timezone.js           # Legacy timestamp migration (local → UTC)
+│   ├── transcript-utils.js           # Shared stdin/transcript utilities (v21.0.0)
 │   ├── refine-raw.js                 # raw.jsonl -> l1.jsonl conversion
-│   ├── sync-rules-to-claude.js       # Manual CLAUDE.md sync (standalone)
 │   ├── regressing-state.js            # Regressing phase tracker (v19.23.0)
 │   ├── append-memory.js              # Atomic logbook.md append (v19.53.0)
 │   ├── regressing-guard.js           # PreToolUse regressing skill enforcement (v19.23.0)
@@ -70,12 +69,14 @@ crabshell/
 │   ├── docs-guard.js                # PreToolUse D/P/T/I skill bypass prevention (v19.33.0)
 │   ├── verify-guard.js              # PreToolUse Final Verification + behavioral AC (v19.34.0, v20.3.0)
 │   ├── pressure-guard.js            # PreToolUse feedback pressure detection (v19.47.0)
+│   ├── verification-sequence.js     # PostToolUse state tracker + PreToolUse commit/edit gate (v21.0.0)
 │   ├── skill-tracker.js             # PostToolUse skill-active flag setter (v19.33.0)
 │   ├── test-cwd-isolation.js         # Mock tests for cwd isolation (v17.0.0)
 │   ├── _test-path-guard.js           # Path-guard unit tests (v20.0.0)
 │   ├── _test-sycophancy-guard.js     # Sycophancy-guard unit tests (v20.4.0)
 │   ├── _test-sycophancy-pretooluse.js # Sycophancy-guard PreToolUse integration tests (v20.7.0)
 │   ├── _test-sycophancy-guard-manifest.js # Sycophancy-guard manifest behavioral test (v20.7.0)
+│   ├── _test-verification-sequence.js # Verification-sequence unit/integration tests (v21.0.0)
 │   └── utils.js                      # Shared utilities (getStorageRoot, getProjectDir)
 │
 ├── skills/                           # Slash command skills (16 total)
@@ -228,24 +229,27 @@ L1 generation:
        │   └─> If yes: Inject phase-specific reminder (planning/ticketing → MANDATORY SKILL TOOL CALL)
        └─> Output indicator: [rules injected], [rules + delta pending], [rules + rotation pending]
 
-3. PreToolUse — multiple guards
+3. PreToolUse — multiple guards (ordered: cheapest first)
+   ├─> path-guard.js (Read|Grep|Glob|Bash|Write|Edit) — block wrong project root
+   │   ├─> Block Edit on memory/logbook.md — append-only enforcement (v20.3.0)
+   │   └─> Block Write shrink on logbook.md — line count decrease detection (v20.6.0)
    ├─> regressing-guard.js (Write|Edit) — block direct plan/ticket writes during active regressing
    ├─> docs-guard.js (Write|Edit) — block writes to .crabshell/ D/P/T/I without active skill flag
    ├─> verify-guard.js (Write|Edit) — block Final Verification without /verifying run
    │   └─> Require at least 1 behavioral (type: "direct") AC in manifest (v20.3.0)
-   ├─> path-guard.js (Read|Grep|Glob|Bash|Write|Edit) — block wrong project root
-   │   ├─> Block Edit on memory/logbook.md — append-only enforcement (v20.3.0)
-   │   └─> Block Write shrink on logbook.md — line count decrease detection (v20.6.0)
+   ├─> verification-sequence.js gate (Write|Edit|Bash) — source edit→test→commit enforcement (v21.0.0)
+   │   ├─> Block git commit if source files edited but no test run
+   │   └─> Block source file edits after 3+ edit-grep cycles without testing
    ├─> pressure-guard.js (Write|Edit) — detect feedback pressure escalation
-   ├─> sycophancy-guard.js (Write|Edit) — mid-turn transcript parsing for sycophancy (v20.7.0)
-   └─> skill-tracker.js (PostToolUse) — set TTL-based skill-active flag
+   └─> sycophancy-guard.js (Write|Edit) — mid-turn transcript parsing for sycophancy (v20.7.0)
 
 5. PostToolUse
-   └─> counter.js check
-       ├─> Detect regressing skill calls → auto-advance phase (v19.23.0)
-       ├─> Increment counter
-       ├─> checkAndRotate() - archive if > 23,750 tokens
-       └─> At threshold: create/update L1 → extractDelta() → creates delta_temp.txt
+   ├─> counter.js check
+   │   ├─> Detect regressing skill calls → auto-advance phase (v19.23.0)
+   │   ├─> Increment counter
+   │   ├─> checkAndRotate() - archive if > 23,750 tokens
+   │   └─> At threshold: create/update L1 → extractDelta() → creates delta_temp.txt
+   └─> verification-sequence.js record (.*) — track source edits, test runs, grep cycles (v21.0.0)
 
 6. Stop
    └─> sycophancy-guard.js (v19.29.0, v20.7.0 dual-layer)
@@ -264,6 +268,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.0.0 | feat: verification-sequence guard — source edit→test→commit enforcement, edit-grep cycle detection, transcript-utils.js shared utilities, hooks.json order optimization |
 | 20.7.0 | feat: sycophancy-guard dual-layer — removed 100-char exemption, added PreToolUse mid-turn transcript parsing |
 | 20.6.0 | feat: memory.md → logbook.md rename (docs, skills, commands), memory-delta SKILL.md Step 4 append-memory.js CLI |
 | 20.5.0 | feat: counter file separation (counter.json), extract-delta.js mark-appended CLI, memory-delta SKILL.md Bash CLI steps |

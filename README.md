@@ -4,7 +4,7 @@
 
 Three pillars:
 1. **Session memory** — Auto-saves context across sessions. Delta extraction, Haiku summarization, token-based rotation. No manual setup.
-2. **Behavioral correction** — Injects verification-first rules and interference pattern detection every prompt. Six guard hooks block sycophancy, overcorrection, and shortcuts at runtime.
+2. **Behavioral correction** — Injects verification-first rules and interference pattern detection every prompt. Seven guard hooks block sycophancy, overcorrection, and shortcuts at runtime.
 3. **Structured workflows** — D/P/T/I document system with 16 skills for planning, investigating, and iterative improvement (regressing).
 
 All plugin output lives under `.crabshell/` — gitignored, clean project root.
@@ -188,6 +188,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.0.0 | feat: verification-sequence guard — source edit→test→commit enforcement, edit-grep cycle detection, transcript-utils.js shared utilities, hooks.json order optimization |
 | 20.7.0 | feat: sycophancy-guard dual-layer — removed 100-char exemption, added PreToolUse mid-turn transcript parsing |
 | 20.6.0 | feat: memory.md → logbook.md rename (docs, skills, commands), memory-delta SKILL.md Step 4 append-memory.js CLI |
 | 20.5.0 | feat: counter file separation (counter.json), extract-delta.js mark-appended CLI, memory-delta SKILL.md Bash CLI steps |

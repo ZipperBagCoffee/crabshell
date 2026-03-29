@@ -7,6 +7,7 @@ const { checkAndRotate } = require('./memory-rotation');
 const { extractDelta } = require('./extract-delta');
 const { MEMORY_DIR, MEMORY_FILE, SESSIONS_DIR, COUNTER_FILE } = require('./constants');
 const { detectRegressingSkillCall, advancePhase } = require('./regressing-state');
+const { readStdin: readStdinShared, findTranscriptPath } = require('./transcript-utils');
 
 const GLOBAL_CONFIG_PATH = path.join(os.homedir(), '.crabshell', 'config.json');
 const DEFAULT_INTERVAL = 15;
@@ -18,36 +19,6 @@ function getLogsDir() {
   return logsDir;
 }
 
-// Encode project path to Claude Code's ~/.claude/projects/ directory name format
-// C:\Users\chulg\Documents\RisuAIGames → C--Users-chulg-Documents-RisuAIGames
-function encodeProjectPath(projectDir) {
-  return projectDir.replace(/\\/g, '/').replace(/\//g, '-').replace(':', '-');
-}
-
-// Find current session transcript by exact project path match (reusable fallback)
-function findTranscriptPath() {
-  const projectDir = getProjectDir();
-  const encoded = encodeProjectPath(projectDir);
-  const claudeProjectsDir = path.join(os.homedir(), '.claude', 'projects');
-  try {
-    if (!fs.existsSync(claudeProjectsDir)) return null;
-    const projects = fs.readdirSync(claudeProjectsDir);
-    // Exact match first (case-insensitive for Windows)
-    const match = projects.find(p => p.toLowerCase() === encoded.toLowerCase());
-    if (match) {
-      const projPath = path.join(claudeProjectsDir, match);
-      const files = fs.readdirSync(projPath).filter(f => f.endsWith('.jsonl'));
-      if (files.length > 0) {
-        const sorted = files.map(f => ({
-          path: path.join(projPath, f),
-          mtime: fs.statSync(path.join(projPath, f)).mtime
-        })).sort((a, b) => b.mtime - a.mtime);
-        return sorted[0].path;
-      }
-    }
-  } catch (e) { return null; }
-  return null;
-}
 
 function getConfig() {
   const configPath = path.join(getStorageRoot(), 'memory', 'config.json');
@@ -58,50 +29,9 @@ function getConfig() {
   return config;
 }
 
-// Read hook data from stdin using async/await with timeout
-// If hook-runner.js already parsed stdin, reads from HOOK_DATA env var instead
-function readStdin(timeoutMs = 1000) {
-  // hook-runner.js v2 stores parsed stdin in HOOK_DATA env var
-  if (process.env.HOOK_DATA) {
-    try { return Promise.resolve(JSON.parse(process.env.HOOK_DATA)); }
-    catch { return Promise.resolve({}); }
-  }
-
-  return new Promise((resolve) => {
-    let data = '';
-    let resolved = false;
-    const done = (result) => { if (!resolved) { resolved = true; resolve(result); } };
-
-    // Safety timeout — PostToolUse closes stdin quickly, 1s is sufficient
-    const timer = setTimeout(() => {
-      done(data.trim() ? (() => { try { return JSON.parse(data.trim()); } catch { return {}; } })() : {});
-    }, timeoutMs);
-
-    process.stdin.setEncoding('utf8');
-
-    process.stdin.on('data', (chunk) => { data += chunk; });
-
-    process.stdin.on('end', () => {
-      clearTimeout(timer);
-      if (data.trim()) {
-        try { done(JSON.parse(data.trim())); }
-        catch (e) {
-          const debugPath = path.join(getLogsDir(), 'stdin-parse-error.log');
-          fs.appendFileSync(debugPath, `${new Date().toISOString()}: ${e.message}\nData: ${data.substring(0, 500)}\n`);
-          done({});
-        }
-      } else { done({}); }
-    });
-
-    process.stdin.on('error', (e) => {
-      clearTimeout(timer);
-      const debugPath = path.join(getLogsDir(), 'stdin-error.log');
-      fs.appendFileSync(debugPath, `${new Date().toISOString()}: ${e.message}\n`);
-      done({});
-    });
-
-    process.stdin.resume();
-  });
+// Use shared readStdin with 1000ms timeout for PostToolUse hook
+function readStdin() {
+  return readStdinShared(1000);
 }
 
 

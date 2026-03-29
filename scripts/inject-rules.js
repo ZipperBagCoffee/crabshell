@@ -3,28 +3,14 @@ const fs = require('fs');
 const path = require('path');
 const { getProjectDir, getStorageRoot, readJsonOrDefault, readIndexSafe, writeJson } = require('./utils');
 const { buildRegressingReminder } = require('./regressing-state');
+const { readStdin: readStdinShared } = require('./transcript-utils');
 
 // Emergency stop keywords - when detected, replaces entire context with EMERGENCY STOP
 const EMERGENCY_KEYWORDS = ['아시발멈춰', 'BRAINMELT'];
 
-function readStdin(timeoutMs = 1000) {
-  if (process.env.HOOK_DATA) {
-    try { return Promise.resolve(JSON.parse(process.env.HOOK_DATA)); }
-    catch (e) { return Promise.resolve({}); }
-  }
-  return new Promise((resolve) => {
-    let data = '';
-    const timer = setTimeout(() => resolve({}), timeoutMs);
-    process.stdin.setEncoding('utf8');
-    process.stdin.on('data', (chunk) => { data += chunk; });
-    process.stdin.on('end', () => {
-      clearTimeout(timer);
-      try { resolve(JSON.parse(data)); }
-      catch (e) { resolve({}); }
-    });
-    process.stdin.on('error', () => { clearTimeout(timer); resolve({}); });
-    process.stdin.resume();
-  });
+// Use shared readStdin with 1000ms timeout for UserPromptSubmit hook
+function readStdin() {
+  return readStdinShared(1000);
 }
 
 function checkEmergencyStop(hookData) {
