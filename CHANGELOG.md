@@ -1,5 +1,10 @@
 # Changelog
 
+## 21.3.0
+- feat: /verifying manifest populated with v21 feature entries (V001-V004) — verification-sequence gate, sycophancy claim detection, pressure-guard L3 Read block, L1-L4 hierarchy in CLAUDE.md
+- analysis: guard consolidation (IA-6) — 4 PreToolUse Write|Edit guards kept separate (independent fail-open isolation, different dependencies, concurrent execution via hook system)
+- docs: Known Limitations section in ARCHITECTURE.md — Stop hook text block gap (sycophancy in early blocks invisible), PreToolUse only catches Write|Edit not Read/Grep/Glob/Bash
+
 ## 21.2.0
 - feat: L1-L4 observation resolution hierarchy added to VERIFICATION-FIRST section in inject-rules.js RULES
 - feat: verifying SKILL.md manifest schema expanded with level, steps[], observation fields

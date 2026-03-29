@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.2.0)
+# Crabshell Architecture (v21.3.0)
 
 ## Overview
 
@@ -419,10 +419,26 @@ Separated from memory-index.json to eliminate Write race condition during delta 
 }
 ```
 
+## Known Limitations
+
+### Stop Hook Text Block Gap
+- The Stop hook's `stop_response` field contains only the **last text block** of multi-block responses. When Claude produces text, then calls a tool, then produces more text, only the final text block is visible to the Stop hook.
+- **Impact on sycophancy detection**: Sycophancy patterns in early text blocks (before tool calls) are invisible to the Stop hook. A response that agrees without evidence in block 1, calls Write in block 2, and writes a summary in block 3 would only have block 3 checked by the Stop hook.
+- **Partial mitigation**: The PreToolUse layer of `sycophancy-guard.js` parses mid-turn transcript text before each Write|Edit call. This catches sycophancy that precedes file writes, but only for Write|Edit — not for Read, Grep, Glob, or Bash tool calls.
+- **Remaining gap**: If Claude agrees without evidence and then uses Read/Grep/Glob/Bash (but not Write/Edit), neither the Stop hook nor the PreToolUse guard catches the sycophancy. Expanding PreToolUse to check transcript text for all tool types is a potential future mitigation.
+
+### Guard Consolidation (IA-6 Analysis)
+The 4 PreToolUse Write|Edit guards (regressing-guard, docs-guard, verify-guard, sycophancy-guard) remain separate. Consolidation was analyzed and rejected for safety:
+- **Independent fail-open isolation**: Each guard catches errors and exits 0 independently. A merged script's crash in one guard's logic would silently disable all guards.
+- **Different dependencies**: regressing-state.json, skill-active.json, run-verify.js + manifest.json, and transcript files respectively. A dependency failure in one should not affect others.
+- **Different complexity profiles**: 60 lines (regressing) vs 497 lines (sycophancy). Merging makes simple guards harder to reason about.
+- **Concurrent execution**: Separate processes run in parallel via hook system, which is faster than sequential checks in one process.
+
 ## Version History
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.3.0 | /verifying manifest populated with v21 entries (V001-V004), guard consolidation analysis (keep 4, safety > count), Stop hook text block gap documented |
 | 21.2.0 | L1-L4 observation resolution hierarchy (VERIFICATION-FIRST) + verifying SKILL.md manifest schema expansion (level, steps[], observation fields) |
 | 21.1.0 | Verification claim detection (sycophancy-guard 4-tier classification) + pressure L3 expansion (all 6 tools blocked, expertise framing) |
 | 21.0.0 | verification-sequence guard — source edit→test→commit enforcement, edit-grep cycle detection, transcript-utils.js shared utilities, hooks.json order optimization |
