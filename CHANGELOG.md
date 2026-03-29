@@ -1,5 +1,11 @@
 # Changelog
 
+## 20.7.0
+- sycophancy-guard dual-layer: removed 100-char exemption, added PreToolUse mid-turn transcript parsing
+- Fixed 5 stale test expectations in _test-sycophancy-guard.js (structural evidence should BLOCK, not ALLOW)
+- Added PreToolUse integration test suite (_test-sycophancy-pretooluse.js, 17 tests)
+- Added manifest behavioral test script (_test-sycophancy-guard-manifest.js)
+
 ## 20.6.0
 - feat: memory.md → logbook.md rename across all docs, skills, and commands
 - feat: memory-delta SKILL.md Step 4 rewritten to use append-memory.js via Bash CLI (no direct Write to logbook.md)

@@ -41,14 +41,14 @@ function runTest(name, hookData, expectBlock) {
   }
 }
 
-// Helper: pad response to exceed 100-char short exemption and 200+ total
+// Helper: pad response to exceed minimum length
 function pad(text, minLen = 250) {
   if (text.length >= minLen) return text;
   return text + '\n' + 'x'.repeat(minLen - text.length);
 }
 
 // ====================================================================
-// Test 1: Bare sycophancy Korean (padded to 200+ chars) -> BLOCK
+// Test 1: Bare sycophancy Korean (padded) -> BLOCK
 // ====================================================================
 runTest('Bare sycophancy Korean -> BLOCK',
   { stop_response: pad('맞습니다. 그 부분은 제가 잘못 이해했습니다.') },
@@ -56,7 +56,7 @@ runTest('Bare sycophancy Korean -> BLOCK',
 );
 
 // ====================================================================
-// Test 2: Bare sycophancy English (padded to 200+ chars) -> BLOCK
+// Test 2: Bare sycophancy English (padded) -> BLOCK
 // ====================================================================
 runTest('Bare sycophancy English -> BLOCK',
   { stop_response: pad("You're right, I should have checked that first.") },
@@ -88,7 +88,7 @@ runTest('Pattern inside blockquote -> ALLOW',
 );
 
 // ====================================================================
-// Test 6: Agreement after P/O/G table -> ALLOW (evidence exemption)
+// Test 6: Agreement after P/O/G table -> ALLOW (behavioral evidence)
 // ====================================================================
 runTest('Agreement after P/O/G table -> ALLOW',
   { stop_response: pad('| Item | Prediction | Observation |\n|------|------------|-------------|\n| A | yes | yes |\n\nYou\'re right, the results match.') },
@@ -96,19 +96,21 @@ runTest('Agreement after P/O/G table -> ALLOW',
 );
 
 // ====================================================================
-// Test 7: Agreement after substantial content (500+ chars) -> ALLOW
+// Test 7: 500+ chars 'A' padding + "I agree" -> BLOCK
+// Padding is NOT evidence (no behavioral or structural content)
 // ====================================================================
-runTest('Agreement after 500+ chars of analysis -> ALLOW',
+runTest('500+ chars A padding + I agree -> BLOCK',
   { stop_response: 'A'.repeat(550) + "\nI agree with your assessment." },
-  false
+  true
 );
 
 // ====================================================================
-// Test 8: Short response (<100 chars) -> ALLOW
+// Test 8: Short response "You're right." -> BLOCK
+// 100-char exemption removed; sycophancy detected regardless of length
 // ====================================================================
-runTest('Short response (<100 chars) -> ALLOW',
+runTest('Short response sycophancy -> BLOCK',
   { stop_response: "You're right." },
-  false
+  true
 );
 
 // ====================================================================
@@ -129,7 +131,6 @@ runTest('Korean in code block -> ALLOW',
 
 // ====================================================================
 // Test 11: Mixed - real sycophancy outside + pattern in code block -> BLOCK
-// The real sycophancy occurs outside code blocks and has no evidence before it
 // ====================================================================
 runTest('Real sycophancy outside + pattern in code -> BLOCK',
   { stop_response: pad("Good point! Here is the code:\n```\n// good point example\n```\nLet me check.") },
@@ -137,35 +138,35 @@ runTest('Real sycophancy outside + pattern in code -> BLOCK',
 );
 
 // ====================================================================
-// Test 12: Agreement after code evidence (50+ char code block) -> ALLOW
+// Test 12: Code block is STRUCTURAL not behavioral -> BLOCK
 // ====================================================================
-runTest('Agreement after substantial code block evidence -> ALLOW',
+runTest('Agreement after structural code block -> BLOCK',
   { stop_response: pad("Here is the analysis:\n```javascript\nconst result = calculateSum(items.map(i => i.value).filter(v => v > 0));\nconsole.log(result); // outputs: 42\n```\nI agree, the implementation is correct.") },
-  false
+  true
 );
 
 // ====================================================================
-// Test 13: Agreement after Korean evidence marker -> ALLOW
+// Test 13: Korean 분석 결과 is STRUCTURAL not behavioral -> BLOCK
 // ====================================================================
-runTest('Agreement after Korean evidence marker -> ALLOW',
+runTest('Agreement after structural Korean marker -> BLOCK',
   { stop_response: pad('분석 결과를 보면 다음과 같습니다:\n- 항목 1: 정상\n- 항목 2: 정상\n\n맞습니다, 모든 항목이 정상입니다.') },
-  false
+  true
 );
 
 // ====================================================================
-// Test 14: Agreement after grep-style output -> ALLOW
+// Test 14: Grep-style output is STRUCTURAL not behavioral -> BLOCK
 // ====================================================================
-runTest('Agreement after grep-style output -> ALLOW',
+runTest('Agreement after structural grep output -> BLOCK',
   { stop_response: pad('src/utils.js:42: const validate = (x) => x > 0;\nsrc/utils.js:43: export default validate;\n\nYou\'re right, the function exists.') },
-  false
+  true
 );
 
 // ====================================================================
-// Test 15: Agreement after markdown table separator -> ALLOW
+// Test 15: Markdown table separator is STRUCTURAL not behavioral -> BLOCK
 // ====================================================================
-runTest('Agreement after markdown table separator -> ALLOW',
+runTest('Agreement after structural markdown table -> BLOCK',
   { stop_response: pad('| Column A | Column B |\n|----------|----------|\n| value1   | value2   |\n\nThat makes sense based on these results.') },
-  false
+  true
 );
 
 // ====================================================================
@@ -192,12 +193,30 @@ runTest('stop_hook_active -> ALLOW',
   false
 );
 
-// Test: Early sycophancy + late code block -> BLOCK
+// ====================================================================
+// Test 19: Early sycophancy + late code block -> BLOCK
 // Key regression test: evidence AFTER agreement should NOT exempt
+// ====================================================================
 runTest('Early sycophancy + late code block -> BLOCK',
   { stop_response: pad("You're right! Let me fix that for you.\n\n" +
     "```javascript\nconst result = calculateSum(items.map(i => i.value).filter(v => v > 0));\nconsole.log(result);\n```") },
   true
+);
+
+// ====================================================================
+// Test 20: PreToolUse - tool_name=Read -> ALLOW (only Write|Edit checked)
+// ====================================================================
+runTest('PreToolUse Read tool -> ALLOW',
+  { tool_name: 'Read', tool_input: { file_path: '/tmp/test.txt' } },
+  false
+);
+
+// ====================================================================
+// Test 21: PreToolUse - tool_name=Write without transcript -> ALLOW (fail-open)
+// ====================================================================
+runTest('PreToolUse Write without transcript -> ALLOW (fail-open)',
+  { tool_name: 'Write', tool_input: { file_path: '/tmp/test.txt', content: 'hello' } },
+  false
 );
 
 // ====================================================================
