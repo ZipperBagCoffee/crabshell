@@ -66,7 +66,7 @@ crabshell/
 │   ├── append-memory.js              # Atomic logbook.md append (v19.53.0)
 │   ├── regressing-guard.js           # PreToolUse regressing skill enforcement (v19.23.0)
 │   ├── sycophancy-guard.js           # Stop hook sycophancy detection (v19.29.0)
-│   ├── path-guard.js                # PreToolUse path validation + logbook.md Edit block (v19.31.0, v20.3.0)
+│   ├── path-guard.js                # PreToolUse path validation + logbook.md Edit block + Write shrink guard (v19.31.0, v20.3.0, v20.6.0)
 │   ├── docs-guard.js                # PreToolUse D/P/T/I skill bypass prevention (v19.33.0)
 │   ├── verify-guard.js              # PreToolUse Final Verification + behavioral AC (v19.34.0, v20.3.0)
 │   ├── pressure-guard.js            # PreToolUse feedback pressure detection (v19.47.0)
@@ -171,9 +171,10 @@ UserPromptSubmit hook:
 - Detect active regressing session → inject phase-specific reminder (v19.23.0)
 
 ### scripts/path-guard.js
-PreToolUse path validation (v19.31.0, v20.3.0 Edit block):
-- Block Read/Grep/Glob/Bash calls targeting `.crabshell/` outside `CLAUDE_PROJECT_DIR`
-- Block Edit on `memory/logbook.md` — logbook.md is append-only (Write only)
+PreToolUse path validation (v19.31.0, v20.3.0 Edit block, v20.6.0 Write shrink guard):
+- Block Read/Grep/Glob/Bash/Write/Edit calls targeting `.crabshell/` outside `CLAUDE_PROJECT_DIR`
+- Block Edit on `memory/logbook.md` — logbook.md is append-only
+- Block Write shrink on `memory/logbook.md` — line count decrease detection (v20.6.0)
 - Bash command string inspection: regex extraction of `.crabshell/` paths within command strings
 - Fail-open on parse errors (user experience protection)
 - Windows path normalization (backslash → forward slash)
@@ -228,8 +229,9 @@ L1 generation:
    ├─> docs-guard.js (Write|Edit) — block writes to .crabshell/ D/P/T/I without active skill flag
    ├─> verify-guard.js (Write|Edit) — block Final Verification without /verifying run
    │   └─> Require at least 1 behavioral (type: "direct") AC in manifest (v20.3.0)
-   ├─> path-guard.js (Read|Grep|Glob|Bash|Edit) — block wrong project root
-   │   └─> Block Edit on memory/logbook.md — append-only enforcement (v20.3.0)
+   ├─> path-guard.js (Read|Grep|Glob|Bash|Write|Edit) — block wrong project root
+   │   ├─> Block Edit on memory/logbook.md — append-only enforcement (v20.3.0)
+   │   └─> Block Write shrink on logbook.md — line count decrease detection (v20.6.0)
    ├─> pressure-guard.js (Write|Edit) — detect feedback pressure escalation
    └─> skill-tracker.js (PostToolUse) — set TTL-based skill-active flag
 
