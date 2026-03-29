@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.3.0)
+# Crabshell Architecture (v21.4.0)
 
 ## Overview
 
@@ -54,6 +54,7 @@ Two meta-principles guide Claude's approach to obstacles:
 |  |  | regressing-  |  | -guard.js|  |              |              |      |
 |  |  | guard.js     |  +----------+  |              |              |      |
 |  |  | docs-guard.js|                |              |              |      |
+|  |  | log-guard.js |                |              |              |      |
 |  |  | verify-guard |                |              |              |      |
 |  |  | (Read|Grep|  |                |              |              |      |
 |  |  |  Glob|Bash)  |                |              |              |      |
@@ -197,6 +198,9 @@ Two meta-principles guide Claude's approach to obstacles:
    │   └─> Otherwise: allow (exit 0), fail-open on errors
    ├─> docs-guard.js (Write|Edit) — v19.33.0+
    │   └─> Block writes to .crabshell/ D/P/T/I subdirectories without active skill flag
+   ├─> log-guard.js (Write|Edit) — v21.4.0+
+   │   ├─> Block INDEX.md terminal status changes (→done/verified/concluded) without document log entries
+   │   └─> Block new cycle documents without previous cycle logs in regressing
    ├─> verify-guard.js (Write|Edit) — v19.34.0+
    │   ├─> Block Final Verification writes without prior /verifying run call
    │   └─> Require at least 1 behavioral (type: "direct") AC in manifest (v20.3.0)
@@ -300,6 +304,7 @@ Agent orchestration rules (11 rules covering pairing, cross-review, coherence, c
 | `counter.js` | PostToolUse, SessionEnd | Main engine: counter, L1 creation, rotation, regressing phase detection |
 | `regressing-guard.js` | PreToolUse (Write\|Edit) | Block direct plan/ticket writes during active regressing; force Skill tool |
 | `docs-guard.js` | PreToolUse (Write\|Edit) | Block writes to .crabshell/ D/P/T/I subdirectories without active skill flag |
+| `log-guard.js` | PreToolUse (Write\|Edit) | Block INDEX.md terminal status without document log entries; block cycle docs without previous cycle logs |
 | `verify-guard.js` | PreToolUse (Write\|Edit) | Block Final Verification writes without /verifying run; require behavioral AC in manifest |
 | `pressure-guard.js` | PreToolUse (Read\|Grep\|Glob\|Bash\|Write\|Edit) | Detect feedback pressure escalation; block all 6 tools at L3 with .crabshell/.claude exemption |
 | `path-guard.js` | PreToolUse (Read\|Grep\|Glob\|Bash\|Write\|Edit) | Block wrong .crabshell/ path; block Edit on logbook.md; block Write shrink on logbook.md (v20.6.0) |
@@ -428,7 +433,7 @@ Separated from memory-index.json to eliminate Write race condition during delta 
 - **Remaining gap**: If Claude agrees without evidence and then uses Read/Grep/Glob/Bash (but not Write/Edit), neither the Stop hook nor the PreToolUse guard catches the sycophancy. Expanding PreToolUse to check transcript text for all tool types is a potential future mitigation.
 
 ### Guard Consolidation (IA-6 Analysis)
-The 4 PreToolUse Write|Edit guards (regressing-guard, docs-guard, verify-guard, sycophancy-guard) remain separate. Consolidation was analyzed and rejected for safety:
+The 5 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, verify-guard, sycophancy-guard) remain separate. Consolidation was analyzed and rejected for safety:
 - **Independent fail-open isolation**: Each guard catches errors and exits 0 independently. A merged script's crash in one guard's logic would silently disable all guards.
 - **Different dependencies**: regressing-state.json, skill-active.json, run-verify.js + manifest.json, and transcript files respectively. A dependency failure in one should not affect others.
 - **Different complexity profiles**: 60 lines (regressing) vs 497 lines (sycophancy). Merging makes simple guards harder to reason about.
@@ -438,6 +443,7 @@ The 4 PreToolUse Write|Edit guards (regressing-guard, docs-guard, verify-guard, 
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.4.0 | log-guard.js dual-trigger D/P/T log enforcement (terminal status + cycle log), guard count 7→8, hooks.json position 4/8 |
 | 21.3.0 | /verifying manifest populated with v21 entries (V001-V004), guard consolidation analysis (keep 4, safety > count), Stop hook text block gap documented |
 | 21.2.0 | L1-L4 observation resolution hierarchy (VERIFICATION-FIRST) + verifying SKILL.md manifest schema expansion (level, steps[], observation fields) |
 | 21.1.0 | Verification claim detection (sycophancy-guard 4-tier classification) + pressure L3 expansion (all 6 tools blocked, expertise framing) |

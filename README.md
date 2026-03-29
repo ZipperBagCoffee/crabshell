@@ -4,7 +4,7 @@
 
 Three pillars:
 1. **Session memory** — Auto-saves context across sessions. Delta extraction, Haiku summarization, token-based rotation. No manual setup.
-2. **Behavioral correction** — Injects verification-first rules and interference pattern detection every prompt. Seven guard hooks block sycophancy, overcorrection, and shortcuts at runtime.
+2. **Behavioral correction** — Injects verification-first rules and interference pattern detection every prompt. Eight guard hooks block sycophancy, overcorrection, and shortcuts at runtime.
 3. **Structured workflows** — D/P/T/I document system with 16 skills for planning, investigating, and iterative improvement (regressing).
 
 All plugin output lives under `.crabshell/` — gitignored, clean project root.
@@ -188,6 +188,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.4.0 | feat: log-guard.js dual-trigger D/P/T log enforcement, guard count 7→8 |
 | 21.3.0 | feat: /verifying manifest v21 entries, guard consolidation analysis (keep 4, safety > count), Stop hook text block gap documented |
 | 21.2.0 | feat: L1-L4 observation resolution hierarchy (VERIFICATION-FIRST) + verifying SKILL.md manifest schema expansion |
 | 21.1.0 | feat: verification claim detection (sycophancy-guard 4-tier classification) + pressure L3 expansion (all 6 tools blocked, expertise framing) |

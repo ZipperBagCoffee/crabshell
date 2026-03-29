@@ -1,5 +1,11 @@
 # Changelog
 
+## 21.4.0
+- feat: log-guard.js dual-trigger D/P/T log enforcement — blocks INDEX.md terminal status changes (→done/verified/concluded) without document log entries, blocks new cycle documents without previous cycle logs in regressing
+- feat: _test-log-guard.js — 67 tests covering both guard triggers
+- feat: hooks.json — log-guard at position 4/8 in PreToolUse chain (Write|Edit matcher)
+- guard count: 7→8
+
 ## 21.3.0
 - feat: /verifying manifest populated with v21 feature entries (V001-V004) — verification-sequence gate, sycophancy claim detection, pressure-guard L3 Read block, L1-L4 hierarchy in CLAUDE.md
 - analysis: guard consolidation (IA-6) — 4 PreToolUse Write|Edit guards kept separate (independent fail-open isolation, different dependencies, concurrent execution via hook system)

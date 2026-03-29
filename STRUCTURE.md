@@ -1,10 +1,10 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.3.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.4.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
-Crabshell is a Claude Code plugin with two pillars: (1) session memory — L1 delta extraction, Haiku summarization, logbook.md rotation, auto-restore on restart; (2) LLM behavioral correction — injects VERIFICATION-FIRST, UNDERSTANDING-FIRST, INTERFERENCE PATTERNS every prompt, seven guard hooks block violations at runtime. D/P/T/I document system, 16 skills, Node.js hooks. All output under .crabshell/.
+Crabshell is a Claude Code plugin with two pillars: (1) session memory — L1 delta extraction, Haiku summarization, logbook.md rotation, auto-restore on restart; (2) LLM behavioral correction — injects VERIFICATION-FIRST, UNDERSTANDING-FIRST, INTERFERENCE PATTERNS every prompt, eight guard hooks block violations at runtime. D/P/T/I document system, 16 skills, Node.js hooks. All output under .crabshell/.
 
 ## Directory Structure
 
@@ -69,6 +69,7 @@ crabshell/
 │   ├── docs-guard.js                # PreToolUse D/P/T/I skill bypass prevention (v19.33.0)
 │   ├── verify-guard.js              # PreToolUse Final Verification + behavioral AC (v19.34.0, v20.3.0)
 │   ├── pressure-guard.js            # PreToolUse feedback pressure L3 blocking — all 6 tools (v19.47.0, v21.1.0)
+│   ├── log-guard.js                # PreToolUse D/P/T log enforcement — terminal status + cycle log guard (v21.4.0)
 │   ├── verification-sequence.js     # PostToolUse state tracker + PreToolUse commit/edit gate (v21.0.0)
 │   ├── skill-tracker.js             # PostToolUse skill-active flag setter (v19.33.0)
 │   ├── test-cwd-isolation.js         # Mock tests for cwd isolation (v17.0.0)
@@ -78,6 +79,7 @@ crabshell/
 │   ├── _test-sycophancy-guard-manifest.js # Sycophancy-guard manifest behavioral test (v20.7.0)
 │   ├── _test-sycophancy-claim-detection.js # Verification claim detection tests (v21.1.0)
 │   ├── _test-verification-sequence.js # Verification-sequence unit/integration tests (v21.0.0)
+│   ├── _test-log-guard.js           # Log-guard unit tests (v21.4.0)
 │   └── utils.js                      # Shared utilities (getStorageRoot, getProjectDir)
 │
 ├── skills/                           # Slash command skills (16 total)
@@ -185,6 +187,13 @@ PreToolUse path validation (v19.31.0, v20.3.0 Edit block, v20.6.0 Write shrink g
 - Fail-open on parse errors (user experience protection)
 - Windows path normalization (backslash → forward slash)
 
+### scripts/log-guard.js
+PreToolUse D/P/T log enforcement (v21.4.0):
+- Dual-trigger guard on Write|Edit to `.crabshell/` paths
+- Trigger 1: Block INDEX.md terminal status changes (→done/verified/concluded) when the referenced document has no log entries
+- Trigger 2: Block new cycle documents (P/T) in regressing when the previous cycle's documents lack log entries
+- Fail-open on parse errors (user experience protection)
+
 ### scripts/verify-guard.js
 PreToolUse Final Verification enforcement (v19.34.0, v19.39.0 deterministic, v20.3.0 behavioral AC):
 - Block Write/Edit to `.crabshell/ticket/P###_T###*` containing `## Final Verification`
@@ -236,6 +245,7 @@ L1 generation:
    │   └─> Block Write shrink on logbook.md — line count decrease detection (v20.6.0)
    ├─> regressing-guard.js (Write|Edit) — block direct plan/ticket writes during active regressing
    ├─> docs-guard.js (Write|Edit) — block writes to .crabshell/ D/P/T/I without active skill flag
+   ├─> log-guard.js (Write|Edit) — block INDEX.md terminal status without log + block cycle docs without previous cycle logs (v21.4.0)
    ├─> verify-guard.js (Write|Edit) — block Final Verification without /verifying run
    │   └─> Require at least 1 behavioral (type: "direct") AC in manifest (v20.3.0)
    ├─> verification-sequence.js gate (Write|Edit|Bash) — source edit→test→commit enforcement (v21.0.0)
@@ -269,6 +279,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.4.0 | feat: log-guard.js dual-trigger D/P/T log enforcement (terminal status + cycle log), guard count 7→8, hooks.json position 4/8 |
 | 21.3.0 | feat: /verifying manifest v21 entries (V001-V004), guard consolidation analysis (keep 4, safety > count), Stop hook text block gap documented |
 | 21.2.0 | feat: L1-L4 observation resolution hierarchy (VERIFICATION-FIRST) + verifying SKILL.md manifest schema expansion |
 | 21.1.0 | feat: verification claim detection (sycophancy-guard 4-tier classification) + pressure L3 expansion (Read/Grep/Glob/Bash/Write/Edit blocked, expertise framing) |
