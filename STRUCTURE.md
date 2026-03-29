@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 20.6.0 | **Author**: TaWa | **License**: MIT
+**Version**: 20.7.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -65,13 +65,17 @@ crabshell/
 │   ├── regressing-state.js            # Regressing phase tracker (v19.23.0)
 │   ├── append-memory.js              # Atomic logbook.md append (v19.53.0)
 │   ├── regressing-guard.js           # PreToolUse regressing skill enforcement (v19.23.0)
-│   ├── sycophancy-guard.js           # Stop hook sycophancy detection (v19.29.0)
+│   ├── sycophancy-guard.js           # Stop + PreToolUse dual-layer sycophancy detection (v19.29.0, v20.7.0)
 │   ├── path-guard.js                # PreToolUse path validation + logbook.md Edit block + Write shrink guard (v19.31.0, v20.3.0, v20.6.0)
 │   ├── docs-guard.js                # PreToolUse D/P/T/I skill bypass prevention (v19.33.0)
 │   ├── verify-guard.js              # PreToolUse Final Verification + behavioral AC (v19.34.0, v20.3.0)
 │   ├── pressure-guard.js            # PreToolUse feedback pressure detection (v19.47.0)
 │   ├── skill-tracker.js             # PostToolUse skill-active flag setter (v19.33.0)
 │   ├── test-cwd-isolation.js         # Mock tests for cwd isolation (v17.0.0)
+│   ├── _test-path-guard.js           # Path-guard unit tests (v20.0.0)
+│   ├── _test-sycophancy-guard.js     # Sycophancy-guard unit tests (v20.4.0)
+│   ├── _test-sycophancy-pretooluse.js # Sycophancy-guard PreToolUse integration tests (v20.7.0)
+│   ├── _test-sycophancy-guard-manifest.js # Sycophancy-guard manifest behavioral test (v20.7.0)
 │   └── utils.js                      # Shared utilities (getStorageRoot, getProjectDir)
 │
 ├── skills/                           # Slash command skills (16 total)
@@ -233,6 +237,7 @@ L1 generation:
    │   ├─> Block Edit on memory/logbook.md — append-only enforcement (v20.3.0)
    │   └─> Block Write shrink on logbook.md — line count decrease detection (v20.6.0)
    ├─> pressure-guard.js (Write|Edit) — detect feedback pressure escalation
+   ├─> sycophancy-guard.js (Write|Edit) — mid-turn transcript parsing for sycophancy (v20.7.0)
    └─> skill-tracker.js (PostToolUse) — set TTL-based skill-active flag
 
 5. PostToolUse
@@ -243,7 +248,7 @@ L1 generation:
        └─> At threshold: create/update L1 → extractDelta() → creates delta_temp.txt
 
 6. Stop
-   └─> sycophancy-guard.js (v19.29.0)
+   └─> sycophancy-guard.js (v19.29.0, v20.7.0 dual-layer)
        ├─> Detect agreement-without-verification patterns in stop_response
        ├─> Check for evidence exemptions (P/O/G table, tool output references)
        └─> Block with re-examination instruction if sycophancy detected
@@ -259,6 +264,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 20.7.0 | feat: sycophancy-guard dual-layer — removed 100-char exemption, added PreToolUse mid-turn transcript parsing |
 | 20.6.0 | feat: memory.md → logbook.md rename (docs, skills, commands), memory-delta SKILL.md Step 4 append-memory.js CLI |
 | 20.5.0 | feat: counter file separation (counter.json), extract-delta.js mark-appended CLI, memory-delta SKILL.md Bash CLI steps |
 | 20.4.0 | feat: sycophancy-guard evidence type split (behavioral vs structural), inject-rules.js positional optimization (COMPRESSED_CHECKLIST first, verify items #1/#2, verification reminder) |

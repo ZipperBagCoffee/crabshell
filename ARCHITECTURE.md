@@ -1,4 +1,4 @@
-# Crabshell Architecture (v20.6.0)
+# Crabshell Architecture (v20.7.0)
 
 ## Overview
 
@@ -196,13 +196,15 @@ Two meta-principles guide Claude's approach to obstacles:
    │   └─> Require at least 1 behavioral (type: "direct") AC in manifest (v20.3.0)
    ├─> pressure-guard.js (Write|Edit) — v19.47.0+
    │   └─> Detect feedback pressure escalation patterns
+   ├─> sycophancy-guard.js (Write|Edit) — v20.7.0+
+   │   └─> Mid-turn transcript parsing for sycophancy patterns before tool writes
    └─> path-guard.js (Read|Grep|Glob|Bash|Write|Edit) — v19.31.0+
        ├─> Block operations targeting wrong .crabshell/ path
        ├─> Block Edit on memory/logbook.md — append-only enforcement (v20.3.0)
        └─> Block Write shrink on logbook.md — line count decrease detection (v20.6.0)
 
 3.5. Stop — v19.29.0+
-   └─> sycophancy-guard.js
+   └─> sycophancy-guard.js (dual-layer: Stop + PreToolUse, v20.7.0)
        └─> Detect agreement-without-verification patterns → block with re-examination
 
 4. PostToolUse (all tools)
@@ -294,7 +296,7 @@ Agent orchestration rules (11 rules covering pairing, cross-review, coherence, c
 | `verify-guard.js` | PreToolUse (Write\|Edit) | Block Final Verification writes without /verifying run; require behavioral AC in manifest |
 | `pressure-guard.js` | PreToolUse (Write\|Edit) | Detect feedback pressure escalation patterns |
 | `path-guard.js` | PreToolUse (Read\|Grep\|Glob\|Bash\|Write\|Edit) | Block wrong .crabshell/ path; block Edit on logbook.md; block Write shrink on logbook.md (v20.6.0) |
-| `sycophancy-guard.js` | Stop | Detect agreement-without-verification patterns; block with re-examination instruction |
+| `sycophancy-guard.js` | Stop, PreToolUse (Write\|Edit) | Dual-layer sycophancy detection: Stop response + mid-turn transcript parsing; block with re-examination |
 | `skill-tracker.js` | PostToolUse (Skill) | Set skill-active flag on Skill tool calls (TTL-based, 5min expiry) |
 | `regressing-state.js` | (library) | Phase tracker: getState, buildReminder, detectSkillCall, advancePhase |
 | `extract-delta.js` | (library) | L1 delta extraction, timestamp watermarks, temp file management |
@@ -415,6 +417,7 @@ Separated from memory-index.json to eliminate Write race condition during delta 
 
 | Version | Key Changes |
 |---------|-------------|
+| 20.7.0 | sycophancy-guard dual-layer — removed 100-char exemption, added PreToolUse mid-turn transcript parsing |
 | 20.6.0 | memory.md → logbook.md rename (docs, skills, commands), memory-delta SKILL.md Step 4 append-memory.js CLI |
 | 20.5.0 | Counter file separation (counter.json), extract-delta.js mark-appended CLI, memory-delta SKILL.md Bash CLI steps |
 | 20.4.0 | Sycophancy-guard evidence type split (behavioral vs structural), inject-rules.js positional optimization (COMPRESSED_CHECKLIST first, verify items #1/#2, verification reminder) |
