@@ -1,5 +1,9 @@
 # Changelog
 
+## 21.2.0
+- feat: L1-L4 observation resolution hierarchy added to VERIFICATION-FIRST section in inject-rules.js RULES
+- feat: verifying SKILL.md manifest schema expanded with level, steps[], observation fields
+
 ## 21.1.0
 - feat: sycophancy-guard verification claim detection — 4-tier classification (phantom/inflated/premature/overclaim), negation defense, protected zones, short response exemption
 - feat: pressure-guard L3 expansion — blocks Read/Grep/Glob/Bash/Write/Edit (was Write/Edit only), .crabshell/.claude exemption for all tools including Bash command inspection

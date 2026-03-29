@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.1.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.2.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -269,6 +269,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.2.0 | feat: L1-L4 observation resolution hierarchy (VERIFICATION-FIRST) + verifying SKILL.md manifest schema expansion |
 | 21.1.0 | feat: verification claim detection (sycophancy-guard 4-tier classification) + pressure L3 expansion (Read/Grep/Glob/Bash/Write/Edit blocked, expertise framing) |
 | 21.0.0 | feat: verification-sequence guard — source edit→test→commit enforcement, edit-grep cycle detection, transcript-utils.js shared utilities, hooks.json order optimization |
 | 20.7.0 | feat: sycophancy-guard dual-layer — removed 100-char exemption, added PreToolUse mid-turn transcript parsing |

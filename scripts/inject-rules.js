@@ -205,6 +205,16 @@ Before claiming ANY result verified:
 Verification ≠ reading a file. Verification = closing the gap between belief and reality through observation.
 **"File contains X" is NEVER verification. "Can verify but didn't" is a violation.**
 **Priority: (1) direct execution + observation; (2) indirect methods only when direct is impractical.**
+
+**Observation Resolution Levels (L1-L4):**
+Every verification item must specify its observation level. Higher levels provide stronger evidence.
+- **L1 (Direct Execution):** Run the code/command and observe output directly. _Example: \`npm test\` → see PASS/FAIL output._
+- **L2 (Indirect Execution):** Execute a related operation and infer the result. _Example: Run inject-rules.js, then Read CLAUDE.md to confirm injection._
+- **L3 (Structural Check):** Read files, grep for patterns, inspect code structure. No execution. _Example: grep for function name in file._
+- **L4 (Claim Without Evidence):** Stating a result without any tool output. **PROHIBITED — always a violation.**
+
+L3 alone is insufficient for runtime features. If L1 is possible, L3 is not acceptable.
+
 **When verification is needed and no project verification tool exists, invoke the 'verifying' skill to create one first.**
 
 **Agent output — every verification item contains:**

@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.1.0)
+# Crabshell Architecture (v21.2.0)
 
 ## Overview
 
@@ -16,6 +16,8 @@ Before claiming any result verified, Claude must:
 3. **Compare** — prediction vs observation; the gap is where findings live
 
 Every verification item requires a P/O/G (Prediction/Observation/Gap) table. "File contains X" is never verification. "Can verify but didn't" is a violation.
+
+Observation resolution levels (v21.2.0): L1 (direct execution) > L2 (indirect execution) > L3 (structural check) > L4 (claim without evidence, prohibited). L3 alone is insufficient when L1 is possible.
 
 ### SCOPE DEFINITIONS
 The plugin's RULES section includes Scope Definitions that reframe Claude's built-in system prompt directives (conciseness, efficiency, directness) so they do not conflict with verification requirements:
@@ -421,6 +423,7 @@ Separated from memory-index.json to eliminate Write race condition during delta 
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.2.0 | L1-L4 observation resolution hierarchy (VERIFICATION-FIRST) + verifying SKILL.md manifest schema expansion (level, steps[], observation fields) |
 | 21.1.0 | Verification claim detection (sycophancy-guard 4-tier classification) + pressure L3 expansion (all 6 tools blocked, expertise framing) |
 | 21.0.0 | verification-sequence guard — source edit→test→commit enforcement, edit-grep cycle detection, transcript-utils.js shared utilities, hooks.json order optimization |
 | 20.7.0 | sycophancy-guard dual-layer — removed 100-char exemption, added PreToolUse mid-turn transcript parsing |
