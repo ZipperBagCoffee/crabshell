@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.0.0)
+# Crabshell Architecture (v21.1.0)
 
 ## Overview
 
@@ -125,7 +125,7 @@ Two meta-principles guide Claude's approach to obstacles:
           |
           v
 +--------------------------------------------------------------------------+
-|  Skills Layer (15 skills)                                                 |
+|  Skills Layer (16 skills)                                                 |
 |  +---------------------------------+  +--------------------------------+ |
 |  | Operational Skills (7)          |  | Memory Skills (8)              | |
 |  | - discussing    (D documents)   |  | - save-memory                  | |
@@ -201,10 +201,10 @@ Two meta-principles guide Claude's approach to obstacles:
    ├─> verification-sequence.js gate (Write|Edit|Bash) — v21.0.0+
    │   ├─> Block git commit if source files edited but no test run
    │   └─> Block source file edits after 3+ edit-grep cycles without testing
-   ├─> pressure-guard.js (Write|Edit) — v19.47.0+
-   │   └─> Detect feedback pressure escalation patterns
-   └─> sycophancy-guard.js (Write|Edit) — v20.7.0+
-       └─> Mid-turn transcript parsing for sycophancy patterns before tool writes
+   ├─> pressure-guard.js (Read|Grep|Glob|Bash|Write|Edit) — v19.47.0+, v21.1.0 L3 expansion
+   │   └─> Block all 6 tools at pressure L3 with .crabshell/.claude exemption; expertise framing
+   └─> sycophancy-guard.js (Write|Edit) — v20.7.0+, v21.1.0 claim detection
+       └─> Mid-turn transcript parsing for sycophancy patterns + verification claim detection (4-tier) before tool writes
 
 3.5. Stop — v19.29.0+
    └─> sycophancy-guard.js (dual-layer: Stop + PreToolUse, v20.7.0)
@@ -299,9 +299,9 @@ Agent orchestration rules (11 rules covering pairing, cross-review, coherence, c
 | `regressing-guard.js` | PreToolUse (Write\|Edit) | Block direct plan/ticket writes during active regressing; force Skill tool |
 | `docs-guard.js` | PreToolUse (Write\|Edit) | Block writes to .crabshell/ D/P/T/I subdirectories without active skill flag |
 | `verify-guard.js` | PreToolUse (Write\|Edit) | Block Final Verification writes without /verifying run; require behavioral AC in manifest |
-| `pressure-guard.js` | PreToolUse (Write\|Edit) | Detect feedback pressure escalation patterns |
+| `pressure-guard.js` | PreToolUse (Read\|Grep\|Glob\|Bash\|Write\|Edit) | Detect feedback pressure escalation; block all 6 tools at L3 with .crabshell/.claude exemption |
 | `path-guard.js` | PreToolUse (Read\|Grep\|Glob\|Bash\|Write\|Edit) | Block wrong .crabshell/ path; block Edit on logbook.md; block Write shrink on logbook.md (v20.6.0) |
-| `sycophancy-guard.js` | Stop, PreToolUse (Write\|Edit) | Dual-layer sycophancy detection: Stop response + mid-turn transcript parsing; block with re-examination |
+| `sycophancy-guard.js` | Stop, PreToolUse (Write\|Edit) | Dual-layer sycophancy detection + verification claim detection (4-tier classification): Stop response + mid-turn transcript parsing; block with re-examination |
 | `skill-tracker.js` | PostToolUse (Skill) | Set skill-active flag on Skill tool calls (TTL-based, 5min expiry) |
 | `regressing-state.js` | (library) | Phase tracker: getState, buildReminder, detectSkillCall, advancePhase |
 | `extract-delta.js` | (library) | L1 delta extraction, timestamp watermarks, temp file management |
@@ -421,6 +421,7 @@ Separated from memory-index.json to eliminate Write race condition during delta 
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.1.0 | Verification claim detection (sycophancy-guard 4-tier classification) + pressure L3 expansion (all 6 tools blocked, expertise framing) |
 | 21.0.0 | verification-sequence guard — source edit→test→commit enforcement, edit-grep cycle detection, transcript-utils.js shared utilities, hooks.json order optimization |
 | 20.7.0 | sycophancy-guard dual-layer — removed 100-char exemption, added PreToolUse mid-turn transcript parsing |
 | 20.6.0 | memory.md → logbook.md rename (docs, skills, commands), memory-delta SKILL.md Step 4 append-memory.js CLI |
