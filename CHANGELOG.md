@@ -1,5 +1,11 @@
 # Changelog
 
+## 21.1.0
+- feat: sycophancy-guard verification claim detection — 4-tier classification (phantom/inflated/premature/overclaim), negation defense, protected zones, short response exemption
+- feat: pressure-guard L3 expansion — blocks Read/Grep/Glob/Bash/Write/Edit (was Write/Edit only), .crabshell/.claude exemption for all tools including Bash command inspection
+- feat: PRESSURE_L3 inject-rules.js text reframed from CRITICAL/BLOCKED to expertise/consensus guidance with context inoculation
+- feat: _test-sycophancy-claim-detection.js — verification claim detection test suite
+
 ## 21.0.0
 - feat: verification-sequence.js — dual-mode PostToolUse state tracker + PreToolUse gate (source file edit→test→commit enforcement, edit-grep cycle detection)
 - feat: transcript-utils.js — shared stdin/transcript/path utilities extracted from sycophancy-guard.js

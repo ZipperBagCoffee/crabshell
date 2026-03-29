@@ -13,7 +13,8 @@ async function main() {
   if (!hookData || !hookData.tool_name) { process.exit(0); return; }
 
   const toolName = hookData.tool_name;
-  if (toolName !== 'Write' && toolName !== 'Edit') { process.exit(0); return; }
+  const BLOCKED_TOOLS = ['Read', 'Grep', 'Glob', 'Bash', 'Write', 'Edit'];
+  if (!BLOCKED_TOOLS.includes(toolName)) { process.exit(0); return; }
 
   const input = hookData.tool_input;
   if (!input) { process.exit(0); return; }
@@ -32,19 +33,27 @@ async function main() {
   const fp = index.feedbackPressure;
   if (!fp || fp.level < 3) { process.exit(0); return; }
 
-  // Level 3: block Write/Edit except for .crabshell/.claude/ paths
-  const filePath = (input.file_path || input.path || '').replace(/\\/g, '/');
-
-  // Allow .crabshell/.claude/ paths (internal plugin/document operations, D/P/T/I now under .crabshell/)
-  if (/\/\.crabshell\//.test(filePath) || /\/\.claude\//.test(filePath)) {
-    process.exit(0);
-    return;
+  // Level 3: block all 6 tools except for .crabshell/.claude/ paths
+  if (toolName === 'Bash') {
+    // For Bash, check if the command references .crabshell/ or .claude/ (allow if it does)
+    const cmd = (input.command || '');
+    if (/\.crabshell\//.test(cmd) || /\.claude\//.test(cmd)) {
+      process.exit(0);
+      return;
+    }
+  } else {
+    // For Read/Grep/Glob/Write/Edit, check file_path or path
+    const filePath = (input.file_path || input.path || '').replace(/\\/g, '/');
+    if (/\/\.crabshell\//.test(filePath) || /\/\.claude\//.test(filePath)) {
+      process.exit(0);
+      return;
+    }
   }
 
-  // Block all other Write/Edit at pressure level 3
+  // Block at pressure level 3
   const output = {
     decision: "block",
-    reason: '[PRESSURE L3] Write/Edit blocked — 3+ consecutive negative feedbacks detected. You MUST delegate work via TaskCreate first. This resets pressure to Level 0 and unblocks Write/Edit. See "CRITICAL: Task Delegation Required" in your context.'
+    reason: '[PRESSURE L3] Tool use blocked — 3+ consecutive negative feedbacks detected. This situation benefits from expert-level re-analysis. Use TaskCreate to delegate the current task to a sub-agent with fresh perspective. TaskCreate resets pressure to Level 0 and unblocks all tools.'
   };
   console.log(JSON.stringify(output));
   process.exit(2);

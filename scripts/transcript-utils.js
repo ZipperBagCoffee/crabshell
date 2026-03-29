@@ -79,4 +79,70 @@ function readStdin(timeoutMs = 500) {
   });
 }
 
-module.exports = { readStdin, findTranscriptPath, encodeProjectPath, normalizePath };
+/**
+ * Parse recent Bash tool_use commands and their results from a transcript JSONL file.
+ * Reads the last 32KB, returns [{command, result}] pairs.
+ * Returns null if transcript is unavailable (fail-open signal).
+ * Returns [] if transcript is readable but contains no Bash commands.
+ * @param {string} transcriptPath - Path to the JSONL transcript file.
+ * @returns {Array<{command: string, result: string}> | null}
+ */
+function getRecentBashCommands(transcriptPath) {
+  if (!transcriptPath) return null;
+  try {
+    const stat = fs.statSync(transcriptPath);
+    if (stat.size === 0) return [];
+    const readSize = Math.min(32768, stat.size);
+    const buf = Buffer.alloc(readSize);
+    const fd = fs.openSync(transcriptPath, 'r');
+    fs.readSync(fd, buf, 0, readSize, stat.size - readSize);
+    fs.closeSync(fd);
+
+    const text = buf.toString('utf8');
+    const lines = text.split('\n').filter(l => l.trim());
+
+    const commands = [];
+    const pendingCommands = new Map();
+
+    for (const line of lines) {
+      let obj;
+      try { obj = JSON.parse(line); } catch { continue; }
+
+      if (obj.type === 'assistant' && Array.isArray(obj.message?.content)) {
+        for (const block of obj.message.content) {
+          if (block.type === 'tool_use' && block.name === 'Bash' && block.input?.command) {
+            pendingCommands.set(block.id, block.input.command);
+          }
+        }
+      }
+
+      if (obj.type === 'tool_result' || obj.type === 'tool-result') {
+        const toolUseId = obj.tool_use_id || obj.toolUseId;
+        if (toolUseId && pendingCommands.has(toolUseId)) {
+          const cmd = pendingCommands.get(toolUseId);
+          let result = '';
+          if (typeof obj.content === 'string') {
+            result = obj.content;
+          } else if (Array.isArray(obj.content)) {
+            result = obj.content
+              .filter(c => c.type === 'text' && c.text)
+              .map(c => c.text)
+              .join('\n');
+          }
+          commands.push({ command: cmd, result });
+          pendingCommands.delete(toolUseId);
+        }
+      }
+    }
+
+    for (const [, cmd] of pendingCommands) {
+      commands.push({ command: cmd, result: '' });
+    }
+
+    return commands;
+  } catch {
+    return null;
+  }
+}
+
+module.exports = { readStdin, findTranscriptPath, encodeProjectPath, normalizePath, getRecentBashCommands };

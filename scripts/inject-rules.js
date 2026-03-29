@@ -111,16 +111,17 @@ MANDATORY BEFORE RESPONDING:
 `;
 
 const PRESSURE_L3 = `
-## CRITICAL: Task Delegation Required (Level 3)
-3+ consecutive negative feedback signals. Direct execution is BLOCKED.
+## Expert Re-Analysis Recommended (Pressure Level 3)
+Multiple consecutive feedback signals suggest the current approach needs a fresh perspective.
+This situation benefits from task delegation — a sub-agent can re-analyze with independent context.
 
-YOU MUST:
-1. Use the Task tool to delegate your current work to a sub-agent
-2. Provide the sub-agent with: (a) original intent, (b) what went wrong, (c) specific task
-3. Write/Edit tools are BLOCKED until you delegate via Task tool
-4. After Task agent completes, review its output before presenting to user
+How to proceed:
+1. Use TaskCreate to delegate your current work to a sub-agent
+2. Include in the delegation: (a) original user intent, (b) what was tried and what feedback indicated, (c) specific deliverable
+3. TaskCreate automatically resets pressure to Level 0 and unblocks all tools (Read, Grep, Glob, Bash, Write, Edit)
+4. After the sub-agent completes, review its output before presenting to the user
 
-To unblock: use TaskCreate to delegate work. This resets pressure to Level 0.
+All tool calls are gated until delegation occurs — this ensures the fresh perspective happens before further work.
 `;
 
 const RULES = `

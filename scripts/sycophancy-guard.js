@@ -1,7 +1,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const { readStdin, findTranscriptPath, encodeProjectPath } = require('./transcript-utils');
+const { readStdin, findTranscriptPath, encodeProjectPath, getRecentBashCommands } = require('./transcript-utils');
 
 const SYCOPHANCY_PATTERNS = [
   // Korean
@@ -194,6 +194,217 @@ function checkSycophancy(text) {
   return { pattern: matchedPattern, structuralNote };
 }
 
+// ====================================================================
+// Verification Claim Detection
+// ====================================================================
+
+const VERIFICATION_CLAIM_PATTERNS = [
+  // English (13)
+  /\bverified\b/i,
+  /\ball tests pass\b/i,
+  /\bconfirmed working\b/i,
+  /\btests passing\b/i,
+  /\bverified working\b/i,
+  /\bsuccessfully tested\b/i,
+  /\bverification complete\b/i,
+  /\ball checks pass\b/i,
+  /\bconfirmed correct\b/i,
+  /\btests are green\b/i,
+  /\bbuild succeeds\b/i,
+  /\bno errors found\b/i,
+  /\bimplementation verified\b/i,
+  // Korean (12)
+  /검증완료/,
+  /테스트\s*통과/,
+  /확인완료/,
+  /정상\s*동작/,
+  /검증\s*결과\s*통과/,
+  /모든\s*테스트\s*통과/,
+  /빌드\s*성공/,
+  /오류\s*없음/,
+  /구현\s*검증/,
+  /검증됨/,
+  /확인됨/,
+  /테스트\s*성공/,
+];
+
+// Negation prefixes: if found within 60 chars before the claim, it's not a claim
+const NEGATION_PREFIXES = [
+  /\bnot\s+(?:yet\s+)?$/i,
+  /\bhaven'?t\s+$/i,
+  /\bhasn'?t\s+$/i,
+  /\bwasn'?t\s+$/i,
+  /\bisn'?t\s+$/i,
+  /\bdon'?t\s+$/i,
+  /\bdoesn'?t\s+$/i,
+  /\bnever\s+$/i,
+  /\bwithout\s+$/i,
+  /\bshould\s+$/i,
+  /\bneed\s+to\s+$/i,
+  /\bmust\s+$/i,
+  // Korean
+  /안\s*$/,
+  /못\s*$/,
+  /아직\s*$/,
+];
+
+// Test execution patterns (inlined from verification-sequence.js to avoid circular dependency)
+const TEST_EXECUTION_PATTERNS = [
+  /\bnpm\s+test\b/,
+  /\bnpm\s+run\s+(test|check|verify|lint|build)\b/,
+  /\bnpx\s+(jest|mocha|vitest)\b/,
+  /\bpytest\b/,
+  /\bcargo\s+test\b/,
+  /\bgo\s+test\b/,
+  /\bmake\s+test\b/,
+  /\bnode\s+\S*\.test\.\S+/,
+  /\bnode\s+\S*_test[_-]\S+/,
+  /\btsc\b/,
+  /\beslint\b/,
+  /\bjest\b/,
+  /\bmocha\b/,
+  /\bvitest\b/,
+];
+
+// Structural-only command patterns (grep, read, cat — not execution)
+const STRUCTURAL_CMD_PATTERNS = [
+  /^\s*grep\b/,
+  /^\s*rg\b/,
+  /^\s*cat\b/,
+  /^\s*head\b/,
+  /^\s*tail\b/,
+  /^\s*less\b/,
+  /^\s*wc\b/,
+  /^\s*find\b/,
+  /^\s*ls\b/,
+  /^\s*(echo|printf)\b/,
+];
+
+/**
+ * Check if text before match position contains a negation prefix (60-char lookback).
+ */
+function hasNegationPrefix(text, matchIndex) {
+  if (matchIndex <= 0) return false;
+  const lookback = text.substring(Math.max(0, matchIndex - 60), matchIndex);
+  for (const prefix of NEGATION_PREFIXES) {
+    if (prefix.test(lookback)) return true;
+  }
+  return false;
+}
+
+/**
+ * Check if a command is a test execution (behavioral evidence).
+ */
+function isTestCommand(command) {
+  if (!command || typeof command !== 'string') return false;
+  const cmd = command.trim();
+  // Reject trivial fake tests (echo pass, etc.)
+  if (cmd.length < 15 && !/\b(test|jest|mocha|vitest|pytest|tsc|eslint|lint|build|check|verify)\b/i.test(cmd)) {
+    return false;
+  }
+  if (/^\s*(echo|printf)\s+/i.test(cmd) && /\b(pass|ok|success|true)\b/i.test(cmd)) {
+    return false;
+  }
+  for (const pattern of TEST_EXECUTION_PATTERNS) {
+    if (pattern.test(cmd)) return true;
+  }
+  return false;
+}
+
+/**
+ * Check if a command is structural-only (grep/read/cat — not execution).
+ */
+function isStructuralCommand(command) {
+  if (!command || typeof command !== 'string') return false;
+  const cmd = command.trim();
+  for (const pattern of STRUCTURAL_CMD_PATTERNS) {
+    if (pattern.test(cmd)) return true;
+  }
+  return false;
+}
+
+/**
+ * Check verification claims in the stop response.
+ *
+ * 4-tier classification:
+ *   BEHAVIORAL (test found in bash history)  → ALLOW
+ *   PARTIAL    (non-test bash found)          → ALLOW
+ *   STRUCTURAL_ONLY (only grep/read commands) → BLOCK
+ *   NONE       (no bash commands at all)      → BLOCK
+ *
+ * Returns null if no claim found or fail-open conditions met.
+ */
+function checkVerificationClaims(response, transcriptPath) {
+  if (!response) return null;
+
+  // Short response exemption: ≤15 chars too short for a verification claim
+  // (Korean is more information-dense per character than English)
+  if (response.length <= 15) return null;
+
+  // Strip protected zones
+  const stripped = stripProtectedZones(response);
+
+  // Check for verification claim patterns
+  let matchedClaim = null;
+  let matchIndex = -1;
+  for (const pattern of VERIFICATION_CLAIM_PATTERNS) {
+    const match = stripped.match(pattern);
+    if (match) {
+      // Check negation prefix in stripped text
+      if (hasNegationPrefix(stripped, match.index)) continue;
+      matchedClaim = match[0];
+      matchIndex = match.index;
+      break;
+    }
+  }
+
+  if (!matchedClaim) return null;
+
+  // Check behavioral evidence in the response text itself (P/O/G tables, test output)
+  const textBeforeClaim = response.substring(0, Math.max(0, matchIndex));
+  for (const marker of BEHAVIORAL_EVIDENCE) {
+    if (marker.test(textBeforeClaim) || marker.test(response)) {
+      return { claim: matchedClaim, tier: 'BEHAVIORAL', blocked: false };
+    }
+  }
+
+  // Claim found — check bash history for evidence
+  const tPath = transcriptPath || findTranscriptPath();
+  const bashCommands = getRecentBashCommands(tPath);
+
+  // null = transcript unavailable → fail-open
+  if (bashCommands === null) return null;
+
+  if (bashCommands.length === 0) {
+    return { claim: matchedClaim, tier: 'NONE', blocked: true };
+  }
+
+  // Classify bash commands
+  let hasTest = false;
+  let hasNonStructural = false;
+  let allStructural = true;
+
+  for (const { command } of bashCommands) {
+    if (isTestCommand(command)) {
+      hasTest = true;
+      allStructural = false;
+      break;
+    }
+    if (!isStructuralCommand(command)) {
+      allStructural = false;
+      hasNonStructural = true;
+    }
+  }
+
+  if (hasTest) {
+    return { claim: matchedClaim, tier: 'BEHAVIORAL', blocked: false };
+  }
+  if (!allStructural && hasNonStructural) {
+    return { claim: matchedClaim, tier: 'PARTIAL', blocked: false };
+  }
+  return { claim: matchedClaim, tier: 'STRUCTURAL_ONLY', blocked: true };
+}
+
 /**
  * Handle PreToolUse hook: check mid-turn text before Write|Edit tool calls.
  */
@@ -229,7 +440,7 @@ function handlePreToolUse(hookData) {
 }
 
 /**
- * Handle Stop hook: check final response for sycophancy (existing logic).
+ * Handle Stop hook: check final response for verification claims and sycophancy.
  */
 function handleStop(hookData) {
   // Prevent infinite loop: exit if this is a continuation from a previous stop hook block
@@ -239,7 +450,22 @@ function handleStop(hookData) {
 
   if (!response) process.exit(0);
 
-  // Run sycophancy check
+  // Step 1: Check verification claims BEFORE sycophancy check
+  const claimResult = checkVerificationClaims(response, hookData.transcript_path);
+  if (claimResult && claimResult.blocked) {
+    const tierMsg = claimResult.tier === 'NONE'
+      ? 'No Bash commands found in session history.'
+      : 'Only structural commands (grep/read) found — no test execution.';
+    const output = {
+      decision: "block",
+      reason: `Verification claim detected: '${claimResult.claim}' [tier: ${claimResult.tier}]. ${tierMsg} Before claiming verification, you MUST: (1) Run actual tests or execute the code, (2) Show the test output, (3) Then state verification results WITH evidence. Claiming "verified" without execution violates the VERIFICATION-FIRST principle.`
+    };
+    process.stderr.write(`[SYCOPHANCY_GUARD] Blocked verification claim: '${claimResult.claim}' tier=${claimResult.tier}\n`);
+    console.log(JSON.stringify(output));
+    process.exit(2);
+  }
+
+  // Step 2: Run sycophancy check
   const result = checkSycophancy(response);
   if (!result) process.exit(0); // clean
 

@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.0.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.1.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -64,11 +64,11 @@ crabshell/
 │   ├── regressing-state.js            # Regressing phase tracker (v19.23.0)
 │   ├── append-memory.js              # Atomic logbook.md append (v19.53.0)
 │   ├── regressing-guard.js           # PreToolUse regressing skill enforcement (v19.23.0)
-│   ├── sycophancy-guard.js           # Stop + PreToolUse dual-layer sycophancy detection (v19.29.0, v20.7.0)
+│   ├── sycophancy-guard.js           # Stop + PreToolUse dual-layer sycophancy detection + verification claim detection (v19.29.0, v20.7.0, v21.1.0)
 │   ├── path-guard.js                # PreToolUse path validation + logbook.md Edit block + Write shrink guard (v19.31.0, v20.3.0, v20.6.0)
 │   ├── docs-guard.js                # PreToolUse D/P/T/I skill bypass prevention (v19.33.0)
 │   ├── verify-guard.js              # PreToolUse Final Verification + behavioral AC (v19.34.0, v20.3.0)
-│   ├── pressure-guard.js            # PreToolUse feedback pressure detection (v19.47.0)
+│   ├── pressure-guard.js            # PreToolUse feedback pressure L3 blocking — all 6 tools (v19.47.0, v21.1.0)
 │   ├── verification-sequence.js     # PostToolUse state tracker + PreToolUse commit/edit gate (v21.0.0)
 │   ├── skill-tracker.js             # PostToolUse skill-active flag setter (v19.33.0)
 │   ├── test-cwd-isolation.js         # Mock tests for cwd isolation (v17.0.0)
@@ -76,6 +76,7 @@ crabshell/
 │   ├── _test-sycophancy-guard.js     # Sycophancy-guard unit tests (v20.4.0)
 │   ├── _test-sycophancy-pretooluse.js # Sycophancy-guard PreToolUse integration tests (v20.7.0)
 │   ├── _test-sycophancy-guard-manifest.js # Sycophancy-guard manifest behavioral test (v20.7.0)
+│   ├── _test-sycophancy-claim-detection.js # Verification claim detection tests (v21.1.0)
 │   ├── _test-verification-sequence.js # Verification-sequence unit/integration tests (v21.0.0)
 │   └── utils.js                      # Shared utilities (getStorageRoot, getProjectDir)
 │
@@ -240,8 +241,8 @@ L1 generation:
    ├─> verification-sequence.js gate (Write|Edit|Bash) — source edit→test→commit enforcement (v21.0.0)
    │   ├─> Block git commit if source files edited but no test run
    │   └─> Block source file edits after 3+ edit-grep cycles without testing
-   ├─> pressure-guard.js (Write|Edit) — detect feedback pressure escalation
-   └─> sycophancy-guard.js (Write|Edit) — mid-turn transcript parsing for sycophancy (v20.7.0)
+   ├─> pressure-guard.js (Read|Grep|Glob|Bash|Write|Edit) — detect feedback pressure escalation
+   └─> sycophancy-guard.js (Write|Edit) — mid-turn transcript parsing for sycophancy + verification claim detection (v20.7.0, v21.1.0)
 
 5. PostToolUse
    ├─> counter.js check
@@ -268,6 +269,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.1.0 | feat: verification claim detection (sycophancy-guard 4-tier classification) + pressure L3 expansion (Read/Grep/Glob/Bash/Write/Edit blocked, expertise framing) |
 | 21.0.0 | feat: verification-sequence guard — source edit→test→commit enforcement, edit-grep cycle detection, transcript-utils.js shared utilities, hooks.json order optimization |
 | 20.7.0 | feat: sycophancy-guard dual-layer — removed 100-char exemption, added PreToolUse mid-turn transcript parsing |
 | 20.6.0 | feat: memory.md → logbook.md rename (docs, skills, commands), memory-delta SKILL.md Step 4 append-memory.js CLI |
