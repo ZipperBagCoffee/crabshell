@@ -193,7 +193,7 @@ The plugin uses Claude Code hooks to run automatically:
 | `Stop` | `sycophancy-guard.js` | Before response finalized | Detects agreement-without-verification patterns in responses |
 | `PreToolUse` | `docs-guard.js` | Before Write/Edit to docs/ | Blocks writes to docs/ directories without active skill flag |
 | `PreToolUse` | `verify-guard.js` | Before Write/Edit to tickets | Blocks Final Verification writes without prior `/verifying` run |
-| `PreToolUse` | `path-guard.js` | Before Read/Grep/Glob/Bash | Blocks operations targeting wrong `.crabshell/memory/` path |
+| `PreToolUse` | `path-guard.js` | Before Read/Grep/Glob/Bash/Write/Edit | Blocks wrong path, Edit on logbook.md, Write shrink on logbook.md |
 | `PostToolUse` | `skill-tracker.js` | After Skill tool call | Sets skill-active flag on Skill tool calls for guard scripts |
 | `SessionEnd` | `counter.js final` | Session ends | Creates final L1 backup, extracts remaining delta |
 

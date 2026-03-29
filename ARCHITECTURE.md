@@ -196,9 +196,10 @@ Two meta-principles guide Claude's approach to obstacles:
    │   └─> Require at least 1 behavioral (type: "direct") AC in manifest (v20.3.0)
    ├─> pressure-guard.js (Write|Edit) — v19.47.0+
    │   └─> Detect feedback pressure escalation patterns
-   └─> path-guard.js (Read|Grep|Glob|Bash|Edit) — v19.31.0+
+   └─> path-guard.js (Read|Grep|Glob|Bash|Write|Edit) — v19.31.0+
        ├─> Block operations targeting wrong .crabshell/ path
-       └─> Block Edit on memory/logbook.md — append-only enforcement (v20.3.0)
+       ├─> Block Edit on memory/logbook.md — append-only enforcement (v20.3.0)
+       └─> Block Write shrink on logbook.md — line count decrease detection (v20.6.0)
 
 3.5. Stop — v19.29.0+
    └─> sycophancy-guard.js
@@ -292,7 +293,7 @@ Agent orchestration rules (11 rules covering pairing, cross-review, coherence, c
 | `docs-guard.js` | PreToolUse (Write\|Edit) | Block writes to .crabshell/ D/P/T/I subdirectories without active skill flag |
 | `verify-guard.js` | PreToolUse (Write\|Edit) | Block Final Verification writes without /verifying run; require behavioral AC in manifest |
 | `pressure-guard.js` | PreToolUse (Write\|Edit) | Detect feedback pressure escalation patterns |
-| `path-guard.js` | PreToolUse (Read\|Grep\|Glob\|Bash\|Edit) | Block wrong .crabshell/ path; block Edit on logbook.md (append-only) |
+| `path-guard.js` | PreToolUse (Read\|Grep\|Glob\|Bash\|Write\|Edit) | Block wrong .crabshell/ path; block Edit on logbook.md; block Write shrink on logbook.md (v20.6.0) |
 | `sycophancy-guard.js` | Stop | Detect agreement-without-verification patterns; block with re-examination instruction |
 | `skill-tracker.js` | PostToolUse (Skill) | Set skill-active flag on Skill tool calls (TTL-based, 5min expiry) |
 | `regressing-state.js` | (library) | Phase tracker: getState, buildReminder, detectSkillCall, advancePhase |
