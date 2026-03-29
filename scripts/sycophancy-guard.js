@@ -1,34 +1,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
-
-// Read stdin with timeout (same pattern as regressing-guard.js)
-function readStdin(timeoutMs = 500) {
-  // hook-runner.js v2 stores parsed stdin in HOOK_DATA env var
-  if (process.env.HOOK_DATA) {
-    try { return Promise.resolve(JSON.parse(process.env.HOOK_DATA)); }
-    catch { return Promise.resolve(null); }
-  }
-  return new Promise((resolve) => {
-    let data = '';
-    let resolved = false;
-    const done = (result) => { if (!resolved) { resolved = true; resolve(result); } };
-    const timer = setTimeout(() => {
-      done(data.trim() ? (() => { try { return JSON.parse(data.trim()); } catch { return null; } })() : null);
-    }, timeoutMs);
-
-    process.stdin.setEncoding('utf8');
-    process.stdin.on('data', (chunk) => { data += chunk; });
-    process.stdin.on('end', () => {
-      clearTimeout(timer);
-      if (data.trim()) { try { done(JSON.parse(data.trim())); } catch { done(null); } }
-      else { done(null); }
-    });
-    process.stdin.on('error', () => { clearTimeout(timer); done(null); });
-    process.stdin.resume();
-  });
-}
+const { readStdin, findTranscriptPath, encodeProjectPath } = require('./transcript-utils');
 
 const SYCOPHANCY_PATTERNS = [
   // Korean
@@ -108,36 +81,6 @@ function stripProtectedZones(text) {
   stripped = stripped.replace(/`[^`]+`/g, ' ');             // inline code
   stripped = stripped.replace(/^>\s*.+$/gm, ' ');           // blockquotes
   return stripped;
-}
-
-// Encode project path to Claude Code's ~/.claude/projects/ directory name format
-function encodeProjectPath(projectDir) {
-  return projectDir.replace(/\\/g, '/').replace(/\//g, '-').replace(':', '-');
-}
-
-// Find current session transcript by exact project path match
-function findTranscriptPath() {
-  const projectDir = process.env.CLAUDE_PROJECT_DIR || process.env.PROJECT_DIR || process.cwd();
-  const encoded = encodeProjectPath(projectDir);
-  const claudeProjectsDir = path.join(os.homedir(), '.claude', 'projects');
-  try {
-    if (!fs.existsSync(claudeProjectsDir)) return null;
-    const projects = fs.readdirSync(claudeProjectsDir);
-    // Exact match first (case-insensitive for Windows)
-    const match = projects.find(p => p.toLowerCase() === encoded.toLowerCase());
-    if (match) {
-      const projPath = path.join(claudeProjectsDir, match);
-      const files = fs.readdirSync(projPath).filter(f => f.endsWith('.jsonl'));
-      if (files.length > 0) {
-        const sorted = files.map(f => ({
-          path: path.join(projPath, f),
-          mtime: fs.statSync(path.join(projPath, f)).mtime
-        })).sort((a, b) => b.mtime - a.mtime);
-        return sorted[0].path;
-      }
-    }
-  } catch (e) { return null; }
-  return null;
 }
 
 /**
@@ -313,7 +256,7 @@ function handleStop(hookData) {
 
 async function main() {
   const hookData = await readStdin();
-  if (!hookData) process.exit(0); // fail-open: no data
+  if (!hookData || Object.keys(hookData).length === 0) process.exit(0); // fail-open: no data
 
   // Dual dispatch: detect mode from hookData
   const isPreToolUse = !!hookData.tool_name;

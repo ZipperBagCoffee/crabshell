@@ -1,4 +1,4 @@
-# Crabshell Architecture (v20.7.0)
+# Crabshell Architecture (v21.0.0)
 
 ## Overview
 
@@ -182,7 +182,11 @@ Two meta-principles guide Claude's approach to obstacles:
        └─> Output indicator: [rules injected], [rules + delta pending],
             [rules + rotation pending], [REGRESSING ACTIVE]
 
-3. PreToolUse — multiple guards
+3. PreToolUse — multiple guards (ordered: cheapest first)
+   ├─> path-guard.js (Read|Grep|Glob|Bash|Write|Edit) — v19.31.0+
+   │   ├─> Block operations targeting wrong .crabshell/ path
+   │   ├─> Block Edit on memory/logbook.md — append-only enforcement (v20.3.0)
+   │   └─> Block Write shrink on logbook.md — line count decrease detection (v20.6.0)
    ├─> regressing-guard.js (Write|Edit) — v19.23.0+
    │   ├─> If regressing active + phase=planning + target is .crabshell/plan/
    │   │   └─> BLOCK (exit 2): must use /planning skill instead
@@ -194,14 +198,13 @@ Two meta-principles guide Claude's approach to obstacles:
    ├─> verify-guard.js (Write|Edit) — v19.34.0+
    │   ├─> Block Final Verification writes without prior /verifying run call
    │   └─> Require at least 1 behavioral (type: "direct") AC in manifest (v20.3.0)
+   ├─> verification-sequence.js gate (Write|Edit|Bash) — v21.0.0+
+   │   ├─> Block git commit if source files edited but no test run
+   │   └─> Block source file edits after 3+ edit-grep cycles without testing
    ├─> pressure-guard.js (Write|Edit) — v19.47.0+
    │   └─> Detect feedback pressure escalation patterns
-   ├─> sycophancy-guard.js (Write|Edit) — v20.7.0+
-   │   └─> Mid-turn transcript parsing for sycophancy patterns before tool writes
-   └─> path-guard.js (Read|Grep|Glob|Bash|Write|Edit) — v19.31.0+
-       ├─> Block operations targeting wrong .crabshell/ path
-       ├─> Block Edit on memory/logbook.md — append-only enforcement (v20.3.0)
-       └─> Block Write shrink on logbook.md — line count decrease detection (v20.6.0)
+   └─> sycophancy-guard.js (Write|Edit) — v20.7.0+
+       └─> Mid-turn transcript parsing for sycophancy patterns before tool writes
 
 3.5. Stop — v19.29.0+
    └─> sycophancy-guard.js (dual-layer: Stop + PreToolUse, v20.7.0)
@@ -213,6 +216,8 @@ Two meta-principles guide Claude's approach to obstacles:
    │   ├─> Increment counter
    │   ├─> checkAndRotate() — archive if > 23,750 tokens
    │   └─> At threshold: create/update L1 → extractDelta() → creates delta_temp.txt
+   ├─> verification-sequence.js record (.*) — v21.0.0+
+   │   └─> Track source file edits, test executions, grep cycles in verification-state.json
    └─> skill-tracker.js (Skill) — v19.33.0+
        └─> Set skill-active flag on Skill tool calls (TTL-based, 5min expiry)
 
@@ -305,10 +310,9 @@ Agent orchestration rules (11 rules covering pairing, cross-review, coherence, c
 | `constants.js` | (library) | Centralized thresholds, file paths, regressing state file path |
 | `utils.js` | (library) | Shared utilities: readJsonOrDefault, readIndexSafe, writeJson, getProjectDir |
 | `init.js` | (library) | Project initialization, index preservation on parse error |
-| `sync-rules-to-claude.js` | (standalone) | Manual CLAUDE.md sync using same marker system |
+| `transcript-utils.js` | (library) | Shared stdin/transcript utilities: readStdin, findTranscriptPath, encodeProjectPath, normalizePath |
 | `refine-raw.js` | (library) | raw.jsonl -> l1.jsonl conversion (async + sync variants) |
 | `legacy-migration.js` | (library) | Split oversized memory files |
-| `migrate-timezone.js` | (standalone) | Legacy timestamp migration (local -> UTC) |
 
 ## Configuration Constants (constants.js)
 
@@ -417,6 +421,7 @@ Separated from memory-index.json to eliminate Write race condition during delta 
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.0.0 | verification-sequence guard — source edit→test→commit enforcement, edit-grep cycle detection, transcript-utils.js shared utilities, hooks.json order optimization |
 | 20.7.0 | sycophancy-guard dual-layer — removed 100-char exemption, added PreToolUse mid-turn transcript parsing |
 | 20.6.0 | memory.md → logbook.md rename (docs, skills, commands), memory-delta SKILL.md Step 4 append-memory.js CLI |
 | 20.5.0 | Counter file separation (counter.json), extract-delta.js mark-appended CLI, memory-delta SKILL.md Bash CLI steps |

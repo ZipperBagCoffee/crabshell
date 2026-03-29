@@ -1,4 +1,4 @@
-# Crabshell User Manual (v20.7.0)
+# Crabshell User Manual (v21.0.0)
 
 ## Why Do You Need This?
 
@@ -195,6 +195,8 @@ The plugin uses Claude Code hooks to run automatically:
 | `PreToolUse` | `docs-guard.js` | Before Write/Edit to docs/ | Blocks writes to docs/ directories without active skill flag |
 | `PreToolUse` | `verify-guard.js` | Before Write/Edit to tickets | Blocks Final Verification writes without prior `/verifying` run |
 | `PreToolUse` | `path-guard.js` | Before Read/Grep/Glob/Bash/Write/Edit | Blocks wrong path, Edit on logbook.md, Write shrink on logbook.md |
+| `PostToolUse` | `verification-sequence.js record` | After each tool use | Tracks source file edits, test runs, grep cycles |
+| `PreToolUse` | `verification-sequence.js gate` | Before Write/Edit/Bash | Blocks git commit without tests, blocks edits after 3+ grep cycles |
 | `PostToolUse` | `skill-tracker.js` | After Skill tool call | Sets skill-active flag on Skill tool calls for guard scripts |
 | `SessionEnd` | `counter.js final` | Session ends | Creates final L1 backup, extracts remaining delta |
 
@@ -210,6 +212,7 @@ Guard scripts are PreToolUse/Stop hooks that prevent common mistakes:
 | `docs-guard.js` | Direct writes to `docs/` directories outside of an active skill (discussing, planning, ticketing, etc.) |
 | `verify-guard.js` | Writing "Final Verification" results to ticket files without actually running `/verifying` first |
 | `path-guard.js` | File operations targeting a wrong `.crabshell/memory/` path (e.g., a different project's memory directory) |
+| `verification-sequence.js` | Source files edited without running tests before git commit; edit-grep cycles (editing and grepping instead of testing) |
 | `skill-tracker.js` | Supporting guard: sets the `skill-active` flag when a Skill tool call is detected, so `docs-guard` and `verify-guard` know when writes are authorized |
 
 Guards run automatically via hooks. No configuration needed.
