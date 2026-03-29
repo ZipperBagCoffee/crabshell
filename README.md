@@ -28,7 +28,7 @@ After installation, **you don't need to do anything**. It works automatically.
 
 ### Automatic (No action needed)
 - `logbook.md` - Session summaries accumulate here (auto-rotates at 23,750 tokens)
-- `memory_*.md` - Rotated archives (L2)
+- `logbook_*.md` - Rotated archives (L2)
 - `*.summary.json` - L3 summaries (Haiku-generated)
 - `sessions/*.l1.jsonl` - Detailed session transcripts (L1)
 
@@ -125,7 +125,7 @@ Coding conventions: ...
 ```
 [project]/.crabshell/memory/
 ├── logbook.md             # Active rolling memory (auto-rotates at 23,750 tokens)
-├── memory_*.md            # Rotated archives (L2)
+├── logbook_*.md            # Rotated archives (L2)
 ├── *.summary.json         # L3 summaries (Haiku-generated)
 ├── memory-index.json      # Rotation tracking & delta state
 ├── counter.json           # PostToolUse counter
@@ -166,7 +166,7 @@ Project: `.crabshell/memory/config.json` (takes precedence over global)
 ```
 L1 (sessions/*.l1.jsonl)  - Refined session transcripts (~95% size reduction)
      ↓
-L2 (memory_*.md)          - Rotated archives (auto at 23,750 tokens)
+L2 (logbook_*.md)          - Rotated archives (auto at 23,750 tokens)
      ↓
 L3 (*.summary.json)       - Haiku-generated summaries
      ↓

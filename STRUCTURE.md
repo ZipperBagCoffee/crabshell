@@ -13,7 +13,7 @@ crabshell/
 ├── .crabshell/                       # Crabshell local storage
 │   ├── memory/                       # Project memory storage
 │   │   ├── logbook.md                # Rolling session summary (auto-rotates)
-│   │   ├── memory_*.md               # Rotated archives (L2)
+│   │   ├── logbook_*.md               # Rotated archives (L2)
 │   │   ├── *.summary.json            # L3 summaries (Haiku-generated)
 │   │   ├── memory-index.json         # Rotation tracking & delta state
 │   │   ├── counter.json              # PostToolUse counter (separated v20.5.0)
@@ -203,7 +203,7 @@ L1 generation:
 |-------|------|-------------|
 | L1 | `sessions/*.l1.jsonl` | Raw session transcripts |
 | L2 | `logbook.md` | Active rolling memory (auto-rotates at 23,750 tokens) |
-| L2 | `memory_*.md` | Archived memory files |
+| L2 | `logbook_*.md` | Archived memory files |
 | L3 | `*.summary.json` | Haiku-generated JSON summaries |
 
 ## Hook Flow

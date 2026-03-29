@@ -7,11 +7,11 @@
  *   "current": "logbook.md",
  *   "rotatedFiles": [
  *     {
- *       "file": "memory_YYYYMMDD_HHMMSS.md",
+ *       "file": "logbook_YYYYMMDD_HHMMSS.md",
  *       "rotatedAt": "2026-01-13T12:34:56.789Z",
  *       "tokens": 1234,
  *       "bytes": 5678,
- *       "summary": "memory_YYYYMMDD_HHMMSS.summary.json",
+ *       "summary": "logbook_YYYYMMDD_HHMMSS.summary.json",
  *       "summaryGenerated": false,
  *       "dateRange": { "start": "ISO", "end": "ISO" }
  *     }
@@ -169,27 +169,71 @@ function migrateMemoryToLogbook(projectDir) {
     const oldPath = path.join(memoryDir, 'memory.md');
     const newPath = path.join(memoryDir, MEMORY_FILE); // 'logbook.md'
 
-    if (!fs.existsSync(oldPath) || fs.existsSync(newPath)) return;
+    // Case 1: only memory.md exists → rename
+    if (fs.existsSync(oldPath) && !fs.existsSync(newPath)) {
+      fs.renameSync(oldPath, newPath);
+      console.error(`[CRABSHELL] Renamed memory.md -> ${MEMORY_FILE}`);
+    }
+    // Case 2: both exist → prepend memory.md content to logbook.md, delete memory.md
+    else if (fs.existsSync(oldPath) && fs.existsSync(newPath)) {
+      const oldContent = fs.readFileSync(oldPath, 'utf8');
+      const newContent = fs.readFileSync(newPath, 'utf8');
+      fs.writeFileSync(newPath, oldContent + '\n' + newContent);
+      fs.unlinkSync(oldPath);
+      console.error(`[CRABSHELL] Merged memory.md into ${MEMORY_FILE} (${oldContent.split('\\n').length} lines prepended)`);
+    }
 
-    fs.renameSync(oldPath, newPath);
-    console.error(`[CRABSHELL] Renamed memory.md -> ${MEMORY_FILE}`);
+    // Rename archive files: memory_*.md → logbook_*.md (and their .summary.json)
+    const files = fs.readdirSync(memoryDir);
+    for (const file of files) {
+      if (file.startsWith('memory_') && file.endsWith('.md')) {
+        const newName = 'logbook_' + file.slice('memory_'.length);
+        fs.renameSync(path.join(memoryDir, file), path.join(memoryDir, newName));
+        console.error(`[CRABSHELL] Renamed ${file} -> ${newName}`);
+        // Also rename corresponding .summary.json
+        const baseName = file.replace(/\.md$/, '');  // memory_YYYYMMDD_HHMMSS
+        const newBaseName = newName.replace(/\.md$/, '');
+        const summaryOld = baseName + '.summary.json';  // memory_YYYYMMDD_HHMMSS.summary.json
+        const summaryNew = newBaseName + '.summary.json';
+        if (fs.existsSync(path.join(memoryDir, summaryOld))) {
+          fs.renameSync(path.join(memoryDir, summaryOld), path.join(memoryDir, summaryNew));
+          console.error(`[CRABSHELL] Renamed ${summaryOld} -> ${summaryNew}`);
+        }
+      }
+    }
 
-    // Update memory-index.json "current" field
+    // Update memory-index.json: "current" field + rotatedFiles entries
     const indexPath = path.join(memoryDir, INDEX_FILE);
     if (fs.existsSync(indexPath)) {
       try {
         const index = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
+        let changed = false;
         if (index.current === 'memory.md') {
           index.current = MEMORY_FILE;
+          changed = true;
+        }
+        if (Array.isArray(index.rotatedFiles)) {
+          for (const entry of index.rotatedFiles) {
+            if (entry.file && entry.file.startsWith('memory_')) {
+              entry.file = 'logbook_' + entry.file.slice('memory_'.length);
+              changed = true;
+            }
+            if (entry.summary && entry.summary.startsWith('memory_')) {
+              entry.summary = 'logbook_' + entry.summary.slice('memory_'.length);
+              changed = true;
+            }
+          }
+        }
+        if (changed) {
           fs.writeFileSync(indexPath, JSON.stringify(index, null, 2));
-          console.error(`[CRABSHELL] Updated memory-index.json current -> ${MEMORY_FILE}`);
+          console.error(`[CRABSHELL] Updated memory-index.json (current + rotatedFiles)`);
         }
       } catch (e) {
         console.error(`[CRABSHELL] Failed to update memory-index.json: ${e.message}`);
       }
     }
   } catch (e) {
-    console.error(`[CRABSHELL] memory.md -> logbook.md migration error: ${e.message}`);
+    console.error(`[CRABSHELL] memory -> logbook migration error: ${e.message}`);
   }
 }
 

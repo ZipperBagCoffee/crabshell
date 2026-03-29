@@ -51,7 +51,7 @@ Crabshell solves this problem.
 ```
 .crabshell/memory/
 ├── logbook.md           # Active rolling memory (auto-rotates)
-├── memory_*.md          # Rotated archives (L2)
+├── logbook_*.md          # Rotated archives (L2)
 ├── *.summary.json       # L3 summaries (Haiku-generated)
 ├── memory-index.json    # Rotation tracking & delta state
 ├── counter.json         # PostToolUse counter
@@ -67,7 +67,7 @@ Crabshell solves this problem.
 ## Memory Rotation
 
 When `logbook.md` grows beyond **23,750 tokens** (~95KB):
-1. Current content archived to `memory_YYYYMMDD_HHMMSS.md`
+1. Current content archived to `logbook_YYYYMMDD_HHMMSS.md`
 2. Last **2,375 tokens** kept as carryover
 3. Haiku agent generates L3 JSON summary of the archived content
 

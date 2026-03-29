@@ -112,7 +112,7 @@ Two meta-principles guide Claude's approach to obstacles:
 |  +-------------------------------------------+  +-------------------+    |
 |  | Auto-created:                              |  | sessions/         |    |
 |  | - logbook.md (rolling, auto-rotates)        |  | - *.l1.jsonl      |    |
-|  | - memory_*.md (L2 archives)                |  +-------------------+    |
+|  | - logbook_*.md (L2 archives)                |  +-------------------+    |
 |  | - *.summary.json (L3 summaries)            |  +-------------------+    |
 |  | - memory-index.json (rotation/delta state) |
 |  | - counter.json (PostToolUse counter)       |  | logs/             |    |
@@ -149,10 +149,10 @@ Two meta-principles guide Claude's approach to obstacles:
 +--------------------------------------------------------------------------+
 |  L2: Rolling Memory (auto-rotates at 23,750 tokens)                       |
 |  - logbook.md (active, grows with each session)                           |
-|  - memory_YYYYMMDD_HHMMSS.md (archived when rotated)                      |
+|  - logbook_YYYYMMDD_HHMMSS.md (archived when rotated)                      |
 +--------------------------------------------------------------------------+
 |  L3: Compressed Summaries (Haiku-generated JSON)                          |
-|  - memory_YYYYMMDD_HHMMSS.summary.json                                    |
+|  - logbook_YYYYMMDD_HHMMSS.summary.json                                    |
 |    (themes, keyDecisions, issues, overallSummary)                         |
 +--------------------------------------------------------------------------+
 ```
@@ -338,7 +338,7 @@ estimateTokens(content) > 23,750?
 Rotate    (continue)
     |
     v
-1. Archive to memory_YYYYMMDD_HHMMSS.md
+1. Archive to logbook_YYYYMMDD_HHMMSS.md
 2. Keep last 2,375 tokens as carryover
 3. Update index.json
 4. Output [CRABSHELL_ROTATE] trigger
@@ -358,10 +358,10 @@ Save to *.summary.json
   "current": "logbook.md",
   "rotatedFiles": [
     {
-      "file": "memory_20260113_120000.md",
+      "file": "logbook_20260113_120000.md",
       "rotatedAt": "2026-01-13T12:00:00.000Z",
       "tokenCount": 24500,
-      "summary": "memory_20260113_120000.summary.json",
+      "summary": "logbook_20260113_120000.summary.json",
       "summaryGenerated": true
     }
   ],
@@ -396,7 +396,7 @@ Separated from memory-index.json to eliminate Write race condition during delta 
 
 ```json
 {
-  "sourceFile": "memory_20260113_120000.md",
+  "sourceFile": "logbook_20260113_120000.md",
   "generatedAt": "2026-01-13T12:05:00.000Z",
   "themes": [
     { "name": "Authentication", "summary": "Implemented JWT-based auth..." }

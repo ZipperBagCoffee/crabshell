@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { estimateTokensFromFile, extractTailByTokens, updateIndex, acquireLock, releaseLock, getProjectDir, getStorageRoot } = require('./utils');
-const { ROTATION_THRESHOLD_TOKENS, CARRYOVER_TOKENS, getTimestamp, MEMORY_DIR } = require('./constants');
+const { ROTATION_THRESHOLD_TOKENS, CARRYOVER_TOKENS, getTimestamp, MEMORY_DIR, ARCHIVE_PREFIX } = require('./constants');
 
 const SAFETY_MARGIN = 0.95;
 
@@ -24,7 +24,7 @@ function checkAndRotate(memoryPath, config) {
 
   try {
     const timestamp = getTimestamp();
-    const archiveName = 'memory_' + timestamp.replace(/-/g, '').replace('_', '_') + '.md';
+    const archiveName = ARCHIVE_PREFIX + timestamp.replace(/-/g, '').replace('_', '_') + '.md';
     const archivePath = path.join(memoryDir, archiveName);
 
     fs.copyFileSync(memoryPath, archivePath);

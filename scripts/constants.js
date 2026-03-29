@@ -47,7 +47,7 @@ module.exports = {
   SUMMARY_SENTENCES: { min: 10, max: 15 },
 
   // Archive settings
-  ARCHIVE_PREFIX: 'memory_',
+  ARCHIVE_PREFIX: 'logbook_',
   SUMMARY_SUFFIX: '.summary.json',
 
   // Delta extraction settings

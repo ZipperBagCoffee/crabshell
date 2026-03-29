@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { getProjectDir, getStorageRoot, readJsonOrDefault } = require('./utils');
-const { MEMORY_DIR, SESSIONS_DIR, INDEX_FILE, MEMORY_FILE } = require('./constants');
+const { MEMORY_DIR, SESSIONS_DIR, INDEX_FILE, MEMORY_FILE, ARCHIVE_PREFIX } = require('./constants');
 
 // --- Helpers ---
 
@@ -128,7 +128,7 @@ function searchL3Summaries(memoryDir, matcher) {
 function searchL2Archives(memoryDir, matcher) {
   // Accept both matcher object and legacy string
   if (typeof matcher === 'string') matcher = createMatcher(matcher);
-  const files = fs.readdirSync(memoryDir).filter(f => f.startsWith('memory_') && f.endsWith('.md'));
+  const files = fs.readdirSync(memoryDir).filter(f => (f.startsWith(ARCHIVE_PREFIX) || f.startsWith('memory_')) && f.endsWith('.md'));
   const matches = [];
   for (const file of files) {
     const lines = fs.readFileSync(path.join(memoryDir, file), 'utf8').split('\n');

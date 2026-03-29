@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { ROTATION_THRESHOLD_TOKENS, CARRYOVER_TOKENS } = require('./constants');
+const { ROTATION_THRESHOLD_TOKENS, CARRYOVER_TOKENS, ARCHIVE_PREFIX } = require('./constants');
 const { estimateTokens, extractTailByTokens, updateIndex } = require('./utils');
 
 function parseDateSections(content) {
@@ -52,7 +52,7 @@ function forceSplitSection(section, threshold) {
 function generateArchiveName(baseDate, sequence) {
   const dateStr = baseDate.replace(/-/g, '');
   const seqStr = sequence.toString().padStart(2, '0');
-  return 'memory_' + dateStr + '_2359' + seqStr + '.md';
+  return ARCHIVE_PREFIX + dateStr + '_2359' + seqStr + '.md';
 }
 
 function splitLegacyMemory(memoryPath) {
