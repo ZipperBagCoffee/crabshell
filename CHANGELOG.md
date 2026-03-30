@@ -1,10 +1,13 @@
 # Changelog
 
 ## 21.10.0
-- feat: pruneOldL1() — deletes .l1.jsonl files >30 days old from sessions/ (calendar day comparison matching compress(), YYYY-MM-DD and YYYYMMDD format parsing, fail-open on permission errors), called in final() with try/catch, exported for testing
+- feat: pruneOldL1() — deletes .l1.jsonl files >30 days old from sessions/ (local-time calendar day comparison matching compress(), YYYY-MM-DD and YYYYMMDD format parsing via regex, fail-open on permission errors), called in final() after L1 creation but before delta extraction, exported for testing
 - feat: refineRawSync offset mode — accepts optional startOffset byte parameter, reads only new bytes via fs.openSync/readSync, appends to existing L1 output, returns { lineCount, newOffset } object (backward compatible: no-offset returns plain number); edge cases: partial JSON line at boundary skipped to next newline, offset beyond file size resets to 0, empty file returns 0, single line no newline skipped, offset at exact EOF returns 0
 - feat: lastL1TranscriptOffset tracking in memory-index.json — counter.js check() passes offset to refineRawSync, updates after each incremental L1 creation, eliminates O(n^2) full-transcript re-reads every 15 tool calls
-- feat: _test-counter.js — 92 tests (was 67): pruneOldL1 (6: old-deleted/within-30d/yyyymmdd/no-dir/non-l1/invalid-date), offset mode (4: full-read/offset-0/positive-offset/beyond-filesize), export (1), L1 pruning edge cases (7: empty-dir/no-l1-files/unparseable-date/30d-boundary/31d-deleted/permission-error), offset edge cases (8: empty-file/undefined-offset/mid-line/no-newlines/exact-EOF/incremental-append/truncated-reset/first-run)
+- fix: check() session-aware L1 reuse — finds existing L1 for current sessionId to append via offset instead of creating new L1 each interval (which caused only latest increment to be kept); new sessions (no existing L1) start from offset=0
+- fix: final() clears lastL1TranscriptOffset and lastL1TranscriptMtime inside acquireIndexLock — ensures next session starts fresh from offset=0, prevents stale offset from carrying across sessions
+- fix: pruneOldL1 date parsing — uses local-time Date constructor `new Date(year, month, day)` matching compress() behavior instead of `new Date("YYYY-MM-DD")` which creates UTC midnight (timezone mismatch caused boundary test failures)
+- feat: _test-counter.js — 102 tests (was 67): pruneOldL1 (6), offset mode (4), export (1), L1 pruning edges (7), offset edges (8), integration (10: prune-doesn't-delete-today/search-after-prune/delta-after-prune/offset-in-lock/final-no-offset/final-clears-offset/prune-before-delta-order/session-L1-reuse/new-session-offset-0/offset-clear-in-lock)
 
 ## 21.9.0
 - feat: RULES constant compressed 14,153→5,392 chars (62% reduction) — information architecture restructured: scope definitions collapsed to 1-liners, examples removed from Understanding-First and Verification-First, problem-solving merged to 2-sentence block, principles shortened, additional rules restored (lessons/session-restart/work-log/documents/version-bump) in compressed form
