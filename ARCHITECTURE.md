@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.8.0)
+# Crabshell Architecture (v21.9.0)
 
 ## Overview
 
@@ -32,8 +32,8 @@ Two meta-principles guide Claude's approach to obstacles:
 - **Cross-Domain Translation**: Before substituting a same-domain tool, characterize the problem's abstract structure first. This enables finding solutions from adjacent domains that may fit better.
 
 ### Dual Injection Optimization
-- **CLAUDE.md** (session start): Full RULES text (~5000 tokens) synced via `syncRulesToClaudeMd()` with marker-based replacement
-- **additionalContext** (every prompt): COMPRESSED_CHECKLIST (~300 tokens) — a lightweight reminder of key rules, scope definitions, and quick-check questions
+- **CLAUDE.md** (session start): Full RULES text (~1400 tokens, 5.4KB) synced via `syncRulesToClaudeMd()` with marker-based replacement
+- **additionalContext** (every prompt): COMPRESSED_CHECKLIST (~200 tokens, 703B) — a lightweight reminder of key rules and quick-check questions
 - **Error fallback**: Full RULES injected via additionalContext only when the normal path throws an exception
 
 ## System Architecture
@@ -443,6 +443,7 @@ The 5 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.9.0 | RULES constant compressed 14,153→5,392 chars (62%), COMPRESSED_CHECKLIST 1,375→703 chars (49%), information architecture restructured for density |
 | 21.8.0 | path-guard.js shell variable resolution (fail-closed for unknown vars targeting .crabshell/), _test-path-guard.js 111-test suite (subprocess+unit), marketplace.json+plugin.json description sync, run-hook.cmd cleanup |
 | 21.7.0 | counter.js conditional exports (require.main guard), _test-counter.js 67-test suite (unit+subprocess+edge), acquireIndexLock for memory-index.json writes, INDEX_LOCK_FILE constant, pressure reset fix |
 | 21.6.0 | .gitattributes LF enforcement, inject-rules.js 12 new exports, _test-inject-rules.js behavioral tests |

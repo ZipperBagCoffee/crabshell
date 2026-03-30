@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.8.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.9.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -283,6 +283,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.9.0 | RULES constant compressed 14,153→5,392 chars (62%), COMPRESSED_CHECKLIST 1,375→703 chars (49%), information architecture restructured for density |
 | 21.8.0 | path-guard.js shell variable resolution (fail-closed for unknown vars targeting .crabshell/), _test-path-guard.js 111-test suite (subprocess+unit), marketplace.json+plugin.json description sync, run-hook.cmd cleanup |
 | 21.7.0 | feat: counter.js conditional exports (require.main guard), _test-counter.js 67-test suite (unit+subprocess+edge), acquireIndexLock for memory-index.json writes, INDEX_LOCK_FILE constant, pressure reset fix |
 | 21.6.0 | feat: .gitattributes LF enforcement, inject-rules.js 12 new exports, _test-inject-rules.js 110-test integration suite (subprocess, Korean+English keywords, regressing 5 phases+compat, delta+rotation shared root, CLAUDE.md sync+legacy+resync) |

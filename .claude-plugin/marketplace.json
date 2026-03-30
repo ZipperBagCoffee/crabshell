@@ -12,7 +12,7 @@
       "name": "crabshell",
       "source": "./",
       "description": "Session memory (delta extraction, Haiku summarization, token-based rotation), behavioral correction (8 guard hooks, rules injection), and structured workflows (D/P/T/I documents, 16 skills).",
-      "version": "21.8.0",
+      "version": "21.9.0",
       "author": {
         "name": "TaWa"
       },
