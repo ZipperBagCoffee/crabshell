@@ -188,6 +188,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.6.0 | feat: .gitattributes LF enforcement, inject-rules.js expanded exports (12 new), _test-inject-rules.js 110-test integration suite (subprocess, Korean+English, regressing phases, delta+rotation) |
 | 21.5.0 | feat: pressure detection fixes — exclusion strip architecture, narrowed `왜 이렇게`, 8 diagnostic exclusions, widened `break(ing|s)`, SessionStart decay to L1, self-directed pressure text, 66-test suite |
 | 21.4.0 | feat: log-guard.js dual-trigger D/P/T log enforcement, guard count 7→8 |
 | 21.3.0 | feat: /verifying manifest v21 entries, guard consolidation analysis (keep 4, safety > count), Stop hook text block gap documented |
