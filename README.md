@@ -188,6 +188,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.8.0 | feat: path-guard.js shell variable resolution (fail-closed for unknown vars targeting .crabshell/), _test-path-guard.js 111-test suite (subprocess+unit), marketplace.json+plugin.json description sync, run-hook.cmd cleanup |
 | 21.7.0 | feat: counter.js conditional exports (require.main guard), _test-counter.js 67-test suite (unit+subprocess+edge), acquireIndexLock for memory-index.json writes, INDEX_LOCK_FILE constant, pressure reset fix |
 | 21.6.0 | feat: .gitattributes LF enforcement, inject-rules.js expanded exports (12 new), _test-inject-rules.js 110-test integration suite (subprocess, Korean+English, regressing phases, delta+rotation) |
 | 21.5.0 | feat: pressure detection fixes — exclusion strip architecture, narrowed `왜 이렇게`, 8 diagnostic exclusions, widened `break(ing|s)`, SessionStart decay to L1, self-directed pressure text, 66-test suite |
