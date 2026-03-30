@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.12.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.13.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -288,6 +288,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.13.0 | regressing/planning/ticketing SKILL.md Phase-based multi-agent rewrite — Loop structure, Machine Verification priority, iteration cap + stall detection, Verify Agent Independence Protocol, 11 anti-patterns, cycle→iteration terminology |
 | 21.12.0 | checkTicketStatuses() — ticket status reminder for active regressing sessions, injects warning for todo/in-progress tickets, 114-test suite (was 110) |
 | 21.11.0 | log-guard.js validatePendingSections() — blocks ticket terminal transitions when result sections contain "(pending)", 77-test suite (was 67) |
 | 21.10.0 | L1 session file pruning (>30 days), refineRawSync offset mode (O(n^2)→O(n)), session-aware L1 reuse in check(), final() offset/mtime clearing, prune→delta ordering, local-time date parsing fix, 102-test suite (10 integration) |

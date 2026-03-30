@@ -1,5 +1,9 @@
 # Changelog
 
+## 21.13.0
+- feat: regressing/planning/ticketing SKILL.md Phase-based multi-agent rewrite — WA-RA pair removed, Loop structure (verify→gap→plan→ticket→implement→verify), Machine Verification priority (Phase 2.9), iteration cap (default 10) + stall detection, Verify Agent Independence Protocol, anti-pattern table expanded to 11 entries, cycle→iteration terminology
+- feat: inject-rules.js RULES constant — cycle→iteration in Workflows rule
+
 ## 21.12.0
 - feat: checkTicketStatuses(projectDir) — reads regressing-state.json ticketIds, checks .crabshell/ticket/INDEX.md for "todo" or "in-progress" statuses, injects warning into additionalContext on UserPromptSubmit; fail-open (returns null on missing files/parse errors); backward compat for singular ticketId field
 - feat: _test-inject-rules.js — 114 tests (was 110): checkTicketStatuses (4: todo-warning/all-done-null/no-regressing-null/missing-index-null)

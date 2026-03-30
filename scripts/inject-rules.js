@@ -203,7 +203,7 @@ On failure: (1) Report constraints + untried alternatives, present options — n
 
 ### ADDITIONAL RULES
 - Search internet if unsure. Non-git files → backup (.bak) before modifying.
-- **Workflows:** light-workflow for standalone tasks (WA/RA → use Task tool). Regressing for iterative improvement: cycles improve results (not progress through queue). Anti-partitioning: each plan = current cycle only, N is cap not target.
+- **Workflows:** light-workflow for standalone tasks (WA/RA → use Task tool). Regressing for iterative improvement: iterations improve results (not progress through queue). Anti-partitioning: each plan = current iteration only, N is cap not target.
 - **Lessons:** Check .crabshell/lessons/. Propose when patterns repeat 2+.
 - **Session restart:** Invoke load-memory skill. Fallback: read latest logbook.md.
 - **Mandatory work log:** Append log entry to D/P/T/I documents after related work.
