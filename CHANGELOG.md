@@ -1,5 +1,10 @@
 # Changelog
 
+## 21.6.0
+- feat: .gitattributes — enforce LF line endings for .sh, .js, .json, .md files
+- feat: inject-rules.js exports expanded — checkEmergencyStop, syncRulesToClaudeMd, checkDeltaPending, checkRotationPending, buildRegressingReminder, getRelevantMemorySnippets, extractKeywords, parseMemorySections, stripCodeBlocks, EMERGENCY_KEYWORDS, NEGATIVE_PATTERNS, NEGATIVE_EXCLUSIONS
+- feat: _test-inject-rules.js — 110 integration tests covering exports, emergency stop, delta+rotation shared storage root, CLAUDE.md sync (key sections, marker preservation, legacy migration, re-sync), regressing reminder (all 5 phases, backward compat ticketId, stale warning, inactive/missing fields), logbook.md date-header parsing, Korean+English mixed keyword extraction, subprocess execution (valid JSON output, context items, emergency stop), feedback pressure escalation+decay, code block stripping
+
 ## 21.5.0
 - feat: pressure detection exclusion architecture fix — exclusions now strip/neutralize matched text instead of early-return, preventing false negatives when diagnostic phrases co-occur with real complaints
 - feat: narrowed Pattern 6 (`왜 이렇게` → `왜 이렇게 (해|하|했|한|해놨|만들|만든)`), expanded Pattern 2 suffix (`잘못하고`), widened `break(ing|s)` pattern (removed `you` prefix requirement)

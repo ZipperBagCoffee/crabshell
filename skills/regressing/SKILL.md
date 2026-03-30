@@ -41,8 +41,8 @@ If any of these patterns are detected during execution, the Orchestrator MUST ha
 
 User invokes with `/regressing "topic"` or `/regressing "topic" N`.
 
-- If N is not specified: run until convergence (Rule 7), with safety cap at 10 cycles. Do not ask.
-- If N is specified: use as the cycle cap (maximum, not target)
+- Run until convergence (Rule 7), with safety cap at 10 cycles. Cap is always 10 unless the user explicitly specifies a different number. Do not ask, do not infer from context.
+- If user writes `/regressing "topic" 5`: cap is 5. If user writes `/regressing "topic"`: cap is 10. No exceptions.
 
 ### Step 2: Open Discussion (D)
 
@@ -233,7 +233,7 @@ D (closed with final report)
 
 ## User Interaction
 
-- **At start**: Confirm topic. If user specified N, use as cap. If not, cap defaults to 10 (no asking).
+- **At start**: Confirm topic. Cap is 10 unless user explicitly wrote a number. Do not infer cap from context, memory, or past sessions.
 - **During**: Fully autonomous. Terminates on convergence (Rule 7) or when cap is reached. At every 10-cycle boundary (when cap was defaulted), present progress report — user approves raising cap by 10 or stops.
 - **At end**: Present final report in D → user requests raising cap or terminates
 

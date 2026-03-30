@@ -730,4 +730,33 @@ if (require.main === module) {
   main();
 }
 
-module.exports = { detectNegativeFeedback, updateFeedbackPressure, PRESSURE_L1, PRESSURE_L2, PRESSURE_L3 };
+module.exports = {
+  // Functions
+  checkEmergencyStop,
+  stripCodeBlocks,
+  detectNegativeFeedback,
+  updateFeedbackPressure,
+  checkDeltaPending,
+  checkRotationPending,
+  syncRulesToClaudeMd,
+  removeLegacySection,
+  parseMemorySections,
+  extractKeywords,
+  getRelevantMemorySnippets,
+  // Re-export from regressing-state for convenience
+  buildRegressingReminder,
+  // Constants
+  EMERGENCY_KEYWORDS,
+  NEGATIVE_PATTERNS,
+  NEGATIVE_EXCLUSIONS,
+  MARKER_START,
+  MARKER_END,
+  RULES,
+  EMERGENCY_STOP_CONTEXT,
+  DELTA_INSTRUCTION,
+  ROTATION_INSTRUCTION,
+  COMPRESSED_CHECKLIST,
+  PRESSURE_L1,
+  PRESSURE_L2,
+  PRESSURE_L3,
+};
