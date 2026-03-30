@@ -1,5 +1,14 @@
 # Changelog
 
+## 21.5.0
+- feat: pressure detection exclusion architecture fix — exclusions now strip/neutralize matched text instead of early-return, preventing false negatives when diagnostic phrases co-occur with real complaints
+- feat: narrowed Pattern 6 (`왜 이렇게` → `왜 이렇게 (해|하|했|한|해놨|만들|만든)`), expanded Pattern 2 suffix (`잘못하고`), widened `break(ing|s)` pattern (removed `you` prefix requirement)
+- feat: 8 diagnostic exclusion patterns (`뭔가.*잘못`, `잘못된 게 뭔지`, `what('s|is) wrong`, `went wrong`, `도대체 왜`, `잘못된 것 같`, `뭐가.*잘못된거지`, `is this wrong`)
+- feat: SessionStart pressure decay — decays pressure to level 1 (not full reset to 0), preserving alertness across sessions
+- feat: PRESSURE_L1/L2/L3 rewritten as self-directed LLM self-check (no "ask user to confirm", no "What did I get wrong?")
+- feat: inject-rules.js exports `detectNegativeFeedback` and `updateFeedbackPressure` for testing (main() guarded with `require.main === module`)
+- feat: _test-feedback-detection.js — 66 tests covering AC-1 through AC-9 (exclusion strip, agentive narrowing, breaking, diagnostics, pressure decay, self-directed messages, exports, regression, false positives, code block stripping)
+
 ## 21.4.0
 - feat: log-guard.js dual-trigger D/P/T log enforcement — blocks INDEX.md terminal status changes (→done/verified/concluded) without document log entries, blocks new cycle documents without previous cycle logs in regressing
 - feat: _test-log-guard.js — 67 tests covering both guard triggers

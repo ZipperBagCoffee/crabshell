@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.4.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.5.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -80,6 +80,7 @@ crabshell/
 │   ├── _test-sycophancy-claim-detection.js # Verification claim detection tests (v21.1.0)
 │   ├── _test-verification-sequence.js # Verification-sequence unit/integration tests (v21.0.0)
 │   ├── _test-log-guard.js           # Log-guard unit tests (v21.4.0)
+│   ├── _test-feedback-detection.js  # Feedback detection + pressure system tests (v21.5.0)
 │   └── utils.js                      # Shared utilities (getStorageRoot, getProjectDir)
 │
 ├── skills/                           # Slash command skills (16 total)
@@ -279,6 +280,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.5.0 | feat: pressure detection fixes — exclusion strip architecture, narrowed `왜 이렇게`, 8 diagnostic exclusions, widened `break(ing|s)`, SessionStart decay to L1, self-directed PRESSURE_L1/L2/L3, test exports, 66-test suite |
 | 21.4.0 | feat: log-guard.js dual-trigger D/P/T log enforcement (terminal status + cycle log), guard count 7→8, hooks.json position 4/8 |
 | 21.3.0 | feat: /verifying manifest v21 entries (V001-V004), guard consolidation analysis (keep 4, safety > count), Stop hook text block gap documented |
 | 21.2.0 | feat: L1-L4 observation resolution hierarchy (VERIFICATION-FIRST) + verifying SKILL.md manifest schema expansion |

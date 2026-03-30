@@ -26,17 +26,26 @@ const NEGATIVE_EXCLUSIONS = [
   /no\s+need/i,
   /if\s+(it'?s?\s+|.{0,20})wrong/i,
   /잘못된\s*게\s*아니/,
+  /뭔가.*?잘못/,
+  /잘못된\s*게\s*뭔지/,
+  /what('?s|\s+is)\s+wrong/i,
+  /went\s+wrong/i,
+  /도대체\s*왜\s*(이러|이런|안\s*되|안\s*돼)/,
+  /잘못된\s*것\s*같/,                                       // "뭔가 잘못된 것 같아" (diagnostic)
+  /뭐가.*잘못된거지/,                                       // "뭐가 잘못된거지" (diagnostic question)
+  /\bis\s+this\s+wrong/i,                                   // "is this wrong?" (diagnostic question)
 ];
 
 const NEGATIVE_PATTERNS = [
   // Command-mode (existing)
-  /아닌데/, /잘못\s*(했|됐|된|만든|이해)/, /틀렸/,
+  /아닌데/, /잘못\s*(했|됐|된|만든|이해|하고)/, /틀렸/,
   /다시\s*(해|하|작성|만들|시작)/, /이게\s*아니/,
-  /왜\s*이렇게/, /안\s*돼/, /제대로\s*(해|하|안|못)/,
+  /왜\s*이렇게\s*(해|하|했|한|해놨|만들|만든)/, /안\s*돼/, /제대로\s*(해|하|안|못)/,
   /그만\b/, /멈춰/,
   /\bwrong\b/i, /\bincorrect\b/i, /\bthat'?s\s+not\b/i,
   /\byou\s+broke\b/i, /not\s+what\s+I\s+asked/i,
   /\btry\s+again\b/i, /\b(undo|revert)\b/i,
+  /\bbreak(ing|s)\b/i,
   // Assessment-mode Korean
   /이해를?\s*(안|못)\s*(하|했)/i,                       // "이해를 안하고", "이해 못했"
   /뭔\s*말인지|무슨\s*말인지/i,                         // "뭔 말인지 모르겠", "무슨 말인지"
@@ -60,9 +69,10 @@ function stripCodeBlocks(text) {
 
 function detectNegativeFeedback(prompt) {
   if (!prompt || prompt.length < 2) return false;
-  const stripped = stripCodeBlocks(prompt);
+  let stripped = stripCodeBlocks(prompt);
+  // Neutralize exclusion matches — replace with whitespace so remaining text is still checked
   for (const exc of NEGATIVE_EXCLUSIONS) {
-    if (exc.test(stripped)) return false;
+    stripped = stripped.replace(exc, ' ');
   }
   for (const pat of NEGATIVE_PATTERNS) {
     if (pat.test(stripped)) return true;
@@ -93,35 +103,24 @@ function updateFeedbackPressure(index, isNegative) {
 
 const PRESSURE_L1 = `
 ## Feedback Pressure Alert (Level 1)
-User gave negative feedback. Before responding:
-1. Re-read the user's last message — what EXACTLY are they correcting?
-2. Fix the SPECIFIC issue only. Do NOT apologize at length.
-3. Anti-overcorrection: change ONLY what the user identified as wrong.
+Self-check: re-read user's message, identify the gap, fix ONLY identified issue.
+Do NOT apologize. Do NOT over-explain. State the fix, execute, move on.
 `;
 
 const PRESSURE_L2 = `
 ## Repeated Negative Feedback (Level 2)
-Multiple consecutive negative feedbacks detected. You are likely drifting from intent.
-
-MANDATORY BEFORE RESPONDING:
-1. State what the user's ORIGINAL task/intent is (Understanding-First)
-2. State what specifically went wrong in your previous response
-3. Ask the user to confirm your understanding before proceeding
-4. Do NOT continue executing — STOP and re-align first
+Re-derive user's original intent from first message.
+Trace where your responses diverged from that intent.
+State corrected understanding as first line of your response, then fix the divergence.
 `;
 
 const PRESSURE_L3 = `
-## Expert Re-Analysis Recommended (Pressure Level 3)
-Multiple consecutive feedback signals suggest the current approach needs a fresh perspective.
-This situation benefits from task delegation — a sub-agent can re-analyze with independent context.
-
-How to proceed:
-1. Use TaskCreate to delegate your current work to a sub-agent
-2. Include in the delegation: (a) original user intent, (b) what was tried and what feedback indicated, (c) specific deliverable
-3. TaskCreate automatically resets pressure to Level 0 and unblocks all tools (Read, Grep, Glob, Bash, Write, Edit)
-4. After the sub-agent completes, review its output before presenting to the user
-
-All tool calls are gated until delegation occurs — this ensures the fresh perspective happens before further work.
+## Critical Self-Review Required (Pressure Level 3)
+Stop. State what error pattern you detect in your own responses.
+Identify wrong assumptions driving the pattern.
+Consider cross-domain approach — reframe the problem structure.
+If a sub-agent is available (TaskCreate), delegate for fresh-perspective re-analysis.
+TaskCreate resets pressure to Level 0 and unblocks all tools.
 `;
 
 const RULES = `
@@ -727,4 +726,8 @@ async function main() {
   }
 }
 
-main();
+if (require.main === module) {
+  main();
+}
+
+module.exports = { detectNegativeFeedback, updateFeedbackPressure, PRESSURE_L1, PRESSURE_L2, PRESSURE_L3 };
