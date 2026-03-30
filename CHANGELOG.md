@@ -1,5 +1,12 @@
 # Changelog
 
+## 21.8.0
+- feat: path-guard.js shell variable resolution — resolves $CLAUDE_PROJECT_DIR, $PROJECT_DIR, $HOME, $USERPROFILE, ~ before validation; blocks unresolved vars ($RANDOM, $FOO) + subshell patterns ($(), backticks) targeting .crabshell/; fail-closed for unknown vars (was fail-open); added resolveShellVariables, hasUnresolvedVariables, require.main guard + 6-function exports
+- feat: _test-path-guard.js — 111 tests (was 29): 55 subprocess tests (Read/Grep/Glob/Bash, parent traversal, quoted paths, shell var resolution, unknown var blocking, mixed paths, non-.crabshell paths, backtick/subshell), 56 unit tests (hasShellVariable 10, resolveShellVariables 12, hasUnresolvedVariables 7, checkPath 16, resolveDotsInPath 5, extractMemoryPathsFromCommand 5, exports 6 — known var resolution, unknown var blocking, subshell/backtick, mixed paths, non-.crabshell exclusion, projectDir=homedir edge case)
+- fix: marketplace.json — description updated to match current plugin scope (memory+guards+workflows), metadata description fixed (Memory Keeper→Crabshell), keywords updated
+- fix: plugin.json — description and keywords updated to match current plugin scope
+- chore: delete hooks/run-hook.cmd zombie file, remove from STRUCTURE.md
+
 ## 21.7.0
 - feat: counter.js conditional exports — getCounter, setCounter, getConfig, cleanupDuplicateL1, dedupeL1, parseArg, compress (require.main guard)
 - feat: _test-counter.js — 67 tests covering exports (7 functions + exclusion check), getCounter/setCounter (8 unit tests incl. corrupt/missing/zero/nofield), getConfig (3: defaults+project+corrupt), parseArg (7: key=value/missing/empty/equals-in-value/first-match), cleanupDuplicateL1 (6: dedup/diff-session/empty/invalid-json/larger-existing), dedupeL1 (3: dedup/no-dup/no-dir), compress (4: archive-old/keep-recent/ignore-prefixed/empty), subprocess check (5: increment/multi/interval-reset/custom-interval/below-interval), TaskCreate pressure (4: reset/no-pressure/L3/L0-noop), Skill phase advancement (7: planning/discussing/ticketing/non-match/no-state/non-skill/inactive), edge cases (6: no-dir/corrupt-counter/corrupt-index/empty-hookdata/no-session/empty-session), subprocess usage+reset (2), locking structural (6: counter/inject-rules/load-memory/constant/different-from-lock-file), module structure (3: guard/switch-inside/exports)

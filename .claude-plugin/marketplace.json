@@ -4,21 +4,21 @@
     "name": "TaWa"
   },
   "metadata": {
-    "description": "Memory Keeper plugin marketplace",
+    "description": "Crabshell plugin marketplace",
     "version": "1.0.0"
   },
   "plugins": [
     {
       "name": "crabshell",
       "source": "./",
-      "description": "Auto-save memory with background agent summarization. Saves summary + original, facts.json for search, tiered storage.",
-      "version": "6.3.0",
+      "description": "Session memory (delta extraction, Haiku summarization, token-based rotation), behavioral correction (8 guard hooks, rules injection), and structured workflows (D/P/T/I documents, 16 skills).",
+      "version": "21.8.0",
       "author": {
         "name": "TaWa"
       },
       "repository": "https://github.com/ZipperBagCoffee/memory-keeper-plugin",
       "license": "MIT",
-      "keywords": ["memory", "context", "session", "productivity", "background", "auto-save"]
+      "keywords": ["memory", "context", "session", "productivity", "verification", "behavioral-correction", "guard-hooks", "workflows"]
     }
   ]
 }

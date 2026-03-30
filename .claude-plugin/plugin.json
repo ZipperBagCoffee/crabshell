@@ -1,7 +1,7 @@
 {
   "name": "crabshell",
-  "version": "21.7.0",
-  "description": "Auto-save memory with L1-based delta updates, Haiku summarization, rules injection, token-based rotation, and integrated search.",
+  "version": "21.8.0",
+  "description": "Session memory (delta extraction, Haiku summarization, token-based rotation), behavioral correction (8 guard hooks, rules injection), and structured workflows (D/P/T/I documents, 16 skills).",
   "author": {
     "name": "TaWa"
   },
@@ -12,9 +12,9 @@
     "context",
     "session",
     "productivity",
-    "background",
-    "auto-save",
-    "hierarchical",
-    "rotation"
+    "verification",
+    "behavioral-correction",
+    "guard-hooks",
+    "workflows"
   ]
 }

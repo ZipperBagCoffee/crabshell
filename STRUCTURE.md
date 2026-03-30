@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.7.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.8.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -45,8 +45,7 @@ crabshell/
 │   └── clear-memory.md               # Cleanup command
 │
 ├── hooks/                            # Lifecycle hooks
-│   ├── hooks.json                    # Hook config
-│   └── run-hook.cmd                  # Windows hook execution wrapper
+│   └── hooks.json                    # Hook config
 │
 ├── scripts/                          # Core implementation (Node.js)
 │   ├── find-node.sh                  # Cross-platform Node.js locator (v18.0.0)
@@ -65,7 +64,7 @@ crabshell/
 │   ├── append-memory.js              # Atomic logbook.md append (v19.53.0)
 │   ├── regressing-guard.js           # PreToolUse regressing skill enforcement (v19.23.0)
 │   ├── sycophancy-guard.js           # Stop + PreToolUse dual-layer sycophancy detection + verification claim detection (v19.29.0, v20.7.0, v21.1.0)
-│   ├── path-guard.js                # PreToolUse path validation + logbook.md Edit block + Write shrink guard (v19.31.0, v20.3.0, v20.6.0)
+│   ├── path-guard.js                # PreToolUse path validation + shell var resolution + logbook.md Edit block + Write shrink guard (v19.31.0, v20.3.0, v20.6.0, v21.8.0)
 │   ├── docs-guard.js                # PreToolUse D/P/T/I skill bypass prevention (v19.33.0)
 │   ├── verify-guard.js              # PreToolUse Final Verification + behavioral AC (v19.34.0, v20.3.0)
 │   ├── pressure-guard.js            # PreToolUse feedback pressure L3 blocking — all 6 tools (v19.47.0, v21.1.0)
@@ -73,7 +72,7 @@ crabshell/
 │   ├── verification-sequence.js     # PostToolUse state tracker + PreToolUse commit/edit gate (v21.0.0)
 │   ├── skill-tracker.js             # PostToolUse skill-active flag setter (v19.33.0)
 │   ├── test-cwd-isolation.js         # Mock tests for cwd isolation (v17.0.0)
-│   ├── _test-path-guard.js           # Path-guard unit tests (v20.0.0)
+│   ├── _test-path-guard.js           # Path-guard unit tests + shell var resolution tests (v20.0.0, v21.8.0)
 │   ├── _test-sycophancy-guard.js     # Sycophancy-guard unit tests (v20.4.0)
 │   ├── _test-sycophancy-pretooluse.js # Sycophancy-guard PreToolUse integration tests (v20.7.0)
 │   ├── _test-sycophancy-guard-manifest.js # Sycophancy-guard manifest behavioral test (v20.7.0)
@@ -183,8 +182,9 @@ UserPromptSubmit hook:
 - Detect active regressing session → inject phase-specific reminder (v19.23.0)
 
 ### scripts/path-guard.js
-PreToolUse path validation (v19.31.0, v20.3.0 Edit block, v20.6.0 Write shrink guard):
+PreToolUse path validation (v19.31.0, v20.3.0 Edit block, v20.6.0 Write shrink guard, v21.8.0 shell var resolution):
 - Block Read/Grep/Glob/Bash/Write/Edit calls targeting `.crabshell/` outside `CLAUDE_PROJECT_DIR`
+- Shell variable resolution: $CLAUDE_PROJECT_DIR, $PROJECT_DIR, $HOME, $USERPROFILE, ~ resolved before validation; unresolved vars + .crabshell/ = fail-closed (v21.8.0)
 - Block Edit on `memory/logbook.md` — logbook.md is append-only
 - Block Write shrink on `memory/logbook.md` — line count decrease detection (v20.6.0)
 - Bash command string inspection: regex extraction of `.crabshell/` paths within command strings
@@ -283,6 +283,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.8.0 | path-guard.js shell variable resolution (fail-closed for unknown vars targeting .crabshell/), _test-path-guard.js 111-test suite (subprocess+unit), marketplace.json+plugin.json description sync, run-hook.cmd cleanup |
 | 21.7.0 | feat: counter.js conditional exports (require.main guard), _test-counter.js 67-test suite (unit+subprocess+edge), acquireIndexLock for memory-index.json writes, INDEX_LOCK_FILE constant, pressure reset fix |
 | 21.6.0 | feat: .gitattributes LF enforcement, inject-rules.js 12 new exports, _test-inject-rules.js 110-test integration suite (subprocess, Korean+English keywords, regressing 5 phases+compat, delta+rotation shared root, CLAUDE.md sync+legacy+resync) |
 | 21.5.0 | feat: pressure detection fixes — exclusion strip architecture, narrowed `왜 이렇게`, 8 diagnostic exclusions, widened `break(ing|s)`, SessionStart decay to L1, self-directed PRESSURE_L1/L2/L3, test exports, 66-test suite |

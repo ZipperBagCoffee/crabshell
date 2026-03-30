@@ -1,6 +1,7 @@
 'use strict';
 
 const path = require('path');
+const os = require('os');
 const { readStdin, normalizePath } = require('./transcript-utils');
 
 function getProjectDir() {
@@ -32,11 +33,52 @@ function resolveDotsInPath(normalizedPath) {
 }
 
 /**
- * Check if a path contains unresolvable shell constructs ($VAR, ~, etc.)
- * that make static analysis impossible.
+ * Check if a path contains shell variable constructs ($VAR, ${VAR}, ~)
+ * or subshell/backtick patterns that need resolution before validation.
  */
 function hasShellVariable(p) {
-  return /^\$|\/\$|^\~\/|^\~$/.test(p);
+  // $VAR at start or after /, ~ at start, ${VAR}, $(cmd), `cmd`
+  return /^\$|\/\$|^\~\/|^\~$|\$\{|\$\(|`/.test(p);
+}
+
+/**
+ * Resolve known shell variables in a path.
+ * $CLAUDE_PROJECT_DIR, $PROJECT_DIR → projectDir
+ * $HOME, $USERPROFILE, ~ → os.homedir()
+ * ${VAR} brace syntax also supported for the above.
+ * Returns the resolved path. Unknown variables are left as-is.
+ */
+function resolveShellVariables(normalizedPath, projectDir) {
+  let resolved = normalizedPath;
+  const home = normalizePath(os.homedir());
+
+  // Resolve ~ at start of path
+  resolved = resolved.replace(/^~(?=\/|$)/, home);
+
+  // Resolve known env vars (both $VAR and ${VAR} forms)
+  const knownVars = {
+    'CLAUDE_PROJECT_DIR': projectDir,
+    'PROJECT_DIR': projectDir,
+    'HOME': home,
+    'USERPROFILE': home,
+  };
+
+  for (const [varName, value] of Object.entries(knownVars)) {
+    // ${VAR} form
+    resolved = resolved.split('${' + varName + '}').join(value);
+    // $VAR form (only when followed by / or end of string)
+    resolved = resolved.replace(new RegExp('\\$' + varName + '(?=/|$)', 'g'), value);
+  }
+
+  return resolved;
+}
+
+/**
+ * Check if a path still contains unresolved shell variables or subshell patterns after resolution.
+ */
+function hasUnresolvedVariables(p) {
+  // $VAR, ${VAR}, $(cmd), `cmd`
+  return /\$[A-Za-z_]|\$\{|\$\(|`/.test(p);
 }
 
 /**
@@ -51,14 +93,19 @@ function checkPath(filePath, projectDir) {
     return { targets: false, valid: true }; // Not a .crabshell/ path — irrelevant
   }
 
-  // Allow paths with unresolvable shell variables ($HOME, ~, $CLAUDE_PROJECT_DIR, etc.)
-  // These can't be validated at hook time — fail-open to avoid false positives
+  // Resolve known shell variables before validation
+  let pathToValidate = normalized;
   if (hasShellVariable(normalized)) {
-    return { targets: true, valid: true };
+    const resolved = resolveShellVariables(normalized, normalizedProject);
+    if (hasUnresolvedVariables(resolved)) {
+      // Still has unknown vars/subshells AND targets .crabshell/ → block
+      return { targets: true, valid: false };
+    }
+    pathToValidate = resolved;
   }
 
   // Resolve .. segments before comparison
-  const resolvedPath = resolveDotsInPath(normalized);
+  const resolvedPath = resolveDotsInPath(pathToValidate);
   const resolvedProject = resolveDotsInPath(normalizedProject);
 
   // Check if resolved path starts with projectDir/.crabshell/
@@ -221,7 +268,14 @@ async function main() {
   process.exit(0);
 }
 
-main().catch(e => {
-  console.error(`[PATH GUARD ERROR] ${e.message}`);
-  process.exit(0); // fail-open
-});
+if (require.main === module) {
+  main().catch(e => {
+    console.error(`[PATH GUARD ERROR] ${e.message}`);
+    process.exit(0); // fail-open
+  });
+}
+
+module.exports = {
+  checkPath, hasShellVariable, resolveShellVariables, hasUnresolvedVariables,
+  resolveDotsInPath, extractMemoryPathsFromCommand
+};
