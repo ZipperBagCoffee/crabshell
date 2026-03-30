@@ -264,7 +264,7 @@ L1 generation:
    │   ├─> Detect regressing skill calls → auto-advance phase (v19.23.0)
    │   ├─> Increment counter
    │   ├─> checkAndRotate() - archive if > 23,750 tokens
-   │   └─> At threshold: create/update L1 (incremental offset read) → extractDelta() → creates delta_temp.txt
+   │   └─> At threshold: create/update L1 (session-aware reuse + incremental offset read) → extractDelta() → creates delta_temp.txt
    └─> verification-sequence.js record (.*) — track source edits, test runs, grep cycles (v21.0.0)
 
 6. Stop
@@ -275,17 +275,18 @@ L1 generation:
 
 7. SessionEnd
    └─> counter.js final
-       ├─> Create final L1 session transcript (last chance)
+       ├─> Create final L1 session transcript (full reprocess, no offset)
        ├─> Cleanup duplicate L1 files
        ├─> pruneOldL1() — delete L1 files >30 days old (v21.10.0)
-       └─> extractDelta() for remaining content
+       ├─> extractDelta() for remaining content
+       └─> Clear lastL1TranscriptOffset/Mtime (next session starts fresh)
 ```
 
 ## Version History
 
 | Version | Key Changes |
 |---------|-------------|
-| 21.10.0 | L1 session file pruning (>30 days, calendar-day comparison), refineRawSync offset mode (O(n^2)→O(n) transcript processing, edge case hardening), lastL1TranscriptOffset tracking, 92-test suite |
+| 21.10.0 | L1 session file pruning (>30 days), refineRawSync offset mode (O(n^2)→O(n)), session-aware L1 reuse in check(), final() offset/mtime clearing, prune→delta ordering, local-time date parsing fix, 102-test suite (10 integration) |
 | 21.9.0 | RULES constant compressed 14,153→5,392 chars (62%), COMPRESSED_CHECKLIST 1,375→703 chars (49%), information architecture restructured for density |
 | 21.8.0 | path-guard.js shell variable resolution (fail-closed for unknown vars targeting .crabshell/), _test-path-guard.js 111-test suite (subprocess+unit), marketplace.json+plugin.json description sync, run-hook.cmd cleanup |
 | 21.7.0 | feat: counter.js conditional exports (require.main guard), _test-counter.js 67-test suite (unit+subprocess+edge), acquireIndexLock for memory-index.json writes, INDEX_LOCK_FILE constant, pressure reset fix |

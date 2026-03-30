@@ -1447,6 +1447,240 @@ test('OFFSET EDGE: offset=0 on first run processes all content', function() {
 });
 
 // ============================================================
+// 21. INTEGRATION: pruning + offset + pipeline
+// ============================================================
+
+test('INTEGRATION: pruneOldL1 in final() does NOT delete just-created L1', function() {
+  // Concern 1: pruneOldL1 runs after L1 creation in final(). The L1 created
+  // has today's date, so pruning (>30 days) must never touch it.
+  const tmpDir = makeTempDir('int-prune-safe');
+  const sessDir = path.join(tmpDir, '.crabshell', 'memory', 'sessions');
+  ensureDir(sessDir);
+  const origEnv = process.env.CLAUDE_PROJECT_DIR;
+  process.env.CLAUDE_PROJECT_DIR = tmpDir;
+  try {
+    // Simulate: a "just created" L1 file with today's date
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const todayName = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_1200_abc12345.l1.jsonl`;
+    fs.writeFileSync(path.join(sessDir, todayName), JSON.stringify({ ts: now.toISOString(), role: 'user', text: 'hi' }));
+
+    // Also create an old file that SHOULD be pruned
+    const old = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 45);
+    const oldName = `${old.getFullYear()}-${pad(old.getMonth()+1)}-${pad(old.getDate())}_1200_def67890.l1.jsonl`;
+    fs.writeFileSync(path.join(sessDir, oldName), JSON.stringify({ ts: old.toISOString(), role: 'user', text: 'old' }));
+
+    const pruned = mod.pruneOldL1();
+    assertEqual(pruned, 1, 'only old file pruned');
+    assert(fs.existsSync(path.join(sessDir, todayName)), 'today file preserved');
+    assert(!fs.existsSync(path.join(sessDir, oldName)), 'old file deleted');
+  } finally {
+    process.env.CLAUDE_PROJECT_DIR = origEnv;
+    cleanupDir(tmpDir);
+  }
+});
+
+test('INTEGRATION: search.js still works after pruning reduces file set', function() {
+  // Concern 2: searchL1Sessions reads L1 files. After pruning removes old files,
+  // search should still return results from remaining files.
+  const { searchL1Sessions, createMatcher } = require(path.join(__dirname, 'search.js'));
+  const tmpDir = makeTempDir('int-search-prune');
+  const sessDir = path.join(tmpDir, '.crabshell', 'memory', 'sessions');
+  ensureDir(sessDir);
+  const origEnv = process.env.CLAUDE_PROJECT_DIR;
+  process.env.CLAUDE_PROJECT_DIR = tmpDir;
+  try {
+    // Create 2 L1 files: one recent, one old
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const recentName = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_0900_aaa11111.l1.jsonl`;
+    fs.writeFileSync(path.join(sessDir, recentName),
+      JSON.stringify({ ts: now.toISOString(), role: 'user', text: 'searchable-term-xyz' }));
+
+    const old = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 60);
+    const oldName = `${old.getFullYear()}-${pad(old.getMonth()+1)}-${pad(old.getDate())}_0900_bbb22222.l1.jsonl`;
+    fs.writeFileSync(path.join(sessDir, oldName),
+      JSON.stringify({ ts: old.toISOString(), role: 'user', text: 'searchable-term-xyz in old file' }));
+
+    // Before pruning: both files searchable
+    const beforeResults = searchL1Sessions(tmpDir, createMatcher('searchable-term-xyz'));
+    assertEqual(beforeResults.length, 2, 'before prune: 2 matches');
+
+    // Prune old files
+    mod.pruneOldL1();
+
+    // After pruning: only recent file searchable
+    const afterResults = searchL1Sessions(tmpDir, createMatcher('searchable-term-xyz'));
+    assertEqual(afterResults.length, 1, 'after prune: 1 match');
+    assert(afterResults[0].file.includes('aaa11111'), 'remaining match is from recent file');
+  } finally {
+    process.env.CLAUDE_PROJECT_DIR = origEnv;
+    cleanupDir(tmpDir);
+  }
+});
+
+test('INTEGRATION: extractDelta reads L1 unaffected by pruning order', function() {
+  // Concern 3: In final(), pruning runs BEFORE delta extraction.
+  // Delta selects the newest L1. Pruning only removes >30-day files.
+  // So delta should find the just-created L1.
+  const { extractDelta } = require(path.join(__dirname, 'extract-delta.js'));
+  const tmpDir = makeTempDir('int-delta-prune');
+  const sessDir = path.join(tmpDir, '.crabshell', 'memory', 'sessions');
+  const memDir = path.join(tmpDir, '.crabshell', 'memory');
+  ensureDir(sessDir);
+  ensureDir(memDir);
+  fs.writeFileSync(path.join(memDir, 'memory-index.json'), JSON.stringify({
+    version: 1, current: 'logbook.md', rotatedFiles: [], stats: {}
+  }));
+  const origEnv = process.env.CLAUDE_PROJECT_DIR;
+  process.env.CLAUDE_PROJECT_DIR = tmpDir;
+  try {
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    // Create recent L1 with content
+    const recentName = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_0900_ses12345.l1.jsonl`;
+    fs.writeFileSync(path.join(sessDir, recentName),
+      JSON.stringify({ ts: now.toISOString(), role: 'user', text: 'delta content here' }));
+
+    // Prune first (as final() now does)
+    mod.pruneOldL1();
+
+    // Delta extraction should still find the recent L1
+    const result = extractDelta('ses12345');
+    assertEqual(result.success, true, 'delta extraction succeeds after pruning');
+    assert(result.entryCount > 0, 'delta has entries');
+  } finally {
+    process.env.CLAUDE_PROJECT_DIR = origEnv;
+    cleanupDir(tmpDir);
+  }
+});
+
+test('INTEGRATION: offset update inside acquireIndexLock in check()', function() {
+  // Concern 4: The offset stored in memory-index.json must be updated
+  // inside the lock (acquireIndexLock). Verify structurally that
+  // lastL1TranscriptOffset write is inside the locked section.
+  const src = fs.readFileSync(counterPath, 'utf8');
+  const checkStart = src.indexOf('async function check()');
+  const checkEnd = src.indexOf('async function final()');
+  const checkBody = src.slice(checkStart, checkEnd);
+
+  // acquireIndexLock comes before lastL1TranscriptOffset write
+  const lockPos = checkBody.indexOf('acquireIndexLock');
+  const offsetWritePos = checkBody.indexOf('lastL1TranscriptOffset');
+  const unlockPos = checkBody.indexOf('releaseIndexLock');
+  assert(lockPos !== -1, 'acquireIndexLock in check()');
+  assert(offsetWritePos !== -1, 'lastL1TranscriptOffset in check()');
+  assert(unlockPos !== -1, 'releaseIndexLock in check()');
+  assert(lockPos < offsetWritePos, 'lock before offset write');
+  assert(offsetWritePos < unlockPos, 'offset write before unlock');
+});
+
+test('INTEGRATION: final() does NOT use offset — full reprocess via refineRaw', function() {
+  // Concern 5: final() creates definitive L1 from scratch.
+  // It must NOT use offset. Verify refineRaw (async, no offset) is used, not refineRawSync.
+  const src = fs.readFileSync(counterPath, 'utf8');
+  const finalStart = src.indexOf('async function final()');
+  const finalEnd = src.indexOf('function reset()');
+  const finalBody = src.slice(finalStart, finalEnd);
+
+  // final() uses refineRaw (not refineRawSync)
+  assert(finalBody.includes('refineRaw(rawSaved'), 'final() uses refineRaw for L1 creation');
+  assert(!finalBody.includes('refineRawSync'), 'final() does NOT use refineRawSync');
+  assert(!finalBody.includes('lastL1TranscriptOffset ='), 'final() does NOT set offset');
+});
+
+test('INTEGRATION: final() clears offset for fresh next session', function() {
+  // final() should delete lastL1TranscriptOffset and lastL1TranscriptMtime
+  // so the next session starts from offset 0.
+  const src = fs.readFileSync(counterPath, 'utf8');
+  const finalStart = src.indexOf('async function final()');
+  const finalEnd = src.indexOf('function reset()');
+  const finalBody = src.slice(finalStart, finalEnd);
+
+  assert(finalBody.includes('delete idx.lastL1TranscriptOffset'), 'final() clears offset');
+  assert(finalBody.includes('delete idx.lastL1TranscriptMtime'), 'final() clears mtime');
+});
+
+test('INTEGRATION: pruneOldL1 is called before extractDelta in final()', function() {
+  // Verify ordering: L1 creation → prune → delta
+  const src = fs.readFileSync(counterPath, 'utf8');
+  const finalStart = src.indexOf('async function final()');
+  const finalEnd = src.indexOf('function reset()');
+  const finalBody = src.slice(finalStart, finalEnd);
+
+  const l1CreatePos = finalBody.indexOf('refineRaw(rawSaved');
+  const prunePos = finalBody.indexOf('pruneOldL1()');
+  const deltaPos = finalBody.indexOf('extractDelta(sessionId8)');
+
+  assert(l1CreatePos !== -1, 'L1 creation found');
+  assert(prunePos !== -1, 'pruneOldL1 found');
+  assert(deltaPos !== -1, 'extractDelta found');
+  assert(l1CreatePos < prunePos, 'L1 creation before prune');
+  assert(prunePos < deltaPos, 'prune before delta');
+});
+
+test('INTEGRATION: check() reuses existing session L1 for offset append', function() {
+  // When check() runs multiple times in the same session,
+  // it should find the existing L1 by sessionId and append.
+  const src = fs.readFileSync(counterPath, 'utf8');
+  const checkStart = src.indexOf('async function check()');
+  const checkEnd = src.indexOf('async function final()');
+  const checkBody = src.slice(checkStart, checkEnd);
+
+  // check() looks for existing L1 matching sessionId
+  assert(checkBody.includes('existingL1') || checkBody.includes('_${sessionId8}'), 'check() looks up existing session L1');
+});
+
+test('INTEGRATION: check() starts from offset=0 when no existing L1 for session', function() {
+  // For a new session where no L1 exists yet, offset should be 0
+  const { refineRawSync } = require(path.join(__dirname, 'refine-raw.js'));
+  const tmpDir = makeTempDir('int-new-session');
+  const sessDir = path.join(tmpDir, '.crabshell', 'memory', 'sessions');
+  const memDir = path.join(tmpDir, '.crabshell', 'memory');
+  ensureDir(sessDir);
+  ensureDir(memDir);
+  // Set a stale offset from previous session
+  fs.writeFileSync(path.join(memDir, 'memory-index.json'), JSON.stringify({
+    version: 1, current: 'logbook.md', rotatedFiles: [], stats: {},
+    lastL1TranscriptOffset: 99999, lastL1TranscriptMtime: 1000
+  }));
+  const origEnv = process.env.CLAUDE_PROJECT_DIR;
+  process.env.CLAUDE_PROJECT_DIR = tmpDir;
+  try {
+    // No existing L1 for this session → offset should start at 0
+    const existingL1 = fs.readdirSync(sessDir)
+      .filter(f => f.endsWith('.l1.jsonl') && f.includes('_newsess1'));
+    assertEqual(existingL1.length, 0, 'no existing L1 for new session');
+    // Verify that the code path would use 0 (structural check)
+    // When no existing L1 is found, startOffset = 0 regardless of stored offset
+    const src = fs.readFileSync(counterPath, 'utf8');
+    assert(src.includes('startOffset = 0;'), 'fallback to offset=0 when no existing L1');
+  } finally {
+    process.env.CLAUDE_PROJECT_DIR = origEnv;
+    cleanupDir(tmpDir);
+  }
+});
+
+test('INTEGRATION: offset cleared in final() lock block', function() {
+  // The offset clear must happen inside acquireIndexLock/releaseIndexLock
+  const src = fs.readFileSync(counterPath, 'utf8');
+  const finalStart = src.indexOf('async function final()');
+  const finalEnd = src.indexOf('function reset()');
+  const finalBody = src.slice(finalStart, finalEnd);
+
+  // Find the locked section that clears offset
+  const lockPos = finalBody.indexOf('acquireIndexLock(finalMemoryDir)');
+  const clearPos = finalBody.indexOf('delete idx.lastL1TranscriptOffset');
+  const unlockPos = finalBody.indexOf('releaseIndexLock(finalMemoryDir)');
+
+  assert(lockPos !== -1, 'lock in final()');
+  assert(clearPos !== -1, 'offset clear in final()');
+  assert(unlockPos !== -1, 'unlock in final()');
+  assert(lockPos < clearPos, 'lock before offset clear');
+  assert(clearPos < unlockPos, 'offset clear before unlock');
+});
+
+// ============================================================
 // Summary
 // ============================================================
 console.log('\n' + '='.repeat(60));
