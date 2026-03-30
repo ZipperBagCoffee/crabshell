@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.10.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.11.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -78,7 +78,7 @@ crabshell/
 │   ├── _test-sycophancy-guard-manifest.js # Sycophancy-guard manifest behavioral test (v20.7.0)
 │   ├── _test-sycophancy-claim-detection.js # Verification claim detection tests (v21.1.0)
 │   ├── _test-verification-sequence.js # Verification-sequence unit/integration tests (v21.0.0)
-│   ├── _test-log-guard.js           # Log-guard unit tests (v21.4.0)
+│   ├── _test-log-guard.js           # Log-guard unit/integration tests (v21.4.0, v21.11.0)
 │   ├── _test-feedback-detection.js  # Feedback detection + pressure system tests (v21.5.0)
 │   ├── _test-inject-rules.js        # inject-rules.js export + behavioral tests (v21.6.0)
 │   ├── _test-counter.js             # counter.js export + subprocess + lock + pruning + offset tests (v21.10.0)
@@ -192,9 +192,10 @@ PreToolUse path validation (v19.31.0, v20.3.0 Edit block, v20.6.0 Write shrink g
 - Windows path normalization (backslash → forward slash)
 
 ### scripts/log-guard.js
-PreToolUse D/P/T log enforcement (v21.4.0):
+PreToolUse D/P/T log enforcement (v21.4.0, v21.11.0):
 - Dual-trigger guard on Write|Edit to `.crabshell/` paths
 - Trigger 1: Block INDEX.md terminal status changes (→done/verified/concluded) when the referenced document has no log entries
+- Pending section check (v21.11.0): After log validation passes, block ticket terminal transitions when Execution Results/Verification Results/Orchestrator Evaluation sections still contain "(pending)"
 - Trigger 2: Block new cycle documents (P/T) in regressing when the previous cycle's documents lack log entries
 - Fail-open on parse errors (user experience protection)
 
@@ -250,7 +251,7 @@ L1 generation:
    │   └─> Block Write shrink on logbook.md — line count decrease detection (v20.6.0)
    ├─> regressing-guard.js (Write|Edit) — block direct plan/ticket writes during active regressing
    ├─> docs-guard.js (Write|Edit) — block writes to .crabshell/ D/P/T/I without active skill flag
-   ├─> log-guard.js (Write|Edit) — block INDEX.md terminal status without log + block cycle docs without previous cycle logs (v21.4.0)
+   ├─> log-guard.js (Write|Edit) — block INDEX.md terminal status without log + block tickets with pending result sections + block cycle docs without previous cycle logs (v21.4.0, v21.11.0)
    ├─> verify-guard.js (Write|Edit) — block Final Verification without /verifying run
    │   └─> Require at least 1 behavioral (type: "direct") AC in manifest (v20.3.0)
    ├─> verification-sequence.js gate (Write|Edit|Bash) — source edit→test→commit enforcement (v21.0.0)
@@ -286,6 +287,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.11.0 | log-guard.js validatePendingSections() — blocks ticket terminal transitions when result sections contain "(pending)", 77-test suite (was 67) |
 | 21.10.0 | L1 session file pruning (>30 days), refineRawSync offset mode (O(n^2)→O(n)), session-aware L1 reuse in check(), final() offset/mtime clearing, prune→delta ordering, local-time date parsing fix, 102-test suite (10 integration) |
 | 21.9.0 | RULES constant compressed 14,153→5,392 chars (62%), COMPRESSED_CHECKLIST 1,375→703 chars (49%), information architecture restructured for density |
 | 21.8.0 | path-guard.js shell variable resolution (fail-closed for unknown vars targeting .crabshell/), _test-path-guard.js 111-test suite (subprocess+unit), marketplace.json+plugin.json description sync, run-hook.cmd cleanup |

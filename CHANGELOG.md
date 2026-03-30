@@ -1,5 +1,9 @@
 # Changelog
 
+## 21.11.0
+- feat: log-guard.js validatePendingSections() — blocks ticket terminal transitions (done/verified) when Execution Results (Work Agent), Verification Results (Review Agent), or Orchestrator Evaluation sections still contain "(pending)"; only applies to tickets (P\d{3}_T\d{3}), discussions/plans/investigations are not checked; runs after validateLogForTerminal() passes using already-read document content
+- feat: _test-log-guard.js — 77 tests (was 67): validatePendingSections unit tests (7: all-pending/single-pending/filled-sections/discussion-skip/plan-skip/null-content/no-sections), pending integration tests (3: pending-blocks/filled-allows/discussion-not-checked)
+
 ## 21.10.0
 - feat: pruneOldL1() — deletes .l1.jsonl files >30 days old from sessions/ (local-time calendar day comparison matching compress(), YYYY-MM-DD and YYYYMMDD format parsing via regex, fail-open on permission errors), called in final() after L1 creation but before delta extraction, exported for testing
 - feat: refineRawSync offset mode — accepts optional startOffset byte parameter, reads only new bytes via fs.openSync/readSync, appends to existing L1 output, returns { lineCount, newOffset } object (backward compatible: no-offset returns plain number); edge cases: partial JSON line at boundary skipped to next newline, offset beyond file size resets to 0, empty file returns 0, single line no newline skipped, offset at exact EOF returns 0

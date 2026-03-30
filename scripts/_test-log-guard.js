@@ -21,6 +21,7 @@ const {
   isCreatedEntry,
   isStatusChangeEntry,
   validateLogForTerminal,
+  validatePendingSections,
   checkRegressingCycleGuard,
   ALL_STATUSES,
   TERMINAL_STATUSES,
@@ -984,6 +985,248 @@ test('ADV-14: Integration — Write to INDEX.md with no status changes → allow
   // Since we read the actual INDEX.md and compare, no status change should be found
   // (the content doesn't match any existing row's ID in the file format)
   assertEqual(r.exitCode, 0, 'exitCode — no status change in Write');
+});
+
+// ============================================================
+// UNIT TESTS: validatePendingSections
+// ============================================================
+
+test('validatePendingSections: ticket with all pending sections → invalid', () => {
+  const content = `# P001_T001 - Test Ticket
+
+## Execution Results (Work Agent)
+(pending)
+
+## Verification Results (Review Agent)
+(pending)
+
+## Orchestrator Evaluation
+(pending)
+
+## Log
+
+---
+### [2026-03-29 10:00] Created
+Created ticket.
+`;
+  const result = validatePendingSections(content, 'P001_T001');
+  assert(!result.valid, 'should be invalid');
+  assert(result.reason.includes('Execution Results'), 'reason should mention Execution Results');
+  assert(result.reason.includes('Verification Results'), 'reason should mention Verification Results');
+  assert(result.reason.includes('Orchestrator Evaluation'), 'reason should mention Orchestrator Evaluation');
+});
+
+test('validatePendingSections: ticket with only Execution Results pending → invalid', () => {
+  const content = `# P001_T001 - Test Ticket
+
+## Execution Results (Work Agent)
+(pending)
+
+## Verification Results (Review Agent)
+All criteria verified. Tests pass.
+
+## Orchestrator Evaluation
+Approved. All good.
+
+## Log
+
+---
+### [2026-03-29 10:00] Created
+Created ticket.
+`;
+  const result = validatePendingSections(content, 'P001_T001');
+  assert(!result.valid, 'should be invalid');
+  assert(result.reason.includes('Execution Results'), 'reason should mention Execution Results');
+  assert(!result.reason.includes('Verification Results'), 'reason should NOT mention Verification Results');
+  assert(!result.reason.includes('Orchestrator Evaluation'), 'reason should NOT mention Orchestrator Evaluation');
+});
+
+test('validatePendingSections: ticket with actual content in all sections → valid', () => {
+  const content = `# P001_T001 - Test Ticket
+
+## Execution Results (Work Agent)
+Implemented feature X. All acceptance criteria met.
+
+## Verification Results (Review Agent)
+Verified all criteria. Tests pass with full coverage.
+
+## Orchestrator Evaluation
+4-factor evaluation complete. PASS.
+
+## Log
+
+---
+### [2026-03-29 10:00] Created
+Created ticket.
+`;
+  const result = validatePendingSections(content, 'P001_T001');
+  assert(result.valid, 'should be valid');
+});
+
+test('validatePendingSections: non-ticket (discussion) → skipped (valid)', () => {
+  const content = `# D001 - Test Discussion
+
+## Execution Results (Work Agent)
+(pending)
+
+## Log
+
+---
+### [2026-03-29 10:00] Created
+Created.
+`;
+  const result = validatePendingSections(content, 'D001');
+  assert(result.valid, 'should be valid — non-ticket documents are not checked');
+});
+
+test('validatePendingSections: non-ticket (plan) → skipped (valid)', () => {
+  const content = `# P001 - Test Plan
+
+## Execution Results (Work Agent)
+(pending)
+`;
+  const result = validatePendingSections(content, 'P001');
+  assert(result.valid, 'should be valid — plans are not checked');
+});
+
+test('validatePendingSections: null content → valid', () => {
+  const result = validatePendingSections(null, 'P001_T001');
+  assert(result.valid, 'should be valid for null content');
+});
+
+test('validatePendingSections: ticket without result sections at all → valid', () => {
+  const content = `# P001_T001 - Test Ticket
+
+## Intent
+Some intent.
+
+## Log
+
+---
+### [2026-03-29 10:00] Created
+Created ticket.
+`;
+  const result = validatePendingSections(content, 'P001_T001');
+  assert(result.valid, 'should be valid — no result sections means nothing to check');
+});
+
+// ============================================================
+// INTEGRATION TESTS: pending section check
+// ============================================================
+
+test('Pending Integration: ticket with (pending) in Execution Results → BLOCK', () => {
+  const content = `# P999_T001 - Test Document
+
+## Intent
+Test document for pending guard tests.
+
+## Execution Results (Work Agent)
+(pending)
+
+## Verification Results (Review Agent)
+All verified. Tests pass with full coverage and evidence.
+
+## Orchestrator Evaluation
+Approved after review.
+
+## Log
+
+---
+### [2026-03-29 10:00] Created
+Test doc initial creation for guard testing.
+
+---
+### [2026-03-29 11:00] Implementation Complete
+Implemented all acceptance criteria. Feature X works with full test coverage passing.
+`;
+  fs.writeFileSync(tmpDocFile, content, 'utf8');
+  try {
+    const r = runScript({
+      tool_name: 'Edit',
+      tool_input: {
+        file_path: '.crabshell/ticket/INDEX.md',
+        old_string: '| P999_T001 | Test doc | in-progress | 2026-03-29 | P999 |',
+        new_string: '| P999_T001 | Test doc | done | 2026-03-29 | P999 |'
+      }
+    });
+    assertEqual(r.exitCode, 2, 'exitCode — should block due to pending Execution Results');
+    assert(r.stdout.includes('"decision":"block"') || r.stdout.includes('"decision": "block"'), 'should have block decision');
+    assert(r.stdout.includes('pending'), 'reason should mention pending');
+  } finally {
+    cleanupTempDoc();
+  }
+});
+
+test('Pending Integration: ticket with actual content in all sections → ALLOW', () => {
+  const content = `# P999_T001 - Test Document
+
+## Intent
+Test document for pending guard tests.
+
+## Execution Results (Work Agent)
+Implemented feature X. All acceptance criteria met with evidence.
+
+## Verification Results (Review Agent)
+Verified all criteria. Tests pass with full coverage. P/O/G table complete.
+
+## Orchestrator Evaluation
+4-factor evaluation: Correctness PASS, Completeness PASS, Methodology PASS, Quality PASS.
+
+## Log
+
+---
+### [2026-03-29 10:00] Created
+Test doc initial creation for guard testing.
+
+---
+### [2026-03-29 11:00] Implementation Complete
+Implemented all acceptance criteria. Feature X works with full test coverage passing.
+`;
+  fs.writeFileSync(tmpDocFile, content, 'utf8');
+  try {
+    const r = runScript({
+      tool_name: 'Edit',
+      tool_input: {
+        file_path: '.crabshell/ticket/INDEX.md',
+        old_string: '| P999_T001 | Test doc | in-progress | 2026-03-29 | P999 |',
+        new_string: '| P999_T001 | Test doc | done | 2026-03-29 | P999 |'
+      }
+    });
+    assertEqual(r.exitCode, 0, 'exitCode — should allow (all sections filled)');
+  } finally {
+    cleanupTempDoc();
+  }
+});
+
+test('Pending Integration: discussion with (pending) → NOT checked (allow)', () => {
+  fs.writeFileSync(tmpDiscFile, `# D999 - Test Discussion
+
+## Execution Results (Work Agent)
+(pending)
+
+## Discussion Log
+
+---
+### [2026-03-29 10:00] Started
+Discussion started with analysis of the problem space and constraints.
+
+---
+### [2026-03-29 11:00] Key Decision
+Decided to use approach B after comparing three alternatives with evidence.
+`, 'utf8');
+  try {
+    const r = runScript({
+      tool_name: 'Edit',
+      tool_input: {
+        file_path: '.crabshell/discussion/INDEX.md',
+        old_string: '| D999 | Test Discussion | open | 2026-03-29 | |',
+        new_string: '| D999 | Test Discussion | concluded | 2026-03-29 | |'
+      }
+    });
+    assertEqual(r.exitCode, 0, 'exitCode — discussions are not subject to pending check');
+  } finally {
+    cleanupTempDisc();
+  }
 });
 
 // ============================================================

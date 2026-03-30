@@ -300,6 +300,46 @@ function validateLogForTerminal(entries, toStatus, docId) {
   return { valid: true, reason: '' };
 }
 
+/**
+ * Check if a ticket document still has "(pending)" in result sections.
+ * Only applies to ticket documents (P\d{3}_T\d{3}).
+ * Returns {valid: boolean, reason: string}.
+ *
+ * Checks these sections:
+ *   - ## Execution Results (Work Agent)
+ *   - ## Verification Results (Review Agent)
+ *   - ## Orchestrator Evaluation
+ */
+function validatePendingSections(content, docId) {
+  if (!content) return { valid: true, reason: '' };
+
+  // Only check tickets
+  if (!/^P\d{3}_T\d{3}$/.test(docId)) return { valid: true, reason: '' };
+
+  const pendingSections = [];
+
+  const patterns = [
+    { label: 'Execution Results (Work Agent)', regex: /^## Execution Results \(Work Agent\)\s*\n\(pending\)/m },
+    { label: 'Verification Results (Review Agent)', regex: /^## Verification Results \(Review Agent\)\s*\n\(pending\)/m },
+    { label: 'Orchestrator Evaluation', regex: /^## Orchestrator Evaluation\s*\n\(pending\)/m },
+  ];
+
+  for (const p of patterns) {
+    if (p.regex.test(content)) {
+      pendingSections.push(p.label);
+    }
+  }
+
+  if (pendingSections.length > 0) {
+    return {
+      valid: false,
+      reason: `${docId}: cannot transition to terminal status — the following sections still contain "(pending)": ${pendingSections.join(', ')}. Complete these sections before marking done.`,
+    };
+  }
+
+  return { valid: true, reason: '' };
+}
+
 // --- Trigger 2: Bypass 5 defense ---
 
 /**
@@ -440,6 +480,19 @@ async function main() {
         process.exit(2);
         return;
       }
+
+      // Pending section check: tickets must not have "(pending)" in result sections
+      const pendingValidation = validatePendingSections(content, change.docId);
+      if (!pendingValidation.valid) {
+        const output = {
+          decision: 'block',
+          reason: `[LOG_GUARD] ${pendingValidation.reason}`,
+        };
+        process.stderr.write(`[LOG_GUARD] Blocked: ${change.docId} has pending sections\n`);
+        console.log(JSON.stringify(output));
+        process.exit(2);
+        return;
+      }
     }
 
     // All terminal transitions validated
@@ -487,6 +540,7 @@ module.exports = {
   isCreatedEntry,
   isStatusChangeEntry,
   validateLogForTerminal,
+  validatePendingSections,
   checkRegressingCycleGuard,
   ALL_STATUSES,
   TERMINAL_STATUSES,

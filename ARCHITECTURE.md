@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.10.0)
+# Crabshell Architecture (v21.11.0)
 
 ## Overview
 
@@ -200,6 +200,7 @@ Two meta-principles guide Claude's approach to obstacles:
    │   └─> Block writes to .crabshell/ D/P/T/I subdirectories without active skill flag
    ├─> log-guard.js (Write|Edit) — v21.4.0+
    │   ├─> Block INDEX.md terminal status changes (→done/verified/concluded) without document log entries
+   │   ├─> Block tickets with "(pending)" in result sections (Execution/Verification/Orchestrator) — v21.11.0
    │   └─> Block new cycle documents without previous cycle logs in regressing
    ├─> verify-guard.js (Write|Edit) — v19.34.0+
    │   ├─> Block Final Verification writes without prior /verifying run call
@@ -306,7 +307,7 @@ Agent orchestration rules (11 rules covering pairing, cross-review, coherence, c
 | `counter.js` | PostToolUse, SessionEnd | Main engine: counter, L1 creation, rotation, regressing phase detection |
 | `regressing-guard.js` | PreToolUse (Write\|Edit) | Block direct plan/ticket writes during active regressing; force Skill tool |
 | `docs-guard.js` | PreToolUse (Write\|Edit) | Block writes to .crabshell/ D/P/T/I subdirectories without active skill flag |
-| `log-guard.js` | PreToolUse (Write\|Edit) | Block INDEX.md terminal status without document log entries; block cycle docs without previous cycle logs |
+| `log-guard.js` | PreToolUse (Write\|Edit) | Block INDEX.md terminal status without document log entries; block tickets with "(pending)" result sections; block cycle docs without previous cycle logs |
 | `verify-guard.js` | PreToolUse (Write\|Edit) | Block Final Verification writes without /verifying run; require behavioral AC in manifest |
 | `pressure-guard.js` | PreToolUse (Read\|Grep\|Glob\|Bash\|Write\|Edit) | Detect feedback pressure escalation; block all 6 tools at L3 with .crabshell/.claude exemption |
 | `path-guard.js` | PreToolUse (Read\|Grep\|Glob\|Bash\|Write\|Edit) | Block wrong .crabshell/ path; shell var resolution (fail-closed for .crabshell/ v21.8.0); block Edit on logbook.md; block Write shrink on logbook.md (v20.6.0) |
@@ -446,6 +447,7 @@ The 5 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.11.0 | log-guard.js validatePendingSections() — blocks ticket terminal transitions when result sections contain "(pending)", 77-test suite (was 67) |
 | 21.10.0 | L1 session file pruning (>30 days), refineRawSync offset mode (O(n^2)→O(n)), session-aware L1 reuse in check(), final() offset/mtime clearing, prune→delta ordering, local-time date parsing fix, 102-test suite (10 integration) |
 | 21.9.0 | RULES constant compressed 14,153→5,392 chars (62%), COMPRESSED_CHECKLIST 1,375→703 chars (49%), information architecture restructured for density |
 | 21.8.0 | path-guard.js shell variable resolution (fail-closed for unknown vars targeting .crabshell/), _test-path-guard.js 111-test suite (subprocess+unit), marketplace.json+plugin.json description sync, run-hook.cmd cleanup |
