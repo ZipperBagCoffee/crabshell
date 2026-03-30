@@ -188,6 +188,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.10.0 | feat: L1 session file pruning (>30 days, calendar-day comparison), refineRawSync offset mode (O(n^2)→O(n) transcript processing, edge case hardening), lastL1TranscriptOffset tracking, 92-test suite |
 | 21.9.0 | feat: RULES constant compressed 14,153→5,392 chars (62%), COMPRESSED_CHECKLIST 1,375→703 chars (49%), information architecture restructured for density |
 | 21.8.0 | feat: path-guard.js shell variable resolution (fail-closed for unknown vars targeting .crabshell/), _test-path-guard.js 111-test suite (subprocess+unit), marketplace.json+plugin.json description sync, run-hook.cmd cleanup |
 | 21.7.0 | feat: counter.js conditional exports (require.main guard), _test-counter.js 67-test suite (unit+subprocess+edge), acquireIndexLock for memory-index.json writes, INDEX_LOCK_FILE constant, pressure reset fix |

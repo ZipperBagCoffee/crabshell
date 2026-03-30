@@ -216,8 +216,61 @@ function processUser(obj) {
 
 // Synchronous version for use in PostToolUse hook (check())
 // Same logic as refineRaw but uses readFileSync instead of readline stream
-function refineRawSync(inputPath, outputPath) {
-  const content = fs.readFileSync(inputPath, 'utf8');
+// Optional startOffset: byte offset to read from (avoids O(n^2) re-reads)
+// Returns { lineCount, newOffset } when startOffset is a number, plain lineCount otherwise (backward compat)
+function refineRawSync(inputPath, outputPath, startOffset) {
+  const useOffset = typeof startOffset === 'number';
+
+  // Edge case: empty file
+  let fileSize;
+  try {
+    fileSize = fs.statSync(inputPath).size;
+  } catch (e) {
+    return useOffset ? { lineCount: 0, newOffset: 0 } : 0;
+  }
+  if (fileSize === 0) {
+    if (!useOffset) fs.writeFileSync(outputPath, '');
+    return useOffset ? { lineCount: 0, newOffset: 0 } : 0;
+  }
+
+  let content;
+  let effectiveOffset = 0;
+
+  if (useOffset) {
+    // Edge case: file smaller than offset (truncated/rotated) → reset to 0
+    effectiveOffset = startOffset > fileSize ? 0 : startOffset;
+
+    // Edge case: offset at or past end → nothing to process
+    if (effectiveOffset >= fileSize) {
+      return { lineCount: 0, newOffset: fileSize };
+    }
+
+    const remaining = fileSize - effectiveOffset;
+    const buf = Buffer.alloc(remaining);
+    const fd = fs.openSync(inputPath, 'r');
+    try {
+      fs.readSync(fd, buf, 0, remaining, effectiveOffset);
+    } finally {
+      fs.closeSync(fd);
+    }
+    content = buf.toString('utf8');
+
+    // Edge case: offset lands in middle of a JSON line → skip to next newline
+    if (effectiveOffset > 0) {
+      const firstNewline = content.indexOf('\n');
+      if (firstNewline === -1) {
+        // Edge case: no newlines in chunk (single giant partial line) → skip entirely
+        return { lineCount: 0, newOffset: fileSize };
+      }
+      if (firstNewline > 0) {
+        content = content.substring(firstNewline + 1);
+      }
+      // firstNewline === 0 means we started right at a line boundary
+    }
+  } else {
+    content = fs.readFileSync(inputPath, 'utf8');
+  }
+
   const lines = content.split('\n');
   const output = [];
 
@@ -227,6 +280,18 @@ function refineRawSync(inputPath, outputPath) {
     if (refined) {
       output.push(JSON.stringify(refined));
     }
+  }
+
+  if (useOffset) {
+    // Append to existing output file (incremental mode)
+    if (output.length > 0) {
+      if (fs.existsSync(outputPath) && fs.statSync(outputPath).size > 0) {
+        fs.appendFileSync(outputPath, '\n' + output.join('\n'));
+      } else {
+        fs.writeFileSync(outputPath, output.join('\n'));
+      }
+    }
+    return { lineCount: output.length, newOffset: fileSize };
   }
 
   fs.writeFileSync(outputPath, output.join('\n'));
