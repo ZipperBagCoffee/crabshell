@@ -936,6 +936,517 @@ test('MODULE: module.exports guard exists', function() {
 });
 
 // ============================================================
+// 16. pruneOldL1
+// ============================================================
+test('pruneOldL1: deletes files older than 30 days', function() {
+  const tmpDir = makeTempDir('prune-old');
+  const sessDir = path.join(tmpDir, '.crabshell', 'memory', 'sessions');
+  ensureDir(sessDir);
+  const origEnv = process.env.CLAUDE_PROJECT_DIR;
+  process.env.CLAUDE_PROJECT_DIR = tmpDir;
+  try {
+    // Create old file (60 days ago)
+    const oldDate = new Date();
+    oldDate.setDate(oldDate.getDate() - 60);
+    const pad = n => String(n).padStart(2, '0');
+    const oldName = `${oldDate.getFullYear()}-${pad(oldDate.getMonth()+1)}-${pad(oldDate.getDate())}_0000_abc12345.l1.jsonl`;
+    fs.writeFileSync(path.join(sessDir, oldName), JSON.stringify({ ts: '2025-01-01T00:00:00Z', role: 'user', content: 'old' }));
+
+    // Create recent file (today)
+    const now = new Date();
+    const recentName = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_0000_def67890.l1.jsonl`;
+    fs.writeFileSync(path.join(sessDir, recentName), JSON.stringify({ ts: now.toISOString(), role: 'user', content: 'recent' }));
+
+    const pruned = mod.pruneOldL1();
+    assertEqual(pruned, 1, 'should prune 1 file');
+    assert(!fs.existsSync(path.join(sessDir, oldName)), 'old file should be deleted');
+    assert(fs.existsSync(path.join(sessDir, recentName)), 'recent file should remain');
+  } finally {
+    process.env.CLAUDE_PROJECT_DIR = origEnv;
+    cleanupDir(tmpDir);
+  }
+});
+
+test('pruneOldL1: preserves files within 30 days', function() {
+  const tmpDir = makeTempDir('prune-edge');
+  const sessDir = path.join(tmpDir, '.crabshell', 'memory', 'sessions');
+  ensureDir(sessDir);
+  const origEnv = process.env.CLAUDE_PROJECT_DIR;
+  process.env.CLAUDE_PROJECT_DIR = tmpDir;
+  try {
+    // Use 25 days ago (safely within window, avoids midnight boundary ambiguity)
+    const recentDate = new Date();
+    recentDate.setDate(recentDate.getDate() - 25);
+    const pad = n => String(n).padStart(2, '0');
+    const recentName = `${recentDate.getFullYear()}-${pad(recentDate.getMonth()+1)}-${pad(recentDate.getDate())}_0000_abc12345.l1.jsonl`;
+    fs.writeFileSync(path.join(sessDir, recentName), JSON.stringify({ ts: recentDate.toISOString(), role: 'user', content: 'recent' }));
+
+    const pruned = mod.pruneOldL1();
+    assertEqual(pruned, 0, 'should not prune 25-day-old file');
+    assert(fs.existsSync(path.join(sessDir, recentName)), 'recent file should remain');
+  } finally {
+    process.env.CLAUDE_PROJECT_DIR = origEnv;
+    cleanupDir(tmpDir);
+  }
+});
+
+test('pruneOldL1: handles YYYYMMDD timestamp format', function() {
+  const tmpDir = makeTempDir('prune-yyyymmdd');
+  const sessDir = path.join(tmpDir, '.crabshell', 'memory', 'sessions');
+  ensureDir(sessDir);
+  const origEnv = process.env.CLAUDE_PROJECT_DIR;
+  process.env.CLAUDE_PROJECT_DIR = tmpDir;
+  try {
+    // Old file with YYYYMMDD_HHMMSS format
+    const oldName = '20250101_120000_abc12345.l1.jsonl';
+    fs.writeFileSync(path.join(sessDir, oldName), JSON.stringify({ ts: '2025-01-01T12:00:00Z', role: 'user', content: 'old' }));
+
+    const pruned = mod.pruneOldL1();
+    assertEqual(pruned, 1, 'should prune YYYYMMDD format file');
+    assert(!fs.existsSync(path.join(sessDir, oldName)), 'old file should be deleted');
+  } finally {
+    process.env.CLAUDE_PROJECT_DIR = origEnv;
+    cleanupDir(tmpDir);
+  }
+});
+
+test('pruneOldL1: no sessions dir returns 0', function() {
+  const tmpDir = makeTempDir('prune-nodir');
+  const origEnv = process.env.CLAUDE_PROJECT_DIR;
+  process.env.CLAUDE_PROJECT_DIR = tmpDir;
+  try {
+    const pruned = mod.pruneOldL1();
+    assertEqual(pruned, 0, 'returns 0');
+  } finally {
+    process.env.CLAUDE_PROJECT_DIR = origEnv;
+    cleanupDir(tmpDir);
+  }
+});
+
+test('pruneOldL1: ignores non-l1 files', function() {
+  const tmpDir = makeTempDir('prune-nonl1');
+  const sessDir = path.join(tmpDir, '.crabshell', 'memory', 'sessions');
+  ensureDir(sessDir);
+  const origEnv = process.env.CLAUDE_PROJECT_DIR;
+  process.env.CLAUDE_PROJECT_DIR = tmpDir;
+  try {
+    // Old raw file (not L1)
+    const rawName = '20250101_120000_abc12345.raw.jsonl';
+    fs.writeFileSync(path.join(sessDir, rawName), 'raw data');
+
+    const pruned = mod.pruneOldL1();
+    assertEqual(pruned, 0, 'should not prune non-l1 files');
+    assert(fs.existsSync(path.join(sessDir, rawName)), 'raw file should remain');
+  } finally {
+    process.env.CLAUDE_PROJECT_DIR = origEnv;
+    cleanupDir(tmpDir);
+  }
+});
+
+test('pruneOldL1: invalid date filename skipped', function() {
+  const tmpDir = makeTempDir('prune-baddate');
+  const sessDir = path.join(tmpDir, '.crabshell', 'memory', 'sessions');
+  ensureDir(sessDir);
+  const origEnv = process.env.CLAUDE_PROJECT_DIR;
+  process.env.CLAUDE_PROJECT_DIR = tmpDir;
+  try {
+    const badName = 'not-a-date_xyz.l1.jsonl';
+    fs.writeFileSync(path.join(sessDir, badName), JSON.stringify({ ts: 'x', role: 'user', content: 'x' }));
+
+    const pruned = mod.pruneOldL1();
+    assertEqual(pruned, 0, 'invalid date files skipped');
+    assert(fs.existsSync(path.join(sessDir, badName)), 'file should remain');
+  } finally {
+    process.env.CLAUDE_PROJECT_DIR = origEnv;
+    cleanupDir(tmpDir);
+  }
+});
+
+// ============================================================
+// 17. refineRawSync offset mode
+// ============================================================
+test('OFFSET: refineRawSync full read (no offset) returns number', function() {
+  const { refineRawSync } = require(path.join(__dirname, 'refine-raw.js'));
+  const tmpDir = makeTempDir('offset-full');
+  const inputPath = path.join(tmpDir, 'transcript.jsonl');
+  const outputPath = path.join(tmpDir, 'output.l1.jsonl');
+  try {
+    const lines = [
+      JSON.stringify({ type: 'user', timestamp: '2026-01-01T00:00:00Z', message: { content: 'hello' } }),
+      JSON.stringify({ type: 'assistant', timestamp: '2026-01-01T00:01:00Z', message: { content: [{ type: 'text', text: 'hi there' }] } })
+    ];
+    fs.writeFileSync(inputPath, lines.join('\n'));
+
+    const result = refineRawSync(inputPath, outputPath);
+    assert(typeof result === 'number', 'full read returns number, got: ' + typeof result);
+    assertEqual(result, 2, 'should process 2 lines');
+    assert(fs.existsSync(outputPath), 'output file created');
+  } finally {
+    cleanupDir(tmpDir);
+  }
+});
+
+test('OFFSET: refineRawSync with offset=0 returns object with newOffset (first run)', function() {
+  const { refineRawSync } = require(path.join(__dirname, 'refine-raw.js'));
+  const tmpDir = makeTempDir('offset-zero');
+  const inputPath = path.join(tmpDir, 'transcript.jsonl');
+  const outputPath = path.join(tmpDir, 'output.l1.jsonl');
+  try {
+    const lines = [
+      JSON.stringify({ type: 'user', timestamp: '2026-01-01T00:00:00Z', message: { content: 'hello' } })
+    ];
+    fs.writeFileSync(inputPath, lines.join('\n'));
+
+    const result = refineRawSync(inputPath, outputPath, 0);
+    assert(typeof result === 'object', 'offset=0 returns object, got: ' + typeof result);
+    assertEqual(result.lineCount, 1, 'should process 1 line');
+    assert(result.newOffset > 0, 'newOffset should be > 0');
+  } finally {
+    cleanupDir(tmpDir);
+  }
+});
+
+test('OFFSET: refineRawSync with positive offset returns object with newOffset', function() {
+  const { refineRawSync } = require(path.join(__dirname, 'refine-raw.js'));
+  const tmpDir = makeTempDir('offset-pos');
+  const inputPath = path.join(tmpDir, 'transcript.jsonl');
+  const outputPath = path.join(tmpDir, 'output.l1.jsonl');
+  try {
+    const line1 = JSON.stringify({ type: 'user', timestamp: '2026-01-01T00:00:00Z', message: { content: 'first' } });
+    const line2 = JSON.stringify({ type: 'user', timestamp: '2026-01-01T00:01:00Z', message: { content: 'second' } });
+    fs.writeFileSync(inputPath, line1 + '\n' + line2);
+
+    // First full read
+    const fullResult = refineRawSync(inputPath, outputPath);
+    const fullOutput = fs.readFileSync(outputPath, 'utf8');
+
+    // Now add line3 and read from offset
+    const line3 = JSON.stringify({ type: 'user', timestamp: '2026-01-01T00:02:00Z', message: { content: 'third' } });
+    const offset = Buffer.byteLength(line1 + '\n' + line2);
+    fs.writeFileSync(inputPath, line1 + '\n' + line2 + '\n' + line3);
+
+    const result = refineRawSync(inputPath, outputPath, offset);
+    assert(typeof result === 'object', 'positive offset returns object');
+    assert(typeof result.lineCount === 'number', 'has lineCount');
+    assert(typeof result.newOffset === 'number', 'has newOffset');
+    assertEqual(result.lineCount, 1, 'should process 1 new line');
+
+    // Output should contain both old and new data
+    const finalOutput = fs.readFileSync(outputPath, 'utf8');
+    const outputLines = finalOutput.split('\n').filter(l => l.trim());
+    assertEqual(outputLines.length, 3, 'output should have 3 lines total');
+  } finally {
+    cleanupDir(tmpDir);
+  }
+});
+
+test('OFFSET: refineRawSync offset beyond file size resets to 0 (truncated/rotated)', function() {
+  const { refineRawSync } = require(path.join(__dirname, 'refine-raw.js'));
+  const tmpDir = makeTempDir('offset-beyond');
+  const inputPath = path.join(tmpDir, 'transcript.jsonl');
+  const outputPath = path.join(tmpDir, 'output.l1.jsonl');
+  try {
+    const line1 = JSON.stringify({ type: 'user', timestamp: '2026-01-01T00:00:00Z', message: { content: 'only' } });
+    fs.writeFileSync(inputPath, line1);
+
+    const result = refineRawSync(inputPath, outputPath, 99999);
+    assert(typeof result === 'object', 'returns object');
+    assertEqual(result.lineCount, 1, 'resets to 0 and processes full file');
+  } finally {
+    cleanupDir(tmpDir);
+  }
+});
+
+// ============================================================
+// 18. Export: pruneOldL1
+// ============================================================
+test('EXPORT: pruneOldL1 is exported', function() {
+  assert(typeof mod.pruneOldL1 === 'function', 'pruneOldL1 should be exported as function');
+});
+
+// ============================================================
+// 19. L1 PRUNING EDGE CASES
+// ============================================================
+test('PRUNE EDGE: empty sessions directory returns 0', function() {
+  const tmpDir = makeTempDir('prune-empty');
+  const sessDir = path.join(tmpDir, '.crabshell', 'memory', 'sessions');
+  ensureDir(sessDir);
+  const origEnv = process.env.CLAUDE_PROJECT_DIR;
+  process.env.CLAUDE_PROJECT_DIR = tmpDir;
+  try {
+    const pruned = mod.pruneOldL1();
+    assertEqual(pruned, 0, 'empty dir returns 0');
+  } finally {
+    process.env.CLAUDE_PROJECT_DIR = origEnv;
+    cleanupDir(tmpDir);
+  }
+});
+
+test('PRUNE EDGE: no .l1.jsonl files (only .raw.jsonl and .md)', function() {
+  const tmpDir = makeTempDir('prune-nonl1only');
+  const sessDir = path.join(tmpDir, '.crabshell', 'memory', 'sessions');
+  ensureDir(sessDir);
+  const origEnv = process.env.CLAUDE_PROJECT_DIR;
+  process.env.CLAUDE_PROJECT_DIR = tmpDir;
+  try {
+    fs.writeFileSync(path.join(sessDir, '20250101_120000.raw.jsonl'), 'raw data');
+    fs.writeFileSync(path.join(sessDir, '2025-01-01_session.md'), '# Session');
+    const pruned = mod.pruneOldL1();
+    assertEqual(pruned, 0, 'no l1 files means 0 pruned');
+    assert(fs.existsSync(path.join(sessDir, '20250101_120000.raw.jsonl')), 'raw file untouched');
+    assert(fs.existsSync(path.join(sessDir, '2025-01-01_session.md')), 'md file untouched');
+  } finally {
+    process.env.CLAUDE_PROJECT_DIR = origEnv;
+    cleanupDir(tmpDir);
+  }
+});
+
+test('PRUNE EDGE: unparseable date in filename skipped gracefully', function() {
+  const tmpDir = makeTempDir('prune-badname');
+  const sessDir = path.join(tmpDir, '.crabshell', 'memory', 'sessions');
+  ensureDir(sessDir);
+  const origEnv = process.env.CLAUDE_PROJECT_DIR;
+  process.env.CLAUDE_PROJECT_DIR = tmpDir;
+  try {
+    fs.writeFileSync(path.join(sessDir, 'garbage-name-here.l1.jsonl'), '{}');
+    fs.writeFileSync(path.join(sessDir, 'XXXX-YY-ZZ_abc.l1.jsonl'), '{}');
+    fs.writeFileSync(path.join(sessDir, '.l1.jsonl'), '{}');
+    const pruned = mod.pruneOldL1();
+    assertEqual(pruned, 0, 'unparseable dates skipped');
+    assert(fs.existsSync(path.join(sessDir, 'garbage-name-here.l1.jsonl')), 'file remains');
+    assert(fs.existsSync(path.join(sessDir, 'XXXX-YY-ZZ_abc.l1.jsonl')), 'file remains');
+    assert(fs.existsSync(path.join(sessDir, '.l1.jsonl')), 'file remains');
+  } finally {
+    process.env.CLAUDE_PROJECT_DIR = origEnv;
+    cleanupDir(tmpDir);
+  }
+});
+
+test('PRUNE EDGE: exactly 30 calendar days ago boundary keeps file', function() {
+  const tmpDir = makeTempDir('prune-boundary');
+  const sessDir = path.join(tmpDir, '.crabshell', 'memory', 'sessions');
+  ensureDir(sessDir);
+  const origEnv = process.env.CLAUDE_PROJECT_DIR;
+  process.env.CLAUDE_PROJECT_DIR = tmpDir;
+  try {
+    // Use local date 30 days ago to match pruneOldL1's local-time Date constructor
+    const now = new Date();
+    const edge = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30);
+    const pad = n => String(n).padStart(2, '0');
+    const name = `${edge.getFullYear()}-${pad(edge.getMonth()+1)}-${pad(edge.getDate())}_1200_session1.l1.jsonl`;
+    fs.writeFileSync(path.join(sessDir, name), '{}');
+
+    const pruned = mod.pruneOldL1();
+    assertEqual(pruned, 0, 'exactly 30 days NOT deleted');
+    assert(fs.existsSync(path.join(sessDir, name)), 'boundary file preserved');
+  } finally {
+    process.env.CLAUDE_PROJECT_DIR = origEnv;
+    cleanupDir(tmpDir);
+  }
+});
+
+test('PRUNE EDGE: 31 calendar days ago IS deleted', function() {
+  const tmpDir = makeTempDir('prune-31day');
+  const sessDir = path.join(tmpDir, '.crabshell', 'memory', 'sessions');
+  ensureDir(sessDir);
+  const origEnv = process.env.CLAUDE_PROJECT_DIR;
+  process.env.CLAUDE_PROJECT_DIR = tmpDir;
+  try {
+    const now = new Date();
+    const old = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 31);
+    const pad = n => String(n).padStart(2, '0');
+    const name = `${old.getFullYear()}-${pad(old.getMonth()+1)}-${pad(old.getDate())}_1200_session1.l1.jsonl`;
+    fs.writeFileSync(path.join(sessDir, name), '{}');
+
+    const pruned = mod.pruneOldL1();
+    assertEqual(pruned, 1, '31 days old IS deleted');
+    assert(!fs.existsSync(path.join(sessDir, name)), 'old file removed');
+  } finally {
+    process.env.CLAUDE_PROJECT_DIR = origEnv;
+    cleanupDir(tmpDir);
+  }
+});
+
+test('PRUNE EDGE: permission error on delete fails gracefully', function() {
+  const tmpDir = makeTempDir('prune-perm');
+  const sessDir = path.join(tmpDir, '.crabshell', 'memory', 'sessions');
+  ensureDir(sessDir);
+  const origEnv = process.env.CLAUDE_PROJECT_DIR;
+  process.env.CLAUDE_PROJECT_DIR = tmpDir;
+  try {
+    const oldName = '20240101_120000_abc12345.l1.jsonl';
+    const filePath = path.join(sessDir, oldName);
+    fs.writeFileSync(filePath, '{}');
+    try { fs.chmodSync(filePath, 0o444); } catch (e) { /* skip if chmod not supported */ }
+
+    // Should not throw regardless of whether delete succeeds
+    const pruned = mod.pruneOldL1();
+    assert(typeof pruned === 'number', 'returns number without crash');
+
+    try { fs.chmodSync(filePath, 0o666); } catch (e) {}
+  } finally {
+    process.env.CLAUDE_PROJECT_DIR = origEnv;
+    cleanupDir(tmpDir);
+  }
+});
+
+// ============================================================
+// 20. OFFSET EDGE CASES
+// ============================================================
+test('OFFSET EDGE: empty transcript file returns 0 lines', function() {
+  const { refineRawSync } = require(path.join(__dirname, 'refine-raw.js'));
+  const tmpDir = makeTempDir('offset-empty');
+  const inputPath = path.join(tmpDir, 'empty.jsonl');
+  const outputPath = path.join(tmpDir, 'output.l1.jsonl');
+  try {
+    fs.writeFileSync(inputPath, '');
+    const result = refineRawSync(inputPath, outputPath, 0);
+    assert(typeof result === 'object', 'returns object');
+    assertEqual(result.lineCount, 0, 'empty file = 0 lines');
+    assertEqual(result.newOffset, 0, 'offset stays at 0');
+  } finally {
+    cleanupDir(tmpDir);
+  }
+});
+
+test('OFFSET EDGE: no offset (undefined) processes full file, returns number', function() {
+  const { refineRawSync } = require(path.join(__dirname, 'refine-raw.js'));
+  const tmpDir = makeTempDir('offset-undef');
+  const inputPath = path.join(tmpDir, 'transcript.jsonl');
+  const outputPath = path.join(tmpDir, 'output.l1.jsonl');
+  try {
+    fs.writeFileSync(inputPath, JSON.stringify({ type: 'user', timestamp: '2026-01-01T00:00:00Z', message: { content: 'test' } }));
+    const result = refineRawSync(inputPath, outputPath);
+    assert(typeof result === 'number', 'undefined offset returns number');
+    assertEqual(result, 1, '1 line processed');
+  } finally {
+    cleanupDir(tmpDir);
+  }
+});
+
+test('OFFSET EDGE: offset in middle of JSON line skips to next line', function() {
+  const { refineRawSync } = require(path.join(__dirname, 'refine-raw.js'));
+  const tmpDir = makeTempDir('offset-mid');
+  const inputPath = path.join(tmpDir, 'transcript.jsonl');
+  const outputPath = path.join(tmpDir, 'output.l1.jsonl');
+  try {
+    const line1 = JSON.stringify({ type: 'user', timestamp: '2026-01-01T00:00:00Z', message: { content: 'first' } });
+    const line2 = JSON.stringify({ type: 'user', timestamp: '2026-01-01T00:01:00Z', message: { content: 'second' } });
+    fs.writeFileSync(inputPath, line1 + '\n' + line2);
+
+    const midOffset = Math.floor(Buffer.byteLength(line1) / 2);
+    const result = refineRawSync(inputPath, outputPath, midOffset);
+    assertEqual(result.lineCount, 1, 'only second line processed');
+
+    const output = fs.readFileSync(outputPath, 'utf8');
+    assert(output.includes('second'), 'output contains second line content');
+    assert(!output.includes('first'), 'output does NOT contain first line');
+  } finally {
+    cleanupDir(tmpDir);
+  }
+});
+
+test('OFFSET EDGE: transcript has no newlines (single giant line) with offset > 0', function() {
+  const { refineRawSync } = require(path.join(__dirname, 'refine-raw.js'));
+  const tmpDir = makeTempDir('offset-noeol');
+  const inputPath = path.join(tmpDir, 'transcript.jsonl');
+  const outputPath = path.join(tmpDir, 'output.l1.jsonl');
+  try {
+    const singleLine = JSON.stringify({ type: 'user', timestamp: '2026-01-01T00:00:00Z', message: { content: 'no newlines here' } });
+    fs.writeFileSync(inputPath, singleLine);
+
+    const result = refineRawSync(inputPath, outputPath, 5);
+    assertEqual(result.lineCount, 0, 'single partial line skipped');
+    assertEqual(result.newOffset, Buffer.byteLength(singleLine), 'newOffset = file size');
+  } finally {
+    cleanupDir(tmpDir);
+  }
+});
+
+test('OFFSET EDGE: offset at exact end of file returns 0 lines', function() {
+  const { refineRawSync } = require(path.join(__dirname, 'refine-raw.js'));
+  const tmpDir = makeTempDir('offset-atend');
+  const inputPath = path.join(tmpDir, 'transcript.jsonl');
+  const outputPath = path.join(tmpDir, 'output.l1.jsonl');
+  try {
+    const line1 = JSON.stringify({ type: 'user', timestamp: '2026-01-01T00:00:00Z', message: { content: 'done' } });
+    fs.writeFileSync(inputPath, line1);
+    const fileSize = fs.statSync(inputPath).size;
+
+    const result = refineRawSync(inputPath, outputPath, fileSize);
+    assertEqual(result.lineCount, 0, 'nothing after end');
+    assertEqual(result.newOffset, fileSize, 'offset unchanged');
+  } finally {
+    cleanupDir(tmpDir);
+  }
+});
+
+test('OFFSET EDGE: incremental append to existing L1 file', function() {
+  const { refineRawSync } = require(path.join(__dirname, 'refine-raw.js'));
+  const tmpDir = makeTempDir('offset-append');
+  const inputPath = path.join(tmpDir, 'transcript.jsonl');
+  const outputPath = path.join(tmpDir, 'output.l1.jsonl');
+  try {
+    const line1 = JSON.stringify({ type: 'user', timestamp: '2026-01-01T00:00:00Z', message: { content: 'first' } });
+    const line2 = JSON.stringify({ type: 'user', timestamp: '2026-01-01T00:01:00Z', message: { content: 'second' } });
+
+    fs.writeFileSync(inputPath, line1);
+    const r1 = refineRawSync(inputPath, outputPath, 0);
+
+    fs.appendFileSync(inputPath, '\n' + line2);
+
+    const r2 = refineRawSync(inputPath, outputPath, r1.newOffset);
+    assertEqual(r2.lineCount, 1, 'second run processes 1 new line');
+
+    const output = fs.readFileSync(outputPath, 'utf8');
+    const outputLines = output.split('\n').filter(l => l.trim());
+    assertEqual(outputLines.length, 2, 'total 2 lines in output');
+  } finally {
+    cleanupDir(tmpDir);
+  }
+});
+
+test('OFFSET EDGE: file truncated smaller than previous offset resets to 0', function() {
+  const { refineRawSync } = require(path.join(__dirname, 'refine-raw.js'));
+  const tmpDir = makeTempDir('offset-truncated');
+  const inputPath = path.join(tmpDir, 'transcript.jsonl');
+  const outputPath = path.join(tmpDir, 'output.l1.jsonl');
+  try {
+    const line1 = JSON.stringify({ type: 'user', timestamp: '2026-01-01T00:00:00Z', message: { content: 'big content here' } });
+    const line2 = JSON.stringify({ type: 'user', timestamp: '2026-01-01T00:01:00Z', message: { content: 'more content' } });
+    fs.writeFileSync(inputPath, line1 + '\n' + line2);
+    const bigSize = fs.statSync(inputPath).size;
+
+    const smallLine = JSON.stringify({ type: 'user', timestamp: '2026-01-01T00:02:00Z', message: { content: 'new' } });
+    fs.writeFileSync(inputPath, smallLine);
+
+    const result = refineRawSync(inputPath, outputPath, bigSize);
+    assertEqual(result.lineCount, 1, 'processes full file after reset');
+  } finally {
+    cleanupDir(tmpDir);
+  }
+});
+
+test('OFFSET EDGE: offset=0 on first run processes all content', function() {
+  const { refineRawSync } = require(path.join(__dirname, 'refine-raw.js'));
+  const tmpDir = makeTempDir('offset-firstrun');
+  const inputPath = path.join(tmpDir, 'transcript.jsonl');
+  const outputPath = path.join(tmpDir, 'output.l1.jsonl');
+  try {
+    const line1 = JSON.stringify({ type: 'user', timestamp: '2026-01-01T00:00:00Z', message: { content: 'a' } });
+    const line2 = JSON.stringify({ type: 'assistant', timestamp: '2026-01-01T00:01:00Z', message: { content: [{ type: 'text', text: 'b' }] } });
+    const line3 = JSON.stringify({ type: 'user', timestamp: '2026-01-01T00:02:00Z', message: { content: 'c' } });
+    fs.writeFileSync(inputPath, line1 + '\n' + line2 + '\n' + line3);
+
+    const result = refineRawSync(inputPath, outputPath, 0);
+    assertEqual(result.lineCount, 3, 'all 3 lines processed on first run');
+    assert(result.newOffset > 0, 'newOffset set to file size');
+  } finally {
+    cleanupDir(tmpDir);
+  }
+});
+
+// ============================================================
 // Summary
 // ============================================================
 console.log('\n' + '='.repeat(60));

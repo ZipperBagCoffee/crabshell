@@ -117,14 +117,38 @@ async function check() {
           const idx = readIndexSafe(indexPath);
           // Only create L1 if transcript changed since last L1 creation
           if (!idx.lastL1TranscriptMtime || transcriptMtime > idx.lastL1TranscriptMtime) {
-            const ts = getTimestamp();
             ensureDir(sessionsDir);
-            // Include session_id prefix in L1 filename for session isolation
-            const l1Name = sessionId8 ? `${ts}_${sessionId8}.l1.jsonl` : `${ts}.l1.jsonl`;
-            const l1Dest = path.join(sessionsDir, l1Name);
-            refineRawSync(transcriptPath, l1Dest);
+
+            // Find existing L1 for this session to append to (offset mode),
+            // or create new L1 (fresh session / no existing L1)
+            let l1Dest;
+            let startOffset = 0;
+            if (sessionId8) {
+              const existingL1 = fs.readdirSync(sessionsDir)
+                .filter(f => f.endsWith('.l1.jsonl') && f.includes(`_${sessionId8}`))
+                .sort().reverse()[0]; // newest first
+              if (existingL1) {
+                l1Dest = path.join(sessionsDir, existingL1);
+                startOffset = idx.lastL1TranscriptOffset || 0;
+              }
+            }
+            if (!l1Dest) {
+              // New session or no sessionId — create fresh L1
+              const ts = getTimestamp();
+              const l1Name = sessionId8 ? `${ts}_${sessionId8}.l1.jsonl` : `${ts}.l1.jsonl`;
+              l1Dest = path.join(sessionsDir, l1Name);
+              startOffset = 0;
+            }
+
+            const result = refineRawSync(transcriptPath, l1Dest, startOffset);
             cleanupDuplicateL1(l1Dest);
             idx.lastL1TranscriptMtime = transcriptMtime;
+            // Update offset for next incremental read
+            if (result && typeof result === 'object' && result.newOffset !== undefined) {
+              idx.lastL1TranscriptOffset = result.newOffset;
+            } else {
+              idx.lastL1TranscriptOffset = fs.statSync(transcriptPath).size;
+            }
             writeJson(indexPath, idx);
           }
         } catch (e) {
@@ -247,22 +271,38 @@ async function final() {
   const nodePath = process.execPath.replace(/\\/g, '/');
   const config = getConfig();
 
+  // Prune old L1 files (>30 days) — after L1 creation, before delta extraction
+  // Must run before delta so extractDelta never selects a stale file
+  try {
+    pruneOldL1();
+  } catch (e) {
+    fs.appendFileSync(path.join(logsDir, 'error.log'),
+      `${timestamp}: Failed to prune old L1 files: ${e.message}\n`);
+  }
+
   // Process any remaining delta before session ends (pass sessionId for isolation)
   const deltaResult = extractDelta(sessionId8);
   let deltaOutput = '';
-  if (deltaResult.success) {
-    deltaOutput = `\n[CRABSHELL_DELTA] file=${deltaResult.deltaFile}\nDelta extracted at session end: ${deltaResult.entryCount} entries.`;
-    // Set deltaReady flag for next session's inject-rules.js
+  // Clear offset + set deltaReady inside lock
+  {
     const idxPath = path.join(getStorageRoot(), MEMORY_DIR, 'memory-index.json');
     const finalMemoryDir = path.join(getStorageRoot(), MEMORY_DIR);
     const finalLocked = acquireIndexLock(finalMemoryDir);
     try {
       const idx = readIndexSafe(idxPath);
-      idx.deltaReady = true;
+      // Reset offset — final() creates definitive L1 from scratch, next session starts fresh
+      delete idx.lastL1TranscriptOffset;
+      delete idx.lastL1TranscriptMtime;
+      if (deltaResult.success) {
+        idx.deltaReady = true;
+      }
       writeJson(idxPath, idx);
     } finally {
       if (finalLocked) releaseIndexLock(finalMemoryDir);
     }
+  }
+  if (deltaResult.success) {
+    deltaOutput = `\n[CRABSHELL_DELTA] file=${deltaResult.deltaFile}\nDelta extracted at session end: ${deltaResult.entryCount} entries.`;
   }
 
   // Quiet mode by default - only show brief message
@@ -348,6 +388,51 @@ function cleanupDuplicateL1(newL1Path) {
       continue;
     }
   }
+}
+
+// Delete L1 files older than 30 days based on filename date prefix
+// Uses calendar days (Math.floor) matching compress() behavior:
+// exactly 30 days old → keep, >30 days → delete
+function pruneOldL1() {
+  const sessionsDir = path.join(getStorageRoot(), SESSIONS_DIR);
+  if (!fs.existsSync(sessionsDir)) return 0;
+
+  const now = new Date();
+  const l1Files = fs.readdirSync(sessionsDir).filter(f => f.endsWith('.l1.jsonl'));
+  let pruned = 0;
+
+  for (const fileName of l1Files) {
+    // Parse date from filename: YYYY-MM-DD_HHMM or YYYYMMDD_HHMMSS format
+    // Use local-time Date constructor (matching compress() behavior)
+    let fileDate;
+    const dashMatch = fileName.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    const compactMatch = !dashMatch && fileName.match(/^(\d{4})(\d{2})(\d{2})/);
+    if (dashMatch) {
+      fileDate = new Date(parseInt(dashMatch[1]), parseInt(dashMatch[2]) - 1, parseInt(dashMatch[3]));
+    } else if (compactMatch) {
+      fileDate = new Date(parseInt(compactMatch[1]), parseInt(compactMatch[2]) - 1, parseInt(compactMatch[3]));
+    } else {
+      continue;
+    }
+
+    if (isNaN(fileDate.getTime())) continue;
+
+    // Calendar days comparison matching compress() — >30 days means 31+
+    const daysOld = Math.floor((now - fileDate) / (1000 * 60 * 60 * 24));
+    if (daysOld > 30) {
+      try {
+        fs.unlinkSync(path.join(sessionsDir, fileName));
+        pruned++;
+      } catch (e) {
+        // fail-open: skip files that can't be deleted (permission errors, etc.)
+      }
+    }
+  }
+
+  if (pruned > 0) {
+    console.error(`[CRABSHELL] Pruned ${pruned} old L1 files (>30 days)`);
+  }
+  return pruned;
 }
 
 // Deduplicate all L1 files (keep largest per session)
@@ -751,5 +836,5 @@ Memory Rotation (v13.0.0):
 
 // Export for testing (only when required as a module, not when run directly)
 if (require.main !== module) {
-  module.exports = { getCounter, setCounter, getConfig, cleanupDuplicateL1, dedupeL1, parseArg, compress };
+  module.exports = { getCounter, setCounter, getConfig, cleanupDuplicateL1, dedupeL1, parseArg, compress, pruneOldL1 };
 }

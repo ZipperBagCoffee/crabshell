@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.9.0)
+# Crabshell Architecture (v21.10.0)
 
 ## Overview
 
@@ -221,7 +221,7 @@ Two meta-principles guide Claude's approach to obstacles:
    │   ├─> Detect regressing skill calls → auto-advance phase (v19.23.0)
    │   ├─> Increment counter
    │   ├─> checkAndRotate() — archive if > 23,750 tokens
-   │   └─> At threshold: create/update L1 → extractDelta() → creates delta_temp.txt
+   │   └─> At threshold: create/update L1 (incremental offset read) → extractDelta() → creates delta_temp.txt
    ├─> verification-sequence.js record (.*) — v21.0.0+
    │   └─> Track source file edits, test executions, grep cycles in verification-state.json
    └─> skill-tracker.js (Skill) — v19.33.0+
@@ -231,6 +231,7 @@ Two meta-principles guide Claude's approach to obstacles:
    └─> counter.js final
        ├─> Create final L1 session transcript (last chance)
        ├─> Cleanup duplicate L1 files
+       ├─> pruneOldL1() — delete L1 files >30 days old (v21.10.0)
        └─> extractDelta() for remaining content
 ```
 
@@ -318,7 +319,7 @@ Agent orchestration rules (11 rules covering pairing, cross-review, coherence, c
 | `utils.js` | (library) | Shared utilities: readJsonOrDefault, readIndexSafe, writeJson, getProjectDir |
 | `init.js` | (library) | Project initialization, index preservation on parse error |
 | `transcript-utils.js` | (library) | Shared stdin/transcript utilities: readStdin, findTranscriptPath, encodeProjectPath, normalizePath |
-| `refine-raw.js` | (library) | raw.jsonl -> l1.jsonl conversion (async + sync variants) |
+| `refine-raw.js` | (library) | raw.jsonl -> l1.jsonl conversion (async + sync with optional byte offset) |
 | `legacy-migration.js` | (library) | Split oversized memory files |
 
 ## Configuration Constants (constants.js)
@@ -394,6 +395,7 @@ Save to *.summary.json
 | deltaReady | Flag: true when delta_temp.txt is ready for processing |
 | pendingLastProcessedTs | Temp: max L1 entry ts from last extractDelta(), used by markMemoryUpdated() |
 | lastL1TranscriptMtime | Transcript file mtime at last L1 creation (skip redundant L1 creation) |
+| lastL1TranscriptOffset | Byte offset into transcript file after last L1 creation (incremental reads, v21.10.0) |
 
 ### counter.json Structure (v20.5.0)
 
@@ -443,6 +445,7 @@ The 5 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.10.0 | L1 session file pruning (>30 days, calendar-day comparison), refineRawSync offset mode (O(n^2)→O(n) transcript processing, edge case hardening), lastL1TranscriptOffset tracking, 92-test suite |
 | 21.9.0 | RULES constant compressed 14,153→5,392 chars (62%), COMPRESSED_CHECKLIST 1,375→703 chars (49%), information architecture restructured for density |
 | 21.8.0 | path-guard.js shell variable resolution (fail-closed for unknown vars targeting .crabshell/), _test-path-guard.js 111-test suite (subprocess+unit), marketplace.json+plugin.json description sync, run-hook.cmd cleanup |
 | 21.7.0 | counter.js conditional exports (require.main guard), _test-counter.js 67-test suite (unit+subprocess+edge), acquireIndexLock for memory-index.json writes, INDEX_LOCK_FILE constant, pressure reset fix |

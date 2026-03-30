@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.9.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.10.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -81,7 +81,7 @@ crabshell/
 │   ├── _test-log-guard.js           # Log-guard unit tests (v21.4.0)
 │   ├── _test-feedback-detection.js  # Feedback detection + pressure system tests (v21.5.0)
 │   ├── _test-inject-rules.js        # inject-rules.js export + behavioral tests (v21.6.0)
-│   ├── _test-counter.js             # counter.js export + subprocess + lock tests (v21.7.0)
+│   ├── _test-counter.js             # counter.js export + subprocess + lock + pruning + offset tests (v21.10.0)
 │   └── utils.js                      # Shared utilities (getStorageRoot, getProjectDir)
 │
 ├── skills/                           # Slash command skills (16 total)
@@ -134,7 +134,7 @@ Regressing phase tracker (v19.23.0):
 ### scripts/counter.js
 Main automation engine with commands:
 - `check`: Increment counter, create/update L1 + trigger save at threshold, check rotation, detect regressing skill calls
-- `final`: Session end handler, create L1, cleanup duplicates
+- `final`: Session end handler, create L1, cleanup duplicates, prune old L1 (>30 days)
 - `reset`: Reset counter to 0
 - `search-memory`: Search L1/L2/L3 layers (--deep for L1)
 - `generate-l3`: Create L3 summary for archive
@@ -147,7 +147,7 @@ Main automation engine with commands:
 ### scripts/refine-raw.js
 L1 generation:
 - `refineRaw()`: Async raw.jsonl to l1.jsonl conversion
-- `refineRawSync()`: Sync version for PostToolUse hook (v14.0.0)
+- `refineRawSync(inputPath, outputPath, startOffset)`: Sync version for PostToolUse hook, optional byte offset for incremental reads (v14.0.0, v21.10.0)
 
 ### scripts/constants.js
 Centralized configuration:
@@ -214,7 +214,8 @@ L1 delta extraction:
 
 ### scripts/refine-raw.js
 L1 generation:
-- `refineRaw()`: Convert raw.jsonl to l1.jsonl
+- `refineRaw()`: Async raw.jsonl to l1.jsonl conversion
+- `refineRawSync(inputPath, outputPath, startOffset)`: Sync version with optional byte offset for incremental reads
 
 ## Memory Hierarchy (v13.0.0)
 
@@ -263,7 +264,7 @@ L1 generation:
    │   ├─> Detect regressing skill calls → auto-advance phase (v19.23.0)
    │   ├─> Increment counter
    │   ├─> checkAndRotate() - archive if > 23,750 tokens
-   │   └─> At threshold: create/update L1 → extractDelta() → creates delta_temp.txt
+   │   └─> At threshold: create/update L1 (incremental offset read) → extractDelta() → creates delta_temp.txt
    └─> verification-sequence.js record (.*) — track source edits, test runs, grep cycles (v21.0.0)
 
 6. Stop
@@ -276,6 +277,7 @@ L1 generation:
    └─> counter.js final
        ├─> Create final L1 session transcript (last chance)
        ├─> Cleanup duplicate L1 files
+       ├─> pruneOldL1() — delete L1 files >30 days old (v21.10.0)
        └─> extractDelta() for remaining content
 ```
 
@@ -283,6 +285,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.10.0 | L1 session file pruning (>30 days, calendar-day comparison), refineRawSync offset mode (O(n^2)→O(n) transcript processing, edge case hardening), lastL1TranscriptOffset tracking, 92-test suite |
 | 21.9.0 | RULES constant compressed 14,153→5,392 chars (62%), COMPRESSED_CHECKLIST 1,375→703 chars (49%), information architecture restructured for density |
 | 21.8.0 | path-guard.js shell variable resolution (fail-closed for unknown vars targeting .crabshell/), _test-path-guard.js 111-test suite (subprocess+unit), marketplace.json+plugin.json description sync, run-hook.cmd cleanup |
 | 21.7.0 | feat: counter.js conditional exports (require.main guard), _test-counter.js 67-test suite (unit+subprocess+edge), acquireIndexLock for memory-index.json writes, INDEX_LOCK_FILE constant, pressure reset fix |
