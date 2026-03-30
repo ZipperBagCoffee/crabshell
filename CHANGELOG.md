@@ -1,5 +1,9 @@
 # Changelog
 
+## 21.9.0
+- feat: RULES constant compressed 14,153→5,392 chars (62% reduction) — information architecture restructured: scope definitions collapsed to 1-liners, examples removed from Understanding-First and Verification-First, problem-solving merged to 2-sentence block, principles shortened, additional rules restored (lessons/session-restart/work-log/documents/version-bump) in compressed form
+- feat: COMPRESSED_CHECKLIST compressed 1,375→703 chars (49% reduction) — 8 items (was 10), interference alert shortened
+
 ## 21.8.0
 - feat: path-guard.js shell variable resolution — resolves $CLAUDE_PROJECT_DIR, $PROJECT_DIR, $HOME, $USERPROFILE, ~ before validation; blocks unresolved vars ($RANDOM, $FOO) + subshell patterns ($(), backticks) targeting .crabshell/; fail-closed for unknown vars (was fail-open); added resolveShellVariables, hasUnresolvedVariables, require.main guard + 6-function exports
 - feat: _test-path-guard.js — 111 tests (was 29): 55 subprocess tests (Read/Grep/Glob/Bash, parent traversal, quoted paths, shell var resolution, unknown var blocking, mixed paths, non-.crabshell paths, backtick/subshell), 56 unit tests (hasShellVariable 10, resolveShellVariables 12, hasUnresolvedVariables 7, checkPath 16, resolveDotsInPath 5, extractMemoryPathsFromCommand 5, exports 6 — known var resolution, unknown var blocking, subshell/backtick, mixed paths, non-.crabshell exclusion, projectDir=homedir edge case)
