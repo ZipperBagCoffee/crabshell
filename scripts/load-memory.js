@@ -134,6 +134,20 @@ function loadMemory(stdinData) {
     try { fs.unlinkSync(skillActivePath); } catch {}
   }
 
+  // SessionStart pressure decay — decay to level 1 (not reset to 0)
+  // Level 1 persists so agent stays alert; only normal-prompt decay (in-session) goes below 1
+  const pressureIndexPath = path.join(memoryDir, INDEX_FILE);
+  const pressureIndex = readJsonOrDefault(pressureIndexPath, {});
+  if (pressureIndex.feedbackPressure && pressureIndex.feedbackPressure.level > 1) {
+    pressureIndex.feedbackPressure.level = 1;
+    pressureIndex.feedbackPressure.consecutiveCount = Math.min(1, pressureIndex.feedbackPressure.consecutiveCount);
+    pressureIndex.feedbackPressure.decayCounter = 0;
+    try {
+      fs.writeFileSync(pressureIndexPath, JSON.stringify(pressureIndex, null, 2));
+      console.error(`[CRABSHELL] Pressure decayed to L${pressureIndex.feedbackPressure.level} on session start`);
+    } catch {}
+  }
+
   // Check for stale regressing state
   const regressingStatePath = path.join(memoryDir, REGRESSING_STATE_FILE);
   const regressingState = readJsonOrDefault(regressingStatePath, null);
