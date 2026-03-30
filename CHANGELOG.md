@@ -1,5 +1,9 @@
 # Changelog
 
+## 21.12.0
+- feat: checkTicketStatuses(projectDir) — reads regressing-state.json ticketIds, checks .crabshell/ticket/INDEX.md for "todo" or "in-progress" statuses, injects warning into additionalContext on UserPromptSubmit; fail-open (returns null on missing files/parse errors); backward compat for singular ticketId field
+- feat: _test-inject-rules.js — 114 tests (was 110): checkTicketStatuses (4: todo-warning/all-done-null/no-regressing-null/missing-index-null)
+
 ## 21.11.0
 - feat: log-guard.js validatePendingSections() — blocks ticket terminal transitions (done/verified) when Execution Results (Work Agent), Verification Results (Review Agent), or Orchestrator Evaluation sections still contain "(pending)"; only applies to tickets (P\d{3}_T\d{3}), discussions/plans/investigations are not checked; runs after validateLogForTerminal() passes using already-read document content
 - feat: _test-log-guard.js — 77 tests (was 67): validatePendingSections unit tests (7: all-pending/single-pending/filled-sections/discussion-skip/plan-skip/null-content/no-sections), pending integration tests (3: pending-blocks/filled-allows/discussion-not-checked)

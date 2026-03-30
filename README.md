@@ -188,6 +188,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.12.0 | feat: checkTicketStatuses() — ticket status reminder for active regressing sessions, injects warning for todo/in-progress tickets into additionalContext, 114-test suite (was 110) |
 | 21.11.0 | feat: log-guard.js validatePendingSections() — blocks ticket terminal transitions when result sections contain "(pending)", 77-test suite (was 67) |
 | 21.10.0 | feat: L1 session file pruning (>30 days), refineRawSync offset mode (O(n^2)→O(n)), session-aware L1 reuse, final() offset clearing, prune→delta ordering, 102-test suite (10 integration) |
 | 21.9.0 | feat: RULES constant compressed 14,153→5,392 chars (62%), COMPRESSED_CHECKLIST 1,375→703 chars (49%), information architecture restructured for density |

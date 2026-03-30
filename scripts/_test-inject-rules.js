@@ -46,8 +46,9 @@ test('EXPORT: all functions present', function() {
   const fns = [
     'checkEmergencyStop', 'stripCodeBlocks', 'detectNegativeFeedback',
     'updateFeedbackPressure', 'checkDeltaPending', 'checkRotationPending',
-    'syncRulesToClaudeMd', 'removeLegacySection', 'parseMemorySections',
-    'extractKeywords', 'getRelevantMemorySnippets', 'buildRegressingReminder',
+    'checkTicketStatuses', 'syncRulesToClaudeMd', 'removeLegacySection',
+    'parseMemorySections', 'extractKeywords', 'getRelevantMemorySnippets',
+    'buildRegressingReminder',
   ];
   for (const fn of fns) {
     assert(typeof mod[fn] === 'function', fn + ' not exported as function');
@@ -1226,6 +1227,100 @@ test('CONSTANTS: DELTA_INSTRUCTION contains CRABSHELL_DELTA', function() {
 
 test('CONSTANTS: ROTATION_INSTRUCTION contains BLOCKING', function() {
   assert(mod.ROTATION_INSTRUCTION.includes('BLOCKING'));
+});
+
+// ============================================================
+// 22. checkTicketStatuses
+// ============================================================
+test('TICKET_STATUS: active regressing with todo tickets -> warning', function() {
+  const tmpDir = makeTempDir('ticket-todo');
+  try {
+    const memDir = path.join(tmpDir, '.crabshell', 'memory');
+    const ticketDir = path.join(tmpDir, '.crabshell', 'ticket');
+    ensureDir(memDir);
+    ensureDir(ticketDir);
+    fs.writeFileSync(path.join(memDir, 'regressing-state.json'), JSON.stringify({
+      active: true, phase: 'execution', cycle: 1, totalCycles: 3,
+      discussion: 'D001', planId: 'P079',
+      ticketIds: ['P079_T001', 'P080_T001'],
+      lastUpdatedAt: new Date().toISOString()
+    }));
+    fs.writeFileSync(path.join(ticketDir, 'INDEX.md'),
+      '# Ticket Index\n\n' +
+      '| ID | Title | Status | Created | Plan |\n' +
+      '|----|-------|--------|---------|------|\n' +
+      '| P079_T001 | Fix something | todo | 2026-03-29 | P079 |\n' +
+      '| P080_T001 | Another task | in-progress | 2026-03-29 | P080 |\n'
+    );
+    const result = mod.checkTicketStatuses(tmpDir);
+    assert(result !== null, 'should return warning');
+    assert(result.includes('P079_T001'), 'mentions first ticket');
+    assert(result.includes('todo'), 'mentions todo status');
+    assert(result.includes('P080_T001'), 'mentions second ticket');
+    assert(result.includes('in-progress'), 'mentions in-progress status');
+    assert(result.includes('Tickets Need Status Update'), 'has warning header');
+  } finally {
+    cleanupDir(tmpDir);
+  }
+});
+
+test('TICKET_STATUS: active regressing with all done tickets -> null', function() {
+  const tmpDir = makeTempDir('ticket-done');
+  try {
+    const memDir = path.join(tmpDir, '.crabshell', 'memory');
+    const ticketDir = path.join(tmpDir, '.crabshell', 'ticket');
+    ensureDir(memDir);
+    ensureDir(ticketDir);
+    fs.writeFileSync(path.join(memDir, 'regressing-state.json'), JSON.stringify({
+      active: true, phase: 'execution', cycle: 1, totalCycles: 3,
+      discussion: 'D001', planId: 'P079',
+      ticketIds: ['P079_T001', 'P080_T001'],
+      lastUpdatedAt: new Date().toISOString()
+    }));
+    fs.writeFileSync(path.join(ticketDir, 'INDEX.md'),
+      '# Ticket Index\n\n' +
+      '| ID | Title | Status | Created | Plan |\n' +
+      '|----|-------|--------|---------|------|\n' +
+      '| P079_T001 | Fix something | done | 2026-03-29 | P079 |\n' +
+      '| P080_T001 | Another task | verified | 2026-03-29 | P080 |\n'
+    );
+    const result = mod.checkTicketStatuses(tmpDir);
+    assertEqual(result, null, 'all done/verified = null');
+  } finally {
+    cleanupDir(tmpDir);
+  }
+});
+
+test('TICKET_STATUS: no active regressing -> null', function() {
+  const tmpDir = makeTempDir('ticket-noregress');
+  try {
+    const memDir = path.join(tmpDir, '.crabshell', 'memory');
+    ensureDir(memDir);
+    // No regressing-state.json at all
+    const result = mod.checkTicketStatuses(tmpDir);
+    assertEqual(result, null, 'no state = null');
+  } finally {
+    cleanupDir(tmpDir);
+  }
+});
+
+test('TICKET_STATUS: missing INDEX.md -> null (fail-open)', function() {
+  const tmpDir = makeTempDir('ticket-noindex');
+  try {
+    const memDir = path.join(tmpDir, '.crabshell', 'memory');
+    ensureDir(memDir);
+    // Active regressing with tickets, but no INDEX.md
+    fs.writeFileSync(path.join(memDir, 'regressing-state.json'), JSON.stringify({
+      active: true, phase: 'execution', cycle: 1, totalCycles: 3,
+      discussion: 'D001', planId: 'P079',
+      ticketIds: ['P079_T001'],
+      lastUpdatedAt: new Date().toISOString()
+    }));
+    const result = mod.checkTicketStatuses(tmpDir);
+    assertEqual(result, null, 'missing INDEX.md = null');
+  } finally {
+    cleanupDir(tmpDir);
+  }
 });
 
 // ============================================================

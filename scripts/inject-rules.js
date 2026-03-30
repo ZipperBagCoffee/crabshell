@@ -2,7 +2,8 @@
 const fs = require('fs');
 const path = require('path');
 const { getProjectDir, getStorageRoot, readJsonOrDefault, readIndexSafe, writeJson, acquireIndexLock, releaseIndexLock } = require('./utils');
-const { buildRegressingReminder } = require('./regressing-state');
+const { buildRegressingReminder, getRegressingState } = require('./regressing-state');
+const { TICKET_DIR, REGRESSING_STATE_FILE } = require('./constants');
 const { readStdin: readStdinShared } = require('./transcript-utils');
 
 // Emergency stop keywords - when detected, replaces entire context with EMERGENCY STOP
@@ -474,6 +475,62 @@ function getRelevantMemorySnippets(projectDir, userPrompt) {
   return result;
 }
 
+/**
+ * Check ticket statuses for active regressing session.
+ * If any ticketIds in regressing-state.json have status "todo" or "in-progress"
+ * in the ticket INDEX.md, return a warning string. Otherwise return null.
+ * Fail-open: returns null on any error (missing files, parse failures, etc.)
+ */
+function checkTicketStatuses(projectDir) {
+  try {
+    const state = getRegressingState(projectDir);
+    if (!state) return null;
+
+    // Backward compat: convert old singular ticketId to ticketIds array
+    let ticketIds = state.ticketIds;
+    if (!ticketIds && state.ticketId) {
+      ticketIds = [state.ticketId];
+    }
+    if (!ticketIds || ticketIds.length === 0) return null;
+
+    const indexPath = path.join(getStorageRoot(projectDir), TICKET_DIR, 'INDEX.md');
+    if (!fs.existsSync(indexPath)) return null;
+
+    let content;
+    try {
+      content = fs.readFileSync(indexPath, 'utf8');
+    } catch (e) {
+      return null;
+    }
+
+    // Parse INDEX.md table rows: | ID | Title | Status | Created | Plan |
+    const lines = content.split('\n');
+    const statusMap = {};
+    for (const line of lines) {
+      if (!line.startsWith('|')) continue;
+      const cells = line.split('|').map(c => c.trim()).filter(Boolean);
+      if (cells.length < 3) continue;
+      // Skip header row and separator row
+      if (cells[0] === 'ID' || cells[0].startsWith('-')) continue;
+      statusMap[cells[0]] = cells[2].toLowerCase();
+    }
+
+    const needsUpdate = [];
+    for (const tid of ticketIds) {
+      const status = statusMap[tid];
+      if (status === 'todo' || status === 'in-progress') {
+        needsUpdate.push(`${tid} (${status})`);
+      }
+    }
+
+    if (needsUpdate.length === 0) return null;
+
+    return `\n## \u26A0 Tickets Need Status Update\nTickets need updating: ${needsUpdate.join(', ')}. Update document results and INDEX.md status before proceeding.\n`;
+  } catch (e) {
+    return null; // fail-open
+  }
+}
+
 async function main() {
   try {
     const hookData = await readStdin();
@@ -592,6 +649,12 @@ async function main() {
         context += regressingReminder;
       }
 
+      // Check ticket statuses for active regressing
+      const ticketWarning = checkTicketStatuses(projectDir);
+      if (ticketWarning) {
+        context += ticketWarning;
+      }
+
       // Prompt-aware memory loading
       const memorySnippets = getRelevantMemorySnippets(projectDir, userPrompt);
       if (memorySnippets) {
@@ -659,6 +722,7 @@ module.exports = {
   updateFeedbackPressure,
   checkDeltaPending,
   checkRotationPending,
+  checkTicketStatuses,
   syncRulesToClaudeMd,
   removeLegacySection,
   parseMemorySections,

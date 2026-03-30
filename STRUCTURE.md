@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.11.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.12.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -180,6 +180,7 @@ UserPromptSubmit hook:
 - Detect pending delta → inject DELTA_INSTRUCTION
 - Detect pending rotation → inject ROTATION_INSTRUCTION
 - Detect active regressing session → inject phase-specific reminder (v19.23.0)
+- Check ticket statuses for active regressing → inject warning for todo/in-progress tickets (v21.12.0)
 
 ### scripts/path-guard.js
 PreToolUse path validation (v19.31.0, v20.3.0 Edit block, v20.6.0 Write shrink guard, v21.8.0 shell var resolution):
@@ -287,6 +288,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.12.0 | checkTicketStatuses() — ticket status reminder for active regressing sessions, injects warning for todo/in-progress tickets, 114-test suite (was 110) |
 | 21.11.0 | log-guard.js validatePendingSections() — blocks ticket terminal transitions when result sections contain "(pending)", 77-test suite (was 67) |
 | 21.10.0 | L1 session file pruning (>30 days), refineRawSync offset mode (O(n^2)→O(n)), session-aware L1 reuse in check(), final() offset/mtime clearing, prune→delta ordering, local-time date parsing fix, 102-test suite (10 integration) |
 | 21.9.0 | RULES constant compressed 14,153→5,392 chars (62%), COMPRESSED_CHECKLIST 1,375→703 chars (49%), information architecture restructured for density |

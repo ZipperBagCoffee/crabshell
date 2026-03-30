@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.11.0)
+# Crabshell Architecture (v21.12.0)
 
 ## Overview
 
@@ -181,6 +181,8 @@ Two meta-principles guide Claude's approach to obstacles:
        │   └─> If yes: Inject ROTATION_INSTRUCTION → Claude executes memory-rotate skill
        ├─> Check for active regressing session (regressing-state.json)
        │   └─> If yes: Inject phase-specific reminder (MANDATORY SKILL TOOL CALL)
+       ├─> Check ticket statuses for active regressing (ticket/INDEX.md) — v21.12.0
+       │   └─> If todo/in-progress tickets: Inject warning reminder
        ├─> Check for emergency stop keywords → replace entire context
        └─> Output indicator: [rules injected], [rules + delta pending],
             [rules + rotation pending], [REGRESSING ACTIVE]
@@ -447,6 +449,7 @@ The 5 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.12.0 | checkTicketStatuses() — ticket status reminder for active regressing, injects warning for todo/in-progress tickets, 114-test suite (was 110) |
 | 21.11.0 | log-guard.js validatePendingSections() — blocks ticket terminal transitions when result sections contain "(pending)", 77-test suite (was 67) |
 | 21.10.0 | L1 session file pruning (>30 days), refineRawSync offset mode (O(n^2)→O(n)), session-aware L1 reuse in check(), final() offset/mtime clearing, prune→delta ordering, local-time date parsing fix, 102-test suite (10 integration) |
 | 21.9.0 | RULES constant compressed 14,153→5,392 chars (62%), COMPRESSED_CHECKLIST 1,375→703 chars (49%), information architecture restructured for density |
