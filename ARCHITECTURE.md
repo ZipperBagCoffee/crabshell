@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.6.0)
+# Crabshell Architecture (v21.7.0)
 
 ## Overview
 
@@ -443,6 +443,7 @@ The 5 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.7.0 | counter.js conditional exports (require.main guard), _test-counter.js 67-test suite (unit+subprocess+edge), acquireIndexLock for memory-index.json writes, INDEX_LOCK_FILE constant, pressure reset fix |
 | 21.6.0 | .gitattributes LF enforcement, inject-rules.js 12 new exports, _test-inject-rules.js behavioral tests |
 | 21.5.0 | Pressure detection fixes: exclusion strip architecture, narrowed `왜 이렇게`, 8 diagnostic exclusions, widened `break(ing|s)`, SessionStart decay to L1, self-directed PRESSURE_L1/L2/L3, exports for testing, 66-test suite |
 | 21.4.0 | log-guard.js dual-trigger D/P/T log enforcement (terminal status + cycle log), guard count 7→8, hooks.json position 4/8 |

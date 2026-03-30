@@ -1,6 +1,6 @@
 const path = require('path');
 const fs = require('fs');
-const { getProjectDir, getProjectName, getStorageRoot, readFileOrDefault, readJsonOrDefault, estimateTokens } = require('./utils');
+const { getProjectDir, getProjectName, getStorageRoot, readFileOrDefault, readJsonOrDefault, writeJson, estimateTokens, acquireIndexLock, releaseIndexLock } = require('./utils');
 const { ensureMemoryStructure } = require('./init');
 const { MEMORY_DIR, SESSIONS_DIR, INDEX_FILE, MEMORY_FILE, LOGS_DIR, DELTA_TEMP_FILE, REGRESSING_STATE_FILE, SKILL_ACTIVE_FILE } = require('./constants');
 
@@ -142,10 +142,13 @@ function loadMemory(stdinData) {
     pressureIndex.feedbackPressure.level = 1;
     pressureIndex.feedbackPressure.consecutiveCount = Math.min(1, pressureIndex.feedbackPressure.consecutiveCount);
     pressureIndex.feedbackPressure.decayCounter = 0;
+    const pressureLocked = acquireIndexLock(memoryDir);
     try {
-      fs.writeFileSync(pressureIndexPath, JSON.stringify(pressureIndex, null, 2));
+      writeJson(pressureIndexPath, pressureIndex);
       console.error(`[CRABSHELL] Pressure decayed to L${pressureIndex.feedbackPressure.level} on session start`);
-    } catch {}
+    } catch {} finally {
+      if (pressureLocked) releaseIndexLock(memoryDir);
+    }
   }
 
   // Check for stale regressing state

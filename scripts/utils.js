@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { STORAGE_ROOT, MEMORY_DIR, INDEX_FILE, MEMORY_FILE, LOCK_FILE, LOCK_STALE_MS } = require('./constants');
+const { STORAGE_ROOT, MEMORY_DIR, INDEX_FILE, MEMORY_FILE, LOCK_FILE, INDEX_LOCK_FILE, LOCK_STALE_MS } = require('./constants');
 
 function getProjectName() { return path.basename(getProjectDir()); }
 
@@ -123,4 +123,12 @@ function acquireLock(memoryDir) {
 
 function releaseLock(memoryDir) { try { fs.unlinkSync(path.join(memoryDir, LOCK_FILE)); } catch {} }
 
-module.exports = { MEMORY_ROOT, getProjectName, getProjectDir, getStorageRoot, getMemoryDir, ensureDir, readFileOrDefault, readJsonOrDefault, getDefaultIndex, readIndexSafe, writeFile, writeJson, getTimestamp, estimateTokens, estimateTokensFromFile, extractTailByTokens, updateIndex, acquireLock, releaseLock };
+function acquireIndexLock(memoryDir) {
+  const lockPath = path.join(memoryDir, INDEX_LOCK_FILE);
+  try { fs.writeFileSync(lockPath, process.pid.toString(), { flag: 'wx' }); return true; }
+  catch (e) { try { if (Date.now() - fs.statSync(lockPath).mtimeMs > LOCK_STALE_MS) { fs.unlinkSync(lockPath); return acquireIndexLock(memoryDir); } } catch {} return false; }
+}
+
+function releaseIndexLock(memoryDir) { try { fs.unlinkSync(path.join(memoryDir, INDEX_LOCK_FILE)); } catch {} }
+
+module.exports = { MEMORY_ROOT, getProjectName, getProjectDir, getStorageRoot, getMemoryDir, ensureDir, readFileOrDefault, readJsonOrDefault, getDefaultIndex, readIndexSafe, writeFile, writeJson, getTimestamp, estimateTokens, estimateTokensFromFile, extractTailByTokens, updateIndex, acquireLock, releaseLock, acquireIndexLock, releaseIndexLock };

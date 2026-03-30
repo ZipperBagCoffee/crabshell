@@ -33,6 +33,9 @@ module.exports = {
   REGRESSING_STATE_FILE: 'regressing-state.json',
   SKILL_ACTIVE_FILE: 'skill-active.json',
 
+  // Lock file names
+  INDEX_LOCK_FILE: '.memory-index.lock',
+
   // Lock settings
   LOCK_STALE_MS: 60000,  // 60 seconds
 

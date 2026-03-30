@@ -1,6 +1,6 @@
 const path = require('path');
 const fs = require('fs');
-const { getProjectDir, getProjectName, getStorageRoot, readFileOrDefault, writeFile, readJsonOrDefault, readIndexSafe, writeJson, ensureDir, getTimestamp } = require('./utils');
+const { getProjectDir, getProjectName, getStorageRoot, readFileOrDefault, writeFile, readJsonOrDefault, readIndexSafe, writeJson, ensureDir, getTimestamp, acquireIndexLock, releaseIndexLock } = require('./utils');
 const os = require('os');
 const { refineRaw, refineRawSync } = require('./refine-raw');
 const { checkAndRotate } = require('./memory-rotation');
@@ -54,95 +54,101 @@ async function check() {
   const sessionId = hookData.session_id || null;
   const sessionId8 = sessionId ? sessionId.substring(0, 8) : null;
 
-  // Regressing: auto-advance phase on skill invocation
+  const memoryDir = path.join(getStorageRoot(), MEMORY_DIR);
+  const locked = acquireIndexLock(memoryDir);
   try {
-    const detectedSkill = detectRegressingSkillCall(hookData);
-    if (detectedSkill) {
-      const projectDir = getProjectDir();
-      const newPhase = advancePhase(detectedSkill, projectDir);
-      if (newPhase) {
-        console.error(`[REGRESSING PHASE] ${detectedSkill} -> ${newPhase}`);
-      }
-    }
-  } catch (e) {
-    // Non-fatal: must not break counter/delta pipeline
-    console.error(`[REGRESSING PHASE ERROR] ${e.message}`);
-  }
-
-  const config = getConfig();
-  const interval = config.saveInterval || DEFAULT_INTERVAL;
-
-  let counter = getCounter();
-  counter++;
-  setCounter(counter);
-
-  // Pressure reset on Task delegation
-  if (hookData.tool_name === 'TaskCreate') {
+    // Regressing: auto-advance phase on skill invocation
     try {
-      const idxPath = path.join(getStorageRoot(), MEMORY_DIR, 'memory-index.json');
-      const idx = JSON.parse(fs.readFileSync(idxPath, 'utf8'));
-      if (idx.feedbackPressure && idx.feedbackPressure.level > 0) {
-        idx.feedbackPressure.level = 0;
-        idx.feedbackPressure.consecutiveCount = 0;
-        idx.feedbackPressure.decayCounter = 0;
-        fs.writeFileSync(idxPath, JSON.stringify(idx, null, 2));
-        console.error('[PRESSURE RESET] Task delegation detected — pressure reset to L0');
-      }
-    } catch (e) { /* fail-open */ }
-  }
-
-  // Check rotation before auto-save
-  const memoryPath = path.join(getStorageRoot(), MEMORY_DIR, MEMORY_FILE);
-  const rotationResult = checkAndRotate(memoryPath, config);
-  if (rotationResult) {
-    console.log(rotationResult.hookOutput);
-  }
-
-  if (counter >= interval) {
-    const indexPath = path.join(getStorageRoot(), MEMORY_DIR, 'memory-index.json');
-    const sessionsDir = path.join(getStorageRoot(), SESSIONS_DIR);
-
-    // Step 1: Create/update L1 from current transcript
-    // Prefer transcript_path from hookData, fallback to findTranscriptPath()
-    const transcriptPath = (hookData.transcript_path && hookData.transcript_path !== '')
-      ? hookData.transcript_path
-      : findTranscriptPath();
-
-    if (transcriptPath) {
-      try {
-        const transcriptMtime = fs.statSync(transcriptPath).mtimeMs;
-        const idx = readIndexSafe(indexPath);
-        // Only create L1 if transcript changed since last L1 creation
-        if (!idx.lastL1TranscriptMtime || transcriptMtime > idx.lastL1TranscriptMtime) {
-          const ts = getTimestamp();
-          ensureDir(sessionsDir);
-          // Include session_id prefix in L1 filename for session isolation
-          const l1Name = sessionId8 ? `${ts}_${sessionId8}.l1.jsonl` : `${ts}.l1.jsonl`;
-          const l1Dest = path.join(sessionsDir, l1Name);
-          refineRawSync(transcriptPath, l1Dest);
-          cleanupDuplicateL1(l1Dest);
-          idx.lastL1TranscriptMtime = transcriptMtime;
-          writeJson(indexPath, idx);
+      const detectedSkill = detectRegressingSkillCall(hookData);
+      if (detectedSkill) {
+        const projectDir = getProjectDir();
+        const newPhase = advancePhase(detectedSkill, projectDir);
+        if (newPhase) {
+          console.error(`[REGRESSING PHASE] ${detectedSkill} -> ${newPhase}`);
         }
-      } catch (e) {
-        fs.appendFileSync(path.join(getLogsDir(), 'error.log'),
-          `${new Date().toISOString()}: check() L1 creation failed: ${e.message}\n`);
+      }
+    } catch (e) {
+      // Non-fatal: must not break counter/delta pipeline
+      console.error(`[REGRESSING PHASE ERROR] ${e.message}`);
+    }
+
+    const config = getConfig();
+    const interval = config.saveInterval || DEFAULT_INTERVAL;
+
+    let counter = getCounter();
+    counter++;
+    setCounter(counter);
+
+    // Pressure reset on Task delegation
+    if (hookData.tool_name === 'TaskCreate') {
+      try {
+        const idxPath = path.join(getStorageRoot(), MEMORY_DIR, 'memory-index.json');
+        const idx = readIndexSafe(idxPath);
+        if (idx.feedbackPressure && idx.feedbackPressure.level > 0) {
+          idx.feedbackPressure.level = 0;
+          idx.feedbackPressure.consecutiveCount = 0;
+          idx.feedbackPressure.decayCounter = 0;
+          writeJson(idxPath, idx);
+          console.error('[PRESSURE RESET] Task delegation detected — pressure reset to L0');
+        }
+      } catch (e) { /* fail-open */ }
+    }
+
+    // Check rotation before auto-save
+    const memoryPath = path.join(getStorageRoot(), MEMORY_DIR, MEMORY_FILE);
+    const rotationResult = checkAndRotate(memoryPath, config);
+    if (rotationResult) {
+      console.log(rotationResult.hookOutput);
+    }
+
+    if (counter >= interval) {
+      const indexPath = path.join(getStorageRoot(), MEMORY_DIR, 'memory-index.json');
+      const sessionsDir = path.join(getStorageRoot(), SESSIONS_DIR);
+
+      // Step 1: Create/update L1 from current transcript
+      // Prefer transcript_path from hookData, fallback to findTranscriptPath()
+      const transcriptPath = (hookData.transcript_path && hookData.transcript_path !== '')
+        ? hookData.transcript_path
+        : findTranscriptPath();
+
+      if (transcriptPath) {
+        try {
+          const transcriptMtime = fs.statSync(transcriptPath).mtimeMs;
+          const idx = readIndexSafe(indexPath);
+          // Only create L1 if transcript changed since last L1 creation
+          if (!idx.lastL1TranscriptMtime || transcriptMtime > idx.lastL1TranscriptMtime) {
+            const ts = getTimestamp();
+            ensureDir(sessionsDir);
+            // Include session_id prefix in L1 filename for session isolation
+            const l1Name = sessionId8 ? `${ts}_${sessionId8}.l1.jsonl` : `${ts}.l1.jsonl`;
+            const l1Dest = path.join(sessionsDir, l1Name);
+            refineRawSync(transcriptPath, l1Dest);
+            cleanupDuplicateL1(l1Dest);
+            idx.lastL1TranscriptMtime = transcriptMtime;
+            writeJson(indexPath, idx);
+          }
+        } catch (e) {
+          fs.appendFileSync(path.join(getLogsDir(), 'error.log'),
+            `${new Date().toISOString()}: check() L1 creation failed: ${e.message}\n`);
+        }
+      }
+
+      // Step 2: Try delta extraction (pass sessionId for session-aware L1 selection)
+      const deltaResult = extractDelta(sessionId8);
+
+      if (deltaResult.success) {
+        // Set deltaReady flag so inject-rules.js knows this is a legitimate delta
+        const index = readIndexSafe(indexPath);
+        index.deltaReady = true;
+        writeJson(indexPath, index);
+        setCounter(0);
+      } else {
+        // No delta available - just reset counter
+        setCounter(0);
       }
     }
-
-    // Step 2: Try delta extraction (pass sessionId for session-aware L1 selection)
-    const deltaResult = extractDelta(sessionId8);
-
-    if (deltaResult.success) {
-      // Set deltaReady flag so inject-rules.js knows this is a legitimate delta
-      const index = readIndexSafe(indexPath);
-      index.deltaReady = true;
-      writeJson(indexPath, index);
-      setCounter(0);
-    } else {
-      // No delta available - just reset counter
-      setCounter(0);
-    }
+  } finally {
+    if (locked) releaseIndexLock(memoryDir);
   }
 }
 
@@ -248,9 +254,15 @@ async function final() {
     deltaOutput = `\n[CRABSHELL_DELTA] file=${deltaResult.deltaFile}\nDelta extracted at session end: ${deltaResult.entryCount} entries.`;
     // Set deltaReady flag for next session's inject-rules.js
     const idxPath = path.join(getStorageRoot(), MEMORY_DIR, 'memory-index.json');
-    const idx = readIndexSafe(idxPath);
-    idx.deltaReady = true;
-    writeJson(idxPath, idx);
+    const finalMemoryDir = path.join(getStorageRoot(), MEMORY_DIR);
+    const finalLocked = acquireIndexLock(finalMemoryDir);
+    try {
+      const idx = readIndexSafe(idxPath);
+      idx.deltaReady = true;
+      writeJson(idxPath, idx);
+    } finally {
+      if (finalLocked) releaseIndexLock(finalMemoryDir);
+    }
   }
 
   // Quiet mode by default - only show brief message
@@ -594,6 +606,9 @@ function parseArg(args, key) {
   return null;
 }
 
+// Main execution (only when run directly, not when required as a module)
+if (require.main === module) {
+
 // Support --project-dir=PATH for Bash tool invocations where CLAUDE_PROJECT_DIR is not set
 const pdIdx = process.argv.findIndex(a => a.startsWith('--project-dir='));
 if (pdIdx >= 0) {
@@ -730,4 +745,11 @@ Memory Rotation (v13.0.0):
   refine-all                      Process raw.jsonl to L1
   dedupe-l1                       Remove duplicate L1 files (keep largest)
 `);
+}
+
+} // end if (require.main === module)
+
+// Export for testing (only when required as a module, not when run directly)
+if (require.main !== module) {
+  module.exports = { getCounter, setCounter, getConfig, cleanupDuplicateL1, dedupeL1, parseArg, compress };
 }

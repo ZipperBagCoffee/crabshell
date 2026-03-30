@@ -1,5 +1,12 @@
 # Changelog
 
+## 21.7.0
+- feat: counter.js conditional exports — getCounter, setCounter, getConfig, cleanupDuplicateL1, dedupeL1, parseArg, compress (require.main guard)
+- feat: _test-counter.js — 67 tests covering exports (7 functions + exclusion check), getCounter/setCounter (8 unit tests incl. corrupt/missing/zero/nofield), getConfig (3: defaults+project+corrupt), parseArg (7: key=value/missing/empty/equals-in-value/first-match), cleanupDuplicateL1 (6: dedup/diff-session/empty/invalid-json/larger-existing), dedupeL1 (3: dedup/no-dup/no-dir), compress (4: archive-old/keep-recent/ignore-prefixed/empty), subprocess check (5: increment/multi/interval-reset/custom-interval/below-interval), TaskCreate pressure (4: reset/no-pressure/L3/L0-noop), Skill phase advancement (7: planning/discussing/ticketing/non-match/no-state/non-skill/inactive), edge cases (6: no-dir/corrupt-counter/corrupt-index/empty-hookdata/no-session/empty-session), subprocess usage+reset (2), locking structural (6: counter/inject-rules/load-memory/constant/different-from-lock-file), module structure (3: guard/switch-inside/exports)
+- feat: acquireIndexLock/releaseIndexLock for memory-index.json writes — counter.js check() wrapped in try/finally, counter.js final() delta write locked, inject-rules.js writeJson locked, load-memory.js pressure decay converted to writeJson+locked
+- feat: INDEX_LOCK_FILE (.memory-index.lock) constant — separate from .rotation.lock to avoid deadlock with checkAndRotate()
+- fix: counter.js check() pressure reset — replaced raw fs.writeFileSync+JSON.parse with readIndexSafe+writeJson
+
 ## 21.6.0
 - feat: .gitattributes — enforce LF line endings for .sh, .js, .json, .md files
 - feat: inject-rules.js exports expanded — checkEmergencyStop, syncRulesToClaudeMd, checkDeltaPending, checkRotationPending, buildRegressingReminder, getRelevantMemorySnippets, extractKeywords, parseMemorySections, stripCodeBlocks, EMERGENCY_KEYWORDS, NEGATIVE_PATTERNS, NEGATIVE_EXCLUSIONS

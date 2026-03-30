@@ -1,7 +1,7 @@
 // scripts/inject-rules.js
 const fs = require('fs');
 const path = require('path');
-const { getProjectDir, getStorageRoot, readJsonOrDefault, readIndexSafe, writeJson } = require('./utils');
+const { getProjectDir, getStorageRoot, readJsonOrDefault, readIndexSafe, writeJson, acquireIndexLock, releaseIndexLock } = require('./utils');
 const { buildRegressingReminder } = require('./regressing-state');
 const { readStdin: readStdinShared } = require('./transcript-utils');
 
@@ -609,10 +609,14 @@ async function main() {
     }
 
     // Persist index if pressure was updated or frequency tracking needed
-    if (isNegativeFeedback || index.feedbackPressure) {
-      writeJson(indexPath, index);
-    } else if (frequency > 1) {
-      writeJson(indexPath, index);
+    if (isNegativeFeedback || index.feedbackPressure || frequency > 1) {
+      const memoryDir = path.join(getStorageRoot(projectDir), 'memory');
+      const idxLocked = acquireIndexLock(memoryDir);
+      try {
+        writeJson(indexPath, index);
+      } finally {
+        if (idxLocked) releaseIndexLock(memoryDir);
+      }
     }
 
     // Check if should inject

@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.6.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.7.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -82,6 +82,7 @@ crabshell/
 │   ├── _test-log-guard.js           # Log-guard unit tests (v21.4.0)
 │   ├── _test-feedback-detection.js  # Feedback detection + pressure system tests (v21.5.0)
 │   ├── _test-inject-rules.js        # inject-rules.js export + behavioral tests (v21.6.0)
+│   ├── _test-counter.js             # counter.js export + subprocess + lock tests (v21.7.0)
 │   └── utils.js                      # Shared utilities (getStorageRoot, getProjectDir)
 │
 ├── skills/                           # Slash command skills (16 total)
@@ -282,6 +283,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.7.0 | feat: counter.js conditional exports (require.main guard), _test-counter.js 67-test suite (unit+subprocess+edge), acquireIndexLock for memory-index.json writes, INDEX_LOCK_FILE constant, pressure reset fix |
 | 21.6.0 | feat: .gitattributes LF enforcement, inject-rules.js 12 new exports, _test-inject-rules.js 110-test integration suite (subprocess, Korean+English keywords, regressing 5 phases+compat, delta+rotation shared root, CLAUDE.md sync+legacy+resync) |
 | 21.5.0 | feat: pressure detection fixes — exclusion strip architecture, narrowed `왜 이렇게`, 8 diagnostic exclusions, widened `break(ing|s)`, SessionStart decay to L1, self-directed PRESSURE_L1/L2/L3, test exports, 66-test suite |
 | 21.4.0 | feat: log-guard.js dual-trigger D/P/T log enforcement (terminal status + cycle log), guard count 7→8, hooks.json position 4/8 |
