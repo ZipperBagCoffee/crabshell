@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.13.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.14.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -288,6 +288,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.14.0 | Parameter Recommendation step added to regressing + investigating skills — users specify optimization target / confirm scope before agent work begins |
 | 21.13.0 | regressing/planning/ticketing SKILL.md Phase-based multi-agent rewrite — Loop structure, Machine Verification priority, iteration cap + stall detection, Verify Agent Independence Protocol, 11 anti-patterns, cycle→iteration terminology |
 | 21.12.0 | checkTicketStatuses() — ticket status reminder for active regressing sessions, injects warning for todo/in-progress tickets, 114-test suite (was 110) |
 | 21.11.0 | log-guard.js validatePendingSections() — blocks ticket terminal transitions when result sections contain "(pending)", 77-test suite (was 67) |

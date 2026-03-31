@@ -1,5 +1,9 @@
 # Changelog
 
+## 21.14.0
+- feat: regressing SKILL.md — Parameter Recommendation step added (users specify optimization target before cycle loop begins)
+- feat: investigating SKILL.md — Parameter Recommendation step added (users confirm investigation scope/sources before agent work begins)
+
 ## 21.13.0
 - feat: regressing/planning/ticketing SKILL.md Phase-based multi-agent rewrite — WA-RA pair removed, Loop structure (verify→gap→plan→ticket→implement→verify), Machine Verification priority (Phase 2.9), iteration cap (default 10) + stall detection, Verify Agent Independence Protocol, anti-pattern table expanded to 11 entries, cycle→iteration terminology
 - feat: inject-rules.js RULES constant — cycle→iteration in Workflows rule
