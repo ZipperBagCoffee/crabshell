@@ -1,10 +1,10 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.20.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.21.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
-Crabshell is a Claude Code plugin with two pillars: (1) session memory — L1 delta extraction, Haiku summarization, logbook.md rotation, auto-restore on restart; (2) LLM behavioral correction — injects VERIFICATION-FIRST, UNDERSTANDING-FIRST, INTERFERENCE PATTERNS every prompt, nine guard hooks block violations at runtime. D/P/T/I document system, 17 skills, Node.js hooks. All output under .crabshell/.
+Crabshell is a Claude Code plugin with two pillars: (1) session memory — L1 delta extraction, Haiku summarization, logbook.md rotation, auto-restore on restart; (2) LLM behavioral correction — injects VERIFICATION-FIRST, UNDERSTANDING-FIRST, INTERFERENCE PATTERNS every prompt, twelve guard hooks block violations at runtime. D/P/T/I document system, 17 skills, Node.js hooks. All output under .crabshell/.
 
 ## Directory Structure
 
@@ -87,6 +87,14 @@ crabshell/
 │   ├── _test-doc-watchdog.js        # doc-watchdog.js 12-test integration suite (v21.18.0)
 │   ├── scope-guard.js               # Stop hook — scope reduction detection (user qty vs response qty) (v21.19.0)
 │   ├── _test-scope-guard.js         # scope-guard.js 20-test integration suite (v21.19.0)
+│   ├── shared-context.js            # Shared constants/functions for cross-hook reuse (v21.21.0)
+│   ├── pre-compact.js               # PreCompact hook — memory preservation instructions into compaction prompt (v21.21.0)
+│   ├── post-compact.js              # PostCompact hook — compaction event logging + regressing state preservation (v21.21.0)
+│   ├── subagent-context.js          # SubagentStart hook — inject project constraints + rules into sub-agents (v21.21.0)
+│   ├── _test-shared-context.js      # shared-context.js test suite (v21.21.0)
+│   ├── _test-pre-compact.js         # pre-compact.js test suite (v21.21.0)
+│   ├── _test-post-compact.js        # post-compact.js test suite (v21.21.0)
+│   ├── _test-subagent-context.js    # subagent-context.js test suite (v21.21.0)
 │   └── utils.js                      # Shared utilities (getStorageRoot, getProjectDir)
 │
 ├── skills/                           # Slash command skills (17 total)
@@ -265,24 +273,38 @@ L1 generation:
    ├─> verification-sequence.js gate (Write|Edit|Bash) — source edit→test→commit enforcement (v21.0.0)
    │   ├─> Block git commit if source files edited but no test run
    │   └─> Block source file edits after 3+ edit-grep cycles without testing
+   ├─> doc-watchdog.js gate (Write|Edit) — soft warning when code edits >= 5 without D/P/T doc update during regressing (v21.18.0)
    ├─> pressure-guard.js (Read|Grep|Glob|Bash|Write|Edit) — detect feedback pressure escalation
    └─> sycophancy-guard.js (Write|Edit) — mid-turn transcript parsing for sycophancy + verification claim detection (v20.7.0, v21.1.0)
 
-5. PostToolUse
-   ├─> counter.js check
+3.5. Stop
+   ├─> sycophancy-guard.js (v19.29.0, v20.7.0 dual-layer)
+   │   └─> Detect agreement-without-verification patterns → block with re-examination
+   ├─> doc-watchdog.js stop (v21.18.0)
+   │   └─> Block session end when regressing active + ticket has no work log entry since last code edit
+   └─> scope-guard.js (v21.19.0)
+       └─> Compare user-requested quantity vs response count; block scope reduction without approval
+
+4. PostToolUse
+   ├─> counter.js check (.*)
    │   ├─> Detect regressing skill calls → auto-advance phase (v19.23.0)
    │   ├─> Increment counter
    │   ├─> checkAndRotate() - archive if > 23,750 tokens
    │   └─> At threshold: create/update L1 (session-aware reuse + incremental offset read) → extractDelta() → creates delta_temp.txt
-   └─> verification-sequence.js record (.*) — track source edits, test runs, grep cycles (v21.0.0)
+   ├─> verification-sequence.js record (.*) — track source edits, test runs, grep cycles (v21.0.0)
+   ├─> skill-tracker.js (Skill, async) — set skill-active flag on Skill tool calls (v19.33.0)
+   └─> doc-watchdog.js record (Write|Edit, async) — track code edits and D/P/T doc edits (v21.18.0)
 
-6. Stop
-   └─> sycophancy-guard.js (v19.29.0, v20.7.0 dual-layer)
-       ├─> Detect agreement-without-verification patterns in stop_response
-       ├─> Check for evidence exemptions (P/O/G table, tool output references)
-       └─> Block with re-examination instruction if sycophancy detected
+5. PreCompact (v21.21.0)
+   └─> pre-compact.js — inject memory preservation instructions into compaction prompt
 
-7. SessionEnd
+6. PostCompact (v21.21.0)
+   └─> post-compact.js — log compaction event + preserve regressing state
+
+7. SubagentStart (v21.21.0)
+   └─> subagent-context.js — inject project constraints + rules into sub-agents
+
+8. SessionEnd
    └─> counter.js final
        ├─> Create final L1 session transcript (full reprocess, no offset)
        ├─> Cleanup duplicate L1 files
@@ -295,6 +317,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.21.0 | feat: PreCompact/PostCompact/SubagentStart hooks (3 new); shared-context.js cross-hook utilities; project.md constraints injection; async:true on skill-tracker + doc-watchdog record; 12 guard hooks total |
 | 21.20.0 | feat: Type B/C behavioral rewrites (HHH, Anti-Deception, Understanding-First, Contradiction Detection, Problem-Solving); VIOLATIONS removed; SCOPE DEFINITIONS consolidated; CHECKLIST synced |
 | 21.19.0 | feat: CLAUDE.md metacognitive→behavioral rule rewrite (R4 Scope Preservation, R26 Prohibited Patterns); scope-guard.js Stop hook; getLastUserMessage(); 20-test suite; I040 6-agent research |
 | 21.18.0 | feat: doc-watchdog.js FSM — record/gate/stop modes for document-update omission prevention; 12-test suite; DOC_WATCHDOG_FILE/THRESHOLD constants; 3 new hook registrations |

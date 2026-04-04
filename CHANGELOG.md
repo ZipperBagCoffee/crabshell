@@ -1,5 +1,13 @@
 # Changelog
 
+## v21.21.0
+- feat: PreCompact hook — inject memory preservation instructions into compaction prompt
+- feat: PostCompact hook — compaction event logging and regressing state preservation
+- feat: SubagentStart hook — inject project constraints + rules into sub-agents
+- feat: shared-context.js — extract shared constants/functions for cross-hook reuse
+- feat: project.md constraints section for project-specific constraint injection
+- perf: async:true on skill-tracker and doc-watchdog record hooks for latency reduction
+
 ## v21.20.0
 - feat: CLAUDE.md Type B/C metacognitive rules → behavioral trigger-action rewrites (R1 HHH, R2 Anti-Deception, R9, R10, R16, R22, R25, R30, R36)
 - feat: VIOLATIONS section removed (redundant with PROHIBITED PATTERNS)

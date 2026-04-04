@@ -5,6 +5,7 @@ const { getProjectDir, getStorageRoot, readJsonOrDefault, readIndexSafe, writeJs
 const { buildRegressingReminder, getRegressingState } = require('./regressing-state');
 const { TICKET_DIR, REGRESSING_STATE_FILE } = require('./constants');
 const { readStdin: readStdinShared } = require('./transcript-utils');
+const { COMPRESSED_CHECKLIST: COMPRESSED_CHECKLIST_SHARED } = require('./shared-context');
 
 // Emergency stop keywords - when detected, replaces entire context with EMERGENCY STOP
 const EMERGENCY_KEYWORDS = ['아시발멈춰', 'BRAINMELT'];
@@ -260,21 +261,7 @@ After delta processing (if any), before responding to user:
 This is a SYSTEM MAINTENANCE TASK. You CANNOT skip this.
 `;
 
-const COMPRESSED_CHECKLIST = `
-## Rules Quick-Check (CLAUDE.md rules active)
-
-**Before responding:**
-1. Stated user intent before acting? (Understanding-First: state intent → list uncertainties → confirm)
-2. Every "verified/works/correct" backed by tool output in last 5 calls? (If not → retract or re-run)
-3. P/O/G table present for verification items? (predict → execute → compare)
-4. Delivering fewer items than requested? (State "User requested N, I am about to do M" and ask)
-5. Deleting/destroying without confirming? (ANALYZE → REPORT → CONFIRM)
-6. Modifying files not mentioned in user's feedback? (Anti-overcorrection: stop, state, ask)
-7. Same approach failed 3 times? (Switch to structurally different strategy)
-8. Factual claim without tool output? (Show evidence or say "unverified")
-
-**Output scan:** Check PROHIBITED PATTERNS 1-7 before sending.
-`;
+const COMPRESSED_CHECKLIST = COMPRESSED_CHECKLIST_SHARED;
 
 // getProjectDir, readJsonOrDefault, readIndexSafe imported from utils.js
 

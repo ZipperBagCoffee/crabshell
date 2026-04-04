@@ -45,7 +45,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/skill-tracker.js\""
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/skill-tracker.js\"",
+            "async": true
           }
         ]
       },
@@ -54,7 +55,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/doc-watchdog.js\" record"
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/doc-watchdog.js\" record",
+            "async": true
           }
         ]
       }
@@ -177,6 +179,36 @@
           {
             "type": "command",
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/counter.js\" final"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/pre-compact.js\""
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/post-compact.js\""
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/subagent-context.js\""
           }
         ]
       }

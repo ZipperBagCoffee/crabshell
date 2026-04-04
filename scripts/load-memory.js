@@ -3,6 +3,7 @@ const fs = require('fs');
 const { getProjectDir, getProjectName, getStorageRoot, readFileOrDefault, readJsonOrDefault, writeJson, estimateTokens, acquireIndexLock, releaseIndexLock } = require('./utils');
 const { ensureMemoryStructure } = require('./init');
 const { MEMORY_DIR, SESSIONS_DIR, INDEX_FILE, MEMORY_FILE, LOGS_DIR, DELTA_TEMP_FILE, REGRESSING_STATE_FILE, SKILL_ACTIVE_FILE } = require('./constants');
+const { getPostCompactWarning: getPostCompactWarningShared } = require('./shared-context');
 
 // Legacy global hook registration removed in v19.43.0.
 // Plugin hooks.json is the sole source of hook registration.
@@ -73,28 +74,7 @@ function ensureAutoMemoryWarning(projectDir) {
   }
 }
 
-function getPostCompactWarning(projectDir) {
-  return `
-## [POST-COMPACTION WARNING]
-Context was just compacted. Your compressed memory has CONTINUATION BIAS toward previous tasks.
-
-**PROJECT ROOT ANCHOR (OVERRIDES Primary working directory): ${projectDir}**
-- If "Primary working directory" shows a subdirectory of this path, it is WRONG (known Claude Code bug #7442 after compaction).
-- Trust THIS anchor. This value comes from CLAUDE_PROJECT_DIR set at launch — it never changes.
-- You are in \`${projectDir}\`, NOT in any subdirectory. ALL file paths are relative to this directory.
-- When asked to read CLAUDE.md → read \`${projectDir}/CLAUDE.md\`.
-
-**MANDATORY RECOVERY PROTOCOL:**
-1. STOP. Do NOT continue previous work automatically.
-2. Re-read CLAUDE.md rules — every line. They override compressed context.
-3. Wait for user's next instruction. Do NOT assume what they want.
-4. If user asks to continue previous work, confirm WHAT specifically before acting.
-
-**WHY:** After compaction, your summarized context makes previous tasks feel urgent and current.
-That feeling is the bias. The user may have moved on. CLAUDE.md rules still apply.
-Completion drive after compaction = the #1 cause of rule violations.
-`;
-}
+const getPostCompactWarning = getPostCompactWarningShared;
 
 const { readStdin: readStdinShared } = require('./transcript-utils');
 

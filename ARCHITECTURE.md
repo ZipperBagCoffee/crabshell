@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.20.0)
+# Crabshell Architecture (v21.21.0)
 
 ## Overview
 
@@ -245,6 +245,18 @@ Two meta-principles guide Claude's approach to obstacles:
        ├─> pruneOldL1() — delete L1 files >30 days old (v21.10.0)
        ├─> extractDelta() for remaining content
        └─> Clear lastL1TranscriptOffset/Mtime (next session starts fresh)
+
+6. PreCompact — v21.21.0
+   └─> pre-compact.js
+       └─> Inject memory preservation instructions into compaction prompt via additionalContext
+
+7. PostCompact — v21.21.0
+   └─> post-compact.js
+       └─> Log compaction event to logbook.md + preserve regressing state across compaction
+
+8. SubagentStart — v21.21.0
+   └─> subagent-context.js
+       └─> Inject project constraints (from project.md constraints section) + rules into sub-agents
 ```
 
 ## Skills Architecture
@@ -457,6 +469,15 @@ The 5 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.21.0 | feat: PreCompact/PostCompact/SubagentStart hooks (12 guard hooks total); shared-context.js cross-hook utilities; project.md constraints injection; async:true on skill-tracker + doc-watchdog record |
+| 21.20.0 | feat: Type B/C behavioral rewrites (HHH, Anti-Deception, Understanding-First, Contradiction Detection, Problem-Solving); VIOLATIONS removed; SCOPE DEFINITIONS consolidated; CHECKLIST synced |
+| 21.19.0 | feat: CLAUDE.md metacognitive→behavioral rule rewrite (R4 Scope Preservation, R26 Prohibited Patterns); scope-guard.js Stop hook; getLastUserMessage(); 20-test suite; I040 6-agent research |
+| 21.18.0 | feat: doc-watchdog.js FSM — record/gate/stop modes for document-update omission prevention; 12-test suite; DOC_WATCHDOG_FILE/THRESHOLD constants; 3 new hook registrations |
+| 21.17.0 | feat: /status healthcheck skill; fix: marketplace.json version drift |
+| 21.16.0 | fix: verify-guard hybrid approach (new file creation skips); feat: _test-verify-guard.js 7-test suite |
+| 21.15.0 | fix: regressing/investigating SKILL.md Parameter Recommendation content (missing from v21.14.0) |
+| 21.14.0 | feat: Parameter Recommendation step added to regressing + investigating skills |
+| 21.13.0 | feat: regressing/planning/ticketing SKILL.md Phase-based multi-agent rewrite; Loop structure; Machine Verification priority; 11 anti-patterns |
 | 21.12.0 | checkTicketStatuses() — ticket status reminder for active regressing, injects warning for todo/in-progress tickets, 114-test suite (was 110) |
 | 21.11.0 | log-guard.js validatePendingSections() — blocks ticket terminal transitions when result sections contain "(pending)", 77-test suite (was 67) |
 | 21.10.0 | L1 session file pruning (>30 days), refineRawSync offset mode (O(n^2)→O(n)), session-aware L1 reuse in check(), final() offset/mtime clearing, prune→delta ordering, local-time date parsing fix, 102-test suite (10 integration) |
