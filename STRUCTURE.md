@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.18.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.19.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -85,6 +85,8 @@ crabshell/
 │   ├── _test-verify-guard.js        # verify-guard.js integration tests — Write/Edit new/existing distinction (v21.16.0)
 │   ├── doc-watchdog.js              # PostToolUse/PreToolUse/Stop doc-update omission FSM (v21.18.0)
 │   ├── _test-doc-watchdog.js        # doc-watchdog.js 12-test integration suite (v21.18.0)
+│   ├── scope-guard.js               # Stop hook — scope reduction detection (user qty vs response qty) (v21.19.0)
+│   ├── _test-scope-guard.js         # scope-guard.js 20-test integration suite (v21.19.0)
 │   └── utils.js                      # Shared utilities (getStorageRoot, getProjectDir)
 │
 ├── skills/                           # Slash command skills (17 total)
@@ -293,6 +295,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.19.0 | feat: CLAUDE.md metacognitive→behavioral rule rewrite (R4 Scope Preservation, R26 Prohibited Patterns); scope-guard.js Stop hook; getLastUserMessage(); 20-test suite; I040 6-agent research |
 | 21.18.0 | feat: doc-watchdog.js FSM — record/gate/stop modes for document-update omission prevention; 12-test suite; DOC_WATCHDOG_FILE/THRESHOLD constants; 3 new hook registrations |
 | 21.17.0 | feat: /status healthcheck skill — reports plugin state with ✓/!/✗ indicators; fix: marketplace.json version drift corrected (was 21.15.0) |
 | 21.16.0 | fix: verify-guard hybrid approach — Write to new file skips verification, Write to existing file + Edit enforce 3-stage check (fs.existsSync-based); feat: _test-verify-guard.js 7-test integration suite |
