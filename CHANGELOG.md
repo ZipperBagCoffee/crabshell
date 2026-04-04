@@ -1,5 +1,9 @@
 # Changelog
 
+## v21.16.0
+- fix: verify-guard hybrid approach — Write to new file (creation) skips verification, Write to existing file + Edit enforce 3-stage check (fs.existsSync-based)
+- feat: _test-verify-guard.js — 7 integration tests for verify-guard Write/Edit distinction
+
 ## 21.15.0
 - fix: regressing/investigating SKILL.md — actually include Step 2.5/3.5 Parameter Recommendation content (missing from v21.14.0 commit)
 
