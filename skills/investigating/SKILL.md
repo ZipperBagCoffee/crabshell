@@ -45,6 +45,14 @@ Ask the user:
 2. **Questions:** What specific questions need answers?
 3. **Sources:** Any specific sources to include? (URLs, files, codebases)
 
+### Step 3.0: Task constraint confirmation
+
+Before gathering parameters, check for task-specific constraints:
+- If created in context of a regressing cycle or plan, state: "Per P{NNN}, the following constraints apply: [list]"
+- If the user mentioned specific constraints (budget, sources, scope limits), confirm them
+- Ask once: "Are there additional scope or source constraints for this investigation?"
+- Confirmed constraints become binding for all agents in this investigation
+
 ### Step 3.5: Parameter Recommendation
 
 Before creating the investigation document and launching agents, recommend execution parameters to the user. Present as a compact table:

@@ -230,25 +230,6 @@ This context REPLACES all normal rules. Your ONLY job right now is steps 1-5.
 </EXTREMELY_IMPORTANT>
 `;
 
-const DELTA_INSTRUCTION = `
-## [CRABSHELL_DELTA] - BLOCKING PREREQUISITE
-
-**TRIGGER DETECTED: [CRABSHELL_DELTA] file=delta_temp.txt**
-
-STOP. Before generating ANY text response to the user:
-
-1. Invoke Skill tool NOW: skill="memory-delta"
-2. Complete ALL steps in the skill (verify file, call Haiku, append to logbook.md, mark-updated, cleanup)
-3. ONLY THEN respond to user
-
-This is a MANDATORY SYSTEM MAINTENANCE TASK.
-- You CANNOT skip this
-- You CANNOT respond to user first
-- Your response is BLOCKED until delta processing completes
-
-If you see this instruction, the delta file EXISTS and MUST be processed.
-`;
-
 const ROTATION_INSTRUCTION = `
 ## BLOCKING PREREQUISITE - ROTATION REQUIRED
 
@@ -264,14 +245,6 @@ This is a SYSTEM MAINTENANCE TASK. You CANNOT skip this.
 const COMPRESSED_CHECKLIST = COMPRESSED_CHECKLIST_SHARED;
 
 // getProjectDir, readJsonOrDefault, readIndexSafe imported from utils.js
-
-function checkDeltaPending(projectDir) {
-  const deltaPath = path.join(getStorageRoot(projectDir), 'memory', 'delta_temp.txt');
-  if (!fs.existsSync(deltaPath)) return false;
-  const size = fs.statSync(deltaPath).size;
-  const MIN_DELTA_SIZE = 20 * 1024; // 20KB
-  return size >= MIN_DELTA_SIZE;
-}
 
 function checkRotationPending(projectDir) {
   const indexPath = path.join(getStorageRoot(projectDir), 'memory', 'memory-index.json');
@@ -585,11 +558,6 @@ async function main() {
 
     // Check if should inject
     if (count % frequency === 0 || frequency === 1) {
-      // Check for pending delta - requires BOTH file existence AND deltaReady flag
-      // deltaReady is set by counter.js when counter >= interval (or at session end)
-      // This prevents stale delta files from triggering on every prompt
-      const hasPendingDelta = checkDeltaPending(projectDir) && index.deltaReady === true;
-
       // Check for pending rotation summaries
       const pendingRotations = checkRotationPending(projectDir);
 
@@ -615,9 +583,6 @@ async function main() {
       const tzOffset = `${tzSign}${tzHours}${tzMins}`;
       context += `\n## Timezone\nTZ_OFFSET: ${tzOffset}\n`;
 
-      if (hasPendingDelta) {
-        context += DELTA_INSTRUCTION;
-      }
       if (pendingRotations.length > 0) {
         context += ROTATION_INSTRUCTION;
         context += `\nFiles: ${pendingRotations.map(f => f.file).join(', ')}`;
@@ -662,16 +627,13 @@ async function main() {
       console.log(JSON.stringify(output));
 
       // Explicit trigger patterns to stderr (visible to Claude)
-      if (hasPendingDelta) {
-        console.error(`[CRABSHELL_DELTA] file=delta_temp.txt`);
-      }
       if (pendingRotations.length > 0) {
         console.error(`[CRABSHELL_ROTATE] pending=${pendingRotations.length}`);
       }
       if (regressingReminder) {
         console.error('[REGRESSING ACTIVE]');
       }
-      if (!hasPendingDelta && pendingRotations.length === 0) {
+      if (pendingRotations.length === 0) {
         console.error('[rules injected]');
       }
     }
@@ -700,7 +662,6 @@ module.exports = {
   stripCodeBlocks,
   detectNegativeFeedback,
   updateFeedbackPressure,
-  checkDeltaPending,
   checkRotationPending,
   checkTicketStatuses,
   syncRulesToClaudeMd,
@@ -718,7 +679,6 @@ module.exports = {
   MARKER_END,
   RULES,
   EMERGENCY_STOP_CONTEXT,
-  DELTA_INSTRUCTION,
   ROTATION_INSTRUCTION,
   COMPRESSED_CHECKLIST,
   PRESSURE_L1,

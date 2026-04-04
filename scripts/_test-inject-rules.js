@@ -45,7 +45,7 @@ const mod = require(injectRulesPath);
 test('EXPORT: all functions present', function() {
   const fns = [
     'checkEmergencyStop', 'stripCodeBlocks', 'detectNegativeFeedback',
-    'updateFeedbackPressure', 'checkDeltaPending', 'checkRotationPending',
+    'updateFeedbackPressure', 'checkRotationPending',
     'checkTicketStatuses', 'syncRulesToClaudeMd', 'removeLegacySection',
     'parseMemorySections', 'extractKeywords', 'getRelevantMemorySnippets',
     'buildRegressingReminder',
@@ -58,7 +58,7 @@ test('EXPORT: all functions present', function() {
 test('EXPORT: all constants present', function() {
   const consts = [
     'RULES', 'MARKER_START', 'MARKER_END', 'COMPRESSED_CHECKLIST',
-    'EMERGENCY_STOP_CONTEXT', 'DELTA_INSTRUCTION', 'ROTATION_INSTRUCTION',
+    'EMERGENCY_STOP_CONTEXT', 'ROTATION_INSTRUCTION',
     'PRESSURE_L1', 'PRESSURE_L2', 'PRESSURE_L3', 'EMERGENCY_KEYWORDS',
     'NEGATIVE_PATTERNS', 'NEGATIVE_EXCLUSIONS',
   ];
@@ -128,26 +128,20 @@ test('EMERGENCY: prompt empty string, input has keyword -> true (falls through)'
 });
 
 // ============================================================
-// 3. Integration: checkDeltaPending + checkRotationPending use same projectDir pattern
+// 3. Integration: checkRotationPending uses same projectDir pattern
 // ============================================================
-test('INTEGRATION: delta+rotation share same storage root', function() {
+test('INTEGRATION: rotation uses storage root', function() {
   const tmpDir = makeTempDir('integration-storage');
   try {
     const memDir = path.join(tmpDir, '.crabshell', 'memory');
     ensureDir(path.join(memDir, 'logs'));
 
-    // Both use getStorageRoot(projectDir) → projectDir/.crabshell/memory/
-    // With no files, both return falsy
-    assertEqual(mod.checkDeltaPending(tmpDir), false, 'delta');
+    // With no files, rotation returns empty array
     const rot = mod.checkRotationPending(tmpDir);
     assert(Array.isArray(rot), 'rotation returns array');
     assertEqual(rot.length, 0, 'rotation empty');
 
-    // Create delta file — same dir where rotation index would live
-    fs.writeFileSync(path.join(memDir, 'delta_temp.txt'), 'x'.repeat(21 * 1024));
-    assertEqual(mod.checkDeltaPending(tmpDir), true, 'delta now pending');
-
-    // Create index with pending rotation — same dir
+    // Create index with pending rotation
     fs.writeFileSync(path.join(memDir, 'memory-index.json'), JSON.stringify({
       rotatedFiles: [
         { file: 'logbook_1.md', summaryGenerated: false },
@@ -156,94 +150,19 @@ test('INTEGRATION: delta+rotation share same storage root', function() {
     }));
     const rot2 = mod.checkRotationPending(tmpDir);
     assertEqual(rot2.length, 1, 'one pending rotation');
-
-    // Both pending at same time — this is the real integration scenario
-    assertEqual(mod.checkDeltaPending(tmpDir), true, 'delta still pending');
   } finally {
     cleanupDir(tmpDir);
   }
 });
 
-test('DELTA: file < 20KB -> false', function() {
-  const tmpDir = makeTempDir('delta-small');
-  try {
-    const memDir = path.join(tmpDir, '.crabshell', 'memory');
-    ensureDir(path.join(memDir, 'logs'));
-    fs.writeFileSync(path.join(memDir, 'delta_temp.txt'), 'small');
-    assertEqual(mod.checkDeltaPending(tmpDir), false);
-  } finally {
-    cleanupDir(tmpDir);
-  }
-});
+// DELTA tests removed: checkDeltaPending moved to delta-background.js (AC-4 cleanup)
+// See scripts/delta-background.js for delta-ready detection logic.
 
-test('DELTA: file >= 20KB -> true', function() {
-  const tmpDir = makeTempDir('delta-big');
-  try {
-    const memDir = path.join(tmpDir, '.crabshell', 'memory');
-    ensureDir(path.join(memDir, 'logs'));
-    fs.writeFileSync(path.join(memDir, 'delta_temp.txt'), 'x'.repeat(21 * 1024));
-    assertEqual(mod.checkDeltaPending(tmpDir), true);
-  } finally {
-    cleanupDir(tmpDir);
-  }
-});
+// Placeholder to keep test numbering context (not a real test slot)
+// test('DELTA: ...') — all 7 delta tests removed from inject-rules test suite
 
-test('DELTA: empty delta file -> false', function() {
-  const tmpDir = makeTempDir('delta-empty');
-  try {
-    const memDir = path.join(tmpDir, '.crabshell', 'memory');
-    ensureDir(memDir);
-    fs.writeFileSync(path.join(memDir, 'delta_temp.txt'), '');
-    assertEqual(mod.checkDeltaPending(tmpDir), false);
-  } finally {
-    cleanupDir(tmpDir);
-  }
-});
-
-test('DELTA: dir does not exist -> false', function() {
-  const tmpDir = makeTempDir('delta-nodir');
-  try {
-    assertEqual(mod.checkDeltaPending(tmpDir), false);
-  } finally {
-    cleanupDir(tmpDir);
-  }
-});
-
-test('DELTA: exactly at 20KB boundary -> true', function() {
-  const tmpDir = makeTempDir('delta-boundary');
-  try {
-    const memDir = path.join(tmpDir, '.crabshell', 'memory');
-    ensureDir(memDir);
-    fs.writeFileSync(path.join(memDir, 'delta_temp.txt'), 'x'.repeat(20 * 1024));
-    assertEqual(mod.checkDeltaPending(tmpDir), true);
-  } finally {
-    cleanupDir(tmpDir);
-  }
-});
-
-test('DELTA: just below 20KB boundary -> false', function() {
-  const tmpDir = makeTempDir('delta-below');
-  try {
-    const memDir = path.join(tmpDir, '.crabshell', 'memory');
-    ensureDir(memDir);
-    fs.writeFileSync(path.join(memDir, 'delta_temp.txt'), 'x'.repeat(20 * 1024 - 1));
-    assertEqual(mod.checkDeltaPending(tmpDir), false);
-  } finally {
-    cleanupDir(tmpDir);
-  }
-});
-
-test('DELTA: very large file (>190K tokens) -> still true', function() {
-  const tmpDir = makeTempDir('delta-huge');
-  try {
-    const memDir = path.join(tmpDir, '.crabshell', 'memory');
-    ensureDir(memDir);
-    fs.writeFileSync(path.join(memDir, 'delta_temp.txt'), 'x'.repeat(760 * 1024));
-    assertEqual(mod.checkDeltaPending(tmpDir), true);
-  } finally {
-    cleanupDir(tmpDir);
-  }
-});
+// Removed stub to avoid confusion:
+// (original delta tests occupied this block; replaced by INTEGRATION above)
 
 test('ROTATION: mixed summaryGenerated -> filters correctly', function() {
   const tmpDir = makeTempDir('rotation-mix');
@@ -1220,9 +1139,7 @@ test('CONSTANTS: PRESSURE strings non-empty', function() {
   assert(mod.PRESSURE_L3.length > 10);
 });
 
-test('CONSTANTS: DELTA_INSTRUCTION contains CRABSHELL_DELTA', function() {
-  assert(mod.DELTA_INSTRUCTION.includes('CRABSHELL_DELTA'));
-});
+// DELTA_INSTRUCTION constant test removed (AC-4: constant deleted from inject-rules.js)
 
 test('CONSTANTS: ROTATION_INSTRUCTION contains BLOCKING', function() {
   assert(mod.ROTATION_INSTRUCTION.includes('BLOCKING'));
