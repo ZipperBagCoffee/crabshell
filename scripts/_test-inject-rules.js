@@ -327,13 +327,12 @@ test('SYNC: creates CLAUDE.md with all key sections', function() {
     // All key sections from RULES constant must be present
     assert(content.includes('### VERIFICATION-FIRST'), 'missing VERIFICATION-FIRST');
     assert(content.includes('### UNDERSTANDING-FIRST'), 'missing UNDERSTANDING-FIRST');
-    assert(content.includes('### INTERFERENCE PATTERNS'), 'missing INTERFERENCE PATTERNS');
     assert(content.includes('### PRINCIPLES'), 'missing PRINCIPLES');
     assert(content.includes('### REQUIREMENTS'), 'missing REQUIREMENTS');
     assert(content.includes('### PROBLEM-SOLVING PRINCIPLES'), 'missing PROBLEM-SOLVING');
     assert(content.includes('### SCOPE DEFINITIONS'), 'missing SCOPE DEFINITIONS');
     assert(content.includes('### ADDITIONAL RULES'), 'missing ADDITIONAL RULES');
-    assert(content.includes('### VIOLATIONS'), 'missing VIOLATIONS');
+    assert(content.includes('### PROHIBITED PATTERNS'), 'missing PROHIBITED PATTERNS');
     // L1-L4 observation levels
     assert(content.includes('L1 (Direct Execution)'), 'missing L1');
     assert(content.includes('L4 (Claim Without Evidence)'), 'missing L4');
@@ -866,7 +865,7 @@ test('INTEGRATION: syncRulesToClaudeMd output includes RULES principles', functi
     const content = fs.readFileSync(path.join(tmpDir, 'CLAUDE.md'), 'utf8');
     assert(content.includes('Anti-Deception'), 'Anti-Deception in output');
     assert(content.includes('Human Oversight'), 'Human Oversight in output');
-    assert(content.includes('Completion Drive'), 'Completion Drive in output');
+    assert(content.includes('Anti-overcorrection'), 'Anti-overcorrection in output');
     assert(content.includes('Observation Resolution Levels'), 'L1-L4 in output');
   } finally {
     cleanupDir(tmpDir);

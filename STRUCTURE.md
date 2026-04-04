@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.19.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.20.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -295,6 +295,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.20.0 | feat: Type B/C behavioral rewrites (HHH, Anti-Deception, Understanding-First, Contradiction Detection, Problem-Solving); VIOLATIONS removed; SCOPE DEFINITIONS consolidated; CHECKLIST synced |
 | 21.19.0 | feat: CLAUDE.md metacognitive→behavioral rule rewrite (R4 Scope Preservation, R26 Prohibited Patterns); scope-guard.js Stop hook; getLastUserMessage(); 20-test suite; I040 6-agent research |
 | 21.18.0 | feat: doc-watchdog.js FSM — record/gate/stop modes for document-update omission prevention; 12-test suite; DOC_WATCHDOG_FILE/THRESHOLD constants; 3 new hook registrations |
 | 21.17.0 | feat: /status healthcheck skill — reports plugin state with ✓/!/✗ indicators; fix: marketplace.json version drift corrected (was 21.15.0) |

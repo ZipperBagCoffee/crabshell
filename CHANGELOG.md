@@ -1,5 +1,15 @@
 # Changelog
 
+## v21.20.0
+- feat: CLAUDE.md Type B/C metacognitive rules → behavioral trigger-action rewrites (R1 HHH, R2 Anti-Deception, R9, R10, R16, R22, R25, R30, R36)
+- feat: VIOLATIONS section removed (redundant with PROHIBITED PATTERNS)
+- feat: SCOPE DEFINITIONS consolidated (9→8 entries, interceptor keywords preserved + positive framing)
+- feat: UNDERSTANDING-FIRST simplified (abstract gap-theory → concrete "list uncertainties")
+- feat: REQUIREMENTS expanded (delete 3-step, P/O/G mandate, factual claim evidence)
+- feat: PROBLEM-SOLVING concrete 3-try escalation trigger
+- feat: Verification Checklist replaces abstract Contradiction Detection (3 concrete checks)
+- feat: COMPRESSED_CHECKLIST fully synchronized with new rules + "Output scan" footer
+
 ## v21.19.0
 - feat: CLAUDE.md R4 "Completion Drive" → "Scope Preservation" behavioral rule (trigger-action, quantity tracking, "시간" 핑계 금지)
 - feat: CLAUDE.md R26 "INTERFERENCE PATTERNS (self-monitor)" → "PROHIBITED PATTERNS (check your output before sending)" — 7 output-scannable patterns replacing metacognitive self-monitoring
