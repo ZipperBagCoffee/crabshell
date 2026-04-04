@@ -188,6 +188,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.15.0 | fix: regressing/investigating SKILL.md — actually include Step 2.5/3.5 Parameter Recommendation content (missing from v21.14.0 commit) |
 | 21.14.0 | feat: Parameter Recommendation step added to regressing + investigating skills — users specify optimization target / confirm scope before agent work begins |
 | 21.13.0 | feat: regressing/planning/ticketing SKILL.md Phase-based multi-agent rewrite — Loop structure, Machine Verification priority, iteration cap + stall detection, Verify Agent Independence Protocol, 11 anti-patterns, cycle→iteration terminology |
 | 21.12.0 | feat: checkTicketStatuses() — ticket status reminder for active regressing sessions, injects warning for todo/in-progress tickets into additionalContext, 114-test suite (was 110) |

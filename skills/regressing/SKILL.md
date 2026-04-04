@@ -58,6 +58,33 @@ After creating the Discussion document, write the regressing state file:
 - Content: `{ "active": true, "discussion": "{D-ID}", "cycle": 1, "totalCycles": {N}, "userSpecifiedN": {true|false}, "phase": "planning", "planId": null, "ticketIds": [], "startedAt": "{ISO}", "lastUpdatedAt": "{ISO}" }`
 - Use Bash tool: `"{NODE_PATH}" -e "require('fs').writeFileSync('{PROJECT_DIR}/.crabshell/memory/regressing-state.json', JSON.stringify({active:true, discussion:'{D-ID}', cycle:1, totalCycles:{N}, userSpecifiedN:{true|false}, phase:'planning', planId:null, ticketIds:[], startedAt:new Date().toISOString(), lastUpdatedAt:new Date().toISOString()}, null, 2))"`
 
+### Step 2.5: Parameter Recommendation
+
+Before starting execution, recommend session parameters to the user. This happens ONCE at session start — recommended parameters apply to ALL cycles.
+
+**Recommend the following:**
+
+| Parameter | How to determine | Default |
+|-----------|-----------------|---------|
+| **Cycle cap** | From user invocation. Bare number after topic = cap. | 10 |
+| **Agent count** | Based on topic complexity. 2–3 for focused tasks, 3–5 for broad/complex tasks. | 3 |
+| **Specialist roles** | Each agent gets a distinct expert perspective relevant to the topic (e.g., "Security Auditor", "Performance Engineer", "API Design Specialist"). Roles must be non-overlapping and topic-relevant. | — |
+| **Model tier** | Opus for Planning (Step 4a), Sonnet for Implementation/Verification (Step 4c). Haiku only if user explicitly requests. | Opus / Sonnet |
+
+**Present to user as a compact recommendation block:**
+
+```
+📋 Parameter Recommendation
+- Cycle cap: {N}
+- Agents: {count} — {Role1}, {Role2}, ...
+- Models: Opus (Planning) → Sonnet (Execution/Verification)
+Silence = proceed. Adjust any parameter by responding.
+```
+
+**Inline parameter detection:** If the user's invocation includes a bare number after the topic, it is the cycle cap (not agent count). Numbers with "명" or "agents" suffix indicate agent count. Example: `/regressing "topic" 5` → cap=5. `/regressing "topic" 3명` → agents=3, cap=10.
+
+**User interaction:** Silence = proceed with recommended parameters. User may adjust any parameter before execution begins.
+
 ### Step 3: Pre-check (optional)
 
 - Check if related Investigation (I) documents exist

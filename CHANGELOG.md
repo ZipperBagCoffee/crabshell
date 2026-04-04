@@ -1,5 +1,8 @@
 # Changelog
 
+## 21.15.0
+- fix: regressing/investigating SKILL.md — actually include Step 2.5/3.5 Parameter Recommendation content (missing from v21.14.0 commit)
+
 ## 21.14.0
 - feat: regressing SKILL.md — Parameter Recommendation step added (users specify optimization target before cycle loop begins)
 - feat: investigating SKILL.md — Parameter Recommendation step added (users confirm investigation scope/sources before agent work begins)
