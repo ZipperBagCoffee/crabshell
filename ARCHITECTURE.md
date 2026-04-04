@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.15.0)
+# Crabshell Architecture (v21.16.0)
 
 ## Overview
 
@@ -310,7 +310,7 @@ Agent orchestration rules (11 rules covering pairing, cross-review, coherence, c
 | `regressing-guard.js` | PreToolUse (Write\|Edit) | Block direct plan/ticket writes during active regressing; force Skill tool |
 | `docs-guard.js` | PreToolUse (Write\|Edit) | Block writes to .crabshell/ D/P/T/I subdirectories without active skill flag |
 | `log-guard.js` | PreToolUse (Write\|Edit) | Block INDEX.md terminal status without document log entries; block tickets with "(pending)" result sections; block cycle docs without previous cycle logs |
-| `verify-guard.js` | PreToolUse (Write\|Edit) | Block Final Verification writes without /verifying run; require behavioral AC in manifest |
+| `verify-guard.js` | PreToolUse (Write\|Edit) | Hybrid: Edit always enforces verification; Write enforces only for existing files (new file creation skips). Block Final Verification without /verifying run; require behavioral AC in manifest |
 | `pressure-guard.js` | PreToolUse (Read\|Grep\|Glob\|Bash\|Write\|Edit) | Detect feedback pressure escalation; block all 6 tools at L3 with .crabshell/.claude exemption |
 | `path-guard.js` | PreToolUse (Read\|Grep\|Glob\|Bash\|Write\|Edit) | Block wrong .crabshell/ path; shell var resolution (fail-closed for .crabshell/ v21.8.0); block Edit on logbook.md; block Write shrink on logbook.md (v20.6.0) |
 | `sycophancy-guard.js` | Stop, PreToolUse (Write\|Edit) | Dual-layer sycophancy detection + verification claim detection (4-tier classification): Stop response + mid-turn transcript parsing; block with re-examination |

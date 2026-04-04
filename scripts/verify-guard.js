@@ -68,6 +68,17 @@ async function main() {
   // Only guard ticket files
   if (!TICKET_FILE_PATTERN.test(filePath)) { process.exit(0); return; }
 
+  // Hybrid fix: Write to NEW file (creation) → allow without verification
+  // Write to EXISTING file → proceed to verification (prevents bypass)
+  if (toolName === 'Write') {
+    const projectDir = getProjectDir();
+    const absPath = path.resolve(projectDir, filePath);
+    if (!fs.existsSync(absPath)) {
+      process.exit(0);
+      return;
+    }
+  }
+
   // Only trigger when writing Final Verification section
   if (!containsFinalVerification(hookData)) { process.exit(0); return; }
 

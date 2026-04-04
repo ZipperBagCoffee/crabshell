@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.15.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.16.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -82,6 +82,7 @@ crabshell/
 │   ├── _test-feedback-detection.js  # Feedback detection + pressure system tests (v21.5.0)
 │   ├── _test-inject-rules.js        # inject-rules.js export + behavioral tests (v21.6.0)
 │   ├── _test-counter.js             # counter.js export + subprocess + lock + pruning + offset tests (v21.10.0)
+│   ├── _test-verify-guard.js        # verify-guard.js integration tests — Write/Edit new/existing distinction (v21.16.0)
 │   └── utils.js                      # Shared utilities (getStorageRoot, getProjectDir)
 │
 ├── skills/                           # Slash command skills (16 total)
@@ -201,8 +202,9 @@ PreToolUse D/P/T log enforcement (v21.4.0, v21.11.0):
 - Fail-open on parse errors (user experience protection)
 
 ### scripts/verify-guard.js
-PreToolUse Final Verification enforcement (v19.34.0, v19.39.0 deterministic, v20.3.0 behavioral AC):
-- Block Write/Edit to `.crabshell/ticket/P###_T###*` containing `## Final Verification`
+PreToolUse Final Verification enforcement (v19.34.0, v19.39.0 deterministic, v20.3.0 behavioral AC, v21.16.0 hybrid):
+- Hybrid approach: Edit always enforces verification; Write enforces only for existing files (new file creation skips — fs.existsSync-based)
+- Block when ticket path (`.crabshell/ticket/P###_T###*`) contains `## Final Verification`
 - Directly executes `run-verify.js` via execSync (10s timeout) — blocks on FAIL entries
 - Require at least 1 behavioral (type: "direct") AC in verification manifest — structural-only is insufficient
 - "Verification tool N/A:" exception for projects without verification tools
@@ -288,6 +290,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.16.0 | fix: verify-guard hybrid approach — Write to new file skips verification, Write to existing file + Edit enforce 3-stage check (fs.existsSync-based); feat: _test-verify-guard.js 7-test integration suite |
 | 21.15.0 | fix: regressing/investigating SKILL.md — actually include Step 2.5/3.5 Parameter Recommendation content (missing from v21.14.0 commit) |
 | 21.14.0 | Parameter Recommendation step added to regressing + investigating skills — users specify optimization target / confirm scope before agent work begins |
 | 21.13.0 | regressing/planning/ticketing SKILL.md Phase-based multi-agent rewrite — Loop structure, Machine Verification priority, iteration cap + stall detection, Verify Agent Independence Protocol, 11 anti-patterns, cycle→iteration terminology |
