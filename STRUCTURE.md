@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.21.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.22.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -317,6 +317,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.22.0 | refactor: inject-rules.js readProjectConcept() from shared-context.js; RULES Korean descriptive text translated to English |
 | 21.21.0 | feat: PreCompact/PostCompact/SubagentStart hooks (3 new); shared-context.js cross-hook utilities; project.md constraints injection; async:true on skill-tracker + doc-watchdog record; 12 guard hooks total |
 | 21.20.0 | feat: Type B/C behavioral rewrites (HHH, Anti-Deception, Understanding-First, Contradiction Detection, Problem-Solving); VIOLATIONS removed; SCOPE DEFINITIONS consolidated; CHECKLIST synced |
 | 21.19.0 | feat: CLAUDE.md metacognitive→behavioral rule rewrite (R4 Scope Preservation, R26 Prohibited Patterns); scope-guard.js Stop hook; getLastUserMessage(); 20-test suite; I040 6-agent research |

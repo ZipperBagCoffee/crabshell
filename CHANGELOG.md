@@ -1,5 +1,9 @@
 # Changelog
 
+## v21.22.0
+- refactor: inject-rules.js readProjectConcept — replace inline project.md reading with readProjectConcept() from shared-context.js
+- fix: inject-rules.js RULES + PROHIBITED PATTERNS — translate Korean descriptive text to English (detection regex patterns preserved)
+
 ## v21.21.0
 - feat: PreCompact hook — inject memory preservation instructions into compaction prompt
 - feat: PostCompact hook — compaction event logging and regressing state preservation

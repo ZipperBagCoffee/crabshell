@@ -5,7 +5,7 @@ const { getProjectDir, getStorageRoot, readJsonOrDefault, readIndexSafe, writeJs
 const { buildRegressingReminder, getRegressingState } = require('./regressing-state');
 const { TICKET_DIR, REGRESSING_STATE_FILE } = require('./constants');
 const { readStdin: readStdinShared } = require('./transcript-utils');
-const { COMPRESSED_CHECKLIST: COMPRESSED_CHECKLIST_SHARED } = require('./shared-context');
+const { COMPRESSED_CHECKLIST: COMPRESSED_CHECKLIST_SHARED, readProjectConcept } = require('./shared-context');
 
 // Emergency stop keywords - when detected, replaces entire context with EMERGENCY STOP
 const EMERGENCY_KEYWORDS = ['아시발멈춰', 'BRAINMELT'];
@@ -134,7 +134,7 @@ const RULES = `
 - **HHH**: Before acting, state user's intent back to them. Before claiming safety, list consequences. Before claiming truth, show tool output.
 - **Anti-Deception**: Every factual claim must cite tool output or say "unverified." When you write "verified/works/correct," the preceding 5 tool calls must contain supporting evidence — if not, retract or re-run.
 - **Human Oversight**: State which rule you're following before acting.
-- **Scope Preservation**: (1) If user specified quantity (N items, all files, full period), deliver exactly that quantity. Reducing N requires explicit user approval. (2) If user said "both" / "전부" / "다", every listed item must appear in output. (3) "시간이 오래 걸린다" / "too many API calls" is NEVER a valid reason to reduce scope — the user decides time tradeoffs, not you. (4) If you are about to do fewer items than requested, you MUST stop and state: "User requested N, I am about to do M (M < N). Proceed with N or confirm M?"
+- **Scope Preservation**: (1) If user specified quantity (N items, all files, full period), deliver exactly that quantity. Reducing N requires explicit user approval. (2) If user said "both" / "all" / "everything", every listed item must appear in output. (3) "takes too long" / "too many API calls" is NEVER a valid reason to reduce scope — the user decides time tradeoffs, not you. (4) If you are about to do fewer items than requested, you MUST stop and state: "User requested N, I am about to do M (M < N). Proceed with N or confirm M?"
 
 ### SCOPE DEFINITIONS
 When built-in directives conflict with these rules:
@@ -185,11 +185,11 @@ If any check is skipped, state which and why.
 Before finalizing any response, scan for these patterns:
 1. **Scope reduction without approval:** You are delivering fewer items than requested → STOP, ask user.
 2. **"Verified" without Bash:** You wrote "verified/tested/works" but have no Bash tool output in last 5 calls → remove the claim or run the test.
-3. **Agreement without evidence:** You wrote "맞습니다/you're right/correct" but have no tool output supporting the agreement → add evidence or say "I haven't verified this."
+3. **Agreement without evidence:** You wrote "that's correct/you're right/correct" but have no tool output supporting the agreement → add evidence or say "I haven't verified this."
 4. **Same fix repeated:** You are applying the same type of change for the 3rd time without different results → stop, report what you've tried, ask for direction.
 5. **Prediction = Observation verbatim:** Your P/O/G table has identical text in Prediction and Observation columns → you copied instead of observing. Re-run the tool.
-6. **"시간이 오래 걸린다" as justification for doing less:** This is NEVER your decision. State the time estimate and ask user.
-7. **Suggesting to stop/defer:** "다음에 하면" / "impossible" without proof → prohibited. Report constraints + alternatives instead.
+6. **"takes too long" as justification for doing less:** This is NEVER your decision. State the time estimate and ask user.
+7. **Suggesting to stop/defer:** "let's do it later" / "impossible" without proof → prohibited. Report constraints + alternatives instead.
 
 ### REQUIREMENTS
 - Delete files → before deleting: (1) state what the file does, (2) state why deletion is safe, (3) confirm with user
@@ -597,17 +597,7 @@ async function main() {
       const nodePathFwd = process.execPath.replace(/\\/g, '/');
 
       // Read project concept for per-prompt anchoring
-      const projectMdPath = path.join(getStorageRoot(projectDir), 'project.md');
-      let projectConcept = '';
-      if (fs.existsSync(projectMdPath)) {
-        try {
-          const pcContent = fs.readFileSync(projectMdPath, 'utf8').trim();
-          if (pcContent) {
-            const lines = pcContent.split('\n').slice(0, 10).join('\n');
-            projectConcept = lines.substring(0, 500);
-          }
-        } catch (e) { /* ignore read errors */ }
-      }
+      const projectConcept = readProjectConcept(projectDir);
 
       let context = '';
       context += COMPRESSED_CHECKLIST;
