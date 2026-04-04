@@ -1,5 +1,9 @@
 # Changelog
 
+## v21.17.0
+- feat: /status healthcheck skill — reports plugin state with ✓/!/✗ indicators
+- fix: marketplace.json version drift corrected (was 21.15.0)
+
 ## v21.16.0
 - fix: verify-guard hybrid approach — Write to new file (creation) skips verification, Write to existing file + Edit enforce 3-stage check (fs.existsSync-based)
 - feat: _test-verify-guard.js — 7 integration tests for verify-guard Write/Edit distinction

@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.16.0)
+# Crabshell User Manual (v21.17.0)
 
 ## Why Do You Need This?
 
@@ -113,6 +113,7 @@ All available skills (slash commands):
 | `/crabshell:light-workflow` | Lightweight one-shot agent orchestration for standalone tasks |
 | `/crabshell:verifying` | Create or run project-specific verification tools |
 | `/crabshell:lessons` | Manage project-specific lessons (format guidelines, creation) |
+| `/crabshell:status` | Healthcheck of plugin state (memory, regressing, verification, version) |
 
 > **Tip:** For basic memory operations, you can also just ask Claude directly (e.g., "save memory now", "search memory for auth").
 

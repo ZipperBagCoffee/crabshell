@@ -5,7 +5,7 @@
 Three pillars:
 1. **Session memory** — Auto-saves context across sessions. Delta extraction, Haiku summarization, token-based rotation. No manual setup.
 2. **Behavioral correction** — Injects verification-first rules and interference pattern detection every prompt. Eight guard hooks block sycophancy, overcorrection, and shortcuts at runtime.
-3. **Structured workflows** — D/P/T/I document system with 16 skills for planning, investigating, and iterative improvement (regressing).
+3. **Structured workflows** — D/P/T/I document system with 17 skills for planning, investigating, and iterative improvement (regressing).
 
 All plugin output lives under `.crabshell/` — gitignored, clean project root.
 
@@ -62,6 +62,7 @@ With this setup, **Claude starts every new session knowing this information**.
 | `/crabshell:light-workflow` | Run the 11-phase agent orchestration workflow (standalone tasks) |
 | `/crabshell:verifying` | Create/run project-specific verification tools |
 | `/crabshell:lessons` | Check/create project-specific lessons |
+| `/crabshell:status` | Healthcheck of plugin state (memory, regressing, verification, version) |
 
 ## Document Management (4-Skill System)
 
@@ -188,6 +189,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.17.0 | feat: /status healthcheck skill — reports plugin state with ✓/!/✗ indicators; fix: marketplace.json version drift corrected (was 21.15.0) |
 | 21.16.0 | fix: verify-guard hybrid approach — Write to new file skips verification, Write to existing file + Edit enforce 3-stage check (fs.existsSync-based); feat: _test-verify-guard.js 7-test integration suite |
 | 21.15.0 | fix: regressing/investigating SKILL.md — actually include Step 2.5/3.5 Parameter Recommendation content (missing from v21.14.0 commit) |
 | 21.14.0 | feat: Parameter Recommendation step added to regressing + investigating skills — users specify optimization target / confirm scope before agent work begins |

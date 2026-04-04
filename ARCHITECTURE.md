@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.16.0)
+# Crabshell Architecture (v21.17.0)
 
 ## Overview
 
@@ -128,9 +128,9 @@ Two meta-principles guide Claude's approach to obstacles:
           |
           v
 +--------------------------------------------------------------------------+
-|  Skills Layer (16 skills)                                                 |
+|  Skills Layer (17 skills)                                                 |
 |  +---------------------------------+  +--------------------------------+ |
-|  | Operational Skills (7)          |  | Memory Skills (8)              | |
+|  | Operational Skills (8)          |  | Memory Skills (8)              | |
 |  | - discussing    (D documents)   |  | - save-memory                  | |
 |  | - planning      (P documents)   |  | - load-memory                  | |
 |  | - ticketing     (T documents)   |  | - search-memory                | |
@@ -138,8 +138,8 @@ Two meta-principles guide Claude's approach to obstacles:
 |  | - light-workflow (standalone)   |  | - memory-autosave              | |
 |  | - regressing    (D→P→T loop)    |  | - memory-delta                 | |
 |  | - verifying     (verification)  |  | - memory-rotate                | |
-|  +---------------------------------+  | - lessons                      | |
-|                                       +--------------------------------+ |
+|  | - status        (healthcheck)   |  | - lessons                      | |
+|  +---------------------------------+  +--------------------------------+ |
 +--------------------------------------------------------------------------+
 ```
 

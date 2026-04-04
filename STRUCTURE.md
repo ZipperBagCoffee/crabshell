@@ -1,10 +1,10 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.16.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.17.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
-Crabshell is a Claude Code plugin with two pillars: (1) session memory — L1 delta extraction, Haiku summarization, logbook.md rotation, auto-restore on restart; (2) LLM behavioral correction — injects VERIFICATION-FIRST, UNDERSTANDING-FIRST, INTERFERENCE PATTERNS every prompt, eight guard hooks block violations at runtime. D/P/T/I document system, 16 skills, Node.js hooks. All output under .crabshell/.
+Crabshell is a Claude Code plugin with two pillars: (1) session memory — L1 delta extraction, Haiku summarization, logbook.md rotation, auto-restore on restart; (2) LLM behavioral correction — injects VERIFICATION-FIRST, UNDERSTANDING-FIRST, INTERFERENCE PATTERNS every prompt, eight guard hooks block violations at runtime. D/P/T/I document system, 17 skills, Node.js hooks. All output under .crabshell/.
 
 ## Directory Structure
 
@@ -85,7 +85,7 @@ crabshell/
 │   ├── _test-verify-guard.js        # verify-guard.js integration tests — Write/Edit new/existing distinction (v21.16.0)
 │   └── utils.js                      # Shared utilities (getStorageRoot, getProjectDir)
 │
-├── skills/                           # Slash command skills (16 total)
+├── skills/                           # Slash command skills (17 total)
 │   ├── memory-autosave/SKILL.md      # Auto-trigger memory save
 │   ├── memory-delta/SKILL.md         # Auto-trigger delta summarization (foreground)
 │   ├── memory-rotate/SKILL.md        # Auto-trigger L3 generation
@@ -101,7 +101,8 @@ crabshell/
 │   ├── regressing/SKILL.md           # /crabshell:regressing (D→P→T cycles)
 │   ├── light-workflow/SKILL.md       # /crabshell:light-workflow (one-shot)
 │   ├── verifying/SKILL.md            # /crabshell:verifying (verification tools)
-│   └── lessons/SKILL.md              # /crabshell:lessons (project rules)
+│   ├── lessons/SKILL.md              # /crabshell:lessons (project rules)
+│   └── status/SKILL.md               # /crabshell:status (plugin healthcheck)
 │
 ├── templates/                        # Auto-init templates (v13.9.20)
 │   ├── workflow.md                   # Understanding-First workflow template
@@ -290,6 +291,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.17.0 | feat: /status healthcheck skill — reports plugin state with ✓/!/✗ indicators; fix: marketplace.json version drift corrected (was 21.15.0) |
 | 21.16.0 | fix: verify-guard hybrid approach — Write to new file skips verification, Write to existing file + Edit enforce 3-stage check (fs.existsSync-based); feat: _test-verify-guard.js 7-test integration suite |
 | 21.15.0 | fix: regressing/investigating SKILL.md — actually include Step 2.5/3.5 Parameter Recommendation content (missing from v21.14.0 commit) |
 | 21.14.0 | Parameter Recommendation step added to regressing + investigating skills — users specify optimization target / confirm scope before agent work begins |
