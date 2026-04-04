@@ -45,6 +45,20 @@ Ask the user:
 2. **Questions:** What specific questions need answers?
 3. **Sources:** Any specific sources to include? (URLs, files, codebases)
 
+### Step 3.5: Parameter Recommendation
+
+Before creating the investigation document and launching agents, recommend execution parameters to the user. Present as a compact table:
+
+| Parameter | Recommendation | Rationale |
+|-----------|---------------|-----------|
+| Agent count | 3–5 | Based on topic scope; more perspectives = better coverage |
+| Specialist roles | _{distinct roles relevant to topic}_ | e.g., "Forensic Auditor", "Cognitive Scientist", "Systems Engineer" — each agent must have a unique expert perspective |
+| Model tier | Sonnet (all agents) | Default for investigation. Opus if topic requires deep architectural reasoning. Haiku only if user explicitly requests. |
+
+After presenting the table, state: **"Silence = proceed with these parameters. Adjust any parameter before I continue."**
+
+This recommendation happens once per investigation creation. If the user does not respond, proceed with the recommended parameters.
+
 ### Step 4: Create investigation document
 
 Create `.crabshell/investigation/I{NNN}-{slug}.md`:
