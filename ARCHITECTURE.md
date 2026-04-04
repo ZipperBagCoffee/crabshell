@@ -220,8 +220,10 @@ Two meta-principles guide Claude's approach to obstacles:
 3.5. Stop — v19.29.0+
    ├─> sycophancy-guard.js (dual-layer: Stop + PreToolUse, v20.7.0)
    │   └─> Detect agreement-without-verification patterns → block with re-examination
-   └─> doc-watchdog.js stop (v21.18.0)
-       └─> Block session end when regressing active + ticket has no work log entry since last code edit
+   ├─> doc-watchdog.js stop (v21.18.0)
+   │   └─> Block session end when regressing active + ticket has no work log entry since last code edit
+   └─> scope-guard.js (v21.19.0)
+       └─> Compare user-requested quantity vs response count; block scope reduction without approval
 
 4. PostToolUse (all tools)
    ├─> counter.js check
