@@ -32,6 +32,10 @@ module.exports = {
   LOCK_FILE: '.rotation.lock',
   REGRESSING_STATE_FILE: 'regressing-state.json',
   SKILL_ACTIVE_FILE: 'skill-active.json',
+  DOC_WATCHDOG_FILE: 'doc-watchdog.json',
+
+  // Doc-watchdog threshold
+  DOC_WATCHDOG_THRESHOLD: 5,
 
   // Lock file names
   INDEX_LOCK_FILE: '.memory-index.lock',

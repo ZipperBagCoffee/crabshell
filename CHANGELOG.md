@@ -1,5 +1,11 @@
 # Changelog
 
+## v21.18.0
+- feat: doc-watchdog.js — FSM for document-update omission prevention: record (PostToolUse, tracks code edits), gate (PreToolUse, soft warning via additionalContext when threshold exceeded during regressing), stop (Stop hook, blocks session end when regressing active + ticket has no work log entry since last code edit)
+- feat: _test-doc-watchdog.js — 12 integration tests for all three modes
+- feat: DOC_WATCHDOG_FILE / DOC_WATCHDOG_THRESHOLD constants added to constants.js
+- feat: hooks.json — 3 new entries: PostToolUse record, PreToolUse gate (after verification-sequence gate, before pressure-guard), Stop (after sycophancy-guard)
+
 ## v21.17.0
 - feat: /status healthcheck skill — reports plugin state with ✓/!/✗ indicators
 - fix: marketplace.json version drift corrected (was 21.15.0)

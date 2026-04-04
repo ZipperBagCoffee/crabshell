@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.17.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.18.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -83,6 +83,8 @@ crabshell/
 │   ├── _test-inject-rules.js        # inject-rules.js export + behavioral tests (v21.6.0)
 │   ├── _test-counter.js             # counter.js export + subprocess + lock + pruning + offset tests (v21.10.0)
 │   ├── _test-verify-guard.js        # verify-guard.js integration tests — Write/Edit new/existing distinction (v21.16.0)
+│   ├── doc-watchdog.js              # PostToolUse/PreToolUse/Stop doc-update omission FSM (v21.18.0)
+│   ├── _test-doc-watchdog.js        # doc-watchdog.js 12-test integration suite (v21.18.0)
 │   └── utils.js                      # Shared utilities (getStorageRoot, getProjectDir)
 │
 ├── skills/                           # Slash command skills (17 total)
@@ -291,6 +293,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.18.0 | feat: doc-watchdog.js FSM — record/gate/stop modes for document-update omission prevention; 12-test suite; DOC_WATCHDOG_FILE/THRESHOLD constants; 3 new hook registrations |
 | 21.17.0 | feat: /status healthcheck skill — reports plugin state with ✓/!/✗ indicators; fix: marketplace.json version drift corrected (was 21.15.0) |
 | 21.16.0 | fix: verify-guard hybrid approach — Write to new file skips verification, Write to existing file + Edit enforce 3-stage check (fs.existsSync-based); feat: _test-verify-guard.js 7-test integration suite |
 | 21.15.0 | fix: regressing/investigating SKILL.md — actually include Step 2.5/3.5 Parameter Recommendation content (missing from v21.14.0 commit) |

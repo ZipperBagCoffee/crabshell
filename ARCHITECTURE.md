@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.17.0)
+# Crabshell Architecture (v21.18.0)
 
 ## Overview
 
@@ -210,14 +210,18 @@ Two meta-principles guide Claude's approach to obstacles:
    ├─> verification-sequence.js gate (Write|Edit|Bash) — v21.0.0+
    │   ├─> Block git commit if source files edited but no test run
    │   └─> Block source file edits after 3+ edit-grep cycles without testing
+   ├─> doc-watchdog.js gate (Write|Edit) — v21.18.0+
+   │   └─> Soft warning (additionalContext) when code edits >= 5 without D/P/T doc update (regressing only)
    ├─> pressure-guard.js (Read|Grep|Glob|Bash|Write|Edit) — v19.47.0+, v21.1.0 L3 expansion
    │   └─> Block all 6 tools at pressure L3 with .crabshell/.claude exemption; expertise framing
    └─> sycophancy-guard.js (Write|Edit) — v20.7.0+, v21.1.0 claim detection
        └─> Mid-turn transcript parsing for sycophancy patterns + verification claim detection (4-tier) before tool writes
 
 3.5. Stop — v19.29.0+
-   └─> sycophancy-guard.js (dual-layer: Stop + PreToolUse, v20.7.0)
-       └─> Detect agreement-without-verification patterns → block with re-examination
+   ├─> sycophancy-guard.js (dual-layer: Stop + PreToolUse, v20.7.0)
+   │   └─> Detect agreement-without-verification patterns → block with re-examination
+   └─> doc-watchdog.js stop (v21.18.0)
+       └─> Block session end when regressing active + ticket has no work log entry since last code edit
 
 4. PostToolUse (all tools)
    ├─> counter.js check
@@ -227,6 +231,8 @@ Two meta-principles guide Claude's approach to obstacles:
    │   └─> At threshold: create/update L1 (session-aware reuse + incremental offset read) → extractDelta() → creates delta_temp.txt
    ├─> verification-sequence.js record (.*) — v21.0.0+
    │   └─> Track source file edits, test executions, grep cycles in verification-state.json
+   ├─> doc-watchdog.js record (Write|Edit) — v21.18.0+
+   │   └─> Track code edits (increment) and D/P/T doc edits (reset) in doc-watchdog.json
    └─> skill-tracker.js (Skill) — v19.33.0+
        └─> Set skill-active flag on Skill tool calls (TTL-based, 5min expiry)
 
