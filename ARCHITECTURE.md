@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.22.0)
+# Crabshell Architecture (v21.23.0)
 
 ## Overview
 
@@ -175,8 +175,6 @@ Two meta-principles guide Claude's approach to obstacles:
        │   (Full RULES ~5000 tokens only on error fallback)
        ├─> Inject Project Concept (first 10 lines of project.md, max 500 chars) via additionalContext
        ├─> Inject prompt-aware memory snippets (keyword-match top 3 sections)
-       ├─> Check for pending delta (delta_temp.txt exists + deltaReady flag)
-       │   └─> If yes: Inject DELTA_INSTRUCTION → Claude executes memory-delta skill
        ├─> Check for pending rotation (summaryGenerated: false)
        │   └─> If yes: Inject ROTATION_INSTRUCTION → Claude executes memory-rotate skill
        ├─> Check for active regressing session (regressing-state.json)
@@ -184,8 +182,8 @@ Two meta-principles guide Claude's approach to obstacles:
        ├─> Check ticket statuses for active regressing (ticket/INDEX.md) — v21.12.0
        │   └─> If todo/in-progress tickets: Inject warning reminder
        ├─> Check for emergency stop keywords → replace entire context
-       └─> Output indicator: [rules injected], [rules + delta pending],
-            [rules + rotation pending], [REGRESSING ACTIVE]
+       └─> Output indicator: [rules injected], [rules + rotation pending], [REGRESSING ACTIVE]
+           (CRABSHELL_DELTA foreground trigger removed v21.23.0 — delta now processed async)
 
 3. PreToolUse — multiple guards (ordered: cheapest first)
    ├─> path-guard.js (Read|Grep|Glob|Bash|Write|Edit) — v19.31.0+
@@ -231,6 +229,8 @@ Two meta-principles guide Claude's approach to obstacles:
    │   ├─> Increment counter
    │   ├─> checkAndRotate() — archive if > 23,750 tokens
    │   └─> At threshold: create/update L1 (session-aware reuse + incremental offset read) → extractDelta() → creates delta_temp.txt
+   ├─> delta-background.js (async) — v21.23.0+
+   │   └─> Async delta processing: Haiku API summarization of delta_temp.txt → append to logbook.md; raw fallback if API unavailable; does not consume model turns
    ├─> verification-sequence.js record (.*) — v21.0.0+
    │   └─> Track source file edits, test executions, grep cycles in verification-state.json
    ├─> doc-watchdog.js record (Write|Edit) — v21.18.0+
@@ -469,6 +469,7 @@ The 5 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.23.0 | feat: async background delta processing via delta-background.js (Haiku API + raw fallback); task constraint confirmation in investigating/discussing skills; remove CRABSHELL_DELTA foreground trigger from inject-rules.js; delta no longer consumes model turns |
 | 21.22.0 | refactor: inject-rules.js readProjectConcept() from shared-context.js; RULES Korean descriptive text translated to English |
 | 21.21.0 | feat: PreCompact/PostCompact/SubagentStart hooks (12 guard hooks total); shared-context.js cross-hook utilities; project.md constraints injection; async:true on skill-tracker + doc-watchdog record |
 | 21.20.0 | feat: Type B/C behavioral rewrites (HHH, Anti-Deception, Understanding-First, Contradiction Detection, Problem-Solving); VIOLATIONS removed; SCOPE DEFINITIONS consolidated; CHECKLIST synced |
