@@ -189,6 +189,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.19.0 | feat: CLAUDE.md R4 Completion Drive → Scope Preservation behavioral rule; R26 INTERFERENCE PATTERNS → PROHIBITED PATTERNS (7 output-scannable); scope-guard.js Stop hook (user quantity vs response count); transcript-utils.js getLastUserMessage(); 20-test suite; I040 metacognition research (6 Opus agents) |
 | 21.18.0 | feat: doc-watchdog.js FSM — record (PostToolUse code edit tracking), gate (PreToolUse soft warning at threshold during regressing), stop (Stop hook blocks session end without ticket work log); 12-test suite; DOC_WATCHDOG_FILE/THRESHOLD constants |
 | 21.17.0 | feat: /status healthcheck skill — reports plugin state with ✓/!/✗ indicators; fix: marketplace.json version drift corrected (was 21.15.0) |
 | 21.16.0 | fix: verify-guard hybrid approach — Write to new file skips verification, Write to existing file + Edit enforce 3-stage check (fs.existsSync-based); feat: _test-verify-guard.js 7-test integration suite |

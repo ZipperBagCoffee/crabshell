@@ -145,4 +145,54 @@ function getRecentBashCommands(transcriptPath) {
   }
 }
 
-module.exports = { readStdin, findTranscriptPath, encodeProjectPath, normalizePath, getRecentBashCommands };
+/**
+ * Extract the last user (human) message text from a transcript JSONL file.
+ * Reads the last 16KB, finds the last "human" type entry.
+ * Returns the text content or null (fail-open).
+ * @param {string} transcriptPath
+ * @returns {string|null}
+ */
+function getLastUserMessage(transcriptPath) {
+  if (!transcriptPath) return null;
+  try {
+    const stat = fs.statSync(transcriptPath);
+    if (stat.size === 0) return null;
+    const readSize = Math.min(16384, stat.size);
+    const buf = Buffer.alloc(readSize);
+    const fd = fs.openSync(transcriptPath, 'r');
+    fs.readSync(fd, buf, 0, readSize, stat.size - readSize);
+    fs.closeSync(fd);
+
+    const text = buf.toString('utf8');
+    const lines = text.split('\n').filter(l => l.trim());
+
+    // Search backward for the last human message
+    for (let i = lines.length - 1; i >= 0; i--) {
+      let obj;
+      try { obj = JSON.parse(lines[i]); } catch { continue; }
+      if (obj.type === 'human' || obj.type === 'user') {
+        // Extract text from content array or string
+        if (typeof obj.message?.content === 'string') return obj.message.content;
+        if (Array.isArray(obj.message?.content)) {
+          return obj.message.content
+            .filter(c => c.type === 'text' && c.text)
+            .map(c => c.text)
+            .join('\n');
+        }
+        // Direct content field
+        if (typeof obj.content === 'string') return obj.content;
+        if (Array.isArray(obj.content)) {
+          return obj.content
+            .filter(c => c.type === 'text' && c.text)
+            .map(c => c.text)
+            .join('\n');
+        }
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+module.exports = { readStdin, findTranscriptPath, encodeProjectPath, normalizePath, getRecentBashCommands, getLastUserMessage };

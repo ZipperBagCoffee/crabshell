@@ -1,5 +1,15 @@
 # Changelog
 
+## v21.19.0
+- feat: CLAUDE.md R4 "Completion Drive" → "Scope Preservation" behavioral rule (trigger-action, quantity tracking, "시간" 핑계 금지)
+- feat: CLAUDE.md R26 "INTERFERENCE PATTERNS (self-monitor)" → "PROHIBITED PATTERNS (check your output before sending)" — 7 output-scannable patterns replacing metacognitive self-monitoring
+- feat: COMPRESSED_CHECKLIST item 4 updated to match Scope Preservation rule
+- feat: scope-guard.js — new Stop hook detecting scope reduction (user quantity N vs response count M, "둘 다"/"전부"/"both"/"all" + reduction language detection)
+- feat: transcript-utils.js getLastUserMessage() — extracts last human message from transcript JSONL
+- feat: _test-scope-guard.js — 20 integration tests for scope-guard
+- feat: hooks.json — scope-guard Stop hook registered (9th guard hook)
+- research: I040 investigation (6 Opus agents) — LLM metacognition rules structurally inadequate; 7-tier rule effectiveness hierarchy established
+
 ## v21.18.0
 - feat: doc-watchdog.js — FSM for document-update omission prevention: record (PostToolUse, tracks code edits), gate (PreToolUse, soft warning via additionalContext when threshold exceeded during regressing), stop (Stop hook, blocks session end when regressing active + ticket has no work log entry since last code edit)
 - feat: _test-doc-watchdog.js — 12 integration tests for all three modes
