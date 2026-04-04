@@ -1,5 +1,11 @@
 # Changelog
 
+## v21.23.0
+- feat: async background delta processing via delta-background.js (Haiku API + raw fallback)
+- feat: task constraint confirmation in investigating and discussing skills
+- refactor: remove CRABSHELL_DELTA foreground trigger from inject-rules.js
+- perf: delta processing no longer consumes model turns (async PostToolUse hook)
+
 ## v21.22.0
 - refactor: inject-rules.js readProjectConcept — replace inline project.md reading with readProjectConcept() from shared-context.js
 - fix: inject-rules.js RULES + PROHIBITED PATTERNS — translate Korean descriptive text to English (detection regex patterns preserved)

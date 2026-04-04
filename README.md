@@ -189,6 +189,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.23.0 | feat: async background delta processing via delta-background.js (Haiku API + raw fallback); task constraint confirmation in investigating/discussing skills; remove CRABSHELL_DELTA foreground trigger from inject-rules.js; delta no longer consumes model turns |
 | 21.22.0 | refactor: inject-rules.js readProjectConcept() from shared-context.js; RULES Korean descriptive text translated to English |
 | 21.21.0 | feat: PreCompact/PostCompact/SubagentStart hooks; shared-context.js for cross-hook reuse; project.md constraints injection; async:true on skill-tracker + doc-watchdog record (12 guard hooks total) |
 | 21.20.0 | feat: Type B/C metacognitive→behavioral rule rewrites (HHH, Anti-Deception, Understanding-First, Contradiction Detection, Problem-Solving); VIOLATIONS section removed; SCOPE DEFINITIONS consolidated; COMPRESSED_CHECKLIST synchronized |

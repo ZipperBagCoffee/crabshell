@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.22.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.23.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -95,6 +95,8 @@ crabshell/
 │   ├── _test-pre-compact.js         # pre-compact.js test suite (v21.21.0)
 │   ├── _test-post-compact.js        # post-compact.js test suite (v21.21.0)
 │   ├── _test-subagent-context.js    # subagent-context.js test suite (v21.21.0)
+│   ├── delta-background.js          # PostToolUse async delta processing — Haiku API + raw fallback (v21.23.0)
+│   ├── _test-delta-background.js    # delta-background.js test suite (v21.23.0)
 │   └── utils.js                      # Shared utilities (getStorageRoot, getProjectDir)
 │
 ├── skills/                           # Slash command skills (17 total)
@@ -317,6 +319,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.23.0 | feat: async background delta processing via delta-background.js (Haiku API + raw fallback); task constraint confirmation in investigating/discussing skills; remove CRABSHELL_DELTA foreground trigger from inject-rules.js; delta no longer consumes model turns |
 | 21.22.0 | refactor: inject-rules.js readProjectConcept() from shared-context.js; RULES Korean descriptive text translated to English |
 | 21.21.0 | feat: PreCompact/PostCompact/SubagentStart hooks (3 new); shared-context.js cross-hook utilities; project.md constraints injection; async:true on skill-tracker + doc-watchdog record; 12 guard hooks total |
 | 21.20.0 | feat: Type B/C behavioral rewrites (HHH, Anti-Deception, Understanding-First, Contradiction Detection, Problem-Solving); VIOLATIONS removed; SCOPE DEFINITIONS consolidated; CHECKLIST synced |
