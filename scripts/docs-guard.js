@@ -97,6 +97,9 @@ async function main() {
   // Only guard protected .crabshell/ D/P/T/I paths
   if (!PROTECTED_DOCS_PATTERN.test(filePath)) { process.exit(0); return; }
 
+  // INDEX.md files are simple listing files — never require skill-active protection
+  if (path.basename(filePath) === 'INDEX.md') { process.exit(0); return; }
+
   const projectDir = getProjectDir();
 
   // Check if a legitimate skill is active

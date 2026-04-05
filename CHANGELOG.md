@@ -1,5 +1,9 @@
 # Changelog
 
+## v21.37.0
+- fix: docs-guard.js — INDEX.md early return before skill-active check (bypasses TTL check for listing files)
+- test: _test-docs-guard.js — 3 new tests (TC5c, TC5d, TC5e), 18 total
+
 ## v21.36.0
 - feat: RA Deletion Check — mandatory `git diff` scan before verification in ticketing and light-workflow
 - feat: Evidence Gate expanded from 5-checkbox to 6-checkbox (added unintended deletion check)
