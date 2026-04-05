@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.31.0)
+# Crabshell Architecture (v21.32.0)
 
 ## Overview
 
@@ -468,6 +468,7 @@ The 5 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.32.0 | feat: pressure-sycophancy integration — graduated strictness L0-L3, pressureHint(), PRESSURE_L1/L2/L3 behavioral rules, profanity patterns in NEGATIVE_PATTERNS, quote stripping, 20-test suite |
 | 21.31.0 | feat: docs-guard Constraints enforcement for I documents, 13 tests |
 | 21.30.0 | feat: Phase 9 Evidence Gate harmonized (5-checkbox), Parameter Recommendation (Phase 0.7), 12-Phase workflow |
 | 21.29.0 | feat: light-workflow philosophy port — PROHIBITED PATTERNS, L1-L4, Evidence Gate, Constraint Presentation, Devil's Advocate, Coherence Check |

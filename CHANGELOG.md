@@ -1,5 +1,13 @@
 # Changelog
 
+## v21.32.0
+- feat: sycophancy-guard.js — pressure-aware graduated strictness (L0=default, L1=rethink warning, L2=PARTIAL blocks+structural ignored, L3=behavioral evidence override), reads feedbackPressure.level from memory-index.json
+- feat: pressureHint() — pressure-aware block message helper
+- feat: PRESSURE_L1/L2/L3 texts — 5 behavioral rules (no blind agreement, don't act immediately, rethink, find middle ground, verify)
+- feat: sycophancy-guard.js — quote stripping added to stripProtectedZones
+- feat: inject-rules.js — Korean/English profanity patterns added to NEGATIVE_PATTERNS
+- test: _test-sycophancy-pressure.js — 20 tests for pressure-sycophancy integration
+
 ## v21.31.0
 - feat: docs-guard.js — investigation document `## Constraints` section enforcement (blocks Edit without Constraints, allows first Write)
 - feat: _test-docs-guard.js — 13 tests (subprocess + unit) for Constraints enforcement

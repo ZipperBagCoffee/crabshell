@@ -192,6 +192,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.32.0 | feat: pressure-sycophancy integration — graduated strictness L0-L3 in sycophancy-guard (feedbackPressure.level), pressureHint(), PRESSURE_L1/L2/L3 behavioral rules, profanity patterns in NEGATIVE_PATTERNS, quote stripping, 20-test suite |
 | 21.31.0 | feat: docs-guard Constraints enforcement for I documents, 13 tests, `claude -p --system-prompt` L1 test |
 | 21.30.0 | feat: Phase 9 Evidence Gate harmonized (5-checkbox BLOCKING), Parameter Recommendation (Phase 0.7), 11→12-Phase workflow |
 | 21.29.0 | feat: light-workflow philosophy port — PROHIBITED PATTERNS scan, L1-L4 levels, Evidence Gate 5-checkbox, Constraint Presentation, Devil's Advocate, Coherence Check, Escalation cross-ref, W template alignment |

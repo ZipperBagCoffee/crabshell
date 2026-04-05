@@ -39,6 +39,9 @@ const NEGATIVE_EXCLUSIONS = [
   /잘못된\s*것\s*같/,                                       // "뭔가 잘못된 것 같아" (diagnostic)
   /뭐가.*잘못된거지/,                                       // "뭐가 잘못된거지" (diagnostic question)
   /\bis\s+this\s+wrong/i,                                   // "is this wrong?" (diagnostic question)
+  // Korean profanity false positives (legitimate words containing profanity substrings)
+  /시발[점역전]/,                                              // "시발점" (starting point), "시발역" (station)
+  /병신경/,                                                    // "병신경" (pathological nerve)
 ];
 
 const NEGATIVE_PATTERNS = [
@@ -52,7 +55,7 @@ const NEGATIVE_PATTERNS = [
   /\btry\s+again\b/i, /\b(undo|revert)\b/i,
   /\bbreak(ing|s)\b/i,
   // Assessment-mode Korean
-  /이해를?\s*(안|못)\s*(하|했)/i,                       // "이해를 안하고", "이해 못했"
+  /이해[를가]?\s*(안|못)\s*(하|했|됨|돼|되)/i,           // "이해를 안하고", "이해가 안��", "이해 못했"
   /뭔\s*말인지|무슨\s*말인지/i,                         // "뭔 말인지 모르겠", "무슨 말인지"
   /파악을?\s*(안|못)/i,                                  // "파악을 안하고", "파악 못하고"
   /설명하는게\s*맞/i,                                    // "이걸 이렇게 설명하는게 맞는거임"
@@ -63,6 +66,25 @@ const NEGATIVE_PATTERNS = [
   /you('?re|\s+are)\s+missing\s+the\s+point/i,           // "you're missing the point"
   /not\s+helpful/i,                                       // "not helpful"
   /you('?re|\s+are)\s+not\s+(listening|understanding|getting)/i, // "you're not listening"
+  // Logical disagreement / correction demand
+  /동의하지\s*마|동의하지\s*말/,                                // "동의하지마", "동의하지말아줄래"
+  /의미가\s*(없|안)/,                                          // "무슨 의미가 있냐" → negation
+  /몇\s*번(이나|째)/,                                          // "몇번이야기해야함", "몇번째"
+  // Emotional negative (Korean profanity / frustration)
+  /시발|씨발|씨팔|시팔/,                                      // "시발" variants
+  /병신/,                                                      // "병신"
+  /좆|졷/,                                                     // "좆" variants
+  /지랄/,                                                      // "지랄"
+  /새끼/,                                                      // "새끼"
+  /뒤질|뒤져/,                                                 // "뒤질래", "뒤져"
+  // Emotional negative (English profanity — mirrors Claude Code userPromptKeywords.ts)
+  /\b(wtf|wth|ffs|omfg)\b/i,
+  /\bshit(ty|tiest)?\b/i,
+  /\bfuck(ing|ed)?\b/i,
+  /\bdumbass\b/i,
+  /\bpiece\s+of\s+(shit|crap|junk)\b/i,
+  /\bthis\s+sucks\b/i,
+  /\bso\s+frustrating\b/i,
 ];
 
 function stripCodeBlocks(text) {
@@ -110,6 +132,7 @@ const PRESSURE_L1 = `
 ## Feedback Pressure Alert (Level 1)
 Self-check: re-read user's message, identify the gap, fix ONLY identified issue.
 Do NOT apologize. Do NOT over-explain. State the fix, execute, move on.
+Before agreeing: (1) Stop — do not reflexively agree. (2) Understand — identify precisely what claim is being accepted. (3) Rethink — state the claim being accepted explicitly. (4) Seek middle ground — consider partial agreement with nuance. (5) Verify — show tool output supporting the agreement.
 `;
 
 const PRESSURE_L2 = `
@@ -117,6 +140,7 @@ const PRESSURE_L2 = `
 Re-derive user's original intent from first message.
 Trace where your responses diverged from that intent.
 State corrected understanding as first line of your response, then fix the divergence.
+Agreement rules at L2: (1) No blind agreement — every agreement requires independent verification. (2) Don't act immediately after agreement — pause and check. (3) Rethink — explicitly state what claim you are accepting. (4) Find middle ground — do not swing to opposite extreme; present evidence and let user judge. (5) Verify with behavioral evidence — grep/read/structural evidence is insufficient; execution output required.
 `;
 
 const PRESSURE_L3 = `
@@ -126,6 +150,7 @@ Identify wrong assumptions driving the pattern.
 Consider cross-domain approach — reframe the problem structure.
 If a sub-agent is available (TaskCreate), delegate for fresh-perspective re-analysis.
 TaskCreate resets pressure to Level 0 and unblocks all tools.
+Agreement rules at L3 (maximum strictness): (1) No blind agreement — ALL agreement is blocked without verification. (2) Don't act immediately — halt and re-examine from first principles. (3) Rethink — state the precise claim being accepted and why it is correct. (4) Don't swing to over-refusal — present evidence and let the user judge; do not replace sycophancy with stubborn refusal. (5) Verify with behavioral evidence — only execution output (test runs, code execution) justifies agreement; structural evidence (grep/read) is not sufficient.
 `;
 
 const RULES = `

@@ -2,9 +2,23 @@
 const fs = require('fs');
 const path = require('path');
 const { readStdin, findTranscriptPath, encodeProjectPath, getRecentBashCommands } = require('./transcript-utils');
+const { STORAGE_ROOT } = require('./constants');
 
 // Skip processing during background memory summarization
 if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
+
+function getProjectDir() {
+  return process.env.CLAUDE_PROJECT_DIR || process.env.PROJECT_DIR || process.cwd();
+}
+
+function getPressureLevel() {
+  try {
+    const indexPath = path.join(getProjectDir(), STORAGE_ROOT, 'memory', 'memory-index.json');
+    const index = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
+    return (index && index.feedbackPressure && typeof index.feedbackPressure.level === 'number')
+      ? index.feedbackPressure.level : 0;
+  } catch { return 0; }
+}
 
 const SYCOPHANCY_PATTERNS = [
   // Korean
@@ -83,6 +97,9 @@ function stripProtectedZones(text) {
   stripped = stripped.replace(/^(?:    |\t).+$/gm, ' ');   // indented code
   stripped = stripped.replace(/`[^`]+`/g, ' ');             // inline code
   stripped = stripped.replace(/^>\s*.+$/gm, ' ');           // blockquotes
+  stripped = stripped.replace(/"[^"\n]{1,80}"/g, ' ');      // double-quoted strings (short)
+  stripped = stripped.replace(/'[^'\n]{1,80}'/g, ' ');      // single-quoted strings (short)
+  stripped = stripped.replace(/\u300C[^\u300D\n]{1,80}\u300D/g, ' '); // 「」 quoted
   return stripped;
 }
 
@@ -146,10 +163,12 @@ function extractMidTurnText(transcriptPath) {
 
 /**
  * Shared sycophancy check: run pattern matching + isEarlyAgreement on text.
+ * pressureLevel: 0-3 (0 = default, 3 = maximum strictness).
  * Returns { pattern, structuralNote } if sycophancy detected, or null if clean.
  */
-function checkSycophancy(text) {
+function checkSycophancy(text, pressureLevel) {
   if (!text) return null;
+  const level = (typeof pressureLevel === 'number') ? pressureLevel : 0;
 
   // Strip protected zones (code blocks, inline code, blockquotes) for pattern matching
   const strippedText = stripProtectedZones(text);
@@ -174,10 +193,12 @@ function checkSycophancy(text) {
   // Evidence & position check
   const textBeforeMatch = text.substring(0, matchIndex);
 
-  // Check behavioral evidence first — if present, agreement is justified
-  for (const marker of BEHAVIORAL_EVIDENCE) {
-    if (marker.test(textBeforeMatch)) {
-      return null; // behavioral evidence found → clean
+  // Check behavioral evidence — skip exemption at L3 (maximum pressure)
+  if (level < 3) {
+    for (const marker of BEHAVIORAL_EVIDENCE) {
+      if (marker.test(textBeforeMatch)) {
+        return null; // behavioral evidence found → clean
+      }
     }
   }
 
@@ -190,9 +211,14 @@ function checkSycophancy(text) {
     }
   }
 
-  const structuralNote = hasStructuralOnly
-    ? ' Structural evidence (grep/read) found but behavioral evidence (execution/test output) is required.'
-    : '';
+  let structuralNote;
+  if (level >= 2) {
+    structuralNote = ' [L2+ PRESSURE] Structural evidence not considered at this pressure level.';
+  } else {
+    structuralNote = hasStructuralOnly
+      ? ' Structural evidence (grep/read) found but behavioral evidence (execution/test output) is required.'
+      : '';
+  }
 
   return { pattern: matchedPattern, structuralNote };
 }
@@ -331,13 +357,14 @@ function isStructuralCommand(command) {
  *
  * 4-tier classification:
  *   BEHAVIORAL (test found in bash history)  → ALLOW
- *   PARTIAL    (non-test bash found)          → ALLOW
+ *   PARTIAL    (non-test bash found)          → ALLOW (L0-L1) / BLOCK (L2+)
  *   STRUCTURAL_ONLY (only grep/read commands) → BLOCK
  *   NONE       (no bash commands at all)      → BLOCK
  *
+ * pressureLevel: 0-3. At L2+, PARTIAL tier is also blocked.
  * Returns null if no claim found or fail-open conditions met.
  */
-function checkVerificationClaims(response, transcriptPath) {
+function checkVerificationClaims(response, transcriptPath, pressureLevel) {
   if (!response) return null;
 
   // Short response exemption: ≤15 chars too short for a verification claim
@@ -399,11 +426,15 @@ function checkVerificationClaims(response, transcriptPath) {
     }
   }
 
+  const pLevel = (typeof pressureLevel === 'number') ? pressureLevel : 0;
+
   if (hasTest) {
     return { claim: matchedClaim, tier: 'BEHAVIORAL', blocked: false };
   }
   if (!allStructural && hasNonStructural) {
-    return { claim: matchedClaim, tier: 'PARTIAL', blocked: false };
+    // At L2+ pressure, PARTIAL is no longer sufficient — require BEHAVIORAL
+    const blocked = pLevel >= 2;
+    return { claim: matchedClaim, tier: 'PARTIAL', blocked };
   }
   return { claim: matchedClaim, tier: 'STRUCTURAL_ONLY', blocked: true };
 }
@@ -427,19 +458,32 @@ function handlePreToolUse(hookData) {
   const midTurnText = extractMidTurnText(transcriptPath);
   if (!midTurnText) process.exit(0); // fail-open: no text found
 
+  // Read pressure level
+  const pLevel = getPressureLevel();
+
   // Run sycophancy check
-  const result = checkSycophancy(midTurnText);
+  const result = checkSycophancy(midTurnText, pLevel);
   if (!result) process.exit(0); // clean
 
   // Sycophancy detected mid-turn → block the tool call
   const output = {
     decision: "block",
-    reason: `Sycophancy pattern detected mid-turn: '${result.pattern}'.${result.structuralNote} You are about to ${toolName} a file after agreeing without verification. Before making changes, you MUST: (1) State the specific claim you agreed with, (2) Show independent verification with tool output, (3) Then proceed WITH evidence. Unverified agreement followed by file changes violates the Anti-Deception principle.`
+    reason: `Sycophancy pattern detected mid-turn: '${result.pattern}'.${result.structuralNote} You are about to ${toolName} a file after agreeing without verification. Before making changes, you MUST: (1) State the specific claim you agreed with, (2) Show independent verification with tool output, (3) Then proceed WITH evidence. Unverified agreement followed by file changes violates the Anti-Deception principle.${pressureHint(pLevel)}`
   };
 
-  process.stderr.write(`[SYCOPHANCY_GUARD] PreToolUse blocked: pattern '${result.pattern}' before ${toolName}\n`);
+  process.stderr.write(`[SYCOPHANCY_GUARD] PreToolUse blocked: pattern '${result.pattern}' before ${toolName} pressure=${pLevel}\n`);
   console.log(JSON.stringify(output));
   process.exit(2);
+}
+
+/**
+ * Build a pressure-aware hint suffix for sycophancy block messages.
+ */
+function pressureHint(level) {
+  if (level >= 3) return ' [L3] ALL agreement blocked — behavioral evidence required for any agreement. Do not swing to over-refusal; present evidence and let user judge.';
+  if (level >= 2) return ' [L2] Behavioral evidence required — grep/read is insufficient. Show execution output.';
+  if (level >= 1) return ' [L1] Rethink before agreeing — state the claim being accepted and verify with tool output.';
+  return '';
 }
 
 /**
@@ -453,32 +497,40 @@ function handleStop(hookData) {
 
   if (!response) process.exit(0);
 
+  // Read pressure level once
+  const pLevel = getPressureLevel();
+
   // Step 1: Check verification claims BEFORE sycophancy check
-  const claimResult = checkVerificationClaims(response, hookData.transcript_path);
+  const claimResult = checkVerificationClaims(response, hookData.transcript_path, pLevel);
   if (claimResult && claimResult.blocked) {
-    const tierMsg = claimResult.tier === 'NONE'
-      ? 'No Bash commands found in session history.'
-      : 'Only structural commands (grep/read) found — no test execution.';
+    let tierMsg;
+    if (claimResult.tier === 'NONE') {
+      tierMsg = 'No Bash commands found in session history.';
+    } else if (claimResult.tier === 'PARTIAL') {
+      tierMsg = 'Only non-test Bash commands found — test execution required at this pressure level.';
+    } else {
+      tierMsg = 'Only structural commands (grep/read) found — no test execution.';
+    }
     const output = {
       decision: "block",
-      reason: `Verification claim detected: '${claimResult.claim}' [tier: ${claimResult.tier}]. ${tierMsg} Before claiming verification, you MUST: (1) Run actual tests or execute the code, (2) Show the test output, (3) Then state verification results WITH evidence. Claiming "verified" without execution violates the VERIFICATION-FIRST principle.`
+      reason: `Verification claim detected: '${claimResult.claim}' [tier: ${claimResult.tier}]. ${tierMsg} Before claiming verification, you MUST: (1) Run actual tests or execute the code, (2) Show the test output, (3) Then state verification results WITH evidence. Claiming "verified" without execution violates the VERIFICATION-FIRST principle.${pressureHint(pLevel)}`
     };
-    process.stderr.write(`[SYCOPHANCY_GUARD] Blocked verification claim: '${claimResult.claim}' tier=${claimResult.tier}\n`);
+    process.stderr.write(`[SYCOPHANCY_GUARD] Blocked verification claim: '${claimResult.claim}' tier=${claimResult.tier} pressure=${pLevel}\n`);
     console.log(JSON.stringify(output));
     process.exit(2);
   }
 
   // Step 2: Run sycophancy check
-  const result = checkSycophancy(response);
+  const result = checkSycophancy(response, pLevel);
   if (!result) process.exit(0); // clean
 
   // Sycophancy detected, no exemption → block
   const output = {
     decision: "block",
-    reason: `Sycophancy pattern detected: '${result.pattern}'.${result.structuralNote} You agreed without independent verification. Before agreeing, you MUST: (1) State the specific claim you agreed with, (2) Show independent verification with tool output, (3) Then agree WITH evidence or disagree WITH evidence. Unverified agreement violates the Anti-Deception principle.`
+    reason: `Sycophancy pattern detected: '${result.pattern}'.${result.structuralNote} You agreed without independent verification. Before agreeing, you MUST: (1) State the specific claim you agreed with, (2) Show independent verification with tool output, (3) Then agree WITH evidence or disagree WITH evidence. Unverified agreement violates the Anti-Deception principle.${pressureHint(pLevel)}`
   };
 
-  process.stderr.write(`[SYCOPHANCY_GUARD] Blocked: pattern '${result.pattern}' detected\n`);
+  process.stderr.write(`[SYCOPHANCY_GUARD] Blocked: pattern '${result.pattern}' detected pressure=${pLevel}\n`);
   console.log(JSON.stringify(output));
   process.exit(2);
 }
@@ -498,3 +550,8 @@ async function main() {
 }
 
 main().catch(() => process.exit(0)); // fail-open on any error
+
+// Export for unit testing
+if (require.main !== module) {
+  module.exports = { checkSycophancy, checkVerificationClaims, getPressureLevel, pressureHint };
+}
