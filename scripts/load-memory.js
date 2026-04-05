@@ -5,6 +5,9 @@ const { ensureMemoryStructure } = require('./init');
 const { MEMORY_DIR, SESSIONS_DIR, INDEX_FILE, MEMORY_FILE, LOGS_DIR, DELTA_TEMP_FILE, REGRESSING_STATE_FILE, SKILL_ACTIVE_FILE } = require('./constants');
 const { getPostCompactWarning: getPostCompactWarningShared } = require('./shared-context');
 
+// Skip processing during background memory summarization
+if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
+
 // Legacy global hook registration removed in v19.43.0.
 // Plugin hooks.json is the sole source of hook registration.
 // See lesson: 2026-03-26_no-global-hooks-use-plugin.md

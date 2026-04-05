@@ -5,6 +5,9 @@ const { readStdin, normalizePath } = require('./transcript-utils');
 const { getProjectDir, readJsonOrDefault, writeJson } = require('./utils');
 const { STORAGE_ROOT } = require('./constants');
 
+// Skip processing during background memory summarization
+if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
+
 // --- Constants ---
 const STATE_FILE = 'verification-state.json';
 const SESSION_TTL_MS = 5 * 60 * 1000; // 5 minutes

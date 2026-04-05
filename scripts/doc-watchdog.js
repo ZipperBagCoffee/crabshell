@@ -3,6 +3,9 @@ const path = require('path');
 const fs = require('fs');
 const { readStdin, normalizePath } = require('./transcript-utils');
 
+// Skip processing during background memory summarization
+if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
+
 // Constants
 const CODE_EXTENSIONS = ['.js','.ts','.jsx','.tsx','.py','.rb','.go','.rs','.java','.c','.cpp','.h','.lua','.php','.sh'];
 const EXCLUDED_DIRS = ['.crabshell','.claude','node_modules','.git','dist','build'];
