@@ -198,12 +198,13 @@ Every stage: **Work Agent → Review Agent → Orchestrator (Intent Guardian)**
 
 ### Evidence Gate (Review Agent — mandatory before PASS verdict)
 
-Before issuing any PASS verdict, check all 5:
+Before issuing any PASS verdict, check all 6:
 - [ ] Observation evidence attached (execution output, diff, log, test result)?
 - [ ] Evidence from actual execution, not text search?
 - [ ] Behavior predicted before evidence collected?
 - [ ] Prediction matches observation, or gap documented?
 - [ ] Verification independent (not based on Work Agent's claims)?
+- [ ] `git diff` reviewed — no unintended deletions of existing functions/classes/exports?
 
 If any checkbox unchecked → verdict is FAIL or CANNOT VERIFY, not PASS. This gate is BLOCKING.
 

@@ -1,5 +1,10 @@
 # Changelog
 
+## v21.36.0
+- feat: RA Deletion Check — mandatory `git diff` scan before verification in ticketing and light-workflow
+- feat: Evidence Gate expanded from 5-checkbox to 6-checkbox (added unintended deletion check)
+- feat: fallback paths for empty diff (HEAD~1, git show, N/A with reason)
+
 ## v21.35.0
 - fix: docs-guard.js — exclude INDEX.md from investigation Constraints check (was blocking investigation/INDEX.md edits)
 - test: _test-docs-guard.js — 2 new tests (TC5b subprocess + TC7g unit), 15 total

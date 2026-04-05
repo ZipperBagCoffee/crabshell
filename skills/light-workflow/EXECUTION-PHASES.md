@@ -66,6 +66,9 @@ Internal Iteration Log:
 
 ### Phase 9: Verify (Review Agent)
 
+**Deletion Check (MANDATORY first step):**
+Run `git diff` (or `git diff HEAD` if changes are staged/committed) on all WA-modified files BEFORE any other verification. Scan deleted lines — any function, class, or export that disappeared without explicit justification is a finding. Unintended deletion of existing code = automatic FAIL. If diff is empty (new files only, or already committed), use `git diff HEAD~1` or `git show` to compare against pre-WA state. If no diff is obtainable, state "Deletion Check: N/A — {reason}" and proceed.
+
 For each criterion:
 1. Read actual implementation
 2. **Runtime Verification** — independently verify the implementation will work in practice (do NOT trust Work Agent's results):
@@ -79,13 +82,14 @@ For each criterion:
 5. Compare against criterion
 6. Verdict: PASS or FAIL with explanation
 
-**Evidence Gate (BLOCKING — 5-checkbox, see [SKILL.md](SKILL.md#evidence-gate-review-agent--mandatory-before-pass-verdict)):**
-Before issuing any PASS verdict, check all 5:
+**Evidence Gate (BLOCKING — 6-checkbox, see [SKILL.md](SKILL.md#evidence-gate-review-agent--mandatory-before-pass-verdict)):**
+Before issuing any PASS verdict, check all 6:
 - [ ] Observation evidence attached (execution output, diff, log, test result)?
 - [ ] Evidence from actual execution, not text search?
 - [ ] Behavior predicted before evidence collected?
 - [ ] Prediction matches observation, or gap documented?
 - [ ] Verification independent (not based on Work Agent's claims)?
+- [ ] `git diff` reviewed — no unintended deletions of existing functions/classes/exports?
 
 If any checkbox unchecked → verdict is FAIL or CANNOT VERIFY, not PASS.
 
