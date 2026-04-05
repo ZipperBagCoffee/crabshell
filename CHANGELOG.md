@@ -1,5 +1,10 @@
 # Changelog
 
+## v21.30.0
+- feat: EXECUTION-PHASES.md Phase 9 — Evidence Gate upgraded to 5-checkbox BLOCKING (harmonized with SKILL.md)
+- feat: ANALYSIS-PHASES.md Phase 0.7 — Parameter Recommendation step (agent count, specialist roles, model tier)
+- feat: SKILL.md 11-Phase → 12-Phase Workflow (includes Phase 0.7)
+
 ## v21.29.0
 - feat: light-workflow SKILL.md — Pre-Response Output Scan (PROHIBITED PATTERNS 7-item), L1-L4 Observation Resolution Levels, Evidence Gate 5-checkbox BLOCKING
 - feat: ANALYSIS-PHASES.md — Constraint Presentation in Phase 1, Devil's Advocate check, RA/WA Cross-Reference anchor, Coherence Check for single-reviewer in Phase 4

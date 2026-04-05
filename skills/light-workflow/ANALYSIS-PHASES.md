@@ -5,6 +5,25 @@
 
 ---
 
+### Phase 0.7: Parameter Recommendation (Orchestrator)
+
+Before starting Phase 1, recommend session parameters:
+
+```
+Parameter Recommendation
+- Agents: {count} — {Role1}, {Role2}, ...
+- Models: Opus (Analysis) → Sonnet (Implementation/Verification)
+Silence = proceed. Adjust any parameter by responding.
+```
+
+| Parameter | How to determine | Default |
+|-----------|-----------------|---------|
+| Agent count | 1-2 for focused tasks, 2-3 for broader scope | 2 |
+| Specialist roles | Non-overlapping perspectives relevant to the task | — |
+| Model tier | Opus for analysis/planning, Sonnet for implementation | Opus/Sonnet |
+
+---
+
 ### Phase 1: Understand (Orchestrator + User)
 
 **YOUR job — never delegate.**

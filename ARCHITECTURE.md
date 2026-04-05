@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.29.0)
+# Crabshell Architecture (v21.30.0)
 
 ## Overview
 
@@ -468,6 +468,7 @@ The 5 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.30.0 | feat: Phase 9 Evidence Gate harmonized (5-checkbox), Parameter Recommendation (Phase 0.7), 12-Phase workflow |
 | 21.29.0 | feat: light-workflow philosophy port — PROHIBITED PATTERNS, L1-L4, Evidence Gate, Constraint Presentation, Devil's Advocate, Coherence Check |
 | 21.28.0 | feat: light-workflow SKILL.md modernization — Workflow Selection, 9-section W template, Escalation Protocol, CLAUDE.md rules |
 | 21.27.0 | fix: ARCHITECTURE.md stale DELTA comment; D065 concluded, P093 done |
