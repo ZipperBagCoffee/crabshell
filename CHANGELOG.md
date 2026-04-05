@@ -1,5 +1,10 @@
 # Changelog
 
+## v21.24.0
+- feat: proactive constraint presentation in investigating/discussing skills (project + inferred)
+- feat: worklog (W) document system for light-workflow tracing
+- docs: D/P/T/I/W 5-document system
+
 ## v21.23.0
 - feat: async background delta processing via delta-background.js (Haiku API + raw fallback)
 - feat: task constraint confirmation in investigating and discussing skills

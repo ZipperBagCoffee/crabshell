@@ -1,10 +1,10 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.23.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.24.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
-Crabshell is a Claude Code plugin with two pillars: (1) session memory — L1 delta extraction, Haiku summarization, logbook.md rotation, auto-restore on restart; (2) LLM behavioral correction — injects VERIFICATION-FIRST, UNDERSTANDING-FIRST, INTERFERENCE PATTERNS every prompt, twelve guard hooks block violations at runtime. D/P/T/I document system, 17 skills, Node.js hooks. All output under .crabshell/.
+Crabshell is a Claude Code plugin with two pillars: (1) session memory — L1 delta extraction, Haiku summarization, logbook.md rotation, auto-restore on restart; (2) LLM behavioral correction — injects VERIFICATION-FIRST, UNDERSTANDING-FIRST, INTERFERENCE PATTERNS every prompt, twelve guard hooks block violations at runtime. D/P/T/I/W document system, 17 skills, Node.js hooks. All output under .crabshell/.
 
 ## Directory Structure
 
@@ -27,7 +27,9 @@ crabshell/
 │   │   └── INDEX.md
 │   ├── ticket/                       # Ticket documents (P001_T001...)
 │   │   └── INDEX.md
-│   └── investigation/                # Investigation documents (I001, I002...)
+│   ├── investigation/                # Investigation documents (I001, I002...)
+│   │   └── INDEX.md
+│   └── worklog/                      # Worklog documents (W001, W002...) — light-workflow tracing
 │       └── INDEX.md
 │
 ├── .claude-plugin/                   # Plugin configuration
@@ -319,6 +321,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.24.0 | feat: proactive constraint presentation in investigating/discussing skills (project + inferred); feat: worklog (W) document system for light-workflow tracing; docs: D/P/T/I/W 5-document system |
 | 21.23.0 | feat: async background delta processing via delta-background.js (Haiku API + raw fallback); task constraint confirmation in investigating/discussing skills; remove CRABSHELL_DELTA foreground trigger from inject-rules.js; delta no longer consumes model turns |
 | 21.22.0 | refactor: inject-rules.js readProjectConcept() from shared-context.js; RULES Korean descriptive text translated to English |
 | 21.21.0 | feat: PreCompact/PostCompact/SubagentStart hooks (3 new); shared-context.js cross-hook utilities; project.md constraints injection; async:true on skill-tracker + doc-watchdog record; 12 guard hooks total |

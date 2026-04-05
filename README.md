@@ -5,7 +5,7 @@
 Three pillars:
 1. **Session memory** — Auto-saves context across sessions. Delta extraction, Haiku summarization, token-based rotation. No manual setup.
 2. **Behavioral correction** — Injects verification-first rules and interference pattern detection every prompt. Twelve guard hooks block sycophancy, scope reduction, overcorrection, and shortcuts at runtime.
-3. **Structured workflows** — D/P/T/I document system with 17 skills for planning, investigating, and iterative improvement (regressing).
+3. **Structured workflows** — D/P/T/I/W document system with 17 skills for planning, investigating, iterative improvement (regressing), and light-workflow tracing.
 
 All plugin output lives under `.crabshell/` — gitignored, clean project root.
 
@@ -64,7 +64,7 @@ With this setup, **Claude starts every new session knowing this information**.
 | `/crabshell:lessons` | Check/create project-specific lessons |
 | `/crabshell:status` | Healthcheck of plugin state (memory, regressing, verification, version) |
 
-## Document Management (4-Skill System)
+## Document Management (5-Document System: D/P/T/I/W)
 
 Track project work through structured, append-only documents:
 
@@ -74,6 +74,7 @@ Track project work through structured, append-only documents:
 | `/planning` | P001 | draft, approved, in-progress, done | Implementation plans with steps |
 | `/ticketing` | P001_T001 | todo, in-progress, done, verified | Session-sized work units tied to plans |
 | `/investigating` | I001 | open, concluded | Multi-source investigations with cross-review |
+| `/light-workflow` | W001 | open, concluded | Light-workflow tracing (standalone tasks) |
 
 Each document type has its own folder under `.crabshell/` with an `INDEX.md` for status tracking. Tickets inherit from plans and require verification-at-creation (TDD principle).
 
@@ -142,7 +143,9 @@ Coding conventions: ...
 │   └── INDEX.md
 ├── ticket/                # Ticket documents (P001_T001...)
 │   └── INDEX.md
-└── investigation/         # Investigation documents (I001, I002...)
+├── investigation/         # Investigation documents (I001, I002...)
+│   └── INDEX.md
+└── worklog/               # Worklog documents (W001, W002...) — light-workflow tracing
     └── INDEX.md
 ```
 
@@ -189,6 +192,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.24.0 | feat: proactive constraint presentation in investigating/discussing skills (project + inferred); feat: worklog (W) document system for light-workflow tracing; docs: D/P/T/I/W 5-document system |
 | 21.23.0 | feat: async background delta processing via delta-background.js (Haiku API + raw fallback); task constraint confirmation in investigating/discussing skills; remove CRABSHELL_DELTA foreground trigger from inject-rules.js; delta no longer consumes model turns |
 | 21.22.0 | refactor: inject-rules.js readProjectConcept() from shared-context.js; RULES Korean descriptive text translated to English |
 | 21.21.0 | feat: PreCompact/PostCompact/SubagentStart hooks; shared-context.js for cross-hook reuse; project.md constraints injection; async:true on skill-tracker + doc-watchdog record (12 guard hooks total) |

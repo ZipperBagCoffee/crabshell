@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.23.0)
+# Crabshell Architecture (v21.24.0)
 
 ## Overview
 
@@ -261,8 +261,8 @@ Two meta-principles guide Claude's approach to obstacles:
 
 ## Skills Architecture
 
-### Document Skills (D/P/T/I)
-Four skills manage append-only documents stored in `.crabshell/` (gitignored):
+### Document Skills (D/P/T/I/W)
+Five skills manage append-only documents stored in `.crabshell/` (gitignored):
 
 | Skill | Document Type | Code | Purpose |
 |-------|--------------|------|---------|
@@ -270,8 +270,9 @@ Four skills manage append-only documents stored in `.crabshell/` (gitignored):
 | planning | Plan | P001, P002... | Detailed execution plans |
 | ticketing | Ticket | P001_T001... | Atomic work units (child of Plan) |
 | investigating | Investigation | I001, I002... | Independent research/analysis |
+| light-workflow | Worklog | W001, W002... | Light-workflow tracing (standalone tasks) |
 
-Document hierarchy: D -> P -> T (Discussion spawns Plans, Plans spawn Tickets). Investigations are independent.
+Document hierarchy: D -> P -> T (Discussion spawns Plans, Plans spawn Tickets). Investigations and Worklogs are independent.
 
 Each document type has an INDEX.md for tracking. Status cascades upward on completion (ticket verified -> plan closes -> discussion closes).
 
@@ -469,6 +470,7 @@ The 5 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.24.0 | feat: proactive constraint presentation in investigating/discussing skills (project + inferred); feat: worklog (W) document system for light-workflow tracing; docs: D/P/T/I/W 5-document system |
 | 21.23.0 | feat: async background delta processing via delta-background.js (Haiku API + raw fallback); task constraint confirmation in investigating/discussing skills; remove CRABSHELL_DELTA foreground trigger from inject-rules.js; delta no longer consumes model turns |
 | 21.22.0 | refactor: inject-rules.js readProjectConcept() from shared-context.js; RULES Korean descriptive text translated to English |
 | 21.21.0 | feat: PreCompact/PostCompact/SubagentStart hooks (12 guard hooks total); shared-context.js cross-hook utilities; project.md constraints injection; async:true on skill-tracker + doc-watchdog record |
