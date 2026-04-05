@@ -183,7 +183,7 @@ Two meta-principles guide Claude's approach to obstacles:
        │   └─> If todo/in-progress tickets: Inject warning reminder
        ├─> Check for emergency stop keywords → replace entire context
        └─> Output indicator: [rules injected], [rules + rotation pending], [REGRESSING ACTIVE]
-           (CRABSHELL_DELTA foreground trigger restored v21.26.0 — async delta-background removed due to claude -p plugin context pollution)
+           (CRABSHELL_DELTA non-blocking background trigger v21.34.0 — Agent run_in_background replaces foreground blocking; deltaProcessing flag prevents race conditions)
 
 3. PreToolUse — multiple guards (ordered: cheapest first)
    ├─> path-guard.js (Read|Grep|Glob|Bash|Write|Edit) — v19.31.0+

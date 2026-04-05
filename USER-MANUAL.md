@@ -35,7 +35,7 @@ Crabshell solves this problem.
 
 **2. During Work:**
 - Auto-save triggers every 15 tool uses (configurable)
-- Delta extracted from L1 session log, Haiku summarizes it, appended to `logbook.md`
+- Delta extracted from L1 session log, Haiku summarizes in background (non-blocking), appended to `logbook.md`
 - Auto-rotation when `logbook.md` exceeds ~23,750 tokens
 - Rules re-injected every prompt via COMPRESSED_CHECKLIST
 - CLAUDE.md rules section kept in sync automatically
