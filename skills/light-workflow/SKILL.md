@@ -1,9 +1,29 @@
 ---
 name: light-workflow
-description: "Provides lightweight agent orchestration for standalone one-shot tasks without document trail. Use when a simple task needs Work Agent + Review Agent + Orchestrator but does not require D/P/T documentation. Invoke with /light-workflow. Not for iterative work — use regressing instead."
+description: "Provides lightweight agent orchestration for standalone one-shot tasks with worklog tracing. Use when a simple task needs Work Agent + Review Agent + Orchestrator but does not require D/P/T documentation. Invoke with /light-workflow. Not for iterative work — use regressing instead."
 ---
 
 # Agent Orchestration Workflow
+
+## Worklog (W document)
+
+Every light-workflow invocation creates a W document in `.crabshell/worklog/`:
+
+### On start:
+1. Glob `.crabshell/worklog/W*.md`, determine next ID (W001, W002, ...)
+2. Create `.crabshell/worklog/W{NNN}-{slug}.md`:
+```
+# W{NNN} - {task title}
+**Date:** {YYYY-MM-DD HH:MM}
+**Task:** {one-line description}
+**Files changed:** (filled after completion)
+**Result:** (filled after completion)
+```
+3. Append row to `.crabshell/worklog/INDEX.md`: `| W{NNN} | {task} | in-progress | {date} |`
+
+### On completion:
+1. Update W document with files changed + result summary
+2. Update INDEX.md status to `done`
 
 > **Lightweight reference mode:** This light-workflow skill is a lightweight execution mode suited for standalone one-shot tasks.
 > For iterative tasks requiring document tracing, use the D/P/T-based `/regressing` skill.

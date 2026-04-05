@@ -46,10 +46,18 @@ If no files exist, start at 001.
 Filename: `.crabshell/discussion/D{NNN}-{slug}.md`
 - `{slug}` = title converted to kebab-case (non-English titles: keep as-is with hyphens for spaces)
 
-**Before asking the 3 questions below:** Check for active task constraints:
-- If created in context of a regressing cycle, confirm: "Per P{NNN}/T{NNN}, what constraints apply?"
-- If constraints are present from the user or parent documents, they MUST appear as IA items or be explicitly excluded
-- State constraints to the user before proceeding
+**Before asking the 3 questions below:** Proactively present constraints:
+
+1. **Read** `.crabshell/project.md` — extract `## Constraints` section
+2. **Infer** task-specific constraints from context (topic, related D/P/I, regressing cycle)
+3. **Present** to the user:
+```
+Constraint Check:
+- [Project] {each constraint from project.md}
+- [Inferred] {constraints from task context, e.g., "Per P{NNN}, scope limited to X"}
+Additional constraints? Silence = proceed.
+```
+4. Confirmed constraints MUST appear as IA items or be explicitly excluded with user approval
 
 Ask the user:
 1. **Intent:** Why is this discussion needed? What decision is being made?

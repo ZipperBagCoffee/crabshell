@@ -45,13 +45,23 @@ Ask the user:
 2. **Questions:** What specific questions need answers?
 3. **Sources:** Any specific sources to include? (URLs, files, codebases)
 
-### Step 3.0: Task constraint confirmation
+### Step 3.0: Constraint presentation
 
-Before gathering parameters, check for task-specific constraints:
-- If created in context of a regressing cycle or plan, state: "Per P{NNN}, the following constraints apply: [list]"
-- If the user mentioned specific constraints (budget, sources, scope limits), confirm them
-- Ask once: "Are there additional scope or source constraints for this investigation?"
-- Confirmed constraints become binding for all agents in this investigation
+Before gathering parameters, **proactively present** constraints to the user:
+
+1. **Read** `.crabshell/project.md` — extract the `## Constraints` section
+2. **Infer** task-specific constraints from context (topic, related D/P/I documents, user's request)
+3. **Present** both to the user:
+
+```
+Constraint Check:
+- [Project] {each constraint from project.md}
+- [Inferred] {constraints derived from task context}
+Additional constraints? Silence = proceed.
+```
+
+4. If the user adds constraints, record them in the I document's Topic or Sources section
+5. All confirmed constraints are binding for every agent in this investigation
 
 ### Step 3.5: Parameter Recommendation
 
