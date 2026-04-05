@@ -103,7 +103,7 @@ crabshell/
 │
 ├── skills/                           # Slash command skills (17 total)
 │   ├── memory-autosave/SKILL.md      # Auto-trigger memory save
-│   ├── memory-delta/SKILL.md         # Auto-trigger delta summarization (foreground)
+│   ├── memory-delta/SKILL.md         # Auto-trigger delta summarization (background non-blocking, Phase A/B)
 │   ├── memory-rotate/SKILL.md        # Auto-trigger L3 generation
 │   ├── save-memory/SKILL.md          # /crabshell:save-memory
 │   ├── load-memory/SKILL.md          # /crabshell:load-memory
@@ -195,7 +195,7 @@ UserPromptSubmit hook:
 - Inject critical rules every prompt via `additionalContext`
 - Configurable frequency via `rulesInjectionFrequency`
 - Auto-sync rules to CLAUDE.md via `syncRulesToClaudeMd()` (marker-based)
-- Detect pending delta → inject DELTA_INSTRUCTION
+- Detect pending delta → inject DELTA_INSTRUCTION (non-blocking background, v21.34.0)
 - Detect pending rotation → inject ROTATION_INSTRUCTION
 - Detect active regressing session → inject phase-specific reminder (v19.23.0)
 - Check ticket statuses for active regressing → inject warning for todo/in-progress tickets (v21.12.0)
@@ -258,7 +258,7 @@ L1 generation:
    └─> inject-rules.js
        ├─> Inject critical rules via additionalContext
        ├─> Check for pending delta (delta_temp.txt exists)
-       │   └─> If yes: Inject DELTA_INSTRUCTION → Claude executes memory-delta skill
+       │   └─> If yes (and !deltaProcessing): Inject DELTA_INSTRUCTION → Claude launches background memory-delta agent
        ├─> Check for pending rotation (summaryGenerated: false)
        │   └─> If yes: Inject ROTATION_INSTRUCTION → Claude executes memory-rotate skill
        ├─> Check for active regressing session (regressing-state.json)
