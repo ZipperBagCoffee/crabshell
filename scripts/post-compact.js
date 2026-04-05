@@ -15,6 +15,9 @@ const { readStdin } = require('./transcript-utils');
 const { getProjectDir, getStorageRoot, readJsonOrDefault } = require('./utils');
 const { REGRESSING_STATE_FILE } = require('./constants');
 
+// Skip processing during background memory summarization
+if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
+
 async function main() {
   let stdinData = {};
   try {

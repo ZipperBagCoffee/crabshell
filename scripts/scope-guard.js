@@ -2,6 +2,9 @@
 
 const { readStdin, findTranscriptPath, getLastUserMessage } = require('./transcript-utils');
 
+// Skip processing during background memory summarization
+if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
+
 // Temporal units to EXCLUDE from quantity detection (prevents "3개월" = "3 months" false positive)
 const TEMPORAL_UNITS = /^(월|년|일|시간|분|초|주|달|months?|years?|days?|hours?|minutes?|seconds?|weeks?)$/i;
 

@@ -16,6 +16,9 @@ const { getProjectDir, getStorageRoot, readJsonOrDefault } = require('./utils');
 const { REGRESSING_STATE_FILE } = require('./constants');
 const { COMPRESSED_CHECKLIST, readProjectConcept } = require('./shared-context');
 
+// Skip processing during background memory summarization
+if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
+
 const MAX_CONTEXT_CHARS = 2000;
 
 async function main() {

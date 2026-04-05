@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.24.0)
+# Crabshell Architecture (v21.25.0)
 
 ## Overview
 
@@ -229,8 +229,8 @@ Two meta-principles guide Claude's approach to obstacles:
    │   ├─> Increment counter
    │   ├─> checkAndRotate() — archive if > 23,750 tokens
    │   └─> At threshold: create/update L1 (session-aware reuse + incremental offset read) → extractDelta() → creates delta_temp.txt
-   ├─> delta-background.js (async) — v21.23.0+
-   │   └─> Async delta processing: Haiku API summarization of delta_temp.txt → append to logbook.md; raw fallback if API unavailable; does not consume model turns
+   ├─> delta-background.js (asyncRewake) — v21.23.0+, subprocess v21.25.0
+   │   └─> Async delta processing: claude -p subprocess (Haiku via subscription auth) summarizes delta_temp.txt → appends to logbook.md; raw fallback if subprocess unavailable; does not consume model turns
    ├─> verification-sequence.js record (.*) — v21.0.0+
    │   └─> Track source file edits, test executions, grep cycles in verification-state.json
    ├─> doc-watchdog.js record (Write|Edit) — v21.18.0+
@@ -470,6 +470,7 @@ The 5 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.25.0 | fix: delta-background.js direct API → claude -p subprocess (fixes broken Haiku summarization under subscription auth); hooks.json async→asyncRewake (ghost response prevention); 17 hooks CRABSHELL_BACKGROUND guard (plugin pollution prevention); 4 new delta-background tests (14 total) |
 | 21.24.0 | feat: proactive constraint presentation in investigating/discussing skills (project + inferred); feat: worklog (W) document system for light-workflow tracing; docs: D/P/T/I/W 5-document system |
 | 21.23.0 | feat: async background delta processing via delta-background.js (Haiku API + raw fallback); task constraint confirmation in investigating/discussing skills; remove CRABSHELL_DELTA foreground trigger from inject-rules.js; delta no longer consumes model turns |
 | 21.22.0 | refactor: inject-rules.js readProjectConcept() from shared-context.js; RULES Korean descriptive text translated to English |

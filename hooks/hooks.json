@@ -66,7 +66,7 @@
           {
             "type": "command",
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/delta-background.js\"",
-            "async": true
+            "asyncRewake": true
           }
         ]
       }

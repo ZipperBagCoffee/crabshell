@@ -1,5 +1,11 @@
 # Changelog
 
+## v21.25.0
+- fix: delta-background.js — direct Anthropic API call replaced with `claude -p` subprocess (fixes broken Haiku summarization under subscription auth)
+- fix: hooks.json — delta-background entry changed from `async:true` to `asyncRewake:true` (prevents ghost response on rewake)
+- fix: 17 hook scripts — added `CRABSHELL_BACKGROUND=1` early-exit guard (prevents plugin pollution during background execution)
+- feat: _test-delta-background.js — 4 new tests covering subprocess execution, CRABSHELL_BACKGROUND guard, asyncRewake behavior (14 tests total)
+
 ## v21.24.0
 - feat: proactive constraint presentation in investigating/discussing skills (project + inferred)
 - feat: worklog (W) document system for light-workflow tracing

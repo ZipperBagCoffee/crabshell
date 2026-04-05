@@ -9,6 +9,9 @@ const { MEMORY_DIR, MEMORY_FILE, SESSIONS_DIR, COUNTER_FILE } = require('./const
 const { detectRegressingSkillCall, advancePhase } = require('./regressing-state');
 const { readStdin: readStdinShared, findTranscriptPath } = require('./transcript-utils');
 
+// Skip processing during background memory summarization
+if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
+
 const GLOBAL_CONFIG_PATH = path.join(os.homedir(), '.crabshell', 'config.json');
 const DEFAULT_INTERVAL = 15;
 

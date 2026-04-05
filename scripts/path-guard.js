@@ -4,6 +4,9 @@ const path = require('path');
 const os = require('os');
 const { readStdin, normalizePath } = require('./transcript-utils');
 
+// Skip processing during background memory summarization
+if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
+
 function getProjectDir() {
   return process.env.CLAUDE_PROJECT_DIR || process.env.PROJECT_DIR || process.cwd();
 }

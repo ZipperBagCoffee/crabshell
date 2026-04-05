@@ -3,16 +3,19 @@
 /**
  * delta-background.js — Async PostToolUse hook for background delta summarization.
  *
- * Runs with async: true so it does not block Claude Code.
- * Checks deltaReady flag; if set, reads delta_temp.txt, summarizes via Haiku API
- * (or truncates as raw fallback), appends to logbook.md, then cleans up.
+ * Runs with asyncRewake: true so it does not block Claude Code.
+ * Checks deltaReady flag; if set, reads delta_temp.txt, summarizes via
+ * `claude -p --model haiku` subprocess (or truncates as raw fallback),
+ * appends to logbook.md, then cleans up.
  *
  * Exit 0 always (fail-open). Never breaks the user workflow.
+ * Sets CRABSHELL_BACKGROUND=1 when spawning claude subprocess to prevent
+ * recursive hook invocation.
  */
 
 const fs = require('fs');
 const path = require('path');
-const https = require('https');
+const { execSync } = require('child_process');
 const { getProjectDir, getStorageRoot, readIndexSafe, writeJson } = require('./utils');
 const { readStdin: readStdinShared } = require('./transcript-utils');
 const { markMemoryAppended, markMemoryUpdated, cleanupDeltaTemp } = require('./extract-delta');
@@ -33,74 +36,70 @@ function buildTimestampHeader() {
   return `## ${utc} (local ${local})`;
 }
 
-// Call Anthropic Haiku API to summarize delta content.
-// Returns a Promise resolving to the summary string, or null on failure.
-function callHaikuApi(deltaContent) {
-  return new Promise((resolve) => {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      resolve(null);
-      return;
-    }
-
-    const body = JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
-      messages: [
-        {
-          role: 'user',
-          content: 'Summarize (1 sentence per ~200 words):\n\n' + deltaContent
-        }
-      ]
-    });
-
-    const options = {
-      hostname: 'api.anthropic.com',
-      path: '/v1/messages',
-      method: 'POST',
-      headers: {
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-        'content-length': Buffer.byteLength(body)
-      }
-    };
-
-    const req = https.request(options, (res) => {
-      let data = '';
-      res.on('data', (chunk) => { data += chunk; });
-      res.on('end', () => {
-        try {
-          const parsed = JSON.parse(data);
-          const text = parsed.content && parsed.content[0] && parsed.content[0].text;
-          if (text) {
-            resolve(text);
-          } else {
-            console.error('[CRABSHELL] delta-background: Haiku response missing content[0].text');
-            resolve(null);
+/**
+ * Parse stream-json output from `claude -p --output-format stream-json`.
+ * Looks for lines with "type":"assistant" containing content[].text.
+ * Returns concatenated text or null if nothing found.
+ */
+function parseStreamJson(output) {
+  if (!output || !output.trim()) return null;
+  const lines = output.split('\n');
+  const textParts = [];
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (parsed.type === 'assistant' && Array.isArray(parsed.message && parsed.message.content)) {
+        for (const block of parsed.message.content) {
+          if (block.type === 'text' && typeof block.text === 'string') {
+            textParts.push(block.text);
           }
-        } catch (e) {
-          console.error('[CRABSHELL] delta-background: Failed to parse Haiku response:', e.message);
-          resolve(null);
         }
-      });
+      }
+    } catch (e) {
+      // Non-JSON line — skip
+    }
+  }
+  const result = textParts.join('').trim();
+  return result || null;
+}
+
+/**
+ * Invoke `claude -p --model haiku` subprocess to summarize delta content.
+ * Passes delta via stdin. Sets CRABSHELL_BACKGROUND=1 to prevent recursive hooks.
+ * Returns summary string, or null on failure (caller falls back to truncation).
+ */
+function callHaikuCli(deltaContent) {
+  try {
+    const prompt = 'Summarize (1 sentence per ~200 words):\n\n' + deltaContent;
+    const cmd = [
+      'claude', '-p',
+      '--model', 'haiku',
+      '--verbose',
+      '--output-format', 'stream-json',
+      '--append-system-prompt', 'Output ONLY the summary, nothing else.',
+      '--disallowed-tools', 'Bash,Read,Write,Edit,Glob,Grep,Skill,ToolSearch,Agent'
+    ].join(' ');
+
+    const output = execSync(cmd, {
+      input: prompt,
+      timeout: 120000,
+      encoding: 'utf8',
+      env: { ...process.env, CRABSHELL_BACKGROUND: '1' },
+      stdio: ['pipe', 'pipe', 'pipe']
     });
 
-    req.on('error', (e) => {
-      console.error('[CRABSHELL] delta-background: Haiku API request error:', e.message);
-      resolve(null);
-    });
-
-    // Set a 30-second timeout for the API call
-    req.setTimeout(30000, () => {
-      console.error('[CRABSHELL] delta-background: Haiku API request timed out');
-      req.destroy();
-      resolve(null);
-    });
-
-    req.write(body);
-    req.end();
-  });
+    const summary = parseStreamJson(output);
+    if (summary) {
+      return summary;
+    }
+    console.error('[CRABSHELL] delta-background: stream-json parse yielded no text, falling back');
+    return null;
+  } catch (e) {
+    console.error('[CRABSHELL] delta-background: claude -p subprocess failed:', e.message);
+    return null;
+  }
 }
 
 async function main() {
@@ -145,24 +144,16 @@ async function main() {
       process.exit(0);
     }
 
-    // Summarize: Option A = Haiku API, Option B = truncate fallback
+    // Summarize: Option A = claude -p haiku subprocess, Option B = truncate fallback
     let summary;
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-
-    if (apiKey) {
-      console.error('[CRABSHELL] delta-background: calling Haiku API for summarization');
-      const apiSummary = await callHaikuApi(deltaContent);
-      if (apiSummary) {
-        summary = apiSummary;
-        console.error('[CRABSHELL] delta-background: Haiku summarization complete');
-      } else {
-        // API call failed — fall back to truncation
-        console.error('[CRABSHELL] delta-background: Haiku API failed, falling back to raw truncation');
-        summary = deltaContent.slice(0, 2000);
-      }
+    console.error('[CRABSHELL] delta-background: invoking claude -p haiku for summarization');
+    const cliSummary = callHaikuCli(deltaContent);
+    if (cliSummary) {
+      summary = cliSummary;
+      console.error('[CRABSHELL] delta-background: Haiku summarization complete');
     } else {
-      // No API key — use raw truncation fallback
-      console.error('[CRABSHELL] delta-background: no ANTHROPIC_API_KEY, using raw truncation fallback');
+      // Subprocess failed or returned no text — fall back to raw truncation
+      console.error('[CRABSHELL] delta-background: Haiku CLI failed, falling back to raw truncation');
       summary = deltaContent.slice(0, 2000);
     }
 

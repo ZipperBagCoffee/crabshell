@@ -3,6 +3,9 @@ const fs = require('fs');
 const path = require('path');
 const { readStdin, findTranscriptPath, encodeProjectPath, getRecentBashCommands } = require('./transcript-utils');
 
+// Skip processing during background memory summarization
+if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
+
 const SYCOPHANCY_PATTERNS = [
   // Korean
   /맞습니다/i,

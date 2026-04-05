@@ -7,6 +7,9 @@ const { TICKET_DIR, REGRESSING_STATE_FILE } = require('./constants');
 const { readStdin: readStdinShared } = require('./transcript-utils');
 const { COMPRESSED_CHECKLIST: COMPRESSED_CHECKLIST_SHARED, readProjectConcept } = require('./shared-context');
 
+// Skip processing during background memory summarization
+if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
+
 // Emergency stop keywords - when detected, replaces entire context with EMERGENCY STOP
 const EMERGENCY_KEYWORDS = ['아시발멈춰', 'BRAINMELT'];
 
