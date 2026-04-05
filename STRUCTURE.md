@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.28.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.29.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -321,6 +321,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.29.0 | feat: light-workflow philosophy port — PROHIBITED PATTERNS, L1-L4, Evidence Gate, Constraint Presentation, Devil's Advocate, Coherence Check |
 | 21.28.0 | feat: light-workflow SKILL.md modernization — Workflow Selection, 9-section W template, Escalation Protocol, CLAUDE.md rules |
 | 21.27.0 | fix: ARCHITECTURE.md stale DELTA comment; D065 concluded, P093 done |
 | 21.26.0 | revert: restore foreground DELTA detection in inject-rules.js (DELTA_INSTRUCTION, checkDeltaPending, hasPendingDelta); remove delta-background.js PostToolUse hook (claude -p loads 34K+ token context causing Haiku to follow skill instructions; --bare breaks OAuth auth); proven foreground mechanism restored |

@@ -51,7 +51,7 @@ Every light-workflow invocation creates a W document in `.crabshell/worklog/`:
 3. Append row to `.crabshell/worklog/INDEX.md`: `| W{NNN} | {task} | in-progress | {date} |`
 
 ### On completion:
-1. Update W document with files changed + result summary
+1. Complete all 9 W document sections: Header, Task, Problem, Approach, Files Changed (table), Verification (per-criterion PASS/FAIL), Experiment Log (or N/A), User Testing Needed (or N/A), Result
 2. Update INDEX.md status to `done`
 
 ### W Document Rejection Criteria
@@ -70,6 +70,21 @@ A W document is REJECTED if any of these apply:
 
 > Principles (Understanding-First, HHH, Critical Stance, etc.) are injected via RULES every prompt.
 > This document defines HOW those principles apply to agent-based task execution.
+
+### Pre-Response Output Scan
+
+Before finalizing any response, scan for PROHIBITED PATTERNS (from RULES):
+1. Scope reduction without approval
+2. "Verified" without tool output in last 5 calls
+3. Agreement without evidence
+4. Same fix repeated ≥3 times
+5. Prediction = Observation verbatim in P/O/G table
+6. "takes too long" as justification for doing less
+7. Suggesting to stop/defer without proof
+
+**Workflow-specific additions:**
+- Phase complete but W document not updated → update before proceeding
+- Review Agent produced no per-criterion verdict → reject, re-request with PASS/FAIL
 
 ## Workflow Selection
 
@@ -180,6 +195,17 @@ Every stage: **Work Agent → Review Agent → Orchestrator (Intent Guardian)**
 | **Orchestrator** | Close understanding gap before delegating. Filter reviews through original intent. Spot-check claims (scaled to reviewer count). Run cross-review when 2+ reviewers. Never aggregate — judge. **Verify runtime verification results exist and are valid — final gatekeeper.** |
 | **Work Agent** | Execute exactly what's specified. If reality differs from plan, STOP and report. No improvisation. **After implementation, perform runtime verification to prove code is reachable.** |
 | **Review Agent** | Cite specific evidence. Predict behavior, don't just check text existence. PASS/FAIL only. Fresh context, no attachment to the work. **Independently perform runtime verification — never trust Work Agent's results.** |
+
+### Evidence Gate (Review Agent — mandatory before PASS verdict)
+
+Before issuing any PASS verdict, check all 5:
+- [ ] Observation evidence attached (execution output, diff, log, test result)?
+- [ ] Evidence from actual execution, not text search?
+- [ ] Behavior predicted before evidence collected?
+- [ ] Prediction matches observation, or gap documented?
+- [ ] Verification independent (not based on Work Agent's claims)?
+
+If any checkbox unchecked → verdict is FAIL or CANNOT VERIFY, not PASS. This gate is BLOCKING.
 
 ---
 
@@ -332,6 +358,14 @@ After cross-review:
 ## Anti-Patterns
 
 > **Verification Philosophy:** Follows VERIFICATION-FIRST principle from RULES (Predict → Execute → Compare). When no project verification tool exists, invoke the 'verifying' skill. The common root cause of anti-patterns #3, #9, #15, #25 below is absence of observation.
+>
+> **Observation Resolution Levels (from RULES):**
+> - **L1 (Direct Execution):** Run code, observe output. Gold standard.
+> - **L2 (Indirect Execution):** Execute related operation, infer result.
+> - **L3 (Structural Check):** Read/grep files. No execution. Insufficient alone for runtime features.
+> - **L4 (Claim Without Evidence):** PROHIBITED — always a violation.
+>
+> If L1 is possible, L3 is not acceptable. Phase 8 Runtime Verification = L1. Phase 9 review claiming PASS from text search alone = L3 violation.
 
 | # | Pattern | Rule |
 |---|---------|------|

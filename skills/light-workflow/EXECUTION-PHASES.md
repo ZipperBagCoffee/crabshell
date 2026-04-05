@@ -12,6 +12,9 @@ Execute plan exactly. No improvisation.
 **If reality differs from plan → STOP.** This is a plan-reality gap. Return to Phase 5-7 for revision.
 **"Different from plan but better" → Stop. Revise plan. Get approval. Then implement.**
 
+**Scope monitoring (see [Mid-Execution Escalation Protocol](SKILL.md#mid-execution-escalation-protocol)):**
+Track files touched from Phase 8 start. If any trigger fires (>7 files, shared convention modified, undiscovered dependency), STOP immediately and follow the escalation procedure.
+
 **Runtime Verification (mandatory):**
 After implementation, verify that your changes will actually work when deployed/applied in practice.
 
@@ -184,3 +187,11 @@ After workflow completion, document the work using the appropriate skill:
 - `/planning "topic"` — record if a new plan was derived
 
 At minimum, the relevant ticket's work log (`/ticketing` update) MUST be updated.
+
+**W document completion (see [Worklog](SKILL.md#worklog-w-document)):**
+Before closing, complete all 9 W document sections:
+- `## Files Changed` — every file with change description (not bare list)
+- `## Verification` — per-criterion PASS/FAIL (not "Done")
+- `## Experiment Log` — record rework if any occurred (or explicit N/A)
+- `## User Testing Needed` — manual verification items (or explicit N/A)
+- `## Result` — outcome differentiated from Task description

@@ -9,7 +9,11 @@
 
 **YOUR job — never delegate.**
 
-1. State understanding explicitly: current state, desired state, must preserve, constraints
+1. State understanding explicitly:
+   - **Current state:** what exists now
+   - **Desired state:** what should exist after
+   - **Must preserve:** behaviors/properties that must not change
+   - **Constraint Presentation:** enumerate constraints as a numbered list (technical limits, scope limits, external dependencies). Present to user before proceeding. Unacknowledged constraints = hidden assumptions = plan risk.
 2. Infer implicit requirements — what would a reasonable person expect even if not mentioned?
 3. Produce **Intent Anchor** — numbered list of non-negotiable requirements (3-7 items):
    ```
@@ -18,8 +22,14 @@
    ...
    ```
    These are the things that CANNOT be violated. Every meta-review gate re-reads this list.
+3a. **Devil's Advocate check** — before presenting IA to user:
+   - "Is any IA item actually a preference, not a constraint?"
+   - "Could a reasonable implementation satisfy user intent WITHOUT this IA item?"
+   - "Does this IA item conflict with another?"
+   Remove or qualify items that fail. A flawed IA poisons every downstream gate.
 4. Confirm with user: "Is this understanding correct? Are these the right Intent Anchor items?"
 5. User corrects → gap found → adjust Intent Anchor → confirm again
+6. **RA/WA Cross-Reference anchor:** Before spawning Phase 2 agents, confirm WA and RA will receive identical IA items verbatim. Record in W document: "IA-1..N agreed. WA and RA prompts both include these items."
 
 ### Phase 2: Analyze (Work Agent)
 
@@ -71,6 +81,13 @@ Trace call chains, dependencies, state changes, user-visible behavior.
 ### Phase 4: Meta-Review (Orchestrator as Intent Guardian)
 
 **Input:** Review results + Cross-Review Report (if 2+ reviewers)
+
+**Coherence Check (single reviewer — no Cross-Review Report):**
+When only 1 reviewer ran, the Orchestrator MUST verify:
+1. Does the review cover every Work Agent output item? (completeness)
+2. Are verdicts internally consistent? (PASS on A but FAIL on dependent B = inconsistency)
+3. Does reviewer's trace match or conflict with Work Agent's trace? (path coherence)
+If any check fails → treat as Contested Finding, resolve before proceeding.
 
 1. Did reviewer cite specific evidence (not just "looks correct")?
 2. **Spot-check** — read actual code yourself:
