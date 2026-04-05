@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.30.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.31.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -321,6 +321,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.31.0 | feat: docs-guard Constraints enforcement for I documents, 13 tests |
 | 21.30.0 | feat: Phase 9 Evidence Gate harmonized (5-checkbox), Parameter Recommendation (Phase 0.7), 12-Phase workflow |
 | 21.29.0 | feat: light-workflow philosophy port — PROHIBITED PATTERNS, L1-L4, Evidence Gate, Constraint Presentation, Devil's Advocate, Coherence Check |
 | 21.28.0 | feat: light-workflow SKILL.md modernization — Workflow Selection, 9-section W template, Escalation Protocol, CLAUDE.md rules |

@@ -54,6 +54,30 @@ function getActiveSkill(projectDir) {
   }
 }
 
+/**
+ * For investigation documents: verify ## Constraints section exists.
+ * Returns null if OK, error string if missing.
+ */
+function checkInvestigationConstraints(filePath, toolName) {
+  if (!filePath.includes('investigation/') && !filePath.includes('investigation\\')) {
+    return null;
+  }
+  // Write to non-existent file = first creation → allow
+  if (toolName === 'Write') {
+    try {
+      if (!fs.existsSync(filePath)) return null;
+    } catch { return null; }
+  }
+  // Check existing file for ## Constraints
+  try {
+    const content = fs.readFileSync(filePath, 'utf8');
+    if (!content.includes('## Constraints')) {
+      return 'I document missing ## Constraints section. Add constraints before further edits.';
+    }
+    return null;
+  } catch { return null; }
+}
+
 async function main() {
   const hookData = await readStdin();
   if (!hookData || !hookData.tool_name) { process.exit(0); return; }
@@ -75,7 +99,18 @@ async function main() {
   // Check if a legitimate skill is active
   const activeSkill = getActiveSkill(projectDir);
   if (activeSkill) {
-    // Skill is active — allow the write
+    // Skill is active — check investigation Constraints before allowing
+    const constraintError = checkInvestigationConstraints(filePath, toolName);
+    if (constraintError) {
+      const output = {
+        decision: "block",
+        reason: constraintError
+      };
+      process.stderr.write(`[DOCS_GUARD] Blocked ${toolName} to ${filePath} — ${constraintError}\n`);
+      console.log(JSON.stringify(output));
+      process.exit(2);
+      return;
+    }
     process.exit(0);
     return;
   }
@@ -106,3 +141,5 @@ main().catch(e => {
   console.error(`[DOCS GUARD ERROR] ${e.message}`);
   process.exit(0); // fail-open
 });
+
+module.exports = { checkInvestigationConstraints };

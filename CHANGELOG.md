@@ -1,5 +1,10 @@
 # Changelog
 
+## v21.31.0
+- feat: docs-guard.js — investigation document `## Constraints` section enforcement (blocks Edit without Constraints, allows first Write)
+- feat: _test-docs-guard.js — 13 tests (subprocess + unit) for Constraints enforcement
+- test: `claude -p --system-prompt` L1 test for background memory (reentrancy limitation documented)
+
 ## v21.30.0
 - feat: EXECUTION-PHASES.md Phase 9 — Evidence Gate upgraded to 5-checkbox BLOCKING (harmonized with SKILL.md)
 - feat: ANALYSIS-PHASES.md Phase 0.7 — Parameter Recommendation step (agent count, specialist roles, model tier)

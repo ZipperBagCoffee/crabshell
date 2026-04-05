@@ -192,6 +192,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.31.0 | feat: docs-guard Constraints enforcement for I documents, 13 tests, `claude -p --system-prompt` L1 test |
 | 21.30.0 | feat: Phase 9 Evidence Gate harmonized (5-checkbox BLOCKING), Parameter Recommendation (Phase 0.7), 11→12-Phase workflow |
 | 21.29.0 | feat: light-workflow philosophy port — PROHIBITED PATTERNS scan, L1-L4 levels, Evidence Gate 5-checkbox, Constraint Presentation, Devil's Advocate, Coherence Check, Escalation cross-ref, W template alignment |
 | 21.28.0 | feat: light-workflow SKILL.md modernization — Workflow Selection matrix, 9-section W template + 6 rejection criteria, Mid-Execution Escalation Protocol, CLAUDE.md workflow selection + urgency signal rules |
