@@ -59,16 +59,6 @@
             "async": true
           }
         ]
-      },
-      {
-        "matcher": ".*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/delta-background.js\"",
-            "asyncRewake": true
-          }
-        ]
       }
     ],
     "PreToolUse": [
