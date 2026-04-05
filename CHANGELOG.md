@@ -1,5 +1,9 @@
 # Changelog
 
+## v21.35.0
+- fix: docs-guard.js — exclude INDEX.md from investigation Constraints check (was blocking investigation/INDEX.md edits)
+- test: _test-docs-guard.js — 2 new tests (TC5b subprocess + TC7g unit), 15 total
+
 ## v21.34.0
 - feat: delta-summarizer converted from foreground blocking to background non-blocking via Agent tool `run_in_background: true`
 - feat: SKILL.md (memory-delta) rewritten with Phase A (foreground launch) + Phase B (background completion)

@@ -161,6 +161,23 @@ unitTest('TC5: Edit plan/ doc (not investigation) + active skill → allow (exit
   } finally { proj.cleanup(); }
 });
 
+console.log('\n--- Subprocess: TC5b — Edit investigation/INDEX.md + active skill → exit 0 (INDEX excluded) ---');
+unitTest('TC5b: Edit investigation/INDEX.md + active skill → allow (exit 0)', () => {
+  const proj = createTempProject('investigating');
+  try {
+    const invDir = path.join(proj.dir, '.crabshell', 'investigation');
+    fs.mkdirSync(invDir, { recursive: true });
+    const filePath = path.join(invDir, 'INDEX.md');
+    fs.writeFileSync(filePath, '| ID | Topic | Status |\n| I001 | test | open |\n');
+    const hookData = {
+      tool_name: 'Edit',
+      tool_input: { file_path: filePath }
+    };
+    const code = runScript(hookData, { CLAUDE_PROJECT_DIR: proj.dir });
+    assert(code === 0, `expected exit 0, got ${code}`);
+  } finally { proj.cleanup(); }
+});
+
 console.log('\n--- Subprocess: TC6 — Edit I doc WITHOUT ## Constraints + NO active skill → exit 2 ---');
 unitTest('TC6: Edit I doc WITHOUT ## Constraints + NO active skill → block (exit 2)', () => {
   const proj = createTempProject(null); // no skill flag
@@ -251,7 +268,19 @@ unitTest('TC7f: investigation path (backslash) WITHOUT ## Constraints → error 
   } finally { try { fs.rmSync(tmp, { recursive: true }); } catch {} }
 });
 
-unitTest('TC7g: unreadable file (non-existent) on Edit → null (fail-open)', () => {
+unitTest('TC7g: investigation/INDEX.md → null (skip, not an I-document)', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ck-test-'));
+  try {
+    const invDir = path.join(tmp, 'investigation');
+    fs.mkdirSync(invDir, { recursive: true });
+    const fp = path.join(invDir, 'INDEX.md');
+    fs.writeFileSync(fp, '| ID | Topic | Status |\n| I001 | test | open |\n');
+    const result = checkInvestigationConstraints(fp, 'Edit');
+    assert(result === null, `expected null for INDEX.md, got ${result}`);
+  } finally { try { fs.rmSync(tmp, { recursive: true }); } catch {} }
+});
+
+unitTest('TC7h: unreadable file (non-existent) on Edit → null (fail-open)', () => {
   const fp = '/nonexistent/investigation/I001.md';
   const result = checkInvestigationConstraints(fp, 'Edit');
   assert(result === null, `expected null (fail-open) for unreadable file, got ${result}`);
