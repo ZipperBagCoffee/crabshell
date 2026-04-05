@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.35.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.36.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -321,6 +321,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.36.0 | feat: RA Deletion Check — mandatory `git diff` scan before verification in ticketing/light-workflow; Evidence Gate 5→6 checkbox (unintended deletion check); fallback paths for empty diff |
 | 21.35.0 | fix: docs-guard.js INDEX.md exclusion from investigation Constraints check; 2 new tests (15 total) |
 | 21.34.0 | feat: delta-summarizer background non-blocking (Agent `run_in_background: true`); SKILL.md Phase A/B split; DELTA_INSTRUCTION NON-BLOCKING; markDeltaProcessing() + mark-processing CLI in extract-delta.js; deltaProcessing flag in memory-index.json |
 | 21.33.0 | fix: verification-sequence.js + sycophancy-guard.js node.exe pattern (`\bnode\s+` → `\bnode(?:\.exe)?["']?\s+`) for Windows full path with quotes; 5 new tests (34 total) |

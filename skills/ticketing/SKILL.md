@@ -98,6 +98,7 @@ The Orchestrator MUST launch 2+ Work Agents with **distinct analytical perspecti
 **Launch:** Use Task tool to create a NEW Review Agent (separate from Work Agent) with the task description below.
 - **RA Count Rule (MANDATORY):** The number of Review Agents MUST equal the number of Work Agents. WA N개 → RA N개. Each WA's output is reviewed by its own dedicated RA. A single RA reviewing multiple WAs' outputs violates agent pairing — it creates a bottleneck that undermines independent verification.
 - **Independence Protocol (MANDATORY):** The Review Agent prompt MUST NOT include Work Agent's Execution Results. Provide only: (1) ticket's Acceptance Criteria and Verification sections, (2) the P/O/G template below. The Review Agent performs independent verification first. After Review Agent completes, the Orchestrator cross-references RA findings against WA Execution Results — discrepancies are findings.
+- **Deletion Check (MANDATORY first step):** Run `git diff` (or `git diff HEAD` if changes are staged/committed) on all WA-modified files BEFORE any other verification. Scan deleted lines — any function, class, or export that disappeared without being mentioned in the ticket's Acceptance Criteria is a finding. Unintended deletion of existing code = automatic FAIL. If diff is empty (new files only, or already committed), use `git diff HEAD~1` or `git show` to compare against pre-WA state. If no diff is obtainable, state "Deletion Check: N/A — {reason}" and proceed.
 - Verify runtime behavior of each work item (trigger → path → result)
 - **Scope Note (from project RULES):** Conciseness applies to communication style, not to verification steps. P/O/G tables and evidence citations are required work product, not verbose output. Evidence IS the answer — "verified" without tool output is not verification. Fill Prediction before looking; fill Observation only from tool output.
 - **Review Agent prompt MUST include this philosophical context and verification output template:**
@@ -119,7 +120,7 @@ The Orchestrator MUST launch 2+ Work Agents with **distinct analytical perspecti
   - If direct execution is impossible: state "Indirect: {method}" + why direct is impossible
   - Empty Observation or Gap fields → entire verification is INVALID
   ```
-- Confirm changes do not break existing functionality
+- Confirm changes do not break existing functionality (Evidence Gate checkbox 6 — `git diff` deletion check — enforces this)
 - Confirm edge case and exception handling
 - **Devil's Advocate (single reviewer):** When only 1 Review Agent runs, it MUST include a Devil's Advocate section articulating the strongest counter-argument to its own PASS verdict. This prevents rubber-stamp reviews.
 - Append results to `## Verification Results` section
