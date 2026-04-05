@@ -121,7 +121,7 @@ Files: ~N. Components: X, Y, Z. Cross-cutting: yes/no.
 - [Workflow Selection](#workflow-selection)
 - [Core Concepts](#core-concepts)
 - [3-Layer Architecture](#3-layer-architecture)
-- [11-Phase Workflow](#11-phase-workflow) (overview)
+- [12-Phase Workflow](#12-phase-workflow) (overview)
 - [Agent Prompt Template](#agent-prompt-template-generic)
 - [Orchestrator Scope](#orchestrator-scope)
 - [Parallel Execution](#parallel-execution)
@@ -131,7 +131,7 @@ Files: ~N. Components: X, Y, Z. Cross-cutting: yes/no.
 - [Quick Reference](#quick-reference)
 
 **Phase Details:**
-- [ANALYSIS-PHASES.md](ANALYSIS-PHASES.md) — Phases 1-7 (Understand, Analyze, Review, Plan)
+- [ANALYSIS-PHASES.md](ANALYSIS-PHASES.md) — Phases 0.7-7 (Parameter Recommend, Understand, Analyze, Review, Plan)
 - [EXECUTION-PHASES.md](EXECUTION-PHASES.md) — Phases 8-11 (Implement, Verify, Report)
 - [COMPACTION.md](COMPACTION.md) — Compaction Protocol (used after Phase 4 and Phase 7)
 
@@ -209,9 +209,10 @@ If any checkbox unchecked → verdict is FAIL or CANNOT VERIFY, not PASS. This g
 
 ---
 
-## 11-Phase Workflow
+## 12-Phase Workflow
 
 ```
+Phase 0.7: Parameter Recommend → Orchestrator (agent count, roles, models)
 Phase 1:   Understand          → Orchestrator + User
 Phase 2:   Analyze             → Work Agent
 Phase 3:   Review Analysis     → Review Agent(s)
@@ -422,7 +423,8 @@ During Phase 8 (Implementation), the Work Agent MUST monitor scope:
 ## Quick Reference
 
 ```
-Task → Phase 1: Understand + Intent Anchor (IA-1..N)
+Task → Phase 0.7: Parameter Recommendation (agents, roles, models)
+     → Phase 1: Understand + Intent Anchor (IA-1..N)
      → Phase 2-4: Analyze → Review → [Cross-Review] → Meta-Review + Intent Comparison
      → Phase 5-7: Plan → Review → [Cross-Review] → Meta-Review + Intent Comparison + Approve
      → Phase 7.5: Alternative (optional)

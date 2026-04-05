@@ -79,10 +79,15 @@ For each criterion:
 5. Compare against criterion
 6. Verdict: PASS or FAIL with explanation
 
-**Observation Evidence Gate:**
-- Does the Work Agent's verification include observation evidence (execution output, diff, log, test result)?
-- If YES: evaluate the evidence — is it authentic, relevant, and sufficient?
-- If NO (only text claims like "verified", "confirmed", "works correctly" without attached evidence): **automatic FAIL.** Request re-verification with observation evidence.
+**Evidence Gate (BLOCKING — 5-checkbox, see [SKILL.md](SKILL.md#evidence-gate-review-agent--mandatory-before-pass-verdict)):**
+Before issuing any PASS verdict, check all 5:
+- [ ] Observation evidence attached (execution output, diff, log, test result)?
+- [ ] Evidence from actual execution, not text search?
+- [ ] Behavior predicted before evidence collected?
+- [ ] Prediction matches observation, or gap documented?
+- [ ] Verification independent (not based on Work Agent's claims)?
+
+If any checkbox unchecked → verdict is FAIL or CANNOT VERIFY, not PASS.
 
 **Rules:**
 - "File contains X" is NEVER valid verification. Predict behavior.
