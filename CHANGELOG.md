@@ -1,5 +1,9 @@
 # Changelog
 
+## v21.27.0
+- fix: ARCHITECTURE.md stale comment — DELTA foreground trigger restored note (was incorrectly stating "removed v21.23.0")
+- chore: D065 concluded, P093 done, regressing state cleaned
+
 ## v21.26.0
 - revert: inject-rules.js — restore DELTA_INSTRUCTION, checkDeltaPending(), hasPendingDelta context injection (foreground DELTA detection mechanism)
 - revert: hooks.json — remove delta-background.js PostToolUse hook entry

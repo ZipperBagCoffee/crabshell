@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.26.0)
+# Crabshell Architecture (v21.27.0)
 
 ## Overview
 
@@ -183,7 +183,7 @@ Two meta-principles guide Claude's approach to obstacles:
        │   └─> If todo/in-progress tickets: Inject warning reminder
        ├─> Check for emergency stop keywords → replace entire context
        └─> Output indicator: [rules injected], [rules + rotation pending], [REGRESSING ACTIVE]
-           (CRABSHELL_DELTA foreground trigger removed v21.23.0 — delta now processed async)
+           (CRABSHELL_DELTA foreground trigger restored v21.26.0 — async delta-background removed due to claude -p plugin context pollution)
 
 3. PreToolUse — multiple guards (ordered: cheapest first)
    ├─> path-guard.js (Read|Grep|Glob|Bash|Write|Edit) — v19.31.0+
@@ -468,6 +468,7 @@ The 5 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.27.0 | fix: ARCHITECTURE.md stale DELTA comment; D065 concluded, P093 done |
 | 21.26.0 | revert: restore foreground DELTA detection in inject-rules.js (DELTA_INSTRUCTION, checkDeltaPending, hasPendingDelta); remove delta-background.js PostToolUse hook (claude -p loads 34K+ token context causing Haiku to follow skill instructions; --bare breaks OAuth auth) |
 | 21.25.0 | fix: delta-background.js direct API → claude -p subprocess (fixes broken Haiku summarization under subscription auth); hooks.json async→asyncRewake (ghost response prevention); 17 hooks CRABSHELL_BACKGROUND guard (plugin pollution prevention); 4 new delta-background tests (14 total) |
 | 21.24.0 | feat: proactive constraint presentation in investigating/discussing skills (project + inferred); feat: worklog (W) document system for light-workflow tracing; docs: D/P/T/I/W 5-document system |
