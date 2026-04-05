@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.25.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.26.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -97,7 +97,7 @@ crabshell/
 │   ├── _test-pre-compact.js         # pre-compact.js test suite (v21.21.0)
 │   ├── _test-post-compact.js        # post-compact.js test suite (v21.21.0)
 │   ├── _test-subagent-context.js    # subagent-context.js test suite (v21.21.0)
-│   ├── delta-background.js          # PostToolUse async delta processing — claude -p subprocess (Haiku via subscription auth) + raw fallback (v21.23.0, subprocess v21.25.0)
+│   ├── delta-background.js          # Async delta processing script — NOT registered as hook (v21.26.0: removed from hooks.json; claude -p context pollution); script retained for reference (v21.23.0, subprocess v21.25.0)
 │   ├── _test-delta-background.js    # delta-background.js test suite — 14 tests (v21.23.0, v21.25.0)
 │   └── utils.js                      # Shared utilities (getStorageRoot, getProjectDir)
 │
@@ -295,8 +295,6 @@ L1 generation:
    │   ├─> Increment counter
    │   ├─> checkAndRotate() - archive if > 23,750 tokens
    │   └─> At threshold: create/update L1 (session-aware reuse + incremental offset read) → extractDelta() → creates delta_temp.txt
-   ├─> delta-background.js (asyncRewake) — v21.23.0+, subprocess v21.25.0
-   │   └─> Async delta processing: claude -p subprocess (Haiku via subscription auth) summarizes delta_temp.txt → appends to logbook.md; raw fallback if unavailable; does not consume model turns
    ├─> verification-sequence.js record (.*) — track source edits, test runs, grep cycles (v21.0.0)
    ├─> skill-tracker.js (Skill, async) — set skill-active flag on Skill tool calls (v19.33.0)
    └─> doc-watchdog.js record (Write|Edit, async) — track code edits and D/P/T doc edits (v21.18.0)
@@ -323,6 +321,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.26.0 | revert: restore foreground DELTA detection in inject-rules.js (DELTA_INSTRUCTION, checkDeltaPending, hasPendingDelta); remove delta-background.js PostToolUse hook (claude -p loads 34K+ token context causing Haiku to follow skill instructions; --bare breaks OAuth auth); proven foreground mechanism restored |
 | 21.25.0 | fix: delta-background.js direct API → claude -p subprocess (fixes broken Haiku summarization under subscription auth); hooks.json async→asyncRewake (ghost response prevention); 17 hooks CRABSHELL_BACKGROUND guard (plugin pollution prevention); 4 new delta-background tests (14 total) |
 | 21.24.0 | feat: proactive constraint presentation in investigating/discussing skills (project + inferred); feat: worklog (W) document system for light-workflow tracing; docs: D/P/T/I/W 5-document system |
 | 21.23.0 | feat: async background delta processing via delta-background.js (Haiku API + raw fallback); task constraint confirmation in investigating/discussing skills; remove CRABSHELL_DELTA foreground trigger from inject-rules.js; delta no longer consumes model turns |

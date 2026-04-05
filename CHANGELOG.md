@@ -1,5 +1,10 @@
 # Changelog
 
+## v21.26.0
+- revert: inject-rules.js — restore DELTA_INSTRUCTION, checkDeltaPending(), hasPendingDelta context injection (foreground DELTA detection mechanism)
+- revert: hooks.json — remove delta-background.js PostToolUse hook entry
+- reason: claude -p subprocess loads full plugin context (34K+ tokens), causing Haiku to follow skill instructions instead of summarizing; --bare flag breaks OAuth auth; reverted to proven foreground DELTA detection via inject-rules.js
+
 ## v21.25.0
 - fix: delta-background.js — direct Anthropic API call replaced with `claude -p` subprocess (fixes broken Haiku summarization under subscription auth)
 - fix: hooks.json — delta-background entry changed from `async:true` to `asyncRewake:true` (prevents ghost response on rewake)
