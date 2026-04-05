@@ -1,5 +1,12 @@
 # Changelog
 
+## v21.34.0
+- feat: delta-summarizer converted from foreground blocking to background non-blocking via Agent tool `run_in_background: true`
+- feat: SKILL.md (memory-delta) rewritten with Phase A (foreground launch) + Phase B (background completion)
+- feat: inject-rules.js DELTA_INSTRUCTION changed from BLOCKING to NON-BLOCKING
+- feat: extract-delta.js — markDeltaProcessing() function + mark-processing CLI command
+- feat: memory-index.json deltaProcessing flag (set in Phase A, cleared in cleanup) to prevent double-trigger
+
 ## v21.33.0
 - fix: verification-sequence.js isTestExecution() node.exe pattern — `\bnode\s+` → `\bnode(?:\.exe)?["']?\s+` (Windows full path with quotes support)
 - fix: sycophancy-guard.js TEST_EXECUTION_PATTERNS — same node.exe pattern fix

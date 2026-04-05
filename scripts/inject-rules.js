@@ -261,22 +261,18 @@ This context REPLACES all normal rules. Your ONLY job right now is steps 1-5.
 `;
 
 const DELTA_INSTRUCTION = `
-## [CRABSHELL_DELTA] - BLOCKING PREREQUISITE
+## [CRABSHELL_DELTA] - Background Memory Processing
 
 **TRIGGER DETECTED: [CRABSHELL_DELTA] file=delta_temp.txt**
 
-STOP. Before generating ANY text response to the user:
+Memory delta is ready for background summarization:
 
-1. Invoke Skill tool NOW: skill="memory-delta"
-2. Complete ALL steps in the skill (verify file, call Haiku, append to logbook.md, mark-updated, cleanup)
-3. ONLY THEN respond to user
+1. Invoke Skill tool NOW: skill="memory-delta" (this launches a background agent)
+2. After launching, respond to user normally — do NOT wait for completion
+3. When the background agent completes, a task-notification will arrive — follow Phase B in the skill
 
-This is a MANDATORY SYSTEM MAINTENANCE TASK.
-- You CANNOT skip this
-- You CANNOT respond to user first
-- Your response is BLOCKED until delta processing completes
-
-If you see this instruction, the delta file EXISTS and MUST be processed.
+This is a NON-BLOCKING background task. Respond to the user WITHOUT waiting.
+If you see this trigger, the delta file EXISTS and should be processed in background.
 `;
 
 const ROTATION_INSTRUCTION = `
@@ -618,7 +614,7 @@ async function main() {
       // Check for pending delta - requires BOTH file existence AND deltaReady flag
       // deltaReady is set by counter.js when counter >= interval (or at session end)
       // This prevents stale delta files from triggering on every prompt
-      const hasPendingDelta = checkDeltaPending(projectDir) && index.deltaReady === true;
+      const hasPendingDelta = checkDeltaPending(projectDir) && index.deltaReady === true && !index.deltaProcessing;
 
       // Check for pending rotation summaries
       const pendingRotations = checkRotationPending(projectDir);

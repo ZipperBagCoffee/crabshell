@@ -190,8 +190,9 @@ function cleanupDeltaTemp() {
 
     fs.unlinkSync(deltaPath);
 
-    // Clear deltaReady flag and memoryAppendedInThisRun so inject-rules.js stops triggering
+    // Clear deltaReady, deltaProcessing, and memoryAppendedInThisRun so inject-rules.js stops triggering
     index.deltaReady = false;
+    delete index.deltaProcessing;
     delete index.memoryAppendedInThisRun;
     writeJson(indexPath, index);
 
@@ -199,6 +200,25 @@ function cleanupDeltaTemp() {
     return true;
   } catch (e) {
     console.error('[CRABSHELL] Failed to cleanup delta temp:', e.message);
+    return false;
+  }
+}
+
+// Set deltaProcessing flag in memory-index.json (prevents re-trigger while background agent runs)
+function markDeltaProcessing() {
+  try {
+    const projectDir = getProjectDir();
+    const memoryDir = path.join(getStorageRoot(projectDir), MEMORY_DIR);
+    const indexPath = path.join(memoryDir, INDEX_FILE);
+
+    const index = readIndexSafe(indexPath);
+    index.deltaProcessing = true;
+    writeJson(indexPath, index);
+
+    console.log('[CRABSHELL] deltaProcessing set to true');
+    return true;
+  } catch (e) {
+    console.error('[CRABSHELL] Failed to mark delta processing:', e.message);
     return false;
   }
 }
@@ -238,6 +258,9 @@ if (require.main === module) {
       const result = extractDelta();
       console.log(JSON.stringify(result));
       break;
+    case 'mark-processing':
+      markDeltaProcessing();
+      break;
     case 'mark-appended':
       markMemoryAppended();
       break;
@@ -248,8 +271,8 @@ if (require.main === module) {
       cleanupDeltaTemp();
       break;
     default:
-      console.log('Usage: extract-delta.js <extract|mark-appended|mark-updated|cleanup>');
+      console.log('Usage: extract-delta.js <extract|mark-processing|mark-appended|mark-updated|cleanup>');
   }
 }
 
-module.exports = { extractDelta, markMemoryAppended, markMemoryUpdated, cleanupDeltaTemp };
+module.exports = { extractDelta, markDeltaProcessing, markMemoryAppended, markMemoryUpdated, cleanupDeltaTemp };
