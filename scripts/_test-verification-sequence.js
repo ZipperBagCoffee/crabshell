@@ -163,6 +163,34 @@ test('Test execution detection: npm run lint = true', () => {
   assert(state.state === 'TESTED', `expected TESTED, got ${state.state}`);
 });
 
+test('Test execution detection: node.exe _test-file.js = true', () => {
+  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], editGrepCycleCount: 0, lastTestTs: null });
+  runScript('record', { tool_name: 'Bash', tool_input: { command: 'node.exe scripts/_test-verification-sequence.js' } });
+  const state = readState();
+  assert(state.state === 'TESTED', `expected TESTED, got ${state.state}`);
+});
+
+test('Test execution detection: quoted node.exe path with space = true', () => {
+  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], editGrepCycleCount: 0, lastTestTs: null });
+  runScript('record', { tool_name: 'Bash', tool_input: { command: '"C:/Program Files/nodejs/node.exe" scripts/_test-inject-rules.js' } });
+  const state = readState();
+  assert(state.state === 'TESTED', `expected TESTED, got ${state.state}`);
+});
+
+test('Test execution detection: node.exe .test. pattern = true', () => {
+  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], editGrepCycleCount: 0, lastTestTs: null });
+  runScript('record', { tool_name: 'Bash', tool_input: { command: 'node.exe src/app.test.js' } });
+  const state = readState();
+  assert(state.state === 'TESTED', `expected TESTED, got ${state.state}`);
+});
+
+test('Test execution detection: echo test = false (negative)', () => {
+  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], editGrepCycleCount: 0, lastTestTs: null });
+  runScript('record', { tool_name: 'Bash', tool_input: { command: 'echo test passed' } });
+  const state = readState();
+  assert(state.state === 'EDITED', `expected EDITED (unchanged), got ${state.state}`);
+});
+
 // ============================================================
 // Gate behavior: git commit blocking
 // ============================================================

@@ -1,5 +1,10 @@
 # Changelog
 
+## v21.33.0
+- fix: verification-sequence.js isTestExecution() node.exe pattern — `\bnode\s+` → `\bnode(?:\.exe)?["']?\s+` (Windows full path with quotes support)
+- fix: sycophancy-guard.js TEST_EXECUTION_PATTERNS — same node.exe pattern fix
+- test: _test-verification-sequence.js — 5 new test cases (34 total)
+
 ## v21.32.0
 - feat: sycophancy-guard.js — pressure-aware graduated strictness (L0=default, L1=rethink warning, L2=PARTIAL blocks+structural ignored, L3=behavioral evidence override), reads feedbackPressure.level from memory-index.json
 - feat: pressureHint() — pressure-aware block message helper
