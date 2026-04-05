@@ -178,6 +178,57 @@ unitTest('TC5b: Edit investigation/INDEX.md + active skill → allow (exit 0)', 
   } finally { proj.cleanup(); }
 });
 
+console.log('\n--- Subprocess: TC5c — Edit investigation/INDEX.md + NO skill-active → exit 0 (INDEX bypasses skill check) ---');
+unitTest('TC5c: Edit investigation/INDEX.md + NO skill-active → allow (exit 0)', () => {
+  const proj = createTempProject(null); // no skill flag
+  try {
+    const invDir = path.join(proj.dir, '.crabshell', 'investigation');
+    fs.mkdirSync(invDir, { recursive: true });
+    const filePath = path.join(invDir, 'INDEX.md');
+    fs.writeFileSync(filePath, '| ID | Topic | Status |\n| I001 | test | open |\n');
+    const hookData = {
+      tool_name: 'Edit',
+      tool_input: { file_path: filePath }
+    };
+    const code = runScript(hookData, { CLAUDE_PROJECT_DIR: proj.dir });
+    assert(code === 0, `expected exit 0, got ${code}`);
+  } finally { proj.cleanup(); }
+});
+
+console.log('\n--- Subprocess: TC5d — Edit discussion/INDEX.md + NO skill-active → exit 0 (INDEX bypasses skill check) ---');
+unitTest('TC5d: Edit discussion/INDEX.md + NO skill-active → allow (exit 0)', () => {
+  const proj = createTempProject(null); // no skill flag
+  try {
+    const discDir = path.join(proj.dir, '.crabshell', 'discussion');
+    fs.mkdirSync(discDir, { recursive: true });
+    const filePath = path.join(discDir, 'INDEX.md');
+    fs.writeFileSync(filePath, '| ID | Topic | Status |\n| D001 | test | open |\n');
+    const hookData = {
+      tool_name: 'Edit',
+      tool_input: { file_path: filePath }
+    };
+    const code = runScript(hookData, { CLAUDE_PROJECT_DIR: proj.dir });
+    assert(code === 0, `expected exit 0, got ${code}`);
+  } finally { proj.cleanup(); }
+});
+
+console.log('\n--- Subprocess: TC5e — Edit investigation/I001-test.md + NO skill-active → exit 2 (regression guard) ---');
+unitTest('TC5e: Edit investigation/I001-test.md + NO skill-active → block (exit 2)', () => {
+  const proj = createTempProject(null); // no skill flag
+  try {
+    const invDir = path.join(proj.dir, '.crabshell', 'investigation');
+    fs.mkdirSync(invDir, { recursive: true });
+    const filePath = path.join(invDir, 'I001-test.md');
+    fs.writeFileSync(filePath, '# I001\n\n## Constraints\n- fail-open\n');
+    const hookData = {
+      tool_name: 'Edit',
+      tool_input: { file_path: filePath }
+    };
+    const code = runScript(hookData, { CLAUDE_PROJECT_DIR: proj.dir });
+    assert(code === 2, `expected exit 2, got ${code}`);
+  } finally { proj.cleanup(); }
+});
+
 console.log('\n--- Subprocess: TC6 — Edit I doc WITHOUT ## Constraints + NO active skill → exit 2 ---');
 unitTest('TC6: Edit I doc WITHOUT ## Constraints + NO active skill → block (exit 2)', () => {
   const proj = createTempProject(null); // no skill flag

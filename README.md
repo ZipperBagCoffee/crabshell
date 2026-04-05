@@ -192,6 +192,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.37.0 | fix: docs-guard.js INDEX.md early return (bypasses skill-active TTL check); 3 new tests (TC5c/d/e), 18 total |
 | 21.36.0 | feat: RA Deletion Check — mandatory `git diff` scan before verification in ticketing/light-workflow; Evidence Gate 5→6 checkbox (unintended deletion check); fallback paths for empty diff |
 | 21.35.0 | fix: docs-guard.js INDEX.md exclusion from investigation Constraints check; 2 new tests (15 total) |
 | 21.34.0 | feat: delta-summarizer background non-blocking via Agent `run_in_background: true`; SKILL.md Phase A/B split; DELTA_INSTRUCTION NON-BLOCKING; extract-delta.js markDeltaProcessing() + mark-processing CLI; memory-index.json deltaProcessing flag (double-trigger prevention) |
