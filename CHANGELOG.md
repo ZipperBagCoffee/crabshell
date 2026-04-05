@@ -1,5 +1,11 @@
 # Changelog
 
+## v21.29.0
+- feat: light-workflow SKILL.md — Pre-Response Output Scan (PROHIBITED PATTERNS 7-item), L1-L4 Observation Resolution Levels, Evidence Gate 5-checkbox BLOCKING
+- feat: ANALYSIS-PHASES.md — Constraint Presentation in Phase 1, Devil's Advocate check, RA/WA Cross-Reference anchor, Coherence Check for single-reviewer in Phase 4
+- feat: EXECUTION-PHASES.md — Phase 8 Escalation Protocol cross-reference, W document 9-section completion alignment
+- fix: SKILL.md "On completion" aligned with 9-section W template
+
 ## v21.28.0
 - feat: light-workflow SKILL.md — Workflow Selection section (≤5/6-7/8+ decision matrix, mandatory scope estimate)
 - feat: light-workflow SKILL.md — W document 9-section template + 6 rejection criteria (replaces 4-field template)
