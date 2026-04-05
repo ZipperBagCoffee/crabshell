@@ -14,16 +14,54 @@ Every light-workflow invocation creates a W document in `.crabshell/worklog/`:
 2. Create `.crabshell/worklog/W{NNN}-{slug}.md`:
 ```
 # W{NNN} - {task title}
+
+## Header
 **Date:** {YYYY-MM-DD HH:MM}
-**Task:** {one-line description}
-**Files changed:** (filled after completion)
-**Result:** (filled after completion)
+**Source:** {user request or D/P/I reference}
+**Scope estimate:** Files: ~N. Components: X, Y, Z. Cross-cutting: yes/no.
+
+## Task
+{one-line description of what needs to be done}
+
+## Problem
+{minimum 2 sentences: what is wrong or missing, and why it matters}
+
+## Approach
+{minimum 2 sentences: how you will solve it, and why this approach}
+
+## Files Changed
+| File | Change Description |
+|------|--------------------|
+| (filled after completion) | |
+
+## Verification
+| Criterion | Method | Result |
+|-----------|--------|--------|
+| (per acceptance criterion) | (command or observation) | PASS/FAIL |
+
+## Experiment Log
+{Record of attempts, failures, and pivots during execution. N/A with reason if single-shot success.}
+
+## User Testing Needed
+{Describe what the user should manually verify, or N/A with reason if fully machine-verifiable.}
+
+## Result
+{Final outcome summary}
 ```
 3. Append row to `.crabshell/worklog/INDEX.md`: `| W{NNN} | {task} | in-progress | {date} |`
 
 ### On completion:
 1. Update W document with files changed + result summary
 2. Update INDEX.md status to `done`
+
+### W Document Rejection Criteria
+A W document is REJECTED if any of these apply:
+1. **Problem absent** — no explanation of what was wrong
+2. **"Verification: Done"** — no per-criterion PASS/FAIL breakdown
+3. **Files as bare list** — no change description per file
+4. **Approach absent** — or disguised as a file list
+5. **Experiment Log silently absent** — when rework actually occurred during execution
+6. **Result = copy of Task** — no outcome differentiation
 
 > **Lightweight reference mode:** This light-workflow skill is a lightweight execution mode suited for standalone one-shot tasks.
 > For iterative tasks requiring document tracing, use the D/P/T-based `/regressing` skill.
@@ -33,8 +71,39 @@ Every light-workflow invocation creates a W document in `.crabshell/worklog/`:
 > Principles (Understanding-First, HHH, Critical Stance, etc.) are injected via RULES every prompt.
 > This document defines HOW those principles apply to agent-based task execution.
 
+## Workflow Selection
+
+Before choosing light-workflow, assess scope:
+
+**Mandatory scope estimate** (state before selecting workflow):
+```
+Files: ~N. Components: X, Y, Z. Cross-cutting: yes/no.
+```
+
+### Decision Matrix
+
+| Dimension | Light-Workflow | Regressing |
+|-----------|---------------|------------|
+| File count | ≤5 | 8+ (6-7 = check cross-cutting) |
+| Complexity | Known pattern, single-shot | Design exploration, multiple candidates |
+| Cross-cutting | Single module/layer | Shared convention (env var, interface, pattern used by 3+ scripts) |
+| Iteration need | Plan known and stable | Feedback loops needed |
+| Requirement stability | Stable at task-start | May expand during execution |
+
+### Selection Rules
+1. ≤5 files, no shared convention, known solution → **light-workflow**
+2. 6-7 files without cross-cutting → **light-workflow** (with escalation monitoring)
+3. 6-7 files with cross-cutting → **regressing**
+4. 8+ files → **regressing unconditionally**
+5. Shared convention change (env var, interface, pattern used by 3+ scripts) → **regressing**
+6. "Investigate and implement" (requirements may expand) → **regressing**
+
+> The primary question is "does this warrant document traceability?" not "is this iterative?" Single-cycle regressing is valid for large-scope, well-specified tasks.
+
 ## Table of Contents
 
+- [Worklog (W document)](#worklog-w-document)
+- [Workflow Selection](#workflow-selection)
 - [Core Concepts](#core-concepts)
 - [3-Layer Architecture](#3-layer-architecture)
 - [11-Phase Workflow](#11-phase-workflow) (overview)
@@ -43,6 +112,7 @@ Every light-workflow invocation creates a W document in `.crabshell/worklog/`:
 - [Parallel Execution](#parallel-execution)
 - [Processing Agent Responses](#processing-agent-responses)
 - [Anti-Patterns](#anti-patterns) (27 items)
+- [Mid-Execution Escalation Protocol](#mid-execution-escalation-protocol)
 - [Quick Reference](#quick-reference)
 
 **Phase Details:**
@@ -295,6 +365,26 @@ After cross-review:
 
 ---
 
+## Mid-Execution Escalation Protocol
+
+During Phase 8 (Implementation), the Work Agent MUST monitor scope:
+
+### Escalation Triggers
+- Files touched exceeds 7 (counted from Phase 8 start)
+- A shared convention is being modified (env var, exported interface, pattern used by 3+ scripts)
+- New dependency discovered not in Phase 5 plan
+
+### Escalation Procedure
+1. **STOP** implementation immediately
+2. **Report** to Orchestrator: current file count vs. estimate, which trigger fired, files already modified
+3. **Orchestrator decides:**
+   - Scope reducible to ≤7 files → revise plan, continue as light-workflow
+   - Scope inherently 8+ or cross-cutting → save W document with status `escalated`, create D document, hand off to `/regressing`
+
+> Work Agents do NOT have authority to "just finish the last file" after a trigger fires. The trigger is a hard stop.
+
+---
+
 ## Quick Reference
 
 ```
@@ -318,4 +408,5 @@ Compaction = Summarize previous phases after Phase 4/7 meta-review. IA is never 
 Light/Full = agent classification. Light: single file + no judgment needed → spot-check only. Full: existing 1:1 Review mandatory. When in doubt → Full.
 Internal Iteration = Only Phase 8 execution errors, max 3 retries. Plan change → STOP. Logging mandatory.
 Graceful Degradation = On partial failure in Phase 10, keep confirmed PASS + rework only FAIL items. Verdicts remain PASS/FAIL.
+Escalation = WA monitors scope during Phase 8. >7 files or shared convention → STOP → Orchestrator decides: reduce scope or escalate to regressing.
 ```

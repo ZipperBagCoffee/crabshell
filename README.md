@@ -192,6 +192,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.28.0 | feat: light-workflow SKILL.md modernization — Workflow Selection matrix, 9-section W template + 6 rejection criteria, Mid-Execution Escalation Protocol, CLAUDE.md workflow selection + urgency signal rules |
 | 21.27.0 | fix: ARCHITECTURE.md stale DELTA comment; D065 concluded, P093 done |
 | 21.26.0 | revert: restore foreground DELTA detection in inject-rules.js (DELTA_INSTRUCTION, checkDeltaPending, hasPendingDelta); remove delta-background.js PostToolUse hook (claude -p loads 34K+ token context, causing Haiku to follow skills instead of summarizing; --bare breaks OAuth) |
 | 21.25.0 | fix: delta-background.js direct API → `claude -p` subprocess (fixes broken Haiku summarization); hooks.json async→asyncRewake (ghost response prevention); 17 hooks CRABSHELL_BACKGROUND guard (plugin pollution prevention); 4 new delta-background tests (14 total) |

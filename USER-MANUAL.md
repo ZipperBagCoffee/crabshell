@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.27.0)
+# Crabshell User Manual (v21.28.0)
 
 ## Why Do You Need This?
 

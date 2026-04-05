@@ -1,5 +1,12 @@
 # Changelog
 
+## v21.28.0
+- feat: light-workflow SKILL.md — Workflow Selection section (≤5/6-7/8+ decision matrix, mandatory scope estimate)
+- feat: light-workflow SKILL.md — W document 9-section template + 6 rejection criteria (replaces 4-field template)
+- feat: light-workflow SKILL.md — Mid-Execution Escalation Protocol (>7 files or shared convention → STOP)
+- feat: CLAUDE.md ADDITIONAL RULES — workflow selection criteria + urgency signal handling rule
+- fix: verification manifest AC-6 stale version (21.23.0 → 21.27.0)
+
 ## v21.27.0
 - fix: ARCHITECTURE.md stale comment — DELTA foreground trigger restored note (was incorrectly stating "removed v21.23.0")
 - chore: D065 concluded, P093 done, regressing state cleaned
