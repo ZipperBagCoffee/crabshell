@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.38.0)
+# Crabshell Architecture (v21.39.0)
 
 ## Overview
 
@@ -468,6 +468,13 @@ The 5 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.39.0 | test: 32 new tests — _test-extract-delta (15), _test-append-memory (7), _test-memory-rotation (10) |
+| 21.38.0 | feat: path-guard skill-active.json block; calm-framing in inject-rules + sycophancy-guard; counter.js lock early return + ensureDir |
+| 21.37.0 | fix: docs-guard.js INDEX.md early return (bypasses skill-active TTL check) |
+| 21.36.0 | feat: RA Deletion Check — mandatory git diff before verification; Evidence Gate 5→6 checkbox |
+| 21.35.0 | fix: docs-guard.js INDEX.md exclusion from investigation Constraints check |
+| 21.34.0 | feat: delta-summarizer background non-blocking; markDeltaProcessing() + mark-processing CLI; deltaProcessing flag |
+| 21.33.0 | fix: node.exe pattern for Windows full path with quotes in verification-sequence + sycophancy-guard |
 | 21.32.0 | feat: pressure-sycophancy integration — graduated strictness L0-L3, pressureHint(), PRESSURE_L1/L2/L3 behavioral rules, profanity patterns in NEGATIVE_PATTERNS, quote stripping, 20-test suite |
 | 21.31.0 | feat: docs-guard Constraints enforcement for I documents, 13 tests |
 | 21.30.0 | feat: Phase 9 Evidence Gate harmonized (5-checkbox), Parameter Recommendation (Phase 0.7), 12-Phase workflow |

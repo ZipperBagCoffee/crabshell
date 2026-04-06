@@ -1,5 +1,10 @@
 # Changelog
 
+## v21.39.0
+- test: _test-extract-delta.js — 15 tests for extractDelta, markMemoryUpdated, cleanupDeltaTemp, markDeltaProcessing, markMemoryAppended
+- test: _test-append-memory.js — 7 subprocess tests for append-memory.js (missing summary, empty, valid, logbook create/accumulate, cleanup)
+- test: _test-memory-rotation.js — 10 tests for checkAndRotate (absent, threshold, carryover, archive name, index update, lock, custom config)
+
 ## v21.38.0
 - feat: path-guard.js — block direct Write/Edit on skill-active.json; 3 new tests (114 total)
 - feat: ticketing/SKILL.md Step C — document-first rule; remove trailing append line
