@@ -1,5 +1,12 @@
 # Changelog
 
+## v21.40.0
+- fix: docs-guard.js — remove dead code (INDEX.md check in checkInvestigationConstraints, superseded by main() early return in v21.37.0)
+- feat: CLAUDE.md version bump checklist — add source repo .claude-plugin/plugin.json as explicit step (7)
+- feat: ticketing/SKILL.md Step B — Skeptical calibration bullet after Devil's Advocate
+- feat: ticketing/SKILL.md Step 4 template — Edge-case coverage note in Acceptance Criteria section
+- test: TC7g updated to match new checkInvestigationConstraints behavior (INDEX.md exclusion is main() responsibility)
+
 ## v21.39.0
 - test: _test-extract-delta.js — 15 tests for extractDelta, markMemoryUpdated, cleanupDeltaTemp, markDeltaProcessing, markMemoryAppended
 - test: _test-append-memory.js — 7 subprocess tests for append-memory.js (missing summary, empty, valid, logbook create/accumulate, cleanup)

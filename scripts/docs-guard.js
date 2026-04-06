@@ -62,9 +62,6 @@ function checkInvestigationConstraints(filePath, toolName) {
   if (!filePath.includes('investigation/') && !filePath.includes('investigation\\')) {
     return null;
   }
-  // INDEX.md is not an I-document — skip Constraints check
-  const basename = path.basename(filePath);
-  if (basename === 'INDEX.md') return null;
   // Write to non-existent file = first creation → allow
   if (toolName === 'Write') {
     try {
