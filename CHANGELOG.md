@@ -1,5 +1,14 @@
 # Changelog
 
+## v21.41.0
+- feat: planning SKILL.md — document-first rule added to Steps A/B/C (write to P doc BEFORE reporting)
+- feat: ticketing SKILL.md — document-first rule added to Steps A/B (Step C already had it)
+- feat: regressing-guard.js — IA-2 block: validates P document agent sections (Analysis Results, Review Results, Intent Check) non-empty before allowing ticket writes; structural emptiness check with parenthetical placeholder detection
+- fix: verify-guard.js V002 — bare `node` in execSync replaced with `process.execPath` (Windows compatibility)
+- feat: planning + ticketing SKILL.md — passive placeholder "(Appended after agent execution)" replaced with actionable instructions
+- test: _test-regressing-guard.js — 7 tests (passthrough, planning gate, ticketing gate, empty block, populated allow, old placeholder block, non-ticket allow)
+- test: _test-regressing-guard-edge-cases.js — 14 edge-case tests (absent heading, new placeholder, null planId, fail-open paths)
+
 ## v21.40.0
 - fix: docs-guard.js — remove dead code (INDEX.md check in checkInvestigationConstraints, superseded by main() early return in v21.37.0)
 - feat: CLAUDE.md version bump checklist — add source repo .claude-plugin/plugin.json as explicit step (7)

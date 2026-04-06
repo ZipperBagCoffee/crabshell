@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.40.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.41.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -99,6 +99,8 @@ crabshell/
 │   ├── _test-subagent-context.js    # subagent-context.js test suite (v21.21.0)
 │   ├── delta-background.js          # Async delta processing script — NOT registered as hook (v21.26.0: removed from hooks.json; claude -p context pollution); script retained for reference (v21.23.0, subprocess v21.25.0)
 │   ├── _test-delta-background.js    # delta-background.js test suite — 14 tests (v21.23.0, v21.25.0)
+│   ├── _test-regressing-guard.js    # regressing-guard.js 7-test suite — phase gates + IA-2 agent section validation (v21.41.0)
+│   ├── _test-regressing-guard-edge-cases.js # regressing-guard.js 14 edge-case tests — absent heading, fail-open paths (v21.41.0)
 │   └── utils.js                      # Shared utilities (getStorageRoot, getProjectDir)
 │
 ├── skills/                           # Slash command skills (17 total)
@@ -321,6 +323,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.41.0 | feat: planning/ticketing SKILL.md document-first rule; feat: regressing-guard IA-2 agent section validation; fix: verify-guard V002 bare node→process.execPath; test: 21 regressing-guard tests |
 | 21.40.0 | fix: docs-guard.js dead code removal (INDEX.md check in checkInvestigationConstraints); feat: CLAUDE.md checklist step 7; feat: ticketing SKILL.md — Skeptical calibration + Edge-case AC guidance |
 | 21.39.0 | test: 32 new tests — _test-extract-delta (15), _test-append-memory (7), _test-memory-rotation (10) |
 | 21.38.0 | feat: path-guard skill-active.json block; ticketing Step C document-first rule; calm-framing in inject-rules + sycophancy-guard (PRESSURE labels, DIAGNOSTIC RESET); counter.js lock early return + ensureDir |

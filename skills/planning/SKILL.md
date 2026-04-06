@@ -72,7 +72,7 @@ This plan is executed using the following agent structure:
 - **Scope Note (from project RULES):** Conciseness applies to communication style, not to verification steps. P/O/G tables and evidence citations are required work product, not verbose output. Evidence IS the answer — "verified" without tool output is not verification. Fill Prediction before looking; fill Observation only from tool output.
 - Identify dependencies and impact scope
 - Write concrete execution plan
-- Append results to `## Analysis Results` section
+- **Document-first rule:** Write analysis results to `## Analysis Results` in the P document FIRST using Write/Edit tool. After the document is updated, provide a brief summary to the user. The document update is the primary output; the conversation summary is secondary.
 
 ### Step B: Review Agent — Plan Quality Verification
 - **Independence Protocol (MANDATORY):** The Review Agent prompt MUST NOT include Work Agent's Analysis Results. Provide only: (1) Plan's Intent, Scope, and Verification Criteria sections, (2) the P/O/G template below. The Review Agent independently assesses the plan. After Review Agent completes, the Orchestrator cross-references RA findings against WA Analysis Results.
@@ -93,7 +93,7 @@ This plan is executed using the following agent structure:
   - Evidence MUST be cited (file path, function name, specific observation from reading the code)
   ```
 - **Devil's Advocate (single reviewer):** When only 1 Review Agent runs, it MUST include a Devil's Advocate section articulating the strongest counter-argument to its own conclusions.
-- Append results to `## Review Results` section
+- **Document-first rule:** Write review results to `## Review Results` in the P document FIRST using Write/Edit tool. After the document is updated, provide a brief summary to the user. The document update is the primary output; the conversation summary is secondary.
 
 ### Step C: Orchestrator — Intent Check (Critical Evaluation)
 - Compare against D document's Intent Anchor (IA)
@@ -114,19 +114,19 @@ This plan is executed using the following agent structure:
   → If ANY check fails: REJECT Review Agent results and request re-review
 - Identify at least ONE risk, gap, or concern in the plan (even if approving). "No concerns" requires 3+ sentences of justification referencing specific aspects examined.
 - Decide to approve or reject with substantive reasoning
-- Append results to `## Intent Check` section
+- **Document-first rule:** Write intent check results to `## Intent Check` in the P document FIRST using Write/Edit tool. After the document is updated, provide a brief summary to the user. The document update is the primary output; the conversation summary is secondary.
 
 ## Tickets
 (Automatically recorded when tickets are created)
 
 ## Analysis Results (Work Agent)
-(Appended after agent execution)
+(Work Agent: write your analysis here BEFORE reporting to user)
 
 ## Review Results (Review Agent)
-(Appended after agent execution)
+(Review Agent: write your review here BEFORE reporting to user)
 
 ## Intent Check (Orchestrator)
-(Appended after agent execution)
+(Orchestrator: write your intent check here BEFORE reporting to user)
 
 ## Verification Criteria
 {user's answer — must describe observable behavior}

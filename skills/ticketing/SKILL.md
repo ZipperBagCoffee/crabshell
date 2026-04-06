@@ -86,7 +86,7 @@ This ticket is executed with the following agent structure:
 - Execute tasks according to the plan (P)
 - **Scope Note (from project RULES):** Conciseness applies to communication style, not to verification steps. P/O/G tables and evidence citations are required work product, not verbose output. Evidence IS the answer — "verified" without tool output is not verification. Fill Prediction before looking; fill Observation only from tool output.
 - Record results for each work item
-- Append results to `## Execution Results` section
+- **Document-first rule:** Write execution results to `## Execution Results` in the T document FIRST using Write/Edit tool. After the document is updated, provide a brief summary to the user. The document update is the primary output; the conversation summary is secondary.
 
 **Parallel Work Agents (DEFAULT):**
 The Orchestrator MUST launch 2+ Work Agents with **distinct analytical perspectives** — not for speed, but to surface different viewpoints:
@@ -125,7 +125,7 @@ The Orchestrator MUST launch 2+ Work Agents with **distinct analytical perspecti
 - Confirm edge case and exception handling
 - **Devil's Advocate (single reviewer):** When only 1 Review Agent runs, it MUST include a Devil's Advocate section articulating the strongest counter-argument to its own PASS verdict. This prevents rubber-stamp reviews.
 - **Skeptical calibration:** If all verification items show Gap="none", this is a signal to examine harder — genuinely flawless implementation is rare. State explicitly what you searched for that you did NOT find. A review that finds zero issues requires more justification than one that finds problems.
-- Append results to `## Verification Results` section
+- **Document-first rule:** Write verification results to `## Verification Results` in the T document FIRST using Write/Edit tool. After the document is updated, provide a brief summary to the user. The document update is the primary output; the conversation summary is secondary.
 
 ### Step B.5: Cross-Review (when applicable)
 - **Trigger:** If 2+ Review Agents ran independently (e.g., reviewing different work items in parallel), cross-review is MANDATORY before Step C.
@@ -183,13 +183,13 @@ This step is PROCEDURAL — it happens every time, not when the Orchestrator "re
 - 1 Ticket = 1 independent execution cycle
 
 ## Execution Results (Work Agent)
-(appended after agent execution)
+(Work Agent: write your execution results here BEFORE reporting to user)
 
 ## Verification Results (Review Agent)
-(appended after agent execution)
+(Review Agent: write your verification results here BEFORE reporting to user)
 
 ## Final Verification (Orchestrator)
-(appended after agent execution)
+(Orchestrator: write your evaluation here BEFORE reporting to user)
 ### Correctness
 ### Coherence
 ### Improvement Opportunities

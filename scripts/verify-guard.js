@@ -110,7 +110,8 @@ async function main() {
 
   // Execute run-verify.js and check results
   try {
-    const stdout = execSync(`node "${runVerifyPath}"`, {
+    const nodePath = process.execPath.replace(/\\/g, '/');
+    const stdout = execSync(`"${nodePath}" "${runVerifyPath}"`, {
       timeout: 30000,
       encoding: 'utf8',
       cwd: projectDir

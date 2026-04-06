@@ -59,6 +59,39 @@ async function main() {
     process.exit(2);
   }
 
+  // IA-2: Block ticketing when parent plan's agent sections are empty
+  if (isTicketDoc) {
+    const planId = state.planId;
+    if (planId) {
+      try {
+        const planDir = path.join(projectDir, STORAGE_ROOT, 'plan');
+        const planFiles = fs.readdirSync(planDir).filter(f => f.startsWith(planId) && f.endsWith('.md') && !/_T/.test(f));
+        if (planFiles.length > 0) {
+          const planContent = fs.readFileSync(path.join(planDir, planFiles[0]), 'utf8');
+          const sections = ['Analysis Results', 'Review Results', 'Intent Check'];
+          const emptySections = sections.filter(name => {
+            const regex = new RegExp('## ' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[^\\n]*\\n([\\s\\S]*?)(?=\\n## |$)');
+            const match = planContent.match(regex);
+            if (!match) return false; // heading absent = unknown state, fail-open
+            const body = match[1].trim();
+            // Empty if: no content, or only parenthetical placeholder text
+            return !body || /^\([^)]*\)$/.test(body);
+          });
+          if (emptySections.length > 0) {
+            const output = {
+              decision: "block",
+              reason: `Ticketing blocked: Plan ${planId} has empty agent sections: ${emptySections.join(', ')}. Complete planning phase (WA/RA/Orchestrator) before creating tickets.`
+            };
+            console.log(JSON.stringify(output));
+            process.exit(2);
+          }
+        }
+      } catch (e) {
+        // fail-open
+      }
+    }
+  }
+
   process.exit(0);
 }
 

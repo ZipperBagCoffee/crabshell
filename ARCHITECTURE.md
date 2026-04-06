@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.40.0)
+# Crabshell Architecture (v21.41.0)
 
 ## Overview
 
@@ -195,6 +195,8 @@ Two meta-principles guide Claude's approach to obstacles:
    │   │   └─> BLOCK (exit 2): must use /planning skill instead
    │   ├─> If regressing active + phase=ticketing + target is .crabshell/ticket/
    │   │   └─> BLOCK (exit 2): must use /ticketing skill instead
+   │   ├─> If regressing active + target is ticket doc + parent P doc has empty agent sections (v21.41.0)
+   │   │   └─> BLOCK (exit 2): complete planning phase first (structural emptiness + parenthetical detection)
    │   └─> Otherwise: allow (exit 0), fail-open on errors
    ├─> docs-guard.js (Write|Edit) — v19.33.0+
    │   └─> Block writes to .crabshell/ D/P/T/I subdirectories without active skill flag
@@ -326,7 +328,7 @@ Agent orchestration rules (11 rules covering pairing, cross-review, coherence, c
 | `load-memory.js` | SessionStart | Load memory hierarchy, MEMORY.md warning |
 | `inject-rules.js` | UserPromptSubmit | Dual injection (CLAUDE.md + additionalContext), delta/rotation/regressing detection |
 | `counter.js` | PostToolUse, SessionEnd | Main engine: counter, L1 creation, rotation, regressing phase detection |
-| `regressing-guard.js` | PreToolUse (Write\|Edit) | Block direct plan/ticket writes during active regressing; force Skill tool |
+| `regressing-guard.js` | PreToolUse (Write\|Edit) | Block direct plan/ticket writes during active regressing; force Skill tool; validate P doc agent sections before ticketing (v21.41.0) |
 | `docs-guard.js` | PreToolUse (Write\|Edit) | Block writes to .crabshell/ D/P/T/I subdirectories without active skill flag |
 | `log-guard.js` | PreToolUse (Write\|Edit) | Block INDEX.md terminal status without document log entries; block tickets with "(pending)" result sections; block cycle docs without previous cycle logs |
 | `verify-guard.js` | PreToolUse (Write\|Edit) | Hybrid: Edit always enforces verification; Write enforces only for existing files (new file creation skips). Block Final Verification without /verifying run; require behavioral AC in manifest |
