@@ -121,14 +121,21 @@ function loadMemory(stdinData) {
   // Level 1 persists so agent stays alert; only normal-prompt decay (in-session) goes below 1
   const pressureIndexPath = path.join(memoryDir, INDEX_FILE);
   const pressureIndex = readJsonOrDefault(pressureIndexPath, {});
-  if (pressureIndex.feedbackPressure && pressureIndex.feedbackPressure.level > 1) {
+  const needsPressureDecay = pressureIndex.feedbackPressure && pressureIndex.feedbackPressure.level > 1;
+  const needsOscillationReset = pressureIndex.feedbackPressure && pressureIndex.feedbackPressure.oscillationCount > 0;
+  if (needsPressureDecay) {
     pressureIndex.feedbackPressure.level = 1;
     pressureIndex.feedbackPressure.consecutiveCount = Math.min(1, pressureIndex.feedbackPressure.consecutiveCount);
     pressureIndex.feedbackPressure.decayCounter = 0;
+  }
+  if (needsOscillationReset) {
+    pressureIndex.feedbackPressure.oscillationCount = 0;
+  }
+  if (needsPressureDecay || needsOscillationReset) {
     const pressureLocked = acquireIndexLock(memoryDir);
     try {
       writeJson(pressureIndexPath, pressureIndex);
-      console.error(`[CRABSHELL] Pressure decayed to L${pressureIndex.feedbackPressure.level} on session start`);
+      console.error(`[CRABSHELL] Session start: pressure L${pressureIndex.feedbackPressure.level}, oscillationCount reset to 0`);
     } catch {} finally {
       if (pressureLocked) releaseIndexLock(memoryDir);
     }

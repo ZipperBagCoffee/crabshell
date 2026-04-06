@@ -103,6 +103,69 @@ function stripProtectedZones(text) {
   return stripped;
 }
 
+// Reversal patterns: detect when assistant is changing direction without stated reasoning
+const REVERSAL_PATTERNS = [
+  // English
+  /actually,?\s+(I should|let me|let's|we should)/i,
+  /I was wrong about/i,
+  /let me go back to/i,
+  /on second thought/i,
+  /scratch that/i,
+  /wait,?\s+(no|actually|let me)/i,
+  /I need to reconsider/i,
+  /I should have/i,
+  // Korean
+  /다시\s*원래/,
+  /방향을\s*바꿔/,
+  /아까\s*말한.*틀렸/,
+  /사실은/,
+];
+
+/**
+ * Check for reversal phrases in a response.
+ * Strips protected zones (code blocks, inline code, blockquotes) before matching.
+ * Returns the count of distinct reversal pattern matches found.
+ */
+function checkReversalPhrases(response) {
+  if (!response) return 0;
+  const stripped = stripProtectedZones(response);
+  let count = 0;
+  for (const pattern of REVERSAL_PATTERNS) {
+    if (pattern.test(stripped)) count++;
+  }
+  return count;
+}
+
+/**
+ * Read oscillationCount from memory-index.json.
+ * Returns 0 on any error (fail-open).
+ */
+function getOscillationCount() {
+  try {
+    const indexPath = path.join(getProjectDir(), STORAGE_ROOT, 'memory', 'memory-index.json');
+    const index = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
+    return (index && index.feedbackPressure && typeof index.feedbackPressure.oscillationCount === 'number')
+      ? index.feedbackPressure.oscillationCount : 0;
+  } catch { return 0; }
+}
+
+/**
+ * Increment oscillationCount in memory-index.json.
+ * Fail-open on any error.
+ */
+function incrementOscillationCount() {
+  try {
+    const indexPath = path.join(getProjectDir(), STORAGE_ROOT, 'memory', 'memory-index.json');
+    let index;
+    try { index = JSON.parse(fs.readFileSync(indexPath, 'utf8')); } catch { index = {}; }
+    if (!index.feedbackPressure) index.feedbackPressure = { level: 0, consecutiveCount: 0, lastDetectedAt: null, decayCounter: 0, oscillationCount: 0 };
+    if (typeof index.feedbackPressure.oscillationCount !== 'number') index.feedbackPressure.oscillationCount = 0;
+    index.feedbackPressure.oscillationCount++;
+    fs.writeFileSync(indexPath, JSON.stringify(index, null, 2));
+    return index.feedbackPressure.oscillationCount;
+  } catch { return 0; }
+}
+
 /**
  * Extract mid-turn assistant text from transcript JSONL.
  * Reads the last 8KB, finds the latest assistant tool_use line,
@@ -522,7 +585,23 @@ function handleStop(hookData) {
 
   // Step 2: Run sycophancy check
   const result = checkSycophancy(response, pLevel);
-  if (!result) process.exit(0); // clean
+  if (!result) {
+    // Step 3: Oscillation check (only when sycophancy is clean — not double-blocking)
+    const reversalCount = checkReversalPhrases(response);
+    if (reversalCount > 0) {
+      const newCount = incrementOscillationCount();
+      if (newCount >= 3 && pLevel >= 1) {
+        const oscillationOutput = {
+          decision: "block",
+          reason: `Direction Change Check: You have reversed your position ${newCount} times this session while under correction. Before proceeding, explicitly state: (1) your original position, (2) what you are changing to, (3) the specific evidence that justifies this change.${pressureHint(pLevel)}`
+        };
+        process.stderr.write(`[SYCOPHANCY_GUARD] Direction change blocked: reversals=${newCount} pressure=${pLevel}\n`);
+        console.log(JSON.stringify(oscillationOutput));
+        process.exit(2);
+      }
+    }
+    process.exit(0); // clean
+  }
 
   // Agreement pattern detected, no exemption → block
   const output = {
@@ -553,5 +632,5 @@ main().catch(() => process.exit(0)); // fail-open on any error
 
 // Export for unit testing
 if (require.main !== module) {
-  module.exports = { checkSycophancy, checkVerificationClaims, getPressureLevel, pressureHint };
+  module.exports = { checkSycophancy, checkVerificationClaims, getPressureLevel, pressureHint, checkReversalPhrases, getOscillationCount, incrementOscillationCount };
 }

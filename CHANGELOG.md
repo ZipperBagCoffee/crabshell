@@ -1,5 +1,14 @@
 # Changelog
 
+## v21.42.0
+- feat: inject-rules.js PRESSURE_L1 — oscillation-awareness text (state what changed and why before direction change)
+- feat: inject-rules.js PRESSURE_L2 — stronger oscillation-awareness text (CRITICAL: state previous position + justifying evidence)
+- feat: inject-rules.js PROHIBITED PATTERNS #8 — direction change without stated reasoning rule
+- feat: inject-rules.js updateFeedbackPressure — oscillationCount field initialized to 0 (AC-5)
+- feat: sycophancy-guard.js — checkReversalPhrases() with 14 patterns (8 English + 6 Korean), protected zone stripping via stripProtectedZones()
+- feat: sycophancy-guard.js — oscillationCount read/increment (getOscillationCount, incrementOscillationCount) backed by memory-index.json
+- feat: sycophancy-guard.js Stop hook — oscillation blocking: reversalCount > 0 → increment; count >= 3 AND pressure >= 1 → exit 2 with Direction Change Check message
+
 ## v21.41.0
 - feat: planning SKILL.md — document-first rule added to Steps A/B/C (write to P doc BEFORE reporting)
 - feat: ticketing SKILL.md — document-first rule added to Steps A/B (Step C already had it)

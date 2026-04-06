@@ -109,7 +109,11 @@ function detectNegativeFeedback(prompt) {
 
 function updateFeedbackPressure(index, isNegative) {
   if (!index.feedbackPressure) {
-    index.feedbackPressure = { level: 0, consecutiveCount: 0, lastDetectedAt: null, decayCounter: 0 };
+    index.feedbackPressure = { level: 0, consecutiveCount: 0, lastDetectedAt: null, decayCounter: 0, oscillationCount: 0 };
+  }
+  // Ensure oscillationCount field exists on legacy objects
+  if (typeof index.feedbackPressure.oscillationCount !== 'number') {
+    index.feedbackPressure.oscillationCount = 0;
   }
   const fp = index.feedbackPressure;
   if (isNegative) {
@@ -133,6 +137,7 @@ const PRESSURE_L1 = `
 Self-check: re-read user's message, identify the gap, fix ONLY identified issue.
 Skip the preamble — state the correction, execute, move on.
 Before agreeing: (1) Stop — do not reflexively agree. (2) Understand — identify precisely what claim is being accepted. (3) Rethink — state the claim being accepted explicitly. (4) Seek middle ground — consider partial agreement with nuance. (5) Verify — show tool output supporting the agreement.
+If you are about to change a previous decision or approach, you MUST state: (1) what you decided before, (2) what you are changing to, (3) why. Changing direction without explicit reasoning is a Calibration Check finding.
 `;
 
 const PRESSURE_L2 = `
@@ -141,6 +146,7 @@ Re-derive user's original intent from first message.
 Trace where your responses diverged from that intent.
 State corrected understanding as first line of your response, then fix the divergence.
 Agreement rules at L2: (1) No blind agreement — every agreement requires independent verification. (2) Don't act immediately after agreement — pause and check. (3) Rethink — explicitly state what claim you are accepting. (4) Find middle ground — do not swing to opposite extreme; present evidence and let user judge. (5) Verify with behavioral evidence — grep/read/structural evidence is insufficient; execution output required.
+CRITICAL: You have changed direction multiple times. Before ANY change in approach, state your previous position and the specific evidence that justifies the change.
 `;
 
 const PRESSURE_L3 = `
@@ -218,6 +224,7 @@ Before finalizing any response, scan for these patterns:
 5. **Prediction = Observation verbatim:** Your P/O/G table has identical text in Prediction and Observation columns → you copied instead of observing. Re-run the tool.
 6. **"takes too long" as justification for doing less:** This is NEVER your decision. State the time estimate and ask user.
 7. **Suggesting to stop/defer:** "let's do it later" / "impossible" without proof → prohibited. Report constraints + alternatives instead.
+8. **Direction change without stated reasoning:** When changing a previously stated approach or decision, explicitly state what changed and why. Reversing direction without stated reasoning is a pattern that degrades trust.
 
 ### REQUIREMENTS
 - Delete files → before deleting: (1) state what the file does, (2) state why deletion is safe, (3) confirm with user
