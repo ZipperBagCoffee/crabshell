@@ -131,7 +131,7 @@ Launch parallel Work Agents, each assigned a different focus area or source type
 - **Work Agent 2:** Local investigation — examine local files, code, configurations
 - **Work Agent N:** Additional agents as needed for user-specified sources or distinct angles
 
-Each Work Agent appends findings to their designated section in the I document.
+**After each Agent returns findings, the Orchestrator MUST use the Edit tool to replace the placeholder text in that agent's section with the actual findings.** Do NOT leave "(findings appended after execution)" in the document.
 
 ### Step 6: Cross-review
 
@@ -140,15 +140,19 @@ Launch Review Agents (paired with Work Agents per CLAUDE.md rules):
 - **Independence Protocol (MANDATORY):** Each Review Agent prompt MUST NOT include the Work Agent's findings it is reviewing. Provide only: (1) the investigation's Topic and Questions sections, (2) the source type/focus area assigned to the Work Agent. The Review Agent independently investigates the same focus area first. After Review Agent completes, the Orchestrator cross-references RA findings against WA findings — discrepancies are findings.
 - Each Review Agent reviews findings from a different Work Agent
 - Review Agents challenge each other's conclusions, identify contradictions and blind spots
-- Cross-Review section is populated with contested findings, consensus, and blind spots
+
+**After cross-review completes, the Orchestrator MUST use the Edit tool to replace the Cross-Review section placeholder with the actual cross-review results.**
 
 ### Step 7: Orchestrator synthesis
 
 The Orchestrator:
 1. Reads all agent findings and the cross-review
 2. Synthesizes integrated conclusions
-3. Populates the Synthesis and Conclusions sections
-4. Assesses confidence level and identifies gaps
+3. **Uses the Edit tool to replace the Synthesis section placeholder with integrated conclusions**
+4. **Uses the Edit tool to replace the Conclusions section placeholder with: each Question answered individually, confidence level, and gaps/unknowns**
+5. Assesses confidence level and identifies gaps
+
+**DOCUMENT UPDATE RULE:** By the end of Step 7, every placeholder in the I document ("findings appended after execution", "appended after agent execution", "appended after synthesis") MUST be replaced with actual content. The Log section records timeline events; the structured sections above it contain the full findings. Both must be populated.
 
 ### Step 8: Update INDEX.md
 

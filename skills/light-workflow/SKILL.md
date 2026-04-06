@@ -52,7 +52,8 @@ Every light-workflow invocation creates a W document in `.crabshell/worklog/`:
 
 ### On completion:
 1. Complete all 9 W document sections: Header, Task, Problem, Approach, Files Changed (table), Verification (per-criterion PASS/FAIL), Experiment Log (or N/A), User Testing Needed (or N/A), Result
-2. Update INDEX.md status to `done`
+2. **Orchestrator document check:** Read the W document and verify NO section still contains placeholder text or "(filled after completion)". If any section is incomplete, write the actual content using Edit before marking done.
+3. Update INDEX.md status to `done`
 
 ### W Document Rejection Criteria
 A W document is REJECTED if any of these apply:

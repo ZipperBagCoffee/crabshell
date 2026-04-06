@@ -1,5 +1,11 @@
 # Changelog
 
+## v21.43.0
+- feat: investigating SKILL.md — orchestrator document update rule (Step 5/6/7 must Edit placeholder sections with actual findings + DOCUMENT UPDATE RULE)
+- feat: planning SKILL.md — Rule 9 orchestrator fallback (Read P doc → check placeholder → Edit if still present); template placeholder text clarified
+- feat: ticketing SKILL.md — Rule 10 orchestrator fallback (Read T doc → check placeholder → Edit if still present); template placeholder text clarified
+- feat: light-workflow SKILL.md — on-completion document check step (verify no placeholder/unfilled sections before marking done)
+
 ## v21.42.0
 - feat: inject-rules.js PRESSURE_L1 — oscillation-awareness text (state what changed and why before direction change)
 - feat: inject-rules.js PRESSURE_L2 — stronger oscillation-awareness text (CRITICAL: state previous position + justifying evidence)

@@ -120,13 +120,13 @@ This plan is executed using the following agent structure:
 (Automatically recorded when tickets are created)
 
 ## Analysis Results (Work Agent)
-(Work Agent: write your analysis here BEFORE reporting to user)
+(placeholder — Orchestrator: if still placeholder after Step A, write WA results here)
 
 ## Review Results (Review Agent)
-(Review Agent: write your review here BEFORE reporting to user)
+(placeholder — Orchestrator: if still placeholder after Step B, write RA results here)
 
 ## Intent Check (Orchestrator)
-(Orchestrator: write your intent check here BEFORE reporting to user)
+(placeholder — Orchestrator: if still placeholder after Step C, write intent check here)
 
 ## Verification Criteria
 {user's answer — must describe observable behavior}
@@ -200,7 +200,7 @@ Update status column and/or Tickets column in `.crabshell/plan/INDEX.md`.
 6. **No parent transition while children incomplete:** P can only transition to `done` when ALL related tickets are `verified`. If any ticket is incomplete, refuse `done` transition.
 7. **Auto-conclude parent on completion:** When P becomes `done` → automatically update D/I in Related column to `concluded` and append log to those documents. (Triggered by ticketing cascade)
 8. **Mandatory work log:** After performing any work related to this document, append a log entry to the Log section using the existing format (`### [{YYYY-MM-DD HH:MM}] {entry_type}`). This applies regardless of whether this skill was explicitly invoked — if the work touched or advanced this plan's purpose, log it.
-9. **Mandatory verification result append:** Work Agent, Review Agent, and Orchestrator MUST append their execution results to the corresponding sections of the P document (Analysis Results, Review Results, Intent Check). Verbal reporting alone is insufficient — verification not recorded in the document is equivalent to verification not performed.
+9. **Mandatory verification result append + Orchestrator fallback:** Work Agent, Review Agent, and Orchestrator MUST append their execution results to the corresponding sections of the P document (Analysis Results, Review Results, Intent Check). Verbal reporting alone is insufficient — verification not recorded in the document is equivalent to verification not performed. **Orchestrator document check:** After each agent step (A, B, C), the Orchestrator MUST Read the P document and verify the corresponding section no longer contains "placeholder". If it does, the Orchestrator MUST use Edit to write the agent's results into that section before proceeding to the next step.
 10. **Exhaustive verification standard:** Verification follows the VERIFICATION-FIRST principle in RULES (Predict → Execute → Compare). When no project verification tool exists, invoke the 'verifying' skill. Direct → indirect → explicitly "unverified".
 11. **Anti-partitioning (regressing context):** When this plan is part of a regressing cycle, it MUST plan work for the current cycle only. Plans that reference or pre-allocate work for future cycles (e.g., "Cycle 2 will handle X") are INVALID and must be rejected by the Review Agent and Orchestrator.
 12. **Regressing state update:** If `.crabshell/memory/regressing-state.json` exists and is active, update it after plan creation using: `"{NODE_PATH}" -e "const f='{PROJECT_DIR}/.crabshell/memory/regressing-state.json';const s=JSON.parse(require('fs').readFileSync(f,'utf8'));s.planId='{P-ID}';s.lastUpdatedAt=new Date().toISOString();require('fs').writeFileSync(f,JSON.stringify(s,null,2))"`. Phase transition is handled automatically by the PostToolUse hook. Only applies when regressing-state.json exists — standalone planning usage is unaffected.
