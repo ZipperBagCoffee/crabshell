@@ -267,6 +267,18 @@ async function main() {
     }
   }
 
+  // --- skill-active.json: block direct model writes ---
+  if (toolName === 'Write' || toolName === 'Edit') {
+    const fp = normalizePath(input.file_path || '');
+    if (fp.endsWith('memory/skill-active.json')) {
+      const output = { decision: "block", reason: "skill-active.json is managed by the skill-tracker hook. Direct Write/Edit is not allowed." };
+      process.stderr.write(`[PATH_GUARD] Blocked ${toolName} on skill-active.json\n`);
+      console.log(JSON.stringify(output));
+      process.exit(2);
+      return;
+    }
+  }
+
   // Other tools — allow
   process.exit(0);
 }

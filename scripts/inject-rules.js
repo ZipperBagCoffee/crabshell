@@ -129,14 +129,14 @@ function updateFeedbackPressure(index, isNegative) {
 }
 
 const PRESSURE_L1 = `
-## Feedback Pressure Alert (Level 1)
+## Calibration Check (Level 1)
 Self-check: re-read user's message, identify the gap, fix ONLY identified issue.
-Do NOT apologize. Do NOT over-explain. State the fix, execute, move on.
+Skip the preamble — state the correction, execute, move on.
 Before agreeing: (1) Stop — do not reflexively agree. (2) Understand — identify precisely what claim is being accepted. (3) Rethink — state the claim being accepted explicitly. (4) Seek middle ground — consider partial agreement with nuance. (5) Verify — show tool output supporting the agreement.
 `;
 
 const PRESSURE_L2 = `
-## Repeated Negative Feedback (Level 2)
+## Pattern Reset (Level 2)
 Re-derive user's original intent from first message.
 Trace where your responses diverged from that intent.
 State corrected understanding as first line of your response, then fix the divergence.
@@ -144,8 +144,8 @@ Agreement rules at L2: (1) No blind agreement — every agreement requires indep
 `;
 
 const PRESSURE_L3 = `
-## Critical Self-Review Required (Pressure Level 3)
-Stop. State what error pattern you detect in your own responses.
+## Diagnostic Mode (Pressure Level 3)
+First-principles reset: identify the error pattern you detect in your own responses.
 Identify wrong assumptions driving the pattern.
 Consider cross-domain approach — reframe the problem structure.
 If a sub-agent is available (TaskCreate), delegate for fresh-perspective re-analysis.
@@ -247,11 +247,11 @@ On failure: (1) List what you tried, what constraint blocked each attempt, and w
 
 const EMERGENCY_STOP_CONTEXT = `
 <EXTREMELY_IMPORTANT>
-[EMERGENCY STOP] The user has triggered an emergency stop. You have been failing to follow your rules.
+[DIAGNOSTIC RESET] The user has triggered a diagnostic reset. A gap between intended and actual behavior has been identified.
 
 1. STOP all current work immediately. Do NOT continue your previous task.
 2. Use the Read tool to read CLAUDE.md right now. Actually read the file — do not rely on memory.
-3. Read CLAUDE.md line by line. For EACH rule, explain in your own words what it means and how you violated it in the current session.
+3. Read CLAUDE.md line by line. For EACH rule, explain in your own words what it means and where a gap appeared in the current session.
 4. After explaining all rules, ask the user: "What did I get wrong? What should I do differently?"
 5. Do NOT apologize. Do NOT make excuses. Demonstrate understanding through explanation.
 6. Memory operations (delta, rotation) may continue normally.

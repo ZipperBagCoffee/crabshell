@@ -891,7 +891,7 @@ test('SUBPROCESS: emergency stop produces different output', function() {
 
     const parsed = JSON.parse(stdout.trim());
     const ctx = parsed.hookSpecificOutput.additionalContext;
-    assert(ctx.includes('EMERGENCY STOP'), 'emergency stop context');
+    assert(ctx.includes('DIAGNOSTIC RESET'), 'emergency stop context');
   } finally {
     cleanupDir(tmpDir);
   }
@@ -1125,8 +1125,8 @@ test('CONSTANTS: MARKER_END is correct string', function() {
   assertEqual(mod.MARKER_END, '---Add your project-specific rules below this line---');
 });
 
-test('CONSTANTS: EMERGENCY_STOP_CONTEXT contains EMERGENCY STOP', function() {
-  assert(mod.EMERGENCY_STOP_CONTEXT.includes('EMERGENCY STOP'));
+test('CONSTANTS: EMERGENCY_STOP_CONTEXT contains DIAGNOSTIC RESET', function() {
+  assert(mod.EMERGENCY_STOP_CONTEXT.includes('DIAGNOSTIC RESET'));
 });
 
 test('CONSTANTS: COMPRESSED_CHECKLIST contains Rules Quick-Check', function() {

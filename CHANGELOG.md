@@ -1,5 +1,12 @@
 # Changelog
 
+## v21.38.0
+- feat: path-guard.js — block direct Write/Edit on skill-active.json; 3 new tests (114 total)
+- feat: ticketing/SKILL.md Step C — document-first rule; remove trailing append line
+- feat: inject-rules.js — calm-framing: PRESSURE_L1→Calibration Check, L2→Pattern Reset, L3→Diagnostic Mode, EMERGENCY_STOP→DIAGNOSTIC RESET
+- feat: sycophancy-guard.js — calm-framing: "Sycophancy pattern" → "Agreement pattern", "you MUST" → "Close the gap", updated pressureHint L1/L2/L3 labels
+- fix: counter.js — lock early return + ensureDir before acquireIndexLock (fail-open on lock contention)
+
 ## v21.37.0
 - fix: docs-guard.js — INDEX.md early return before skill-active check (bypasses TTL check for listing files)
 - test: _test-docs-guard.js — 3 new tests (TC5c, TC5d, TC5e), 18 total
