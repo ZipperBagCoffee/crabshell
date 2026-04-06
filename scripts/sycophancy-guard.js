@@ -465,10 +465,10 @@ function handlePreToolUse(hookData) {
   const result = checkSycophancy(midTurnText, pLevel);
   if (!result) process.exit(0); // clean
 
-  // Sycophancy detected mid-turn → block the tool call
+  // Agreement pattern detected mid-turn → block the tool call
   const output = {
     decision: "block",
-    reason: `Sycophancy pattern detected mid-turn: '${result.pattern}'.${result.structuralNote} You are about to ${toolName} a file after agreeing without verification. Before making changes, you MUST: (1) State the specific claim you agreed with, (2) Show independent verification with tool output, (3) Then proceed WITH evidence. Unverified agreement followed by file changes violates the Anti-Deception principle.${pressureHint(pLevel)}`
+    reason: `Agreement pattern detected mid-turn: '${result.pattern}'.${result.structuralNote} You are about to ${toolName} a file after agreeing without verification. Close the gap before proceeding: (1) State the specific claim you agreed with, (2) Show independent verification with tool output, (3) Then proceed WITH evidence. Unverified agreement followed by file changes creates an unverified state.${pressureHint(pLevel)}`
   };
 
   process.stderr.write(`[SYCOPHANCY_GUARD] PreToolUse blocked: pattern '${result.pattern}' before ${toolName} pressure=${pLevel}\n`);
@@ -480,9 +480,9 @@ function handlePreToolUse(hookData) {
  * Build a pressure-aware hint suffix for sycophancy block messages.
  */
 function pressureHint(level) {
-  if (level >= 3) return ' [L3] ALL agreement blocked — behavioral evidence required for any agreement. Do not swing to over-refusal; present evidence and let user judge.';
-  if (level >= 2) return ' [L2] Behavioral evidence required — grep/read is insufficient. Show execution output.';
-  if (level >= 1) return ' [L1] Rethink before agreeing — state the claim being accepted and verify with tool output.';
+  if (level >= 3) return ' [L3] Behavioral evidence required for all agreement — execution output only. Calibrate the position on evidence; do not swing to over-refusal.';
+  if (level >= 2) return ' [L2 Pattern Reset] Behavioral evidence required — grep/read is insufficient. Show execution output.';
+  if (level >= 1) return ' [L1] Identify the claim being accepted, verify with tool output before agreeing.';
   return '';
 }
 
@@ -513,7 +513,7 @@ function handleStop(hookData) {
     }
     const output = {
       decision: "block",
-      reason: `Verification claim detected: '${claimResult.claim}' [tier: ${claimResult.tier}]. ${tierMsg} Before claiming verification, you MUST: (1) Run actual tests or execute the code, (2) Show the test output, (3) Then state verification results WITH evidence. Claiming "verified" without execution violates the VERIFICATION-FIRST principle.${pressureHint(pLevel)}`
+      reason: `Verification claim detected: '${claimResult.claim}' [tier: ${claimResult.tier}]. ${tierMsg} Before claiming verification: (1) Run actual tests or execute the code, (2) Show the test output, (3) Then state verification results WITH evidence. A verification claim without execution output leaves the gap open.${pressureHint(pLevel)}`
     };
     process.stderr.write(`[SYCOPHANCY_GUARD] Blocked verification claim: '${claimResult.claim}' tier=${claimResult.tier} pressure=${pLevel}\n`);
     console.log(JSON.stringify(output));
@@ -524,10 +524,10 @@ function handleStop(hookData) {
   const result = checkSycophancy(response, pLevel);
   if (!result) process.exit(0); // clean
 
-  // Sycophancy detected, no exemption → block
+  // Agreement pattern detected, no exemption → block
   const output = {
     decision: "block",
-    reason: `Sycophancy pattern detected: '${result.pattern}'.${result.structuralNote} You agreed without independent verification. Before agreeing, you MUST: (1) State the specific claim you agreed with, (2) Show independent verification with tool output, (3) Then agree WITH evidence or disagree WITH evidence. Unverified agreement violates the Anti-Deception principle.${pressureHint(pLevel)}`
+    reason: `Agreement pattern detected: '${result.pattern}'.${result.structuralNote} Agreement occurred without independent verification. To close the gap: (1) State the specific claim you agreed with, (2) Show independent verification with tool output, (3) Then agree WITH evidence or disagree WITH evidence. Agreement without verification leaves an unverified claim in the record.${pressureHint(pLevel)}`
   };
 
   process.stderr.write(`[SYCOPHANCY_GUARD] Blocked: pattern '${result.pattern}' detected pressure=${pLevel}\n`);

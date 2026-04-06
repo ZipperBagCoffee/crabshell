@@ -142,6 +142,7 @@ This step is PROCEDURAL — it happens every time, not when the Orchestrator "re
 
 ### Step C: Orchestrator — Final Verification
 **Performed by:** The Orchestrator (main conversation) — reads Work and Review Agent outputs, then evaluates independently.
+- **Document-first rule:** Write your evaluation to `## Final Verification` in the T document FIRST using Write/Edit tool. After the document is updated, provide a brief summary to the user. The document update is the primary output; the conversation summary is secondary.
 - Re-verify the Review Agent's verification (exhaustive where possible)
 - Catch cases where "verification was claimed but not actually performed"
 - **Evidence Gate (BLOCKING — check BEFORE evaluating content):**
@@ -174,7 +175,6 @@ This step is PROCEDURAL — it happens every time, not when the Orchestrator "re
      - **Root Cause Hypothesis**: Why did these problems occur?
      - **Recommended Focus**: What should the next cycle prioritize?
      - (Generic TODO lists without cycle-specific observations are INVALID.)
-- Append results to `## Final Verification` section
 
 ## Execution
 - This ticket is executed using the built-in agent structure above (Step A → Step B → Step C)

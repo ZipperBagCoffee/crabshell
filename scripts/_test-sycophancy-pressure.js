@@ -242,22 +242,22 @@ test('T15: L0 structuralNote does NOT contain L2+ PRESSURE marker', function() {
 });
 
 // ============================================================
-// T16: pressureHint(1) contains "[L1]" and "Rethink"
+// T16: pressureHint(1) contains "[L1]" and claim check
 // ============================================================
-test('T16: pressureHint(1) returns L1 rethink message', function() {
+test('T16: pressureHint(1) returns L1 message', function() {
   const { pressureHint } = mod;
   const hint = pressureHint(1);
   assert(hint.indexOf('[L1]') !== -1, 'expected [L1] in hint, got: ' + hint);
-  assert(hint.indexOf('Rethink') !== -1, 'expected Rethink in hint, got: ' + hint);
+  assert(hint.indexOf('claim') !== -1, 'expected claim in hint, got: ' + hint);
 });
 
 // ============================================================
-// T17: pressureHint(2) contains "[L2]"
+// T17: pressureHint(2) contains "[L2 Pattern Reset]"
 // ============================================================
 test('T17: pressureHint(2) returns L2 message', function() {
   const { pressureHint } = mod;
   const hint = pressureHint(2);
-  assert(hint.indexOf('[L2]') !== -1, 'expected [L2] in hint, got: ' + hint);
+  assert(hint.indexOf('[L2 Pattern Reset]') !== -1, 'expected [L2 Pattern Reset] in hint, got: ' + hint);
 });
 
 // ============================================================

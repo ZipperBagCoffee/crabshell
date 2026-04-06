@@ -58,7 +58,12 @@ async function check() {
   const sessionId8 = sessionId ? sessionId.substring(0, 8) : null;
 
   const memoryDir = path.join(getStorageRoot(), MEMORY_DIR);
+  ensureDir(memoryDir);
   const locked = acquireIndexLock(memoryDir);
+  if (!locked) {
+    // Another process holds the lock — skip this cycle (fail-open).
+    return;
+  }
   try {
     // Regressing: auto-advance phase on skill invocation
     try {

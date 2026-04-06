@@ -717,6 +717,27 @@ unitTest('path-guard exports extractMemoryPathsFromCommand', () => {
 });
 
 // ============================================================
+// SECTION 4: skill-active.json block tests (v21.38.0)
+// ============================================================
+
+console.log('\n--- Subprocess: skill-active.json block ---');
+
+runTest('Write: skill-active.json (block)',
+  { tool_name: 'Write', tool_input: { file_path: 'C:/Users/chulg/Documents/memory-keeper-plugin/.crabshell/memory/skill-active.json', content: '{}' } },
+  true
+);
+
+runTest('Edit: skill-active.json (block)',
+  { tool_name: 'Edit', tool_input: { file_path: 'C:/Users/chulg/Documents/memory-keeper-plugin/.crabshell/memory/skill-active.json', old_string: '{}', new_string: '{"active":true}' } },
+  true
+);
+
+runTest('Write: other json file (allow)',
+  { tool_name: 'Write', tool_input: { file_path: 'C:/Users/chulg/Documents/memory-keeper-plugin/.crabshell/memory/memory-index.json', content: '{}' } },
+  false
+);
+
+// ============================================================
 // Summary
 // ============================================================
 
