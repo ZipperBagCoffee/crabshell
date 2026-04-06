@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.39.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.40.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -321,6 +321,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.40.0 | fix: docs-guard.js dead code removal (INDEX.md check in checkInvestigationConstraints); feat: CLAUDE.md checklist step 7; feat: ticketing SKILL.md — Skeptical calibration + Edge-case AC guidance |
 | 21.39.0 | test: 32 new tests — _test-extract-delta (15), _test-append-memory (7), _test-memory-rotation (10) |
 | 21.38.0 | feat: path-guard skill-active.json block; ticketing Step C document-first rule; calm-framing in inject-rules + sycophancy-guard (PRESSURE labels, DIAGNOSTIC RESET); counter.js lock early return + ensureDir |
 | 21.37.0 | fix: docs-guard.js INDEX.md early return (bypasses skill-active TTL check); 3 new tests (TC5c/d/e), 18 total |

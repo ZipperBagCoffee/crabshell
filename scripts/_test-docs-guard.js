@@ -319,7 +319,7 @@ unitTest('TC7f: investigation path (backslash) WITHOUT ## Constraints → error 
   } finally { try { fs.rmSync(tmp, { recursive: true }); } catch {} }
 });
 
-unitTest('TC7g: investigation/INDEX.md → null (skip, not an I-document)', () => {
+unitTest('TC7g: investigation/INDEX.md without Constraints → error string (INDEX exclusion is main() responsibility, not this function)', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ck-test-'));
   try {
     const invDir = path.join(tmp, 'investigation');
@@ -327,7 +327,9 @@ unitTest('TC7g: investigation/INDEX.md → null (skip, not an I-document)', () =
     const fp = path.join(invDir, 'INDEX.md');
     fs.writeFileSync(fp, '| ID | Topic | Status |\n| I001 | test | open |\n');
     const result = checkInvestigationConstraints(fp, 'Edit');
-    assert(result === null, `expected null for INDEX.md, got ${result}`);
+    // INDEX.md exclusion is handled by main()'s early return (line ~101), not by this function.
+    // The function itself sees a missing ## Constraints and returns an error string.
+    assert(typeof result === 'string', `expected error string (no Constraints), got ${result}`);
   } finally { try { fs.rmSync(tmp, { recursive: true }); } catch {} }
 });
 

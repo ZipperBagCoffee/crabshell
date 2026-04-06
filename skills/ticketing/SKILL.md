@@ -71,6 +71,7 @@ Excluded: {excluded}
 ## Acceptance Criteria
 - [ ] {criterion 1}
 - [ ] {criterion 2}
+- **Edge-case coverage (recommended):** At least one AC should test an error path, boundary condition, or negative scenario (e.g., "invalid input returns error", "empty file handled gracefully"). Happy-path-only ACs miss the failures that matter most.
 
 ## Verification
 {criterion 1}: {how to verify — command to run, behavior to observe}
@@ -123,6 +124,7 @@ The Orchestrator MUST launch 2+ Work Agents with **distinct analytical perspecti
 - Confirm changes do not break existing functionality (Evidence Gate checkbox 6 — `git diff` deletion check — enforces this)
 - Confirm edge case and exception handling
 - **Devil's Advocate (single reviewer):** When only 1 Review Agent runs, it MUST include a Devil's Advocate section articulating the strongest counter-argument to its own PASS verdict. This prevents rubber-stamp reviews.
+- **Skeptical calibration:** If all verification items show Gap="none", this is a signal to examine harder — genuinely flawless implementation is rare. State explicitly what you searched for that you did NOT find. A review that finds zero issues requires more justification than one that finds problems.
 - Append results to `## Verification Results` section
 
 ### Step B.5: Cross-Review (when applicable)
