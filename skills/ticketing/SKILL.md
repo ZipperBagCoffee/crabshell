@@ -183,13 +183,13 @@ This step is PROCEDURAL — it happens every time, not when the Orchestrator "re
 - 1 Ticket = 1 independent execution cycle
 
 ## Execution Results (Work Agent)
-(Work Agent: write your execution results here BEFORE reporting to user)
+(placeholder — Orchestrator: if still placeholder after Step A, write WA results here)
 
 ## Verification Results (Review Agent)
-(Review Agent: write your verification results here BEFORE reporting to user)
+(placeholder — Orchestrator: if still placeholder after Step B, write RA results here)
 
 ## Final Verification (Orchestrator)
-(Orchestrator: write your evaluation here BEFORE reporting to user)
+(placeholder — Orchestrator: if still placeholder after Step C, write evaluation here)
 ### Correctness
 ### Coherence
 ### Improvement Opportunities
@@ -295,7 +295,7 @@ If ticket status → `verified`:
 7. **Plan propagation:** When all tickets verified → auto-update plan status.
 8. **1 Ticket = 1 independent execution cycle:** Each ticket is executed as a separate, independent agent cycle. Never batch multiple tickets into a single execution. 3 tickets = 3 separate executions.
 9. **Mandatory work log:** After performing any work related to this document, append a log entry to the Log section using the existing format (`### [{YYYY-MM-DD HH:MM}] {entry_type}`). This applies regardless of whether this skill was explicitly invoked — if the work touched or advanced this ticket's purpose, log it.
-10. **Mandatory append of results:** Work Agent, Review Agent, and Orchestrator must each append their execution results to the corresponding section of the T document (Execution Results, Verification Results, Final Verification). Verification not recorded in the document is treated as not performed.
+10. **Mandatory append of results + Orchestrator fallback:** Work Agent, Review Agent, and Orchestrator must each append their execution results to the corresponding section of the T document (Execution Results, Verification Results, Final Verification). Verification not recorded in the document is treated as not performed. **Orchestrator document check:** After each agent step (A, B, C), the Orchestrator MUST Read the T document and verify the corresponding section no longer contains "placeholder". If it does, the Orchestrator MUST use Edit to write the agent's results into that section before proceeding to the next step.
 11. **Exhaustive verification standard:** Verification follows the VERIFICATION-FIRST principle in RULES (Predict → Execute → Compare). When no project verification tool exists, invoke the 'verifying' skill. Direct → indirect → explicitly "unverified".
 12. **Regressing context transfer:** In the regressing loop, this T document's `## Final Verification > Next Direction` content is passed directly to the next cycle's P(n+1) document's Context. The Orchestrator must explicitly perform this transfer. (D is the top-level container and does not receive per-cycle context.)
 13. **Regressing state update:** If `.crabshell/memory/regressing-state.json` exists and is active, update it after ticket creation using: `"{NODE_PATH}" -e "const f='{PROJECT_DIR}/.crabshell/memory/regressing-state.json';const s=JSON.parse(require('fs').readFileSync(f,'utf8'));s.ticketIds.push('{T-ID}');s.lastUpdatedAt=new Date().toISOString();require('fs').writeFileSync(f,JSON.stringify(s,null,2))"`. Phase transition is handled automatically by the PostToolUse hook. Only applies when regressing-state.json exists — standalone ticketing usage is unaffected.

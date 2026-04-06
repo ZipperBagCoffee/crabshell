@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.42.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.43.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -323,6 +323,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.43.0 | feat: orchestrator document-update fallback — investigating/planning/ticketing/light-workflow skills enforce section content write after each agent step |
 | 21.42.0 | feat: oscillation mitigation — PRESSURE_L1/L2 awareness text; PROHIBITED PATTERNS #8; checkReversalPhrases (14 patterns); oscillationCount in memory-index.json; Stop hook blocks count≥3 + pressure≥1 |
 | 21.41.0 | feat: planning/ticketing SKILL.md document-first rule; feat: regressing-guard IA-2 agent section validation; fix: verify-guard V002 bare node→process.execPath; test: 21 regressing-guard tests |
 | 21.40.0 | fix: docs-guard.js dead code removal (INDEX.md check in checkInvestigationConstraints); feat: CLAUDE.md checklist step 7; feat: ticketing SKILL.md — Skeptical calibration + Edge-case AC guidance |
