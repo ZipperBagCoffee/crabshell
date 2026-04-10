@@ -12,8 +12,8 @@ function getProjectDir() {
   return process.env.CLAUDE_PROJECT_DIR || process.env.PROJECT_DIR || process.cwd();
 }
 
-// Protected .crabshell/ subdirectories (D/P/T/I documents)
-const PROTECTED_DOCS_PATTERN = /\.crabshell\/(discussion|plan|ticket|investigation)\//;
+// Protected .crabshell/ subdirectories (D/P/T/I/W documents)
+const PROTECTED_DOCS_PATTERN = /\.crabshell\/(discussion|plan|ticket|investigation|worklog)\//;
 
 // Skills that legitimately create/modify .crabshell/ D/P/T/I files
 const LEGITIMATE_SKILLS = [
