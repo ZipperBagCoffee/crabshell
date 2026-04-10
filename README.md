@@ -192,6 +192,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.44.0 | feat: document-first rule for all skills; refactor: CLAUDE_RULES trim; fix: TTL 5→15min; chore: MEMORY.md/CLAUDE.md compression, I047 concluded |
 | 21.43.0 | feat: orchestrator document-update fallback — investigating/planning/ticketing/light-workflow skills now require orchestrator to verify and write section content after each agent step; eliminates placeholder-only documents |
 | 21.42.0 | feat: oscillation mitigation — PRESSURE_L1/L2 direction-change awareness text; PROHIBITED PATTERNS #8; checkReversalPhrases (14 patterns, protected-zone stripping); oscillationCount tracking in memory-index.json; Stop hook blocks on count≥3 + pressure≥1 |
 | 21.41.0 | feat: planning/ticketing SKILL.md document-first rule (Steps A/B/C); feat: regressing-guard IA-2 agent section validation; fix: verify-guard V002 bare node→process.execPath; test: 21 regressing-guard tests |

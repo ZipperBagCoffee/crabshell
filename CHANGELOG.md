@@ -1,5 +1,15 @@
 # Changelog
 
+## v21.44.0
+- feat: document-first rule added to 6 skills (investigating, discussing, regressing, light-workflow, verifying + EXECUTION-PHASES.md) — 17 instances across 8 skill files
+- feat: CLAUDE.md common document-first rule (project-specific section)
+- refactor: load-memory.js CLAUDE_RULES trimmed — removed slop/externalize rules, kept timestamp format + memory-index ref (814→510 chars)
+- fix: skill-active TTL extended 5min→15min in docs-guard.js + skill-tracker.js + test fixture
+- fix: I047 INDEX.md open→concluded (bookkeeping correction)
+- chore: project.md source-first editing constraint added
+- chore: MEMORY.md trimmed (2,767→1,229 chars), CLAUDE.md user section compressed (3,549→1,886 chars)
+- chore: verification manifest AC-2/AC-3 updated (slop/externalize→timestamp/memory-index), AC-6 updated to 21.43.0
+
 ## v21.43.0
 - feat: investigating SKILL.md — orchestrator document update rule (Step 5/6/7 must Edit placeholder sections with actual findings + DOCUMENT UPDATE RULE)
 - feat: planning SKILL.md — Rule 9 orchestrator fallback (Read P doc → check placeholder → Edit if still present); template placeholder text clarified
