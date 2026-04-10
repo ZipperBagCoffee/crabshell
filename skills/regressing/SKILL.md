@@ -199,6 +199,7 @@ After ticket execution completes, update regressing state:
   (3) Recommended focus with rationale
   If Next Direction is a generic TODO list without cycle-specific observations → REJECT and require re-evaluation.
 - Pass validated feedback to next cycle P(n+1)'s Context
+- **Document-first rule:** Record the feedback transfer in the D document's Discussion Log and the P(n+1) document's Context section using the Edit tool BEFORE beginning cycle planning. The document update is the primary action; conversation narration is secondary.
 - This transfer is explicitly performed by the Orchestrator
 
 After feedback transfer:
@@ -211,6 +212,7 @@ After feedback transfer:
 After convergence or reaching the cap, return to the D document:
 
 1. Append the Final Report to D's Discussion Log
+- **Document-first rule:** Write the Final Report to the D document using the Edit tool FIRST. After the document is updated, provide a brief summary to the user. The document update is the primary output; the conversation summary is secondary.
 2. Transition D to `concluded`
 
 After final report, clean up regressing state:

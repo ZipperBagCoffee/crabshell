@@ -138,6 +138,7 @@ process.exit(results.some(r => r.status === 'FAIL') ? 1 : 0);
 ### Step 7: Confirm
 
 Tell user: "Verification manifest created with N entries. Run `/verifying run` to execute."
+- **Document-first rule:** The manifest.json and run-verify.js files must be fully created before any confirmation is reported in conversation.
 
 ---
 
@@ -162,6 +163,7 @@ node .crabshell/verification/run-verify.js
 
 Type: `behavioral` = runtime execution observed (ran command, triggered feature, checked output)
 Type: `structural` = static check (grep, file read, code inspection)
+- **Document-first rule:** If this verification run was invoked from within a T or P document context, append the P/O/G results to that document's verification section using the Edit tool FIRST. After the document is updated, report the summary in conversation. Standalone invocations may report conversation-only.
 
 ### Step 4: Summary
 

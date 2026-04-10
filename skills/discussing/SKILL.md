@@ -94,6 +94,8 @@ Mapping Type: `direct` (user explicitly stated) or `inferred` (derived from cont
 {Initial discussion topic or opening statement}
 ```
 
+- **Document-first rule:** Create the D document using the Write tool BEFORE reporting to the user. The document creation is the primary action; the conversation confirmation is secondary.
+
 ### Step 4: Update INDEX.md
 
 Append a new row to the table in `.crabshell/discussion/INDEX.md`:
@@ -132,6 +134,8 @@ Where `entry_type` is one of:
 - A summary of the discussion point (default)
 - `Conclusion` — when a conclusion is reached
 - `Status change: {old} → {new}` — when status changes
+
+- **Document-first rule:** Append the log entry to the D document using the Edit tool FIRST. The document update is the primary action; the conversation acknowledgment is secondary.
 
 ### Step 3: Update INDEX.md if status changed
 

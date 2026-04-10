@@ -84,7 +84,7 @@ Before finalizing any response, scan for PROHIBITED PATTERNS (from RULES):
 7. Suggesting to stop/defer without proof
 
 **Workflow-specific additions:**
-- Phase complete but W document not updated → update before proceeding
+- **Document-first rule (W document):** After each phase, write results to the corresponding W document section FIRST using Edit tool. The document update is the primary output; conversation narration is secondary. Phase complete but W document not updated → STOP and update before proceeding.
 - Review Agent produced no per-criterion verdict → reject, re-request with PASS/FAIL
 
 ## Workflow Selection

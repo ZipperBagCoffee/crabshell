@@ -159,6 +159,8 @@ When Phase 10 detects partial failure (some criteria PASS, some FAIL):
 
 ### Phase 11: Report (Orchestrator)
 
+- **Document-first rule:** Complete all W document sections BEFORE generating the final report to the user. The W document is the primary output; the conversation report is secondary.
+
 ```
 ## Changes Made
 [Files and modifications]

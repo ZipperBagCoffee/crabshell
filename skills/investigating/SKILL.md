@@ -132,6 +132,7 @@ Launch parallel Work Agents, each assigned a different focus area or source type
 - **Work Agent N:** Additional agents as needed for user-specified sources or distinct angles
 
 **After each Agent returns findings, the Orchestrator MUST use the Edit tool to replace the placeholder text in that agent's section with the actual findings.** Do NOT leave "(findings appended after execution)" in the document.
+- **Document-first rule:** Write agent findings to the corresponding `### Agent N` section in the I document FIRST using the Edit tool. After the document is updated, provide a brief summary to the user. The document update is the primary output; the conversation summary is secondary.
 
 ### Step 6: Cross-review
 
@@ -142,6 +143,7 @@ Launch Review Agents (paired with Work Agents per CLAUDE.md rules):
 - Review Agents challenge each other's conclusions, identify contradictions and blind spots
 
 **After cross-review completes, the Orchestrator MUST use the Edit tool to replace the Cross-Review section placeholder with the actual cross-review results.**
+- **Document-first rule:** Write cross-review results to the `## Cross-Review` section in the I document FIRST using the Edit tool. After the document is updated, provide a brief summary to the user. The document update is the primary output; the conversation summary is secondary.
 
 ### Step 7: Orchestrator synthesis
 
@@ -153,6 +155,7 @@ The Orchestrator:
 5. Assesses confidence level and identifies gaps
 
 **DOCUMENT UPDATE RULE:** By the end of Step 7, every placeholder in the I document ("findings appended after execution", "appended after agent execution", "appended after synthesis") MUST be replaced with actual content. The Log section records timeline events; the structured sections above it contain the full findings. Both must be populated.
+- **Document-first rule:** Write synthesis and conclusions to the `## Synthesis` and `## Conclusions` sections in the I document FIRST using the Edit tool. After the document is updated, provide a brief summary to the user. The document update is the primary output; the conversation summary is secondary.
 
 ### Step 8: Update INDEX.md
 
