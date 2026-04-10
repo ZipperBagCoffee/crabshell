@@ -14,7 +14,7 @@ const path = require('path');
 const { readStdin } = require('./transcript-utils');
 const { getProjectDir, getStorageRoot, readJsonOrDefault } = require('./utils');
 const { REGRESSING_STATE_FILE } = require('./constants');
-const { COMPRESSED_CHECKLIST, readProjectConcept } = require('./shared-context');
+const { COMPRESSED_CHECKLIST, readProjectConcept, readModelRouting } = require('./shared-context');
 
 // Skip processing during background memory summarization
 if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
@@ -53,7 +53,15 @@ async function main() {
     }
   } catch (e) { /* ignore */ }
 
-  // 3. Active regressing state
+  // 3. Model routing (from project.md)
+  try {
+    const routing = readModelRouting(projectDir, 300);
+    if (routing) {
+      parts.push(routing);
+    }
+  } catch (e) { /* ignore */ }
+
+  // 4. Active regressing state
   try {
     const regressingStatePath = path.join(getStorageRoot(projectDir), 'memory', REGRESSING_STATE_FILE);
     const state = readJsonOrDefault(regressingStatePath, null);
@@ -68,7 +76,7 @@ async function main() {
     }
   } catch (e) { /* ignore */ }
 
-  // 4. Compressed checklist (last — trim if needed)
+  // 5. Compressed checklist (last — trim if needed)
   parts.push(COMPRESSED_CHECKLIST.trim());
 
   // Assemble and enforce 2000 char limit

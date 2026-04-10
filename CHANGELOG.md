@@ -1,5 +1,8 @@
 # Changelog
 
+## 21.46.0
+- feat: 3-tier model routing — centralized T1(Opus)/T2(Sonnet)/T3(Haiku) table in project.md, SubagentStart hook injection via readModelRouting(), SKILL.md deduplication (investigating, regressing, light-workflow)
+
 ## v21.45.0
 - feat: setup-rtk opt-in skill — OS detection, binary download, PATH setup, rtk init -g
 - fix: investigating SKILL.md default model Sonnet→Opus (v21.15.0 error corrected)

@@ -69,7 +69,7 @@ Before starting execution, recommend session parameters to the user. This happen
 | **Cycle cap** | From user invocation. Bare number after topic = cap. | 10 |
 | **Agent count** | Based on topic complexity. 2–3 for focused tasks, 3–5 for broad/complex tasks. | 3 |
 | **Specialist roles** | Each agent gets a distinct expert perspective relevant to the topic (e.g., "Security Auditor", "Performance Engineer", "API Design Specialist"). Roles must be non-overlapping and topic-relevant. | — |
-| **Model tier** | Opus for Planning (Step 4a), Sonnet for Implementation/Verification (Step 4c). Haiku only if user explicitly requests. | Opus / Sonnet |
+| **Model tier** | See project.md `## Model Routing` | T1 for planning, T2 for execution/verification. Project-level routing applies. |
 
 **Present to user as a compact recommendation block:**
 
@@ -77,7 +77,7 @@ Before starting execution, recommend session parameters to the user. This happen
 📋 Parameter Recommendation
 - Cycle cap: {N}
 - Agents: {count} — {Role1}, {Role2}, ...
-- Models: Opus (Planning) → Sonnet (Execution/Verification)
+- Models: See project.md Model Routing (T1 → T2 per task type)
 Silence = proceed. Adjust any parameter by responding.
 ```
 

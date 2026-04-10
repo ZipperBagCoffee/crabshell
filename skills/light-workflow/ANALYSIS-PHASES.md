@@ -12,7 +12,7 @@ Before starting Phase 1, recommend session parameters:
 ```
 Parameter Recommendation
 - Agents: {count} — {Role1}, {Role2}, ...
-- Models: Opus (Analysis) → Sonnet (Implementation/Verification)
+- Models: See project.md Model Routing (T1 → T2 per task type)
 Silence = proceed. Adjust any parameter by responding.
 ```
 
@@ -20,7 +20,7 @@ Silence = proceed. Adjust any parameter by responding.
 |-----------|-----------------|---------|
 | Agent count | 1-2 for focused tasks, 2-3 for broader scope | 2 |
 | Specialist roles | Non-overlapping perspectives relevant to the task | — |
-| Model tier | Opus for analysis/planning, Sonnet for implementation | Opus/Sonnet |
+| Model tier | See project.md `## Model Routing` | T1 for analysis/planning, T2 for implementation. Project-level routing applies. |
 
 ---
 

@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.45.0)
+# Crabshell Architecture (v21.46.0)
 
 ## Overview
 
@@ -256,7 +256,7 @@ Two meta-principles guide Claude's approach to obstacles:
 
 8. SubagentStart — v21.21.0
    └─> subagent-context.js
-       └─> Inject project constraints (from project.md constraints section) + rules into sub-agents
+       └─> Inject project constraints + rules into sub-agents; Part 3: model routing table via readModelRouting() (T1/T2/T3 tiers from project.md)
 ```
 
 ## Skills Architecture

@@ -223,6 +223,73 @@ test('Logs SubagentStart to stderr', function() {
 });
 
 // ============================================================
+// Test 10: additionalContext contains model routing
+// ============================================================
+test('additionalContext contains model routing', function() {
+  const tmpDir = makeTempDir('subagent-test');
+  try {
+    setupProject(tmpDir, {
+      projectConcept: 'Test project.\n\n## Model Routing\n| Tier | Model | When |\n|------|-------|------|\n| T1 | Opus | Analysis |\n| T2 | Sonnet | Implementation |\n| T3 | Haiku | Summarization |'
+    });
+    const { stdout } = runScript(tmpDir);
+    const parsed = JSON.parse(stdout.trim());
+    const ctx = parsed.hookSpecificOutput.additionalContext;
+    assert(ctx.includes('Model Routing'), 'should include Model Routing section, ctx: ' + ctx.substring(0, 400));
+  } finally {
+    cleanupDir(tmpDir);
+  }
+});
+
+// ============================================================
+// Test 11: model routing stays within 2000 char budget
+// ============================================================
+test('model routing stays within 2000 char budget', function() {
+  const tmpDir = makeTempDir('subagent-test');
+  try {
+    const routingSection = '\n\n## Model Routing\n| Tier | Model | When |\n|------|-------|------|\n| T1 | Opus | Analysis, planning, judgment, cross-review |\n| T2 | Sonnet | Implementation, verification, mechanical tasks |\n| T3 | Haiku | Summarization (memory pipeline only) |';
+    setupProject(tmpDir, {
+      projectConcept: 'Full project with all sections.' + routingSection,
+      regressingState: {
+        active: true,
+        phase: 'execution',
+        cycle: 2,
+        totalCycles: 3,
+        discussion: 'D082',
+        planId: 'P109',
+        ticketIds: ['P109_T001']
+      }
+    });
+    const { stdout } = runScript(tmpDir);
+    const parsed = JSON.parse(stdout.trim());
+    const ctx = parsed.hookSpecificOutput.additionalContext;
+    assert(ctx.length <= 2000, 'additionalContext should be <= 2000 chars with routing, got ' + ctx.length);
+  } finally {
+    cleanupDir(tmpDir);
+  }
+});
+
+// ============================================================
+// Test 12: missing model routing section handled gracefully
+// ============================================================
+test('missing model routing section handled gracefully', function() {
+  const tmpDir = makeTempDir('subagent-test');
+  try {
+    // project.md exists but has NO Model Routing section
+    setupProject(tmpDir, {
+      projectConcept: 'Project without model routing section. Just a normal description.'
+    });
+    const { exitCode, stdout } = runScript(tmpDir);
+    assert(exitCode === 0, 'expected exit 0 when Model Routing section is missing, got ' + exitCode);
+    let parsed;
+    try { parsed = JSON.parse(stdout.trim()); } catch (e) { throw new Error('output is not valid JSON: ' + stdout.substring(0, 200)); }
+    assert(typeof parsed.hookSpecificOutput.additionalContext === 'string',
+      'additionalContext should still be a string when Model Routing is missing');
+  } finally {
+    cleanupDir(tmpDir);
+  }
+});
+
+// ============================================================
 // Summary
 // ============================================================
 console.log('\n' + '='.repeat(50));

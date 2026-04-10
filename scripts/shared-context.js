@@ -74,4 +74,30 @@ function readProjectConcept(projectDir, maxLines = 20, maxChars = 1000) {
   }
 }
 
-module.exports = { COMPRESSED_CHECKLIST, getPostCompactWarning, readProjectConcept };
+/**
+ * Reads the `## Model Routing` section from .crabshell/project.md.
+ * Returns section content (including the header) up to maxChars.
+ * Returns empty string if section not found or file doesn't exist.
+ * @param {string} projectDir
+ * @param {number} maxChars
+ * @returns {string}
+ */
+function readModelRouting(projectDir, maxChars = 300) {
+  const projectMdPath = path.join(getStorageRoot(projectDir), 'project.md');
+  if (!fs.existsSync(projectMdPath)) return '';
+  try {
+    const content = fs.readFileSync(projectMdPath, 'utf8');
+    const headerIndex = content.indexOf('## Model Routing');
+    if (headerIndex === -1) return '';
+    // Find the next ## header after the Model Routing header
+    const afterHeader = content.indexOf('\n## ', headerIndex + 1);
+    const section = afterHeader === -1
+      ? content.substring(headerIndex)
+      : content.substring(headerIndex, afterHeader);
+    return section.trim().substring(0, maxChars);
+  } catch (e) {
+    return '';
+  }
+}
+
+module.exports = { COMPRESSED_CHECKLIST, getPostCompactWarning, readProjectConcept, readModelRouting };

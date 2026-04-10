@@ -192,6 +192,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.46.0 | feat: 3-tier model routing — centralized project.md table, SubagentStart injection, SKILL.md deduplication |
 | 21.45.0 | feat: setup-rtk opt-in skill; fix: investigating default model Sonnet→Opus |
 | 21.44.0 | feat: document-first rule for all skills; refactor: CLAUDE_RULES trim; fix: TTL 5→15min; chore: MEMORY.md/CLAUDE.md compression, I047 concluded |
 | 21.43.0 | feat: orchestrator document-update fallback — investigating/planning/ticketing/light-workflow skills now require orchestrator to verify and write section content after each agent step; eliminates placeholder-only documents |
