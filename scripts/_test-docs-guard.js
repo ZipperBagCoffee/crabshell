@@ -61,7 +61,7 @@ function createTempProject(skillName) {
     fs.writeFileSync(flagPath, JSON.stringify({
       skill: skillName,
       activatedAt: new Date().toISOString(),
-      ttl: 300000
+      ttl: 900000
     }));
   }
   const cleanup = () => { try { fs.rmSync(dir, { recursive: true }); } catch {} };

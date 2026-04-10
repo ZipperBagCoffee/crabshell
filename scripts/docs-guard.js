@@ -21,8 +21,8 @@ const LEGITIMATE_SKILLS = [
   'regressing', 'light-workflow', 'verifying'
 ];
 
-// TTL for skill-active flag (5 minutes)
-const SKILL_ACTIVE_TTL_MS = 5 * 60 * 1000;
+// TTL for skill-active flag (15 minutes)
+const SKILL_ACTIVE_TTL_MS = 15 * 60 * 1000;
 
 /**
  * Check if a skill-active flag is valid (exists, not expired).

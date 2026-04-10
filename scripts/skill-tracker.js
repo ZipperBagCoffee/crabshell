@@ -18,8 +18,8 @@ const DOCS_SKILLS = [
   'regressing', 'light-workflow', 'verifying'
 ];
 
-// Default TTL: 5 minutes
-const DEFAULT_TTL_MS = 5 * 60 * 1000;
+// Default TTL: 15 minutes
+const DEFAULT_TTL_MS = 15 * 60 * 1000;
 
 /**
  * Detect if hookData represents a docs-relevant Skill call.
