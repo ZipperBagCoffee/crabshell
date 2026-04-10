@@ -43,8 +43,6 @@ Session headers use: \`## YYYY-MM-DD_HHMM (local MM-DD_HHMM)\`
 - First timestamp: UTC time (primary reference)
 - Second timestamp: User's local time (for context)
 - Example: \`## 2026-02-01_1727 (local 02-01_0927)\` = UTC 17:27, local 09:27
-- HTML/CSS design: avoid AI slop patterns (purple gradients, 3-col icon grids, centered-everything, uniform border-radius, generic hero copy, decorative blobs). Ref: gstack 10-pattern blacklist.
-- Coding: externalize values into constants, config objects, or environment variables instead of hardcoding.
 `;
 
 const MEMORY_FILES = [
