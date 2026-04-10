@@ -71,7 +71,7 @@ Before creating the investigation document and launching agents, recommend execu
 |-----------|---------------|-----------|
 | Agent count | 3–5 | Based on topic scope; more perspectives = better coverage |
 | Specialist roles | _{distinct roles relevant to topic}_ | e.g., "Forensic Auditor", "Cognitive Scientist", "Systems Engineer" — each agent must have a unique expert perspective |
-| Model tier | Sonnet (all agents) | Default for investigation. Opus if topic requires deep architectural reasoning. Haiku only if user explicitly requests. |
+| Model tier | Opus (all agents) | Default for investigation — analysis and judgment quality matters. Sonnet only for simple/mechanical searches. Haiku only if user explicitly requests. |
 
 After presenting the table, state: **"Silence = proceed with these parameters. Adjust any parameter before I continue."**
 

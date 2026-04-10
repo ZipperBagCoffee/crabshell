@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.44.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.45.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -323,6 +323,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.45.0 | feat: setup-rtk skill; fix: investigating default Sonnet→Opus |
 | 21.44.0 | feat: document-first rule all skills; refactor: CLAUDE_RULES trim; fix: TTL 5→15min; chore: MEMORY.md/CLAUDE.md compression |
 | 21.43.0 | feat: orchestrator document-update fallback — investigating/planning/ticketing/light-workflow skills enforce section content write after each agent step |
 | 21.42.0 | feat: oscillation mitigation — PRESSURE_L1/L2 awareness text; PROHIBITED PATTERNS #8; checkReversalPhrases (14 patterns); oscillationCount in memory-index.json; Stop hook blocks count≥3 + pressure≥1 |

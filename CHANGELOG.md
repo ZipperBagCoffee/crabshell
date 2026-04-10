@@ -1,5 +1,9 @@
 # Changelog
 
+## v21.45.0
+- feat: setup-rtk opt-in skill — OS detection, binary download, PATH setup, rtk init -g
+- fix: investigating SKILL.md default model Sonnet→Opus (v21.15.0 error corrected)
+
 ## v21.44.0
 - feat: document-first rule added to 6 skills (investigating, discussing, regressing, light-workflow, verifying + EXECUTION-PHASES.md) — 17 instances across 8 skill files
 - feat: CLAUDE.md common document-first rule (project-specific section)
