@@ -136,6 +136,130 @@ function checkReversalPhrases(response) {
   return count;
 }
 
+// ====================================================================
+// Too-Good P/O/G Detection
+// ====================================================================
+
+/**
+ * Find the index of the Gap column in a P/O/G table header row.
+ * Header row format: | col1 | col2 | ... | Gap | ...
+ * Returns -1 if not found.
+ */
+function findGapColumnIndex(headerRow) {
+  const cols = headerRow.split('|').map(c => c.trim()).filter(c => c);
+  return cols.findIndex(c => /^(gap|갭)$/i.test(c));
+}
+
+/**
+ * Check if a cell value represents a "no finding" / None gap value.
+ * Returns true for None, 없음, N/A, 해당없음, -, empty.
+ */
+function isNoneGapValue(cellValue) {
+  const v = cellValue.trim();
+  return /^(none|없음|n\/a|해당없음|-)$/i.test(v) || v === '';
+}
+
+/**
+ * Check response for a too-good P/O/G table (all Gap values are None/없음/N/A).
+ * Supports both 4-column and 5-column table formats, including abbreviated headers.
+ * Requires minimum 2 data rows to trigger.
+ * Returns { rowCount } if all-None detected, null otherwise.
+ */
+function checkTooGoodPOG(response) {
+  if (!response) return null;
+
+  // Detect P/O/G table header — match headers containing 'Gap' or '갭' column,
+  // combined with at least one of: Prediction/Pred, Observation/Obs, Item.
+  // Supports full names (4-col) and abbreviated names (5-col).
+  const headerMatch = response.match(/\|[^\n]*\b(Prediction|Pred)\b[^\n]*\b(Observation|Obs)\b[^\n]*/i)
+    || response.match(/\|[^\n]*\bItem\b[^\n]*\b(Prediction|Pred)\b[^\n]*/i)
+    || response.match(/\|[^\n]*\b(gap|갭)\b[^\n]*\|/i);
+  if (!headerMatch) return null;
+
+  const headerRow = headerMatch[0];
+  const gapColIdx = findGapColumnIndex(headerRow);
+  if (gapColIdx < 0) return null; // No Gap column found
+
+  // Find separator row and data rows after the header
+  const headerPos = response.indexOf(headerMatch[0]);
+  const afterHeader = response.slice(headerPos + headerMatch[0].length);
+
+  // Split into lines, skip separator row (|---|---|...)
+  const lines = afterHeader.split('\n').map(l => l.trim()).filter(l => l.startsWith('|'));
+
+  // Skip separator row(s) — rows containing only dashes/colons between pipes
+  const dataRows = lines.filter(l => !/^\|[\s|:\-]+\|$/.test(l));
+
+  if (dataRows.length < 2) return null; // Need at least 2 data rows
+
+  // Check Gap column value in each data row
+  let allNone = true;
+  let checkedCount = 0;
+
+  for (const row of dataRows) {
+    const cells = row.split('|').map(c => c.trim()).filter((_, i, arr) => i > 0 && i < arr.length - 1);
+    if (cells.length <= gapColIdx) {
+      allNone = false;
+      break;
+    }
+    const gapValue = cells[gapColIdx];
+    if (!isNoneGapValue(gapValue)) {
+      allNone = false;
+      break;
+    }
+    checkedCount++;
+  }
+
+  if (!allNone || checkedCount < 2) return null;
+
+  return { rowCount: checkedCount };
+}
+
+/**
+ * Read tooGoodSkepticism.retryCount from memory-index.json.
+ * Returns 0 on any error (fail-open).
+ */
+function getTooGoodRetryCount(projectDir) {
+  try {
+    const indexPath = path.join(projectDir || getProjectDir(), STORAGE_ROOT, 'memory', 'memory-index.json');
+    const index = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
+    return (index && index.tooGoodSkepticism && typeof index.tooGoodSkepticism.retryCount === 'number')
+      ? index.tooGoodSkepticism.retryCount : 0;
+  } catch { return 0; }
+}
+
+/**
+ * Increment tooGoodSkepticism.retryCount in memory-index.json.
+ * Returns the new count. Fail-open: returns 0 on any error.
+ */
+function incrementTooGoodRetryCount(projectDir) {
+  try {
+    const indexPath = path.join(projectDir || getProjectDir(), STORAGE_ROOT, 'memory', 'memory-index.json');
+    let index;
+    try { index = JSON.parse(fs.readFileSync(indexPath, 'utf8')); } catch { index = {}; }
+    if (!index.tooGoodSkepticism) index.tooGoodSkepticism = { retryCount: 0 };
+    if (typeof index.tooGoodSkepticism.retryCount !== 'number') index.tooGoodSkepticism.retryCount = 0;
+    index.tooGoodSkepticism.retryCount++;
+    fs.writeFileSync(indexPath, JSON.stringify(index, null, 2));
+    return index.tooGoodSkepticism.retryCount;
+  } catch { return 0; }
+}
+
+/**
+ * Reset tooGoodSkepticism.retryCount to 0 in memory-index.json.
+ * Fail-open on any error.
+ */
+function resetTooGoodRetryCount(projectDir) {
+  try {
+    const indexPath = path.join(projectDir || getProjectDir(), STORAGE_ROOT, 'memory', 'memory-index.json');
+    let index;
+    try { index = JSON.parse(fs.readFileSync(indexPath, 'utf8')); } catch { index = {}; }
+    if (!index.tooGoodSkepticism) index.tooGoodSkepticism = { retryCount: 0 };
+    index.tooGoodSkepticism.retryCount = 0;
+    fs.writeFileSync(indexPath, JSON.stringify(index, null, 2));
+  } catch {}
+}
+
 /**
  * Read oscillationCount from memory-index.json.
  * Returns 0 on any error (fail-open).
@@ -583,6 +707,36 @@ function handleStop(hookData) {
     process.exit(2);
   }
 
+  // Step 1.5: Too-good P/O/G check — all Gap values None/없음/N/A
+  // Use stripped response so table content is not obscured by code blocks
+  const strippedResponse = stripProtectedZones(response);
+  const tooGoodResult = checkTooGoodPOG(strippedResponse);
+  if (tooGoodResult) {
+    // Non-all-None P/O/G found → reward signal: reset counter
+    // (This branch: all-None detected — increment)
+    const retryCount = incrementTooGoodRetryCount();
+    if (retryCount <= 3) {
+      const tooGoodOutput = {
+        decision: 'block',
+        reason: `Too-good P/O/G detected: all ${tooGoodResult.rowCount} Gap values are None/없음/N/A. Skepticism check required: (1) Did you actually compare prediction vs observation, or did you copy the prediction? (2) If all gaps are truly none, state the specific evidence for each row. (3) Re-examine each observation independently — genuine verification rarely produces zero gaps.`
+      };
+      process.stderr.write(`[SYCOPHANCY_GUARD] Too-good P/O/G blocked: rowCount=${tooGoodResult.rowCount} retryCount=${retryCount}\n`);
+      console.log(JSON.stringify(tooGoodOutput));
+      process.exit(2);
+    } else {
+      // Over threshold: allow and reset counter (avoid infinite loop)
+      resetTooGoodRetryCount();
+      process.stderr.write(`[SYCOPHANCY_GUARD] Too-good P/O/G: retry limit exceeded, allowing (retryCount reset)\n`);
+    }
+  } else {
+    // Check if a non-all-None P/O/G table is present — reward signal: reset counter
+    const hasRealPOG = /\|\s*Prediction.*\|\s*Observation/i.test(strippedResponse)
+      || /\|\s*Item\s*\|\s*Prediction/i.test(strippedResponse);
+    if (hasRealPOG) {
+      resetTooGoodRetryCount();
+    }
+  }
+
   // Step 2: Run sycophancy check
   const result = checkSycophancy(response, pLevel);
   if (!result) {
@@ -632,5 +786,5 @@ main().catch(() => process.exit(0)); // fail-open on any error
 
 // Export for unit testing
 if (require.main !== module) {
-  module.exports = { checkSycophancy, checkVerificationClaims, getPressureLevel, pressureHint, checkReversalPhrases, getOscillationCount, incrementOscillationCount };
+  module.exports = { checkSycophancy, checkVerificationClaims, getPressureLevel, pressureHint, checkReversalPhrases, getOscillationCount, incrementOscillationCount, checkTooGoodPOG, findGapColumnIndex, getTooGoodRetryCount, incrementTooGoodRetryCount, resetTooGoodRetryCount };
 }

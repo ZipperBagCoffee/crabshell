@@ -296,6 +296,16 @@ This is a SYSTEM MAINTENANCE TASK. You CANNOT skip this.
 
 const COMPRESSED_CHECKLIST = COMPRESSED_CHECKLIST_SHARED;
 
+// Parallel processing reminder
+const PARALLEL_REMINDER = `\n## Parallel Tool Call Check\nBefore making tool calls: are any of these independent (no data dependency)?\nIf YES → make them in a single response as parallel calls.\nExamples: Read+Read (different files), Grep+Glob, Agent+Agent → parallelizable.\nSequential = dependency exists (Read A → Edit A). No dependency → parallel.\n`;
+
+function shouldInjectParallelReminder(userPrompt, isRegressingActive) {
+  if (isRegressingActive) return true;
+  if (!userPrompt) return false;
+  const keywords = [/parallel/i, /병렬/, /sequential/i, /순차/, /\bagent/i, /에이전트/];
+  return keywords.some(kw => kw.test(userPrompt));
+}
+
 // getProjectDir, readJsonOrDefault, readIndexSafe imported from utils.js
 
 function checkDeltaPending(projectDir) {
@@ -668,6 +678,11 @@ async function main() {
         context += ticketWarning;
       }
 
+      // Parallel processing reminder (injected after regressing reminder, before memory snippets)
+      if (shouldInjectParallelReminder(userPrompt, !!regressingReminder)) {
+        context += PARALLEL_REMINDER;
+      }
+
       // Prompt-aware memory loading
       const memorySnippets = getRelevantMemorySnippets(projectDir, userPrompt);
       if (memorySnippets) {
@@ -741,6 +756,7 @@ module.exports = {
   parseMemorySections,
   extractKeywords,
   getRelevantMemorySnippets,
+  shouldInjectParallelReminder,
   // Re-export from regressing-state for convenience
   buildRegressingReminder,
   // Constants
@@ -754,6 +770,7 @@ module.exports = {
   DELTA_INSTRUCTION,
   ROTATION_INSTRUCTION,
   COMPRESSED_CHECKLIST,
+  PARALLEL_REMINDER,
   PRESSURE_L1,
   PRESSURE_L2,
   PRESSURE_L3,

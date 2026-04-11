@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.46.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.47.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -323,6 +323,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.47.0 | feat: completion-drive-guard, too-good P/O/G skepticism, parallel processing reminder, regressing Rule 14, 39 new unit tests |
 | 21.46.0 | feat: 3-tier model routing — centralized project.md table, SubagentStart injection, SKILL.md deduplication |
 | 21.45.0 | feat: setup-rtk skill; fix: investigating default Sonnet→Opus |
 | 21.44.0 | feat: document-first rule all skills; refactor: CLAUDE_RULES trim; fix: TTL 5→15min; chore: MEMORY.md/CLAUDE.md compression |

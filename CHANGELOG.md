@@ -1,5 +1,12 @@
 # Changelog
 
+## 21.47.0
+- feat: completion-drive-guard — new Stop hook detecting autonomous forward-motion ("진행합니다/시작합니다") patterns with regressing exemption
+- feat: too-good P/O/G skepticism — sycophancy-guard extension blocking all-Gap=None verification tables (max 3 retries), 4/5 column support
+- feat: parallel processing reminder — inject-rules.js conditional injection during regressing or keyword-triggered prompts
+- feat: regressing SKILL.md Rule 14 — question-save-continue protocol (save to T doc, assume, continue)
+- feat: 39 new unit tests (completion-drive 19, too-good-pog 10, parallel-reminder 10)
+
 ## 21.46.0
 - feat: 3-tier model routing — centralized T1(Opus)/T2(Sonnet)/T3(Haiku) table in project.md, SubagentStart hook injection via readModelRouting(), SKILL.md deduplication (investigating, regressing, light-workflow)
 
