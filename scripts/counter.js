@@ -5,7 +5,7 @@ const os = require('os');
 const { refineRaw, refineRawSync } = require('./refine-raw');
 const { checkAndRotate } = require('./memory-rotation');
 const { extractDelta } = require('./extract-delta');
-const { MEMORY_DIR, MEMORY_FILE, SESSIONS_DIR, COUNTER_FILE } = require('./constants');
+const { MEMORY_DIR, MEMORY_FILE, SESSIONS_DIR, COUNTER_FILE, WA_COUNT_FILE } = require('./constants');
 const { detectRegressingSkillCall, advancePhase } = require('./regressing-state');
 const { readStdin: readStdinShared, findTranscriptPath } = require('./transcript-utils');
 
@@ -48,6 +48,32 @@ function getCounter() {
 function setCounter(value) {
   const counterPath = path.join(getStorageRoot(), MEMORY_DIR, COUNTER_FILE);
   writeJson(counterPath, { counter: value });
+}
+
+/**
+ * Reset the WA count file to zero. Called on ticketing skill invocation.
+ * Fail-open: writes reset state, swallows errors.
+ */
+function resetWaCount() {
+  try {
+    const projectDir = getProjectDir();
+    const waPath = path.join(getStorageRoot(projectDir), MEMORY_DIR, WA_COUNT_FILE);
+    fs.writeFileSync(waPath, JSON.stringify({ waCount: 0, raCount: 0, totalTaskCalls: 0, lastResetAt: new Date().toISOString(), resetReason: 'ticketing-skill' }, null, 2));
+  } catch (e) { /* fail-open */ }
+}
+
+/**
+ * Classify a TaskCreate hook invocation as WA or RA.
+ * Conservative: anything that is not clearly an RA is classified as WA.
+ * Returns 'WA', 'RA', or null (if not a TaskCreate).
+ */
+function classifyAgent(hookData) {
+  if (hookData.tool_name !== 'TaskCreate') return null;
+  const input = hookData.tool_input || {};
+  const text = ((input.prompt || '') + ' ' + (input.description || '')).toLowerCase();
+  const RA_PATTERNS = /\b(review agent|verification|verify|reviewer)\b/;
+  if (RA_PATTERNS.test(text)) return 'RA';
+  return 'WA'; // default = WA (conservative)
 }
 
 async function check() {
@@ -100,6 +126,29 @@ async function check() {
           console.error('[PRESSURE RESET] Task delegation detected — pressure reset to L0');
         }
       } catch (e) { /* fail-open */ }
+    }
+
+    // WA count tracking on TaskCreate
+    if (hookData.tool_name === 'TaskCreate') {
+      try {
+        const agentType = classifyAgent(hookData);
+        const projectDir = getProjectDir();
+        const waPath = path.join(getStorageRoot(projectDir), MEMORY_DIR, WA_COUNT_FILE);
+        const waData = readJsonOrDefault(waPath, { waCount: 0, raCount: 0, totalTaskCalls: 0 });
+        waData.totalTaskCalls++;
+        if (agentType === 'WA') waData.waCount++;
+        else if (agentType === 'RA') waData.raCount++;
+        fs.writeFileSync(waPath, JSON.stringify(waData, null, 2));
+      } catch (e) { /* fail-open */ }
+    }
+
+    // Ticketing reset: when ticketing skill is invoked, reset wa-count.json
+    if (hookData.tool_name === 'Skill') {
+      const input = hookData.tool_input || {};
+      const skillName = (typeof input.skill === 'string') ? input.skill.split(':').pop() : '';
+      if (skillName === 'ticketing') {
+        resetWaCount();
+      }
     }
 
     // Check rotation before auto-save
@@ -844,5 +893,5 @@ Memory Rotation (v13.0.0):
 
 // Export for testing (only when required as a module, not when run directly)
 if (require.main !== module) {
-  module.exports = { getCounter, setCounter, getConfig, cleanupDuplicateL1, dedupeL1, parseArg, compress, pruneOldL1 };
+  module.exports = { getCounter, setCounter, getConfig, cleanupDuplicateL1, dedupeL1, parseArg, compress, pruneOldL1, classifyAgent, resetWaCount };
 }
