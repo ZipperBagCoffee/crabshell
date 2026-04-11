@@ -86,7 +86,7 @@ test('shouldInjectParallelReminder("", true) → true (regressing overrides empt
 // 10. PARALLEL_REMINDER constant is exported and non-empty
 test('PARALLEL_REMINDER constant is exported and contains expected content', () => {
   assert.ok(typeof PARALLEL_REMINDER === 'string', 'PARALLEL_REMINDER should be a string');
-  assert.ok(PARALLEL_REMINDER.includes('Parallel Tool Call Check'), 'should contain header text');
+  assert.ok(PARALLEL_REMINDER.includes('Parallel Execution Check'), 'should contain header text');
   assert.ok(PARALLEL_REMINDER.length > 50, 'should be non-trivial content');
 });
 

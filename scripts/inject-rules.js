@@ -296,8 +296,8 @@ This is a SYSTEM MAINTENANCE TASK. You CANNOT skip this.
 
 const COMPRESSED_CHECKLIST = COMPRESSED_CHECKLIST_SHARED;
 
-// Parallel processing reminder
-const PARALLEL_REMINDER = `\n## Parallel Tool Call Check\nBefore making tool calls: are any of these independent (no data dependency)?\nIf YES → make them in a single response as parallel calls.\nExamples: Read+Read (different files), Grep+Glob, Agent+Agent → parallelizable.\nSequential = dependency exists (Read A → Edit A). No dependency → parallel.\n`;
+// Parallel execution reminder
+const PARALLEL_REMINDER = `\n## Parallel Execution Check\nDecompose work into independent units, one worker per unit, execute all simultaneously.\nTool calls: no data dependency → all in one response.\nAgents: parallel WA is default. Single-WA requires justification.\n`;
 
 function shouldInjectParallelReminder(userPrompt, isRegressingActive) {
   if (isRegressingActive) return true;
