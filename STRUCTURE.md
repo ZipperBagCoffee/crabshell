@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.52.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.53.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -323,6 +323,9 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.53.0 | fix: hooks.json trailing comma fix — version bump for cache refresh |
+| 21.52.0 | feat: WA count enforcement — classifyAgent, wa-count.json tracking, ticketing reset, Stop hook single-WA block, PARALLEL_REMINDER "parallel and multiple" |
+| 21.51.0 | fix: PARALLEL_REMINDER — WA parallel vs WA→RA sequential distinction, Single-WA tightened to single-file mechanical only |
 | 21.50.0 | feat: input classification + guard cleanup — DEFAULT_NO_EXECUTION, EXECUTION_JUDGMENT, regressing-loop-guard rename, completion-drive-write-guard removal |
 | 21.49.0 | fix: regressing Stop hook blocks instead of skips — forces autonomous execution continuation |
 | 21.48.0 | feat: completion drive Write/Edit guard, positive path tests, PARALLEL_REMINDER rewrite, 3 SKILL.md completion drive warnings |
