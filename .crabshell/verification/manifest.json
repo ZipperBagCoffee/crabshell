@@ -1,0 +1,114 @@
+{
+  "projectType": "Node.js CLI (Claude Code plugin hooks)",
+  "created": "2026-03-28T08:20:00Z",
+  "updated": "2026-03-29T00:00:00Z",
+  "tools": { "build": null, "run": null, "test": null },
+  "entries": [
+    {
+      "id": "AC-1",
+      "ia": "inject-rules.js uses readProjectConcept from shared-context",
+      "type": "indirect",
+      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const f=require('fs').readFileSync('C:/Users/user/Documents/memory-keeper-plugin/scripts/inject-rules.js','utf8');const a=f.includes('readProjectConcept');const b=f.includes('shared-context');console.log(a&&b?'PASS:shared-context':'FAIL:'+a+'/'+b)\"",
+      "expected": "PASS:",
+      "timeout": 5000
+    },
+    {
+      "id": "AC-2",
+      "ia": "CLAUDE_RULES에 timestamp format 가이드라인",
+      "type": "indirect",
+      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const f=require('fs').readFileSync('C:/Users/user/Documents/memory-keeper-plugin/scripts/load-memory.js','utf8');console.log(f.includes('YYYY-MM-DD_HHMM')?'PASS:found':'FAIL:missing')\"",
+      "expected": "PASS:",
+      "timeout": 5000
+    },
+    {
+      "id": "AC-3",
+      "ia": "CLAUDE_RULES에 memory-index.json 참조",
+      "type": "indirect",
+      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const f=require('fs').readFileSync('C:/Users/user/Documents/memory-keeper-plugin/scripts/load-memory.js','utf8');console.log(f.includes('memory-index.json')?'PASS:found':'FAIL:missing')\"",
+      "expected": "PASS:",
+      "timeout": 5000
+    },
+    {
+      "id": "AC-4",
+      "ia": "setup-project SKILL.md에 3 lines 참조 0회",
+      "type": "indirect",
+      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const f=require('fs').readFileSync('C:/Users/user/Documents/memory-keeper-plugin/skills/setup-project/SKILL.md','utf8');const c=(f.match(/3 lines/gi)||[]).length;console.log(c===0?'PASS:zero':'FAIL:count_'+c)\"",
+      "expected": "PASS:",
+      "timeout": 5000
+    },
+    {
+      "id": "AC-5",
+      "ia": "sycophancy-guard behavioral: blocks sycophancy with P/O/G exempts evidence",
+      "type": "direct",
+      "command": "\"C:/Program Files/nodejs/node.exe\" C:/Users/user/Documents/memory-keeper-plugin/scripts/_test-sycophancy-guard-manifest.js",
+      "expected": "PASS:",
+      "timeout": 10000
+    },
+    {
+      "id": "AC-6",
+      "ia": "version 21.51.0",
+      "type": "indirect",
+      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const v=JSON.parse(require('fs').readFileSync('C:/Users/user/Documents/memory-keeper-plugin/.claude-plugin/plugin.json','utf8')).version;console.log(v==='21.51.0'?'PASS:'+v:'FAIL:'+v)\"",
+      "expected": "PASS:",
+      "timeout": 5000
+    },
+    {
+      "id": "V001",
+      "ia": "verification-sequence gate blocks git commit without test",
+      "level": "L1",
+      "type": "direct",
+      "steps": [
+        "Set verification-state.json to {state:'EDITED', editsSinceTest:['test.js']}",
+        "Run verification-sequence.js gate with Bash git commit input",
+        "Expect exit code 2 (block)"
+      ],
+      "command": "\"C:/Program Files/nodejs/node.exe\" C:/Users/user/Documents/memory-keeper-plugin/scripts/_test-verification-sequence.js",
+      "expected": "PASS:",
+      "observation": null,
+      "timeout": 15000
+    },
+    {
+      "id": "V002",
+      "ia": "sycophancy-guard claim detection blocks unverified claims",
+      "level": "L1",
+      "type": "direct",
+      "steps": [
+        "Send stop_response with 'verified working' and no bash history",
+        "Expect block with tier NONE"
+      ],
+      "command": "\"C:/Program Files/nodejs/node.exe\" C:/Users/user/Documents/memory-keeper-plugin/scripts/_test-sycophancy-claim-detection.js",
+      "expected": "PASS:",
+      "observation": null,
+      "timeout": 15000
+    },
+    {
+      "id": "V003",
+      "ia": "pressure-guard L3 blocks Read tool",
+      "level": "L1",
+      "type": "direct",
+      "steps": [
+        "Set memory-index.json feedbackPressure.level to 3",
+        "Run pressure-guard.js with Read tool input on non-.crabshell path",
+        "Expect exit code 2 (block)"
+      ],
+      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const{execSync}=require('child_process');const fs=require('fs');const path=require('path');const dir='C:/Users/user/Documents/memory-keeper-plugin';const idxPath=path.join(dir,'.crabshell/memory/memory-index.json');let idx;try{idx=JSON.parse(fs.readFileSync(idxPath,'utf8'))}catch{idx={}}const origFP=idx.feedbackPressure;idx.feedbackPressure={level:3,count:3};fs.writeFileSync(idxPath,JSON.stringify(idx,null,2));const input=JSON.stringify({tool_name:'Read',tool_input:{file_path:'/some/project/file.js'}});try{execSync('\\\"C:/Program Files/nodejs/node.exe\\\" \\\"'+path.join(dir,'scripts/pressure-guard.js')+'\\\"',{input,timeout:5000,encoding:'utf8',env:{...process.env,CLAUDE_PROJECT_DIR:dir}});console.log('FAIL:allowed')}catch(e){if(e.status===2){console.log('PASS:blocked_exit2')}else{console.log('FAIL:exit_'+e.status)}}finally{if(origFP!==undefined){idx.feedbackPressure=origFP}else{delete idx.feedbackPressure}fs.writeFileSync(idxPath,JSON.stringify(idx,null,2))}\"",
+      "expected": "PASS:",
+      "observation": null,
+      "timeout": 10000
+    },
+    {
+      "id": "V004",
+      "ia": "L1-L4 hierarchy present in CLAUDE.md",
+      "level": "L2",
+      "type": "indirect",
+      "steps": [
+        "Read CLAUDE.md and check for L1-L4 observation resolution hierarchy text",
+        "Check inject-rules.js RULES constant includes L1-L4 definitions"
+      ],
+      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const fs=require('fs');const rules=fs.readFileSync('C:/Users/user/Documents/memory-keeper-plugin/scripts/inject-rules.js','utf8');const hasL1=rules.includes('L1 (Direct Execution)');const hasL2=rules.includes('L2 (Indirect Execution)');const hasL3=rules.includes('L3 (Structural Check)');const hasL4=rules.includes('L4 (Claim Without Evidence)');const all=hasL1&&hasL2&&hasL3&&hasL4;console.log(all?'PASS:all_levels_found':'FAIL:L1='+hasL1+' L2='+hasL2+' L3='+hasL3+' L4='+hasL4)\"",
+      "expected": "PASS:",
+      "observation": null,
+      "timeout": 5000
+    }
+  ]
+}

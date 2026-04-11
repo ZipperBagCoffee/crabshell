@@ -1,5 +1,8 @@
 # Changelog
 
+## 21.51.0
+- fix: PARALLEL_REMINDER — WA parallel vs WA→RA sequential distinction, Single-WA tightened to single-file mechanical only
+
 ## 21.50.0
 - feat: input classification (classifyUserIntent) + DEFAULT_NO_EXECUTION + EXECUTION_JUDGMENT in inject-rules.js
 - feat: completion-drive-guard.js → regressing-loop-guard.js (regex patterns removed, regressing block only)
