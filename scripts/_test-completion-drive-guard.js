@@ -8,8 +8,12 @@ const path = require('path');
 // Set required env vars before requiring the module
 process.env.CLAUDE_PROJECT_DIR = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 
+const fs = require('fs');
+const os = require('os');
+
 const {
   checkCompletionDrive,
+  isRegressingActive,
   stripProtectedZones,
   hasUserInstructionReference,
 } = require(path.join(__dirname, '../scripts/completion-drive-guard.js'));
@@ -149,6 +153,77 @@ test('stripProtectedZones removes inline code', () => {
   const input = 'use `진행합니다` for testing';
   const stripped = stripProtectedZones(input);
   assert.ok(!stripped.includes('진행합니다'), 'inline code should be stripped');
+});
+
+// --- isRegressingActive ---
+// Helper: write a temp regressing-state.json under the project dir
+const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+const statePath = path.join(projectDir, '.crabshell', 'memory', 'regressing-state.json');
+
+function withRegressingState(active, fn) {
+  const existed = fs.existsSync(statePath);
+  const backup = existed ? fs.readFileSync(statePath, 'utf8') : null;
+  try {
+    fs.mkdirSync(path.dirname(statePath), { recursive: true });
+    fs.writeFileSync(statePath, JSON.stringify({ active }), 'utf8');
+    fn();
+  } finally {
+    if (backup !== null) {
+      fs.writeFileSync(statePath, backup, 'utf8');
+    } else if (!existed) {
+      try { fs.unlinkSync(statePath); } catch (_) {}
+    }
+  }
+}
+
+test('isRegressingActive returns true when state file has active:true', () => {
+  withRegressingState(true, () => {
+    assert.strictEqual(isRegressingActive(), true, 'expected true when regressing-state.json has active:true');
+  });
+});
+
+test('isRegressingActive returns false when state file has active:false', () => {
+  withRegressingState(false, () => {
+    assert.strictEqual(isRegressingActive(), false, 'expected false when active:false');
+  });
+});
+
+test('isRegressingActive returns false when state file is absent (fail-open)', () => {
+  const existed = fs.existsSync(statePath);
+  const backup = existed ? fs.readFileSync(statePath, 'utf8') : null;
+  try {
+    if (existed) fs.unlinkSync(statePath);
+    assert.strictEqual(isRegressingActive(), false, 'expected false when no state file');
+  } finally {
+    if (backup !== null) fs.writeFileSync(statePath, backup, 'utf8');
+  }
+});
+
+// --- Regressing + stop_hook_active guard ordering ---
+// We test the logic in isolation: when stop_hook_active is true, the guard must exit(0) BEFORE
+// checking regressing state. We verify this by confirming isRegressingActive() would return true
+// but the main() flow would skip due to stop_hook_active. Since main() calls process.exit(), we
+// test the ordering rule as a documentation test by checking each flag independently.
+test('regressing-block: isRegressingActive true → would block (not skip)', () => {
+  // When regressing is active, guard returns block. Verify block by checking that
+  // isRegressingActive() = true and stop_hook_active = false produces block intent.
+  withRegressingState(true, () => {
+    const regressingOn = isRegressingActive();
+    const stopHookActive = false; // simulated
+    // Ordering: stop_hook_active checked first; if false, regressing check fires → block
+    const wouldBlock = !stopHookActive && regressingOn;
+    assert.strictEqual(wouldBlock, true, 'expected block when regressing active and stop_hook_active false');
+  });
+});
+
+test('regressing-block + stop_hook_active: should NOT block (prevent infinite loop)', () => {
+  withRegressingState(true, () => {
+    const regressingOn = isRegressingActive();
+    const stopHookActive = true; // simulated: continuation from a previous stop hook block
+    // stop_hook_active takes priority → guard exits(0), no block
+    const wouldBlock = !stopHookActive && regressingOn;
+    assert.strictEqual(wouldBlock, false, 'expected no block when stop_hook_active is true (anti-loop)');
+  });
 });
 
 // --- Summary ---

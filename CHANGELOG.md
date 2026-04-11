@@ -1,5 +1,8 @@
 # Changelog
 
+## 21.49.0
+- fix: regressing Stop hook blocks instead of skips — forces autonomous execution continuation
+
 ## 21.48.0
 - feat: completion drive Write/Edit guard (completion-drive-write-guard.js) — blocks code file writes with self-check prompt; .crabshell/ exempt, regressing + light-workflow bypass
 - feat: 3 SKILL.md completion drive warnings (regressing, ticketing, light-workflow)

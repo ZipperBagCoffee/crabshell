@@ -123,8 +123,16 @@ async function main() {
   // Prevent infinite loop: exit if this is a continuation from a previous stop hook block
   if (hookData.stop_hook_active) process.exit(0);
 
-  // Skip if regressing workflow is active (user-directed multi-step workflow)
-  if (isRegressingActive()) process.exit(0);
+  // Block if regressing workflow is active: force autonomous continuation
+  if (isRegressingActive()) {
+    const output = {
+      decision: 'block',
+      reason: 'Regressing active — do not stop. Save any questions to the active T document\'s Open Questions section, make a reasonable assumption, and continue autonomous execution. Do not wait for user input.'
+    };
+    process.stderr.write('[COMPLETION_DRIVE_GUARD] Blocked: regressing active — forcing continuation\n');
+    console.log(JSON.stringify(output));
+    process.exit(2);
+  }
 
   const response = hookData.stop_response || hookData.last_assistant_message || '';
   if (!response) process.exit(0);

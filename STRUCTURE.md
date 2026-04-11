@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.48.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.49.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -323,6 +323,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.49.0 | fix: regressing Stop hook blocks instead of skips — forces autonomous execution continuation |
 | 21.48.0 | feat: completion drive Write/Edit guard, positive path tests, PARALLEL_REMINDER rewrite, 3 SKILL.md completion drive warnings |
 | 21.47.0 | feat: completion-drive-guard, too-good P/O/G skepticism, parallel processing reminder, regressing Rule 14, 39 new unit tests |
 | 21.46.0 | feat: 3-tier model routing — centralized project.md table, SubagentStart injection, SKILL.md deduplication |
