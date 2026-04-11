@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.53.0)
+# Crabshell Architecture (v21.54.0)
 
 ## Overview
 
@@ -48,14 +48,14 @@ Two meta-principles guide Claude's approach to obstacles:
 |  | load-memory   |  | inject-rules      |  | counter check|  |counter   ||
 |  +-------+-------+  +--------+----------+  | skill-tracker|  |  final   ||
 |  |               |                  |       +------+-------+  +----+-----+|
-|  |  +-----------+--+  +----------+  |              |              |      |
-|  |  | PreToolUse   |  | Stop     |  |              |              |      |
-|  |  | (Write|Edit) |  |sycophancy|  |              |              |      |
-|  |  | regressing-  |  | -guard.js|  |              |              |      |
-|  |  | guard.js     |  +----------+  |              |              |      |
-|  |  | docs-guard.js|                |              |              |      |
-|  |  | log-guard.js |                |              |              |      |
-|  |  | verify-guard |                |              |              |      |
+|  |  +-----------+--+  +------------+  |              |              |      |
+|  |  | PreToolUse   |  | Stop       |  |              |              |      |
+|  |  | (Write|Edit) |  |sycophancy  |  |              |              |      |
+|  |  | regressing-  |  | -guard.js  |  |              |              |      |
+|  |  | guard.js     |  |scope-guard |  |              |              |      |
+|  |  | docs-guard.js|  |regressing- |  |              |              |      |
+|  |  | log-guard.js |  |loop-guard  |  |              |              |      |
+|  |  | verify-guard |  +------------+  |              |              |      |
 |  |  | (Read|Grep|  |                |              |              |      |
 |  |  |  Glob|Bash)  |                |              |              |      |
 |  |  | path-guard.js|                |              |              |      |
@@ -128,9 +128,9 @@ Two meta-principles guide Claude's approach to obstacles:
           |
           v
 +--------------------------------------------------------------------------+
-|  Skills Layer (17 skills)                                                 |
+|  Skills Layer (18 skills)                                                 |
 |  +---------------------------------+  +--------------------------------+ |
-|  | Operational Skills (8)          |  | Memory Skills (8)              | |
+|  | Operational Skills (9)          |  | Memory Skills (8)              | |
 |  | - discussing    (D documents)   |  | - save-memory                  | |
 |  | - planning      (P documents)   |  | - load-memory                  | |
 |  | - ticketing     (T documents)   |  | - search-memory                | |
@@ -139,6 +139,7 @@ Two meta-principles guide Claude's approach to obstacles:
 |  | - regressing    (D→P→T loop)    |  | - memory-delta                 | |
 |  | - verifying     (verification)  |  | - memory-rotate                | |
 |  | - status        (healthcheck)   |  | - lessons                      | |
+|  | - setup-rtk     (RTK config)    |  |                                | |
 |  +---------------------------------+  +--------------------------------+ |
 +--------------------------------------------------------------------------+
 ```
@@ -222,8 +223,10 @@ Two meta-principles guide Claude's approach to obstacles:
    │   └─> Detect agreement-without-verification patterns → block with re-examination
    ├─> doc-watchdog.js stop (v21.18.0)
    │   └─> Block session end when regressing active + ticket has no work log entry since last code edit
-   └─> scope-guard.js (v21.19.0)
-       └─> Compare user-requested quantity vs response count; block scope reduction without approval
+   ├─> scope-guard.js (v21.19.0)
+   │   └─> Compare user-requested quantity vs response count; block scope reduction without approval
+   └─> regressing-loop-guard.js (v21.50.0)
+       └─> Block stop when regressing active (force continuation); enforce ≥2 parallel WAs; light-workflow + single-WA enforcement
 
 4. PostToolUse (all tools)
    ├─> counter.js check
@@ -335,6 +338,8 @@ Agent orchestration rules (11 rules covering pairing, cross-review, coherence, c
 | `pressure-guard.js` | PreToolUse (Read\|Grep\|Glob\|Bash\|Write\|Edit) | Detect feedback pressure escalation; block all 6 tools at L3 with .crabshell/.claude exemption |
 | `path-guard.js` | PreToolUse (Read\|Grep\|Glob\|Bash\|Write\|Edit) | Block wrong .crabshell/ path; shell var resolution (fail-closed for .crabshell/ v21.8.0); block Edit on logbook.md; block Write shrink on logbook.md (v20.6.0) |
 | `sycophancy-guard.js` | Stop, PreToolUse (Write\|Edit) | Dual-layer sycophancy detection + verification claim detection (4-tier classification): Stop response + mid-turn transcript parsing; block with re-examination |
+| `scope-guard.js` | Stop | Compare user-requested quantity vs response count; block scope reduction without approval |
+| `regressing-loop-guard.js` | Stop | Block stop when regressing active; enforce ≥2 parallel WAs in regressing + light-workflow; WA count tracking via wa-count.json |
 | `skill-tracker.js` | PostToolUse (Skill) | Set skill-active flag on Skill tool calls (TTL-based, 5min expiry) |
 | `regressing-state.js` | (library) | Phase tracker: getState, buildReminder, detectSkillCall, advancePhase |
 | `extract-delta.js` | (library) | L1 delta extraction, timestamp watermarks, temp file management |
