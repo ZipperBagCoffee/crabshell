@@ -1,5 +1,11 @@
 # Changelog
 
+## 21.48.0
+- feat: completion drive Write/Edit guard (completion-drive-write-guard.js) — blocks code file writes with self-check prompt; .crabshell/ exempt, regressing + light-workflow bypass
+- feat: 3 SKILL.md completion drive warnings (regressing, ticketing, light-workflow)
+- test: 3 positive path tests for isRegressingActive and isLightWorkflowActive (15 total in suite)
+- feat: PARALLEL_REMINDER rewrite — decomposition + worker-per-unit + agent default
+
 ## 21.47.0
 - feat: completion-drive-guard — new Stop hook detecting autonomous forward-motion ("진행합니다/시작합니다") patterns with regressing exemption
 - feat: too-good P/O/G skepticism — sycophancy-guard extension blocking all-Gap=None verification tables (max 3 retries), 4/5 column support
