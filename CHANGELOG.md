@@ -1,5 +1,12 @@
 # Changelog
 
+## 21.50.0
+- feat: input classification (classifyUserIntent) + DEFAULT_NO_EXECUTION + EXECUTION_JUDGMENT in inject-rules.js
+- feat: completion-drive-guard.js → regressing-loop-guard.js (regex patterns removed, regressing block only)
+- feat: completion-drive-write-guard.js removed
+- feat: hooks.json Stop hook → regressing-loop-guard.js, PreToolUse completion-drive-write-guard entry removed
+- test: _test-regressing-loop-guard.js, _test-inject-rules-classification.js (29+5 tests)
+
 ## 21.49.0
 - fix: regressing Stop hook blocks instead of skips — forces autonomous execution continuation
 
