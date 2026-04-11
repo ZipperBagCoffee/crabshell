@@ -85,7 +85,7 @@ On failure: (1) List what you tried, what constraint blocked each attempt, and w
 - **Session restart:** Invoke load-memory skill. Fallback: read latest logbook.md.
 - **Mandatory work log:** Append log entry to D/P/T/I documents after related work.
 - **Documents:** D(Discussion)→P(Plan)→T(Ticket). I(Investigation) independent. .crabshell/ is gitignored.
-- **Version bump:** CHANGELOG → grep old version → README/STRUCTURE tables → doc headers → stale content audit → commit → push. NEVER cp to cache — user runs /plugin to refresh.
+- **Version bump:** CHANGELOG → grep old version → README/STRUCTURE tables → doc headers → stale content audit → commit.
 - **Workflow selection:** Before choosing light-workflow or regressing, state scope estimate: "Files: ~N. Components: X,Y,Z. Cross-cutting: yes/no." ≤5 files → light-workflow. 6-7 without cross-cutting → light-workflow. 6-7 with cross-cutting or 8+ → regressing. Shared convention change → regressing.
 - **Urgency signal handling:** When user message contains urgency signal (빨리, 급해, ASAP, urgent, quick) AND offers workflow choice → state scope estimate BEFORE selecting workflow. Urgency does not override selection criteria.
 

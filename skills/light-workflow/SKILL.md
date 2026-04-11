@@ -399,6 +399,7 @@ After cross-review:
 | 25 | Skipping runtime verification | Verification without tracing actual execution path is incomplete. "Code exists" ≠ "Code runs." Can verify but didn't = violation. |
 | 26 | Internal iteration for plan changes | "Different approach" is plan-level, not execution-level. STOP and report. Only syntax/runtime fixes qualify for internal iteration. |
 | 27 | Accepting partial verdicts | Graceful degradation preserves work products, not verdicts. Each criterion is still PASS or FAIL. No "partial pass." |
+| 28 | Autonomous Write not in plan | Writing a code file not mentioned in Phase 5 plan → STOP. Cite which plan item covers the write, or stop and report |
 
 ---
 

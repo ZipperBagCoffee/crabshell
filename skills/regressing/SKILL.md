@@ -32,6 +32,7 @@ The following patterns indicate regressing has degenerated into sequential batch
 | **Rubber-stamp verification** | "ALL PASS — no improvement opportunities" | Orchestrator enumerates what was examined and why no improvements apply |
 | **Single WA without justification** | One Work Agent handles all execution without stating why parallel WA does not apply | Parallel WA is the default. Single-WA requires explicit justification: "Single-WA because {reason}" |
 | **Operational steps as separate cycles** | Cycle 1 = code change, Cycle 2 = version bump + cache sync + commit | Version bump, cache sync, and commit are operational steps within a cycle's ticket(s), not independent cycles |
+| **Autonomous Write outside scope** | Agent writes/edits code files not covered by current ticket AC | Every code file write must trace to a ticket AC. If not covered → STOP and raise Open Question |
 
 If any of these patterns are detected during execution, the Orchestrator MUST halt and restructure before proceeding.
 
