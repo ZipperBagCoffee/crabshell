@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.54.0)
+# Crabshell Architecture (v21.55.0)
 
 ## Overview
 
@@ -225,8 +225,8 @@ Two meta-principles guide Claude's approach to obstacles:
    │   └─> Block session end when regressing active + ticket has no work log entry since last code edit
    ├─> scope-guard.js (v21.19.0)
    │   └─> Compare user-requested quantity vs response count; block scope reduction without approval
-   └─> regressing-loop-guard.js (v21.50.0)
-       └─> Block stop when regressing active (force continuation); enforce ≥2 parallel WAs; light-workflow + single-WA enforcement
+   └─> regressing-loop-guard.js (v21.55.0)
+       └─> Block stop when regressing active + inject phase-specific context (force continuation); enforce ≥2 parallel WAs; light-workflow + single-WA enforcement
 
 4. PostToolUse (all tools)
    ├─> counter.js check
@@ -339,7 +339,7 @@ Agent orchestration rules (11 rules covering pairing, cross-review, coherence, c
 | `path-guard.js` | PreToolUse (Read\|Grep\|Glob\|Bash\|Write\|Edit) | Block wrong .crabshell/ path; shell var resolution (fail-closed for .crabshell/ v21.8.0); block Edit on logbook.md; block Write shrink on logbook.md (v20.6.0) |
 | `sycophancy-guard.js` | Stop, PreToolUse (Write\|Edit) | Dual-layer sycophancy detection + verification claim detection (4-tier classification): Stop response + mid-turn transcript parsing; block with re-examination |
 | `scope-guard.js` | Stop | Compare user-requested quantity vs response count; block scope reduction without approval |
-| `regressing-loop-guard.js` | Stop | Block stop when regressing active; enforce ≥2 parallel WAs in regressing + light-workflow; WA count tracking via wa-count.json |
+| `regressing-loop-guard.js` | Stop | Block stop when regressing active + inject phase-specific context via buildRegressingReminder(); enforce ≥2 parallel WAs in regressing + light-workflow; WA count tracking via wa-count.json |
 | `skill-tracker.js` | PostToolUse (Skill) | Set skill-active flag on Skill tool calls (TTL-based, 5min expiry) |
 | `regressing-state.js` | (library) | Phase tracker: getState, buildReminder, detectSkillCall, advancePhase |
 | `extract-delta.js` | (library) | L1 delta extraction, timestamp watermarks, temp file management |

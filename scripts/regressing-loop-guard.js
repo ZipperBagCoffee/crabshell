@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { readStdin } = require('./transcript-utils');
 const { STORAGE_ROOT, MEMORY_DIR, SKILL_ACTIVE_FILE, WA_COUNT_FILE } = require('./constants');
+const { buildRegressingReminder } = require('./regressing-state');
 
 // Skip processing during background memory summarization
 if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
@@ -56,6 +57,19 @@ function getWaCount() {
   }
 }
 
+/**
+ * Build phase-specific context for block reasons.
+ * Fail-open: returns empty string on any error.
+ */
+function getPhaseContext() {
+  try {
+    const reminder = buildRegressingReminder(getProjectDir());
+    return reminder ? '\n\n' + reminder.trim() : '';
+  } catch {
+    return '';
+  }
+}
+
 async function main() {
   const hookData = await readStdin();
   if (!hookData || Object.keys(hookData).length === 0) process.exit(0); // fail-open: no data
@@ -69,17 +83,19 @@ async function main() {
   if (isRegressingActive()) {
     // Check if only 1 WA was launched — enforce parallel WA requirement
     if (waCount === 1) {
+      const phaseContext = getPhaseContext();
       const output = {
         decision: 'block',
-        reason: 'Regressing active but only 1 Work Agent launched. You must launch at least 2 parallel WAs. Stop and re-plan with parallel WA execution.'
+        reason: 'Regressing active but only 1 Work Agent launched. You must launch at least 2 parallel WAs. Stop and re-plan with parallel WA execution.' + phaseContext
       };
       process.stderr.write('[REGRESSING_LOOP_GUARD] Blocked: regressing active + waCount=1 — forcing parallel WA re-plan\n');
       console.log(JSON.stringify(output));
       process.exit(2);
     }
+    const phaseContext = getPhaseContext();
     const output = {
       decision: 'block',
-      reason: 'Regressing active — do not stop. Save any questions to the active T document\'s Open Questions section, make a reasonable assumption, and continue autonomous execution. Do not wait for user input.'
+      reason: 'Regressing active — do not stop. Save any questions to the active T document\'s Open Questions section, make a reasonable assumption, and continue autonomous execution. Do not wait for user input.' + phaseContext
     };
     process.stderr.write('[REGRESSING_LOOP_GUARD] Blocked: regressing active — forcing continuation\n');
     console.log(JSON.stringify(output));
@@ -103,5 +119,5 @@ async function main() {
 if (require.main === module) {
   main().catch(() => process.exit(0)); // fail-open on any error
 } else {
-  module.exports = { isRegressingActive, isLightWorkflowActive, getWaCount };
+  module.exports = { isRegressingActive, isLightWorkflowActive, getWaCount, getPhaseContext };
 }

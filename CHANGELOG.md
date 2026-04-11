@@ -1,5 +1,9 @@
 # Changelog
 
+## 21.55.0
+- feat: Stop hook phase-specific context — block reason now includes current regressing phase, cycle number, and actionable next step via buildRegressingReminder()
+- fix: WA count tracking tool_name — 'TaskCreate' → 'Agent' (counter.js was checking wrong tool name, wa-count.json never created)
+
 ## 21.54.0
 - fix: I051 audit doc consistency fixes — regressing-loop-guard.js in Hook Flow 3.5 and Scripts Reference, scope-guard.js Scripts Reference, ASCII diagram Stop box expanded, STRUCTURE.md 6 new files + setup-rtk skill, CLAUDE.md 2 guard baseline entries, PROHIBITED PATTERNS 1-7→1-8, skills count 17→18
 

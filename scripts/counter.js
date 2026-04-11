@@ -63,12 +63,12 @@ function resetWaCount() {
 }
 
 /**
- * Classify a TaskCreate hook invocation as WA or RA.
+ * Classify an Agent hook invocation as WA or RA.
  * Conservative: anything that is not clearly an RA is classified as WA.
- * Returns 'WA', 'RA', or null (if not a TaskCreate).
+ * Returns 'WA', 'RA', or null (if not an Agent tool call).
  */
 function classifyAgent(hookData) {
-  if (hookData.tool_name !== 'TaskCreate') return null;
+  if (hookData.tool_name !== 'Agent') return null;
   const input = hookData.tool_input || {};
   const text = ((input.prompt || '') + ' ' + (input.description || '')).toLowerCase();
   const RA_PATTERNS = /\b(review agent|verification|verify|reviewer)\b/;
@@ -128,8 +128,8 @@ async function check() {
       } catch (e) { /* fail-open */ }
     }
 
-    // WA count tracking on TaskCreate
-    if (hookData.tool_name === 'TaskCreate') {
+    // WA count tracking on Agent tool (subagent launch)
+    if (hookData.tool_name === 'Agent') {
       try {
         const agentType = classifyAgent(hookData);
         const projectDir = getProjectDir();

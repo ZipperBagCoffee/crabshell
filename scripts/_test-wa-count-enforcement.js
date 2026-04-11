@@ -90,57 +90,57 @@ console.log('\n=== classifyAgent() ===\n');
 // TC1: prompt with "Work Agent" → returns "WA"
 test('prompt with "Work Agent" → "WA"', () => {
   assert.ok(typeof classifyAgent === 'function', 'classifyAgent must be exported from counter.js');
-  const result = classifyAgent({ tool_name: 'TaskCreate', tool_input: { prompt: 'You are Work Agent 1, implement the feature.' } });
+  const result = classifyAgent({ tool_name: 'Agent', tool_input: { prompt: 'You are Work Agent 1, implement the feature.' } });
   assert.strictEqual(result, 'WA', `expected "WA", got "${result}"`);
 });
 
 // TC2: prompt with "Review Agent" → returns "RA"
 test('prompt with "Review Agent" → "RA"', () => {
   assert.ok(typeof classifyAgent === 'function', 'classifyAgent must be exported from counter.js');
-  const result = classifyAgent({ tool_name: 'TaskCreate', tool_input: { prompt: 'You are Review Agent 1, verify the implementation.' } });
+  const result = classifyAgent({ tool_name: 'Agent', tool_input: { prompt: 'You are Review Agent 1, verify the implementation.' } });
   assert.strictEqual(result, 'RA', `expected "RA", got "${result}"`);
 });
 
 // TC3: prompt with "verify" → returns "RA"
 test('prompt with "verify" → "RA"', () => {
   assert.ok(typeof classifyAgent === 'function', 'classifyAgent must be exported from counter.js');
-  const result = classifyAgent({ tool_name: 'TaskCreate', tool_input: { prompt: 'Please verify all the changes are correct.' } });
+  const result = classifyAgent({ tool_name: 'Agent', tool_input: { prompt: 'Please verify all the changes are correct.' } });
   assert.strictEqual(result, 'RA', `expected "RA", got "${result}"`);
 });
 
 // TC4: prompt with "verification" → returns "RA"
 test('prompt with "verification" → "RA"', () => {
   assert.ok(typeof classifyAgent === 'function', 'classifyAgent must be exported from counter.js');
-  const result = classifyAgent({ tool_name: 'TaskCreate', tool_input: { prompt: 'Perform verification of the output files.' } });
+  const result = classifyAgent({ tool_name: 'Agent', tool_input: { prompt: 'Perform verification of the output files.' } });
   assert.strictEqual(result, 'RA', `expected "RA", got "${result}"`);
 });
 
 // TC5: prompt with "implement" (no RA pattern) → returns "WA" (default)
 test('prompt with "implement" (no RA pattern) → "WA"', () => {
   assert.ok(typeof classifyAgent === 'function', 'classifyAgent must be exported from counter.js');
-  const result = classifyAgent({ tool_name: 'TaskCreate', tool_input: { prompt: 'Please implement the new counter logic.' } });
+  const result = classifyAgent({ tool_name: 'Agent', tool_input: { prompt: 'Please implement the new counter logic.' } });
   assert.strictEqual(result, 'WA', `expected "WA" (default), got "${result}"`);
 });
 
 // TC6: empty prompt → returns "WA" (default, AC3)
 test('empty prompt → "WA" (default, AC3)', () => {
   assert.ok(typeof classifyAgent === 'function', 'classifyAgent must be exported from counter.js');
-  const result = classifyAgent({ tool_name: 'TaskCreate', tool_input: { prompt: '' } });
+  const result = classifyAgent({ tool_name: 'Agent', tool_input: { prompt: '' } });
   assert.strictEqual(result, 'WA', `expected "WA" (default), got "${result}"`);
 });
 
 // TC7: null tool_input → returns "WA" (fail-safe)
 test('null tool_input → "WA" (fail-safe)', () => {
   assert.ok(typeof classifyAgent === 'function', 'classifyAgent must be exported from counter.js');
-  const result = classifyAgent({ tool_name: 'TaskCreate', tool_input: null });
+  const result = classifyAgent({ tool_name: 'Agent', tool_input: null });
   assert.strictEqual(result, 'WA', `expected "WA" (fail-safe), got "${result}"`);
 });
 
-// TC8: tool_name !== TaskCreate → returns null
-test('tool_name !== "TaskCreate" → null', () => {
+// TC8: tool_name !== Agent → returns null
+test('tool_name !== "Agent" → null', () => {
   assert.ok(typeof classifyAgent === 'function', 'classifyAgent must be exported from counter.js');
   const result = classifyAgent({ tool_name: 'Bash', tool_input: { prompt: 'Work Agent 1' } });
-  assert.strictEqual(result, null, `expected null for non-TaskCreate, got "${result}"`);
+  assert.strictEqual(result, null, `expected null for non-Agent, got "${result}"`);
 });
 
 // =============================================================================

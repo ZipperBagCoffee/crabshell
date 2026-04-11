@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.54.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.55.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -297,8 +297,8 @@ L1 generation:
    │   └─> Block session end when regressing active + ticket has no work log entry since last code edit
    ├─> scope-guard.js (v21.19.0)
    │   └─> Compare user-requested quantity vs response count; block scope reduction without approval
-   └─> regressing-loop-guard.js (v21.50.0)
-       └─> Block stop when regressing active; enforce ≥2 parallel WAs; light-workflow + single-WA enforcement
+   └─> regressing-loop-guard.js (v21.55.0)
+       └─> Block stop when regressing active + inject phase-specific context; enforce ≥2 parallel WAs; light-workflow + single-WA enforcement
 
 4. PostToolUse
    ├─> counter.js check (.*)
@@ -332,6 +332,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.55.0 | feat: Stop hook phase-specific context via buildRegressingReminder(); fix: counter.js WA tracking 'TaskCreate'→'Agent' |
 | 21.54.0 | fix: I051 audit doc consistency fixes — regressing-loop-guard.js in Hook Flow 3.5 and Scripts Reference, scope-guard.js Scripts Reference, ASCII diagram Stop box expanded, 6 new files + setup-rtk skill, CLAUDE.md 2 guard baseline entries, PROHIBITED PATTERNS 1-7→1-8, skills count 17→18 |
 | 21.53.0 | fix: hooks.json trailing comma fix — version bump for cache refresh |
 | 21.52.0 | feat: WA count enforcement — classifyAgent, wa-count.json tracking, ticketing reset, Stop hook single-WA block, PARALLEL_REMINDER "parallel and multiple" |
