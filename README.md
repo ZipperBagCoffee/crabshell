@@ -192,6 +192,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.53.0 | fix: hooks.json trailing comma fix — version bump for cache refresh |
 | 21.52.0 | feat: WA count enforcement — classifyAgent, wa-count.json tracking, ticketing reset, Stop hook single-WA block, PARALLEL_REMINDER "parallel and multiple" |
 | 21.51.0 | fix: PARALLEL_REMINDER — WA parallel vs WA→RA sequential distinction, Single-WA tightened to single-file mechanical only |
 | 21.50.0 | feat: input classification + guard cleanup — DEFAULT_NO_EXECUTION, EXECUTION_JUDGMENT, regressing-loop-guard rename, completion-drive-write-guard removal |

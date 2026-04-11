@@ -46,9 +46,9 @@
     },
     {
       "id": "AC-6",
-      "ia": "version 21.51.0",
+      "ia": "version 21.52.0",
       "type": "indirect",
-      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const v=JSON.parse(require('fs').readFileSync('C:/Users/chulg/Documents/memory-keeper-plugin/.claude-plugin/plugin.json','utf8')).version;console.log(v==='21.51.0'?'PASS:'+v:'FAIL:'+v)\"",
+      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const v=JSON.parse(require('fs').readFileSync('C:/Users/chulg/Documents/memory-keeper-plugin/.claude-plugin/plugin.json','utf8')).version;console.log(v==='21.52.0'?'PASS:'+v:'FAIL:'+v)\"",
       "expected": "PASS:",
       "timeout": 5000
     },
@@ -108,6 +108,15 @@
       "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const fs=require('fs');const rules=fs.readFileSync('C:/Users/chulg/Documents/memory-keeper-plugin/scripts/inject-rules.js','utf8');const hasL1=rules.includes('L1 (Direct Execution)');const hasL2=rules.includes('L2 (Indirect Execution)');const hasL3=rules.includes('L3 (Structural Check)');const hasL4=rules.includes('L4 (Claim Without Evidence)');const all=hasL1&&hasL2&&hasL3&&hasL4;console.log(all?'PASS:all_levels_found':'FAIL:L1='+hasL1+' L2='+hasL2+' L3='+hasL3+' L4='+hasL4)\"",
       "expected": "PASS:",
       "observation": null,
+      "timeout": 5000
+    },
+    {
+      "id": "V005",
+      "ia": "hooks.json is valid JSON",
+      "level": "L1",
+      "type": "direct",
+      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"try{JSON.parse(require('fs').readFileSync('C:/Users/chulg/Documents/memory-keeper-plugin/hooks/hooks.json','utf8'));console.log('PASS:valid_json')}catch(e){console.log('FAIL:'+e.message)}\"",
+      "expected": "PASS:",
       "timeout": 5000
     }
   ]

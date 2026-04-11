@@ -1,5 +1,8 @@
 # Changelog
 
+## 21.53.0
+- fix: hooks.json trailing comma fix — version bump for cache refresh
+
 ## 21.52.0
 - feat: WA count enforcement — classifyAgent (WA/RA), wa-count.json tracking, ticketing reset, Stop hook blocks single-WA in regressing+light-workflow, SessionStart cleanup
 - feat: PARALLEL_REMINDER "parallel and multiple WAs"
