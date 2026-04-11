@@ -299,6 +299,23 @@ const COMPRESSED_CHECKLIST = COMPRESSED_CHECKLIST_SHARED;
 // Parallel execution reminder
 const PARALLEL_REMINDER = `\n## Parallel Execution Check\nDecompose work into independent units, one worker per unit, execute all simultaneously.\nTool calls: no data dependency → all in one response.\nAgents: parallel WA is default. Single-WA requires justification.\n`;
 
+// Input classification patterns (IA-1)
+const KOREAN_EXECUTION_PATTERNS = /해라|진행해|수정해|만들어|구현해|실행해|시작해|고쳐|적용해/;
+const ENGLISH_EXECUTION_PATTERNS = /\b(do it|proceed|fix it|create|implement|build|execute|start|apply)\b/i;
+
+// IA-2: Default no-execution prompt
+const DEFAULT_NO_EXECUTION = `\n## Execution Default\nDefault: respond with explanation only. Do not call tools unless explicitly instructed to execute.\n`;
+
+// IA-3: Execution judgment prompt
+const EXECUTION_JUDGMENT = `\n## Execution Pattern Detected\nExecution pattern detected in user message. Before acting: verify this is truly an execution instruction, not a question containing action words (e.g., '설명해라' = explain, not execute). If uncertain, explain your intended action first.\n`;
+
+function classifyUserIntent(userPrompt) {
+  if (!userPrompt) return 'default';
+  if (KOREAN_EXECUTION_PATTERNS.test(userPrompt)) return 'execution';
+  if (ENGLISH_EXECUTION_PATTERNS.test(userPrompt)) return 'execution';
+  return 'default';
+}
+
 function shouldInjectParallelReminder(userPrompt, isRegressingActive) {
   if (isRegressingActive) return true;
   if (!userPrompt) return false;
@@ -698,6 +715,15 @@ async function main() {
         context += PRESSURE_L1;
       }
 
+      // Input classification and execution default (D085 IA-1 to IA-5)
+      if (!regressingReminder) {
+        context += DEFAULT_NO_EXECUTION;
+        const intent = classifyUserIntent(userPrompt);
+        if (intent === 'execution') {
+          context += EXECUTION_JUDGMENT;
+        }
+      }
+
       context += '\n**Verification reminder:** Before claiming any result verified, ensure you have execution output (not just file reads). Structural checks (grep/read) are not behavioral verification.\n';
 
       // Output rules via additionalContext (hidden from user, seen by Claude)
@@ -757,6 +783,7 @@ module.exports = {
   extractKeywords,
   getRelevantMemorySnippets,
   shouldInjectParallelReminder,
+  classifyUserIntent,
   // Re-export from regressing-state for convenience
   buildRegressingReminder,
   // Constants
@@ -774,4 +801,6 @@ module.exports = {
   PRESSURE_L1,
   PRESSURE_L2,
   PRESSURE_L3,
+  DEFAULT_NO_EXECUTION,
+  EXECUTION_JUDGMENT,
 };
