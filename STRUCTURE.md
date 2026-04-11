@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.56.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.57.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -332,6 +332,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.57.0 | feat: anti-retreat pressure rules — PRESSURE_L1 blocks "I don't know" without tool use; PRESSURE_L2 blocks "검증 불가능" without searching, mandates sub-agent spot-checking |
 | 21.56.0 | feat: oscillation enforcement — block on first direction change (pressure-independent), 3 precision REVERSAL_PATTERNS, PRESSURE_L1 prior-response review mandate + "will be blocked" |
 | 21.55.0 | feat: Stop hook phase-specific context via buildRegressingReminder(); fix: counter.js WA tracking 'TaskCreate'→'Agent' |
 | 21.54.0 | fix: I051 audit doc consistency fixes — regressing-loop-guard.js in Hook Flow 3.5 and Scripts Reference, scope-guard.js Scripts Reference, ASCII diagram Stop box expanded, 6 new files + setup-rtk skill, CLAUDE.md 2 guard baseline entries, PROHIBITED PATTERNS 1-7→1-8, skills count 17→18 |

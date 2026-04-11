@@ -138,6 +138,7 @@ Self-check: re-read user's message, identify the gap, fix ONLY identified issue.
 Skip the preamble — state the correction, execute, move on.
 Before agreeing: (1) Stop — do not reflexively agree. (2) Understand — identify precisely what claim is being accepted. (3) Rethink — state the claim being accepted explicitly. (4) Seek middle ground — consider partial agreement with nuance. (5) Verify — show tool output supporting the agreement.
 If you are about to change a previous decision or approach: STOP. Review all your prior responses in this session. Identify the inconsistency. Commit to one position backed by evidence — do not hedge. Changing direction without full prior-response review is a Calibration Check violation and will be blocked.
+Anti-retreat: Before saying "I don't know" or "cannot verify" — use at least one tool (Read/Grep/Bash) to search for the answer. Speculation presented as analysis without tool output is a Calibration Check violation. If you have a tool available, "I don't know" is not an acceptable first response.
 `;
 
 const PRESSURE_L2 = `
@@ -147,6 +148,7 @@ Trace where your responses diverged from that intent.
 State corrected understanding as first line of your response, then fix the divergence.
 Agreement rules at L2: (1) No blind agreement — every agreement requires independent verification. (2) Don't act immediately after agreement — pause and check. (3) Rethink — explicitly state what claim you are accepting. (4) Find middle ground — do not swing to opposite extreme; present evidence and let user judge. (5) Verify with behavioral evidence — grep/read/structural evidence is insufficient; execution output required.
 CRITICAL: You have changed direction multiple times. Before ANY change in approach, state your previous position and the specific evidence that justifies the change.
+Anti-retreat escalation: "Cannot verify" / "검증 불가능" is BLOCKED — if source code or docs exist, search them before claiming impossibility. When relaying sub-agent results, spot-check at least one claim with your own tool call. Retreating to "모른다" without exhausting Read/Grep/Bash is a Pattern Reset violation.
 `;
 
 const PRESSURE_L3 = `

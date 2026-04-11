@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.56.0)
+# Crabshell Architecture (v21.57.0)
 
 ## Overview
 
@@ -475,6 +475,7 @@ The 5 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.57.0 | feat: anti-retreat pressure rules — PRESSURE_L1 blocks "I don't know" without tool use; PRESSURE_L2 blocks "검증 불가능" without searching, mandates sub-agent spot-checking |
 | 21.56.0 | feat: oscillation enforcement — sycophancy-guard block on first direction change (pressure-independent), 3 precision REVERSAL_PATTERNS, PRESSURE_L1 prior-response review mandate |
 | 21.55.0 | feat: regressing-loop-guard.js Stop hook phase-specific context via buildRegressingReminder(); fix: counter.js WA tracking 'TaskCreate'→'Agent' |
 | 21.39.0 | test: 32 new tests — _test-extract-delta (15), _test-append-memory (7), _test-memory-rotation (10) |

@@ -1,5 +1,8 @@
 # Changelog
 
+## 21.57.0
+- feat: anti-retreat pressure rules — PRESSURE_L1 blocks "I don't know" without tool use and speculation-as-fact; PRESSURE_L2 blocks "검증 불가능" without searching, mandates sub-agent spot-checking
+
 ## 21.56.0
 - feat: oscillation enforcement — sycophancy-guard.js block on first direction change (newCount >= 1, pressure-independent), block reason "Review ALL your previous responses" + "single consistent position"; REVERSAL_PATTERNS: remove 사실은, add 3 precision patterns (I'm changing approach, 다시 생각해보니, 이전 답변이 틀렸); inject-rules.js PRESSURE_L1 direction-change sentence → STOP + prior-response review mandate + "will be blocked"
 
