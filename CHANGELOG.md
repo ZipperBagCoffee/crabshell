@@ -1,5 +1,8 @@
 # Changelog
 
+## 21.54.0
+- fix: I051 audit doc consistency fixes — regressing-loop-guard.js in Hook Flow 3.5 and Scripts Reference, scope-guard.js Scripts Reference, ASCII diagram Stop box expanded, STRUCTURE.md 6 new files + setup-rtk skill, CLAUDE.md 2 guard baseline entries, PROHIBITED PATTERNS 1-7→1-8, skills count 17→18
+
 ## 21.53.0
 - fix: hooks.json trailing comma fix — version bump for cache refresh
 

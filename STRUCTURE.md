@@ -1,10 +1,10 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.53.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.54.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
-Crabshell is a Claude Code plugin with two pillars: (1) session memory — L1 delta extraction, Haiku summarization, logbook.md rotation, auto-restore on restart; (2) LLM behavioral correction — injects VERIFICATION-FIRST, UNDERSTANDING-FIRST, INTERFERENCE PATTERNS every prompt, twelve guard hooks block violations at runtime. D/P/T/I/W document system, 17 skills, Node.js hooks. All output under .crabshell/.
+Crabshell is a Claude Code plugin with two pillars: (1) session memory — L1 delta extraction, Haiku summarization, logbook.md rotation, auto-restore on restart; (2) LLM behavioral correction — injects VERIFICATION-FIRST, UNDERSTANDING-FIRST, INTERFERENCE PATTERNS every prompt, twelve guard hooks block violations at runtime. D/P/T/I/W document system, 18 skills, Node.js hooks. All output under .crabshell/.
 
 ## Directory Structure
 
@@ -101,9 +101,15 @@ crabshell/
 │   ├── _test-delta-background.js    # delta-background.js test suite — 14 tests (v21.23.0, v21.25.0)
 │   ├── _test-regressing-guard.js    # regressing-guard.js 7-test suite — phase gates + IA-2 agent section validation (v21.41.0)
 │   ├── _test-regressing-guard-edge-cases.js # regressing-guard.js 14 edge-case tests — absent heading, fail-open paths (v21.41.0)
+│   ├── regressing-loop-guard.js     # Stop hook — regressing/light-workflow enforcement (v21.50.0)
+│   ├── _test-regressing-loop-guard.js
+│   ├── _test-inject-rules-classification.js
+│   ├── _test-wa-count-enforcement.js
+│   ├── _test-parallel-reminder.js
+│   ├── _test-too-good-pog.js
 │   └── utils.js                      # Shared utilities (getStorageRoot, getProjectDir)
 │
-├── skills/                           # Slash command skills (17 total)
+├── skills/                           # Slash command skills (18 total)
 │   ├── memory-autosave/SKILL.md      # Auto-trigger memory save
 │   ├── memory-delta/SKILL.md         # Auto-trigger delta summarization (background non-blocking, Phase A/B)
 │   ├── memory-rotate/SKILL.md        # Auto-trigger L3 generation
@@ -112,6 +118,7 @@ crabshell/
 │   ├── search-memory/SKILL.md        # /crabshell:search-memory
 │   ├── clear-memory/SKILL.md         # /crabshell:clear-memory
 │   ├── setup-project/SKILL.md        # /crabshell:setup-project
+│   ├── setup-rtk/SKILL.md            # /crabshell:setup-rtk
 │   ├── discussing/SKILL.md           # /crabshell:discussing (D documents)
 │   ├── planning/SKILL.md             # /crabshell:planning (P documents)
 │   ├── ticketing/SKILL.md            # /crabshell:ticketing (T documents)
@@ -288,8 +295,10 @@ L1 generation:
    │   └─> Detect agreement-without-verification patterns → block with re-examination
    ├─> doc-watchdog.js stop (v21.18.0)
    │   └─> Block session end when regressing active + ticket has no work log entry since last code edit
-   └─> scope-guard.js (v21.19.0)
-       └─> Compare user-requested quantity vs response count; block scope reduction without approval
+   ├─> scope-guard.js (v21.19.0)
+   │   └─> Compare user-requested quantity vs response count; block scope reduction without approval
+   └─> regressing-loop-guard.js (v21.50.0)
+       └─> Block stop when regressing active; enforce ≥2 parallel WAs; light-workflow + single-WA enforcement
 
 4. PostToolUse
    ├─> counter.js check (.*)
@@ -323,6 +332,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.54.0 | fix: I051 audit doc consistency fixes — regressing-loop-guard.js in Hook Flow 3.5 and Scripts Reference, scope-guard.js Scripts Reference, ASCII diagram Stop box expanded, 6 new files + setup-rtk skill, CLAUDE.md 2 guard baseline entries, PROHIBITED PATTERNS 1-7→1-8, skills count 17→18 |
 | 21.53.0 | fix: hooks.json trailing comma fix — version bump for cache refresh |
 | 21.52.0 | feat: WA count enforcement — classifyAgent, wa-count.json tracking, ticketing reset, Stop hook single-WA block, PARALLEL_REMINDER "parallel and multiple" |
 | 21.51.0 | fix: PARALLEL_REMINDER — WA parallel vs WA→RA sequential distinction, Single-WA tightened to single-file mechanical only |

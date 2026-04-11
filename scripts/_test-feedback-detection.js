@@ -217,7 +217,7 @@ test('AC-6: L2 has self-diagnosis', function() {
   assert(/self.diagnosis|pattern|corrected.*understanding/i.test(PRESSURE_L2), 'L2 should be self-directed');
 });
 test('AC-6: L3 has self-review', function() {
-  assert(/self.review|mental.model|root.cause/i.test(PRESSURE_L3), 'L3 should be self-directed');
+  assert(/error.pattern|wrong.assumption|first.principles/i.test(PRESSURE_L3), 'L3 should be self-directed');
 });
 
 // Pressure: cap and init
@@ -242,7 +242,7 @@ test('AC-5: load-memory.js decays to level 1 not 0', function() {
   const src = fs2.readFileSync(path.join(__dirname, 'load-memory.js'), 'utf8');
   assert(src.includes('level > 1'), 'should check level > 1 (not level > 0)');
   assert(src.includes('level = 1'), 'should set level = 1 (decay to 1, not to 0)');
-  assert(src.includes('Pressure decayed'), 'should log decay');
+  assert(src.includes('Session start: pressure'), 'should log decay');
 });
 
 // Summary

@@ -21,7 +21,7 @@ const COMPRESSED_CHECKLIST = `
 7. Same approach failed 3 times? (Switch to structurally different strategy)
 8. Factual claim without tool output? (Show evidence or say "unverified")
 
-**Output scan:** Check PROHIBITED PATTERNS 1-7 before sending.
+**Output scan:** Check PROHIBITED PATTERNS 1-8 before sending.
 `;
 
 /**

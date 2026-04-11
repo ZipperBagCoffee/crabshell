@@ -97,6 +97,8 @@ On failure: (1) List what you tried, what constraint blocked each attempt, and w
 - **Model upgrade audit (on major Claude model change):** For each guard: (1) state what behavior it counteracts, (2) run test suite with guard disabled, (3) if behavior gone → candidate for removal. Guard baseline (I047 AG2):
   - inject-rules.js, load-memory.js, path-guard.js: load-bearing → keep
   - sycophancy-guard.js, pressure-guard.js, verify-guard.js, docs-guard.js, log-guard.js, verification-sequence.js: behavioral → test
+  - scope-guard.js: behavioral (scope reduction detection) → test
+  - regressing-loop-guard.js: behavioral (Stop hook enforcement) → test
   - post-compact.js: zero effect → removal candidate
   - regressing-guard.js: narrow scope → merger candidate
 - **Document-first (all skills):** In every D/P/T/I/W document skill, write results to the document using Write/Edit tool BEFORE reporting in conversation. The document update is the primary output; the conversation summary is secondary. Verbal-only reporting without a prior document write = violation.

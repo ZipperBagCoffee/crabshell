@@ -5,7 +5,7 @@
 Three pillars:
 1. **Session memory** — Auto-saves context across sessions. Delta extraction, Haiku summarization, token-based rotation. No manual setup.
 2. **Behavioral correction** — Injects verification-first rules and interference pattern detection every prompt. Twelve guard hooks block sycophancy, scope reduction, overcorrection, and shortcuts at runtime.
-3. **Structured workflows** — D/P/T/I/W document system with 17 skills for planning, investigating, iterative improvement (regressing), and light-workflow tracing.
+3. **Structured workflows** — D/P/T/I/W document system with 18 skills for planning, investigating, iterative improvement (regressing), and light-workflow tracing.
 
 All plugin output lives under `.crabshell/` — gitignored, clean project root.
 
@@ -192,6 +192,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.54.0 | fix: I051 audit doc consistency fixes — regressing-loop-guard.js in Hook Flow 3.5 and Scripts Reference, scope-guard.js Scripts Reference, ASCII diagram Stop box expanded, STRUCTURE.md 6 new files + setup-rtk skill, CLAUDE.md 2 guard baseline entries, PROHIBITED PATTERNS 1-7→1-8, skills count 17→18 |
 | 21.53.0 | fix: hooks.json trailing comma fix — version bump for cache refresh |
 | 21.52.0 | feat: WA count enforcement — classifyAgent, wa-count.json tracking, ticketing reset, Stop hook single-WA block, PARALLEL_REMINDER "parallel and multiple" |
 | 21.51.0 | fix: PARALLEL_REMINDER — WA parallel vs WA→RA sequential distinction, Single-WA tightened to single-file mechanical only |
