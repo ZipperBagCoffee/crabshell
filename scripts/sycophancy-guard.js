@@ -114,11 +114,13 @@ const REVERSAL_PATTERNS = [
   /wait,?\s+(no|actually|let me)/i,
   /I need to reconsider/i,
   /I should have/i,
+  /I('?m|\s+am)\s+changing\s+(my|the)\s+(approach|direction|plan)/i,
   // Korean
   /다시\s*원래/,
   /방향을\s*바꿔/,
   /아까\s*말한.*틀렸/,
-  /사실은/,
+  /다시\s*생각해보니/,
+  /이전\s*(답변|답|말)이\s*(틀렸|잘못)/,
 ];
 
 /**
@@ -744,10 +746,10 @@ function handleStop(hookData) {
     const reversalCount = checkReversalPhrases(response);
     if (reversalCount > 0) {
       const newCount = incrementOscillationCount();
-      if (newCount >= 3 && pLevel >= 1) {
+      if (newCount >= 1) {
         const oscillationOutput = {
           decision: "block",
-          reason: `Direction Change Check: You have reversed your position ${newCount} times this session while under correction. Before proceeding, explicitly state: (1) your original position, (2) what you are changing to, (3) the specific evidence that justifies this change.${pressureHint(pLevel)}`
+          reason: `Direction Change Detected: You have changed direction in this response. Stop. Review ALL your previous responses in this session from the beginning. Identify where your answers were inconsistent, determine which answer is actually correct based on evidence, and rewrite your response with a single consistent position. Do not rationalize both sides — commit to one answer with supporting evidence.${pressureHint(pLevel)}`
         };
         process.stderr.write(`[SYCOPHANCY_GUARD] Direction change blocked: reversals=${newCount} pressure=${pLevel}\n`);
         console.log(JSON.stringify(oscillationOutput));

@@ -279,6 +279,71 @@ test('T19: pressureHint(0) returns empty string', function() {
   assert(hint === '', 'expected empty string at L0, got: ' + JSON.stringify(hint));
 });
 
+// =============================================================================
+// Oscillation Detection Tests (D088)
+// =============================================================================
+
+console.log('\n--- Oscillation Detection ---');
+
+// T-OSC-1: checkReversalPhrases detects "on second thought"
+test('T-OSC-1: detects "on second thought"', function() {
+  const count = mod.checkReversalPhrases(pad('On second thought, I should approach this differently.'));
+  assert(count > 0, 'expected count > 0, got: ' + count);
+});
+
+// T-OSC-2: checkReversalPhrases detects "I was wrong about"
+test('T-OSC-2: detects "I was wrong about"', function() {
+  const count = mod.checkReversalPhrases(pad('I was wrong about the root cause.'));
+  assert(count > 0, 'expected count > 0, got: ' + count);
+});
+
+// T-OSC-3: checkReversalPhrases ignores pattern inside code block (AC-7)
+test('T-OSC-3: ignores pattern in code block (AC-7)', function() {
+  const count = mod.checkReversalPhrases(pad('Here is the code:\n```\n// scratch that old logic\n```\nDone.'));
+  assert(count === 0, 'expected 0 (in code block), got: ' + count);
+});
+
+// T-OSC-4: checkReversalPhrases detects Korean pattern "다시 생각해보니" (new pattern)
+test('T-OSC-4: detects "다시 생각해보니"', function() {
+  const count = mod.checkReversalPhrases(pad('다시 생각해보니 이 방법이 더 나을 것 같습니다.'));
+  assert(count > 0, 'expected count > 0, got: ' + count);
+});
+
+// T-OSC-5: checkReversalPhrases does NOT detect removed "사실은" pattern
+test('T-OSC-5: "사실은" removed — should not detect', function() {
+  const count = mod.checkReversalPhrases(pad('사실은 이 함수가 더 효율적입니다.'));
+  assert(count === 0, 'expected 0 (사실은 removed), got: ' + count);
+});
+
+// T-OSC-6: incrementOscillationCount + getOscillationCount round-trip
+test('T-OSC-6: oscillationCount increments correctly', function() {
+  const dir = makeTempProject(0);
+  try {
+    withProjectDir(dir, function() {
+      const c1 = mod.incrementOscillationCount();
+      assert(c1 === 1, 'expected 1, got: ' + c1);
+      const c2 = mod.incrementOscillationCount();
+      assert(c2 === 2, 'expected 2, got: ' + c2);
+      const read = mod.getOscillationCount();
+      assert(read === 2, 'expected 2, got: ' + read);
+    });
+  } finally {
+    cleanupDir(dir);
+  }
+});
+
+// T-OSC-7: checkReversalPhrases detects "I'm changing my approach"
+test('T-OSC-7: detects "I\'m changing my approach"', function() {
+  const count = mod.checkReversalPhrases(pad('I\'m changing my approach to use a different algorithm.'));
+  assert(count > 0, 'expected count > 0, got: ' + count);
+});
+
+// T-OSC-8: no false positive on normal analytical text
+test('T-OSC-8: no false positive on normal text', function() {
+  const count = mod.checkReversalPhrases(pad('The function processes data and returns the result. No issues found.'));
+  assert(count === 0, 'expected 0 on normal text, got: ' + count);
+});
+
 // ============================================================
 // Summary
 // ============================================================

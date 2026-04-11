@@ -1,5 +1,8 @@
 # Changelog
 
+## 21.56.0
+- feat: oscillation enforcement — sycophancy-guard.js block on first direction change (newCount >= 1, pressure-independent), block reason "Review ALL your previous responses" + "single consistent position"; REVERSAL_PATTERNS: remove 사실은, add 3 precision patterns (I'm changing approach, 다시 생각해보니, 이전 답변이 틀렸); inject-rules.js PRESSURE_L1 direction-change sentence → STOP + prior-response review mandate + "will be blocked"
+
 ## 21.55.0
 - feat: Stop hook phase-specific context — block reason now includes current regressing phase, cycle number, and actionable next step via buildRegressingReminder()
 - fix: WA count tracking tool_name — 'TaskCreate' → 'Agent' (counter.js was checking wrong tool name, wa-count.json never created)

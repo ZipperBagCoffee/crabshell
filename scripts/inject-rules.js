@@ -137,7 +137,7 @@ const PRESSURE_L1 = `
 Self-check: re-read user's message, identify the gap, fix ONLY identified issue.
 Skip the preamble — state the correction, execute, move on.
 Before agreeing: (1) Stop — do not reflexively agree. (2) Understand — identify precisely what claim is being accepted. (3) Rethink — state the claim being accepted explicitly. (4) Seek middle ground — consider partial agreement with nuance. (5) Verify — show tool output supporting the agreement.
-If you are about to change a previous decision or approach, you MUST state: (1) what you decided before, (2) what you are changing to, (3) why. Changing direction without explicit reasoning is a Calibration Check finding.
+If you are about to change a previous decision or approach: STOP. Review all your prior responses in this session. Identify the inconsistency. Commit to one position backed by evidence — do not hedge. Changing direction without full prior-response review is a Calibration Check violation and will be blocked.
 `;
 
 const PRESSURE_L2 = `
