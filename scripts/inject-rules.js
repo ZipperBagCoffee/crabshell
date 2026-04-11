@@ -297,7 +297,7 @@ This is a SYSTEM MAINTENANCE TASK. You CANNOT skip this.
 const COMPRESSED_CHECKLIST = COMPRESSED_CHECKLIST_SHARED;
 
 // Parallel execution reminder
-const PARALLEL_REMINDER = `\n## Parallel Execution Check\nDecompose work into independent units, one worker per unit, execute all simultaneously.\nTool calls: no data dependency → all in one response.\nAgents: parallel WAs (same task, different lens) is default. WA→RA is always sequential. Single-WA only for single-file mechanical changes.\n`;
+const PARALLEL_REMINDER = `\n## Parallel Execution Check\nDecompose work into independent units, one worker per unit, execute all simultaneously.\nTool calls: no data dependency → all in one response.\nAgents: parallel and multiple WAs (same task, different lens) is default. WA→RA is always sequential. Single-WA only for single-file mechanical changes.\n`;
 
 // Input classification patterns (IA-1)
 const KOREAN_EXECUTION_PATTERNS = /해라|진행해|수정해|만들어|구현해|실행해|시작해|고쳐|적용해/;

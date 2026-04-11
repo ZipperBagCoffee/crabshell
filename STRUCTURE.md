@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.51.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.52.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 

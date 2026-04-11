@@ -1,5 +1,9 @@
 # Changelog
 
+## 21.52.0
+- feat: WA count enforcement — classifyAgent (WA/RA), wa-count.json tracking, ticketing reset, Stop hook blocks single-WA in regressing+light-workflow, SessionStart cleanup
+- feat: PARALLEL_REMINDER "parallel and multiple WAs"
+
 ## 21.51.0
 - fix: PARALLEL_REMINDER — WA parallel vs WA→RA sequential distinction, Single-WA tightened to single-file mechanical only
 

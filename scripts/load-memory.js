@@ -2,7 +2,7 @@ const path = require('path');
 const fs = require('fs');
 const { getProjectDir, getProjectName, getStorageRoot, readFileOrDefault, readJsonOrDefault, writeJson, estimateTokens, acquireIndexLock, releaseIndexLock } = require('./utils');
 const { ensureMemoryStructure } = require('./init');
-const { MEMORY_DIR, SESSIONS_DIR, INDEX_FILE, MEMORY_FILE, LOGS_DIR, DELTA_TEMP_FILE, REGRESSING_STATE_FILE, SKILL_ACTIVE_FILE } = require('./constants');
+const { MEMORY_DIR, SESSIONS_DIR, INDEX_FILE, MEMORY_FILE, LOGS_DIR, DELTA_TEMP_FILE, REGRESSING_STATE_FILE, SKILL_ACTIVE_FILE, WA_COUNT_FILE } = require('./constants');
 const { getPostCompactWarning: getPostCompactWarningShared } = require('./shared-context');
 
 // Skip processing during background memory summarization
@@ -113,6 +113,13 @@ function loadMemory(stdinData) {
   const skillActivePath = path.join(memoryDir, SKILL_ACTIVE_FILE);
   if (fs.existsSync(skillActivePath)) {
     try { fs.unlinkSync(skillActivePath); } catch {}
+  }
+
+  // Clean up wa-count.json on SessionStart
+  // WA count is per-session; always start fresh so old counts don't carry over
+  const waCountPath = path.join(memoryDir, WA_COUNT_FILE);
+  if (fs.existsSync(waCountPath)) {
+    try { fs.unlinkSync(waCountPath); } catch {}
   }
 
   // SessionStart pressure decay — decay to level 1 (not reset to 0)
