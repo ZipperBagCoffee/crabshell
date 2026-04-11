@@ -121,6 +121,7 @@ function loadMemory(stdinData) {
   const pressureIndex = readJsonOrDefault(pressureIndexPath, {});
   const needsPressureDecay = pressureIndex.feedbackPressure && pressureIndex.feedbackPressure.level > 1;
   const needsOscillationReset = pressureIndex.feedbackPressure && pressureIndex.feedbackPressure.oscillationCount > 0;
+  const needsTooGoodReset = pressureIndex.tooGoodSkepticism && pressureIndex.tooGoodSkepticism.retryCount > 0;
   if (needsPressureDecay) {
     pressureIndex.feedbackPressure.level = 1;
     pressureIndex.feedbackPressure.consecutiveCount = Math.min(1, pressureIndex.feedbackPressure.consecutiveCount);
@@ -129,11 +130,14 @@ function loadMemory(stdinData) {
   if (needsOscillationReset) {
     pressureIndex.feedbackPressure.oscillationCount = 0;
   }
-  if (needsPressureDecay || needsOscillationReset) {
+  if (needsTooGoodReset) {
+    pressureIndex.tooGoodSkepticism.retryCount = 0;
+  }
+  if (needsPressureDecay || needsOscillationReset || needsTooGoodReset) {
     const pressureLocked = acquireIndexLock(memoryDir);
     try {
       writeJson(pressureIndexPath, pressureIndex);
-      console.error(`[CRABSHELL] Session start: pressure L${pressureIndex.feedbackPressure.level}, oscillationCount reset to 0`);
+      console.error(`[CRABSHELL] Session start: pressure L${pressureIndex.feedbackPressure.level}, oscillationCount reset to 0, tooGoodSkepticism.retryCount reset to 0`);
     } catch {} finally {
       if (pressureLocked) releaseIndexLock(memoryDir);
     }
