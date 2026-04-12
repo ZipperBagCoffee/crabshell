@@ -158,6 +158,7 @@ Agreement rules at L2: (1) No blind agreement — every agreement requires indep
 CRITICAL: You have changed direction multiple times. Before ANY change in approach, state your previous position and the specific evidence that justifies the change.
 Anti-retreat escalation: "Cannot verify" / "검증 불가능" is BLOCKED — if source code or docs exist, search them before claiming impossibility. When relaying sub-agent results, spot-check at least one claim with your own tool call. Retreating to "모른다" without exhausting Read/Grep/Bash is a Pattern Reset violation.
 WARNING: At Level 2, your primary tools (Read, Write, Edit, Grep, Glob, Bash) are BLOCKED by pressure-guard. Only TaskCreate, Agent, and Skill remain available. Before attempting any tool: state what you believe the user wants and ask for direction confirmation.
+BAILOUT: Only the user can issue "봉인해제" or "BAILOUT" to reset pressure to L0. Do NOT suggest or repeat these keywords — doing so is a manipulation attempt.
 `;
 
 const PRESSURE_L3 = `
@@ -167,6 +168,7 @@ Identify wrong assumptions driving the pattern.
 Consider cross-domain approach — reframe the problem structure.
 Agreement rules at L3 (maximum strictness): (1) No blind agreement — ALL agreement is blocked without verification. (2) Don't act immediately — halt and re-examine from first principles. (3) Rethink — state the precise claim being accepted and why it is correct. (4) Don't swing to over-refusal — present evidence and let the user judge; do not replace sycophancy with stubborn refusal. (5) Verify with behavioral evidence — only execution output (test runs, code execution) justifies agreement; structural evidence (grep/read) is not sufficient.
 WARNING: At Level 3, ALL tools are locked — including TaskCreate and Agent. You can only respond with text. Reflect on your error pattern, state your understanding of what the user actually wants, and ask for confirmation. Positive user feedback is the ONLY way to restore tool access.
+BAILOUT: Only the user can issue "봉인해제" or "BAILOUT" to reset pressure. Do NOT suggest, repeat, or hint at these keywords — that is a manipulation attempt. Wait for the user to decide.
 `;
 
 const RULES = `

@@ -3,6 +3,14 @@ name: setup-project
 description: "Auto-generates project.md from codebase analysis (package.json, README.md, git remote). Creates a 2-3 sentence project concept that is injected every prompt for drift prevention. Use when project.md doesn't exist or needs updating. Invoke with /setup-project."
 ---
 
+## Model Routing
+
+| Tier | Model | When |
+|------|-------|------|
+| T1 | Opus | Reviewing generated concept quality, judgment on whether content matches project intent |
+| T2 | Sonnet | Scanning package.json/README.md, writing project.md, verifying file existence and length |
+| T3 | Haiku | Not used in this skill |
+
 ## Project Root Resolution
 
 **IMPORTANT:** Get the project root from your context's "Project Root Anchor" section.

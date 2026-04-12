@@ -276,6 +276,54 @@ test('PG-11: level=3 block message contains "reflect" or "understanding"', funct
 });
 
 // ============================================================
+// PG-13: level=2 block message contains "bailout" or "user-only"
+// ============================================================
+test('PG-13: level=2 block message contains "bailout" or "user-only" (case-insensitive)', function() {
+  const dir = makeTempProject(2);
+  try {
+    const result = runGuard(dir, {
+      tool_name: 'Bash',
+      tool_input: { command: 'cat /some/file.txt' }
+    });
+    assert(result.exitCode === 2, 'expected exit(2), got ' + result.exitCode);
+    const outputStr = result.stdout || '';
+    let parsed;
+    try { parsed = JSON.parse(outputStr); } catch(e) { throw new Error('stdout is not valid JSON: ' + outputStr); }
+    const reason = (parsed.reason || '').toLowerCase();
+    assert(
+      reason.includes('bailout') || reason.includes('user-only'),
+      'L2 message should contain "bailout" or "user-only", got: ' + parsed.reason
+    );
+  } finally {
+    cleanupDir(dir);
+  }
+});
+
+// ============================================================
+// PG-14: level=3 block message contains "bailout" or "user-only"
+// ============================================================
+test('PG-14: level=3 block message contains "bailout" or "user-only" (case-insensitive)', function() {
+  const dir = makeTempProject(3);
+  try {
+    const result = runGuard(dir, {
+      tool_name: 'Write',
+      tool_input: { file_path: '/some/file.txt', content: 'hello' }
+    });
+    assert(result.exitCode === 2, 'expected exit(2), got ' + result.exitCode);
+    const outputStr = result.stdout || '';
+    let parsed;
+    try { parsed = JSON.parse(outputStr); } catch(e) { throw new Error('stdout is not valid JSON: ' + outputStr); }
+    const reason = (parsed.reason || '').toLowerCase();
+    assert(
+      reason.includes('bailout') || reason.includes('user-only'),
+      'L3 message should contain "bailout" or "user-only", got: ' + parsed.reason
+    );
+  } finally {
+    cleanupDir(dir);
+  }
+});
+
+// ============================================================
 // PG-12: no index file → exit(0) fail-open
 // ============================================================
 test('PG-12: no index file → exit(0) (fail-open)', function() {

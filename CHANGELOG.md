@@ -1,5 +1,11 @@
 # Changelog
 
+## 21.62.0
+- feat: Model Routing table splits verification into mechanical (Sonnet) vs judgment (Opus)
+- feat: Workflow selection rule — open D document prevents light-workflow recommendation
+- feat: light-workflow SKILL.md pre-check for open D + Rule 7
+- feat: L2/L3 pressure messages include bailout user-authority note
+
 ## 21.61.0
 - feat: Discussion Convergence Criteria section — exit condition for regressing cycles
 - feat: Pressure bailout keywords "봉인해제"/"BAILOUT" — instant L0 reset
