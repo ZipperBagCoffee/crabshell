@@ -244,6 +244,88 @@ unitTest('TC6: Edit I doc WITHOUT ## Constraints + NO active skill → block (ex
 });
 
 // ============================================================
+// SECTION 1b: Subprocess tests — Discussion Edit + regressing state
+// ============================================================
+
+/**
+ * Create a temp project with optional regressing-state.json and optional skill-active flag.
+ * Returns { dir, cleanup }.
+ */
+function createTempProjectWithState(skillName, regressingState) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'docs-guard-disc-'));
+  const memDir = path.join(dir, '.crabshell', 'memory');
+  fs.mkdirSync(memDir, { recursive: true });
+  if (skillName) {
+    fs.writeFileSync(path.join(memDir, 'skill-active.json'), JSON.stringify({
+      skill: skillName,
+      activatedAt: new Date().toISOString(),
+      ttl: 900000
+    }));
+  }
+  if (regressingState !== undefined) {
+    fs.writeFileSync(path.join(memDir, 'regressing-state.json'), JSON.stringify(regressingState));
+  }
+  const discDir = path.join(dir, '.crabshell', 'discussion');
+  fs.mkdirSync(discDir, { recursive: true });
+  const filePath = path.join(discDir, 'D001-test.md');
+  fs.writeFileSync(filePath, '# D001\n\n## Intent\nTest\n\n## Discussion Log\n\n---\n### [2026-01-01 00:00] Started\nTest\n');
+  const cleanup = () => { try { fs.rmSync(dir, { recursive: true }); } catch {} };
+  return { dir, filePath, cleanup };
+}
+
+console.log('\n--- TC_D1: Discussion Edit + no regressing-state.json → exit 0 (allow) ---');
+unitTest('TC_D1: Discussion Edit + no regressing state → allow (exit 0)', () => {
+  const proj = createTempProjectWithState('planning', undefined);
+  try {
+    const hookData = {
+      tool_name: 'Edit',
+      tool_input: { file_path: proj.filePath, old_string: '## Intent\nTest', new_string: '## Intent\nUpdated' }
+    };
+    const code = runScript(hookData, { CLAUDE_PROJECT_DIR: proj.dir });
+    assert(code === 0, `expected exit 0, got ${code}`);
+  } finally { proj.cleanup(); }
+});
+
+console.log('\n--- TC_D2: Discussion Edit + regressing active=false → exit 0 (allow) ---');
+unitTest('TC_D2: Discussion Edit + regressing active=false → allow (exit 0)', () => {
+  const proj = createTempProjectWithState('planning', { active: false, discussion: 'D001', cycle: 1 });
+  try {
+    const hookData = {
+      tool_name: 'Edit',
+      tool_input: { file_path: proj.filePath, old_string: '## Intent\nTest', new_string: '## Intent\nUpdated' }
+    };
+    const code = runScript(hookData, { CLAUDE_PROJECT_DIR: proj.dir });
+    assert(code === 0, `expected exit 0, got ${code}`);
+  } finally { proj.cleanup(); }
+});
+
+console.log('\n--- TC_D3: Discussion Edit + regressing active=true (non-discussing skill) → exit 2 (block) ---');
+unitTest('TC_D3: Discussion Edit + regressing active=true → block (exit 2)', () => {
+  const proj = createTempProjectWithState('planning', { active: true, discussion: 'D001', cycle: 1 });
+  try {
+    const hookData = {
+      tool_name: 'Edit',
+      tool_input: { file_path: proj.filePath, old_string: '## Intent\nTest', new_string: '## Intent\nUpdated' }
+    };
+    const code = runScript(hookData, { CLAUDE_PROJECT_DIR: proj.dir });
+    assert(code === 2, `expected exit 2, got ${code}`);
+  } finally { proj.cleanup(); }
+});
+
+console.log('\n--- TC_D4: Discussion Edit + regressing active=true + discussing skill → exit 0 (allow log append) ---');
+unitTest('TC_D4: Discussion Edit + regressing active=true + discussing skill → allow (exit 0)', () => {
+  const proj = createTempProjectWithState('discussing', { active: true, discussion: 'D001', cycle: 1 });
+  try {
+    const hookData = {
+      tool_name: 'Edit',
+      tool_input: { file_path: proj.filePath, old_string: '## Discussion Log', new_string: '## Discussion Log\n\n---\n### [2026-01-01 01:00] Update\nNew entry' }
+    };
+    const code = runScript(hookData, { CLAUDE_PROJECT_DIR: proj.dir });
+    assert(code === 0, `expected exit 0, got ${code}`);
+  } finally { proj.cleanup(); }
+});
+
+// ============================================================
 // SECTION 2: Unit tests — checkInvestigationConstraints
 // ============================================================
 

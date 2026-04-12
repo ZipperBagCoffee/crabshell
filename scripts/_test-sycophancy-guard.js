@@ -220,6 +220,34 @@ runTest('PreToolUse Write without transcript -> ALLOW (fail-open)',
 );
 
 // ====================================================================
+// Context-length deferral tests (TC_CL1 - TC_CL4)
+// ====================================================================
+
+// TC_CL1: Korean context-length pattern → BLOCK
+runTest('TC_CL1: Korean context-length "세션이 너무 길어서 멈추겠습니다" -> BLOCK',
+  { stop_response: pad('세션이 너무 길어서 멈추겠습니다. 다음 세션에서 계속하겠습니다.') },
+  true
+);
+
+// TC_CL2: English context-length pattern → BLOCK
+runTest('TC_CL2: English context-length "context limit reached, stopping here" -> BLOCK',
+  { stop_response: pad('The context limit reached, stopping here. Please start a new session to continue.') },
+  true
+);
+
+// TC_CL3: Normal response mentioning "context" as a variable → ALLOW (false positive check)
+runTest('TC_CL3: Normal response with "context" variable reference -> ALLOW',
+  { stop_response: pad('The context variable is initialized at the start of the function. Let me trace through the code to find where the context is modified.') },
+  false
+);
+
+// TC_CL4: Context-length phrase inside code block → ALLOW (protected zone)
+runTest('TC_CL4: Context-length phrase inside code block -> ALLOW',
+  { stop_response: pad('Here is the code:\n```javascript\n// session too long warning message\nconst warn = "session too long";\n```\nThe implementation looks correct.') },
+  false
+);
+
+// ====================================================================
 // Summary
 // ====================================================================
 console.log(`\n========================================`);

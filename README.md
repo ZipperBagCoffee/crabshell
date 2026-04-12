@@ -192,6 +192,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.59.0 | feat: Discussion Edit guard during regressing (docs-guard.js), context-length deferral detection (sycophancy-guard.js Step 0), discussing SKILL.md Rule 1 conditional, regressing SKILL.md pre-partitioning warning in Step 2.5 |
 | 21.58.0 | feat: Pressure system redesign — L2 blocks 6 tools, L3 full lockdown (all tools including TaskCreate); block messages with user feedback solicitation; fix: counter.js TaskCreate reset gated, hooks.json matcher `.*`, verify-guard timeout 30s→60s |
 | 21.57.0 | feat: anti-retreat pressure rules — PRESSURE_L1 blocks "I don't know" without tool use; PRESSURE_L2 blocks "검증 불가능" without searching, mandates sub-agent spot-checking |
 | 21.56.0 | feat: oscillation enforcement — block on first direction change (pressure-independent), precision REVERSAL_PATTERNS, PRESSURE_L1 prior-response review mandate |
