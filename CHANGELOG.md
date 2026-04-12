@@ -1,5 +1,8 @@
 # Changelog
 
+## 21.64.0
+- fix: skill-active.json TTL expiry check — prevents Stop hook false-blocking after workflow completes
+
 ## 21.63.0
 - fix: BAILOUT now resets oscillationCount to 0 (complete pressure reset)
 

@@ -28,16 +28,31 @@ function isRegressingActive() {
   }
 }
 
+// Default TTL for skill-active flag (15 minutes)
+const SKILL_ACTIVE_TTL_MS = 15 * 60 * 1000;
+
 /**
  * Check if light-workflow is currently active.
- * Returns true if skill-active.json exists and has skill: 'light-workflow'.
+ * Returns true if skill-active.json exists, has skill: 'light-workflow',
+ * and has not exceeded its TTL.
  * Fail-open: returns false on any error.
  */
 function isLightWorkflowActive() {
   try {
     const skillActivePath = path.join(getProjectDir(), STORAGE_ROOT, MEMORY_DIR, SKILL_ACTIVE_FILE);
     const state = JSON.parse(fs.readFileSync(skillActivePath, 'utf8'));
-    return state && state.skill === 'light-workflow';
+    if (!state || !state.skill || !state.activatedAt) return false;
+
+    // TTL check — applies to any skill, per IA-4
+    const ttl = state.ttl || SKILL_ACTIVE_TTL_MS;
+    const elapsed = Date.now() - new Date(state.activatedAt).getTime();
+    if (elapsed > ttl) {
+      // Expired — clean up file
+      try { fs.unlinkSync(skillActivePath); } catch {}
+      return false;
+    }
+
+    return state.skill === 'light-workflow';
   } catch {
     return false; // No file or parse error = not active
   }

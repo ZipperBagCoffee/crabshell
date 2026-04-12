@@ -12,7 +12,7 @@ const os = require('os');
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rlg-test-'));
 process.env.CLAUDE_PROJECT_DIR = tmpDir;
 
-const { isRegressingActive, getPhaseContext } = require('./regressing-loop-guard');
+const { isRegressingActive, isLightWorkflowActive, getPhaseContext } = require('./regressing-loop-guard');
 
 let passed = 0;
 let failed = 0;
@@ -94,6 +94,63 @@ test('feedback phase → contains "Feedback"', fbCtx.includes('Feedback'), true)
 // TC11: active: false — should return empty string
 fs.writeFileSync(statePath, JSON.stringify({ active: false, phase: 'execution', cycle: 1, totalCycles: 3 }));
 test('active:false → empty string', getPhaseContext(), '');
+
+// --- isLightWorkflowActive() TTL tests ---
+console.log('\n--- isLightWorkflowActive() TTL ---');
+
+const skillActivePath = path.join(crabDir, 'skill-active.json');
+
+// TC12: No skill-active.json file — should return false
+if (fs.existsSync(skillActivePath)) fs.unlinkSync(skillActivePath);
+test('no skill-active.json → false', isLightWorkflowActive(), false);
+
+// TC13: skill-active.json with light-workflow, activatedAt just now — should return true
+fs.writeFileSync(skillActivePath, JSON.stringify({
+  skill: 'light-workflow',
+  activatedAt: new Date().toISOString(),
+  ttl: 900000  // 15 minutes
+}));
+test('light-workflow + fresh TTL → true', isLightWorkflowActive(), true);
+
+// TC14: skill-active.json with light-workflow, TTL expired (activatedAt 20 min ago) — should return false
+const twentyMinAgo = new Date(Date.now() - 20 * 60 * 1000).toISOString();
+fs.writeFileSync(skillActivePath, JSON.stringify({
+  skill: 'light-workflow',
+  activatedAt: twentyMinAgo,
+  ttl: 900000  // 15 minutes — elapsed 20 min > 15 min TTL
+}));
+test('light-workflow + expired TTL → false', isLightWorkflowActive(), false);
+// Verify the expired file was deleted
+test('expired TTL → file deleted', fs.existsSync(skillActivePath), false);
+
+// TC15: skill-active.json with different skill, fresh TTL — should return false (wrong skill)
+fs.writeFileSync(skillActivePath, JSON.stringify({
+  skill: 'regressing',
+  activatedAt: new Date().toISOString(),
+  ttl: 900000
+}));
+test('regressing skill + fresh TTL → false', isLightWorkflowActive(), false);
+
+// TC16: skill-active.json missing activatedAt — should return false (fail-open)
+fs.writeFileSync(skillActivePath, JSON.stringify({
+  skill: 'light-workflow'
+}));
+test('missing activatedAt → false', isLightWorkflowActive(), false);
+
+// TC17: skill-active.json with no ttl field — should use default 15min TTL and return true if fresh
+fs.writeFileSync(skillActivePath, JSON.stringify({
+  skill: 'light-workflow',
+  activatedAt: new Date().toISOString()
+  // no ttl field — should default to 15 min
+}));
+test('no ttl field + fresh activatedAt → true (uses default TTL)', isLightWorkflowActive(), true);
+
+// TC18: Malformed JSON — fail-open, return false
+fs.writeFileSync(skillActivePath, 'not valid json{{{');
+test('malformed skill-active.json → false', isLightWorkflowActive(), false);
+
+// Cleanup
+if (fs.existsSync(skillActivePath)) fs.unlinkSync(skillActivePath);
 
 // Cleanup
 fs.rmSync(tmpDir, { recursive: true, force: true });
