@@ -112,7 +112,7 @@ async function main() {
   try {
     const nodePath = process.execPath.replace(/\\/g, '/');
     const stdout = execSync(`"${nodePath}" "${runVerifyPath}"`, {
-      timeout: 30000,
+      timeout: 60000,
       encoding: 'utf8',
       cwd: projectDir
     });

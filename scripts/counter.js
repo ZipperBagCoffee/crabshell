@@ -118,7 +118,7 @@ async function check() {
       try {
         const idxPath = path.join(getStorageRoot(), MEMORY_DIR, 'memory-index.json');
         const idx = readIndexSafe(idxPath);
-        if (idx.feedbackPressure && idx.feedbackPressure.level > 0) {
+        if (idx.feedbackPressure && idx.feedbackPressure.level > 0 && idx.feedbackPressure.level < 3) {
           idx.feedbackPressure.level = 0;
           idx.feedbackPressure.consecutiveCount = 0;
           idx.feedbackPressure.decayCounter = 0;

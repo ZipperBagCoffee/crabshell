@@ -625,7 +625,7 @@ test('SUBPROCESS check: TaskCreate with no pressure no crash', function() {
   }
 });
 
-test('SUBPROCESS check: TaskCreate with L3 pressure resets all fields', function() {
+test('SUBPROCESS check: TaskCreate with L3 pressure does NOT reset (level stays at 3)', function() {
   const { tmpDir, memDir } = setupProject();
   try {
     fs.writeFileSync(path.join(memDir, 'memory-index.json'), JSON.stringify({
@@ -634,9 +634,9 @@ test('SUBPROCESS check: TaskCreate with L3 pressure resets all fields', function
     }));
     runCheck(tmpDir, { tool_name: 'TaskCreate', session_id: 'testpressure' });
     const idx = JSON.parse(fs.readFileSync(path.join(memDir, 'memory-index.json'), 'utf8'));
-    assertEqual(idx.feedbackPressure.level, 0, 'level');
-    assertEqual(idx.feedbackPressure.consecutiveCount, 0, 'count');
-    assertEqual(idx.feedbackPressure.decayCounter, 0, 'decay');
+    assertEqual(idx.feedbackPressure.level, 3, 'level must stay at 3 — L3 blocks TaskCreate reset');
+    assertEqual(idx.feedbackPressure.consecutiveCount, 5, 'consecutiveCount must be unchanged');
+    assertEqual(idx.feedbackPressure.decayCounter, 2, 'decayCounter must be unchanged');
   } finally {
     cleanupDir(tmpDir);
   }

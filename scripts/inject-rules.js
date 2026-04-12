@@ -149,6 +149,7 @@ State corrected understanding as first line of your response, then fix the diver
 Agreement rules at L2: (1) No blind agreement — every agreement requires independent verification. (2) Don't act immediately after agreement — pause and check. (3) Rethink — explicitly state what claim you are accepting. (4) Find middle ground — do not swing to opposite extreme; present evidence and let user judge. (5) Verify with behavioral evidence — grep/read/structural evidence is insufficient; execution output required.
 CRITICAL: You have changed direction multiple times. Before ANY change in approach, state your previous position and the specific evidence that justifies the change.
 Anti-retreat escalation: "Cannot verify" / "검증 불가능" is BLOCKED — if source code or docs exist, search them before claiming impossibility. When relaying sub-agent results, spot-check at least one claim with your own tool call. Retreating to "모른다" without exhausting Read/Grep/Bash is a Pattern Reset violation.
+WARNING: At Level 2, your primary tools (Read, Write, Edit, Grep, Glob, Bash) are BLOCKED by pressure-guard. Only TaskCreate, Agent, and Skill remain available. Before attempting any tool: state what you believe the user wants and ask for direction confirmation.
 `;
 
 const PRESSURE_L3 = `
@@ -156,9 +157,8 @@ const PRESSURE_L3 = `
 First-principles reset: identify the error pattern you detect in your own responses.
 Identify wrong assumptions driving the pattern.
 Consider cross-domain approach — reframe the problem structure.
-If a sub-agent is available (TaskCreate), delegate for fresh-perspective re-analysis.
-TaskCreate resets pressure to Level 0 and unblocks all tools.
 Agreement rules at L3 (maximum strictness): (1) No blind agreement — ALL agreement is blocked without verification. (2) Don't act immediately — halt and re-examine from first principles. (3) Rethink — state the precise claim being accepted and why it is correct. (4) Don't swing to over-refusal — present evidence and let the user judge; do not replace sycophancy with stubborn refusal. (5) Verify with behavioral evidence — only execution output (test runs, code execution) justifies agreement; structural evidence (grep/read) is not sufficient.
+WARNING: At Level 3, ALL tools are locked — including TaskCreate and Agent. You can only respond with text. Reflect on your error pattern, state your understanding of what the user actually wants, and ask for confirmation. Positive user feedback is the ONLY way to restore tool access.
 `;
 
 const RULES = `

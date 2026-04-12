@@ -192,6 +192,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.58.0 | feat: Pressure system redesign — L2 blocks 6 tools, L3 full lockdown (all tools including TaskCreate); block messages with user feedback solicitation; fix: counter.js TaskCreate reset gated, hooks.json matcher `.*`, verify-guard timeout 30s→60s |
 | 21.57.0 | feat: anti-retreat pressure rules — PRESSURE_L1 blocks "I don't know" without tool use; PRESSURE_L2 blocks "검증 불가능" without searching, mandates sub-agent spot-checking |
 | 21.56.0 | feat: oscillation enforcement — block on first direction change (pressure-independent), precision REVERSAL_PATTERNS, PRESSURE_L1 prior-response review mandate |
 | 21.55.0 | feat: Stop hook phase-specific context + fix: WA count tracking 'TaskCreate'→'Agent' tool name |

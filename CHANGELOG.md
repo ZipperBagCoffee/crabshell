@@ -1,5 +1,13 @@
 # Changelog
 
+## 21.58.0
+- feat: Pressure system redesign — L2 blocks 6 tools, L3 full lockdown (all tools including TaskCreate)
+- feat: Block messages include user feedback solicitation (L2: direction confirmation, L3: reflection/consensus)
+- fix: counter.js TaskCreate reset gated to level < 3
+- fix: hooks.json pressure-guard matcher expanded to `.*` (all tools)
+- fix: PG-10 test regex alternation syntax
+- fix: verify-guard.js timeout increased 30s → 60s
+
 ## 21.57.0
 - feat: anti-retreat pressure rules — PRESSURE_L1 blocks "I don't know" without tool use and speculation-as-fact; PRESSURE_L2 blocks "검증 불가능" without searching, mandates sub-agent spot-checking
 

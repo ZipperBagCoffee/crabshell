@@ -143,8 +143,9 @@ test('AC-8: 6 non-neg from L3 -> L1', function() {
 test('AC-6: PRESSURE_L2 no ask the user', function() {
   assert(!(/ask the user/i.test(PRESSURE_L2)), 'should not ask user');
 });
-test('AC-6: PRESSURE_L2 no confirm', function() {
-  assert(!(/confirm/i.test(PRESSURE_L2)), 'should not confirm');
+test('AC-6: PRESSURE_L2 has direction confirmation solicitation', function() {
+  // v21.58.0: L2 intentionally includes "direction confirmation" per pressure system redesign
+  assert(/confirm/i.test(PRESSURE_L2), 'should include direction confirmation solicitation');
 });
 test('AC-6: PRESSURE_L1 no ask user', function() {
   assert(!(/ask the user/i.test(PRESSURE_L1)), 'should not ask user');
