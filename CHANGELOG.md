@@ -1,5 +1,8 @@
 # Changelog
 
+## 21.66.0
+- fix: discussing SKILL.md convergence criteria default for regressing
+
 ## 21.65.0
 - feat: D/I document templates add `## Constraints` section — constraints now persist in documents for downstream reference
 
