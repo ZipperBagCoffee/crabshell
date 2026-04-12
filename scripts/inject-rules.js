@@ -13,6 +13,9 @@ if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 // Emergency stop keywords - when detected, replaces entire context with EMERGENCY STOP
 const EMERGENCY_KEYWORDS = ['아시발멈춰', 'BRAINMELT'];
 
+// Bailout keywords - when detected, resets feedback pressure to L0
+const BAILOUT_KEYWORDS = ['봉인해제', 'BAILOUT'];
+
 // Use shared readStdin with 1000ms timeout for UserPromptSubmit hook
 function readStdin() {
   return readStdinShared(1000);
@@ -21,6 +24,11 @@ function readStdin() {
 function checkEmergencyStop(hookData) {
   const input = (hookData && (hookData.prompt || hookData.input)) || '';
   return EMERGENCY_KEYWORDS.some(kw => input.includes(kw));
+}
+
+function detectBailout(hookData) {
+  const input = (hookData && (hookData.prompt || hookData.input)) || '';
+  return BAILOUT_KEYWORDS.some(kw => input.includes(kw));
 }
 
 // --- Feedback Pressure Detection ---
@@ -620,8 +628,16 @@ async function main() {
     // Extract user prompt early (for feedback detection + memory snippets)
     const userPrompt = (hookData && (hookData.prompt || hookData.input)) || '';
 
-    // Feedback pressure detection
-    const isNegativeFeedback = detectNegativeFeedback(userPrompt);
+    // Bailout: reset pressure regardless of current level
+    const isBailout = BAILOUT_KEYWORDS.some(kw => userPrompt.includes(kw));
+    if (isBailout && index.feedbackPressure) {
+      index.feedbackPressure.level = 0;
+      index.feedbackPressure.consecutiveCount = 0;
+      index.feedbackPressure.decayCounter = 0;
+      // oscillationCount preserved
+      console.error('[PRESSURE BAILOUT: reset to L0]');
+    }
+    const isNegativeFeedback = isBailout ? false : detectNegativeFeedback(userPrompt);
     const pressureLevel = updateFeedbackPressure(index, isNegativeFeedback);
     if (pressureLevel > 0) {
       console.error(`[PRESSURE L${pressureLevel}]`);
@@ -635,7 +651,7 @@ async function main() {
     }
 
     // Persist index if pressure was updated or frequency tracking needed
-    if (isNegativeFeedback || index.feedbackPressure || frequency > 1) {
+    if (isNegativeFeedback || isBailout || index.feedbackPressure || frequency > 1) {
       const memoryDir = path.join(getStorageRoot(projectDir), 'memory');
       const idxLocked = acquireIndexLock(memoryDir);
       try {
@@ -788,6 +804,9 @@ module.exports = {
   classifyUserIntent,
   // Re-export from regressing-state for convenience
   buildRegressingReminder,
+  // Bailout
+  detectBailout,
+  BAILOUT_KEYWORDS,
   // Constants
   EMERGENCY_KEYWORDS,
   NEGATIVE_PATTERNS,

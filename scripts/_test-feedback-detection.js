@@ -246,6 +246,47 @@ test('AC-5: load-memory.js decays to level 1 not 0', function() {
   assert(src.includes('Session start: pressure'), 'should log decay');
 });
 
+// BAILOUT keyword detection
+test('BAILOUT: 봉인해제 returns true', function() {
+  const { detectBailout } = require(injectRulesPath);
+  assertEqual(detectBailout({ prompt: '봉인해제' }), true, 'detectBailout should return true for 봉인해제');
+});
+
+test('BAILOUT: BAILOUT returns true', function() {
+  const { detectBailout } = require(injectRulesPath);
+  assertEqual(detectBailout({ prompt: 'BAILOUT please reset' }), true, 'detectBailout should return true for BAILOUT');
+});
+
+test('BAILOUT: normal prompt returns false', function() {
+  const { detectBailout } = require(injectRulesPath);
+  assertEqual(detectBailout({ prompt: '파일 읽어줘' }), false, 'no bailout for normal prompt');
+});
+
+test('BAILOUT: empty returns false', function() {
+  const { detectBailout } = require(injectRulesPath);
+  assertEqual(detectBailout({ prompt: '' }), false, 'no bailout for empty');
+});
+
+test('BAILOUT: oscillationCount preserved after reset', function() {
+  const index = { feedbackPressure: { level: 2, consecutiveCount: 2, lastDetectedAt: null, decayCounter: 0, oscillationCount: 5 } };
+  // Simulate bailout reset (no level>0 guard)
+  index.feedbackPressure.level = 0;
+  index.feedbackPressure.consecutiveCount = 0;
+  index.feedbackPressure.decayCounter = 0;
+  assertEqual(index.feedbackPressure.oscillationCount, 5, 'oscillationCount should be preserved');
+});
+
+test('BAILOUT: reset even at L0 (consecutiveCount resets)', function() {
+  const index = { feedbackPressure: { level: 0, consecutiveCount: 3, lastDetectedAt: null, decayCounter: 2, oscillationCount: 1 } };
+  // Simulate bailout reset without level>0 guard
+  index.feedbackPressure.level = 0;
+  index.feedbackPressure.consecutiveCount = 0;
+  index.feedbackPressure.decayCounter = 0;
+  assertEqual(index.feedbackPressure.level, 0, 'level stays 0');
+  assertEqual(index.feedbackPressure.consecutiveCount, 0, 'consecutiveCount reset from 3 to 0');
+  assertEqual(index.feedbackPressure.decayCounter, 0, 'decayCounter reset');
+});
+
 // Summary
 console.log('');
 console.log('Results: ' + passed + ' passed, ' + failed + ' failed');

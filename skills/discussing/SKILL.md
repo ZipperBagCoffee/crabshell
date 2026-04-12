@@ -63,6 +63,7 @@ Ask the user:
 1. **Intent:** Why is this discussion needed? What decision is being made?
 2. **Context:** Related files, issues, prior discussions?
 3. **Intent Anchor:** What are the specific, measurable outcomes? (IA items)
+4. **Convergence Criteria:** What observable conditions would indicate the goal is fully achieved? (For regressing: used by Rule 7 for early termination. For non-regressing: write "Not applicable.")
 
 Then create the document:
 
@@ -86,6 +87,10 @@ Then create the document:
 
 **Unmapped check:** Every user-stated goal MUST map to at least one IA item. If any user statement has no IA mapping → HALT and ask user to confirm exclusion.
 Mapping Type: `direct` (user explicitly stated) or `inferred` (derived from context, requires user confirmation)
+
+## Convergence Criteria
+{user's answer — observable conditions for "done"}
+(If not applicable: "Not applicable — non-regressing discussion.")
 
 ## Discussion Log
 

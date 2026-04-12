@@ -60,11 +60,15 @@ test('EXPORT: all constants present', function() {
     'RULES', 'MARKER_START', 'MARKER_END', 'COMPRESSED_CHECKLIST',
     'EMERGENCY_STOP_CONTEXT', 'ROTATION_INSTRUCTION',
     'PRESSURE_L1', 'PRESSURE_L2', 'PRESSURE_L3', 'EMERGENCY_KEYWORDS',
-    'NEGATIVE_PATTERNS', 'NEGATIVE_EXCLUSIONS',
+    'NEGATIVE_PATTERNS', 'NEGATIVE_EXCLUSIONS', 'BAILOUT_KEYWORDS',
   ];
   for (const c of consts) {
     assert(mod[c] !== undefined, c + ' not exported');
   }
+});
+
+test('EXPORT: detectBailout exported as function', function() {
+  assert(typeof mod.detectBailout === 'function', 'detectBailout not exported as function');
 });
 
 // ============================================================

@@ -1,5 +1,10 @@
 # Changelog
 
+## 21.61.0
+- feat: Discussion Convergence Criteria section — exit condition for regressing cycles
+- feat: Pressure bailout keywords "봉인해제"/"BAILOUT" — instant L0 reset
+- feat: regressing Rule 7 references D's Convergence Criteria for termination evaluation
+
 ## 21.60.0
 - feat: role-collapse-guard.js — blocks Orchestrator source file writes during workflow when no WA launched
 - feat: deferral-guard.js — warns on analysis + trailing deferral question (warn-only)
