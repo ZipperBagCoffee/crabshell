@@ -123,6 +123,12 @@ const CONTEXT_LENGTH_PATTERNS = [
   /running out of context/i,
   /context\s*(is|is getting)\s*(full|long)/i,
   /token\s*(limit|budget)\s*(reached|exceeded)/i,
+  // Korean — "세션" + deferral/stoppage word
+  /세션.*(?:다음에|이후에|나중에|전환|이어서|계속|다음번에|다음번|여기까지|그만|충분)/i,
+  /(?:다음|새)\s*세션/i,
+  // English — deferral verb + session (narrowed to avoid FP on DB/HTTP sessions)
+  /(?:continue|proceed|resume|pick\s*up)\s+in\s+(?:a\s+)?(?:new|next|another)\s+session/i,
+  /(?:start\s+a?\s*)?(?:new|fresh)\s+(?:claude\s+)?session\s+(?:for\s+this|to\s+continue)/i,
 ];
 
 /**
