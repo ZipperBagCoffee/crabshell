@@ -1,5 +1,8 @@
 # Changelog
 
+## 21.63.0
+- fix: BAILOUT now resets oscillationCount to 0 (complete pressure reset)
+
 ## 21.62.0
 - feat: Model Routing table splits verification into mechanical (Sonnet) vs judgment (Opus)
 - feat: Workflow selection rule — open D document prevents light-workflow recommendation

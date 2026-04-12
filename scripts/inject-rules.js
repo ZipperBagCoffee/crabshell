@@ -636,7 +636,7 @@ async function main() {
       index.feedbackPressure.level = 0;
       index.feedbackPressure.consecutiveCount = 0;
       index.feedbackPressure.decayCounter = 0;
-      // oscillationCount preserved
+      index.feedbackPressure.oscillationCount = 0;
       console.error('[PRESSURE BAILOUT: reset to L0]');
     }
     const isNegativeFeedback = isBailout ? false : detectNegativeFeedback(userPrompt);

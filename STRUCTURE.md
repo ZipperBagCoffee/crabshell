@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.62.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.63.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -332,6 +332,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.63.0 | fix: BAILOUT now resets oscillationCount to 0 (complete pressure reset) |
 | 21.62.0 | feat: Model Routing splits verification into mechanical (Sonnet) vs judgment (Opus); workflow selection blocks light-workflow when open D exists; light-workflow SKILL.md pre-check + Rule 7; L2/L3 pressure messages include bailout user-authority note |
 | 21.61.0 | feat: discussing SKILL.md 4th question (Convergence Criteria) + template section; regressing Rule 7 Convergence Criteria reference; inject-rules.js pressure bailout keywords "봉인해제"/"BAILOUT" — instant L0 reset |
 | 21.60.0 | feat: role-collapse-guard.js (Orchestrator source-write block), deferral-guard.js (warn-only trailing question detection); fix: context-length "세션" + stoppage patterns, narrowed English session patterns; fix: memory-delta SKILL.md "foreground" → "wait for completion" |

@@ -267,24 +267,27 @@ test('BAILOUT: empty returns false', function() {
   assertEqual(detectBailout({ prompt: '' }), false, 'no bailout for empty');
 });
 
-test('BAILOUT: oscillationCount preserved after reset', function() {
+test('BAILOUT: oscillationCount reset to 0 after bailout', function() {
   const index = { feedbackPressure: { level: 2, consecutiveCount: 2, lastDetectedAt: null, decayCounter: 0, oscillationCount: 5 } };
-  // Simulate bailout reset (no level>0 guard)
+  // Simulate bailout reset (full reset including oscillationCount)
   index.feedbackPressure.level = 0;
   index.feedbackPressure.consecutiveCount = 0;
   index.feedbackPressure.decayCounter = 0;
-  assertEqual(index.feedbackPressure.oscillationCount, 5, 'oscillationCount should be preserved');
+  index.feedbackPressure.oscillationCount = 0;
+  assertEqual(index.feedbackPressure.oscillationCount, 0, 'oscillationCount should be reset to 0');
 });
 
-test('BAILOUT: reset even at L0 (consecutiveCount resets)', function() {
+test('BAILOUT: reset even at L0 (all fields reset)', function() {
   const index = { feedbackPressure: { level: 0, consecutiveCount: 3, lastDetectedAt: null, decayCounter: 2, oscillationCount: 1 } };
   // Simulate bailout reset without level>0 guard
   index.feedbackPressure.level = 0;
   index.feedbackPressure.consecutiveCount = 0;
   index.feedbackPressure.decayCounter = 0;
+  index.feedbackPressure.oscillationCount = 0;
   assertEqual(index.feedbackPressure.level, 0, 'level stays 0');
   assertEqual(index.feedbackPressure.consecutiveCount, 0, 'consecutiveCount reset from 3 to 0');
   assertEqual(index.feedbackPressure.decayCounter, 0, 'decayCounter reset');
+  assertEqual(index.feedbackPressure.oscillationCount, 0, 'oscillationCount reset from 1 to 0');
 });
 
 // Summary
