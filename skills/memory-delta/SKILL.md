@@ -1,6 +1,6 @@
 ---
 name: memory-delta
-description: "Auto-executes when the [CRABSHELL_DELTA] trigger is detected. Calls delta-summarizer agent in foreground to summarize and append to logbook.md. Not user-invocable — triggered automatically."
+description: "Auto-executes when the [CRABSHELL_DELTA] trigger is detected. Calls delta-summarizer agent to summarize and append to logbook.md. Not user-invocable — triggered automatically."
 ---
 
 ## Project Root Resolution
