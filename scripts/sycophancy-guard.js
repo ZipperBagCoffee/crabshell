@@ -103,6 +103,43 @@ function stripProtectedZones(text) {
   return stripped;
 }
 
+// ====================================================================
+// Context-Length Deferral Detection
+// ====================================================================
+
+// Patterns indicating the assistant is using session/context length as a reason to stop.
+// This is PROHIBITED PATTERN #6 (CLAUDE.md): "takes too long" is never the assistant's decision.
+const CONTEXT_LENGTH_PATTERNS = [
+  // Korean
+  /세션이\s*(너무\s*)?(길어|길었)/i,
+  /컨텍스트\s*(한계|초과|가\s*길)/i,
+  /긴\s*세션/i,
+  /맥락이\s*길/i,
+  /토큰\s*(한계|초과)/i,
+  /세션\s*길이.*때문/i,
+  // English
+  /context\s*(limit|window|length)\s*(reached|exceeded|too long|is long)/i,
+  /session\s*(too long|is getting long)/i,
+  /running out of context/i,
+  /context\s*(is|is getting)\s*(full|long)/i,
+  /token\s*(limit|budget)\s*(reached|exceeded)/i,
+];
+
+/**
+ * Check response for context/session-length deferral patterns.
+ * Strips protected zones before matching to avoid false positives in code blocks.
+ * Returns the matched pattern string if detected, null if clean.
+ */
+function checkContextLength(response) {
+  if (!response) return null;
+  const stripped = stripProtectedZones(response);
+  for (const pattern of CONTEXT_LENGTH_PATTERNS) {
+    const match = stripped.match(pattern);
+    if (match) return match[0];
+  }
+  return null;
+}
+
 // Reversal patterns: detect when assistant is changing direction without stated reasoning
 const REVERSAL_PATTERNS = [
   // English
@@ -689,6 +726,19 @@ function handleStop(hookData) {
   // Read pressure level once
   const pLevel = getPressureLevel();
 
+  // Step 0: Check context-length deferral BEFORE all other checks
+  // Context/session length as a reason to stop = PROHIBITED PATTERN #6
+  const contextLengthMatch = checkContextLength(response);
+  if (contextLengthMatch) {
+    const output = {
+      decision: "block",
+      reason: `Context/session length used as reason to stop or defer. This is PROHIBITED (CLAUDE.md PROHIBITED PATTERN #6: 'takes too long' is never your decision). Run /context to compact the session and continue without stopping. User decides when to stop.`
+    };
+    process.stderr.write(`[SYCOPHANCY_GUARD] Blocked context-length deferral: '${contextLengthMatch}' pressure=${pLevel}\n`);
+    console.log(JSON.stringify(output));
+    process.exit(2);
+  }
+
   // Step 1: Check verification claims BEFORE sycophancy check
   const claimResult = checkVerificationClaims(response, hookData.transcript_path, pLevel);
   if (claimResult && claimResult.blocked) {
@@ -788,5 +838,5 @@ main().catch(() => process.exit(0)); // fail-open on any error
 
 // Export for unit testing
 if (require.main !== module) {
-  module.exports = { checkSycophancy, checkVerificationClaims, getPressureLevel, pressureHint, checkReversalPhrases, getOscillationCount, incrementOscillationCount, checkTooGoodPOG, findGapColumnIndex, getTooGoodRetryCount, incrementTooGoodRetryCount, resetTooGoodRetryCount };
+  module.exports = { checkSycophancy, checkVerificationClaims, getPressureLevel, pressureHint, checkReversalPhrases, getOscillationCount, incrementOscillationCount, checkTooGoodPOG, findGapColumnIndex, getTooGoodRetryCount, incrementTooGoodRetryCount, resetTooGoodRetryCount, checkContextLength };
 }

@@ -1,5 +1,13 @@
 # Changelog
 
+## 21.59.0
+- feat: docs-guard.js — Discussion Edit blocked during active regressing (non-discussing skills); checkDiscussionRegressingBlock() reads regressing-state.json, Approach B full file-level block
+- feat: sycophancy-guard.js — context-length deferral detection (Step 0 in handleStop); CONTEXT_LENGTH_PATTERNS (KR + EN), checkContextLength(), block with /context instruction
+- feat: discussing SKILL.md Rule 1 — conditional on regressing state (allow body edits pre-regressing, block during active regressing)
+- feat: regressing SKILL.md Step 2.5 — pre-partitioning warning (DO NOT describe Cycle 2+ scope at parameter recommendation time)
+- test: _test-docs-guard.js TC_D1–TC_D4 (Discussion Edit allow/block scenarios)
+- test: _test-sycophancy-guard.js TC_CL1–TC_CL4 (context-length pattern detection)
+
 ## 21.58.0
 - feat: Pressure system redesign — L2 blocks 6 tools, L3 full lockdown (all tools including TaskCreate)
 - feat: Block messages include user feedback solicitation (L2: direction confirmation, L3: reflection/consensus)

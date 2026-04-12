@@ -55,6 +55,33 @@ function getActiveSkill(projectDir) {
 }
 
 /**
+ * Check if a Discussion document Edit is blocked by an active regressing session.
+ * Approach B: full file-level block for any non-discussing skill during active regressing.
+ * Returns null if allowed, error string if blocked.
+ */
+function checkDiscussionRegressingBlock(filePath, toolName, activeSkill, projectDir) {
+  // Only apply to Edit tool on discussion/ paths
+  if (toolName !== 'Edit') return null;
+  if (!filePath.includes('discussion/') && !filePath.includes('discussion\\')) return null;
+
+  // Read regressing-state.json inline (avoid circular dependency)
+  try {
+    const { STORAGE_ROOT } = require('./constants');
+    const statePath = require('path').join(projectDir, STORAGE_ROOT, 'memory', 'regressing-state.json');
+    const data = JSON.parse(require('fs').readFileSync(statePath, 'utf8'));
+    if (!data || data.active !== true) return null;
+  } catch {
+    // File absent or unreadable → allow (fail-open)
+    return null;
+  }
+
+  // Regressing is active — discussing skill is the only legitimate actor for log appends
+  if (activeSkill === 'discussing') return null;
+
+  return 'Regressing session is active. Discussion document body cannot be modified during regressing. Only /discussing (log append) is permitted. To amend body sections, end the regressing session first.';
+}
+
+/**
  * For investigation documents: verify ## Constraints section exists.
  * Returns null if OK, error string if missing.
  */
@@ -102,7 +129,19 @@ async function main() {
   // Check if a legitimate skill is active
   const activeSkill = getActiveSkill(projectDir);
   if (activeSkill) {
-    // Skill is active — check investigation Constraints before allowing
+    // Skill is active — check Discussion body edit during regressing before allowing
+    const discussionRegressingError = checkDiscussionRegressingBlock(filePath, toolName, activeSkill, projectDir);
+    if (discussionRegressingError) {
+      const output = {
+        decision: "block",
+        reason: discussionRegressingError
+      };
+      process.stderr.write(`[DOCS_GUARD] Blocked ${toolName} to ${filePath} — discussion body edit during regressing\n`);
+      console.log(JSON.stringify(output));
+      process.exit(2);
+      return;
+    }
+    // Check investigation Constraints before allowing
     const constraintError = checkInvestigationConstraints(filePath, toolName);
     if (constraintError) {
       const output = {
@@ -145,4 +184,4 @@ main().catch(e => {
   process.exit(0); // fail-open
 });
 
-module.exports = { checkInvestigationConstraints };
+module.exports = { checkInvestigationConstraints, checkDiscussionRegressingBlock };

@@ -46,9 +46,9 @@
     },
     {
       "id": "AC-6",
-      "ia": "version 21.58.0",
+      "ia": "version 21.59.0",
       "type": "indirect",
-      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const v=JSON.parse(require('fs').readFileSync('C:/Users/chulg/Documents/memory-keeper-plugin/.claude-plugin/plugin.json','utf8')).version;console.log(v==='21.58.0'?'PASS:'+v:'FAIL:'+v)\"",
+      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const v=JSON.parse(require('fs').readFileSync('C:/Users/chulg/Documents/memory-keeper-plugin/.claude-plugin/plugin.json','utf8')).version;console.log(v==='21.59.0'?'PASS:'+v:'FAIL:'+v)\"",
       "expected": "PASS:",
       "timeout": 5000
     },
