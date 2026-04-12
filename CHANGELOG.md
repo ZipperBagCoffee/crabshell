@@ -1,5 +1,11 @@
 # Changelog
 
+## 21.60.0
+- feat: role-collapse-guard.js — blocks Orchestrator source file writes during workflow when no WA launched
+- feat: deferral-guard.js — warns on analysis + trailing deferral question (warn-only)
+- fix: context-length patterns expanded for "세션" standalone + stoppage words + narrower English
+- fix: memory-delta SKILL.md "foreground" → "wait for completion" (resolves inject text conflict)
+
 ## 21.59.0
 - feat: docs-guard.js — Discussion Edit blocked during active regressing (non-discussing skills); checkDiscussionRegressingBlock() reads regressing-state.json, Approach B full file-level block
 - feat: sycophancy-guard.js — context-length deferral detection (Step 0 in handleStop); CONTEXT_LENGTH_PATTERNS (KR + EN), checkContextLength(), block with /context instruction
