@@ -192,6 +192,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.64.0 | fix: skill-active.json TTL expiry check — prevents Stop hook false-blocking after workflow completes |
 | 21.63.0 | fix: BAILOUT now resets oscillationCount to 0 (complete pressure reset) |
 | 21.62.0 | feat: Model Routing splits verification into mechanical (Sonnet) vs judgment (Opus); workflow selection blocks light-workflow when open D exists; light-workflow SKILL.md pre-check + Rule 7; L2/L3 pressure messages include bailout user-authority note |
 | 21.61.0 | feat: Discussion Convergence Criteria section (discussing SKILL.md 4th question + template), regressing Rule 7 Convergence Criteria reference, pressure bailout keywords "봉인해제"/"BAILOUT" — instant L0 reset |
