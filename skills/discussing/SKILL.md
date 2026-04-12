@@ -63,7 +63,7 @@ Ask the user:
 1. **Intent:** Why is this discussion needed? What decision is being made?
 2. **Context:** Related files, issues, prior discussions?
 3. **Intent Anchor:** What are the specific, measurable outcomes? (IA items)
-4. **Convergence Criteria:** What observable conditions would indicate the goal is fully achieved? (For regressing: used by Rule 7 for early termination. For non-regressing: write "Not applicable.")
+4. **Convergence Criteria:** What observable conditions would indicate the goal is fully achieved? (For regressing: default is "Orchestrator's final verification (devil's advocate) finds no new issues → converged." Override with task-specific criteria if needed. For non-regressing: write "Not applicable.")
 
 Then create the document:
 
@@ -95,7 +95,7 @@ Mapping Type: `direct` (user explicitly stated) or `inferred` (derived from cont
 
 ## Convergence Criteria
 {user's answer — observable conditions for "done"}
-(If not applicable: "Not applicable — non-regressing discussion.")
+(Regressing default: "Orchestrator's final verification (devil's advocate) finds no new issues → converged." Non-regressing: "Not applicable — non-regressing discussion.")
 
 ## Discussion Log
 

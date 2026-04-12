@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.65.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.66.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -332,6 +332,8 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.66.0 | fix: discussing SKILL.md convergence criteria default for regressing |
+| 21.65.0 | feat: D/I document templates add `## Constraints` section for persistent constraint reference |
 | 21.64.0 | fix: skill-active.json TTL expiry check — prevents Stop hook false-blocking after workflow completes |
 | 21.63.0 | fix: BAILOUT now resets oscillationCount to 0 (complete pressure reset) |
 | 21.62.0 | feat: Model Routing splits verification into mechanical (Sonnet) vs judgment (Opus); workflow selection blocks light-workflow when open D exists; light-workflow SKILL.md pre-check + Rule 7; L2/L3 pressure messages include bailout user-authority note |

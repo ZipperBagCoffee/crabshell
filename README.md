@@ -192,6 +192,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.66.0 | fix: discussing SKILL.md convergence criteria default for regressing |
 | 21.65.0 | feat: D/I document templates add `## Constraints` section for persistent constraint reference |
 | 21.64.0 | fix: skill-active.json TTL expiry check — prevents Stop hook false-blocking after workflow completes |
 | 21.63.0 | fix: BAILOUT now resets oscillationCount to 0 (complete pressure reset) |
