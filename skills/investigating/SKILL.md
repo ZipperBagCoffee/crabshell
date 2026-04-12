@@ -60,7 +60,7 @@ Constraint Check:
 Additional constraints? Silence = proceed.
 ```
 
-4. If the user adds constraints, record them in the I document's Topic or Sources section
+4. Confirmed constraints are written to the `## Constraints` section of the I document
 5. All confirmed constraints are binding for every agent in this investigation
 
 ### Step 3.5: Parameter Recommendation
@@ -86,6 +86,11 @@ Create `.crabshell/investigation/I{NNN}-{slug}.md`:
 
 ## Topic
 {what is being investigated and why}
+
+## Constraints
+- [Project] {constraints from project.md}
+- [Inferred] {constraints from task context}
+- [User] {additional constraints from user, if any}
 
 ## Questions
 1. {question 1}

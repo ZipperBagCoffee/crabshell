@@ -57,7 +57,7 @@ Constraint Check:
 - [Inferred] {constraints from task context, e.g., "Per P{NNN}, scope limited to X"}
 Additional constraints? Silence = proceed.
 ```
-4. Confirmed constraints MUST appear as IA items or be explicitly excluded with user approval
+4. Confirmed constraints are written to the `## Constraints` section of the D document
 
 Ask the user:
 1. **Intent:** Why is this discussion needed? What decision is being made?
@@ -75,6 +75,11 @@ Then create the document:
 
 ## Context
 {user's answer about context}
+
+## Constraints
+- [Project] {constraints from project.md}
+- [Inferred] {constraints from task context}
+- [User] {additional constraints from user, if any}
 
 ## Intent Anchor
 - IA-1: {first intent anchor item}

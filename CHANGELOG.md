@@ -1,5 +1,8 @@
 # Changelog
 
+## 21.65.0
+- feat: D/I document templates add `## Constraints` section — constraints now persist in documents for downstream reference
+
 ## 21.64.0
 - fix: skill-active.json TTL expiry check — prevents Stop hook false-blocking after workflow completes
 
