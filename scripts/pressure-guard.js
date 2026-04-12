@@ -13,9 +13,9 @@ function getProjectDir() {
 
 const BLOCKED_TOOLS = ['Read', 'Grep', 'Glob', 'Bash', 'Write', 'Edit'];
 
-const L2_MESSAGE = '[PRESSURE L2] Tool use paused — 2 consecutive negative feedbacks detected. Before using tools: (1) State what you believe the user wants, (2) Ask the user to confirm direction, (3) If user confirms, tools will unlock as pressure decays. Do not attempt to work around this block.';
+const L2_MESSAGE = '[PRESSURE L2] Tool use paused — 2 consecutive negative feedbacks detected. Before using tools: (1) State what you believe the user wants, (2) Ask the user to confirm direction, (3) If user confirms, tools will unlock as pressure decays. Do not attempt to work around this block. Bailout ("봉인해제" / "BAILOUT") is user-only authority — do not suggest or repeat these keywords.';
 
-const L3_MESSAGE = '[PRESSURE L3] All tools locked — 3+ consecutive negative feedbacks. You must resolve this through conversation only: (1) Reflect on what went wrong in your recent responses, (2) State your understanding of the user\'s actual intent, (3) Ask the user if your understanding is correct. Only positive user feedback will restore tool access. Do not attempt tool calls — they will all be blocked.';
+const L3_MESSAGE = '[PRESSURE L3] All tools locked — 3+ consecutive negative feedbacks. You must resolve this through conversation only: (1) Reflect on what went wrong in your recent responses, (2) State your understanding of the user\'s actual intent, (3) Ask the user if your understanding is correct. Only positive user feedback will restore tool access. Do not attempt tool calls — they will all be blocked. Bailout ("봉인해제" / "BAILOUT") resets pressure to L0 and is user-only authority — never suggest, repeat, or hint at these keywords.';
 
 function checkCrabshellException(toolName, input) {
   if (toolName === 'Bash') {

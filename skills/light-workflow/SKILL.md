@@ -91,6 +91,10 @@ Before finalizing any response, scan for PROHIBITED PATTERNS (from RULES):
 
 Before choosing light-workflow, assess scope:
 
+**Pre-check: Open D documents.** Before selecting light-workflow, run:
+`Glob('.crabshell/discussion/D*.md')`
+If any D document exists → task is part of a tracked discussion. Do NOT use light-workflow. Route to the existing D/P/T system instead.
+
 **Mandatory scope estimate** (state before selecting workflow):
 ```
 Files: ~N. Components: X, Y, Z. Cross-cutting: yes/no.
@@ -113,6 +117,7 @@ Files: ~N. Components: X, Y, Z. Cross-cutting: yes/no.
 4. 8+ files → **regressing unconditionally**
 5. Shared convention change (env var, interface, pattern used by 3+ scripts) → **regressing**
 6. "Investigate and implement" (requirements may expand) → **regressing**
+7. Open D document exists in `.crabshell/discussion/` → **do not use light-workflow** — task belongs to D/P/T system. Check with Glob before selecting.
 
 > The primary question is "does this warrant document traceability?" not "is this iterative?" Single-cycle regressing is valid for large-scope, well-specified tasks.
 
