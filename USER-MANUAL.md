@@ -450,6 +450,7 @@ L1 files are deduplicated automatically when created, but manual cleanup may som
 
 | Version | Claude Code | Node.js |
 |---------|-------------|---------|
+| 21.72.0 | 1.0+ | 18+ |
 | 21.71.0 | 1.0+ | 18+ |
 | 21.70.0 | 1.0+ | 18+ |
 | 21.69.0 | 1.0+ | 18+ |
