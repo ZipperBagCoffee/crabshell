@@ -1,10 +1,10 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.73.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.74.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
-Crabshell is a Claude Code plugin with two pillars: (1) session memory — L1 delta extraction, Haiku summarization, logbook.md rotation, auto-restore on restart; (2) LLM behavioral correction — injects VERIFICATION-FIRST, UNDERSTANDING-FIRST, INTERFERENCE PATTERNS every prompt, twelve guard hooks block violations at runtime. D/P/T/I/W document system, 20 skills, Node.js hooks. All output under .crabshell/.
+Crabshell is a Claude Code plugin with two pillars: (1) session memory — L1 delta extraction, Haiku summarization, logbook.md rotation, auto-restore on restart; (2) LLM behavioral correction — injects VERIFICATION-FIRST, UNDERSTANDING-FIRST, INTERFERENCE PATTERNS every prompt, twelve guard hooks block violations at runtime. D/P/T/I/W/K document system, 21 skills, Node.js hooks. All output under .crabshell/.
 
 ## Directory Structure
 
@@ -29,7 +29,9 @@ crabshell/
 │   │   └── INDEX.md
 │   ├── investigation/                # Investigation documents (I001, I002...)
 │   │   └── INDEX.md
-│   └── worklog/                      # Worklog documents (W001, W002...) — light-workflow tracing
+│   ├── worklog/                      # Worklog documents (W001, W002...) — light-workflow tracing
+│   │   └── INDEX.md
+│   └── knowledge/                    # Knowledge pages (K001, K002...) — verified facts + operational tips
 │       └── INDEX.md
 │
 ├── .claude-plugin/                   # Plugin configuration
@@ -109,9 +111,10 @@ crabshell/
 │   ├── _test-too-good-pog.js
 │   ├── utils.js                      # Shared utilities (getStorageRoot, getProjectDir)
 │   ├── lint-obsidian.js              # 5-check Obsidian document linter (orphans, wikilinks, stale, frontmatter, INDEX) (v21.70.0)
-│   └── search-docs.js                # BM25 full-text search across D/P/T/I/W documents (v21.72.0)
+│   ├── search-docs.js                # BM25 full-text search across D/P/T/I/W/K documents (v21.72.0, knowledge/ added v21.74.0)
+│   └── migrate-obsidian.js           # Frontmatter + wikilink migration; --generate-digest; knowledge section (v21.74.0)
 │
-├── skills/                           # Slash command skills (20 total)
+├── skills/                           # Slash command skills (21 total)
 │   ├── memory-autosave/SKILL.md      # Auto-trigger memory save
 │   ├── memory-delta/SKILL.md         # Auto-trigger delta summarization (background non-blocking, Phase A/B)
 │   ├── memory-rotate/SKILL.md        # Auto-trigger L3 generation
@@ -131,7 +134,8 @@ crabshell/
 │   ├── lessons/SKILL.md              # /crabshell:lessons (project rules)
 │   ├── status/SKILL.md               # /crabshell:status (plugin healthcheck)
 │   ├── lint/SKILL.md                 # /crabshell:lint (Obsidian document lint checks) (v21.70.0)
-│   └── search-docs/SKILL.md          # /crabshell:search-docs (BM25 document search) (v21.72.0)
+│   ├── search-docs/SKILL.md          # /crabshell:search-docs (BM25 document search) (v21.72.0)
+│   └── knowledge/SKILL.md            # /crabshell:knowledge (K-page creation + view) (v21.74.0)
 │
 ├── templates/                        # Auto-init templates (v13.9.20)
 │   ├── workflow.md                   # Understanding-First workflow template
@@ -336,6 +340,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.74.0 | feat: knowledge/ system — /knowledge skill, K001-K003 from lessons migration, search-docs + digest integration; CLAUDE.md lessons→knowledge; 21 skills |
 | 21.73.0 | feat: background agent stop exemption — backgroundAgentPending tracking in counter.js, TTL-based exemption in regressing-loop-guard.js |
 | 21.72.0 | feat: --generate-digest (moc-digest.md), search-docs.js BM25, /search-docs skill, load-memory moc-digest injection; 20 skills |
 | 21.71.0 | feat: pressure message once-only (lastShownLevel tracking); PRESSURE_L2/L3 content rewritten to problem analysis + corrective plan; pressure-guard short block messages |

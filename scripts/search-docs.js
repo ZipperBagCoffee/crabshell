@@ -35,7 +35,7 @@ const STOPWORDS = new Set([
 // ---------------------------------------------------------------------------
 // Document directories to scan
 // ---------------------------------------------------------------------------
-const DOC_DIRS = ['discussion', 'investigation', 'plan', 'ticket', 'worklog'];
+const DOC_DIRS = ['discussion', 'investigation', 'plan', 'ticket', 'worklog', 'knowledge'];
 
 // ---------------------------------------------------------------------------
 // tokenize(text): lowercase, split on delimiters, filter length>1, no stopwords

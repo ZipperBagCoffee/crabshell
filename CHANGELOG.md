@@ -1,5 +1,12 @@
 # Changelog
 
+## v21.74.0
+- feat: skills/knowledge/SKILL.md — /knowledge skill for creating and viewing K-pages (verified facts + operational tips)
+- feat: search-docs.js — added knowledge/ to DOC_DIRS for BM25 search coverage
+- feat: migrate-obsidian.js --generate-digest — knowledge section appended when K-pages exist (AC-6: graceful skip when empty)
+- feat: .crabshell/knowledge/ — K001-K003 migrated from lessons/ (CLI special chars, .claude/ bash permissions, global hooks double execution)
+- fix: CLAUDE.md — "lessons" → "knowledge" reference updated; 21 skills
+
 ## v21.73.0
 - feat: counter.js — detect background Agent launches (run_in_background=true) and record backgroundAgentPending to wa-count.json
 - feat: regressing-loop-guard.js — allow stop when backgroundAgentPending TTL (10min) is active, exempting legitimate background agent waits from the regressing stop-block

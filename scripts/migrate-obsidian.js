@@ -809,12 +809,41 @@ function generateDigestFile() {
   const header = `# Document Knowledge Base\n> ${entries.length} docs · ${topicCount} topics · use /search-docs <query> for retrieval.\n`;
   const content = header + '\n' + statusLine + '\n' + body;
 
-  const digestPath = path.join(crabshellDir, 'moc-digest.md');
-  fs.writeFileSync(digestPath, content, 'utf8');
-  console.log(`  Written → moc-digest.md (${content.length} chars)`);
+  // Knowledge Base section
+  let knowledgeSection = '';
+  const knowledgeDir = path.join(crabshellDir, 'knowledge');
+  if (fs.existsSync(knowledgeDir)) {
+    let kFiles;
+    try {
+      kFiles = fs.readdirSync(knowledgeDir).filter(f => /^K\d{3}.*\.md$/.test(f) && !f.endsWith('.bak'));
+    } catch (e) {
+      kFiles = [];
+    }
+    if (kFiles.length > 0) {
+      knowledgeSection = `\n### Knowledge Base (${kFiles.length} items)\n`;
+      for (const kf of kFiles.sort()) {
+        const kPath = path.join(knowledgeDir, kf);
+        let kContent = '';
+        try { kContent = fs.readFileSync(kPath, 'utf8'); } catch (e) { /* skip */ }
+        // Extract title from frontmatter or H1
+        const titleMatch = kContent.match(/^title:\s*"?(.+?)"?\s*$/m);
+        const h1Match = kContent.match(/^#\s+(.+)/m);
+        const title = titleMatch ? titleMatch[1].trim() : (h1Match ? h1Match[1].replace(/^K\d{3}\s*-\s*/, '').trim() : path.basename(kf, '.md'));
+        const idMatch = kContent.match(/^id:\s*(.+)$/m);
+        const id = idMatch ? idMatch[1].trim() : path.basename(kf, '.md').match(/^(K\d{3})/)?.[1] || '';
+        knowledgeSection += `- ${id} — ${title}\n`;
+      }
+    }
+  }
 
-  if (content.length > 2000) {
-    console.warn(`  WARNING: digest length ${content.length} exceeds 2000 chars`);
+  const finalContent = content + knowledgeSection;
+
+  const digestPath = path.join(crabshellDir, 'moc-digest.md');
+  fs.writeFileSync(digestPath, finalContent, 'utf8');
+  console.log(`  Written → moc-digest.md (${finalContent.length} chars)`);
+
+  if (finalContent.length > 2000) {
+    console.warn(`  WARNING: digest length ${finalContent.length} exceeds 2000 chars`);
   }
 
   console.log('');
