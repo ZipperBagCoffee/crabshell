@@ -1,5 +1,11 @@
 # Changelog
 
+## v21.70.0
+- feat: lint-obsidian.js — 5-check Obsidian document linter (orphans, wikilinks, stale, frontmatter, INDEX inconsistencies)
+- feat: lint skill (/crabshell:lint) — runs lint-obsidian.js with structured output
+- feat: MOC pages — auto-generated Map of Content for discussion/, plan/, ticket/, investigation/ directories
+- feat: discussing SKILL.md — convergence auto-apply on conclusion
+
 ## v21.69.0
 - feat: Obsidian L2 integration — YAML frontmatter + wikilinks in all D/P/T/I/W skill templates
 - feat: migrate-obsidian.js — universal migration script for retroactive frontmatter + wikilink conversion

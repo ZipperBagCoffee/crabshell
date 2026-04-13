@@ -5,7 +5,7 @@
 Three pillars:
 1. **Session memory** — Auto-saves context across sessions. Delta extraction, Haiku summarization, token-based rotation. No manual setup.
 2. **Behavioral correction** — Injects verification-first rules and interference pattern detection every prompt. Twelve guard hooks block sycophancy, scope reduction, overcorrection, and shortcuts at runtime.
-3. **Structured workflows** — D/P/T/I/W document system with 18 skills for planning, investigating, iterative improvement (regressing), and light-workflow tracing.
+3. **Structured workflows** — D/P/T/I/W document system with 19 skills for planning, investigating, iterative improvement (regressing), and light-workflow tracing.
 
 All plugin output lives under `.crabshell/` — gitignored, clean project root.
 
@@ -63,6 +63,7 @@ With this setup, **Claude starts every new session knowing this information**.
 | `/crabshell:verifying` | Create/run project-specific verification tools |
 | `/crabshell:lessons` | Check/create project-specific lessons |
 | `/crabshell:status` | Healthcheck of plugin state (memory, regressing, verification, version) |
+| `/crabshell:lint` | Run Obsidian document lint checks (orphans, broken wikilinks, stale, missing frontmatter, INDEX inconsistencies) |
 
 ## Document Management (5-Document System: D/P/T/I/W)
 
@@ -192,6 +193,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.70.0 | feat: Obsidian L3 — MOC pages (--generate-moc), /lint skill (5-check linter), convergence criteria auto-apply; 19 skills |
 | 21.69.0 | feat: Obsidian L2 integration — YAML frontmatter + wikilinks in D/P/T/I/W templates; migrate-obsidian.js; fix: light-workflow INDEX.md init logic |
 | 21.68.0 | fix: bailout guidance once-only, L3 structured self-diagnosis |
 | 21.67.0 | feat: USER-MANUAL.md full update, bailout keyword disclosure, version bump checklist step 5b |
