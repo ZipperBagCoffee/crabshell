@@ -1,5 +1,9 @@
 # Changelog
 
+## 21.68.0
+- fix: bailout guidance once-only — removed from inject-rules.js L2/L3 (every-prompt), kept in pressure-guard.js (once per level transition)
+- feat: L3 structured self-diagnosis — mandatory sections: What I did wrong / Why it was wrong / What I will do differently
+
 ## 21.67.0
 - feat: USER-MANUAL.md full update (v19→v21.67.0) — added 8 hooks, 6 guards, Pressure System section, setup skills, config options
 - fix: bailout keywords now disclosed to user at L2/L3 instead of hidden
