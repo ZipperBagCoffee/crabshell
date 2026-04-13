@@ -1,5 +1,10 @@
 # Changelog
 
+## v21.69.0
+- feat: Obsidian L2 integration — YAML frontmatter + wikilinks in all D/P/T/I/W skill templates
+- feat: migrate-obsidian.js — universal migration script for retroactive frontmatter + wikilink conversion
+- fix: light-workflow SKILL.md INDEX.md initialization logic (3-case pattern)
+
 ## 21.68.0
 - fix: bailout guidance once-only — removed from inject-rules.js L2/L3 (every-prompt), kept in pressure-guard.js (once per level transition)
 - feat: L3 structured self-diagnosis — mandatory sections: What I did wrong / Why it was wrong / What I will do differently

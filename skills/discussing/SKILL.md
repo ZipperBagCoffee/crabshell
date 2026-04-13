@@ -68,6 +68,15 @@ Ask the user:
 Then create the document:
 
 ```
+---
+type: discussion
+id: D{NNN}
+title: "{title}"
+status: open
+created: {YYYY-MM-DD}
+tags: []
+---
+
 # D{NNN} - {title}
 
 ## Intent
@@ -111,8 +120,9 @@ Mapping Type: `direct` (user explicitly stated) or `inferred` (derived from cont
 Append a new row to the table in `.crabshell/discussion/INDEX.md`:
 
 ```
-| D{NNN} | {title} | open | {YYYY-MM-DD} | |
+| [[D{NNN}-{slug}|D{NNN}]] | {title} | open | {YYYY-MM-DD} | |
 ```
+Note: `{slug}` is the kebab-case portion of the document filename. Obtain it by globbing `.crabshell/discussion/D{NNN}-*.md` and extracting the basename without `.md`.
 
 ### Step 5: Confirm to user
 
@@ -163,7 +173,7 @@ If the entry includes a status change, update the status column in `.crabshell/d
 1. **NEVER modify existing content** in a discussion document. Only append to the Discussion Log section.
 2. **Timestamps** use local time: `[YYYY-MM-DD HH:MM]`
 3. **INDEX.md** is the only file where existing content may be modified (status column updates).
-4. When the discussion leads to a plan, note in the log: "→ See P{NNN}" and update INDEX.md Related column.
+4. When the discussion leads to a plan, note in the log: "→ See [[P{NNN}-{slug}|P{NNN}]]" and update INDEX.md Related column with the same wikilink format. Obtain `{slug}` by globbing `.crabshell/plan/P{NNN}-*.md` and extracting the basename without `.md`. If the target document does not exist yet, use the bare ID temporarily: "→ See P{NNN}".
 5. **No parent transition while children incomplete:** If a related P exists and is not yet `done` → do not transition D to `concluded`. Can only conclude when related plan is completed.
 6. **Auto-conclude:** When related P becomes `done`, D is automatically set to `concluded` by ticketing cascade. No manual conclusion needed.
 7. **Mandatory work log:** After performing any work related to this document, append a log entry to the Discussion Log section using the existing format (`### [{YYYY-MM-DD HH:MM}] {entry_type}`). This applies regardless of whether this skill was explicitly invoked — if the work touched or advanced this discussion's purpose, log it.

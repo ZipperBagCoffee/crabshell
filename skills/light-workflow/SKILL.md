@@ -13,11 +13,20 @@ Every light-workflow invocation creates a W document in `.crabshell/worklog/`:
 1. Glob `.crabshell/worklog/W*.md`, determine next ID (W001, W002, ...)
 2. Create `.crabshell/worklog/W{NNN}-{slug}.md`:
 ```
+---
+type: worklog
+id: W{NNN}
+title: "{task title}"
+status: in-progress
+created: {YYYY-MM-DD}
+tags: []
+---
+
 # W{NNN} - {task title}
 
 ## Header
 **Date:** {YYYY-MM-DD HH:MM}
-**Source:** {user request or D/P/I reference}
+**Source:** {user request or wikilink reference, e.g., [[D{NNN}-{slug}|D{NNN}]] / [[P{NNN}-{slug}|P{NNN}]] / [[I{NNN}-{slug}|I{NNN}]]}
 **Scope estimate:** Files: ~N. Components: X, Y, Z. Cross-cutting: yes/no.
 
 ## Task
@@ -48,7 +57,17 @@ Every light-workflow invocation creates a W document in `.crabshell/worklog/`:
 ## Result
 {Final outcome summary}
 ```
-3. Append row to `.crabshell/worklog/INDEX.md`: `| W{NNN} | {task} | in-progress | {date} |`
+3. Check if `.crabshell/worklog/` exists:
+   - **Folder does not exist:** Create it and create `.crabshell/worklog/INDEX.md` with:
+     ```
+     # Worklog Index
+
+     | ID | Task | Status | Date | Related |
+     |----|------|--------|------|---------|
+     ```
+   - **Folder exists but INDEX.md does NOT exist:** Pre-existing files detected. Create `.crabshell/worklog/backup/`, move ALL existing files into it, then create INDEX.md with the content above. Report to user: "Moved N existing files to .crabshell/worklog/backup/"
+   - **Folder exists and INDEX.md exists:** Proceed.
+4. Append row to `.crabshell/worklog/INDEX.md`: `| [[W{NNN}-{slug}|W{NNN}]] | {task} | in-progress | {date} | |`
 
 ### On completion:
 1. Complete all 9 W document sections: Header, Task, Problem, Approach, Files Changed (table), Verification (per-criterion PASS/FAIL), Experiment Log (or N/A), User Testing Needed (or N/A), Result

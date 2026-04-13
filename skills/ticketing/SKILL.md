@@ -56,10 +56,19 @@ Ask the user:
 Then create `.crabshell/ticket/P{NNN}_T{NNN}-{slug}.md`:
 
 ```
+---
+type: ticket
+id: P{NNN}_T{NNN}
+title: "{title}"
+status: todo
+created: {YYYY-MM-DD}
+tags: []
+---
+
 # P{NNN}_T{NNN} - {title}
 
 ## Parent
-- Plan: P{NNN} - {plan title}
+- Plan: [[P{NNN}-{slug}|P{NNN}]] - {plan title}
 
 ## Intent
 {user's answer}
@@ -213,7 +222,7 @@ This step is PROCEDURAL — it happens every time, not when the Orchestrator "re
 Append row to `.crabshell/ticket/INDEX.md`:
 
 ```
-| P{NNN}_T{NNN} | {title} | todo | {YYYY-MM-DD} | P{NNN} |
+| [[P{NNN}_T{NNN}-{slug}|P{NNN}_T{NNN}]] | {title} | todo | {YYYY-MM-DD} | [[P{NNN}-{slug}|P{NNN}]] |
 ```
 
 ### Step 6: Update parent plan
@@ -221,7 +230,7 @@ Append row to `.crabshell/ticket/INDEX.md`:
 Append to the **Tickets section** of the parent plan document:
 
 ```
-- P{NNN}_T{NNN}: {title}
+- [[P{NNN}_T{NNN}-{slug}|P{NNN}_T{NNN}]]: {title}
 ```
 
 Also update `.crabshell/plan/INDEX.md` Tickets column to include the new ticket ID.
@@ -269,7 +278,7 @@ If ticket status → `verified`:
    - If NO → stop here.
    - If YES → continue cascade.
 2. **Close parent plan:** Update parent plan's status to `done` in `.crabshell/plan/INDEX.md`. Append log entry to plan document: `Status Change: in-progress → done (all tickets verified)`
-3. **Cascade to D/I:** Read parent plan's `Related` column in `.crabshell/plan/INDEX.md`. For each related D/I ID:
+3. **Cascade to D/I:** Read parent plan's `Related` column in `.crabshell/plan/INDEX.md`. For each related D/I ID (stored as wikilinks `[[D{NNN}-{slug}|D{NNN}]]` or bare IDs — extract the ID portion):
    - **Cross-check:** Read that D/I's Related column in its INDEX.md. If it references OTHER plans besides the one just completed, check those plans' statuses too. ALL related plans must be `done` before concluding.
    - If all related plans done → update D/I status to `concluded`, append log entry: `Status Change: open → concluded (all related plans completed)`
    - If other related plans still open → skip, do not conclude. Log: `P{NNN} completed, conclusion deferred due to other related plans still incomplete`

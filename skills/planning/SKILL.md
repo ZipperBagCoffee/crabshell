@@ -49,6 +49,15 @@ Ask the user:
 Then create `.crabshell/plan/P{NNN}-{slug}.md`:
 
 ```
+---
+type: plan
+id: P{NNN}
+title: "{title}"
+status: draft
+created: {YYYY-MM-DD}
+tags: []
+---
+
 # P{NNN} - {title}
 
 ## Intent
@@ -143,7 +152,7 @@ This plan is executed using the following agent structure:
 Append row to `.crabshell/plan/INDEX.md`:
 
 ```
-| P{NNN} | {title} | draft | {YYYY-MM-DD} | | |
+| [[P{NNN}-{slug}|P{NNN}]] | {title} | draft | {YYYY-MM-DD} | | |
 ```
 
 ### Step 5: Confirm
@@ -193,10 +202,10 @@ Update status column and/or Tickets column in `.crabshell/plan/INDEX.md`.
 ## Rules
 
 1. **NEVER modify existing content.** Only append to Log section, Tickets section, and agent result sections (Analysis Results, Review Results, Intent Check).
-2. **Tickets section:** Only receives appended lines like `- P{NNN}_T{NNN}: {title}` when ticketing skill creates a ticket.
+2. **Tickets section:** Only receives appended lines like `- [[P{NNN}_T{NNN}-{slug}|P{NNN}_T{NNN}]]: {title}` when ticketing skill creates a ticket.
 3. **Plan checkboxes:** Never modify. Progress is tracked in Log entries.
 4. **INDEX.md** is the only file where status may be modified.
-5. When plan comes from a discussion/investigation, note `D{NNN}` or `I{NNN}` in INDEX.md Related column and add to first log entry.
+5. When plan comes from a discussion/investigation, note `[[D{NNN}-{slug}|D{NNN}]]` or `[[I{NNN}-{slug}|I{NNN}]]` in INDEX.md Related column and add to first log entry. Use bare ID (e.g., `D{NNN}`) as a forward reference if the filename is not yet known.
 6. **No parent transition while children incomplete:** P can only transition to `done` when ALL related tickets are `verified`. If any ticket is incomplete, refuse `done` transition.
 7. **Auto-conclude parent on completion:** When P becomes `done` → automatically update D/I in Related column to `concluded` and append log to those documents. (Triggered by ticketing cascade)
 8. **Mandatory work log:** After performing any work related to this document, append a log entry to the Log section using the existing format (`### [{YYYY-MM-DD HH:MM}] {entry_type}`). This applies regardless of whether this skill was explicitly invoked — if the work touched or advanced this plan's purpose, log it.

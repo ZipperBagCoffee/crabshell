@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.68.0)
+# Crabshell User Manual (v21.69.0)
 
 ## Why Do You Need This?
 
@@ -355,6 +355,72 @@ When Claude notices repeated patterns (2+ times), it proposes a lesson:
 
 ---
 
+## Obsidian Integration (Optional)
+
+Crabshell supports using [Obsidian](https://obsidian.md) as a visual interface for your `.crabshell/` documents. This is entirely opt-in — no configuration required to use Crabshell without Obsidian.
+
+### How to Enable
+
+Open your project's `.crabshell/` folder as an Obsidian vault:
+
+1. Open Obsidian → "Open folder as vault"
+2. Select `[your-project]/.crabshell/`
+
+All D/P/T/I/W documents will be visible and navigable with graph view and backlinks.
+
+### What You Get
+
+**YAML Frontmatter** — every new D/P/T/I/W document includes a 6-field header:
+
+```yaml
+---
+id: D001
+type: discussion
+status: open
+created: 2026-04-12
+project: my-project
+tags: [crabshell, discussion]
+---
+```
+
+**Wikilinks** — tickets reference their parent plans, plans reference their discussion:
+
+```markdown
+## Context
+Parent plan: [[P001]]
+Discussion: [[D094]]
+```
+
+These wikilinks appear as edges in Obsidian's graph view, letting you see the full decision → plan → ticket chain visually.
+
+### Retroactive Migration
+
+To add frontmatter and wikilinks to existing documents, run:
+
+```bash
+node scripts/migrate-obsidian.js --project-dir=PATH [--dry-run] [--backup]
+```
+
+| Flag | Description |
+|------|-------------|
+| `--project-dir=PATH` | Path to the project root (the folder containing `.crabshell/`) |
+| `--dry-run` | Preview changes without writing any files |
+| `--backup` | Create `.bak` backups before modifying each file |
+
+**Example:**
+
+```bash
+# Preview what would change
+node scripts/migrate-obsidian.js --project-dir=/my/project --dry-run
+
+# Run with backups
+node scripts/migrate-obsidian.js --project-dir=/my/project --backup
+```
+
+The script processes all documents under `.crabshell/discussion/`, `.crabshell/plan/`, `.crabshell/ticket/`, `.crabshell/investigation/`, and `.crabshell/worklog/`. Documents that already have frontmatter are skipped.
+
+---
+
 ## Troubleshooting
 
 ### Memory Not Loading
@@ -382,6 +448,7 @@ L1 files are deduplicated automatically when created, but manual cleanup may som
 
 | Version | Claude Code | Node.js |
 |---------|-------------|---------|
+| 21.69.0 | 1.0+ | 18+ |
 | 21.68.0 | 1.0+ | 18+ |
 | 21.67.0 | 1.0+ | 18+ |
 | 21.66.0 | 1.0+ | 18+ |

@@ -82,6 +82,15 @@ This recommendation happens once per investigation creation. If the user does no
 Create `.crabshell/investigation/I{NNN}-{slug}.md`:
 
 ```
+---
+type: investigation
+id: I{NNN}
+title: "{title}"
+status: open
+created: {YYYY-MM-DD}
+tags: []
+---
+
 # I{NNN} - {title}
 
 ## Topic
@@ -167,8 +176,9 @@ The Orchestrator:
 Append row to `.crabshell/investigation/INDEX.md`:
 
 ```
-| I{NNN} | {title} | open | {YYYY-MM-DD} | |
+| [[I{NNN}-{slug}|I{NNN}]] | {title} | open | {YYYY-MM-DD} | |
 ```
+Note: `{slug}` is the kebab-case portion of the document filename. Obtain it by globbing `.crabshell/investigation/I{NNN}-*.md` and extracting the basename without `.md`.
 
 ### Step 9: Confirm
 
@@ -220,7 +230,7 @@ Update status column in `.crabshell/investigation/INDEX.md`.
 1. **NEVER modify existing content.** Only append to Log section and update Conclusions/Synthesis during investigation.
 2. **Conclusion section** must answer each Question from the Questions section individually, with evidence and confidence assessment.
 3. **INDEX.md** is the only file where existing content may be modified (status updates).
-4. When investigation leads to a discussion or plan, note in log: "→ See D{NNN}" or "→ See P{NNN}" and update INDEX.md Related column.
+4. When investigation leads to a discussion or plan, note in log: "→ See [[D{NNN}-{slug}|D{NNN}]]" or "→ See [[P{NNN}-{slug}|P{NNN}]]" and update INDEX.md Related column with the same wikilink format. Obtain `{slug}` by globbing `.crabshell/{discussion|plan}/{ID}-*.md` and extracting the basename without `.md`. If the target document does not exist yet, use the bare ID temporarily: "→ See D{NNN}" or "→ See P{NNN}".
 5. **Multi-agent is mandatory for Create mode.** At minimum 2 Work Agents with different focus areas. Single-agent investigation defeats the purpose.
 6. **Cross-review is mandatory.** Review Agents must challenge findings before Orchestrator synthesis. No synthesis without cross-review.
 7. **Source diversity.** Investigation must use at least 2 different source types (internet + local, internet + user-specified, etc.) unless the topic explicitly restricts sources.
