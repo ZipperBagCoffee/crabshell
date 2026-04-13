@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.67.0)
+# Crabshell User Manual (v21.68.0)
 
 ## Why Do You Need This?
 
@@ -258,7 +258,7 @@ The pressure system is a graduated response mechanism that activates when Claude
 | **L0** | Normal | Default state | All tools available |
 | **L1** | Warning | 1 consecutive negative feedback | Warning text injected into context; all tools still available |
 | **L2** | Partial Block | 2 consecutive negative feedbacks | 6 primary tools blocked (Read, Grep, Glob, Bash, Write, Edit); conversation-only tools remain |
-| **L3** | Full Lockdown | 3+ consecutive negative feedbacks | ALL tools blocked; must resolve through conversation only |
+| **L3** | Full Lockdown | 3+ consecutive negative feedbacks | ALL tools blocked; structured self-diagnosis required (What I did wrong / Why it was wrong / What I will do differently); must resolve through conversation only |
 
 ### How It Works
 
@@ -382,6 +382,7 @@ L1 files are deduplicated automatically when created, but manual cleanup may som
 
 | Version | Claude Code | Node.js |
 |---------|-------------|---------|
+| 21.68.0 | 1.0+ | 18+ |
 | 21.67.0 | 1.0+ | 18+ |
 | 21.66.0 | 1.0+ | 18+ |
 | 21.60.0 | 1.0+ | 18+ |

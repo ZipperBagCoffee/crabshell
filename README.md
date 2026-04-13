@@ -192,6 +192,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.68.0 | fix: bailout guidance once-only, L3 structured self-diagnosis |
 | 21.67.0 | feat: USER-MANUAL.md full update, bailout keyword disclosure, version bump checklist step 5b |
 | 21.66.0 | fix: discussing SKILL.md convergence criteria default for regressing |
 | 21.65.0 | feat: D/I document templates add `## Constraints` section for persistent constraint reference |
