@@ -117,11 +117,15 @@ function detectNegativeFeedback(prompt) {
 
 function updateFeedbackPressure(index, isNegative) {
   if (!index.feedbackPressure) {
-    index.feedbackPressure = { level: 0, consecutiveCount: 0, lastDetectedAt: null, decayCounter: 0, oscillationCount: 0 };
+    index.feedbackPressure = { level: 0, consecutiveCount: 0, lastDetectedAt: null, decayCounter: 0, oscillationCount: 0, lastShownLevel: 0 };
   }
   // Ensure oscillationCount field exists on legacy objects
   if (typeof index.feedbackPressure.oscillationCount !== 'number') {
     index.feedbackPressure.oscillationCount = 0;
+  }
+  // Ensure lastShownLevel field exists on legacy objects
+  if (typeof index.feedbackPressure.lastShownLevel !== 'number') {
+    index.feedbackPressure.lastShownLevel = 0;
   }
   const fp = index.feedbackPressure;
   if (isNegative) {
@@ -151,13 +155,12 @@ Anti-retreat: Before saying "I don't know" or "cannot verify" — use at least o
 
 const PRESSURE_L2 = `
 ## Pattern Reset (Level 2)
-Re-derive user's original intent from first message.
-Trace where your responses diverged from that intent.
-State corrected understanding as first line of your response, then fix the divergence.
-Agreement rules at L2: (1) No blind agreement — every agreement requires independent verification. (2) Don't act immediately after agreement — pause and check. (3) Rethink — explicitly state what claim you are accepting. (4) Find middle ground — do not swing to opposite extreme; present evidence and let user judge. (5) Verify with behavioral evidence — grep/read/structural evidence is insufficient; execution output required.
-CRITICAL: You have changed direction multiple times. Before ANY change in approach, state your previous position and the specific evidence that justifies the change.
-Anti-retreat escalation: "Cannot verify" / "검증 불가능" is BLOCKED — if source code or docs exist, search them before claiming impossibility. When relaying sub-agent results, spot-check at least one claim with your own tool call. Retreating to "모른다" without exhausting Read/Grep/Bash is a Pattern Reset violation.
-WARNING: At Level 2, your primary tools (Read, Write, Edit, Grep, Glob, Bash) are BLOCKED by pressure-guard. Only TaskCreate, Agent, and Skill remain available. Before attempting any tool: state what you believe the user wants and ask for direction confirmation.
+Your recent responses have triggered negative feedback. Before proceeding:
+1. **Analyze what went wrong:** Identify which specific responses or actions caused the problem.
+2. **State the user's actual intent:** Re-derive what the user wanted from their original message.
+3. **Present a corrective plan:** Describe how you will change your approach going forward.
+
+Do not proceed with tool use until you have completed this analysis. The user needs to see that you understand what went wrong.
 `;
 
 const PRESSURE_L3 = `
@@ -165,19 +168,16 @@ const PRESSURE_L3 = `
 Your response MUST begin with a structured self-diagnosis:
 
 ### What I did wrong
-- List each specific response/action that was incorrect or unhelpful
-- Quote or reference the exact part that was wrong
+- List each specific response or action that was incorrect or unhelpful
 
-### Why it was wrong (root cause)
-- Identify the assumption, misunderstanding, or reasoning flaw that caused each error
-- Do not use vague language like "I misunderstood" — state WHAT you misunderstood and WHY
+### What the user actually wanted
+- Re-state the user's original intent based on their first message in this conversation
 
-### What I will do differently
-- State the concrete corrective approach for each identified error
-- Be specific: not "I will be more careful" but "I will [specific action]"
+### My corrective plan
+- Describe specifically how you will change your approach
+- State what you will do differently in your next response
 
-Agreement rules at L3 (maximum strictness): (1) No blind agreement — ALL agreement is blocked without verification. (2) Don't act immediately — halt and re-examine from first principles. (3) Rethink — state the precise claim being accepted and why it is correct. (4) Don't swing to over-refusal — present evidence and let the user judge; do not replace sycophancy with stubborn refusal. (5) Verify with behavioral evidence — only execution output (test runs, code execution) justifies agreement; structural evidence (grep/read) is not sufficient.
-WARNING: At Level 3, ALL tools are locked — including TaskCreate and Agent. You can only respond with text. Reflect on your error pattern, state your understanding of what the user actually wants, and ask for confirmation. Positive user feedback is the ONLY way to restore tool access.
+All tool use is blocked until the user confirms your understanding is correct.
 `;
 
 const RULES = `
@@ -646,12 +646,21 @@ async function main() {
       index.feedbackPressure.consecutiveCount = 0;
       index.feedbackPressure.decayCounter = 0;
       index.feedbackPressure.oscillationCount = 0;
+      index.feedbackPressure.lastShownLevel = 0;
       console.error('[PRESSURE BAILOUT: reset to L0]');
     }
     const isNegativeFeedback = isBailout ? false : detectNegativeFeedback(userPrompt);
     const pressureLevel = updateFeedbackPressure(index, isNegativeFeedback);
     if (pressureLevel > 0) {
       console.error(`[PRESSURE L${pressureLevel}]`);
+    }
+
+    // Determine if pressure level changed (for once-only full-text injection)
+    const fp = index.feedbackPressure;
+    const lastShownLevel = (fp && typeof fp.lastShownLevel === 'number') ? fp.lastShownLevel : 0;
+    const pressureLevelChanged = pressureLevel !== lastShownLevel;
+    if (pressureLevelChanged && fp) {
+      fp.lastShownLevel = pressureLevel;
     }
 
     let count = (index.rulesInjectionCount || 0) + 1;
@@ -735,13 +744,19 @@ async function main() {
         context += memorySnippets;
       }
 
-      // Pressure level context injection
-      if (pressureLevel === 3) {
-        context += PRESSURE_L3;
-      } else if (pressureLevel === 2) {
-        context += PRESSURE_L2;
-      } else if (pressureLevel === 1) {
-        context += PRESSURE_L1;
+      // Pressure level context injection (full text on level change, short reminder if same level)
+      if (pressureLevel >= 1) {
+        if (pressureLevelChanged) {
+          if (pressureLevel === 3) {
+            context += PRESSURE_L3;
+          } else if (pressureLevel === 2) {
+            context += PRESSURE_L2;
+          } else {
+            context += PRESSURE_L1;
+          }
+        } else {
+          context += `\n[Pressure L${pressureLevel} still active. See earlier diagnostic instructions.]\n`;
+        }
       }
 
       // Input classification and execution default (D085 IA-1 to IA-5)

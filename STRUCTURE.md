@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.70.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.71.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -334,6 +334,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.71.0 | feat: pressure message once-only (lastShownLevel tracking); PRESSURE_L2/L3 content rewritten to problem analysis + corrective plan; pressure-guard short block messages |
 | 21.70.0 | feat: lint-obsidian.js — 5-check Obsidian document linter; lint skill (/crabshell:lint); MOC pages; discussing convergence auto-apply |
 | 21.69.0 | feat: Obsidian L2 integration — YAML frontmatter + wikilinks in D/P/T/I/W templates; migrate-obsidian.js; fix: light-workflow INDEX.md init logic |
 | 21.68.0 | fix: bailout guidance once-only, L3 structured self-diagnosis |

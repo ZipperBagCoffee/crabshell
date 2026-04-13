@@ -143,9 +143,9 @@ test('AC-8: 6 non-neg from L3 -> L1', function() {
 test('AC-6: PRESSURE_L2 no ask the user', function() {
   assert(!(/ask the user/i.test(PRESSURE_L2)), 'should not ask user');
 });
-test('AC-6: PRESSURE_L2 has direction confirmation solicitation', function() {
-  // v21.58.0: L2 intentionally includes "direction confirmation" per pressure system redesign
-  assert(/confirm/i.test(PRESSURE_L2), 'should include direction confirmation solicitation');
+test('AC-6: PRESSURE_L2 has problem analysis requirement', function() {
+  // v21.71.0: L2 requires problem analysis + corrective plan
+  assert(/Analyze|corrective plan/i.test(PRESSURE_L2), 'should include problem analysis requirement');
 });
 test('AC-6: PRESSURE_L1 no ask user', function() {
   assert(!(/ask the user/i.test(PRESSURE_L1)), 'should not ask user');
@@ -214,11 +214,13 @@ test('CODE: inline code -> false', function() {
 test('AC-6: L1 has self-check', function() {
   assert(/self.check|root.cause|reasoning/i.test(PRESSURE_L1), 'L1 should be self-directed');
 });
-test('AC-6: L2 has self-diagnosis', function() {
-  assert(/self.diagnosis|pattern|corrected.*understanding/i.test(PRESSURE_L2), 'L2 should be self-directed');
+test('AC-6: L2 has problem analysis content', function() {
+  // v21.71.0: L2 requires analyze + corrective plan
+  assert(/Analyze what went wrong|corrective plan/i.test(PRESSURE_L2), 'L2 should require problem analysis');
 });
-test('AC-6: L3 has self-review', function() {
-  assert(/error.pattern|wrong.assumption|first.principles/i.test(PRESSURE_L3), 'L3 should be self-directed');
+test('AC-6: L3 has self-diagnosis sections', function() {
+  // v21.71.0: L3 requires structured self-diagnosis sections
+  assert(/What I did wrong|corrective plan/i.test(PRESSURE_L3), 'L3 should have self-diagnosis sections');
 });
 
 // Pressure: cap and init
@@ -288,6 +290,29 @@ test('BAILOUT: reset even at L0 (all fields reset)', function() {
   assertEqual(index.feedbackPressure.consecutiveCount, 0, 'consecutiveCount reset from 3 to 0');
   assertEqual(index.feedbackPressure.decayCounter, 0, 'decayCounter reset');
   assertEqual(index.feedbackPressure.oscillationCount, 0, 'oscillationCount reset from 1 to 0');
+});
+
+// IA-1: lastShownLevel tracking in updateFeedbackPressure
+test('IA-1: lastShownLevel initialized to 0', function() {
+  const index = {};
+  updateFeedbackPressure(index, false);
+  assertEqual(index.feedbackPressure.lastShownLevel, 0, 'initial lastShownLevel should be 0');
+});
+
+test('IA-1: lastShownLevel preserved across updates (not changed by updateFeedbackPressure)', function() {
+  // lastShownLevel is managed by inject-rules main(), not updateFeedbackPressure
+  const index = { feedbackPressure: { level: 2, consecutiveCount: 2, lastDetectedAt: null, decayCounter: 0, oscillationCount: 0, lastShownLevel: 2 } };
+  updateFeedbackPressure(index, true);
+  // updateFeedbackPressure should not reset lastShownLevel
+  assertEqual(index.feedbackPressure.lastShownLevel, 2, 'lastShownLevel should not be changed by updateFeedbackPressure');
+});
+
+test('IA-1: legacy object gets lastShownLevel=0 backfill', function() {
+  // Legacy object without lastShownLevel field
+  const index = { feedbackPressure: { level: 1, consecutiveCount: 1, lastDetectedAt: null, decayCounter: 0, oscillationCount: 0 } };
+  updateFeedbackPressure(index, false);
+  assert(typeof index.feedbackPressure.lastShownLevel === 'number', 'lastShownLevel should be backfilled');
+  assertEqual(index.feedbackPressure.lastShownLevel, 0, 'backfilled lastShownLevel should be 0');
 });
 
 // Summary

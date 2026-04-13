@@ -193,6 +193,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.71.0 | feat: pressure message once-only (lastShownLevel tracking); PRESSURE_L2/L3 content rewritten to require problem analysis + corrective plan; pressure-guard short block messages |
 | 21.70.0 | feat: Obsidian L3 — MOC pages (--generate-moc), /lint skill (5-check linter), convergence criteria auto-apply; 19 skills |
 | 21.69.0 | feat: Obsidian L2 integration — YAML frontmatter + wikilinks in D/P/T/I/W templates; migrate-obsidian.js; fix: light-workflow INDEX.md init logic |
 | 21.68.0 | fix: bailout guidance once-only, L3 structured self-diagnosis |

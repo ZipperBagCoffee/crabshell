@@ -47,6 +47,20 @@ async function main() {
     process.stderr.write('[CRABSHELL] PostCompact: could not read regressing state: ' + (e.message || e) + '\n');
   }
 
+  // Reset pressure lastShownLevel on compaction (context was cleared, full text must re-inject)
+  try {
+    const { getStorageRoot, readJsonOrDefault, writeJson } = require('./utils');
+    const indexPath = require('path').join(getStorageRoot(projectDir), 'memory', 'memory-index.json');
+    const idx = readJsonOrDefault(indexPath, null);
+    if (idx && idx.feedbackPressure && typeof idx.feedbackPressure.lastShownLevel === 'number') {
+      idx.feedbackPressure.lastShownLevel = 0;
+      writeJson(indexPath, idx);
+      process.stderr.write('[CRABSHELL] PostCompact: feedbackPressure.lastShownLevel reset to 0\n');
+    }
+  } catch (e) {
+    process.stderr.write('[CRABSHELL] PostCompact: lastShownLevel reset failed: ' + (e.message || e) + '\n');
+  }
+
   // Log compaction event timestamp
   try {
     const logsDir = path.join(getStorageRoot(projectDir), 'memory', 'logs');

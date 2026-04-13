@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.70.0)
+# Crabshell Architecture (v21.71.0)
 
 ## Overview
 

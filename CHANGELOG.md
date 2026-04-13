@@ -1,5 +1,11 @@
 # Changelog
 
+## v21.71.0
+- feat: PRESSURE_L2/L3 content rewritten to require problem analysis + corrective plan (not just diagnostic listing)
+- feat: inject-rules.js lastShownLevel tracking — full pressure text injected only on level transition, short reminder on same-level repeat
+- fix: pressure-guard.js L2/L3 block messages shortened to 1-line (analysis instructions now in inject-rules, not repeated per-tool-block)
+- fix: post-compact.js resets feedbackPressure.lastShownLevel on compaction (forces re-injection of full text after context clear)
+
 ## v21.70.0
 - feat: lint-obsidian.js — 5-check Obsidian document linter (orphans, wikilinks, stale, frontmatter, INDEX inconsistencies)
 - feat: lint skill (/crabshell:lint) — runs lint-obsidian.js with structured output
