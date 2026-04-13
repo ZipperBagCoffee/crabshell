@@ -1,10 +1,10 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.69.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.70.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
-Crabshell is a Claude Code plugin with two pillars: (1) session memory — L1 delta extraction, Haiku summarization, logbook.md rotation, auto-restore on restart; (2) LLM behavioral correction — injects VERIFICATION-FIRST, UNDERSTANDING-FIRST, INTERFERENCE PATTERNS every prompt, twelve guard hooks block violations at runtime. D/P/T/I/W document system, 18 skills, Node.js hooks. All output under .crabshell/.
+Crabshell is a Claude Code plugin with two pillars: (1) session memory — L1 delta extraction, Haiku summarization, logbook.md rotation, auto-restore on restart; (2) LLM behavioral correction — injects VERIFICATION-FIRST, UNDERSTANDING-FIRST, INTERFERENCE PATTERNS every prompt, twelve guard hooks block violations at runtime. D/P/T/I/W document system, 19 skills, Node.js hooks. All output under .crabshell/.
 
 ## Directory Structure
 
@@ -107,9 +107,10 @@ crabshell/
 │   ├── _test-wa-count-enforcement.js
 │   ├── _test-parallel-reminder.js
 │   ├── _test-too-good-pog.js
-│   └── utils.js                      # Shared utilities (getStorageRoot, getProjectDir)
+│   ├── utils.js                      # Shared utilities (getStorageRoot, getProjectDir)
+│   └── lint-obsidian.js              # 5-check Obsidian document linter (orphans, wikilinks, stale, frontmatter, INDEX) (v21.70.0)
 │
-├── skills/                           # Slash command skills (18 total)
+├── skills/                           # Slash command skills (19 total)
 │   ├── memory-autosave/SKILL.md      # Auto-trigger memory save
 │   ├── memory-delta/SKILL.md         # Auto-trigger delta summarization (background non-blocking, Phase A/B)
 │   ├── memory-rotate/SKILL.md        # Auto-trigger L3 generation
@@ -127,7 +128,8 @@ crabshell/
 │   ├── light-workflow/SKILL.md       # /crabshell:light-workflow (one-shot)
 │   ├── verifying/SKILL.md            # /crabshell:verifying (verification tools)
 │   ├── lessons/SKILL.md              # /crabshell:lessons (project rules)
-│   └── status/SKILL.md               # /crabshell:status (plugin healthcheck)
+│   ├── status/SKILL.md               # /crabshell:status (plugin healthcheck)
+│   └── lint/SKILL.md                 # /crabshell:lint (Obsidian document lint checks) (v21.70.0)
 │
 ├── templates/                        # Auto-init templates (v13.9.20)
 │   ├── workflow.md                   # Understanding-First workflow template
@@ -332,6 +334,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.70.0 | feat: lint-obsidian.js — 5-check Obsidian document linter; lint skill (/crabshell:lint); MOC pages; discussing convergence auto-apply |
 | 21.69.0 | feat: Obsidian L2 integration — YAML frontmatter + wikilinks in D/P/T/I/W templates; migrate-obsidian.js; fix: light-workflow INDEX.md init logic |
 | 21.68.0 | fix: bailout guidance once-only, L3 structured self-diagnosis |
 | 21.67.0 | feat: USER-MANUAL.md full update, bailout keyword disclosure, version bump checklist step 5b |

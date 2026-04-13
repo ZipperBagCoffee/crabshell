@@ -9,6 +9,7 @@ const args = process.argv.slice(2);
 let projectDir = process.cwd();
 let dryRun = false;
 let backup = false;
+let generateMoc = false;
 
 for (const arg of args) {
   if (arg.startsWith('--project-dir=')) {
@@ -17,6 +18,8 @@ for (const arg of args) {
     dryRun = true;
   } else if (arg === '--backup') {
     backup = true;
+  } else if (arg === '--generate-moc') {
+    generateMoc = true;
   }
 }
 
@@ -29,9 +32,10 @@ if (!fs.existsSync(crabshellDir)) {
   process.exit(1);
 }
 
-console.log(`Project dir : ${projectDir}`);
-console.log(`Dry-run     : ${dryRun}`);
-console.log(`Backup      : ${backup}`);
+console.log(`Project dir   : ${projectDir}`);
+console.log(`Dry-run       : ${dryRun}`);
+console.log(`Backup        : ${backup}`);
+console.log(`Generate MOC  : ${generateMoc}`);
 console.log('');
 
 // ---------------------------------------------------------------------------
@@ -482,8 +486,272 @@ function processInlineReferences() {
 }
 
 // ---------------------------------------------------------------------------
+// MOC generation: keyword → topic heuristic
+// ---------------------------------------------------------------------------
+
+const TOPIC_RULES = [
+  { pattern: /memory|delta|logbook/i,              topic: 'Memory & Delta Processing' },
+  { pattern: /guard|hook|enforcement/i,            topic: 'Guards & Hooks' },
+  { pattern: /verif|검증/i,                         topic: 'Verification & Enforcement' },
+  { pattern: /pressure|sycophancy|oscillation/i,   topic: 'Behavioral Correction' },
+  { pattern: /obsidian|wiki|moc|lint/i,             topic: 'Obsidian Integration' },
+  { pattern: /regressing|planning|ticketing|workflow|skill/i, topic: 'Workflow & Skills' },
+  { pattern: /audit|investigation|research/i,      topic: 'Research & Audit' },
+];
+const TOPIC_OTHER = 'Other';
+
+function classifyTitle(title) {
+  for (const rule of TOPIC_RULES) {
+    if (rule.pattern.test(title)) return rule.topic;
+  }
+  return TOPIC_OTHER;
+}
+
+/**
+ * Scan all DOC_DIRS for documents with frontmatter and build MOC entry objects.
+ * Returns an array of { id, title, status, created, type, filename, topic }.
+ */
+function scanDocuments() {
+  const entries = [];
+  for (const { dir, type } of DOC_DIRS) {
+    const dirPath = path.join(crabshellDir, dir);
+    if (!fs.existsSync(dirPath)) continue;
+
+    const files = fs.readdirSync(dirPath)
+      .filter(f => f.endsWith('.md') && f !== 'INDEX.md' && !f.endsWith('.bak'));
+
+    for (const filename of files) {
+      const filePath = path.join(dirPath, filename);
+      let content;
+      try {
+        content = fs.readFileSync(filePath, 'utf8');
+      } catch (e) {
+        console.error(`  MOC ERROR reading ${filePath}: ${e.message}`);
+        continue;
+      }
+
+      if (!hasFrontmatter(content)) continue;
+
+      // Parse frontmatter fields
+      const fmEnd = content.indexOf('\n---', 4);
+      const fmBlock = fmEnd !== -1 ? content.slice(4, fmEnd) : '';
+
+      const idMatch      = fmBlock.match(/^id:\s*(.+)$/m);
+      const titleMatch   = fmBlock.match(/^title:\s*"?(.+?)"?\s*$/m);
+      const statusMatch  = fmBlock.match(/^status:\s*(.+)$/m);
+      const createdMatch = fmBlock.match(/^created:\s*(.+)$/m);
+
+      const id      = idMatch      ? idMatch[1].trim()      : extractIdFromFilename(filename) || '';
+      const title   = titleMatch   ? titleMatch[1].trim()   : extractTitleFromContent(content);
+      const status  = statusMatch  ? statusMatch[1].trim()  : 'open';
+      const created = createdMatch ? createdMatch[1].trim() : '';
+
+      const stem  = path.basename(filename, '.md');
+      const topic = classifyTitle(title || stem);
+
+      entries.push({ id, title, status, created, type, filename: stem, topic });
+    }
+  }
+  return entries;
+}
+
+/**
+ * Build topic-grouped wikilink sections from a list of entries.
+ */
+function buildTopicSections(entries) {
+  const topicMap = {};
+  for (const e of entries) {
+    if (!topicMap[e.topic]) topicMap[e.topic] = [];
+    topicMap[e.topic].push(e);
+  }
+
+  // Gather all topic names: rule order first, then Other
+  const orderedTopics = TOPIC_RULES.map(r => r.topic).filter(t => topicMap[t]);
+  if (topicMap[TOPIC_OTHER]) orderedTopics.push(TOPIC_OTHER);
+
+  let sections = '';
+  for (const topic of orderedTopics) {
+    sections += `\n### ${topic}\n`;
+    for (const e of topicMap[topic]) {
+      sections += `- [[${e.filename}|${e.id}]] — ${e.title || e.id} *(${e.status})*\n`;
+    }
+  }
+  return sections;
+}
+
+/**
+ * Build status breakdown stats string.
+ */
+function buildStats(entries) {
+  const statusCounts = {};
+  for (const e of entries) {
+    statusCounts[e.status] = (statusCounts[e.status] || 0) + 1;
+  }
+  const lines = Object.entries(statusCounts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([s, n]) => `- ${s}: ${n}`)
+    .join('\n');
+  return lines || '- (none)';
+}
+
+/**
+ * Generate all 5 MOC files under .crabshell/:
+ *   MOC.md, MOC-discussions.md, MOC-investigations.md, MOC-plans.md, MOC-worklogs.md
+ */
+function generateMOC() {
+  console.log('=== MOC Generation ===');
+
+  const today = new Date().toISOString().slice(0, 10);
+  const allEntries = scanDocuments();
+  console.log(`  Documents scanned with frontmatter: ${allEntries.length}`);
+
+  // Type filter helpers
+  const byType = (type) => allEntries.filter(e => e.type === type || (type === 'ticket' && e.type === 'ticket'));
+
+  const discussions   = allEntries.filter(e => e.type === 'discussion');
+  const investigations = allEntries.filter(e => e.type === 'investigation');
+  const plans         = allEntries.filter(e => e.type === 'plan' || e.type === 'ticket');
+  const worklogs      = allEntries.filter(e => e.type === 'worklog');
+
+  // ── MOC.md (master) ─────────────────────────────────────────────────────
+  const masterContent = `---
+type: moc
+title: "Master MOC"
+created: ${today}
+tags: [moc]
+---
+
+# Master Map of Content
+
+> Auto-generated by \`migrate-obsidian.js --generate-moc\` on ${today}.
+> Do not edit manually — re-run to regenerate.
+
+## Contents
+
+- [[MOC-discussions|Discussions]] (${discussions.length})
+- [[MOC-investigations|Investigations]] (${investigations.length})
+- [[MOC-plans|Plans & Tickets]] (${plans.length})
+- [[MOC-worklogs|Work Logs]] (${worklogs.length})
+
+## All Documents by Topic
+${buildTopicSections(allEntries)}
+## Stats
+
+Total documents: ${allEntries.length}
+
+${buildStats(allEntries)}
+`;
+
+  // ── MOC-discussions.md ───────────────────────────────────────────────────
+  const discussionsContent = `---
+type: moc
+title: "MOC — Discussions"
+created: ${today}
+tags: [moc, discussion]
+---
+
+# MOC — Discussions
+
+> Auto-generated on ${today}. Total: ${discussions.length}
+
+## By Topic
+${buildTopicSections(discussions.length ? discussions : [])}
+## Status Breakdown
+
+${buildStats(discussions)}
+`;
+
+  // ── MOC-investigations.md ────────────────────────────────────────────────
+  const investigationsContent = `---
+type: moc
+title: "MOC — Investigations"
+created: ${today}
+tags: [moc, investigation]
+---
+
+# MOC — Investigations
+
+> Auto-generated on ${today}. Total: ${investigations.length}
+
+## By Topic
+${buildTopicSections(investigations.length ? investigations : [])}
+## Status Breakdown
+
+${buildStats(investigations)}
+`;
+
+  // ── MOC-plans.md ─────────────────────────────────────────────────────────
+  const plansContent = `---
+type: moc
+title: "MOC — Plans & Tickets"
+created: ${today}
+tags: [moc, plan, ticket]
+---
+
+# MOC — Plans & Tickets
+
+> Auto-generated on ${today}. Total: ${plans.length}
+
+## By Topic
+${buildTopicSections(plans.length ? plans : [])}
+## Status Breakdown
+
+${buildStats(plans)}
+`;
+
+  // ── MOC-worklogs.md ──────────────────────────────────────────────────────
+  const worklogsContent = `---
+type: moc
+title: "MOC — Work Logs"
+created: ${today}
+tags: [moc, worklog]
+---
+
+# MOC — Work Logs
+
+> Auto-generated on ${today}. Total: ${worklogs.length}
+
+## By Topic
+${buildTopicSections(worklogs.length ? worklogs : [])}
+## Status Breakdown
+
+${buildStats(worklogs)}
+`;
+
+  const mocFiles = [
+    { name: 'MOC.md',                content: masterContent },
+    { name: 'MOC-discussions.md',    content: discussionsContent },
+    { name: 'MOC-investigations.md', content: investigationsContent },
+    { name: 'MOC-plans.md',          content: plansContent },
+    { name: 'MOC-worklogs.md',       content: worklogsContent },
+  ];
+
+  for (const { name, content } of mocFiles) {
+    const filePath = path.join(crabshellDir, name);
+    fs.writeFileSync(filePath, content, 'utf8');
+    console.log(`  Written → ${name}`);
+  }
+
+  console.log('');
+  console.log('=== MOC generation complete ===');
+  console.log(`  MOC files written: ${mocFiles.length}`);
+  console.log(`  Source documents : ${allEntries.length}`);
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
+
+if (generateMoc) {
+  console.log('Starting MOC generation...\n');
+  try {
+    generateMOC();
+  } catch (e) {
+    console.error('Unexpected error during MOC generation:', e);
+    process.exit(1);
+  }
+  process.exit(0);
+}
 
 console.log('Starting Obsidian migration...\n');
 

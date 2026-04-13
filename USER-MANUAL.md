@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.69.0)
+# Crabshell User Manual (v21.70.0)
 
 ## Why Do You Need This?
 
@@ -114,6 +114,7 @@ All available skills (slash commands):
 | `/crabshell:verifying` | Create or run project-specific verification tools |
 | `/crabshell:lessons` | Manage project-specific lessons (format guidelines, creation) |
 | `/crabshell:status` | Healthcheck of plugin state (memory, regressing, verification, version) |
+| `/crabshell:lint` | Run Obsidian document lint checks (orphans, broken wikilinks, stale status, missing frontmatter, INDEX inconsistencies) |
 
 ### Setup
 
@@ -448,6 +449,7 @@ L1 files are deduplicated automatically when created, but manual cleanup may som
 
 | Version | Claude Code | Node.js |
 |---------|-------------|---------|
+| 21.70.0 | 1.0+ | 18+ |
 | 21.69.0 | 1.0+ | 18+ |
 | 21.68.0 | 1.0+ | 18+ |
 | 21.67.0 | 1.0+ | 18+ |

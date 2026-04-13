@@ -63,7 +63,10 @@ Ask the user:
 1. **Intent:** Why is this discussion needed? What decision is being made?
 2. **Context:** Related files, issues, prior discussions?
 3. **Intent Anchor:** What are the specific, measurable outcomes? (IA items)
-4. **Convergence Criteria:** What observable conditions would indicate the goal is fully achieved? (For regressing: default is "Orchestrator's final verification (devil's advocate) finds no new issues → converged." Override with task-specific criteria if needed. For non-regressing: write "Not applicable.")
+**Convergence Criteria (auto-detect):**
+Before asking, check if `.crabshell/memory/regressing-state.json` exists AND has `active === true`:
+- **If regressing active:** DO NOT ask the user. Auto-fill with: "Orchestrator's final verification (devil's advocate) finds no new issues → converged." Inform user: "Convergence criteria auto-applied (regressing context detected)."
+- **If NOT regressing:** Ask: "Convergence Criteria: What observable conditions would indicate the goal is fully achieved? (For non-regressing, write 'Not applicable.')"
 
 Then create the document:
 
@@ -103,8 +106,8 @@ tags: []
 Mapping Type: `direct` (user explicitly stated) or `inferred` (derived from context, requires user confirmation)
 
 ## Convergence Criteria
-{user's answer — observable conditions for "done"}
-(Regressing default: "Orchestrator's final verification (devil's advocate) finds no new issues → converged." Non-regressing: "Not applicable — non-regressing discussion.")
+{If regressing active (regressing-state.json active===true): auto-filled as "Orchestrator's final verification (devil's advocate) finds no new issues → converged."
+If NOT regressing: user's answer — observable conditions for "done", or "Not applicable — non-regressing discussion."}
 
 ## Discussion Log
 
