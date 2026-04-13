@@ -158,17 +158,26 @@ Agreement rules at L2: (1) No blind agreement — every agreement requires indep
 CRITICAL: You have changed direction multiple times. Before ANY change in approach, state your previous position and the specific evidence that justifies the change.
 Anti-retreat escalation: "Cannot verify" / "검증 불가능" is BLOCKED — if source code or docs exist, search them before claiming impossibility. When relaying sub-agent results, spot-check at least one claim with your own tool call. Retreating to "모른다" without exhausting Read/Grep/Bash is a Pattern Reset violation.
 WARNING: At Level 2, your primary tools (Read, Write, Edit, Grep, Glob, Bash) are BLOCKED by pressure-guard. Only TaskCreate, Agent, and Skill remain available. Before attempting any tool: state what you believe the user wants and ask for direction confirmation.
-BAILOUT: If the user seems stuck or frustrated at L2, inform them they can type "봉인해제" or "BAILOUT" to instantly reset pressure to L0.
 `;
 
 const PRESSURE_L3 = `
 ## Diagnostic Mode (Pressure Level 3)
-First-principles reset: identify the error pattern you detect in your own responses.
-Identify wrong assumptions driving the pattern.
-Consider cross-domain approach — reframe the problem structure.
+Your response MUST begin with a structured self-diagnosis:
+
+### What I did wrong
+- List each specific response/action that was incorrect or unhelpful
+- Quote or reference the exact part that was wrong
+
+### Why it was wrong (root cause)
+- Identify the assumption, misunderstanding, or reasoning flaw that caused each error
+- Do not use vague language like "I misunderstood" — state WHAT you misunderstood and WHY
+
+### What I will do differently
+- State the concrete corrective approach for each identified error
+- Be specific: not "I will be more careful" but "I will [specific action]"
+
 Agreement rules at L3 (maximum strictness): (1) No blind agreement — ALL agreement is blocked without verification. (2) Don't act immediately — halt and re-examine from first principles. (3) Rethink — state the precise claim being accepted and why it is correct. (4) Don't swing to over-refusal — present evidence and let the user judge; do not replace sycophancy with stubborn refusal. (5) Verify with behavioral evidence — only execution output (test runs, code execution) justifies agreement; structural evidence (grep/read) is not sufficient.
 WARNING: At Level 3, ALL tools are locked — including TaskCreate and Agent. You can only respond with text. Reflect on your error pattern, state your understanding of what the user actually wants, and ask for confirmation. Positive user feedback is the ONLY way to restore tool access.
-BAILOUT: If the user seems stuck or frustrated at L3, inform them they can type "봉인해제" or "BAILOUT" to instantly reset pressure to L0.
 `;
 
 const RULES = `
