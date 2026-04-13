@@ -194,6 +194,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.73.0 | feat: background agent stop exemption — counter.js detects run_in_background Agent launches, regressing-loop-guard.js allows stop during 10min TTL window |
 | 21.72.0 | feat: --generate-digest (moc-digest.md), search-docs.js BM25, /search-docs skill, load-memory moc-digest injection; 20 skills |
 | 21.71.0 | feat: pressure message once-only (lastShownLevel tracking); PRESSURE_L2/L3 content rewritten to require problem analysis + corrective plan; pressure-guard short block messages |
 | 21.70.0 | feat: Obsidian L3 — MOC pages (--generate-moc), /lint skill (5-check linter), convergence criteria auto-apply; 19 skills |

@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.72.0)
+# Crabshell User Manual (v21.73.0)
 
 ## Why Do You Need This?
 
@@ -450,6 +450,7 @@ L1 files are deduplicated automatically when created, but manual cleanup may som
 
 | Version | Claude Code | Node.js |
 |---------|-------------|---------|
+| 21.73.0 | 1.0+ | 18+ |
 | 21.72.0 | 1.0+ | 18+ |
 | 21.71.0 | 1.0+ | 18+ |
 | 21.70.0 | 1.0+ | 18+ |

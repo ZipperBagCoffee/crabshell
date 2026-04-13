@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.72.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.73.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -336,6 +336,8 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.73.0 | feat: background agent stop exemption — backgroundAgentPending tracking in counter.js, TTL-based exemption in regressing-loop-guard.js |
+| 21.72.0 | feat: --generate-digest (moc-digest.md), search-docs.js BM25, /search-docs skill, load-memory moc-digest injection; 20 skills |
 | 21.71.0 | feat: pressure message once-only (lastShownLevel tracking); PRESSURE_L2/L3 content rewritten to problem analysis + corrective plan; pressure-guard short block messages |
 | 21.70.0 | feat: lint-obsidian.js — 5-check Obsidian document linter; lint skill (/crabshell:lint); MOC pages; discussing convergence auto-apply |
 | 21.69.0 | feat: Obsidian L2 integration — YAML frontmatter + wikilinks in D/P/T/I/W templates; migrate-obsidian.js; fix: light-workflow INDEX.md init logic |

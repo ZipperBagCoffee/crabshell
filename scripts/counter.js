@@ -138,6 +138,18 @@ async function check() {
         waData.totalTaskCalls++;
         if (agentType === 'WA') waData.waCount++;
         else if (agentType === 'RA') waData.raCount++;
+
+        // Track background agent launches for stop-hook exemption
+        if (hookData.tool_input && hookData.tool_input.run_in_background === true) {
+          const existingCount = (waData.backgroundAgentPending && typeof waData.backgroundAgentPending.count === 'number')
+            ? waData.backgroundAgentPending.count
+            : 0;
+          waData.backgroundAgentPending = {
+            count: existingCount + 1,
+            launchedAt: new Date().toISOString()
+          };
+        }
+
         fs.writeFileSync(waPath, JSON.stringify(waData, null, 2));
       } catch (e) { /* fail-open */ }
     }

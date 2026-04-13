@@ -59,6 +59,19 @@ function isLightWorkflowActive() {
 }
 
 /**
+ * Get the backgroundAgentPending entry from wa-count.json.
+ * Returns null on any error (fail-open).
+ */
+function getBackgroundAgentPending() {
+  try {
+    const waCountPath = path.join(getProjectDir(), STORAGE_ROOT, MEMORY_DIR, WA_COUNT_FILE);
+    if (!fs.existsSync(waCountPath)) return null;
+    const data = JSON.parse(fs.readFileSync(waCountPath, 'utf8'));
+    return data.backgroundAgentPending || null;
+  } catch { return null; }
+}
+
+/**
  * Get the current WA count from wa-count.json.
  * Returns 0 on any error (fail-open).
  */
@@ -93,6 +106,17 @@ async function main() {
   if (hookData.stop_hook_active) process.exit(0);
 
   const waCount = getWaCount();
+
+  // Allow stop when background agent is pending (legitimate wait)
+  const bgPending = getBackgroundAgentPending();
+  if (bgPending && bgPending.count > 0) {
+    const launchedAt = new Date(bgPending.launchedAt).getTime();
+    const TTL = 10 * 60 * 1000; // 10 minutes
+    if (Date.now() - launchedAt < TTL) {
+      process.stderr.write('[REGRESSING_LOOP_GUARD] Allowing stop: background agent pending (count=' + bgPending.count + ')\n');
+      process.exit(0); // allow stop — legitimate wait for background agent
+    }
+  }
 
   // Block if regressing workflow is active: force autonomous continuation
   if (isRegressingActive()) {
@@ -134,5 +158,5 @@ async function main() {
 if (require.main === module) {
   main().catch(() => process.exit(0)); // fail-open on any error
 } else {
-  module.exports = { isRegressingActive, isLightWorkflowActive, getWaCount, getPhaseContext };
+  module.exports = { isRegressingActive, isLightWorkflowActive, getWaCount, getPhaseContext, getBackgroundAgentPending };
 }

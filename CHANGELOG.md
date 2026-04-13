@@ -1,5 +1,9 @@
 # Changelog
 
+## v21.73.0
+- feat: counter.js — detect background Agent launches (run_in_background=true) and record backgroundAgentPending to wa-count.json
+- feat: regressing-loop-guard.js — allow stop when backgroundAgentPending TTL (10min) is active, exempting legitimate background agent waits from the regressing stop-block
+
 ## v21.72.0
 - feat: migrate-obsidian.js --generate-digest — compact AI-readable document digest written to .crabshell/moc-digest.md (≤2000 chars, topic-grouped, active docs first)
 - feat: scripts/search-docs.js — BM25 full-text search across D/P/T/I/W documents with field boosts (title 3x, tags 2x, id 1.5x, body 1x)
