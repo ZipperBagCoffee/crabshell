@@ -71,9 +71,10 @@ Two meta-principles guide Claude's approach to obstacles:
 |  | - Load logbook.md  |  | - syncRulesToClaudeMd() (RULES→CLAUDE.md) |  |
 |  | - Load L3 summaries|  | - Inject COMPRESSED_CHECKLIST per prompt   |  |
 |  | - Load project.md  |  |   (~300 tokens via additionalContext)      |  |
-|  | - Write MEMORY.md  |  | - Inject Project Concept (10 lines/500ch) |  |
-|  |   warning          |  | - Inject prompt-aware memory snippets     |  |
-|  +--------------------+  | - Full RULES only on error fallback       |  |
+|  | - Load moc-digest  |  | - Inject Project Concept (10 lines/500ch) |  |
+|  | - Write MEMORY.md  |  | - Inject prompt-aware memory snippets     |  |
+|  |   warning          |  | - Full RULES only on error fallback       |  |
+|  +--------------------+  | - Pressure lastShownLevel tracking        |  |
 |                          | - Detect pending delta → INSTRUCTION      |  |
 |                          | - Detect pending rotation → INSTRUCTION   |  |
 |                          | - Detect regressing → phase reminder      |  |
@@ -100,13 +101,18 @@ Two meta-principles guide Claude's approach to obstacles:
 |  +--------------------+  | - L1/L2/L3 search |  | - checkAndRotate() |   |
 |  | constants.js       |  +-------------------+  +--------------------+   |
 |  | - thresholds       |                                                  |
-|  | - file paths       |  +-------------------+                           |
-|  +--------------------+  | find-node.sh      |                           |
-|                          | - 6-stage fallback|                           |
-|  +--------------------+  | - exec passthrough|                           |
-|  | utils.js           |  +-------------------+                           |
+|  | - file paths       |  +-------------------+  +--------------------+   |
+|  +--------------------+  | find-node.sh      |  | search-docs.js     |   |
+|                          | - 6-stage fallback|  | - BM25 full-text   |   |
+|  +--------------------+  | - exec passthrough|  | - field boosting   |   |
+|  | utils.js           |  +-------------------+  +--------------------+   |
 |  | - shared helpers   |                                                  |
-|  +--------------------+                                                  |
+|  +--------------------+  +-------------------+  +--------------------+   |
+|                          | lint-obsidian.js   |  | migrate-obsidian.js|   |
+|  +--------------------+  | - 5-check linter  |  | - frontmatter+wiki |   |
+|  | shared-context.js  |  | - report output   |  | - --generate-moc   |   |
+|  | - readProjectConcept|  +-------------------+  | - --generate-digest|   |
+|  +--------------------+                          +--------------------+   |
 +--------------------------------------------------------------------------+
           |                    |                    |
           v                    v                    v
@@ -128,9 +134,9 @@ Two meta-principles guide Claude's approach to obstacles:
           |
           v
 +--------------------------------------------------------------------------+
-|  Skills Layer (18 skills)                                                 |
+|  Skills Layer (20 skills)                                                 |
 |  +---------------------------------+  +--------------------------------+ |
-|  | Operational Skills (9)          |  | Memory Skills (8)              | |
+|  | Operational Skills (11)         |  | Memory Skills (8)              | |
 |  | - discussing    (D documents)   |  | - save-memory                  | |
 |  | - planning      (P documents)   |  | - load-memory                  | |
 |  | - ticketing     (T documents)   |  | - search-memory                | |
@@ -140,6 +146,8 @@ Two meta-principles guide Claude's approach to obstacles:
 |  | - verifying     (verification)  |  | - memory-rotate                | |
 |  | - status        (healthcheck)   |  | - lessons                      | |
 |  | - setup-rtk     (RTK config)    |  |                                | |
+|  | - lint          (doc linter)    |  | Setup Skills (1)               | |
+|  | - search-docs   (BM25 search)  |  | - setup-project                | |
 |  +---------------------------------+  +--------------------------------+ |
 +--------------------------------------------------------------------------+
 ```
@@ -167,6 +175,7 @@ Two meta-principles guide Claude's approach to obstacles:
 1. SessionStart
    └─> load-memory.js
        ├─> Load logbook.md + L3 summaries + project files
+       ├─> Load moc-digest.md (AI knowledge context, ~490 tokens) — v21.72.0
        └─> ensureAutoMemoryWarning() — write MEMORY.md warning
 
 2. UserPromptSubmit (every prompt)
@@ -213,8 +222,8 @@ Two meta-principles guide Claude's approach to obstacles:
    │   └─> Block source file edits after 3+ edit-grep cycles without testing
    ├─> doc-watchdog.js gate (Write|Edit) — v21.18.0+
    │   └─> Soft warning (additionalContext) when code edits >= 5 without D/P/T doc update (regressing only)
-   ├─> pressure-guard.js (Read|Grep|Glob|Bash|Write|Edit) — v19.47.0+, v21.1.0 L3 expansion
-   │   └─> Block all 6 tools at pressure L3 with .crabshell/.claude exemption; expertise framing
+   ├─> pressure-guard.js (Read|Grep|Glob|Bash|Write|Edit) — v19.47.0+, v21.1.0 L3, v21.71.0 short msgs
+   │   └─> Block all 6 tools at L2/L3 with short message (full text via inject-rules once-only)
    └─> sycophancy-guard.js (Write|Edit) — v20.7.0+, v21.1.0 claim detection
        └─> Mid-turn transcript parsing for sycophancy patterns + verification claim detection (4-tier) before tool writes
 
@@ -284,6 +293,8 @@ Each document type has an INDEX.md for tracking. Status cascades upward on compl
 | Skill | Purpose |
 |-------|---------|
 | light-workflow | Standalone 1-shot tasks without document trail. Agent classification: Light (spot-check) vs Full (1:1 review). |
+| lint | Obsidian document linter — 5 checks (orphans, broken wikilinks, stale status, missing frontmatter, INDEX inconsistencies). |
+| search-docs | BM25 full-text search across D/P/T/I/W documents with field boosting (title 3x, tags 2x, id 1.5x). |
 | regressing | Iterative D->P->T loop. `/regressing "topic" N` runs N cycles wrapped by a single Discussion. Anti-partitioning enforced. |
 | verifying | Create/run project-specific verification tools. Invoked as procedural step in ticketing/light-workflow/regressing. |
 | lessons | Format guidelines for `.claude/lessons/` entries. Propose when patterns repeat 2+ times. |
