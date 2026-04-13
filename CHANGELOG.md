@@ -1,5 +1,11 @@
 # Changelog
 
+## v21.72.0
+- feat: migrate-obsidian.js --generate-digest — compact AI-readable document digest written to .crabshell/moc-digest.md (≤2000 chars, topic-grouped, active docs first)
+- feat: scripts/search-docs.js — BM25 full-text search across D/P/T/I/W documents with field boosts (title 3x, tags 2x, id 1.5x, body 1x)
+- feat: skills/search-docs/SKILL.md — /crabshell:search-docs slash command
+- feat: load-memory.js — loads moc-digest.md into session context when present; 20 skills
+
 ## v21.71.0
 - feat: PRESSURE_L2/L3 content rewritten to require problem analysis + corrective plan (not just diagnostic listing)
 - feat: inject-rules.js lastShownLevel tracking — full pressure text injected only on level transition, short reminder on same-level repeat

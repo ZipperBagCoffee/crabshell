@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.71.0)
+# Crabshell User Manual (v21.72.0)
 
 ## Why Do You Need This?
 
@@ -115,6 +115,7 @@ All available skills (slash commands):
 | `/crabshell:lessons` | Manage project-specific lessons (format guidelines, creation) |
 | `/crabshell:status` | Healthcheck of plugin state (memory, regressing, verification, version) |
 | `/crabshell:lint` | Run Obsidian document lint checks (orphans, broken wikilinks, stale status, missing frontmatter, INDEX inconsistencies) |
+| `/crabshell:search-docs query` | BM25 full-text search across all D/P/T/I/W documents — ranked results with title/tags/id/body field boosts |
 
 ### Setup
 

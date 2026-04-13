@@ -1,10 +1,10 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.71.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.72.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
-Crabshell is a Claude Code plugin with two pillars: (1) session memory — L1 delta extraction, Haiku summarization, logbook.md rotation, auto-restore on restart; (2) LLM behavioral correction — injects VERIFICATION-FIRST, UNDERSTANDING-FIRST, INTERFERENCE PATTERNS every prompt, twelve guard hooks block violations at runtime. D/P/T/I/W document system, 19 skills, Node.js hooks. All output under .crabshell/.
+Crabshell is a Claude Code plugin with two pillars: (1) session memory — L1 delta extraction, Haiku summarization, logbook.md rotation, auto-restore on restart; (2) LLM behavioral correction — injects VERIFICATION-FIRST, UNDERSTANDING-FIRST, INTERFERENCE PATTERNS every prompt, twelve guard hooks block violations at runtime. D/P/T/I/W document system, 20 skills, Node.js hooks. All output under .crabshell/.
 
 ## Directory Structure
 
@@ -108,9 +108,10 @@ crabshell/
 │   ├── _test-parallel-reminder.js
 │   ├── _test-too-good-pog.js
 │   ├── utils.js                      # Shared utilities (getStorageRoot, getProjectDir)
-│   └── lint-obsidian.js              # 5-check Obsidian document linter (orphans, wikilinks, stale, frontmatter, INDEX) (v21.70.0)
+│   ├── lint-obsidian.js              # 5-check Obsidian document linter (orphans, wikilinks, stale, frontmatter, INDEX) (v21.70.0)
+│   └── search-docs.js                # BM25 full-text search across D/P/T/I/W documents (v21.72.0)
 │
-├── skills/                           # Slash command skills (19 total)
+├── skills/                           # Slash command skills (20 total)
 │   ├── memory-autosave/SKILL.md      # Auto-trigger memory save
 │   ├── memory-delta/SKILL.md         # Auto-trigger delta summarization (background non-blocking, Phase A/B)
 │   ├── memory-rotate/SKILL.md        # Auto-trigger L3 generation
@@ -129,7 +130,8 @@ crabshell/
 │   ├── verifying/SKILL.md            # /crabshell:verifying (verification tools)
 │   ├── lessons/SKILL.md              # /crabshell:lessons (project rules)
 │   ├── status/SKILL.md               # /crabshell:status (plugin healthcheck)
-│   └── lint/SKILL.md                 # /crabshell:lint (Obsidian document lint checks) (v21.70.0)
+│   ├── lint/SKILL.md                 # /crabshell:lint (Obsidian document lint checks) (v21.70.0)
+│   └── search-docs/SKILL.md          # /crabshell:search-docs (BM25 document search) (v21.72.0)
 │
 ├── templates/                        # Auto-init templates (v13.9.20)
 │   ├── workflow.md                   # Understanding-First workflow template

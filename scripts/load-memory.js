@@ -228,6 +228,15 @@ function loadMemory(stdinData) {
     }
   }
 
+  // Load MOC digest for AI knowledge context
+  const mocDigestPath = path.join(getStorageRoot(projectDir), 'moc-digest.md');
+  if (fs.existsSync(mocDigestPath)) {
+    const digest = fs.readFileSync(mocDigestPath, 'utf8').trim();
+    if (digest) {
+      sections.push(digest);
+    }
+  }
+
   // Output
   if (sections.length > 0) {
     console.log('\n=== Crabshell: ' + projectName + ' ===\n');

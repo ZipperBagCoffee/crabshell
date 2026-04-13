@@ -10,6 +10,7 @@ let projectDir = process.cwd();
 let dryRun = false;
 let backup = false;
 let generateMoc = false;
+let generateDigest = false;
 
 for (const arg of args) {
   if (arg.startsWith('--project-dir=')) {
@@ -20,6 +21,8 @@ for (const arg of args) {
     backup = true;
   } else if (arg === '--generate-moc') {
     generateMoc = true;
+  } else if (arg === '--generate-digest') {
+    generateDigest = true;
   }
 }
 
@@ -36,6 +39,7 @@ console.log(`Project dir   : ${projectDir}`);
 console.log(`Dry-run       : ${dryRun}`);
 console.log(`Backup        : ${backup}`);
 console.log(`Generate MOC  : ${generateMoc}`);
+console.log(`Generate Digest: ${generateDigest}`);
 console.log('');
 
 // ---------------------------------------------------------------------------
@@ -739,8 +743,99 @@ ${buildStats(worklogs)}
 }
 
 // ---------------------------------------------------------------------------
+// Digest generation: compact AI-readable summary of all documents
+// ---------------------------------------------------------------------------
+
+const ACTIVE_STATUSES = new Set(['open', 'in-progress', 'draft', 'todo']);
+
+/**
+ * Generate a compact digest of all documents, grouped by topic.
+ * Writes to .crabshell/moc-digest.md (target ≤2000 chars).
+ */
+function generateDigestFile() {
+  console.log('=== Digest Generation ===');
+
+  const entries = scanDocuments();
+  console.log(`  Documents scanned with frontmatter: ${entries.length}`);
+
+  // Group by topic
+  const topicMap = {};
+  for (const e of entries) {
+    if (!topicMap[e.topic]) topicMap[e.topic] = [];
+    topicMap[e.topic].push(e);
+  }
+
+  // Count statuses
+  const statusCounts = {};
+  for (const e of entries) {
+    statusCounts[e.status] = (statusCounts[e.status] || 0) + 1;
+  }
+
+  // Build status summary line
+  const statusLine = 'Status: ' + Object.entries(statusCounts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([s, n]) => `${s} ${n}`)
+    .join(' | ');
+
+  // Ordered topics: rule order first, then Other
+  const orderedTopics = TOPIC_RULES.map(r => r.topic).filter(t => topicMap[t]);
+  if (topicMap[TOPIC_OTHER]) orderedTopics.push(TOPIC_OTHER);
+
+  let body = '';
+  for (const topic of orderedTopics) {
+    const docs = topicMap[topic];
+    // Sort: active first, then most recent (by created date desc)
+    const active = docs.filter(e => ACTIVE_STATUSES.has(e.status));
+    const inactive = docs.filter(e => !ACTIVE_STATUSES.has(e.status));
+    inactive.sort((a, b) => (b.created || '').localeCompare(a.created || ''));
+
+    // Up to 3: fill from active first, then most recent inactive
+    const shown = active.slice(0, 3);
+    if (shown.length < 3) {
+      const fill = inactive.slice(0, 3 - shown.length);
+      shown.push(...fill);
+    }
+
+    body += `\n### ${topic} (${docs.length} docs)\n`;
+    for (const e of shown) {
+      // Truncate long titles to keep digest compact
+      const rawTitle = e.title || e.id;
+      const title = rawTitle.length > 55 ? rawTitle.slice(0, 52) + '...' : rawTitle;
+      body += `- ${e.id} — ${title} (${e.status})\n`;
+    }
+  }
+
+  const topicCount = orderedTopics.length;
+  const header = `# Document Knowledge Base\n> ${entries.length} docs · ${topicCount} topics · use /search-docs <query> for retrieval.\n`;
+  const content = header + '\n' + statusLine + '\n' + body;
+
+  const digestPath = path.join(crabshellDir, 'moc-digest.md');
+  fs.writeFileSync(digestPath, content, 'utf8');
+  console.log(`  Written → moc-digest.md (${content.length} chars)`);
+
+  if (content.length > 2000) {
+    console.warn(`  WARNING: digest length ${content.length} exceeds 2000 chars`);
+  }
+
+  console.log('');
+  console.log('=== Digest generation complete ===');
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
+
+if (generateDigest) {
+  console.log('Starting digest generation...\n');
+  try {
+    generateDigestFile();
+  } catch (e) {
+    console.error('Unexpected error during digest generation:', e);
+    process.exit(1);
+  }
+  // If only --generate-digest (no --generate-moc), exit now
+  if (!generateMoc) process.exit(0);
+}
 
 if (generateMoc) {
   console.log('Starting MOC generation...\n');
