@@ -1,5 +1,10 @@
 # Changelog
 
+## 21.67.0
+- feat: USER-MANUAL.md full update (v19→v21.67.0) — added 8 hooks, 6 guards, Pressure System section, setup skills, config options
+- fix: bailout keywords now disclosed to user at L2/L3 instead of hidden
+- feat: version bump checklist step 5b — USER-MANUAL.md explicit update requirement
+
 ## 21.66.0
 - fix: discussing SKILL.md convergence criteria default for regressing
 

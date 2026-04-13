@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.66.0)
+# Crabshell User Manual (v21.67.0)
 
 ## Why Do You Need This?
 
@@ -115,6 +115,13 @@ All available skills (slash commands):
 | `/crabshell:lessons` | Manage project-specific lessons (format guidelines, creation) |
 | `/crabshell:status` | Healthcheck of plugin state (memory, regressing, verification, version) |
 
+### Setup
+
+| Command | What It Does |
+|---------|-------------|
+| `/crabshell:setup-project` | Initialize project configuration (project.md, config) |
+| `/crabshell:setup-rtk` | Install and configure RTK (Rust Token Killer) for token-optimized CLI output |
+
 > **Tip:** For basic memory operations, you can also just ask Claude directly (e.g., "save memory now", "search memory for auth").
 
 ---
@@ -203,6 +210,14 @@ The plugin uses Claude Code hooks to run automatically:
 | `Stop` | `doc-watchdog.js stop` | Before session ends | Blocks session end when regressing active + ticket has no work log entry since last code edit |
 | `PostToolUse` | `doc-watchdog.js record` | After Write/Edit | Tracks code file edits (increment counter) and D/P/T doc edits (reset counter) in doc-watchdog.json |
 | `PostToolUse` | `skill-tracker.js` | After Skill tool call | Sets skill-active flag on Skill tool calls for guard scripts |
+| `PreToolUse` | `pressure-guard.js` | Before ANY tool (matcher: `.*`) | Graduated tool blocking based on consecutive negative feedback pressure level (L2: primary tools, L3: all tools) |
+| `PreToolUse` | `role-collapse-guard.js` | Before Write/Edit | Blocks Orchestrator from directly writing source code files (should delegate to Work Agents) |
+| `Stop` | `scope-guard.js` | Before response finalized | Detects scope reduction in responses (delivering fewer items than user requested) |
+| `Stop` | `regressing-loop-guard.js` | Before session ends | Blocks session end during active regressing/light-workflow; enforces continuation |
+| `Stop` | `deferral-guard.js` | Before response finalized | Detects trailing deferral questions in responses (e.g., "다음 세션에서 할까요?") |
+| `PreCompact` | `pre-compact.js` | Before context compaction | Outputs memory state, active documents, and regressing state as context to preserve across compaction |
+| `PostCompact` | `post-compact.js` | After context compaction | Logs compaction event for debugging (side-effect only, no context output) |
+| `SubagentStart` | `subagent-context.js` | When subagent spawns | Injects project concept, COMPRESSED_CHECKLIST, regressing state, and project root anchor into subagent context |
 | `SessionEnd` | `counter.js final` | Session ends | Creates final L1 backup, extracts remaining delta |
 
 ---
@@ -221,8 +236,45 @@ Guard scripts are PreToolUse/Stop hooks that prevent common mistakes:
 | `verification-sequence.js` | Source files edited without running tests before git commit; edit-grep cycles (editing and grepping instead of testing) |
 | `doc-watchdog.js` | Document update omissions during regressing: soft warning when 5+ code edits without D/P/T document update; blocks session end when ticket has no work log since last code edit |
 | `skill-tracker.js` | Supporting guard: sets the `skill-active` flag when a Skill tool call is detected, so `docs-guard` and `verify-guard` know when writes are authorized |
+| `pressure-guard.js` | Graduated tool blocking when consecutive negative feedback detected. L2: blocks 6 primary tools (Read/Grep/Glob/Bash/Write/Edit). L3: blocks ALL tools. Resets via positive feedback decay or user bailout keywords ("봉인해제" / "BAILOUT"). See [Pressure System](#pressure-system) |
+| `role-collapse-guard.js` | Blocks Orchestrator from directly writing source code files (.js/.json/.sh/.ts) — should delegate to Work Agents during regressing/light-workflow |
+| `deferral-guard.js` | Detects trailing deferral questions ("다음 세션에서 할까요?", "shall I proceed?") in responses — prevents the assistant from asking permission instead of acting |
+| `scope-guard.js` | Detects scope reduction in responses (delivering fewer items than user requested, using "too many" / "시간 관계상" as justification) |
+| `regressing-guard.js` | Phase-based write restrictions during active regressing sessions — blocks out-of-phase edits to plan/ticket documents |
+| `regressing-loop-guard.js` | Blocks session end during active regressing/light-workflow; enforces Stop hook continuation until workflow completes |
 
 Guards run automatically via hooks. No configuration needed.
+
+---
+
+## Pressure System
+
+The pressure system is a graduated response mechanism that activates when Claude receives consecutive negative feedback from the user. It prevents Claude from continuing to make the same mistakes by progressively restricting tool access.
+
+### Pressure Levels
+
+| Level | Name | Trigger | Effect |
+|-------|------|---------|--------|
+| **L0** | Normal | Default state | All tools available |
+| **L1** | Warning | 1 consecutive negative feedback | Warning text injected into context; all tools still available |
+| **L2** | Partial Block | 2 consecutive negative feedbacks | 6 primary tools blocked (Read, Grep, Glob, Bash, Write, Edit); conversation-only tools remain |
+| **L3** | Full Lockdown | 3+ consecutive negative feedbacks | ALL tools blocked; must resolve through conversation only |
+
+### How It Works
+
+- **Detection:** The `inject-rules.js` hook (UserPromptSubmit) analyzes user prompts for negative feedback signals and updates the pressure level in `memory-index.json`.
+- **Enforcement:** The `pressure-guard.js` hook (PreToolUse, matcher: `.*`) checks the pressure level before every tool call and blocks accordingly.
+- **Decay:** Positive feedback from the user reduces the pressure level naturally.
+- **Exception:** Operations targeting `.crabshell/` or `.claude/` paths are always allowed, even at L3 (so the plugin can still manage its own state).
+
+### Bailout
+
+If tool access is locked at L2 or L3, the user can type one of these keywords to instantly reset pressure to L0:
+
+- **`봉인해제`** (Korean)
+- **`BAILOUT`** (English)
+
+This is the **only** way to immediately escape L2/L3 without waiting for natural decay. When you're stuck at L2/L3, Claude will inform you about these keywords.
 
 ---
 
@@ -260,7 +312,11 @@ The plugin uses two injection mechanisms:
   "saveInterval": 15,
   "keepRaw": false,
   "rulesInjectionFrequency": 1,
-  "quietStop": true
+  "quietStop": true,
+  "memoryRotation": {
+    "thresholdTokens": 25000,
+    "carryoverTokens": 2500
+  }
 }
 ```
 
@@ -270,6 +326,8 @@ The plugin uses two injection mechanisms:
 | `keepRaw` | false | Keep `.raw.jsonl` files after L1 conversion |
 | `rulesInjectionFrequency` | 1 | Inject rules every N prompts (1 = every prompt) |
 | `quietStop` | true | Brief session-end message instead of verbose instructions |
+| `memoryRotation.thresholdTokens` | 25000 | Token threshold for logbook.md rotation (with 0.95 safety margin) |
+| `memoryRotation.carryoverTokens` | 2500 | Tokens to keep as carryover after rotation (with 0.95 safety margin) |
 
 ---
 
@@ -324,36 +382,11 @@ L1 files are deduplicated automatically when created, but manual cleanup may som
 
 | Version | Claude Code | Node.js |
 |---------|-------------|---------|
+| 21.67.0 | 1.0+ | 18+ |
+| 21.66.0 | 1.0+ | 18+ |
+| 21.60.0 | 1.0+ | 18+ |
+| 21.50.0 | 1.0+ | 18+ |
+| 21.0.0 | 1.0+ | 18+ |
 | 19.49.0 | 1.0+ | 18+ |
-| 19.48.0 | 1.0+ | 18+ |
-| 19.47.0 | 1.0+ | 18+ |
-| 19.46.0 | 1.0+ | 18+ |
-| 19.45.0 | 1.0+ | 18+ |
-| 19.44.0 | 1.0+ | 18+ |
-| 19.43.0 | 1.0+ | 18+ |
-| 19.42.0 | 1.0+ | 18+ |
-| 19.41.0 | 1.0+ | 18+ |
-| 19.40.0 | 1.0+ | 18+ |
-| 19.39.0 | 1.0+ | 18+ |
-| 19.38.0 | 1.0+ | 18+ |
-| 19.37.0 | 1.0+ | 18+ |
-| 19.36.0 | 1.0+ | 18+ |
-| 19.35.0 | 1.0+ | 18+ |
-| 19.34.0 | 1.0+ | 18+ |
-| 19.33.0 | 1.0+ | 18+ |
-| 19.32.0 | 1.0+ | 18+ |
-| 19.31.0 | 1.0+ | 18+ |
-| 19.30.0 | 1.0+ | 18+ |
-| 19.29.0 | 1.0+ | 18+ |
-| 19.28.0 | 1.0+ | 18+ |
-| 19.27.0 | 1.0+ | 18+ |
-| 19.26.0 | 1.0+ | 18+ |
-| 19.25.0 | 1.0+ | 18+ |
-| 19.24.0 | 1.0+ | 18+ |
-| 19.22.0 | 1.0+ | 18+ |
-| 19.20.0 | 1.0+ | 18+ |
-| 19.18.0 | 1.0+ | 18+ |
-| 19.9.0 | 1.0+ | 18+ |
 | 19.0.0 | 1.0+ | 18+ |
 | 18.0.0 | 1.0+ | 18+ |
-| 13.9.x-17.x | 1.0+ | 18+ |
