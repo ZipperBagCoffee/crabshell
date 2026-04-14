@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.74.0)
+# Crabshell Architecture (v21.75.0)
 
 ## Overview
 
@@ -134,20 +134,22 @@ Two meta-principles guide Claude's approach to obstacles:
           |
           v
 +--------------------------------------------------------------------------+
-|  Skills Layer (20 skills)                                                 |
+|  Skills Layer (22 skills)                                                 |
 |  +---------------------------------+  +--------------------------------+ |
-|  | Operational Skills (11)         |  | Memory Skills (8)              | |
+|  | Operational Skills (13)         |  | Memory Skills (8)              | |
 |  | - discussing    (D documents)   |  | - save-memory                  | |
 |  | - planning      (P documents)   |  | - load-memory                  | |
 |  | - ticketing     (T documents)   |  | - search-memory                | |
 |  | - investigating (I documents)   |  | - clear-memory                 | |
-|  | - light-workflow (standalone)   |  | - memory-autosave              | |
-|  | - regressing    (D→P→T loop)    |  | - memory-delta                 | |
-|  | - verifying     (verification)  |  | - memory-rotate                | |
-|  | - status        (healthcheck)   |  | - lessons                      | |
-|  | - setup-rtk     (RTK config)    |  |                                | |
-|  | - lint          (doc linter)    |  | Setup Skills (1)               | |
-|  | - search-docs   (BM25 search)  |  | - setup-project                | |
+|  | - hotfix        (H documents)   |  | - memory-autosave              | |
+|  | - light-workflow (standalone)   |  | - memory-delta                 | |
+|  | - regressing    (D→P→T loop)    |  | - memory-rotate                | |
+|  | - verifying     (verification)  |  | - lessons                      | |
+|  | - knowledge     (K pages)       |  |                                | |
+|  | - status        (healthcheck)   |  | Setup Skills (1)               | |
+|  | - setup-rtk     (RTK config)    |  | - setup-project                | |
+|  | - lint          (doc linter)    |  |                                | |
+|  | - search-docs   (BM25 search)  |  |                                | |
 |  +---------------------------------+  +--------------------------------+ |
 +--------------------------------------------------------------------------+
 ```
@@ -209,7 +211,7 @@ Two meta-principles guide Claude's approach to obstacles:
    │   │   └─> BLOCK (exit 2): complete planning phase first (structural emptiness + parenthetical detection)
    │   └─> Otherwise: allow (exit 0), fail-open on errors
    ├─> docs-guard.js (Write|Edit) — v19.33.0+
-   │   └─> Block writes to .crabshell/ D/P/T/I subdirectories without active skill flag
+   │   └─> Block writes to .crabshell/ D/P/T/I/H subdirectories without active skill flag
    ├─> log-guard.js (Write|Edit) — v21.4.0+
    │   ├─> Block INDEX.md terminal status changes (→done/verified/concluded) without document log entries
    │   ├─> Block tickets with "(pending)" in result sections (Execution/Verification/Orchestrator) — v21.11.0
@@ -343,7 +345,7 @@ Agent orchestration rules (11 rules covering pairing, cross-review, coherence, c
 | `inject-rules.js` | UserPromptSubmit | Dual injection (CLAUDE.md + additionalContext), delta/rotation/regressing detection |
 | `counter.js` | PostToolUse, SessionEnd | Main engine: counter, L1 creation, rotation, regressing phase detection |
 | `regressing-guard.js` | PreToolUse (Write\|Edit) | Block direct plan/ticket writes during active regressing; force Skill tool; validate P doc agent sections before ticketing (v21.41.0) |
-| `docs-guard.js` | PreToolUse (Write\|Edit) | Block writes to .crabshell/ D/P/T/I subdirectories without active skill flag |
+| `docs-guard.js` | PreToolUse (Write\|Edit) | Block writes to .crabshell/ D/P/T/I/H subdirectories without active skill flag |
 | `log-guard.js` | PreToolUse (Write\|Edit) | Block INDEX.md terminal status without document log entries; block tickets with "(pending)" result sections; block cycle docs without previous cycle logs |
 | `verify-guard.js` | PreToolUse (Write\|Edit) | Hybrid: Edit always enforces verification; Write enforces only for existing files (new file creation skips). Block Final Verification without /verifying run; require behavioral AC in manifest |
 | `pressure-guard.js` | PreToolUse (Read\|Grep\|Glob\|Bash\|Write\|Edit) | Detect feedback pressure escalation; block all 6 tools at L3 with .crabshell/.claude exemption |

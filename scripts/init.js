@@ -23,7 +23,7 @@
  */
 const fs = require('fs');
 const path = require('path');
-const { STORAGE_ROOT, MEMORY_DIR, SESSIONS_DIR, LOGS_DIR, LESSONS_DIR, WORKFLOW_DIR, DISCUSSION_DIR, PLAN_DIR, TICKET_DIR, INVESTIGATION_DIR, INDEX_FILE, COUNTER_FILE, MEMORY_FILE } = require('./constants');
+const { STORAGE_ROOT, MEMORY_DIR, SESSIONS_DIR, LOGS_DIR, LESSONS_DIR, WORKFLOW_DIR, DISCUSSION_DIR, PLAN_DIR, TICKET_DIR, INVESTIGATION_DIR, HOTFIX_DIR, INDEX_FILE, COUNTER_FILE, MEMORY_FILE } = require('./constants');
 const { writeJson } = require('./utils');
 
 
@@ -263,7 +263,7 @@ function ensureMemoryStructure(projectDir) {
   }
 
   // D/P/T/I document directories
-  const docTypeDirs = [DISCUSSION_DIR, PLAN_DIR, TICKET_DIR, INVESTIGATION_DIR];
+  const docTypeDirs = [DISCUSSION_DIR, PLAN_DIR, TICKET_DIR, INVESTIGATION_DIR, HOTFIX_DIR];
   for (const dir of docTypeDirs) {
     const fullPath = path.join(storageRoot, dir);
     if (!fs.existsSync(fullPath)) {

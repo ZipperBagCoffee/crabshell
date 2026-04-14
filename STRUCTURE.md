@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.74.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.75.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -111,10 +111,10 @@ crabshell/
 │   ├── _test-too-good-pog.js
 │   ├── utils.js                      # Shared utilities (getStorageRoot, getProjectDir)
 │   ├── lint-obsidian.js              # 5-check Obsidian document linter (orphans, wikilinks, stale, frontmatter, INDEX) (v21.70.0)
-│   ├── search-docs.js                # BM25 full-text search across D/P/T/I/W/K documents (v21.72.0, knowledge/ added v21.74.0)
-│   └── migrate-obsidian.js           # Frontmatter + wikilink migration; --generate-digest; knowledge section (v21.74.0)
+│   ├── search-docs.js                # BM25 full-text search across D/P/T/I/H/W/K documents (v21.72.0, hotfix/ added v21.75.0)
+│   └── migrate-obsidian.js           # Frontmatter + wikilink migration; --generate-digest; hotfix + knowledge sections (v21.75.0)
 │
-├── skills/                           # Slash command skills (21 total)
+├── skills/                           # Slash command skills (22 total)
 │   ├── memory-autosave/SKILL.md      # Auto-trigger memory save
 │   ├── memory-delta/SKILL.md         # Auto-trigger delta summarization (background non-blocking, Phase A/B)
 │   ├── memory-rotate/SKILL.md        # Auto-trigger L3 generation
@@ -135,7 +135,8 @@ crabshell/
 │   ├── status/SKILL.md               # /crabshell:status (plugin healthcheck)
 │   ├── lint/SKILL.md                 # /crabshell:lint (Obsidian document lint checks) (v21.70.0)
 │   ├── search-docs/SKILL.md          # /crabshell:search-docs (BM25 document search) (v21.72.0)
-│   └── knowledge/SKILL.md            # /crabshell:knowledge (K-page creation + view) (v21.74.0)
+│   ├── knowledge/SKILL.md            # /crabshell:knowledge (K-page creation + view) (v21.74.0)
+│   └── hotfix/SKILL.md              # /crabshell:hotfix (H-page lightweight fix recording) (v21.75.0)
 │
 ├── templates/                        # Auto-init templates (v13.9.20)
 │   ├── workflow.md                   # Understanding-First workflow template
@@ -340,6 +341,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.75.0 | feat: H (Hotfix) document type — /hotfix skill, .crabshell/hotfix/, 8 scripts + 3 guards updated, CLAUDE.md D/P/T/I/H; 22 skills |
 | 21.74.0 | feat: knowledge/ system — /knowledge skill, K001-K003 from lessons migration, search-docs + digest integration; CLAUDE.md lessons→knowledge; 21 skills |
 | 21.73.0 | feat: background agent stop exemption — backgroundAgentPending tracking in counter.js, TTL-based exemption in regressing-loop-guard.js |
 | 21.72.0 | feat: --generate-digest (moc-digest.md), search-docs.js BM25, /search-docs skill, load-memory moc-digest injection; 20 skills |

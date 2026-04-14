@@ -5,7 +5,7 @@
 Three pillars:
 1. **Session memory** — Auto-saves context across sessions. Delta extraction, Haiku summarization, token-based rotation. No manual setup.
 2. **Behavioral correction** — Injects verification-first rules and interference pattern detection every prompt. Twelve guard hooks block sycophancy, scope reduction, overcorrection, and shortcuts at runtime.
-3. **Structured workflows** — D/P/T/I/W document system with 21 skills for planning, investigating, iterative improvement (regressing), and light-workflow tracing.
+3. **Structured workflows** — D/P/T/I/H/W document system with 22 skills for planning, investigating, iterative improvement (regressing), hotfix recording, and light-workflow tracing.
 
 All plugin output lives under `.crabshell/` — gitignored, clean project root.
 

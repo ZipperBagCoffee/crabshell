@@ -38,7 +38,7 @@ function getProjectDir() {
 // --- Constants ---
 
 // INDEX.md path pattern
-const INDEX_PATTERN = /\.crabshell\/(discussion|plan|ticket|investigation)\/INDEX\.md$/i;
+const INDEX_PATTERN = /\.crabshell\/(discussion|plan|ticket|investigation|hotfix)\/INDEX\.md$/i;
 
 // Plan/ticket document pattern (not INDEX.md) — used by Trigger 2
 const PLAN_DOC_PATTERN = /\.crabshell\/plan\/P\d{3}[^/]*\.md$/;
@@ -102,7 +102,7 @@ function extractIdFromRow(row) {
   const cells = trimmed.split('|').map(c => c.trim());
   if (cells.length < 2) return null;
   const id = cells[1];
-  if (/^[DPTI]\d{3}(_T\d{3})?$/.test(id)) return id;
+  if (/^[DPTIH]\d{3}(_T\d{3})?$/.test(id)) return id;
   return null;
 }
 

@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.74.0)
+# Crabshell User Manual (v21.75.0)
 
 ## Why Do You Need This?
 
@@ -96,7 +96,7 @@ All available skills (slash commands):
 | `/crabshell:search-memory keyword` | Search past sessions across L1/L2/L3 layers. Flags: `--regex`, `--context=N`, `--limit=N` |
 | `/crabshell:clear-memory` | Clean up old memory files |
 
-### Structured Work (D/P/T/I Documents)
+### Structured Work (D/P/T/I/H Documents)
 
 | Command | What It Does |
 |---------|-------------|
@@ -104,6 +104,7 @@ All available skills (slash commands):
 | `/crabshell:planning "topic"` | Create or update a Plan document (P) |
 | `/crabshell:ticketing P001 "title"` | Create or update a Ticket document (T) linked to a plan |
 | `/crabshell:investigating "topic"` | Run a multi-agent Investigation (I) |
+| `/crabshell:hotfix "description"` | Record a lightweight hotfix (H) — one-line fixes with Problem/Fix/Verification; or `/crabshell:hotfix H001` to update |
 
 ### Workflows
 
@@ -451,6 +452,8 @@ L1 files are deduplicated automatically when created, but manual cleanup may som
 
 | Version | Claude Code | Node.js |
 |---------|-------------|---------|
+| 21.75.0 | 1.0+ | 18+ |
+| 21.74.0 | 1.0+ | 18+ |
 | 21.73.0 | 1.0+ | 18+ |
 | 21.72.0 | 1.0+ | 18+ |
 | 21.71.0 | 1.0+ | 18+ |
