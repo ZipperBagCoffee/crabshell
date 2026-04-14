@@ -13,12 +13,12 @@ function getProjectDir() {
 }
 
 // Protected .crabshell/ subdirectories (D/P/T/I/W documents)
-const PROTECTED_DOCS_PATTERN = /\.crabshell\/(discussion|plan|ticket|investigation|worklog)\//;
+const PROTECTED_DOCS_PATTERN = /\.crabshell\/(discussion|plan|ticket|investigation|worklog|hotfix)\//;
 
 // Skills that legitimately create/modify .crabshell/ D/P/T/I files
 const LEGITIMATE_SKILLS = [
   'discussing', 'planning', 'ticketing', 'investigating',
-  'regressing', 'light-workflow', 'verifying'
+  'regressing', 'light-workflow', 'verifying', 'hotfix'
 ];
 
 // TTL for skill-active flag (15 minutes)

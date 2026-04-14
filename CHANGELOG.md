@@ -1,5 +1,11 @@
 # Changelog
 
+## v21.75.0
+- feat: H (Hotfix) document type — /hotfix skill for recording lightweight one-line fixes (H{NNN}-{slug}.md in .crabshell/hotfix/)
+- feat: hotfix integration — search-docs, lint-obsidian, init.js, migrate-obsidian (MOC-hotfixes), constants.js all extended
+- feat: guard coverage — docs-guard, doc-watchdog, log-guard patterns updated to include hotfix documents
+- fix: CLAUDE.md — D/P/T/I → D/P/T/I/H references updated (3 locations)
+
 ## v21.74.0
 - feat: skills/knowledge/SKILL.md — /knowledge skill for creating and viewing K-pages (verified facts + operational tips)
 - feat: search-docs.js — added knowledge/ to DOC_DIRS for BM25 search coverage

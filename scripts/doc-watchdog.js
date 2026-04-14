@@ -9,7 +9,7 @@ if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 // Constants
 const CODE_EXTENSIONS = ['.js','.ts','.jsx','.tsx','.py','.rb','.go','.rs','.java','.c','.cpp','.h','.lua','.php','.sh'];
 const EXCLUDED_DIRS = ['.crabshell','.claude','node_modules','.git','dist','build'];
-const DOC_PATTERN = /\.crabshell\/(discussion|plan|ticket|investigation)\/[^/]+\.md$/i;
+const DOC_PATTERN = /\.crabshell\/(discussion|plan|ticket|investigation|hotfix)\/[^/]+\.md$/i;
 const DOC_WATCHDOG_THRESHOLD = 5;
 const STATE_FILE = 'doc-watchdog.json';
 

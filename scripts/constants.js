@@ -24,6 +24,7 @@ module.exports = {
   PLAN_DIR: 'plan',
   TICKET_DIR: 'ticket',
   INVESTIGATION_DIR: 'investigation',
+  HOTFIX_DIR: 'hotfix',
 
   // File names
   MEMORY_FILE: 'logbook.md',

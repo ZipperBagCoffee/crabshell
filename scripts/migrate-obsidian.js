@@ -51,6 +51,7 @@ const DOC_DIRS = [
   { dir: 'plan',          type: 'plan',          prefix: 'P', ticketOnly: false },
   { dir: 'ticket',        type: 'ticket',        prefix: 'P', ticketOnly: true  },
   { dir: 'worklog',       type: 'worklog',       prefix: 'W', ticketOnly: false },
+  { dir: 'hotfix',        type: 'hotfix',        prefix: 'H', ticketOnly: false },
 ];
 
 // ---------------------------------------------------------------------------
@@ -271,7 +272,7 @@ function convertCellIds(cell) {
   const converted = parts.map(part => {
     const trimmed = part.trim();
     // Only convert if the whole segment is a bare doc ID (D/I/P/T/W prefix)
-    if (/^[DIPTW]\d{3}(?:_T\d{3})?$/.test(trimmed)) {
+    if (/^[DIPTWH]\d{3}(?:_T\d{3})?$/.test(trimmed)) {
       return idToWikilink(trimmed);
     }
     return part; // R-IDs, filenames, etc.
@@ -298,7 +299,7 @@ function processIndexFile(indexPath) {
       // Column 1 = ID column: convert if bare ID
       if (i === 1) {
         const trimmed = cell.trim();
-        if (/^[DIPTW]\d{3}(?:_T\d{3})?$/.test(trimmed)) {
+        if (/^[DIPTWH]\d{3}(?:_T\d{3})?$/.test(trimmed)) {
           const wl = idToWikilink(trimmed);
           if (wl !== trimmed) {
             modified = true;
@@ -415,7 +416,7 @@ function isInsideWikilink(text, matchStart, matchEnd) {
 function convertInlineReferences(content) {
   // Match bare IDs: D001, I054, P124, P124_T001, W016
   // Not preceded by "[" or a word char; not followed by word char, ], or |
-  const re = /(?<!\[)(?<!\w)([DIPTW]\d{3}(?:_T\d{3})?)(?!\w)(?!\])(?!\|)/g;
+  const re = /(?<!\[)(?<!\w)([DIPTWH]\d{3}(?:_T\d{3})?)(?!\w)(?!\])(?!\|)/g;
 
   let result = '';
   let lastIndex = 0;
@@ -616,6 +617,7 @@ function generateMOC() {
   const investigations = allEntries.filter(e => e.type === 'investigation');
   const plans         = allEntries.filter(e => e.type === 'plan' || e.type === 'ticket');
   const worklogs      = allEntries.filter(e => e.type === 'worklog');
+  const hotfixes      = allEntries.filter(e => e.type === 'hotfix');
 
   // ── MOC.md (master) ─────────────────────────────────────────────────────
   const masterContent = `---
@@ -636,6 +638,7 @@ tags: [moc]
 - [[MOC-investigations|Investigations]] (${investigations.length})
 - [[MOC-plans|Plans & Tickets]] (${plans.length})
 - [[MOC-worklogs|Work Logs]] (${worklogs.length})
+- [[MOC-hotfixes|Hotfixes]] (${hotfixes.length})
 
 ## All Documents by Topic
 ${buildTopicSections(allEntries)}
@@ -722,12 +725,32 @@ ${buildTopicSections(worklogs.length ? worklogs : [])}
 ${buildStats(worklogs)}
 `;
 
+  // ── MOC-hotfixes.md ──────────────────────────────────────────────────
+  const hotfixesContent = `---
+type: moc
+title: "MOC — Hotfixes"
+created: ${today}
+tags: [moc, hotfix]
+---
+
+# MOC — Hotfixes
+
+> Auto-generated on ${today}. Total: ${hotfixes.length}
+
+## By Topic
+${buildTopicSections(hotfixes.length ? hotfixes : [])}
+## Status Breakdown
+
+${buildStats(hotfixes)}
+`;
+
   const mocFiles = [
     { name: 'MOC.md',                content: masterContent },
     { name: 'MOC-discussions.md',    content: discussionsContent },
     { name: 'MOC-investigations.md', content: investigationsContent },
     { name: 'MOC-plans.md',          content: plansContent },
     { name: 'MOC-worklogs.md',       content: worklogsContent },
+    { name: 'MOC-hotfixes.md',       content: hotfixesContent },
   ];
 
   for (const { name, content } of mocFiles) {

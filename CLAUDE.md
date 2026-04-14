@@ -81,10 +81,10 @@ On failure: (1) List what you tried, what constraint blocked each attempt, and w
 ### ADDITIONAL RULES
 - Search internet if unsure. Non-git files → backup (.bak) before modifying.
 - **Workflows:** light-workflow for standalone tasks (WA/RA → use Task tool). Regressing for iterative improvement: iterations improve results (not progress through queue). Anti-partitioning: each plan = current iteration only, N is cap not target.
-- **Knowledge:** Check .crabshell/knowledge/. Propose when patterns repeat 2+.
+- **Lessons:** Check .crabshell/lessons/. Propose when patterns repeat 2+.
 - **Session restart:** Invoke load-memory skill. Fallback: read latest logbook.md.
-- **Mandatory work log:** Append log entry to D/P/T/I documents after related work.
-- **Documents:** D(Discussion)→P(Plan)→T(Ticket). I(Investigation) independent. .crabshell/ is gitignored.
+- **Mandatory work log:** Append log entry to D/P/T/I/H documents after related work.
+- **Documents:** D(Discussion)→P(Plan)→T(Ticket). I(Investigation) independent. H(Hotfix) for one-line fixes. .crabshell/ is gitignored.
 - **Version bump:** CHANGELOG → grep old version → README/STRUCTURE tables → doc headers → stale content audit → commit.
 - **Workflow selection:** Before choosing light-workflow or regressing, state scope estimate: "Files: ~N. Components: X,Y,Z. Cross-cutting: yes/no." ≤5 files → light-workflow. 6-7 without cross-cutting → light-workflow. 6-7 with cross-cutting or 8+ → regressing. Shared convention change → regressing.
 - **Urgency signal handling:** When user message contains urgency signal (빨리, 급해, ASAP, urgent, quick) AND offers workflow choice → state scope estimate BEFORE selecting workflow. Urgency does not override selection criteria.
@@ -92,7 +92,7 @@ On failure: (1) List what you tried, what constraint blocked each attempt, and w
 ---Add your project-specific rules below this line---
 
 - **세션 전환 제안 금지:** "다음 세션에서 할까요?" 금지. 사용자가 멈추라고 하지 않았으면 계속 진행. 세션 전환 판단은 사용자 몫. (→ `.claude/lessons/2026-03-18_no-deferral-questions.md`)
-- **D/P/T/I 는 .crabshell/ 아래:** D/P/T/I 문서(discussion/, plan/, ticket/, investigation/)는 .crabshell/ 아래 로컬 산출물. .crabshell/은 gitignore 대상.
+- **D/P/T/I/H 는 .crabshell/ 아래:** D/P/T/I/H 문서(discussion/, plan/, ticket/, investigation/, hotfix/)는 .crabshell/ 아래 로컬 산출물. .crabshell/은 gitignore 대상.
 - **Version bump checklist (MANDATORY):** After updating plugin.json version, BEFORE committing: (1) CHANGELOG.md, (2) grep repo for old version string, (3) add new row to version tables in README.md AND STRUCTURE.md, (4) update header versions in ARCHITECTURE.md, STRUCTURE.md, USER-MANUAL.md, (5) READ each doc section describing changed components — update directory trees, example JSON, description text, constants tables, **(5b) USER-MANUAL.md: if new hooks/guards/skills/config options were added, update Hooks table, Guards table, Slash Commands, Configuration, Pressure System sections accordingly,** (6) update source repo `.claude-plugin/plugin.json`, (7) commit `feat: <desc> (vX.Y.Z)`, (8) push, (9) user runs `/plugin` → "Update now" to refresh cache. Do NOT commit until steps 1-6 done. NEVER modify cache (`~/.claude/plugins/cache/`) directly — cache is managed by the plugin system.
 - **Model upgrade audit (on major Claude model change):** For each guard: (1) state what behavior it counteracts, (2) run test suite with guard disabled, (3) if behavior gone → candidate for removal. Guard baseline (I047 AG2):
   - inject-rules.js, load-memory.js, path-guard.js: load-bearing → keep
@@ -101,4 +101,4 @@ On failure: (1) List what you tried, what constraint blocked each attempt, and w
   - regressing-loop-guard.js: behavioral (Stop hook enforcement) → test
   - post-compact.js: zero effect → removal candidate
   - regressing-guard.js: narrow scope → merger candidate
-- **Document-first (all skills):** In every D/P/T/I/W document skill, write results to the document using Write/Edit tool BEFORE reporting in conversation. The document update is the primary output; the conversation summary is secondary. Verbal-only reporting without a prior document write = violation.
+- **Document-first (all skills):** In every D/P/T/I/H/W document skill, write results to the document using Write/Edit tool BEFORE reporting in conversation. The document update is the primary output; the conversation summary is secondary. Verbal-only reporting without a prior document write = violation.

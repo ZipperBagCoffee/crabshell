@@ -134,7 +134,7 @@ function lastLogDate(content) {
 
 // ---------- Document directories ----------
 
-const DOC_DIRS = ['discussion', 'investigation', 'plan', 'ticket', 'worklog'];
+const DOC_DIRS = ['discussion', 'investigation', 'plan', 'ticket', 'worklog', 'hotfix'];
 
 /**
  * Collect all document .md files across DOC_DIRS under .crabshell/.
@@ -343,7 +343,7 @@ function checkIndex(crabshellDir) {
 
     // For each INDEX row referencing a known ID pattern, check file exists
     // We look for patterns that look like document IDs: D\d+, P\d+, I\d+, W\d+, P\d+_T\d+
-    const idPattern = /\b([DPITW]\d+(?:_T\d+)?)\b/g;
+    const idPattern = /\b([DPITWH]\d+(?:_T\d+)?)\b/g;
     const indexedIds = new Set();
     for (const line of idxLines) {
       let m;
