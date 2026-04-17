@@ -287,8 +287,18 @@ test('31: PreToolUse Write + no transcript → ALLOW (unchanged)',
   { tool_name: 'Write', tool_input: { file_path: '/tmp/test.js', content: 'code' } }, false);
 
 // --- Fail-open: no transcript path available at all ---
-test('32: Claim + no transcript_path field → ALLOW (fail-open, findTranscriptPath fallback)',
-  { stop_response: 'Implementation verified and all tests pass.' }, false);
+// Override CLAUDE_PROJECT_DIR/PROJECT_DIR so findTranscriptPath's encoded lookup
+// targets a nonexistent directory under ~/.claude/projects — forces fallback to return null.
+(function test32() {
+  const saved1 = process.env.CLAUDE_PROJECT_DIR;
+  const saved2 = process.env.PROJECT_DIR;
+  process.env.CLAUDE_PROJECT_DIR = path.join(os.tmpdir(), 'sycophancy-test-nonexistent-' + Date.now());
+  delete process.env.PROJECT_DIR;
+  test('32: Claim + no transcript_path field → ALLOW (fail-open, findTranscriptPath fallback)',
+    { stop_response: 'Implementation verified and all tests pass.' }, false);
+  if (saved1 !== undefined) process.env.CLAUDE_PROJECT_DIR = saved1; else delete process.env.CLAUDE_PROJECT_DIR;
+  if (saved2 !== undefined) process.env.PROJECT_DIR = saved2;
+})();
 
 // ── cleanup ──────────────────────────────────────────────────────────
 
