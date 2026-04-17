@@ -23,7 +23,7 @@
  */
 const fs = require('fs');
 const path = require('path');
-const { STORAGE_ROOT, MEMORY_DIR, SESSIONS_DIR, LOGS_DIR, LESSONS_DIR, WORKFLOW_DIR, DISCUSSION_DIR, PLAN_DIR, TICKET_DIR, INVESTIGATION_DIR, HOTFIX_DIR, INDEX_FILE, COUNTER_FILE, MEMORY_FILE } = require('./constants');
+const { STORAGE_ROOT, MEMORY_DIR, SESSIONS_DIR, LOGS_DIR, WORKFLOW_DIR, DISCUSSION_DIR, PLAN_DIR, TICKET_DIR, INVESTIGATION_DIR, HOTFIX_DIR, INDEX_FILE, COUNTER_FILE, MEMORY_FILE } = require('./constants');
 const { writeJson } = require('./utils');
 
 
@@ -62,14 +62,6 @@ function migrateFromLegacy(projectDir) {
     // Copy memory/
     copyDirRecursive(legacyMemory, newMemory);
     console.error(`[CRABSHELL] Copied .claude/memory/ -> ${STORAGE_ROOT}/memory/`);
-
-    // Copy lessons/ if exists
-    const legacyLessons = path.join(projectDir, '.claude', 'lessons');
-    if (fs.existsSync(legacyLessons)) {
-      const newLessons = path.join(projectDir, STORAGE_ROOT, 'lessons');
-      copyDirRecursive(legacyLessons, newLessons);
-      console.error(`[CRABSHELL] Copied .claude/lessons/ -> ${STORAGE_ROOT}/lessons/`);
-    }
 
     // Copy verification/ if exists
     const legacyVerification = path.join(projectDir, '.claude', 'verification');
@@ -132,15 +124,12 @@ Claude Code plugin with three pillars:
 - \`/crabshell:regressing\` — Iterative optimization cycles
 - \`/crabshell:light-workflow\` — One-shot agent orchestration
 - \`/crabshell:verifying\` — Verification tool management
-- \`/crabshell:lessons\` — Project-specific lessons
-
 ## Folder Structure
 \`\`\`
 .crabshell/
 ├── project.md          # Project concept (injected every prompt)
 ├── README.md           # This file
 ├── memory/             # Session memory (logbook.md, index, sessions, delta)
-├── lessons/            # Project-specific lessons
 ├── verification/       # Verification manifest and tools
 ├── discussion/         # D-documents (decisions, dialogues)
 ├── plan/               # P-documents (implementation plans)
@@ -254,12 +243,6 @@ function ensureMemoryStructure(projectDir) {
     if (!fs.existsSync(fullPath)) {
       fs.mkdirSync(fullPath, { recursive: true });
     }
-  }
-
-  // Lessons directory (local project-specific storage)
-  const lessonsDir = path.join(storageRoot, LESSONS_DIR);
-  if (!fs.existsSync(lessonsDir)) {
-    fs.mkdirSync(lessonsDir, { recursive: true });
   }
 
   // D/P/T/I document directories

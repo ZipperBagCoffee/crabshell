@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.75.1)
+# Crabshell User Manual (v21.76.0)
 
 ## Why Do You Need This?
 
@@ -113,7 +113,6 @@ All available skills (slash commands):
 | `/crabshell:regressing "topic" N` | Iterative optimization: N cycles of Plan-then-Ticket, wrapped in a Discussion |
 | `/crabshell:light-workflow` | Lightweight one-shot agent orchestration for standalone tasks |
 | `/crabshell:verifying` | Create or run project-specific verification tools |
-| `/crabshell:lessons` | Manage project-specific lessons (format guidelines, creation) |
 | `/crabshell:status` | Healthcheck of plugin state (memory, regressing, verification, version) |
 | `/crabshell:lint` | Run Obsidian document lint checks (orphans, broken wikilinks, stale status, missing frontmatter, INDEX inconsistencies) |
 | `/crabshell:search-docs query` | BM25 full-text search across all D/P/T/I/W/K documents — ranked results with title/tags/id/body field boosts |
@@ -349,16 +348,6 @@ echo "Next.js 14 + TypeScript + Prisma" > .crabshell/project.md
 
 ---
 
-## Lessons
-
-When Claude notices repeated patterns (2+ times), it proposes a lesson:
-- Saved to `.crabshell/lessons/` as markdown files
-- Checked on each session for project-specific rules
-- Use `/crabshell:lessons` for format guidelines when creating lessons manually
-- Lessons must follow the **Problem/Rule/Example** format — reflective narratives and abstract principles are rejected
-
----
-
 ## Obsidian Integration (Optional)
 
 Crabshell supports using [Obsidian](https://obsidian.md) as a visual interface for your `.crabshell/` documents. This is entirely opt-in — no configuration required to use Crabshell without Obsidian.
@@ -452,6 +441,7 @@ L1 files are deduplicated automatically when created, but manual cleanup may som
 
 | Version | Claude Code | Node.js |
 |---------|-------------|---------|
+| 21.76.0 | 1.0+ | 18+ |
 | 21.75.1 | 1.0+ | 18+ |
 | 21.75.0 | 1.0+ | 18+ |
 | 21.74.0 | 1.0+ | 18+ |

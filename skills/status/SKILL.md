@@ -63,7 +63,7 @@ Read `{PROJECT_DIR}/.crabshell/verification/manifest.json`.
 
 ## Step 8: Directory Structure
 
-Check existence of: memory/, verification/, discussion/, plan/, ticket/, investigation/, lessons/
+Check existence of: memory/, verification/, discussion/, plan/, ticket/, investigation/
 
 For each: `✓ .crabshell/{dir}/` or `✗ .crabshell/{dir}/ MISSING`
 

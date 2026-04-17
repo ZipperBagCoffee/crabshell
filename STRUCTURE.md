@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.75.1 | **Author**: TaWa | **License**: MIT
+**Version**: 21.76.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -131,7 +131,6 @@ crabshell/
 │   ├── regressing/SKILL.md           # /crabshell:regressing (D→P→T cycles)
 │   ├── light-workflow/SKILL.md       # /crabshell:light-workflow (one-shot)
 │   ├── verifying/SKILL.md            # /crabshell:verifying (verification tools)
-│   ├── lessons/SKILL.md              # /crabshell:lessons (project rules)
 │   ├── status/SKILL.md               # /crabshell:status (plugin healthcheck)
 │   ├── lint/SKILL.md                 # /crabshell:lint (Obsidian document lint checks) (v21.70.0)
 │   ├── search-docs/SKILL.md          # /crabshell:search-docs (BM25 document search) (v21.72.0)
@@ -139,8 +138,7 @@ crabshell/
 │   └── hotfix/SKILL.md              # /crabshell:hotfix (H-page lightweight fix recording) (v21.75.0)
 │
 ├── templates/                        # Auto-init templates (v13.9.20)
-│   ├── workflow.md                   # Understanding-First workflow template
-│   └── lessons-README.md             # Lessons system README template
+│   └── workflow.md                   # Understanding-First workflow template
 │
 │
 ├── ARCHITECTURE.md                   # System architecture
@@ -341,6 +339,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.76.0 | feat: lessons system retired — /knowledge replaces /lessons, CLAUDE.md absorbs behavioral rules; skills/lessons/ deleted; 21 skills |
 | 21.75.1 | fix: skill-tracker.js DOCS_SKILLS missing 'hotfix' — /hotfix now activates skill-active.json, unblocks docs-guard on H*.md writes (H001) |
 | 21.75.0 | feat: H (Hotfix) document type — /hotfix skill, .crabshell/hotfix/, 8 scripts + 3 guards updated, CLAUDE.md D/P/T/I/H; 22 skills |
 | 21.74.0 | feat: knowledge/ system — /knowledge skill, K001-K003 from lessons migration, search-docs + digest integration; CLAUDE.md lessons→knowledge; 21 skills |

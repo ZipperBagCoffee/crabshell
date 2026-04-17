@@ -5,7 +5,7 @@
 Three pillars:
 1. **Session memory** — Auto-saves context across sessions. Delta extraction, Haiku summarization, token-based rotation. No manual setup.
 2. **Behavioral correction** — Injects verification-first rules and interference pattern detection every prompt. Twelve guard hooks block sycophancy, scope reduction, overcorrection, and shortcuts at runtime.
-3. **Structured workflows** — D/P/T/I/H/W document system with 22 skills for planning, investigating, iterative improvement (regressing), hotfix recording, and light-workflow tracing.
+3. **Structured workflows** — D/P/T/I/H/W document system with 21 skills for planning, investigating, iterative improvement (regressing), hotfix recording, and light-workflow tracing.
 
 All plugin output lives under `.crabshell/` — gitignored, clean project root.
 
@@ -61,7 +61,6 @@ With this setup, **Claude starts every new session knowing this information**.
 | `/crabshell:regressing "topic" N` | Run N cycles of P→T wrapped by a single Discussion, with verification-based optimization |
 | `/crabshell:light-workflow` | Run the 11-phase agent orchestration workflow (standalone tasks) |
 | `/crabshell:verifying` | Create/run project-specific verification tools |
-| `/crabshell:lessons` | Check/create project-specific lessons |
 | `/crabshell:status` | Healthcheck of plugin state (memory, regressing, verification, version) |
 | `/crabshell:lint` | Run Obsidian document lint checks (orphans, broken wikilinks, stale, missing frontmatter, INDEX inconsistencies) |
 | `/crabshell:search-docs query` | BM25 full-text search across all D/P/T/I/W documents |
@@ -195,6 +194,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.76.0 | feat: retire lessons system — /knowledge replaces /lessons for project-specific facts; CLAUDE.md for behavioral rules; 21 skills |
 | 21.75.1 | fix: skill-tracker.js DOCS_SKILLS missing 'hotfix' — /hotfix now activates skill-active flag, unblocks docs-guard on H*.md writes |
 | 21.73.0 | feat: background agent stop exemption — counter.js detects run_in_background Agent launches, regressing-loop-guard.js allows stop during 10min TTL window |
 | 21.72.0 | feat: --generate-digest (moc-digest.md), search-docs.js BM25, /search-docs skill, load-memory moc-digest injection; 20 skills |

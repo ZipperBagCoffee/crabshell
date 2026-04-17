@@ -1,5 +1,8 @@
 # Changelog
 
+## v21.76.0
+- feat: retire lessons system — knowledge (K-pages) and CLAUDE.md absorbed roles. Previously /lessons users: use /knowledge for project-specific facts and CLAUDE.md for behavioral rules.
+
 ## v21.75.1
 - fix: scripts/skill-tracker.js DOCS_SKILLS missing 'hotfix' — `/hotfix` Skill invocations now write `.crabshell/memory/skill-active.json`, restoring symmetry with docs-guard.js LEGITIMATE_SKILLS (which already included 'hotfix'). Unblocks docs-guard on `H*.md` Write/Edit without `/verifying` workaround. Recorded as H001.
 
