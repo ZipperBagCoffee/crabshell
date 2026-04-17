@@ -12,10 +12,10 @@ function getProjectDir() {
   return process.env.CLAUDE_PROJECT_DIR || process.env.PROJECT_DIR || process.cwd();
 }
 
-// Skills that legitimately create/modify .crabshell/ D/P/T/I files
+// Skills that legitimately create/modify .crabshell/ D/P/T/I/H files
 const DOCS_SKILLS = [
   'discussing', 'planning', 'ticketing', 'investigating',
-  'regressing', 'light-workflow', 'verifying'
+  'regressing', 'light-workflow', 'verifying', 'hotfix'
 ];
 
 // Default TTL: 15 minutes

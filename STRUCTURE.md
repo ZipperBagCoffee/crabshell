@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.75.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.75.1 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -341,6 +341,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.75.1 | fix: skill-tracker.js DOCS_SKILLS missing 'hotfix' — /hotfix now activates skill-active.json, unblocks docs-guard on H*.md writes (H001) |
 | 21.75.0 | feat: H (Hotfix) document type — /hotfix skill, .crabshell/hotfix/, 8 scripts + 3 guards updated, CLAUDE.md D/P/T/I/H; 22 skills |
 | 21.74.0 | feat: knowledge/ system — /knowledge skill, K001-K003 from lessons migration, search-docs + digest integration; CLAUDE.md lessons→knowledge; 21 skills |
 | 21.73.0 | feat: background agent stop exemption — backgroundAgentPending tracking in counter.js, TTL-based exemption in regressing-loop-guard.js |
