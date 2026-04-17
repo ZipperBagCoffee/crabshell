@@ -1,5 +1,8 @@
 # Changelog
 
+## v21.75.1
+- fix: scripts/skill-tracker.js DOCS_SKILLS missing 'hotfix' — `/hotfix` Skill invocations now write `.crabshell/memory/skill-active.json`, restoring symmetry with docs-guard.js LEGITIMATE_SKILLS (which already included 'hotfix'). Unblocks docs-guard on `H*.md` Write/Edit without `/verifying` workaround. Recorded as H001.
+
 ## v21.75.0
 - feat: H (Hotfix) document type — /hotfix skill for recording lightweight one-line fixes (H{NNN}-{slug}.md in .crabshell/hotfix/)
 - feat: hotfix integration — search-docs, lint-obsidian, init.js, migrate-obsidian (MOC-hotfixes), constants.js all extended
