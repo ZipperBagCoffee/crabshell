@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.75.1)
+# Crabshell Architecture (v21.76.0)
 
 ## Overview
 
@@ -134,9 +134,9 @@ Two meta-principles guide Claude's approach to obstacles:
           |
           v
 +--------------------------------------------------------------------------+
-|  Skills Layer (22 skills)                                                 |
+|  Skills Layer (21 skills)                                                 |
 |  +---------------------------------+  +--------------------------------+ |
-|  | Operational Skills (13)         |  | Memory Skills (8)              | |
+|  | Operational Skills (13)         |  | Memory Skills (7)              | |
 |  | - discussing    (D documents)   |  | - save-memory                  | |
 |  | - planning      (P documents)   |  | - load-memory                  | |
 |  | - ticketing     (T documents)   |  | - search-memory                | |
@@ -144,7 +144,7 @@ Two meta-principles guide Claude's approach to obstacles:
 |  | - hotfix        (H documents)   |  | - memory-autosave              | |
 |  | - light-workflow (standalone)   |  | - memory-delta                 | |
 |  | - regressing    (D→P→T loop)    |  | - memory-rotate                | |
-|  | - verifying     (verification)  |  | - lessons                      | |
+|  | - verifying     (verification)  |  |                                | |
 |  | - knowledge     (K pages)       |  |                                | |
 |  | - status        (healthcheck)   |  | Setup Skills (1)               | |
 |  | - setup-rtk     (RTK config)    |  | - setup-project                | |
@@ -299,7 +299,6 @@ Each document type has an INDEX.md for tracking. Status cascades upward on compl
 | search-docs | BM25 full-text search across D/P/T/I/W documents with field boosting (title 3x, tags 2x, id 1.5x). |
 | regressing | Iterative D->P->T loop. `/regressing "topic" N` runs N cycles wrapped by a single Discussion. Anti-partitioning enforced. |
 | verifying | Create/run project-specific verification tools. Invoked as procedural step in ticketing/light-workflow/regressing. |
-| lessons | Format guidelines for `.claude/lessons/` entries. Propose when patterns repeat 2+ times. |
 
 ### Memory Skills
 
