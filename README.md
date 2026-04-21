@@ -194,6 +194,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.77.1 | fix: waCount hook-event ordering (D101 T001) — new PreToolUse hook `wa-count-pretool.js` increments at dispatch (Pre = sole mutator), resolves subagent first-Write role-collapse false positive; test drift cleanup (D101 T002) — `_test-pressure-guard.js` PG-6/PG-11 + `_test-wa-count-enforcement.js` AC6 fixture updates; docs & process (D101 T003) — CLAUDE.md Version bump checklist step (5c), USER-MANUAL.md canonical phrase, /status SKILL counter bullet unified, ticketing SKILL Step 4a line-number pre-flight |
 | 21.77.0 | feat: pressure 3-counter model alignment (D100/I058) — three pressure counters (feedbackPressure.level, feedbackPressure.oscillationCount, tooGoodSkepticism.retryCount); BAILOUT resets all three; inject-rules.js race fix (RMW fully inside index lock); sycophancy-guard/post-compact counter writes acquire lock; /status reports all 3; new tests `_test-inject-rules-race.js` + `_test-bailout-tooGoodSkepticism.js` |
 | 21.76.0 | feat: retire lessons system — /knowledge replaces /lessons for project-specific facts; CLAUDE.md for behavioral rules; 21 skills |
 | 21.75.1 | fix: skill-tracker.js DOCS_SKILLS missing 'hotfix' — /hotfix now activates skill-active flag, unblocks docs-guard on H*.md writes |

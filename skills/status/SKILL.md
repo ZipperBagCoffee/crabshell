@@ -29,7 +29,7 @@ Read `{PROJECT_DIR}/.crabshell/memory/memory-index.json`. Report:
 - `  counter: {value}` (hook invocations)
 - `  deltaReady: {true|false}`
 - `  totalRotations: {stats.totalRotations}`
-- feedbackPressure.level: `✓` if 0-1, `!` if 2, `✗` if 3+
+- `feedbackPressure.level: {value}` — `✓` if 0-1, `!` if 2, `✗` if 3+
 - `feedbackPressure.oscillationCount: {value}` — `✓` if 0, `!` if 1-2, `✗` if ≥3
 - `tooGoodSkepticism.retryCount: {value}` — `✓` if 0, `!` if 1-2, `✗` if ≥3
 

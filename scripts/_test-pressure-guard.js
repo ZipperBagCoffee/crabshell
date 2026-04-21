@@ -150,9 +150,9 @@ test('PG-5: level=2, Read tool, .crabshell/ path → exit(0) (exception)', funct
 });
 
 // ============================================================
-// PG-6: level=2 block message contains "direction" or "confirm"
+// PG-6: level=2 block message contains "problem analysis" or "Complete"
 // ============================================================
-test('PG-6: level=2 block message contains "direction" or "confirm"', function() {
+test('PG-6: level=2 block message contains "problem analysis" or "Complete"', function() {
   const dir = makeTempProject(2);
   try {
     const result = runGuard(dir, {
@@ -165,8 +165,8 @@ test('PG-6: level=2 block message contains "direction" or "confirm"', function()
     try { parsed = JSON.parse(outputStr); } catch(e) { throw new Error('stdout is not valid JSON: ' + outputStr); }
     const reason = parsed.reason || '';
     assert(
-      reason.toLowerCase().includes('direction') || reason.toLowerCase().includes('confirm'),
-      'L2 message should contain "direction" or "confirm", got: ' + reason
+      reason.toLowerCase().includes('problem analysis') || reason.toLowerCase().includes('complete'),
+      'L2 message should contain "problem analysis" or "Complete", got: ' + reason
     );
   } finally {
     cleanupDir(dir);
@@ -252,9 +252,9 @@ test('PG-10: level=3 block message does NOT contain "TaskCreate" as escape route
 });
 
 // ============================================================
-// PG-11: level=3 block message contains "reflect" or "understanding"
+// PG-11: level=3 block message contains "structured self-diagnosis" or "All tools locked"
 // ============================================================
-test('PG-11: level=3 block message contains "reflect" or "understanding"', function() {
+test('PG-11: level=3 block message contains "structured self-diagnosis" or "All tools locked"', function() {
   const dir = makeTempProject(3);
   try {
     const result = runGuard(dir, {
@@ -267,8 +267,8 @@ test('PG-11: level=3 block message contains "reflect" or "understanding"', funct
     try { parsed = JSON.parse(outputStr); } catch(e) { throw new Error('stdout is not valid JSON: ' + outputStr); }
     const reason = (parsed.reason || '').toLowerCase();
     assert(
-      reason.includes('reflect') || reason.includes('understanding'),
-      'L3 message should contain "reflect" or "understanding", got: ' + parsed.reason
+      reason.includes('structured self-diagnosis') || reason.includes('all tools locked'),
+      'L3 message should contain "structured self-diagnosis" or "All tools locked", got: ' + parsed.reason
     );
   } finally {
     cleanupDir(dir);

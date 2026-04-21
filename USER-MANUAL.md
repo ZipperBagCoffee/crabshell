@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.77.0)
+# Crabshell User Manual (v21.77.1)
 
 ## Why Do You Need This?
 
@@ -287,7 +287,7 @@ If tool access is locked at L2 or L3, the user can type one of these keywords to
 - **`봉인해제`** (Korean)
 - **`BAILOUT`** (English)
 
-The BAILOUT keyword resets all three counters (feedbackPressure.level, feedbackPressure.oscillationCount, and tooGoodSkepticism.retryCount) to zero. On reset, stderr logs `[PRESSURE BAILOUT: reset all 3 counters]`.
+The BAILOUT keyword resets three pressure counters (feedbackPressure.level, feedbackPressure.oscillationCount, tooGoodSkepticism.retryCount) to zero. On reset, stderr logs `[PRESSURE BAILOUT: reset all 3 counters]`.
 
 This is the **only** way to immediately escape L2/L3 without waiting for natural decay. When you're stuck at L2/L3, Claude will inform you about these keywords.
 

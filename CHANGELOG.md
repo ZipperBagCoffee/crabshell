@@ -1,5 +1,12 @@
 # Changelog
 
+## v21.77.1 - 2026-04-21
+
+- **waCount hook-event ordering fix (D101 T001).** Added PreToolUse hook `scripts/wa-count-pretool.js` (matcher: Agent|Task|TaskCreate) that increments waCount at dispatch time. `counter.js classifyAgent` widened to accept Agent|Task|TaskCreate; Post-side WA/RA increment removed (Pre = sole mutator). Resolves subagent first-Write role-collapse-guard false positive that required manual wa-count.json pre-seeding.
+- **Test drift cleanup (D101 T002).** `_test-pressure-guard.js` PG-6/PG-11 assertions updated to match v21.71.0 L2/L3 message rewrites. `_test-wa-count-enforcement.js` AC6 fixture aligned with real `skill-tracker.js` output (activatedAt + ttl).
+- **Documentation & process (D101 T003).** CLAUDE.md Version bump checklist gains step (5c) requiring `.crabshell/verification/manifest.json` version references to be updated. USER-MANUAL.md L290 canonical phrase `three pressure counters (feedbackPressure.level, feedbackPressure.oscillationCount, tooGoodSkepticism.retryCount)` now exact match. `/status` SKILL Step 2 counter bullet format unified. `skills/ticketing/SKILL.md` gains Step 4a "Line-number pre-flight" to prevent Scope drift.
+- See D101 + P131.
+
 ## v21.77.0
 - **Pressure 3-counter model alignment** (D100 / I058). Crabshell tracks three pressure counters (feedbackPressure.level, feedbackPressure.oscillationCount, tooGoodSkepticism.retryCount). The BAILOUT keyword now resets all three (previously only feedbackPressure.* was reset). Race fix: inject-rules.js UserPromptSubmit RMW block now fully inside index lock (lost-update eliminated). sycophancy-guard.js 3 counter-writer functions and post-compact.js write now acquire index lock (fail-open preserved). stderr message updated: `[PRESSURE BAILOUT: reset all 3 counters]`.
 - feat: USER-MANUAL.md, STRUCTURE.md, ARCHITECTURE.md, CHANGELOG.md (historical annotation at v21.63.0) synced with 3-counter model.

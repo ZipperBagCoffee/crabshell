@@ -63,17 +63,24 @@ function resetWaCount() {
 }
 
 /**
- * Classify an Agent hook invocation as WA or RA.
+ * Classify an Agent/Task/TaskCreate hook invocation as WA or RA.
  * Conservative: anything that is not clearly an RA is classified as WA.
- * Returns 'WA', 'RA', or null (if not an Agent tool call).
+ * Returns 'WA', 'RA', or null (if not an agent-dispatch tool call).
+ * Fail-open: any unexpected shape returns null.
  */
 function classifyAgent(hookData) {
-  if (hookData.tool_name !== 'Agent') return null;
-  const input = hookData.tool_input || {};
-  const text = ((input.prompt || '') + ' ' + (input.description || '')).toLowerCase();
-  const RA_PATTERNS = /\b(review agent|verification|verify|reviewer)\b/;
-  if (RA_PATTERNS.test(text)) return 'RA';
-  return 'WA'; // default = WA (conservative)
+  try {
+    if (!hookData) return null;
+    const AGENT_TOOLS = ['Agent', 'Task', 'TaskCreate'];
+    if (!AGENT_TOOLS.includes(hookData.tool_name)) return null;
+    const input = hookData.tool_input || {};
+    const prompt = typeof input.prompt === 'string' ? input.prompt : '';
+    const description = typeof input.description === 'string' ? input.description : '';
+    const text = (prompt + ' ' + description).toLowerCase();
+    const RA_PATTERNS = /\b(review agent|verification|verify|reviewer)\b/;
+    if (RA_PATTERNS.test(text)) return 'RA';
+    return 'WA'; // default = WA (conservative)
+  } catch { return null; }
 }
 
 async function check() {
@@ -128,31 +135,10 @@ async function check() {
       } catch (e) { /* fail-open */ }
     }
 
-    // WA count tracking on Agent tool (subagent launch)
-    if (hookData.tool_name === 'Agent') {
-      try {
-        const agentType = classifyAgent(hookData);
-        const projectDir = getProjectDir();
-        const waPath = path.join(getStorageRoot(projectDir), MEMORY_DIR, WA_COUNT_FILE);
-        const waData = readJsonOrDefault(waPath, { waCount: 0, raCount: 0, totalTaskCalls: 0 });
-        waData.totalTaskCalls++;
-        if (agentType === 'WA') waData.waCount++;
-        else if (agentType === 'RA') waData.raCount++;
-
-        // Track background agent launches for stop-hook exemption
-        if (hookData.tool_input && hookData.tool_input.run_in_background === true) {
-          const existingCount = (waData.backgroundAgentPending && typeof waData.backgroundAgentPending.count === 'number')
-            ? waData.backgroundAgentPending.count
-            : 0;
-          waData.backgroundAgentPending = {
-            count: existingCount + 1,
-            launchedAt: new Date().toISOString()
-          };
-        }
-
-        fs.writeFileSync(waPath, JSON.stringify(waData, null, 2));
-      } catch (e) { /* fail-open */ }
-    }
+    // Post-side agent bookkeeping: NO increments.
+    // All wa-count.json mutations (waCount, raCount, totalTaskCalls,
+    // backgroundAgentPending) happen at PreToolUse-time in wa-count-pretool.js.
+    // Single-source-of-truth prevents double-counting. Ticket: P131_T001.
 
     // Ticketing reset: when ticketing skill is invoked, reset wa-count.json
     if (hookData.tool_name === 'Skill') {

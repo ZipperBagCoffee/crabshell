@@ -209,8 +209,13 @@ test('light-workflow active + waCount=1 → block condition true (AC6)', () => {
   assert.ok(typeof isLightWorkflowActive === 'function', 'isLightWorkflowActive must be exported from regressing-loop-guard.js');
   assert.ok(typeof getWaCount === 'function', 'getWaCount must be exported');
 
-  // Write skill-active for light-workflow
-  fs.writeFileSync(skillActivePath(), JSON.stringify({ skill: 'light-workflow', active: true }));
+  // Write skill-active for light-workflow — match real skill-tracker.js output shape
+  // (activatedAt + ttl; isLightWorkflowActive checks these fields, not `active`)
+  fs.writeFileSync(skillActivePath(), JSON.stringify({
+    skill: 'light-workflow',
+    activatedAt: new Date().toISOString(),
+    ttl: 900000
+  }));
   fs.writeFileSync(waCountPath(), JSON.stringify({ waCount: 1, raCount: 0 }));
 
   const lwActive = isLightWorkflowActive();

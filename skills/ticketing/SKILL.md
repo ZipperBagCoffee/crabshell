@@ -45,6 +45,16 @@ Glob `.crabshell/ticket/P{NNN}_T*.md` where P{NNN} is the parent plan.
 Extract ticket numbers. Next = max + 1, zero-padded to 3 digits.
 If no tickets for this plan, start at 001.
 
+### Step 4a: Line-number pre-flight (MANDATORY for Scope authoring)
+
+Before writing line-number references (e.g., "USER-MANUAL.md L290", "scripts/inject-rules.js:636") in the Scope or Acceptance Criteria sections, **verify each line number via grep or Read**:
+
+1. For a target file + expected content (e.g., "where canonical phrase appears"), run `grep -n '<phrase>' <file>` — capture actual line number.
+2. Include line number in Scope only if confirmed; otherwise use a semantic reference (e.g., "§Pressure System section" or "the `classifyAgent` function").
+3. If line numbers drift due to subsequent edits, the ticket's Scope retains validity via semantic anchor.
+
+This prevents ticket-Scope line-number drift (as observed when D100 T003 Scope cited STRUCTURE.md L350 but actual target was L70).
+
 ### Step 4: Create ticket document
 
 Ask the user:
