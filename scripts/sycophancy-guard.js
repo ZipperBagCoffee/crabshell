@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { readStdin, findTranscriptPath, encodeProjectPath, getRecentBashCommands } = require('./transcript-utils');
 const { STORAGE_ROOT } = require('./constants');
+const { acquireIndexLock, releaseIndexLock, writeJson } = require('./utils');
 
 // Skip processing during background memory summarization
 if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
@@ -275,33 +276,60 @@ function getTooGoodRetryCount(projectDir) {
 
 /**
  * Increment tooGoodSkepticism.retryCount in memory-index.json.
- * Returns the new count. Fail-open: returns 0 on any error.
+ * Returns the new count. Fail-open: returns 0 on any error OR on lock contention.
+ * Uses acquireIndexLock for RMW safety against concurrent writers (inject-rules.js,
+ * post-compact.js). On lock miss, logs to stderr and returns 0 without writing.
  */
 function incrementTooGoodRetryCount(projectDir) {
   try {
-    const indexPath = path.join(projectDir || getProjectDir(), STORAGE_ROOT, 'memory', 'memory-index.json');
-    let index;
-    try { index = JSON.parse(fs.readFileSync(indexPath, 'utf8')); } catch { index = {}; }
-    if (!index.tooGoodSkepticism) index.tooGoodSkepticism = { retryCount: 0 };
-    if (typeof index.tooGoodSkepticism.retryCount !== 'number') index.tooGoodSkepticism.retryCount = 0;
-    index.tooGoodSkepticism.retryCount++;
-    fs.writeFileSync(indexPath, JSON.stringify(index, null, 2));
-    return index.tooGoodSkepticism.retryCount;
+    const pDir = projectDir || getProjectDir();
+    const memoryDir = path.join(pDir, STORAGE_ROOT, 'memory');
+    const indexPath = path.join(memoryDir, 'memory-index.json');
+
+    const locked = acquireIndexLock(memoryDir);
+    if (!locked) {
+      process.stderr.write('[SYCOPHANCY_GUARD] index locked by another process; skipping incrementTooGoodRetryCount\n');
+      return 0;
+    }
+    try {
+      let index;
+      try { index = JSON.parse(fs.readFileSync(indexPath, 'utf8')); } catch { index = {}; }
+      if (!index.tooGoodSkepticism) index.tooGoodSkepticism = { retryCount: 0 };
+      if (typeof index.tooGoodSkepticism.retryCount !== 'number') index.tooGoodSkepticism.retryCount = 0;
+      index.tooGoodSkepticism.retryCount++;
+      // writeJson has Windows EPERM fallback (utils.js)
+      writeJson(indexPath, index);
+      return index.tooGoodSkepticism.retryCount;
+    } finally {
+      releaseIndexLock(memoryDir);
+    }
   } catch { return 0; }
 }
 
 /**
  * Reset tooGoodSkepticism.retryCount to 0 in memory-index.json.
- * Fail-open on any error.
+ * Fail-open on any error OR on lock contention (stderr warn, no-op).
  */
 function resetTooGoodRetryCount(projectDir) {
   try {
-    const indexPath = path.join(projectDir || getProjectDir(), STORAGE_ROOT, 'memory', 'memory-index.json');
-    let index;
-    try { index = JSON.parse(fs.readFileSync(indexPath, 'utf8')); } catch { index = {}; }
-    if (!index.tooGoodSkepticism) index.tooGoodSkepticism = { retryCount: 0 };
-    index.tooGoodSkepticism.retryCount = 0;
-    fs.writeFileSync(indexPath, JSON.stringify(index, null, 2));
+    const pDir = projectDir || getProjectDir();
+    const memoryDir = path.join(pDir, STORAGE_ROOT, 'memory');
+    const indexPath = path.join(memoryDir, 'memory-index.json');
+
+    const locked = acquireIndexLock(memoryDir);
+    if (!locked) {
+      process.stderr.write('[SYCOPHANCY_GUARD] index locked by another process; skipping resetTooGoodRetryCount\n');
+      return;
+    }
+    try {
+      let index;
+      try { index = JSON.parse(fs.readFileSync(indexPath, 'utf8')); } catch { index = {}; }
+      if (!index.tooGoodSkepticism) index.tooGoodSkepticism = { retryCount: 0 };
+      index.tooGoodSkepticism.retryCount = 0;
+      writeJson(indexPath, index);
+    } finally {
+      releaseIndexLock(memoryDir);
+    }
   } catch {}
 }
 
@@ -320,18 +348,29 @@ function getOscillationCount() {
 
 /**
  * Increment oscillationCount in memory-index.json.
- * Fail-open on any error.
+ * Fail-open on any error OR on lock contention (stderr warn, returns 0).
  */
 function incrementOscillationCount() {
   try {
-    const indexPath = path.join(getProjectDir(), STORAGE_ROOT, 'memory', 'memory-index.json');
-    let index;
-    try { index = JSON.parse(fs.readFileSync(indexPath, 'utf8')); } catch { index = {}; }
-    if (!index.feedbackPressure) index.feedbackPressure = { level: 0, consecutiveCount: 0, lastDetectedAt: null, decayCounter: 0, oscillationCount: 0 };
-    if (typeof index.feedbackPressure.oscillationCount !== 'number') index.feedbackPressure.oscillationCount = 0;
-    index.feedbackPressure.oscillationCount++;
-    fs.writeFileSync(indexPath, JSON.stringify(index, null, 2));
-    return index.feedbackPressure.oscillationCount;
+    const memoryDir = path.join(getProjectDir(), STORAGE_ROOT, 'memory');
+    const indexPath = path.join(memoryDir, 'memory-index.json');
+
+    const locked = acquireIndexLock(memoryDir);
+    if (!locked) {
+      process.stderr.write('[SYCOPHANCY_GUARD] index locked by another process; skipping incrementOscillationCount\n');
+      return 0;
+    }
+    try {
+      let index;
+      try { index = JSON.parse(fs.readFileSync(indexPath, 'utf8')); } catch { index = {}; }
+      if (!index.feedbackPressure) index.feedbackPressure = { level: 0, consecutiveCount: 0, lastDetectedAt: null, decayCounter: 0, oscillationCount: 0 };
+      if (typeof index.feedbackPressure.oscillationCount !== 'number') index.feedbackPressure.oscillationCount = 0;
+      index.feedbackPressure.oscillationCount++;
+      writeJson(indexPath, index);
+      return index.feedbackPressure.oscillationCount;
+    } finally {
+      releaseIndexLock(memoryDir);
+    }
   } catch { return 0; }
 }
 

@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.76.0)
+# Crabshell Architecture (v21.77.0)
 
 ## Overview
 
@@ -231,7 +231,10 @@ Two meta-principles guide Claude's approach to obstacles:
 
 3.5. Stop — v19.29.0+
    ├─> sycophancy-guard.js (dual-layer: Stop + PreToolUse, v20.7.0)
-   │   └─> Detect agreement-without-verification patterns → block with re-examination
+   │   ├─> Detect agreement-without-verification patterns → block with re-examination
+   │   └─> Write memory-index.json — three pressure counters (feedbackPressure.level, feedbackPressure.oscillationCount, tooGoodSkepticism.retryCount):
+   │       increment feedbackPressure.oscillationCount on reversal phrases; increment/reset tooGoodSkepticism.retryCount on all-None P/O/G tables
+   │       (pressure-adjacent counters, independent of feedbackPressure.level raised by pressure-guard/inject-rules)
    ├─> doc-watchdog.js stop (v21.18.0)
    │   └─> Block session end when regressing active + ticket has no work log entry since last code edit
    ├─> scope-guard.js (v21.19.0)

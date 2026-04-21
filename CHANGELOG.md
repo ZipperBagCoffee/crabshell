@@ -1,5 +1,12 @@
 # Changelog
 
+## v21.77.0
+- **Pressure 3-counter model alignment** (D100 / I058). Crabshell tracks three pressure counters (feedbackPressure.level, feedbackPressure.oscillationCount, tooGoodSkepticism.retryCount). The BAILOUT keyword now resets all three (previously only feedbackPressure.* was reset). Race fix: inject-rules.js UserPromptSubmit RMW block now fully inside index lock (lost-update eliminated). sycophancy-guard.js 3 counter-writer functions and post-compact.js write now acquire index lock (fail-open preserved). stderr message updated: `[PRESSURE BAILOUT: reset all 3 counters]`.
+- feat: USER-MANUAL.md, STRUCTURE.md, ARCHITECTURE.md, CHANGELOG.md (historical annotation at v21.63.0) synced with 3-counter model.
+- feat: /status skill now reports all three counters.
+- feat: new behavioral tests — `scripts/_test-inject-rules-race.js` (N=5 concurrent UserPromptSubmit, lost-update 0), `scripts/_test-bailout-tooGoodSkepticism.js` (BAILOUT resets all 3 counters).
+- See I058 investigation + D100 discussion + P130 plan (T001 code, T002 tests, T003 docs).
+
 ## v21.76.0
 - feat: retire lessons system — knowledge (K-pages) and CLAUDE.md absorbed roles. Previously /lessons users: use /knowledge for project-specific facts and CLAUDE.md for behavioral rules.
 
@@ -66,6 +73,7 @@
 
 ## 21.63.0
 - fix: BAILOUT now resets oscillationCount to 0 (complete pressure reset)
+_Note: Through v21.76.0, "complete pressure reset" excluded tooGoodSkepticism.retryCount. v21.77.0 extended BAILOUT to reset this counter too — now covering three pressure counters (feedbackPressure.level, feedbackPressure.oscillationCount, tooGoodSkepticism.retryCount) (Option A; see I058, D100)._
 
 ## 21.62.0
 - feat: Model Routing table splits verification into mechanical (Sonnet) vs judgment (Opus)

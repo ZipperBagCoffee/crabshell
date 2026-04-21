@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.76.0)
+# Crabshell User Manual (v21.77.0)
 
 ## Why Do You Need This?
 
@@ -252,9 +252,19 @@ Guards run automatically via hooks. No configuration needed.
 
 ## Pressure System
 
-The pressure system is a graduated response mechanism that activates when Claude receives consecutive negative feedback from the user. It prevents Claude from continuing to make the same mistakes by progressively restricting tool access.
+Crabshell tracks three pressure counters (feedbackPressure.level, feedbackPressure.oscillationCount, tooGoodSkepticism.retryCount) in `.crabshell/memory/memory-index.json`. Together they form a graduated response mechanism that restricts tool access when Claude drifts — either via consecutive negative user feedback or via the assistant's own output patterns (reversals, all-None P/O/G).
 
-### Pressure Levels
+### Three Counters
+
+| Counter | Raised By | Trigger | Reset By |
+|---------|-----------|---------|----------|
+| feedbackPressure.level (0-3) | inject-rules.js @ UserPromptSubmit | User message matches NEGATIVE_PATTERNS | Positive-feedback decay (3 clean prompts) · BAILOUT keyword · TaskCreate tool (L1-L2 only) · SessionStart (L2+ → 1) |
+| feedbackPressure.oscillationCount | sycophancy-guard.js @ Stop | Assistant response contains REVERSAL_PATTERNS (e.g., "actually, let me", "다시 생각해보니") — **no user input required** | BAILOUT keyword · SessionStart |
+| tooGoodSkepticism.retryCount | sycophancy-guard.js @ Stop | Assistant response contains a P/O/G table where all Gap cells are None/없음/N/A — **no user input required** | Clean P/O/G (Gap ≠ None) in a later Stop · retryCount > 3 overflow · SessionStart · BAILOUT keyword (as of v21.77.0) |
+
+**Note:** Two of the three counters (oscillationCount, tooGoodSkepticism.retryCount) rise from the assistant's own output independent of the user. Use `/crabshell:status` to inspect current values.
+
+### Pressure Levels (feedbackPressure.level)
 
 | Level | Name | Trigger | Effect |
 |-------|------|---------|--------|
@@ -265,19 +275,23 @@ The pressure system is a graduated response mechanism that activates when Claude
 
 ### How It Works
 
-- **Detection:** The `inject-rules.js` hook (UserPromptSubmit) analyzes user prompts for negative feedback signals and updates the pressure level in `memory-index.json`.
-- **Enforcement:** The `pressure-guard.js` hook (PreToolUse, matcher: `.*`) checks the pressure level before every tool call and blocks accordingly.
-- **Decay:** Positive feedback from the user reduces the pressure level naturally.
+- **Detection:** The `inject-rules.js` hook (UserPromptSubmit) analyzes user prompts for negative feedback signals and updates `feedbackPressure.level` in `memory-index.json`. The `sycophancy-guard.js` hook (Stop) independently analyzes assistant output and updates `feedbackPressure.oscillationCount` and `tooGoodSkepticism.retryCount`.
+- **Enforcement:** The `pressure-guard.js` hook (PreToolUse, matcher: `.*`) checks `feedbackPressure.level` before every tool call and blocks accordingly.
+- **Decay:** Positive feedback from the user reduces `feedbackPressure.level` naturally. The assistant-side counters decay only on their own reset paths (see table above).
 - **Exception:** Operations targeting `.crabshell/` or `.claude/` paths are always allowed, even at L3 (so the plugin can still manage its own state).
 
 ### Bailout
 
-If tool access is locked at L2 or L3, the user can type one of these keywords to instantly reset pressure to L0:
+If tool access is locked at L2 or L3, the user can type one of these keywords to reset the pressure system:
 
 - **`봉인해제`** (Korean)
 - **`BAILOUT`** (English)
 
+The BAILOUT keyword resets all three counters (feedbackPressure.level, feedbackPressure.oscillationCount, and tooGoodSkepticism.retryCount) to zero. On reset, stderr logs `[PRESSURE BAILOUT: reset all 3 counters]`.
+
 This is the **only** way to immediately escape L2/L3 without waiting for natural decay. When you're stuck at L2/L3, Claude will inform you about these keywords.
+
+**Note:** As of v21.77.0, BAILOUT now also resets `tooGoodSkepticism.retryCount` (previously only `feedbackPressure.*` was reset).
 
 ---
 

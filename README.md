@@ -4,7 +4,7 @@
 
 Three pillars:
 1. **Session memory** — Auto-saves context across sessions. Delta extraction, Haiku summarization, token-based rotation. No manual setup.
-2. **Behavioral correction** — Injects verification-first rules and interference pattern detection every prompt. Twelve guard hooks block sycophancy, scope reduction, overcorrection, and shortcuts at runtime.
+2. **Behavioral correction** — Injects verification-first rules and interference pattern detection every prompt. Twelve guard hooks block sycophancy, scope reduction, overcorrection, and shortcuts at runtime. **Pressure System:** three pressure counters (feedbackPressure.level, feedbackPressure.oscillationCount, tooGoodSkepticism.retryCount) with user-prompt-driven level plus assistant-side oscillation and too-good skepticism counters. BAILOUT keyword resets all three.
 3. **Structured workflows** — D/P/T/I/H/W document system with 21 skills for planning, investigating, iterative improvement (regressing), hotfix recording, and light-workflow tracing.
 
 All plugin output lives under `.crabshell/` — gitignored, clean project root.
@@ -194,6 +194,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.77.0 | feat: pressure 3-counter model alignment (D100/I058) — three pressure counters (feedbackPressure.level, feedbackPressure.oscillationCount, tooGoodSkepticism.retryCount); BAILOUT resets all three; inject-rules.js race fix (RMW fully inside index lock); sycophancy-guard/post-compact counter writes acquire lock; /status reports all 3; new tests `_test-inject-rules-race.js` + `_test-bailout-tooGoodSkepticism.js` |
 | 21.76.0 | feat: retire lessons system — /knowledge replaces /lessons for project-specific facts; CLAUDE.md for behavioral rules; 21 skills |
 | 21.75.1 | fix: skill-tracker.js DOCS_SKILLS missing 'hotfix' — /hotfix now activates skill-active flag, unblocks docs-guard on H*.md writes |
 | 21.73.0 | feat: background agent stop exemption — counter.js detects run_in_background Agent launches, regressing-loop-guard.js allows stop during 10min TTL window |

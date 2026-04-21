@@ -12,7 +12,7 @@
 const fs = require('fs');
 const path = require('path');
 const { readStdin } = require('./transcript-utils');
-const { getProjectDir, getStorageRoot, readJsonOrDefault } = require('./utils');
+const { getProjectDir, getStorageRoot, readJsonOrDefault, writeJson, acquireIndexLock, releaseIndexLock } = require('./utils');
 const { REGRESSING_STATE_FILE } = require('./constants');
 
 // Skip processing during background memory summarization
@@ -48,16 +48,33 @@ async function main() {
   }
 
   // Reset pressure lastShownLevel on compaction (context was cleared, full text must re-inject)
+  // Outer try/catch preserves PostCompact fail-open (runs during auto-compaction — throw would
+  // kill the compaction flow). Lock acquisition inside; lock failure logs and silently continues.
   try {
-    const { getStorageRoot, readJsonOrDefault, writeJson } = require('./utils');
-    const indexPath = require('path').join(getStorageRoot(projectDir), 'memory', 'memory-index.json');
-    const idx = readJsonOrDefault(indexPath, null);
-    if (idx && idx.feedbackPressure && typeof idx.feedbackPressure.lastShownLevel === 'number') {
-      idx.feedbackPressure.lastShownLevel = 0;
-      writeJson(indexPath, idx);
-      process.stderr.write('[CRABSHELL] PostCompact: feedbackPressure.lastShownLevel reset to 0\n');
+    const memoryDir = path.join(getStorageRoot(projectDir), 'memory');
+    const indexPath = path.join(memoryDir, 'memory-index.json');
+
+    const locked = acquireIndexLock(memoryDir);
+    if (!locked) {
+      process.stderr.write('[CRABSHELL] PostCompact: index lock busy, skipping lastShownLevel reset (fail-open)\n');
+    } else {
+      try {
+        const idx = readJsonOrDefault(indexPath, null);
+        if (idx && idx.feedbackPressure && typeof idx.feedbackPressure.lastShownLevel === 'number') {
+          idx.feedbackPressure.lastShownLevel = 0;
+          writeJson(indexPath, idx);
+          process.stderr.write('[CRABSHELL] PostCompact: feedbackPressure.lastShownLevel reset to 0\n');
+        }
+      } catch (innerErr) {
+        // Inner throw is caught here too — but outer try/catch is our backstop.
+        process.stderr.write('[CRABSHELL] PostCompact: lastShownLevel write failed: ' + (innerErr.message || innerErr) + '\n');
+      } finally {
+        // releaseIndexLock is silent-on-error per utils.js — safe inside finally.
+        releaseIndexLock(memoryDir);
+      }
     }
   } catch (e) {
+    // Outer catch — absolutely must not propagate during auto-compaction.
     process.stderr.write('[CRABSHELL] PostCompact: lastShownLevel reset failed: ' + (e.message || e) + '\n');
   }
 

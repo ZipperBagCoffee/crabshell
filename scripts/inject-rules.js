@@ -633,51 +633,71 @@ async function main() {
 
     // Counter stored in memory-index.json
     const indexPath = path.join(getStorageRoot(projectDir), 'memory', 'memory-index.json');
-    const index = readIndexSafe(indexPath);  // Use safe reader to preserve all fields
+    const memoryDir = path.join(getStorageRoot(projectDir), 'memory');
 
     // Extract user prompt early (for feedback detection + memory snippets)
     const userPrompt = (hookData && (hookData.prompt || hookData.input)) || '';
 
-    // Bailout: reset pressure regardless of current level
-    const isBailout = BAILOUT_KEYWORDS.some(kw => userPrompt.includes(kw));
-    if (isBailout && index.feedbackPressure) {
-      index.feedbackPressure.level = 0;
-      index.feedbackPressure.consecutiveCount = 0;
-      index.feedbackPressure.decayCounter = 0;
-      index.feedbackPressure.oscillationCount = 0;
-      index.feedbackPressure.lastShownLevel = 0;
-      console.error('[PRESSURE BAILOUT: reset to L0]');
-    }
-    const isNegativeFeedback = isBailout ? false : detectNegativeFeedback(userPrompt);
-    const pressureLevel = updateFeedbackPressure(index, isNegativeFeedback);
-    if (pressureLevel > 0) {
-      console.error(`[PRESSURE L${pressureLevel}]`);
-    }
+    // --- RMW (Read-Modify-Write) block — all index mutations inside lock for atomicity ---
+    // Lock-fail fallback (fail-open): on lock acquisition failure, still perform the read
+    // and compute in-memory state so context injection proceeds, but SKIP the write
+    // (prevents lost-update race when another process is mid-write). Warn to stderr.
+    const idxLocked = acquireIndexLock(memoryDir);
+    let index;
+    let isBailout;
+    let isNegativeFeedback;
+    let pressureLevel;
+    let pressureLevelChanged;
+    let count;
+    try {
+      // READ inside lock — snapshot is now consistent with the write below
+      index = readIndexSafe(indexPath);
 
-    // Determine if pressure level changed (for once-only full-text injection)
-    const fp = index.feedbackPressure;
-    const lastShownLevel = (fp && typeof fp.lastShownLevel === 'number') ? fp.lastShownLevel : 0;
-    const pressureLevelChanged = pressureLevel !== lastShownLevel;
-    if (pressureLevelChanged && fp) {
-      fp.lastShownLevel = pressureLevel;
-    }
-
-    let count = (index.rulesInjectionCount || 0) + 1;
-
-    // Update counter if frequency > 1 (need to track)
-    if (frequency > 1) {
-      index.rulesInjectionCount = count;
-    }
-
-    // Persist index if pressure was updated or frequency tracking needed
-    if (isNegativeFeedback || isBailout || index.feedbackPressure || frequency > 1) {
-      const memoryDir = path.join(getStorageRoot(projectDir), 'memory');
-      const idxLocked = acquireIndexLock(memoryDir);
-      try {
-        writeJson(indexPath, index);
-      } finally {
-        if (idxLocked) releaseIndexLock(memoryDir);
+      // Bailout: reset pressure regardless of current level (all 3 counters)
+      isBailout = BAILOUT_KEYWORDS.some(kw => userPrompt.includes(kw));
+      if (isBailout && index.feedbackPressure) {
+        index.feedbackPressure.level = 0;
+        index.feedbackPressure.consecutiveCount = 0;
+        index.feedbackPressure.decayCounter = 0;
+        index.feedbackPressure.oscillationCount = 0;
+        index.feedbackPressure.lastShownLevel = 0;
+        // Edge case: tooGoodSkepticism may be undefined on legacy / never-initialized
+        // index objects. Guard with existence check — must not throw.
+        if (index.tooGoodSkepticism) index.tooGoodSkepticism.retryCount = 0;
+        console.error('[PRESSURE BAILOUT: reset all 3 counters]');
       }
+      isNegativeFeedback = isBailout ? false : detectNegativeFeedback(userPrompt);
+      pressureLevel = updateFeedbackPressure(index, isNegativeFeedback);
+      if (pressureLevel > 0) {
+        console.error(`[PRESSURE L${pressureLevel}]`);
+      }
+
+      // Determine if pressure level changed (for once-only full-text injection)
+      const fp = index.feedbackPressure;
+      const lastShownLevel = (fp && typeof fp.lastShownLevel === 'number') ? fp.lastShownLevel : 0;
+      pressureLevelChanged = pressureLevel !== lastShownLevel;
+      if (pressureLevelChanged && fp) {
+        fp.lastShownLevel = pressureLevel;
+      }
+
+      count = (index.rulesInjectionCount || 0) + 1;
+
+      // Update counter if frequency > 1 (need to track)
+      if (frequency > 1) {
+        index.rulesInjectionCount = count;
+      }
+
+      // WRITE inside lock — only when we hold the lock (fail-open on lock miss)
+      if (idxLocked && (isNegativeFeedback || isBailout || index.feedbackPressure || frequency > 1)) {
+        // writeJson itself has Windows EPERM fallback (utils.js L79-84)
+        writeJson(indexPath, index);
+      } else if (!idxLocked) {
+        // Lock not acquired — skip write to avoid corrupting another process's RMW.
+        // In-memory state still used for context injection this turn.
+        console.error('[inject-rules: index lock busy, skipping write (fail-open)]');
+      }
+    } finally {
+      if (idxLocked) releaseIndexLock(memoryDir);
     }
 
     // Check if should inject
