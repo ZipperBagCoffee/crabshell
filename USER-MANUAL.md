@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.77.1)
+# Crabshell User Manual (v21.77.2)
 
 ## Why Do You Need This?
 
@@ -186,6 +186,8 @@ For non-trivial tasks, Claude uses a Work Agent + Review Agent pattern:
 - Every Work Agent has a paired Review Agent
 - They run as separate agents to maintain independence
 - The Orchestrator (Claude itself) synthesizes results but does not perform work or review directly
+
+**RA agent rate-limit fallback (v21.77.2+):** If Task-tool dispatch for the Review Agent fails due to API rate-limit (e.g., long sustained sessions), the Orchestrator may perform self-verification using the same P/O/G + Devil's Advocate template the Review Agent would have used. The fallback section in the ticket document is labelled `**Note: RA agent rate-limited, Orchestrator self-verification fallback applied.**` so the deviation is auditable. Standard mode remains RA dispatch retry; this fallback applies only when retry is impractical and convergence pressure is high.
 
 These rules are automatically injected into CLAUDE.md and reinforced every prompt.
 

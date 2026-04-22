@@ -133,6 +133,7 @@ After each /ticketing invocation, update regressing state:
 - Review Agent (separate Task tool call): runtime verification (exhaustive level) → append to T document
   - **RA Count Rule:** RA count MUST equal WA count. WA 2개 → RA 2개. Each WA's output is reviewed by its own dedicated RA. Single RA reviewing multiple WAs' outputs is a pairing violation.
   - **Independence Protocol (MANDATORY):** The Review Agent prompt MUST NOT include Work Agent's Execution Results. Provide only: (1) Plan ID and acceptance criteria, (2) Verification criteria from ticket, (3) the P/O/G template below. The Review Agent performs independent verification first. After Review Agent completes, the Orchestrator cross-references RA findings against WA Execution Results — discrepancies are findings.
+  - **RA agent rate-limit fallback:** If the RA Task-tool dispatch fails with API rate-limit error mid-cycle, the Orchestrator MAY perform self-verification using the same P/O/G + Devil's Advocate template. Mark the section `**Note: RA agent rate-limited, Orchestrator self-verification fallback applied.**` for auditability. This is an exception path only when retry of RA dispatch is impractical and convergence pressure is high; standard mode is dispatch retry.
   - **Review Agent prompt MUST include this philosophical context and verification output template:**
     ```
     Verification = closing the gap between belief and reality through observation.

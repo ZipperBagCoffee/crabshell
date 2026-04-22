@@ -1,5 +1,9 @@
 # Changelog
 
+## v21.77.2 - 2026-04-21
+
+- **RA agent rate-limit fallback (H003).** `skills/ticketing/SKILL.md` Step B and `skills/regressing/SKILL.md` Step 4c gain explicit fallback paragraph: when Task-tool RA dispatch fails with API rate-limit, Orchestrator MAY perform self-verification using the same P/O/G + Devil's Advocate template. Section MUST be labelled `**Note: RA agent rate-limited, Orchestrator self-verification fallback applied.**` for auditability. Standard mode remains RA dispatch retry.
+
 ## v21.77.1 - 2026-04-21
 
 - **waCount hook-event ordering fix (D101 T001).** Added PreToolUse hook `scripts/wa-count-pretool.js` (matcher: Agent|Task|TaskCreate) that increments waCount at dispatch time. `counter.js classifyAgent` widened to accept Agent|Task|TaskCreate; Post-side WA/RA increment removed (Pre = sole mutator). Resolves subagent first-Write role-collapse-guard false positive that required manual wa-count.json pre-seeding.
