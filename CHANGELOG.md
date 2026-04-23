@@ -1,5 +1,10 @@
 # Changelog
 
+## v21.78.2 - 2026-04-22
+
+- **COMPRESSED_CHECKLIST — Be Logical + Simple Communication 추가.** `scripts/shared-context.js` `COMPRESSED_CHECKLIST` 상수에 두 항목 추가: (9) "Conclusion derived from evidence, not plausibility or pattern-match? (Be Logical: trace cause → check contradictions → derive step by step; lucky-correct still a violation)" (10) "User-facing explanation: one-sentence core + analogy for abstract concepts? (Simple Communication: length ≠ thoroughness)". Output scan 라인에 "Items 9-10 are PRINCIPLES — apply always" 주석 명시. 기존 PROHIBITED PATTERNS 1-8 포맷은 무변경. 이유: 두 PRINCIPLES는 `RULES` 상수(`syncRulesToClaudeMd` 경유 CLAUDE.md에 기록)에만 있고 매턴 `additionalContext`로 재주입되지 않아서 체크리스트 스캔 시점에 가시화되지 않음. `COMPRESSED_CHECKLIST`는 `inject-rules.js`와 `subagent-context.js` 양쪽에서 import되므로 UserPromptSubmit·SubagentStart 양 경로 모두 반영됨.
+- **Verification.** `_test-shared-context.js` 10/10 + `_test-inject-rules.js` 107/107 + `_test-subagent-context.js` 12/12 + `_test-inject-rules-classification.js` 29/29 + `_test-inject-rules-race.js` 4/4 + `_test-parallel-reminder.js` 10/10 + `_test-wa-count-enforcement.js` 18/18 = 190/190 PASS. 라이브 훅 시뮬레이션: `printf '{"prompt":"test"}' | node scripts/inject-rules.js` 출력의 `additionalContext`에 `item9=true item10=true BeLogical=true SimpleComm=true`, ctx_length=5356 char. `COMPRESSED_CHECKLIST` 자체 바이트 크기 1232 (before ≈775, 증분 ≈457). subagent-context 2000-char 예산 통과.
+
 ## v21.78.1 - 2026-04-22
 
 - **RULES PRINCIPLES rename + reframe (H004).** `Deep Thinking` 불릿을 `Be Logical`로 교체. 사용자 원 요청 키워드 "논리적"을 규칙 본문에 직접 포함시키고 우선순위 재정렬: 논리적 결론 도출이 goal, 깊이는 means. 새 문구: "Every conclusion must follow logically from evidence — not from plausibility, pattern-match, or gut. Trace cause, check contradictions, derive step by step. Going deep is the means; landing on a logically sound conclusion is the goal. Lucky-correct reasoning is still a violation." `_test-inject-rules.js` 107/107 유지 (불릿 이름 변경은 assertion 영향 없음).
