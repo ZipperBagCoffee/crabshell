@@ -1,5 +1,10 @@
 # Changelog
 
+## v21.78.0 - 2026-04-22
+
+- **RULES PRINCIPLES — Deep Thinking + Simple Communication (W019).** `scripts/inject-rules.js` RULES 상수의 `### PRINCIPLES` 리스트에 HHH 불릿 바로 위로 2개 새 불릿 추가. **Deep Thinking**: 표면 결론 금지 — 실제 원인/2차 효과/모순 추적, 논리적 결론 도출; 우연히 맞은 얕은 추론도 위반. **Simple Communication**: 사용자 설명은 한 문장 코어 + 추상 개념은 아날로지. 길이 ≠ 꼼꼼함. 기존 4불릿(HHH/Anti-Deception/Human Oversight/Scope Preservation) 순서·내용 무변경. `syncRulesToClaudeMd()` 경유로 CLAUDE.md에도 매 프롬프트 자동 반영.
+- **Verification.** `_test-inject-rules.js` 107/107 + `_test-inject-rules-classification.js` 29/29 + `_test-inject-rules-race.js` 4/4 + `_test-parallel-reminder.js` 10/10 + `_test-wa-count-enforcement.js` 18/18 = 168/168 PASS. 3시나리오(정상/negative feedback/BAILOUT) L1 훅 시뮬레이션으로 CLAUDE.md line 6-7 두 불릿 기록 확인. git diff `scripts/inject-rules.js`: +2 / -0.
+
 ## v21.77.2 - 2026-04-21
 
 - **RA agent rate-limit fallback (H003).** `skills/ticketing/SKILL.md` Step B and `skills/regressing/SKILL.md` Step 4c gain explicit fallback paragraph: when Task-tool RA dispatch fails with API rate-limit, Orchestrator MAY perform self-verification using the same P/O/G + Devil's Advocate template. Section MUST be labelled `**Note: RA agent rate-limited, Orchestrator self-verification fallback applied.**` for auditability. Standard mode remains RA dispatch retry.

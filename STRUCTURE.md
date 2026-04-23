@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.77.2 | **Author**: TaWa | **License**: MIT
+**Version**: 21.78.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -339,6 +339,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.78.0 | feat: RULES PRINCIPLES — Deep Thinking + Simple Communication 불릿 추가 (HHH 위); 얕은 추론 차단 + 아날로지 기반 간결 설명 요구 (W019) |
 | 21.76.0 | feat: lessons system retired — /knowledge replaces /lessons, CLAUDE.md absorbs behavioral rules; skills/lessons/ deleted; 21 skills |
 | 21.75.1 | fix: skill-tracker.js DOCS_SKILLS missing 'hotfix' — /hotfix now activates skill-active.json, unblocks docs-guard on H*.md writes (H001) |
 | 21.75.0 | feat: H (Hotfix) document type — /hotfix skill, .crabshell/hotfix/, 8 scripts + 3 guards updated, CLAUDE.md D/P/T/I/H; 22 skills |
