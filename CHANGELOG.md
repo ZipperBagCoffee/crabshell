@@ -1,5 +1,9 @@
 # Changelog
 
+## v21.78.1 - 2026-04-22
+
+- **RULES PRINCIPLES rename + reframe (H004).** `Deep Thinking` 불릿을 `Be Logical`로 교체. 사용자 원 요청 키워드 "논리적"을 규칙 본문에 직접 포함시키고 우선순위 재정렬: 논리적 결론 도출이 goal, 깊이는 means. 새 문구: "Every conclusion must follow logically from evidence — not from plausibility, pattern-match, or gut. Trace cause, check contradictions, derive step by step. Going deep is the means; landing on a logically sound conclusion is the goal. Lucky-correct reasoning is still a violation." `_test-inject-rules.js` 107/107 유지 (불릿 이름 변경은 assertion 영향 없음).
+
 ## v21.78.0 - 2026-04-22
 
 - **RULES PRINCIPLES — Deep Thinking + Simple Communication (W019).** `scripts/inject-rules.js` RULES 상수의 `### PRINCIPLES` 리스트에 HHH 불릿 바로 위로 2개 새 불릿 추가. **Deep Thinking**: 표면 결론 금지 — 실제 원인/2차 효과/모순 추적, 논리적 결론 도출; 우연히 맞은 얕은 추론도 위반. **Simple Communication**: 사용자 설명은 한 문장 코어 + 추상 개념은 아날로지. 길이 ≠ 꼼꼼함. 기존 4불릿(HHH/Anti-Deception/Human Oversight/Scope Preservation) 순서·내용 무변경. `syncRulesToClaudeMd()` 경유로 CLAUDE.md에도 매 프롬프트 자동 반영.
