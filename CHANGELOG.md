@@ -1,5 +1,10 @@
 # Changelog
 
+## v21.78.4 - 2026-04-25
+
+- **NEG 검사 false-positive 차단 (W020).** `scripts/inject-rules.js`에 `stripSystemReminders(text)` helper 추가. `detectNegativeFeedback`은 `stripCodeBlocks` 직후 `stripSystemReminders` 호출하여 `<system-reminder>...</system-reminder>` 블록을 사전 제거한 후 NEGATIVE_PATTERNS 매칭. 이전: Claude Code가 매 turn 자동 주입하는 reminder 블록 안 단어(`error`, `wrong`, `break`, `incorrect`)가 NEG 매치되어 사용자-무관 `consecutiveCount` 증가 → `fp.level` 상승. 이후: reminder 블록은 NEG 검사에서 완전 배제, 사용자 prompt 텍스트만 검사 대상. `extractKeywords` 등 다른 prompt 사용처는 무영향. helper는 `module.exports`에 노출되어 단위 테스트 가능.
+- **Verification.** WA1+RA1 1:1 검증. 8/8 Intent Anchor PASS (regex multiline+non-greedy+global, NEG 경로 한정, stripCodeBlocks 직후 호출, pure function, export 노출, NEGATIVE_PATTERNS·signature 무변경, fail-open). 5/5 행동 케이스 PASS — 핵심: case (c) `<system-reminder>error wrong break</system-reminder>` 단독 → `false` (이전엔 true), case (d) reminder + 사용자 NEG 혼합 → `true` (사용자 NEG는 살아있음). 회귀 `_test-inject-rules.js` 107/107 PASS, 신규 `_test-strip-reminders.js` 5/5 PASS, 전체 `_test-*.js` 38/38 PASS.
+
 ## v21.78.3 - 2026-04-24
 
 - **load-memory.js L1 tail 줄 수 20 → 50 (H005).** `scripts/load-memory.js` 의 `getUnreflectedL1Content` 함수에서 최신 L1 jsonl 파일을 읽을 때 `lines.slice(-20)` → `slice(-50)`. SessionStart 훅이 호출하는 load-memory의 "Unreflected from Last Session" 섹션 후보군이 마지막 20줄만 검사 → 50줄로 확대. 기존 필터 체인(assistant role only + text 길이 50자 초과 + logbook.md에 아직 미반영)은 무변경 — 후보 라인 수만 확장하여 logbook 요약 누락된 최근 컨텍스트 가시성 향상.

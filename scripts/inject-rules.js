@@ -102,9 +102,19 @@ function stripCodeBlocks(text) {
   return s;
 }
 
+// Strip Claude Code auto-injected <system-reminder>...</system-reminder> blocks
+// before NEG detection so reminder words ("error", "wrong", "break", etc.) do
+// not produce false-positive feedback-pressure increments. Pure function:
+// non-string input passes through unchanged; zero matches → original returned.
+function stripSystemReminders(text) {
+  if (typeof text !== 'string') return text;
+  return text.replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, ' ');
+}
+
 function detectNegativeFeedback(prompt) {
   if (!prompt || prompt.length < 2) return false;
   let stripped = stripCodeBlocks(prompt);
+  stripped = stripSystemReminders(stripped);
   // Neutralize exclusion matches — replace with whitespace so remaining text is still checked
   for (const exc of NEGATIVE_EXCLUSIONS) {
     stripped = stripped.replace(exc, ' ');
@@ -837,6 +847,7 @@ module.exports = {
   // Functions
   checkEmergencyStop,
   stripCodeBlocks,
+  stripSystemReminders,
   detectNegativeFeedback,
   updateFeedbackPressure,
   checkDeltaPending,
