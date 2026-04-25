@@ -1,5 +1,10 @@
 # Changelog
 
+## v21.78.3 - 2026-04-24
+
+- **load-memory.js L1 tail 줄 수 20 → 50 (H005).** `scripts/load-memory.js` 의 `getUnreflectedL1Content` 함수에서 최신 L1 jsonl 파일을 읽을 때 `lines.slice(-20)` → `slice(-50)`. SessionStart 훅이 호출하는 load-memory의 "Unreflected from Last Session" 섹션 후보군이 마지막 20줄만 검사 → 50줄로 확대. 기존 필터 체인(assistant role only + text 길이 50자 초과 + logbook.md에 아직 미반영)은 무변경 — 후보 라인 수만 확장하여 logbook 요약 누락된 최근 컨텍스트 가시성 향상.
+- **Verification.** Structural: `grep -n "slice(-50)" scripts/load-memory.js` → line 266 매칭. 행위 검증은 다음 SessionStart 훅 발화 시 실측 (현 세션 내 L1=현 대화 파일이라 self-reference 위험으로 강제 실행 보류).
+
 ## v21.78.2 - 2026-04-22
 
 - **COMPRESSED_CHECKLIST — Be Logical + Simple Communication 추가.** `scripts/shared-context.js` `COMPRESSED_CHECKLIST` 상수에 두 항목 추가: (9) "Conclusion derived from evidence, not plausibility or pattern-match? (Be Logical: trace cause → check contradictions → derive step by step; lucky-correct still a violation)" (10) "User-facing explanation: one-sentence core + analogy for abstract concepts? (Simple Communication: length ≠ thoroughness)". Output scan 라인에 "Items 9-10 are PRINCIPLES — apply always" 주석 명시. 기존 PROHIBITED PATTERNS 1-8 포맷은 무변경. 이유: 두 PRINCIPLES는 `RULES` 상수(`syncRulesToClaudeMd` 경유 CLAUDE.md에 기록)에만 있고 매턴 `additionalContext`로 재주입되지 않아서 체크리스트 스캔 시점에 가시화되지 않음. `COMPRESSED_CHECKLIST`는 `inject-rules.js`와 `subagent-context.js` 양쪽에서 import되므로 UserPromptSubmit·SubagentStart 양 경로 모두 반영됨.

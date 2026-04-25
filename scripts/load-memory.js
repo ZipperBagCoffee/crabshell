@@ -263,7 +263,7 @@ function loadMemory(stdinData) {
 function getUnreflectedL1Content(l1Path, memoryContent) {
   try {
     const content = fs.readFileSync(l1Path, 'utf8');
-    const lines = content.split('\n').filter(l => l.trim()).slice(-20);
+    const lines = content.split('\n').filter(l => l.trim()).slice(-50);
     const summary = [];
     for (const line of lines) {
       try {
