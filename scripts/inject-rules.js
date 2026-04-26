@@ -762,6 +762,14 @@ async function main() {
           const isStale = launchedMs && ageMs > TTL_MS;
 
           if (bvState.status === 'pending' && !isStale) {
+            // P135_T001 AC-4 — D103 cycle 2 dispatch overdue marker.
+            // When the prior turn left status='pending' and the response that
+            // followed did NOT invoke the Task tool, behavior-verifier.js sets
+            // dispatchOverdue=true on the new state. Prepend a markdown-emphasized
+            // marker so Claude prioritizes the dispatch instruction this turn.
+            if (bvState.dispatchOverdue === true) {
+              context += '\n\n**[DISPATCH OVERDUE]** Previous turn did not invoke Task. Invoke NOW.\n';
+            }
             // Emit dispatch instruction — Claude consumes this on next response
             // and invokes the Task tool with run_in_background to launch the
             // verifier sub-agent.

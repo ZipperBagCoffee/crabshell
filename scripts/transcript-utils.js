@@ -146,6 +146,68 @@ function getRecentBashCommands(transcriptPath) {
 }
 
 /**
+ * Parse recent Task tool_use invocations from a transcript JSONL file.
+ * Reads the last 32KB, returns [{timestamp, toolUseId, taskDescription}].
+ * Filters by sinceTimestamp (ISO string) when provided — only Task calls
+ * whose enclosing assistant turn timestamp is >= sinceTimestamp are returned.
+ * Returns null if transcript is unavailable (fail-open signal).
+ * Returns [] if transcript is readable but contains no qualifying Task calls.
+ * @param {string} transcriptPath
+ * @param {string|null} sinceTimestamp - ISO 8601 string; entries older are skipped.
+ * @returns {Array<{timestamp: string|null, toolUseId: string|null, taskDescription: string}> | null}
+ */
+function getRecentTaskCalls(transcriptPath, sinceTimestamp) {
+  if (!transcriptPath) return null;
+  try {
+    const stat = fs.statSync(transcriptPath);
+    if (stat.size === 0) return [];
+    const readSize = Math.min(32768, stat.size);
+    const buf = Buffer.alloc(readSize);
+    const fd = fs.openSync(transcriptPath, 'r');
+    fs.readSync(fd, buf, 0, readSize, stat.size - readSize);
+    fs.closeSync(fd);
+
+    const text = buf.toString('utf8');
+    const lines = text.split('\n').filter(l => l.trim());
+
+    const sinceMs = sinceTimestamp ? Date.parse(sinceTimestamp) : 0;
+    const tasks = [];
+
+    for (const line of lines) {
+      let obj;
+      try { obj = JSON.parse(line); } catch { continue; }
+      if (obj.type !== 'assistant' || !Array.isArray(obj.message?.content)) continue;
+
+      // Filter by enclosing assistant-turn timestamp when sinceTimestamp given.
+      const ts = obj.timestamp || (obj.message && obj.message.timestamp) || null;
+      if (sinceMs && ts) {
+        const tsMs = Date.parse(ts);
+        if (!Number.isNaN(tsMs) && tsMs < sinceMs) continue;
+      }
+
+      for (const block of obj.message.content) {
+        if (block.type === 'tool_use' && block.name === 'Task') {
+          let desc = '';
+          if (block.input) {
+            if (typeof block.input.description === 'string') desc = block.input.description;
+            else if (typeof block.input.prompt === 'string') desc = block.input.prompt.slice(0, 200);
+          }
+          tasks.push({
+            timestamp: ts,
+            toolUseId: block.id || null,
+            taskDescription: desc
+          });
+        }
+      }
+    }
+
+    return tasks;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Extract the last user (human) message text from a transcript JSONL file.
  * Reads the last 16KB, finds the last "human" type entry.
  * Returns the text content or null (fail-open).
@@ -195,4 +257,4 @@ function getLastUserMessage(transcriptPath) {
   }
 }
 
-module.exports = { readStdin, findTranscriptPath, encodeProjectPath, normalizePath, getRecentBashCommands, getLastUserMessage };
+module.exports = { readStdin, findTranscriptPath, encodeProjectPath, normalizePath, getRecentBashCommands, getRecentTaskCalls, getLastUserMessage };

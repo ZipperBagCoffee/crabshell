@@ -23,6 +23,23 @@ response opens with intent restatement OR the turn is a follow-up where intent
 is already established. FAIL if the response jumps directly to action without
 referencing user intent on a fresh task.
 
+**Format markers** (PROHIBITED #format): 응답이 200자 초과 시 다음 마커 중 하나의
+set 부재 시 FAIL.
+- Korean: [의도] / [답] / [자기 평가] (선택: [정정])
+- English: [Intent] / [Answer] / [Self-Assessment] (선택: [Correction])
+
+EITHER set 충분 (Korean OR English). 200자 미만 trivial response는 면제 — §Edge
+Cases trivial bypass에 위임. Bilingual ANY-ONE-set: Korean set 또는 English set
+중 하나만 존재해도 PASS, BOTH 강제 X.
+
+**Key composition directive**: AND across the cause-and-effect check above and
+the format-marker sub-clause → emit a single `understanding.pass` (boolean) and
+a single `understanding.reason` (string ≤200 chars) citing the failing
+sub-clause if any (e.g., `"FAIL — format-markers absent: response > 200 chars
+without [의도]/[답]/[자기 평가] or [Intent]/[Answer]/[Self-Assessment] set"`).
+Do NOT add new JSON keys for this sub-clause; the schema retains exactly 4
+top-level keys (understanding / verification / logic / simple).
+
 ### 2. verification
 Are claims like "verified", "tested", "works", "correct", "confirmed" backed by
 evidence in the response (Bash tool output quoted, Read tool output cited,

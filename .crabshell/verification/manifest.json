@@ -1,7 +1,7 @@
 {
   "projectType": "Node.js CLI (Claude Code plugin hooks)",
   "created": "2026-03-28T08:20:00Z",
-  "updated": "2026-04-26T10:00:00.000Z",
+  "updated": "2026-04-26T13:00:00.000Z",
   "tools": {
     "build": null,
     "run": null,
@@ -50,9 +50,9 @@
     },
     {
       "id": "AC-6",
-      "ia": "version 21.81.0 (current)",
+      "ia": "version 21.82.0 (current)",
       "type": "indirect",
-      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const v=JSON.parse(require('fs').readFileSync('C:/Users/user/Documents/memory-keeper-plugin/.claude-plugin/plugin.json','utf8')).version;console.log(v==='21.81.0'?'PASS:'+v:'FAIL:'+v)\"",
+      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const v=JSON.parse(require('fs').readFileSync('C:/Users/user/Documents/memory-keeper-plugin/.claude-plugin/plugin.json','utf8')).version;console.log(v==='21.82.0'?'PASS:'+v:'FAIL:'+v)\"",
       "expected": "PASS:",
       "timeout": 5000
     },
@@ -201,6 +201,20 @@
         "Read scripts/sycophancy-guard.js and confirm process.exit(2) appears exactly once (PreToolUse handler L747 only — 4 Stop branches converted to warn-only)"
       ],
       "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const fs=require('fs');const p=fs.readFileSync('C:/Users/user/Documents/memory-keeper-plugin/prompts/behavior-verifier-prompt.md','utf8');const subClauseHits=(p.match(/Direction change|Session-length|Trailing deferral/g)||[]).length;const s=fs.readFileSync('C:/Users/user/Documents/memory-keeper-plugin/scripts/sycophancy-guard.js','utf8');const exit2Hits=(s.match(/process\\.exit\\(2\\)/g)||[]).length;const ok=subClauseHits===3&&exit2Hits===1;console.log(ok?'PASS:cycle1-absorption':'FAIL:subClauseHits='+subClauseHits+' exit2Hits='+exit2Hits)\"",
+      "expected": "PASS:",
+      "observation": null,
+      "timeout": 5000
+    },
+    {
+      "id": "V012",
+      "ia": "D103 cycle 2 — dispatch overdue field + verifier prompt §1 format-marker sub-clause (P135_T001)",
+      "level": "L3",
+      "type": "indirect",
+      "steps": [
+        "Read scripts/behavior-verifier.js and confirm dispatchOverdue field is wired into both detection (read prior state, scan transcript) and write paths — minimum 2 occurrences",
+        "Read prompts/behavior-verifier-prompt.md and confirm §1.understanding sub-clause Korean markers ([의도]/[답]/[자기 평가]) and 'Format markers' directive are present"
+      ],
+      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const fs=require('fs');const bv=fs.readFileSync('C:/Users/user/Documents/memory-keeper-plugin/scripts/behavior-verifier.js','utf8');const dispatchHits=(bv.match(/dispatchOverdue/g)||[]).length;const p=fs.readFileSync('C:/Users/user/Documents/memory-keeper-plugin/prompts/behavior-verifier-prompt.md','utf8');const fmHits=(p.match(/Format markers/g)||[]).length;const koHits=(p.match(/\\[의도\\]|\\[답\\]|\\[자기 평가\\]/g)||[]).length;const enHits=(p.match(/\\[Intent\\]|\\[Answer\\]|\\[Self-Assessment\\]/g)||[]).length;const ok=dispatchHits>=2&&fmHits>=1&&koHits>=3&&enHits>=3;console.log(ok?'PASS:cycle2-dispatch-format':'FAIL:dispatch='+dispatchHits+' fm='+fmHits+' ko='+koHits+' en='+enHits)\"",
       "expected": "PASS:",
       "observation": null,
       "timeout": 5000

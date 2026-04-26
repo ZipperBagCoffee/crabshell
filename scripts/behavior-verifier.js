@@ -23,7 +23,7 @@
 const fs = require('fs');
 const path = require('path');
 const { writeJson, getStorageRoot } = require('./utils');
-const { readStdin } = require('./transcript-utils');
+const { readStdin, getRecentTaskCalls } = require('./transcript-utils');
 const { MEMORY_DIR, BEHAVIOR_VERIFIER_STATE_FILE } = require('./constants');
 
 // Skip during background memory summarization (recursion guard, fail-open early)
@@ -85,6 +85,35 @@ async function main() {
   const storageRoot = getStorageRoot(projectDir);
   const stateFilePath = path.join(storageRoot, MEMORY_DIR, BEHAVIOR_VERIFIER_STATE_FILE);
 
+  // P135_T001 AC-2/AC-3 — read prior state BEFORE writing the new one.
+  // If the prior state was 'pending' AND the response is substantive (the
+  // length<50 + clarification-only bypasses above already filtered trivial
+  // turns) AND no Task tool_use was invoked since the prior launchedAt,
+  // flag the new state with dispatchOverdue=true so the next-turn consumer
+  // (inject-rules.js) can prepend a [DISPATCH OVERDUE] marker.
+  let priorState = null;
+  try {
+    if (fs.existsSync(stateFilePath)) {
+      priorState = JSON.parse(fs.readFileSync(stateFilePath, 'utf8'));
+    }
+  } catch (e) { priorState = null; }
+
+  let dispatchOverdue = false;
+  try {
+    if (priorState && priorState.status === 'pending' && priorState.launchedAt) {
+      // The length<50 + clarification-only bypasses earlier in main() already
+      // exit before reaching this point — by now we know the current response
+      // is substantive. Only check Task tool calls since the prior launchedAt.
+      const transcriptPath = hookData.transcript_path || null;
+      const recentTasks = getRecentTaskCalls(transcriptPath, priorState.launchedAt);
+      // recentTasks === null means transcript unreadable → fail-open (do NOT
+      // flag overdue to avoid false positive). [] means readable but empty.
+      if (Array.isArray(recentTasks) && recentTasks.length === 0) {
+        dispatchOverdue = true;
+      }
+    }
+  } catch (e) { dispatchOverdue = false; }
+
   const taskId = `verify-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const nowIso = new Date().toISOString();
   const state = {
@@ -93,6 +122,7 @@ async function main() {
     status: 'pending',
     launchedAt: nowIso,
     verdicts: null,
+    dispatchOverdue,
     lastUpdatedAt: nowIso
   };
 
