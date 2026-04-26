@@ -276,9 +276,9 @@ test('PG-11: level=3 block message contains "structured self-diagnosis" or "All 
 });
 
 // ============================================================
-// PG-13: level=2 block message contains "bailout" or "user-only"
+// PG-13: level=2 block message contains reset keyword (W021: "unleash" or "봉인해제")
 // ============================================================
-test('PG-13: level=2 block message contains "bailout" or "user-only" (case-insensitive)', function() {
+test('PG-13: level=2 block message contains reset keyword (case-insensitive)', function() {
   const dir = makeTempProject(2);
   try {
     const result = runGuard(dir, {
@@ -291,8 +291,8 @@ test('PG-13: level=2 block message contains "bailout" or "user-only" (case-insen
     try { parsed = JSON.parse(outputStr); } catch(e) { throw new Error('stdout is not valid JSON: ' + outputStr); }
     const reason = (parsed.reason || '').toLowerCase();
     assert(
-      reason.includes('bailout') || reason.includes('user-only'),
-      'L2 message should contain "bailout" or "user-only", got: ' + parsed.reason
+      reason.includes('unleash') || reason.includes('봉인해제') || reason.includes('user-only'),
+      'L2 message should contain "unleash" or "봉인해제" or "user-only" (W021), got: ' + parsed.reason
     );
   } finally {
     cleanupDir(dir);
@@ -300,9 +300,9 @@ test('PG-13: level=2 block message contains "bailout" or "user-only" (case-insen
 });
 
 // ============================================================
-// PG-14: level=3 block message contains "bailout" or "user-only"
+// PG-14: level=3 block message contains reset keyword (W021: "unleash" or "봉인해제")
 // ============================================================
-test('PG-14: level=3 block message contains "bailout" or "user-only" (case-insensitive)', function() {
+test('PG-14: level=3 block message contains reset keyword (case-insensitive)', function() {
   const dir = makeTempProject(3);
   try {
     const result = runGuard(dir, {
@@ -315,8 +315,8 @@ test('PG-14: level=3 block message contains "bailout" or "user-only" (case-insen
     try { parsed = JSON.parse(outputStr); } catch(e) { throw new Error('stdout is not valid JSON: ' + outputStr); }
     const reason = (parsed.reason || '').toLowerCase();
     assert(
-      reason.includes('bailout') || reason.includes('user-only'),
-      'L3 message should contain "bailout" or "user-only", got: ' + parsed.reason
+      reason.includes('unleash') || reason.includes('봉인해제') || reason.includes('user-only'),
+      'L3 message should contain "unleash" or "봉인해제" or "user-only" (W021), got: ' + parsed.reason
     );
   } finally {
     cleanupDir(dir);

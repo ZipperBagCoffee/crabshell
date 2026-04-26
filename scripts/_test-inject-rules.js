@@ -756,8 +756,8 @@ test('LEGACY: noop when not found', function() {
 // ============================================================
 test('INTEGRATION: pressure escalation L1->L2->L3 and decay', function() {
   const index = {};
-  // Korean negative detected
-  assertEqual(mod.detectNegativeFeedback('이건 틀렸어'), true, 'Korean negative');
+  // W021: Korean profanity (틀렸 was removed; using actual profanity)
+  assertEqual(mod.detectNegativeFeedback('시발 짜증나'), true, 'Korean profanity');
   assertEqual(mod.updateFeedbackPressure(index, true), 1, 'L1');
   assertEqual(mod.updateFeedbackPressure(index, true), 2, 'L2');
   assertEqual(mod.updateFeedbackPressure(index, true), 3, 'L3');
@@ -768,10 +768,11 @@ test('INTEGRATION: pressure escalation L1->L2->L3 and decay', function() {
 });
 
 test('INTEGRATION: code blocks stripped before negative detection', function() {
-  // "wrong" inside code block should not trigger
-  assertEqual(mod.detectNegativeFeedback('Fix:\n```\nif (wrong) {}\n```\nDone.'), false);
-  // "wrong" outside code block triggers
-  assertEqual(mod.detectNegativeFeedback('This is wrong. ```code```'), true);
+  // W021: 'wrong' removed from patterns; using profanity to test stripping logic
+  // profanity inside code block should not trigger
+  assertEqual(mod.detectNegativeFeedback('Fix:\n```\nconst x = "fuck this";\n```\nDone.'), false);
+  // profanity outside code block triggers
+  assertEqual(mod.detectNegativeFeedback('This is fucking annoying. ```code```'), true);
 });
 
 // ============================================================
@@ -1095,8 +1096,9 @@ test('FEEDBACK: keyword in inline code -> false', function() {
   assertEqual(mod.detectNegativeFeedback('Variable `wrong` should be renamed'), false);
 });
 
-test('FEEDBACK: keyword outside code block -> true', function() {
-  assertEqual(mod.detectNegativeFeedback('This is wrong and needs fixing'), true);
+test('FEEDBACK: profanity outside code block -> true', function() {
+  // W021: 'wrong' no longer in NEGATIVE_PATTERNS — switched to profanity to test outside-code-block detection
+  assertEqual(mod.detectNegativeFeedback('This is fucking annoying and needs fixing'), true);
 });
 
 test('FEEDBACK: don\'t worry exclusion prevents false positive', function() {

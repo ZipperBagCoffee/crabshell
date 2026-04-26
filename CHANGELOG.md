@@ -1,5 +1,16 @@
 # Changelog
 
+## v21.79.0 - 2026-04-26
+
+- **NEGATIVE_PATTERNS 욕설-only 축소 + BAILOUT keyword UNLEASH 교체 (W021).**
+  - `scripts/inject-rules.js` `NEGATIVE_PATTERNS`에서 command-mode 정정(아닌데/잘못/틀렸/다시/wrong/incorrect/try again/you broke 등), assessment-mode (이해 안/뭔말/도움이 안/you don't understand/not helpful 등), logical-disagreement (동의하지 마/의미가 없/몇 번이나) 패턴 모두 REMOVE. *욕설(profanity)만* keep — 한국어 시발/병신/좆/지랄/새끼/뒤질, 영어 wtf/shit/fuck/dumbass/piece of shit/this sucks/so frustrating.
+  - `NEGATIVE_EXCLUSIONS` 14개 orphan 제거 (제거된 정정 패턴 짝). 욕설 false-positive 방지용 `/시발[점역전]/` (시발점/시발역) + `/병신경/` (의학용어)만 유지.
+  - **사용자 의도와 정렬**: 사용자가 "내가 물어본게 아닌데", "이해 안 함", "무슨 말인지" 같은 *정상 정정/명확화* 표현 사용 시 더 이상 `consecutiveCount` 증가 → escalation 안 일어남. 욕설만 escalation 트리거.
+  - **BAILOUT 키워드 변경**: `BAILOUT_KEYWORDS = ['봉인해제', 'BAILOUT']` → `['봉인해제', 'UNLEASH']`. 한국어 '봉인해제' 유지, 영어 키워드만 'BAILOUT' → 'UNLEASH' 교체. `pressure-guard.js` L2/L3 메시지 + USER-MANUAL.md / README.md 갱신. 내부 변수명 `BAILOUT_KEYWORDS`, 함수명 `detectBailout`, stderr 로그 `[PRESSURE BAILOUT: reset all 3 counters]` 보존 (내부 식별자, 사용자 키워드 아님).
+- **Verification.** Light-workflow W021 (1 WA + 1 RA Opus, 100% convergence). L1 behavior probe 13/13 NEG + 4/4 BAILOUT PASS. 전체 회귀 테스트: `_test-feedback-detection.js` 45/45, `_test-bailout-tooGoodSkepticism.js` 3/3, `_test-inject-rules.js` 107/107, `_test-pressure-guard.js` 14/14, `_test-strip-reminders.js` 5/5, `_test-inject-rules-race.js` 4/4, `_test-shared-context.js` 10/10, `_test-subagent-context.js` 12/12, `_test-inject-rules-classification.js` 29/29 — **229/229 PASS**.
+- **영향 받은 테스트 케이스 정리**: 제거된 패턴(아닌데/wrong/이해 안/등) 검증 ~30 케이스 DELETE, BAILOUT keyword input 4 케이스 UPDATE 'BAILOUT'→'UNLEASH', code-block 스트리핑 테스트 4 케이스 UPDATE (wrong→profanity).
+- **선행 조사**: I062 (Crabshell harness audit) Agent 5 + Agent 6 결과 + 사용자 직접 추적 ("내가 물어본게 아닌데" → `/아닌데/` 매치 등 trace).
+
 ## v21.78.4 - 2026-04-25
 
 - **NEG 검사 false-positive 차단 (W020).** `scripts/inject-rules.js`에 `stripSystemReminders(text)` helper 추가. `detectNegativeFeedback`은 `stripCodeBlocks` 직후 `stripSystemReminders` 호출하여 `<system-reminder>...</system-reminder>` 블록을 사전 제거한 후 NEGATIVE_PATTERNS 매칭. 이전: Claude Code가 매 turn 자동 주입하는 reminder 블록 안 단어(`error`, `wrong`, `break`, `incorrect`)가 NEG 매치되어 사용자-무관 `consecutiveCount` 증가 → `fp.level` 상승. 이후: reminder 블록은 NEG 검사에서 완전 배제, 사용자 prompt 텍스트만 검사 대상. `extractKeywords` 등 다른 prompt 사용처는 무영향. helper는 `module.exports`에 노출되어 단위 테스트 가능.

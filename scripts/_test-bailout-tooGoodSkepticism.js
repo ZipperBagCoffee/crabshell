@@ -71,9 +71,9 @@ function readIndex(tmpDir) {
   return JSON.parse(fs.readFileSync(indexPath, 'utf8'));
 }
 
-// Invoke real inject-rules.js synchronously with BAILOUT prompt.
+// Invoke real inject-rules.js synchronously with bailout keyword (UNLEASH per W021).
 function runBailout(tmpDir) {
-  const hookData = JSON.stringify({ prompt: 'BAILOUT' });
+  const hookData = JSON.stringify({ prompt: 'UNLEASH' });
   try {
     execFileSync(process.execPath, [injectRulesPath], {
       env: Object.assign({}, process.env, { CLAUDE_PROJECT_DIR: tmpDir }),

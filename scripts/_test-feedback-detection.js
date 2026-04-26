@@ -45,75 +45,25 @@ if (!detectNegativeFeedback || !updateFeedbackPressure) {
   console.log('Results: ' + passed + ' passed, ' + failed + ' failed');
   process.exit(failed > 0 ? 1 : 0);
 }
-// AC-2: Narrow wae-ireoke
-test('AC-2: technical dweneungeoim -> false', function() {
-  assertEqual(detectNegativeFeedback('왜 이렇게 되는거임'), false, 'tech q');
-});
-test('AC-2: technical dweneungeoya -> false', function() {
-  assertEqual(detectNegativeFeedback('왜 이렇게 되는거야'), false, 'tech q');
-});
-test('AC-2: complaint haenwasseo -> true', function() {
-  assertEqual(detectNegativeFeedback('왜 이렇게 해놓어'), true, 'agentive');
-});
-test('AC-2: complaint mandeungeoya -> true', function() {
-  assertEqual(detectNegativeFeedback('왜 이렇게 만든거야'), true, 'agentive');
-});
-test('AC-2: complaint haesseo -> true', function() {
-  assertEqual(detectNegativeFeedback('왜 이렇게 했어'), true, 'agentive');
-});
-
-// AC-3: jalmothago and breaking
-test('AC-3: jalmothago -> true', function() {
-  assertEqual(detectNegativeFeedback('잘못하고 있잖아'), true);
-});
-test('AC-3: breaking things -> true', function() {
-  assertEqual(detectNegativeFeedback('you keep breaking things'), true);
-});
-test('AC-3: breaking build -> true', function() {
-  assertEqual(detectNegativeFeedback('this is breaking the build'), true);
-});
-
-// AC-4: Diagnostic exclusion
-test('AC-4: mwonga geot gatah -> false', function() {
-  assertEqual(detectNegativeFeedback('뭐가 잘못된 것 같아'), false, 'diagnostic');
-});
-test('AC-4: whats wrong -> false', function() {
-  assertEqual(detectNegativeFeedback("what's wrong with this"), false, 'diagnostic');
-});
-test('AC-4: mwoga geoji -> false', function() {
-  assertEqual(detectNegativeFeedback('뭐가 잘못된거지'), false, 'diagnostic');
-});
-test('AC-4: is this wrong? -> false', function() {
-  assertEqual(detectNegativeFeedback('is this wrong?'), false, 'diagnostic');
-});
-test('AC-4: check if wrong -> false', function() {
-  assertEqual(detectNegativeFeedback('check if something is wrong'), false, 'diagnostic');
-});
-// AC-1: Exclusions strip instead of early-return
-test('AC-1: mixed diagnostic + complaint -> true', function() {
-  assertEqual(detectNegativeFeedback('왜 이렇게 되는거야? 잘못했잖아.'), true, 'strip then detect');
-});
-test('AC-1: dont forget + wrong -> true', function() {
-  assertEqual(detectNegativeFeedback("don't forget to check. you're wrong about this."), true);
-});
-test('AC-1: dont forget only -> false', function() {
-  assertEqual(detectNegativeFeedback("don't forget to save the file"), false);
-});
-test('AC-1: no problem + broke -> true', function() {
-  assertEqual(detectNegativeFeedback('no problem, but you broke the build'), true);
-});
-
-// AC-9: Regression
-test('AC-9: aninde -> true', function() { assertEqual(detectNegativeFeedback('아닌데 이건 맞지 않아'), true); });
-test('AC-9: dasi hae -> true', function() { assertEqual(detectNegativeFeedback('다시 해줘'), true); });
-test('AC-9: wrong answer -> true', function() { assertEqual(detectNegativeFeedback('wrong answer'), true); });
-test('AC-9: try again -> true', function() { assertEqual(detectNegativeFeedback('try again please'), true); });
-test('AC-9: you broke it -> true', function() { assertEqual(detectNegativeFeedback('you broke it'), true); });
-test('AC-9: not what I asked -> true', function() { assertEqual(detectNegativeFeedback('not what I asked for'), true); });
-test('AC-9: ihaereul anhago -> true', function() { assertEqual(detectNegativeFeedback('이해를 안하고 있어'), true); });
+// W021: AC-2/AC-3/AC-4/AC-1/AC-9 sections REMOVED — these verified correction-mode,
+// assessment-mode, logical-disagreement patterns + exclusions that are no longer in
+// NEGATIVE_PATTERNS / NEGATIVE_EXCLUSIONS (profanity-only design).
+// Neutral/null cases preserved below.
 test('AC-9: neutral -> false', function() { assertEqual(detectNegativeFeedback('파일 읽어줘'), false); });
 test('AC-9: read file -> false', function() { assertEqual(detectNegativeFeedback('read the file and tell me what you find'), false); });
 test('AC-9: short -> false', function() { assertEqual(detectNegativeFeedback('y'), false); });
+
+// W021: NEW profanity-only positive cases
+test('W021: KO profanity -> true', function() { assertEqual(detectNegativeFeedback('시발 짜증나'), true); });
+test('W021: KO profanity 병신 -> true', function() { assertEqual(detectNegativeFeedback('병신아'), true); });
+test('W021: EN profanity fuck -> true', function() { assertEqual(detectNegativeFeedback('fuck this'), true); });
+test('W021: EN profanity this sucks -> true', function() { assertEqual(detectNegativeFeedback('this sucks'), true); });
+test('W021: KO correction NOT detected -> false', function() { assertEqual(detectNegativeFeedback('내가 물어본게 아닌데'), false, 'correction is not profanity'); });
+test('W021: KO assessment NOT detected -> false', function() { assertEqual(detectNegativeFeedback('이해를 안하려고 하고있음'), false); });
+test('W021: EN correction NOT detected -> false', function() { assertEqual(detectNegativeFeedback('wrong answer'), false); });
+test('W021: EN assessment NOT detected -> false', function() { assertEqual(detectNegativeFeedback('not helpful'), false); });
+test('W021: FP 시발점 -> false', function() { assertEqual(detectNegativeFeedback('이 프로젝트 시발점이 어디예요'), false); });
+test('W021: FP 병신경 -> false', function() { assertEqual(detectNegativeFeedback('병신경 검사 결과'), false); });
 // AC-8: Pressure accumulation and decay
 test('AC-8: 3 negatives -> level 3', function() {
   const index = {};
@@ -154,60 +104,22 @@ test('AC-6: PRESSURE_L3 no ask user', function() {
   assert(!(/ask the user/i.test(PRESSURE_L3)), 'should not ask user');
 });
 
-// AC-3: Additional breaking patterns
-test('AC-3: you breaks -> true', function() {
-  assertEqual(detectNegativeFeedback('you breaks the build'), true);
-});
-test('AC-3: you breaking -> true', function() {
-  assertEqual(detectNegativeFeedback('you breaking everything'), true);
-});
+// W021: Additional AC-3/AC-4/AC-1 sections REMOVED — depended on patterns no longer in NEGATIVE_PATTERNS.
 
-// AC-4: Additional exclusion patterns
-test('AC-4: jalmotdwen ge mwonji -> false', function() {
-  assertEqual(detectNegativeFeedback('잘못된 게 뭔지 알려줘'), false);
-});
-test('AC-4: went wrong -> false', function() {
-  assertEqual(detectNegativeFeedback('what went wrong here'), false);
-});
-test('AC-4: dodaeche wae an dwae -> false', function() {
-  assertEqual(detectNegativeFeedback('도대체 왜 안 되는 거야'), false);
-});
-test('AC-4: dodaeche wae ireon -> false', function() {
-  assertEqual(detectNegativeFeedback('도대체 왜 이런 결과가 나오는지'), false);
-});
-
-// AC-1: Additional architecture tests
-test('AC-1: went wrong + broke -> true', function() {
-  assertEqual(detectNegativeFeedback('what went wrong? you broke it'), true);
-});
-test('AC-1: dont worry + incorrect -> true', function() {
-  assertEqual(detectNegativeFeedback("don't worry, but that's incorrect"), true);
-});
-test('AC-1: mwonga jalmot + jalmothago -> true', function() {
-  assertEqual(detectNegativeFeedback('뭔가 잘못된 것 같은데 잘못하고 있어'), true);
-});
-
-// Additional FP edge cases
+// FP edge cases (preserved — null/empty/single-char + neutral phrases)
 test('FP: empty -> false', function() { assertEqual(detectNegativeFeedback(''), false); });
 test('FP: null -> false', function() { assertEqual(detectNegativeFeedback(null), false); });
 test('FP: single char -> false', function() { assertEqual(detectNegativeFeedback('a'), false); });
 test('FP: no problem -> false', function() { assertEqual(detectNegativeFeedback('no problem, continue'), false); });
-test('FP: jalmotdwen ge aniya -> false', function() { assertEqual(detectNegativeFeedback('잘못된 게 아니야'), false); });
-test('FP: dont forget -> false', function() { assertEqual(detectNegativeFeedback("don't forget to add tests"), false); });
-test('FP: if wrong -> false', function() { assertEqual(detectNegativeFeedback('if something is wrong let me know'), false); });
 
-// Additional TPs
-test('TP: teullyeosseo -> true', function() { assertEqual(detectNegativeFeedback('틀렸어'), true); });
-test('TP: not helpful -> true', function() { assertEqual(detectNegativeFeedback('not helpful'), true); });
-test('TP: dont understand -> true', function() { assertEqual(detectNegativeFeedback("you don't understand"), true); });
-test('TP: missing point -> true', function() { assertEqual(detectNegativeFeedback("you're missing the point"), true); });
+// W021: TP section REMOVED — tested removed correction/assessment patterns.
 
-// Code block stripping
-test('CODE: fenced code block -> false', function() {
-  assertEqual(detectNegativeFeedback('Check this:\n```\nassert(wrong)\n```\nLooks good'), false);
+// Code block stripping (W021: updated to use profanity since wrong/incorrect no longer in patterns)
+test('CODE: fenced code block strips profanity -> false', function() {
+  assertEqual(detectNegativeFeedback('Check this:\n```\nconst msg = "fuck this";\n```\nLooks good'), false);
 });
-test('CODE: inline code -> false', function() {
-  assertEqual(detectNegativeFeedback('The `wrong` variable needs fixing'), false);
+test('CODE: inline code strips profanity -> false', function() {
+  assertEqual(detectNegativeFeedback('The `fuck` variable needs renaming'), false);
 });
 
 // AC-6: self-directed content checks
@@ -254,9 +166,9 @@ test('BAILOUT: 봉인해제 returns true', function() {
   assertEqual(detectBailout({ prompt: '봉인해제' }), true, 'detectBailout should return true for 봉인해제');
 });
 
-test('BAILOUT: BAILOUT returns true', function() {
+test('BAILOUT: UNLEASH returns true', function() {
   const { detectBailout } = require(injectRulesPath);
-  assertEqual(detectBailout({ prompt: 'BAILOUT please reset' }), true, 'detectBailout should return true for BAILOUT');
+  assertEqual(detectBailout({ prompt: 'UNLEASH please reset' }), true, 'detectBailout should return true for UNLEASH (W021)');
 });
 
 test('BAILOUT: normal prompt returns false', function() {

@@ -10,23 +10,23 @@ const cases = [
     expected: false,
   },
   {
-    name: '(b) plain user NEG (Korean "다시 해")',
-    input: '다시 해', // 다시 해
+    name: '(b) plain user profanity (W021: Korean "시발")',
+    input: '시발 짜증나',
     expected: true,
   },
   {
-    name: '(c) reminder ONLY containing NEG words → must NOT trigger',
-    input: '<system-reminder>error wrong break incorrect try again</system-reminder>',
+    name: '(c) reminder ONLY containing profanity-substring → must NOT trigger',
+    input: '<system-reminder>shit fuck damn</system-reminder>',
     expected: false,
   },
   {
-    name: '(d) reminder w/ NEG + real user NEG outside → must trigger on user part',
-    input: '<system-reminder>error</system-reminder>다시 해', // 다시 해
+    name: '(d) reminder w/ profanity-substring + real user profanity outside → must trigger on user part',
+    input: '<system-reminder>shit</system-reminder>시발 짜증나',
     expected: true,
   },
   {
     name: '(e) two reminder blocks around neutral text',
-    input: '<system-reminder>x error</system-reminder>just a normal request<system-reminder>y wrong</system-reminder>',
+    input: '<system-reminder>x fuck</system-reminder>just a normal request<system-reminder>y shit</system-reminder>',
     expected: false,
   },
 ];

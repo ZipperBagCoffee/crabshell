@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.78.4)
+# Crabshell User Manual (v21.79.0)
 
 ## Why Do You Need This?
 
@@ -241,7 +241,7 @@ Guard scripts are PreToolUse/Stop hooks that prevent common mistakes:
 | `verification-sequence.js` | Source files edited without running tests before git commit; edit-grep cycles (editing and grepping instead of testing) |
 | `doc-watchdog.js` | Document update omissions during regressing: soft warning when 5+ code edits without D/P/T document update; blocks session end when ticket has no work log since last code edit |
 | `skill-tracker.js` | Supporting guard: sets the `skill-active` flag when a Skill tool call is detected, so `docs-guard` and `verify-guard` know when writes are authorized |
-| `pressure-guard.js` | Graduated tool blocking when consecutive negative feedback detected. L2: blocks 6 primary tools (Read/Grep/Glob/Bash/Write/Edit). L3: blocks ALL tools. Resets via positive feedback decay or user bailout keywords ("봉인해제" / "BAILOUT"). See [Pressure System](#pressure-system) |
+| `pressure-guard.js` | Graduated tool blocking when consecutive negative feedback detected. L2: blocks 6 primary tools (Read/Grep/Glob/Bash/Write/Edit). L3: blocks ALL tools. Resets via positive feedback decay or user bailout keywords ("봉인해제" / "UNLEASH"). See [Pressure System](#pressure-system) |
 | `role-collapse-guard.js` | Blocks Orchestrator from directly writing source code files (.js/.json/.sh/.ts) — should delegate to Work Agents during regressing/light-workflow |
 | `deferral-guard.js` | Detects trailing deferral questions ("다음 세션에서 할까요?", "shall I proceed?") in responses — prevents the assistant from asking permission instead of acting |
 | `scope-guard.js` | Detects scope reduction in responses (delivering fewer items than user requested, using "too many" / "시간 관계상" as justification) |
@@ -260,9 +260,9 @@ Crabshell tracks three pressure counters (feedbackPressure.level, feedbackPressu
 
 | Counter | Raised By | Trigger | Reset By |
 |---------|-----------|---------|----------|
-| feedbackPressure.level (0-3) | inject-rules.js @ UserPromptSubmit | User message matches NEGATIVE_PATTERNS | Positive-feedback decay (3 clean prompts) · BAILOUT keyword · TaskCreate tool (L1-L2 only) · SessionStart (L2+ → 1) |
-| feedbackPressure.oscillationCount | sycophancy-guard.js @ Stop | Assistant response contains REVERSAL_PATTERNS (e.g., "actually, let me", "다시 생각해보니") — **no user input required** | BAILOUT keyword · SessionStart |
-| tooGoodSkepticism.retryCount | sycophancy-guard.js @ Stop | Assistant response contains a P/O/G table where all Gap cells are None/없음/N/A — **no user input required** | Clean P/O/G (Gap ≠ None) in a later Stop · retryCount > 3 overflow · SessionStart · BAILOUT keyword (as of v21.77.0) |
+| feedbackPressure.level (0-3) | inject-rules.js @ UserPromptSubmit | User message matches NEGATIVE_PATTERNS (W021: profanity-only) | Positive-feedback decay (3 clean prompts) · UNLEASH keyword · TaskCreate tool (L1-L2 only) · SessionStart (L2+ → 1) |
+| feedbackPressure.oscillationCount | sycophancy-guard.js @ Stop | Assistant response contains REVERSAL_PATTERNS (e.g., "actually, let me", "다시 생각해보니") — **no user input required** | UNLEASH keyword · SessionStart |
+| tooGoodSkepticism.retryCount | sycophancy-guard.js @ Stop | Assistant response contains a P/O/G table where all Gap cells are None/없음/N/A — **no user input required** | Clean P/O/G (Gap ≠ None) in a later Stop · retryCount > 3 overflow · SessionStart · UNLEASH keyword (originally BAILOUT, renamed v21.79.0) |
 
 **Note:** Two of the three counters (oscillationCount, tooGoodSkepticism.retryCount) rise from the assistant's own output independent of the user. Use `/crabshell:status` to inspect current values.
 
@@ -287,13 +287,13 @@ Crabshell tracks three pressure counters (feedbackPressure.level, feedbackPressu
 If tool access is locked at L2 or L3, the user can type one of these keywords to reset the pressure system:
 
 - **`봉인해제`** (Korean)
-- **`BAILOUT`** (English)
+- **`UNLEASH`** (English; renamed from `BAILOUT` in v21.79.0 / W021)
 
-The BAILOUT keyword resets three pressure counters (feedbackPressure.level, feedbackPressure.oscillationCount, tooGoodSkepticism.retryCount) to zero. On reset, stderr logs `[PRESSURE BAILOUT: reset all 3 counters]`.
+The UNLEASH keyword resets three pressure counters (feedbackPressure.level, feedbackPressure.oscillationCount, tooGoodSkepticism.retryCount) to zero. On reset, stderr logs `[PRESSURE BAILOUT: reset all 3 counters]` (internal label retained for backward log-compatibility).
 
 This is the **only** way to immediately escape L2/L3 without waiting for natural decay. When you're stuck at L2/L3, Claude will inform you about these keywords.
 
-**Note:** As of v21.77.0, BAILOUT now also resets `tooGoodSkepticism.retryCount` (previously only `feedbackPressure.*` was reset).
+**Note:** As of v21.77.0, the bailout keyword (then `BAILOUT`, since renamed `UNLEASH` in v21.79.0) also resets `tooGoodSkepticism.retryCount` (previously only `feedbackPressure.*` was reset).
 
 ---
 

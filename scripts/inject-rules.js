@@ -14,7 +14,7 @@ if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 const EMERGENCY_KEYWORDS = ['아시발멈춰', 'BRAINMELT'];
 
 // Bailout keywords - when detected, resets feedback pressure to L0
-const BAILOUT_KEYWORDS = ['봉인해제', 'BAILOUT'];
+const BAILOUT_KEYWORDS = ['봉인해제', 'UNLEASH'];
 
 // Use shared readStdin with 1000ms timeout for UserPromptSubmit hook
 function readStdin() {
@@ -32,60 +32,25 @@ function detectBailout(hookData) {
 }
 
 // --- Feedback Pressure Detection ---
+// Profanity-only NEGATIVE_PATTERNS (W021): correction/assessment/disagreement patterns removed.
+// Only Korean compound words containing profanity substrings need exclusion.
 const NEGATIVE_EXCLUSIONS = [
-  /don'?t\s+forget/i,
-  /don'?t\s+worry/i,
-  /no\s+problem/i,
-  /no\s+need/i,
-  /if\s+(it'?s?\s+|.{0,20})wrong/i,
-  /잘못된\s*게\s*아니/,
-  /뭔가.*?잘못/,
-  /잘못된\s*게\s*뭔지/,
-  /what('?s|\s+is)\s+wrong/i,
-  /went\s+wrong/i,
-  /도대체\s*왜\s*(이러|이런|안\s*되|안\s*돼)/,
-  /잘못된\s*것\s*같/,                                       // "뭔가 잘못된 것 같아" (diagnostic)
-  /뭐가.*잘못된거지/,                                       // "뭐가 잘못된거지" (diagnostic question)
-  /\bis\s+this\s+wrong/i,                                   // "is this wrong?" (diagnostic question)
-  // Korean profanity false positives (legitimate words containing profanity substrings)
   /시발[점역전]/,                                              // "시발점" (starting point), "시발역" (station)
   /병신경/,                                                    // "병신경" (pathological nerve)
 ];
 
+// W021: Profanity-only patterns. Correction/assessment/logical-disagreement patterns
+// removed — those represent normal user clarification, not frustration that warrants
+// pressure escalation. Only actual profanity raises the pressure counter.
 const NEGATIVE_PATTERNS = [
-  // Command-mode (existing)
-  /아닌데/, /잘못\s*(했|됐|된|만든|이해|하고)/, /틀렸/,
-  /다시\s*(해|하|작성|만들|시작)/, /이게\s*아니/,
-  /왜\s*이렇게\s*(해|하|했|한|해놨|만들|만든)/, /안\s*돼/, /제대로\s*(해|하|안|못)/,
-  /그만\b/, /멈춰/,
-  /\bwrong\b/i, /\bincorrect\b/i, /\bthat'?s\s+not\b/i,
-  /\byou\s+broke\b/i, /not\s+what\s+I\s+asked/i,
-  /\btry\s+again\b/i, /\b(undo|revert)\b/i,
-  /\bbreak(ing|s)\b/i,
-  // Assessment-mode Korean
-  /이해[를가]?\s*(안|못)\s*(하|했|됨|돼|되)/i,           // "이해를 안하고", "이해가 안��", "이해 못했"
-  /뭔\s*말인지|무슨\s*말인지/i,                         // "뭔 말인지 모르겠", "무슨 말인지"
-  /파악을?\s*(안|못)/i,                                  // "파악을 안하고", "파악 못하고"
-  /설명하는게\s*맞/i,                                    // "이걸 이렇게 설명하는게 맞는거임"
-  /도움이\s*(안|못)\s*됨?|도움이\s*안\s*되/i,            // "도움이 안됩니다"
-  // Assessment-mode English
-  /you\s+(don'?t|do\s+not)\s+understand/i,               // "you don't understand"
-  /that'?s\s+not\s+what\s+I('?m|\s+am)\s+(asking|saying|talking)/i, // "that's not what I'm asking"
-  /you('?re|\s+are)\s+missing\s+the\s+point/i,           // "you're missing the point"
-  /not\s+helpful/i,                                       // "not helpful"
-  /you('?re|\s+are)\s+not\s+(listening|understanding|getting)/i, // "you're not listening"
-  // Logical disagreement / correction demand
-  /동의하지\s*마|동의하지\s*말/,                                // "동의하지마", "동의하지말아줄래"
-  /의미가\s*(없|안)/,                                          // "무슨 의미가 있냐" → negation
-  /몇\s*번(이나|째)/,                                          // "몇번이야기해야함", "몇번째"
-  // Emotional negative (Korean profanity / frustration)
+  // Korean profanity
   /시발|씨발|씨팔|시팔/,                                      // "시발" variants
   /병신/,                                                      // "병신"
   /좆|졷/,                                                     // "좆" variants
   /지랄/,                                                      // "지랄"
   /새끼/,                                                      // "새끼"
   /뒤질|뒤져/,                                                 // "뒤질래", "뒤져"
-  // Emotional negative (English profanity — mirrors Claude Code userPromptKeywords.ts)
+  // English profanity (mirrors Claude Code userPromptKeywords.ts)
   /\b(wtf|wth|ffs|omfg)\b/i,
   /\bshit(ty|tiest)?\b/i,
   /\bfuck(ing|ed)?\b/i,

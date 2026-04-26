@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.78.4 | **Author**: TaWa | **License**: MIT
+**Version**: 21.79.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -339,6 +339,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.79.0 | feat: NEGATIVE_PATTERNS 욕설-only 축소 + BAILOUT keyword UNLEASH 교체 (W021) — `inject-rules.js` `NEGATIVE_PATTERNS`에서 정정/assessment/논리적-disagreement 패턴 모두 제거, 욕설만 keep. `BAILOUT_KEYWORDS` 영어 키워드 'BAILOUT'→'UNLEASH', '봉인해제' 유지. `pressure-guard.js` L2/L3 메시지 갱신. **행동 효과**: 사용자 정상 정정 표현이 더 이상 pressure escalation 트리거 안 함. W021 100% 수렴 + 229/229 회귀 PASS. |
 | 21.78.4 | fix: NEG 검사 false-positive 차단 (W020) — `inject-rules.js`에 `stripSystemReminders` helper 추가. `detectNegativeFeedback`이 `<system-reminder>...</system-reminder>` 블록을 사전 제거 후 NEGATIVE_PATTERNS 매치. Claude Code가 매 prompt 자동 주입하는 reminder 안 단어(error/wrong/break)에 의한 사용자-무관 압력 상승 차단. WA1+RA1 검증 8/8 IA + 5/5 행동 케이스 + 107/107 회귀 PASS. |
 | 21.78.3 | hotfix: load-memory.js L1 tail 줄 수 20 → 50 (H005) — `getUnreflectedL1Content`의 `slice(-20)` → `slice(-50)`. 세션 시작 시 자동 로드되는 unreflected L1 컨텐츠 범위가 좁아 최근 컨텍스트 손실 가능성. 필터(assistant only + len>50 + logbook 미반영)는 유지, 후보 라인 수만 확장. |
 | 21.78.2 | feat: COMPRESSED_CHECKLIST 9·10번 항목 추가 — Be Logical(증거 기반 결론, 패턴매치/plausibility 금지) + Simple Communication(한 문장 코어 + 아날로지); RULES PRINCIPLES가 매턴 additionalContext에도 가시화; 190/190 PASS |

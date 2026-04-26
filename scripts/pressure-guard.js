@@ -13,9 +13,9 @@ function getProjectDir() {
 
 const BLOCKED_TOOLS = ['Read', 'Grep', 'Glob', 'Bash', 'Write', 'Edit'];
 
-const L2_MESSAGE = '[PRESSURE L2] Tool use paused. Complete the problem analysis in your response first. Tip: "봉인해제" or "BAILOUT" to reset.';
+const L2_MESSAGE = '[PRESSURE L2] Tool use paused. Complete the problem analysis in your response first. Tip: "봉인해제" or "UNLEASH" to reset.';
 
-const L3_MESSAGE = '[PRESSURE L3] All tools locked. Complete the structured self-diagnosis in your response first. Tip: "봉인해제" or "BAILOUT" to reset.';
+const L3_MESSAGE = '[PRESSURE L3] All tools locked. Complete the structured self-diagnosis in your response first. Tip: "봉인해제" or "UNLEASH" to reset.';
 
 function checkCrabshellException(toolName, input) {
   if (toolName === 'Bash') {

@@ -101,7 +101,7 @@ function countOccurrences(text, needle) {
 async function runTrial(trialNum, N) {
   const tmpDir = seedTmpDir();
   try {
-    const payload = JSON.stringify({ prompt: '틀렸어 다시 해' });
+    const payload = JSON.stringify({ prompt: '시발 짜증나' });  // W021: profanity (틀렸/다시 해 removed from NEGATIVE_PATTERNS)
     const promises = [];
     for (let i = 0; i < N; i++) {
       promises.push(spawnInject(tmpDir, payload));
