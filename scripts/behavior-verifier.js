@@ -24,7 +24,17 @@ const fs = require('fs');
 const path = require('path');
 const { writeJson, getStorageRoot } = require('./utils');
 const { readStdin, getRecentTaskCalls } = require('./transcript-utils');
-const { MEMORY_DIR, BEHAVIOR_VERIFIER_STATE_FILE } = require('./constants');
+const { MEMORY_DIR, BEHAVIOR_VERIFIER_STATE_FILE, RING_BUFFER_SIZE, VERIFIER_INTERVAL } = require('./constants');
+
+// D104 IA-1 (b) workflow-active force layer — reuse exports from regressing-loop-guard.
+// Fail-open: require failure → workflowActive=false fallback (handled in main()).
+let isRegressingActive, isLightWorkflowActive;
+try {
+  ({ isRegressingActive, isLightWorkflowActive } = require('./regressing-loop-guard'));
+} catch (_) {
+  isRegressingActive = () => false;
+  isLightWorkflowActive = () => false;
+}
 
 // Skip during background memory summarization (recursion guard, fail-open early)
 if (process.env.CRABSHELL_BACKGROUND === '1') process.exit(0);
@@ -59,6 +69,40 @@ function isClarificationOnly(text) {
   return sentences.every(s => /\?$/.test(s));
 }
 
+/**
+ * D104 IA-2 — turn classification 5-class detection cascade.
+ * Returns one of: 'clarification' | 'trivial' | 'notification' |
+ *                 'workflow-internal' | 'user-facing'.
+ *
+ * Cascade order (first match wins):
+ *   clarification → trivial → notification → workflow-internal → user-facing
+ *
+ * notification detection: hookData.prompt with line-start <task-notification>
+ * anchor (line-start required to avoid false positives when assistantText
+ * mentions the literal token in body).
+ *
+ * workflow-internal detection: workflowActive flag (regressing-state.active OR
+ * skill-active TTL fresh) OR ticket-id pattern (\b[TPI]\d{3}(?:_T\d{3})?\b).
+ *
+ * fail-open: any regex/exception → 'user-facing' (most strict default).
+ */
+function classifyTurnType({ assistantText, hookData, workflowActive }) {
+  try {
+    const text = String(assistantText || '');
+    if (isClarificationOnly(text)) return 'clarification';
+    if (text.length < 50) return 'trivial';
+    const promptText = (hookData && (hookData.prompt || hookData.input)) || '';
+    if (typeof promptText === 'string' && /^<task-notification>/m.test(promptText)) {
+      return 'notification';
+    }
+    if (workflowActive === true) return 'workflow-internal';
+    if (/\b[TPI]\d{3}(?:_T\d{3})?\b/.test(text)) return 'workflow-internal';
+    return 'user-facing';
+  } catch (_) {
+    return 'user-facing';
+  }
+}
+
 async function main() {
   let hookData;
   try {
@@ -74,16 +118,26 @@ async function main() {
   const assistantText = hookData.stop_response || hookData.last_assistant_message || '';
   if (!assistantText || typeof assistantText !== 'string') process.exit(0);
 
-  // Length bypass — skip trivial / no-substance turns.
-  if (assistantText.length < 50) process.exit(0);
+  // D104 IA-1 (b) — workflow-active force layer detection. Fail-open: any
+  // exception in detection → workflowActive=false (least-privilege default).
+  let workflowActive = false;
+  try {
+    workflowActive = !!(isRegressingActive() || isLightWorkflowActive());
+  } catch (_) { workflowActive = false; }
 
-  // Clarification-only turns: nothing to verify.
-  if (isClarificationOnly(assistantText)) process.exit(0);
+  // Length + clarification bypass cascade. workflowActive=true ignores both
+  // (D104 IA-1 b: regressing/light-workflow active = force fire even for
+  // length<50 / clarification-only turns).
+  if (!workflowActive) {
+    if (assistantText.length < 50) process.exit(0);
+    if (isClarificationOnly(assistantText)) process.exit(0);
+  }
 
   // Compose state-file path under .crabshell/memory/ (storage root).
   const projectDir = process.env.CLAUDE_PROJECT_DIR || process.env.PROJECT_DIR || process.cwd();
   const storageRoot = getStorageRoot(projectDir);
   const stateFilePath = path.join(storageRoot, MEMORY_DIR, BEHAVIOR_VERIFIER_STATE_FILE);
+  const indexPath = path.join(storageRoot, MEMORY_DIR, 'memory-index.json');
 
   // P135_T001 AC-2/AC-3 — read prior state BEFORE writing the new one.
   // If the prior state was 'pending' AND the response is substantive (the
@@ -97,6 +151,27 @@ async function main() {
       priorState = JSON.parse(fs.readFileSync(stateFilePath, 'utf8'));
     }
   } catch (e) { priorState = null; }
+
+  // D104 IA-1 (a) — periodic skip. Read verifierCounter from memory-index.json
+  // (counter.js maintains this on PostToolUse). Skip when:
+  //   workflowActive=false AND priorState.lastFiredTurn != null AND
+  //   verifierCounter < priorState.lastFiredTurn + VERIFIER_INTERVAL.
+  // workflowActive=true ignores the periodic gate (force fire layer).
+  let verifierCounter = 0;
+  try {
+    if (fs.existsSync(indexPath)) {
+      const idx = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
+      if (typeof idx.verifierCounter === 'number') verifierCounter = idx.verifierCounter;
+    }
+  } catch (_) { verifierCounter = 0; }
+
+  if (!workflowActive
+      && priorState
+      && typeof priorState.lastFiredTurn === 'number'
+      && priorState.lastFiredTurn !== null
+      && verifierCounter < (priorState.lastFiredTurn + VERIFIER_INTERVAL)) {
+    process.exit(0);
+  }
 
   let dispatchOverdue = false;
   try {
@@ -114,6 +189,50 @@ async function main() {
     }
   } catch (e) { dispatchOverdue = false; }
 
+  // D104 IA-1 (c) — missedCount streak + escalationLevel transition.
+  //   Task call detected since priorState.launchedAt → reset missedCount=0
+  //   No Task call (dispatchOverdue=true) → priorState.missedCount + 1
+  //   escalationLevel = min(2, missedCount). 0=L0, 1=L0 marker, 2=L1 marker.
+  let missedCount = 0;
+  try {
+    const prevMissed = (priorState && typeof priorState.missedCount === 'number')
+      ? priorState.missedCount : 0;
+    if (dispatchOverdue) {
+      missedCount = prevMissed + 1;
+    } else {
+      missedCount = 0;
+    }
+  } catch (_) { missedCount = 0; }
+  const escalationLevel = Math.min(2, missedCount);
+
+  // D104 IA-1 (d) — verdict ring buffer carry-over from priorState. Hook only
+  // carries; sub-agent prompt pushes new entries (FIFO N=8, see Step 4 in
+  // prompts/behavior-verifier-prompt.md).
+  let ringBuffer = [];
+  try {
+    if (priorState && Array.isArray(priorState.ringBuffer)) {
+      ringBuffer = priorState.ringBuffer.slice(-RING_BUFFER_SIZE);
+    }
+  } catch (_) { ringBuffer = []; }
+
+  // D104 IA-2 — turn classification (state field for prompt-side conditional
+  // gating). fail-open default = 'user-facing'.
+  let turnType = 'user-facing';
+  try {
+    turnType = classifyTurnType({ assistantText, hookData, workflowActive });
+  } catch (_) { turnType = 'user-facing'; }
+
+  // D104 IA-1 (a) — triggerReason classification for trace + audit.
+  let triggerReason = 'stop';
+  try {
+    if (workflowActive) triggerReason = 'workflow-active';
+    else if (escalationLevel >= 1) triggerReason = 'escalation';
+    else if (typeof priorState?.lastFiredTurn === 'number'
+             && verifierCounter >= (priorState.lastFiredTurn + VERIFIER_INTERVAL)) {
+      triggerReason = 'periodic';
+    }
+  } catch (_) { triggerReason = 'stop'; }
+
   const taskId = `verify-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const nowIso = new Date().toISOString();
   const state = {
@@ -123,7 +242,15 @@ async function main() {
     launchedAt: nowIso,
     verdicts: null,
     dispatchOverdue,
-    lastUpdatedAt: nowIso
+    lastUpdatedAt: nowIso,
+    // D104 IA-1 + IA-2 — 7 new fields.
+    triggerReason,
+    lastFiredAt: nowIso,
+    lastFiredTurn: verifierCounter,
+    missedCount,
+    escalationLevel,
+    ringBuffer,
+    turnType
   };
 
   try {
@@ -148,4 +275,4 @@ if (require.main === module) {
   main().catch(() => process.exit(0)); // fail-open on any error
 }
 
-module.exports = { isClarificationOnly, stripCodeBlocks };
+module.exports = { isClarificationOnly, stripCodeBlocks, classifyTurnType };

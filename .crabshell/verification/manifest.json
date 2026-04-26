@@ -50,9 +50,9 @@
     },
     {
       "id": "AC-6",
-      "ia": "version 21.82.0 (current)",
+      "ia": "version 21.83.0 (current)",
       "type": "indirect",
-      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const v=JSON.parse(require('fs').readFileSync('C:/Users/user/Documents/memory-keeper-plugin/.claude-plugin/plugin.json','utf8')).version;console.log(v==='21.82.0'?'PASS:'+v:'FAIL:'+v)\"",
+      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const v=JSON.parse(require('fs').readFileSync('C:/Users/user/Documents/memory-keeper-plugin/.claude-plugin/plugin.json','utf8')).version;console.log(v==='21.83.0'?'PASS:'+v:'FAIL:'+v)\"",
       "expected": "PASS:",
       "timeout": 5000
     },
@@ -197,10 +197,10 @@
       "level": "L3",
       "type": "indirect",
       "steps": [
-        "Read prompts/behavior-verifier-prompt.md and confirm 3 sub-clause keywords ('Direction change', 'Session-length', 'Trailing deferral') match exactly 3 lines",
+        "Read prompts/behavior-verifier-prompt.md and confirm 3 numbered bold sub-clause headers ('**Direction change**', '**Session-length deferral**', '**Trailing deferral**') exist (regex tightened to bold form to avoid matching §Schema Stability cross-reference at L31 added in T002)",
         "Read scripts/sycophancy-guard.js and confirm process.exit(2) appears exactly once (PreToolUse handler L747 only — 4 Stop branches converted to warn-only)"
       ],
-      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const fs=require('fs');const p=fs.readFileSync('C:/Users/user/Documents/memory-keeper-plugin/prompts/behavior-verifier-prompt.md','utf8');const subClauseHits=(p.match(/Direction change|Session-length|Trailing deferral/g)||[]).length;const s=fs.readFileSync('C:/Users/user/Documents/memory-keeper-plugin/scripts/sycophancy-guard.js','utf8');const exit2Hits=(s.match(/process\\.exit\\(2\\)/g)||[]).length;const ok=subClauseHits===3&&exit2Hits===1;console.log(ok?'PASS:cycle1-absorption':'FAIL:subClauseHits='+subClauseHits+' exit2Hits='+exit2Hits)\"",
+      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const fs=require('fs');const p=fs.readFileSync('C:/Users/user/Documents/memory-keeper-plugin/prompts/behavior-verifier-prompt.md','utf8');const subClauseHits=(p.match(/\\*\\*Direction change\\*\\*|\\*\\*Session-length deferral\\*\\*|\\*\\*Trailing deferral\\*\\*/g)||[]).length;const s=fs.readFileSync('C:/Users/user/Documents/memory-keeper-plugin/scripts/sycophancy-guard.js','utf8');const exit2Hits=(s.match(/process\\.exit\\(2\\)/g)||[]).length;const ok=subClauseHits===3&&exit2Hits===1;console.log(ok?'PASS:cycle1-absorption':'FAIL:subClauseHits='+subClauseHits+' exit2Hits='+exit2Hits)\"",
       "expected": "PASS:",
       "observation": null,
       "timeout": 5000

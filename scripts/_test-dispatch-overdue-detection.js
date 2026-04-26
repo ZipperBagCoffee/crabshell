@@ -287,10 +287,10 @@ const CLARIFY = 'Which file did you want me to inspect? Should I check the test 
   const r = runInjectRules(sb);
   const hasMarker = r.ctx.includes('[DISPATCH OVERDUE]')
                  && r.ctx.includes('Previous turn did not invoke Task');
-  const hasDispatch = r.ctx.includes('Behavior Verifier Dispatch Required');
+  const hasDispatch = r.ctx.includes('(Behavior Verifier) Dispatch Required');
   // Marker must appear BEFORE the dispatch section header.
   const idxMarker = r.ctx.indexOf('[DISPATCH OVERDUE]');
-  const idxDispatch = r.ctx.indexOf('Behavior Verifier Dispatch Required');
+  const idxDispatch = r.ctx.indexOf('(Behavior Verifier) Dispatch Required');
   const ordered = idxMarker >= 0 && idxDispatch > idxMarker;
   ok('8 inject-rules: dispatchOverdue=true → [DISPATCH OVERDUE] prepended',
      r.exitCode === 0 && hasMarker && hasDispatch && ordered,

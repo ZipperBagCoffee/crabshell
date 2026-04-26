@@ -120,6 +120,18 @@ async function check() {
     counter++;
     setCounter(counter);
 
+    // D104 IA-1 (a) — verifierCounter PostToolUse increment. Maintained as a
+    // separate field in memory-index.json (decoupled from counter.json
+    // saveInterval=15 vs verifier interval=8). Reset is the responsibility of
+    // behavior-verifier.js Stop hook (lastFiredTurn snapshot).
+    // Race safety: this RMW runs INSIDE the existing acquireIndexLock above.
+    try {
+      const vIdxPath = path.join(getStorageRoot(), MEMORY_DIR, 'memory-index.json');
+      const vIdx = readIndexSafe(vIdxPath);
+      vIdx.verifierCounter = (typeof vIdx.verifierCounter === 'number' ? vIdx.verifierCounter : 0) + 1;
+      writeJson(vIdxPath, vIdx);
+    } catch (e) { /* fail-open */ }
+
     // Pressure reset on Task delegation
     if (hookData.tool_name === 'TaskCreate') {
       try {

@@ -79,10 +79,10 @@ function ok(name, cond, detail) {
 (function() {
   const sb = makeSandbox();
   const r = runInjectRules(sb);
-  const noDispatch = !r.ctx.includes('Behavior Verifier Dispatch Required');
+  const noDispatch = !r.ctx.includes('(Behavior Verifier) Dispatch Required');
   const noCorrection = !r.ctx.includes('Behavior Correction');
   ok('1 missing state file → silent skip', r.exitCode === 0 && noDispatch && noCorrection,
-     'exit=' + r.exitCode + ' dispatch=' + r.ctx.includes('Behavior Verifier Dispatch Required'));
+     'exit=' + r.exitCode + ' dispatch=' + r.ctx.includes('(Behavior Verifier) Dispatch Required'));
 })();
 
 // Test 2 — malformed JSON state file
@@ -90,7 +90,7 @@ function ok(name, cond, detail) {
   const sb = makeSandbox();
   writeRawState(sb, '{not valid json');
   const r = runInjectRules(sb);
-  const noDispatch = !r.ctx.includes('Behavior Verifier Dispatch Required');
+  const noDispatch = !r.ctx.includes('(Behavior Verifier) Dispatch Required');
   const noCorrection = !r.ctx.includes('Behavior Correction');
   ok('2 malformed JSON → silent skip', r.exitCode === 0 && noDispatch && noCorrection);
 })();
@@ -104,7 +104,7 @@ function ok(name, cond, detail) {
     lastUpdatedAt: new Date().toISOString()
   });
   const r = runInjectRules(sb);
-  const has = r.ctx.includes('Behavior Verifier Dispatch Required')
+  const has = r.ctx.includes('(Behavior Verifier) Dispatch Required')
            && r.ctx.includes('subagent_type: general-purpose')
            && r.ctx.includes('CRABSHELL_AGENT=behavior-verifier');
   ok('3 pending within TTL → dispatch instruction', r.exitCode === 0 && has);
@@ -120,7 +120,7 @@ function ok(name, cond, detail) {
   });
   const r = runInjectRules(sb);
   const post = readState(sb);
-  const noDispatch = !r.ctx.includes('Behavior Verifier Dispatch Required');
+  const noDispatch = !r.ctx.includes('(Behavior Verifier) Dispatch Required');
   ok('4 pending beyond TTL → status=stale, no dispatch',
      r.exitCode === 0 && noDispatch && post && post.status === 'stale');
 })();
@@ -181,7 +181,7 @@ function ok(name, cond, detail) {
     lastUpdatedAt: new Date().toISOString()
   });
   const r = runInjectRules(sb);
-  const noDispatch = !r.ctx.includes('Behavior Verifier Dispatch Required');
+  const noDispatch = !r.ctx.includes('(Behavior Verifier) Dispatch Required');
   const noCorrection = !r.ctx.includes('Behavior Correction');
   ok('7 already consumed → no-op', r.exitCode === 0 && noDispatch && noCorrection);
 })();

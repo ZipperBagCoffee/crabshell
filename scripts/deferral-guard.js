@@ -61,7 +61,7 @@ async function main() {
 
   // Warn if analysis body present AND trailing deferral question detected
   if (hasAnalysisBody(response) && hasTrailingDeferralQuestion(response)) {
-    process.stderr.write('[DEFERRAL_GUARD] Warning: analysis + trailing deferral question detected. Per CLAUDE.md PROHIBITED PATTERN #7: do not ask for permission to proceed — just act. Autonomous continuation is expected.\n');
+    process.stderr.write('[BEHAVIOR-WARN] Trailing deferral question detected (PROHIBITED #7). (warn-only — sub-agent verifier §3.logic Trailing-deferral sub-clause will retroactively correct in next turn)\n');
   }
 
   // Warn-only: always exit 0, never block

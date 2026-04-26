@@ -59,14 +59,23 @@ const sec1 = (start >= 0 && end > start) ? text.slice(start, end) : '';
 })();
 
 // ---------- Test 4 — Format markers / EITHER / key directives present ----------
+// D104 P136_T002 AC2 — Schema Stability single-source-of-truth: the literal
+// "4 top-level keys" phrasing was hoisted from §1.understanding into the
+// top-level §Schema Stability section. §1 now cross-references via
+// "see §Schema Stability". Either inline phrasing OR cross-reference satisfies.
 (function() {
   const hasFormatMarkers = /Format markers/i.test(sec1);
   const hasEither = /EITHER/i.test(sec1);
   const hasKeyComp = /Key composition directive/i.test(sec1);
   const has4Keys = /4\s+top-level\s+keys|four\s+(top-level\s+)?keys/i.test(sec1);
-  ok('4 sub-clause has Format markers + EITHER + Key composition directive + 4 keys preserved',
-     hasFormatMarkers && hasEither && hasKeyComp && has4Keys,
-     'fm=' + hasFormatMarkers + ' either=' + hasEither + ' kc=' + hasKeyComp + ' 4keys=' + has4Keys);
+  // Cross-reference also satisfies: "(see §Schema Stability)" or
+  // "(see Schema Stability)" — the canonical pointer to the hoisted schema.
+  const hasSchemaXref = /see\s+§?Schema\s+Stability/i.test(sec1);
+  const schemaInvariantOk = has4Keys || hasSchemaXref;
+  ok('4 sub-clause has Format markers + EITHER + Key composition directive + (4-keys OR §Schema Stability xref)',
+     hasFormatMarkers && hasEither && hasKeyComp && schemaInvariantOk,
+     'fm=' + hasFormatMarkers + ' either=' + hasEither + ' kc=' + hasKeyComp
+     + ' 4keys=' + has4Keys + ' schemaXref=' + hasSchemaXref);
 })();
 
 // ---------- Test 5 — Bilingual ANY-ONE-set semantics encoded ----------

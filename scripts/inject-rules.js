@@ -762,18 +762,62 @@ async function main() {
           const isStale = launchedMs && ageMs > TTL_MS;
 
           if (bvState.status === 'pending' && !isStale) {
+            // D104 IA-1 (d) — Watcher Recent Verdicts ring buffer reader.
+            // Prepend BEFORE dispatch instruction so Claude sees recent verdict
+            // history → context-aware corrective behavior. Byte cap 800 chars
+            // (~200 tokens upper bound, target 50-100 tokens/turn).
+            if (Array.isArray(bvState.ringBuffer) && bvState.ringBuffer.length > 0) {
+              try {
+                const RING_BYTE_CAP = 800;
+                let rb = '\n\n## Watcher Recent Verdicts\n';
+                for (let i = 0; i < bvState.ringBuffer.length; i++) {
+                  const e = bvState.ringBuffer[i];
+                  if (!e || typeof e !== 'object') continue;
+                  // Time format HHMMSS from e.ts (ISO 8601). Fail-open on parse.
+                  let hhmmss = '------';
+                  try {
+                    const d = new Date(e.ts);
+                    if (!isNaN(d.getTime())) {
+                      const pad = n => String(n).padStart(2, '0');
+                      hhmmss = pad(d.getUTCHours()) + pad(d.getUTCMinutes()) + pad(d.getUTCSeconds());
+                    }
+                  } catch (_) {}
+                  // UVLS flags — uppercase = PASS, lowercase = FAIL.
+                  const u = e.u ? 'U' : 'u';
+                  const v = e.v ? 'V' : 'v';
+                  const l = e.l ? 'L' : 'l';
+                  const s = e.s ? 'S' : 's';
+                  const reason = String(e.reason || '').slice(0, 80);
+                  const line = '- [' + hhmmss + '] ' + u + v + l + s + ' — ' + reason + '\n';
+                  if ((rb.length + line.length) > RING_BYTE_CAP) {
+                    rb += '...\n';
+                    break;
+                  }
+                  rb += line;
+                }
+                context += rb;
+              } catch (_) { /* fail-open: skip ring buffer on any error */ }
+            }
             // P135_T001 AC-4 — D103 cycle 2 dispatch overdue marker.
             // When the prior turn left status='pending' and the response that
             // followed did NOT invoke the Task tool, behavior-verifier.js sets
             // dispatchOverdue=true on the new state. Prepend a markdown-emphasized
             // marker so Claude prioritizes the dispatch instruction this turn.
+            // D104 IA-1 (c) — escalation L1 strength (missedCount >= 2).
             if (bvState.dispatchOverdue === true) {
-              context += '\n\n**[DISPATCH OVERDUE]** Previous turn did not invoke Task. Invoke NOW.\n';
+              if (typeof bvState.missedCount === 'number' && bvState.missedCount >= 2) {
+                context += '\n\n**[DISPATCH OVERDUE — escalation L1]** Previous turns did not invoke Task. Invoke NOW.\n';
+              } else {
+                context += '\n\n**[DISPATCH OVERDUE]** Previous turn did not invoke Task. Invoke NOW.\n';
+              }
             }
             // Emit dispatch instruction — Claude consumes this on next response
             // and invokes the Task tool with run_in_background to launch the
             // verifier sub-agent.
-            context += '\n\n## Behavior Verifier Dispatch Required\n';
+            // D104 IA-4 — Korean bilingual framing (header only). Code identifiers
+            // (subagent_type / CRABSHELL_AGENT / prompt path / output filename)
+            // remain byte-identical for backward compat.
+            context += '\n\n## 감시자 (Behavior Verifier) Dispatch Required\n';
             context += 'Next response: invoke Task tool to launch background verifier sub-agent.\n';
             context += '- subagent_type: general-purpose\n';
             context += '- run_in_background: true\n';
