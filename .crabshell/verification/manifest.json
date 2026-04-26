@@ -1,7 +1,7 @@
 {
   "projectType": "Node.js CLI (Claude Code plugin hooks)",
   "created": "2026-03-28T08:20:00Z",
-  "updated": "2026-04-26T06:11:15.074Z",
+  "updated": "2026-04-26T07:00:00.000Z",
   "tools": {
     "build": null,
     "run": null,
@@ -175,6 +175,19 @@
         "Confirm 5-metric table + Decision section + Provisional Sonnet recommendation"
       ],
       "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const f=require('fs').readFileSync('C:/Users/user/Documents/memory-keeper-plugin/.crabshell/investigation/I063-behavior-verifier-prototype-measurement.md','utf8');const ok=f.includes('parse_rate')&&f.includes('verdict_consistency')&&f.includes('fp_rate_clarification')&&f.includes('token_cost')&&f.includes('latency_p50_ms')&&f.includes('Provisional');console.log(ok?'PASS:I063_complete':'FAIL:I063_incomplete')\"",
+      "expected": "PASS:",
+      "timeout": 5000
+    },
+    {
+      "id": "V010",
+      "ia": "I063 cycle 2 — final model decision recorded (P133 cycle 2 AC-3 deliverable)",
+      "level": "L2",
+      "type": "indirect",
+      "steps": [
+        "grep -E \"Final: (Sonnet|Haiku)\" against I063",
+        "Confirm cycle 2 Decision section commits to Sonnet or Haiku (no longer purely Provisional)"
+      ],
+      "command": "grep -E \"Final: (Sonnet|Haiku)\" \"C:/Users/user/Documents/memory-keeper-plugin/.crabshell/investigation/I063-behavior-verifier-prototype-measurement.md\" && echo \"PASS:final_decision\"",
       "expected": "PASS:",
       "timeout": 5000
     }
