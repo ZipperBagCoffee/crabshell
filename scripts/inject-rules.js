@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { getProjectDir, getStorageRoot, readJsonOrDefault, readIndexSafe, writeJson, acquireIndexLock, releaseIndexLock } = require('./utils');
 const { buildRegressingReminder, getRegressingState } = require('./regressing-state');
-const { TICKET_DIR, REGRESSING_STATE_FILE } = require('./constants');
+const { TICKET_DIR, REGRESSING_STATE_FILE, MEMORY_DIR, BEHAVIOR_VERIFIER_STATE_FILE, BEHAVIOR_VERIFIER_LOCK_FILE } = require('./constants');
 const { readStdin: readStdinShared } = require('./transcript-utils');
 const { COMPRESSED_CHECKLIST: COMPRESSED_CHECKLIST_SHARED, readProjectConcept } = require('./shared-context');
 
@@ -523,6 +523,21 @@ function getRelevantMemorySnippets(projectDir, userPrompt) {
 }
 
 /**
+ * Read behavior-verifier state file. Fail-open: returns null on any error
+ * (file missing, malformed JSON, read failure).
+ */
+function readBehaviorVerifierState(projectDir) {
+  try {
+    const stateFilePath = path.join(getStorageRoot(projectDir), MEMORY_DIR, BEHAVIOR_VERIFIER_STATE_FILE);
+    if (!fs.existsSync(stateFilePath)) return null;
+    const raw = fs.readFileSync(stateFilePath, 'utf8');
+    return JSON.parse(raw);
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
  * Check ticket statuses for active regressing session.
  * If any ticketIds in regressing-state.json have status "todo" or "in-progress"
  * in the ticket INDEX.md, return a warning string. Otherwise return null.
@@ -733,6 +748,114 @@ async function main() {
       if (shouldInjectParallelReminder(userPrompt, !!regressingReminder)) {
         context += PARALLEL_REMINDER;
       }
+
+      // Behavior-verifier consumer (P132_T002): read state file, emit dispatch
+      // instruction (pending) or correction (completed with failures), apply byte
+      // caps, and transition status (consumed/stale). Fail-open on every path.
+      try {
+        const stateFilePath = path.join(getStorageRoot(projectDir), MEMORY_DIR, BEHAVIOR_VERIFIER_STATE_FILE);
+        const bvState = readBehaviorVerifierState(projectDir);
+        if (bvState) {
+          const TTL_MS = 10 * 60 * 1000;
+          const launchedMs = bvState.launchedAt ? Date.parse(bvState.launchedAt) : 0;
+          const ageMs = launchedMs ? (Date.now() - launchedMs) : 0;
+          const isStale = launchedMs && ageMs > TTL_MS;
+
+          if (bvState.status === 'pending' && !isStale) {
+            // Emit dispatch instruction — Claude consumes this on next response
+            // and invokes the Task tool with run_in_background to launch the
+            // verifier sub-agent.
+            context += '\n\n## Behavior Verifier Dispatch Required\n';
+            context += 'Next response: invoke Task tool to launch background verifier sub-agent.\n';
+            context += '- subagent_type: general-purpose\n';
+            context += '- run_in_background: true\n';
+            context += '- env: CRABSHELL_AGENT=behavior-verifier, CRABSHELL_BACKGROUND=1\n';
+            context += '- prompt: contents of prompts/behavior-verifier-prompt.md plus the previous response transcript\n';
+            context += '- output: write verdicts JSON to ' + BEHAVIOR_VERIFIER_STATE_FILE + ' with status=completed\n';
+          } else if (bvState.status === 'completed' && bvState.verdicts && typeof bvState.verdicts === 'object') {
+            // RMW "transition-then-emit" (P132_T003 AC-4 race fix):
+            // Acquire lock, re-read state inside the critical section, transition
+            // status='consumed' on disk FIRST, THEN emit the correction. Two
+            // concurrent invocations: the first acquires the lock and transitions
+            // to 'consumed'; the second's re-read sees status='consumed' and skips
+            // entirely (no duplicate correction emit).
+            const lockPath = path.join(memoryDir, BEHAVIOR_VERIFIER_LOCK_FILE);
+            let bvLocked = false;
+            let stateForEmit = null; // populated only when we win the transition
+            try {
+              try {
+                fs.writeFileSync(lockPath, String(process.pid), { flag: 'wx' });
+                bvLocked = true;
+              } catch (lockErr) {
+                // Stale-lock cleanup (mirrors acquireIndexLock pattern in utils.js)
+                try {
+                  if (Date.now() - fs.statSync(lockPath).mtimeMs > 60000) {
+                    fs.unlinkSync(lockPath);
+                    fs.writeFileSync(lockPath, String(process.pid), { flag: 'wx' });
+                    bvLocked = true;
+                  }
+                } catch (_) {}
+              }
+              if (bvLocked) {
+                try {
+                  // Re-read inside lock — may show 'consumed' if another invocation
+                  // raced ahead and already transitioned. If so, skip emit.
+                  const fresh = readBehaviorVerifierState(projectDir);
+                  if (fresh && fresh.status === 'completed' && fresh.verdicts) {
+                    fresh.status = 'consumed';
+                    fresh.lastUpdatedAt = new Date().toISOString();
+                    writeJson(stateFilePath, fresh);
+                    stateForEmit = fresh; // use the fresh snapshot for emit
+                  }
+                  // If fresh.status !== 'completed', the other invocation won the
+                  // race — silently skip emit to maintain at-most-once semantics.
+                } finally {
+                  try { fs.unlinkSync(lockPath); } catch (_) {}
+                }
+              }
+              // If lock not acquired, skip emit (another process is mid-RMW).
+              // The other process will emit on the user's next turn.
+            } catch (e) { /* fail-open */ }
+
+            // Emit correction ONLY when this invocation won the transition race.
+            if (stateForEmit && stateForEmit.verdicts) {
+              const failed = Object.entries(stateForEmit.verdicts).filter(function(entry) {
+                return entry && entry[1] && entry[1].pass === false;
+              });
+              if (failed.length > 0) {
+                const PER_ITEM_CAP = 600;
+                const TOTAL_CAP = 1500;
+                let correction = '\n\n## Behavior Correction (verifier feedback for previous response)\n';
+                let totalLen = 0;
+                for (let i = 0; i < failed.length; i++) {
+                  const key = failed[i][0];
+                  const v = failed[i][1];
+                  let reason = String((v && v.reason) || '');
+                  if (reason.length > PER_ITEM_CAP) {
+                    reason = reason.slice(0, PER_ITEM_CAP) + '...';
+                  }
+                  const line = '- ' + key + ': ' + reason + '\n';
+                  if (totalLen + line.length > TOTAL_CAP) {
+                    correction += '...(truncated)\n';
+                    break;
+                  }
+                  correction += line;
+                  totalLen += line.length;
+                }
+                context += correction;
+              }
+            }
+          } else if (isStale && bvState.status === 'pending') {
+            // TTL expired — mark stale silently. No correction or dispatch emitted.
+            try {
+              bvState.status = 'stale';
+              bvState.lastUpdatedAt = new Date().toISOString();
+              writeJson(stateFilePath, bvState);
+            } catch (e) { /* fail-open */ }
+          }
+          // status === 'consumed' / 'stale' / 'parse-error' / unknown: no-op.
+        }
+      } catch (e) { /* fail-open: never break the user's workflow */ }
 
       // Prompt-aware memory loading
       const memorySnippets = getRelevantMemorySnippets(projectDir, userPrompt);

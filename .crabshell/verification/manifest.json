@@ -1,8 +1,12 @@
 {
   "projectType": "Node.js CLI (Claude Code plugin hooks)",
   "created": "2026-03-28T08:20:00Z",
-  "updated": "2026-03-29T00:00:00Z",
-  "tools": { "build": null, "run": null, "test": null },
+  "updated": "2026-04-26T06:11:15.074Z",
+  "tools": {
+    "build": null,
+    "run": null,
+    "test": null
+  },
   "entries": [
     {
       "id": "AC-1",
@@ -46,9 +50,9 @@
     },
     {
       "id": "AC-6",
-      "ia": "version 21.79.0 (current)",
+      "ia": "version 21.80.0 (current)",
       "type": "indirect",
-      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const v=JSON.parse(require('fs').readFileSync('C:/Users/user/Documents/memory-keeper-plugin/.claude-plugin/plugin.json','utf8')).version;console.log(v==='21.79.0'?'PASS:'+v:'FAIL:'+v)\"",
+      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const v=JSON.parse(require('fs').readFileSync('C:/Users/user/Documents/memory-keeper-plugin/.claude-plugin/plugin.json','utf8')).version;console.log(v==='21.80.0'?'PASS:'+v:'FAIL:'+v)\"",
       "expected": "PASS:",
       "timeout": 5000
     },
@@ -116,6 +120,61 @@
       "level": "L1",
       "type": "direct",
       "command": "\"C:/Program Files/nodejs/node.exe\" -e \"try{JSON.parse(require('fs').readFileSync('C:/Users/user/Documents/memory-keeper-plugin/hooks/hooks.json','utf8'));console.log('PASS:valid_json')}catch(e){console.log('FAIL:'+e.message)}\"",
+      "expected": "PASS:",
+      "timeout": 5000
+    },
+    {
+      "id": "V006",
+      "ia": "behavior-verifier.js Stop hook — env guards, length bypass, clarification bypass, state write, fail-open",
+      "level": "L1",
+      "type": "direct",
+      "steps": [
+        "Run scripts/_test-behavior-verifier-stop.js with sandboxed CLAUDE_PROJECT_DIR per case",
+        "Each of 8 cases must PASS (baseline, 3 env guards, length, clarification, malformed, ENOTDIR)"
+      ],
+      "command": "\"C:/Program Files/nodejs/node.exe\" C:/Users/user/Documents/memory-keeper-plugin/scripts/_test-behavior-verifier-stop.js",
+      "expected": "8 passed",
+      "observation": null,
+      "timeout": 30000
+    },
+    {
+      "id": "V007",
+      "ia": "inject-rules.js behavior-verifier consumer — pending dispatch, completed correction, RMW transition-then-emit race, byte cap, TTL stale, fail-open",
+      "level": "L1",
+      "type": "direct",
+      "steps": [
+        "Run scripts/_test-behavior-verifier-consumer.js with sandboxed CLAUDE_PROJECT_DIR per case",
+        "Each of 10 cases must PASS (missing/malformed/pending TTL/completed/all-pass/consumed/byte caps/race)"
+      ],
+      "command": "\"C:/Program Files/nodejs/node.exe\" C:/Users/user/Documents/memory-keeper-plugin/scripts/_test-behavior-verifier-consumer.js",
+      "expected": "10 passed",
+      "observation": null,
+      "timeout": 30000
+    },
+    {
+      "id": "V008",
+      "ia": "sycophancy-guard verification-claim path warn-only (P132_T002 / D102 IA-4)",
+      "level": "L1",
+      "type": "direct",
+      "steps": [
+        "Run scripts/_test-sycophancy-claim-detection.js — affected cases assert exit 0 + [BEHAVIOR-WARN] stderr",
+        "All 32 cases must PASS (warn-only flips for verification-claim, blocking preserved for other branches)"
+      ],
+      "command": "\"C:/Program Files/nodejs/node.exe\" C:/Users/user/Documents/memory-keeper-plugin/scripts/_test-sycophancy-claim-detection.js",
+      "expected": "32 passed",
+      "observation": null,
+      "timeout": 30000
+    },
+    {
+      "id": "V009",
+      "ia": "I063 prototype measurement document exists (P132_T003 AC-1 + AC-2 deliverable)",
+      "level": "L2",
+      "type": "indirect",
+      "steps": [
+        "Read .crabshell/investigation/I063-behavior-verifier-prototype-measurement.md",
+        "Confirm 5-metric table + Decision section + Provisional Sonnet recommendation"
+      ],
+      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const f=require('fs').readFileSync('C:/Users/user/Documents/memory-keeper-plugin/.crabshell/investigation/I063-behavior-verifier-prototype-measurement.md','utf8');const ok=f.includes('parse_rate')&&f.includes('verdict_consistency')&&f.includes('fp_rate_clarification')&&f.includes('token_cost')&&f.includes('latency_p50_ms')&&f.includes('Provisional');console.log(ok?'PASS:I063_complete':'FAIL:I063_incomplete')\"",
       "expected": "PASS:",
       "timeout": 5000
     }

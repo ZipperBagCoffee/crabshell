@@ -1,5 +1,6 @@
 'use strict';
 
+const fs = require('fs');
 const path = require('path');
 const { readStdin } = require('./transcript-utils');
 const { isRegressingActive, isLightWorkflowActive, getWaCount } = require('./regressing-loop-guard');
@@ -40,6 +41,28 @@ async function main() {
 
   const waCount = getWaCount();
   if (waCount > 0) process.exit(0);
+
+  // P132_T003 AC-8 dispatch path fix:
+  // When the ticketing skill is active and the WA was sub-agent-dispatched
+  // directly by the harness (parent's Task call did not propagate through
+  // the project's PreToolUse hook chain — wa-count-pretool.js could not
+  // pre-increment), waCount stays at 0 even though a legitimate WA is
+  // running. Treat ticketing-active + sub-agent-launched as a non-collapse.
+  try {
+    const skillActivePath = path.join(getProjectDir(), '.crabshell', 'memory', 'skill-active.json');
+    if (fs.existsSync(skillActivePath)) {
+      const sa = JSON.parse(fs.readFileSync(skillActivePath, 'utf8'));
+      const ttl = (sa && sa.ttl) || 15 * 60 * 1000;
+      const fresh = sa && sa.activatedAt && (Date.now() - new Date(sa.activatedAt).getTime() < ttl);
+      const isTicketing = fresh && sa && sa.skill === 'ticketing';
+      if (isTicketing) {
+        // Ticketing skill is the dispatcher; first source-file Write/Edit by a
+        // dispatched WA is expected. Allow.
+        process.stderr.write('[ROLE_COLLAPSE_GUARD] Allowing: ticketing skill-active dispatch path (waCount=0 expected)\n');
+        process.exit(0);
+      }
+    }
+  } catch (_) { /* fail-open: continue to standard block */ }
 
   const shortPath = filePath.split('/').slice(-2).join('/');
   const output = {

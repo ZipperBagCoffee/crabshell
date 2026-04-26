@@ -795,13 +795,14 @@ function handleStop(hookData) {
     } else {
       tierMsg = 'Only structural commands (grep/read) found — no test execution.';
     }
-    const output = {
-      decision: "block",
-      reason: `Verification claim detected: '${claimResult.claim}' [tier: ${claimResult.tier}]. ${tierMsg} Before claiming verification: (1) Run actual tests or execute the code, (2) Show the test output, (3) Then state verification results WITH evidence. A verification claim without execution output leaves the gap open.${pressureHint(pLevel)}`
-    };
-    process.stderr.write(`[SYCOPHANCY_GUARD] Blocked verification claim: '${claimResult.claim}' tier=${claimResult.tier} pressure=${pLevel}\n`);
-    console.log(JSON.stringify(output));
-    process.exit(2);
+    // Warn-only (P132_T002 / D102 IA-4): verification-claim detection emits a
+    // warning but does not block. The behavior-verifier sub-agent (Stop hook
+    // launches it; UserPromptSubmit consumes the verdict) retroactively
+    // corrects in the next turn. This narrowing is scoped to L799 only —
+    // other Stop branches (context-length, too-good P/O/G, oscillation,
+    // sycophancy) and PreToolUse retain their blocking behavior.
+    process.stderr.write(`[BEHAVIOR-WARN] Verification claim detected without behavioral evidence: '${claimResult.claim}' [tier=${claimResult.tier}] pressure=${pLevel}. (warn-only — sub-agent verifier will retroactively correct in next turn)\n`);
+    process.exit(0);
   }
 
   // Step 1.5: Too-good P/O/G check — all Gap values None/없음/N/A

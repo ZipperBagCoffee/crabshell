@@ -34,6 +34,8 @@ module.exports = {
   SKILL_ACTIVE_FILE: 'skill-active.json',
   DOC_WATCHDOG_FILE: 'doc-watchdog.json',
   WA_COUNT_FILE: 'wa-count.json',
+  BEHAVIOR_VERIFIER_STATE_FILE: 'behavior-verifier-state.json',
+  BEHAVIOR_VERIFIER_LOCK_FILE: 'verifier.lock',
 
   // Doc-watchdog threshold
   DOC_WATCHDOG_THRESHOLD: 5,
