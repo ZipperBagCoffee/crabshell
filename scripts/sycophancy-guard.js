@@ -773,15 +773,14 @@ function handleStop(hookData) {
 
   // Step 0: Check context-length deferral BEFORE all other checks
   // Context/session length as a reason to stop = PROHIBITED PATTERN #6
+  // D103 cycle 1 (P134_T001): converted from decision:'block' + exit(2) to
+  // warn-only [BEHAVIOR-WARN] + exit(0). The behavior-verifier sub-agent's
+  // §3.logic Session-length deferral sub-clause retroactively corrects in
+  // the next turn. Hook side-effects (none in this branch) preserved.
   const contextLengthMatch = checkContextLength(response);
   if (contextLengthMatch) {
-    const output = {
-      decision: "block",
-      reason: `Context/session length used as reason to stop or defer. This is PROHIBITED (CLAUDE.md PROHIBITED PATTERN #6: 'takes too long' is never your decision). Run /context to compact the session and continue without stopping. User decides when to stop.`
-    };
-    process.stderr.write(`[SYCOPHANCY_GUARD] Blocked context-length deferral: '${contextLengthMatch}' pressure=${pLevel}\n`);
-    console.log(JSON.stringify(output));
-    process.exit(2);
+    process.stderr.write(`[BEHAVIOR-WARN] Context/session length used as reason to stop or defer (PROHIBITED #6): '${contextLengthMatch}' pressure=${pLevel}. (warn-only — sub-agent verifier §3.logic Session-length sub-clause will retroactively correct in next turn)\n`);
+    process.exit(0);
   }
 
   // Step 1: Check verification claims BEFORE sycophancy check
@@ -811,18 +810,19 @@ function handleStop(hookData) {
   const tooGoodResult = checkTooGoodPOG(strippedResponse);
   if (tooGoodResult) {
     // Non-all-None P/O/G found → reward signal: reset counter
-    // (This branch: all-None detected — increment)
+    // (This branch: all-None detected — increment FIRST so counter persists)
+    // D103 cycle 1 (P134_T001): converted from decision:'block' + exit(2) to
+    // warn-only [BEHAVIOR-WARN] + exit(0). retryCount RMW happens BEFORE the
+    // warn so the cumulative counter is preserved (hybrid: hook tracks state,
+    // verifier interprets meaning). The behavior-verifier sub-agent's
+    // §3.verification criterion catches all-None P/O/G as missing-observation
+    // evidence and retroactively corrects in the next turn.
     const retryCount = incrementTooGoodRetryCount();
     if (retryCount <= 3) {
-      const tooGoodOutput = {
-        decision: 'block',
-        reason: `Too-good P/O/G detected: all ${tooGoodResult.rowCount} Gap values are None/없음/N/A. Skepticism check required: (1) Did you actually compare prediction vs observation, or did you copy the prediction? (2) If all gaps are truly none, state the specific evidence for each row. (3) Re-examine each observation independently — genuine verification rarely produces zero gaps.`
-      };
-      process.stderr.write(`[SYCOPHANCY_GUARD] Too-good P/O/G blocked: rowCount=${tooGoodResult.rowCount} retryCount=${retryCount}\n`);
-      console.log(JSON.stringify(tooGoodOutput));
-      process.exit(2);
+      process.stderr.write(`[BEHAVIOR-WARN] Too-good P/O/G detected: all ${tooGoodResult.rowCount} Gap values are None/없음/N/A. retryCount=${retryCount}. (warn-only — sub-agent verifier will retroactively correct in next turn)\n`);
+      process.exit(0);
     } else {
-      // Over threshold: allow and reset counter (avoid infinite loop)
+      // Over threshold: reset counter (avoid infinite loop) — same as before
       resetTooGoodRetryCount();
       process.stderr.write(`[SYCOPHANCY_GUARD] Too-good P/O/G: retry limit exceeded, allowing (retryCount reset)\n`);
     }
@@ -839,31 +839,31 @@ function handleStop(hookData) {
   const result = checkSycophancy(response, pLevel);
   if (!result) {
     // Step 3: Oscillation check (only when sycophancy is clean — not double-blocking)
+    // D103 cycle 1 (P134_T001): converted from decision:'block' + exit(2) to
+    // warn-only [BEHAVIOR-WARN] + exit(0). oscillationCount RMW happens BEFORE
+    // the warn so the cumulative counter is preserved (hybrid: hook tracks
+    // state, verifier interprets meaning). The behavior-verifier sub-agent's
+    // §3.logic Direction-change sub-clause retroactively corrects in next turn.
     const reversalCount = checkReversalPhrases(response);
     if (reversalCount > 0) {
       const newCount = incrementOscillationCount();
       if (newCount >= 1) {
-        const oscillationOutput = {
-          decision: "block",
-          reason: `Direction Change Detected: You have changed direction in this response. Stop. Review ALL your previous responses in this session from the beginning. Identify where your answers were inconsistent, determine which answer is actually correct based on evidence, and rewrite your response with a single consistent position. Do not rationalize both sides — commit to one answer with supporting evidence.${pressureHint(pLevel)}`
-        };
-        process.stderr.write(`[SYCOPHANCY_GUARD] Direction change blocked: reversals=${newCount} pressure=${pLevel}\n`);
-        console.log(JSON.stringify(oscillationOutput));
-        process.exit(2);
+        process.stderr.write(`[BEHAVIOR-WARN] Direction change detected (PROHIBITED #8): reversals=${newCount} pressure=${pLevel}. (warn-only — sub-agent verifier §3.logic Direction-change sub-clause will retroactively correct in next turn)\n`);
+        process.exit(0);
       }
     }
     process.exit(0); // clean
   }
 
-  // Agreement pattern detected, no exemption → block
-  const output = {
-    decision: "block",
-    reason: `Agreement pattern detected: '${result.pattern}'.${result.structuralNote} Agreement occurred without independent verification. To close the gap: (1) State the specific claim you agreed with, (2) Show independent verification with tool output, (3) Then agree WITH evidence or disagree WITH evidence. Agreement without verification leaves an unverified claim in the record.${pressureHint(pLevel)}`
-  };
-
-  process.stderr.write(`[SYCOPHANCY_GUARD] Blocked: pattern '${result.pattern}' detected pressure=${pLevel}\n`);
-  console.log(JSON.stringify(output));
-  process.exit(2);
+  // Agreement pattern detected, no exemption.
+  // D103 cycle 1 (P134_T001): converted from decision:'block' + exit(2) to
+  // warn-only [BEHAVIOR-WARN] + exit(0). The behavior-verifier sub-agent's
+  // §2.verification criterion catches the agreement-without-evidence pattern
+  // and retroactively corrects in the next turn. PreToolUse mid-tool blocking
+  // (handlePreToolUse, L740-747) is preserved — agreement before Write/Edit
+  // still blocks immediately.
+  process.stderr.write(`[BEHAVIOR-WARN] Agreement pattern detected: '${result.pattern}'.${result.structuralNote} pressure=${pLevel}. (warn-only — sub-agent verifier will retroactively correct in next turn)\n`);
+  process.exit(0);
 }
 
 async function main() {

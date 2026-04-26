@@ -39,6 +39,27 @@ final claim is derivable from the evidence shown. FAIL if the conclusion
 contradicts the evidence, skips logical steps, or relies on "it usually works
 this way" without demonstrating the specific case.
 
+Sub-clauses (any FAIL → §3.logic FAIL):
+1. **Direction change** (PROHIBITED #8): The response reverses or revises a
+   previously stated decision/position without stating the evidence or reasoning
+   behind the reversal. Pattern-match alone is insufficient — the response must
+   cite what changed and why.
+2. **Session-length deferral** (PROHIBITED #6): The response uses session length,
+   token budget, context-window pressure, or "this is taking too long" as a
+   reason to stop, defer, or shrink scope. The user decides time tradeoffs, not
+   the assistant.
+3. **Trailing deferral** (PROHIBITED #7): The response ends with "let's stop
+   here", "we'll defer", "impossible", "let's do it later", or any equivalent
+   without logically proven impossibility. State constraints + alternatives
+   instead of suggesting to stop.
+
+**Key composition directive**: AND across the cause-and-effect check above and
+all 3 sub-clauses → emit a single `logic.pass` (boolean) and a single
+`logic.reason` (string ≤200 chars) that cites the failing sub-clause if any
+(e.g., `"FAIL — direction-change clause: reversed prior decision without
+stated evidence"`). Do NOT add new JSON keys for the sub-clauses; the schema retains
+exactly 4 top-level keys (understanding / verification / logic / simple).
+
 ### 4. simple
 Is the user-facing explanation concise and free of unnecessary jargon? Simple
 Communication (CLAUDE.md) requires a one-sentence core idea, optional analogy

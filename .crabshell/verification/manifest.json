@@ -1,7 +1,7 @@
 {
   "projectType": "Node.js CLI (Claude Code plugin hooks)",
   "created": "2026-03-28T08:20:00Z",
-  "updated": "2026-04-26T07:00:00.000Z",
+  "updated": "2026-04-26T10:00:00.000Z",
   "tools": {
     "build": null,
     "run": null,
@@ -50,9 +50,9 @@
     },
     {
       "id": "AC-6",
-      "ia": "version 21.80.0 (current)",
+      "ia": "version 21.81.0 (current)",
       "type": "indirect",
-      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const v=JSON.parse(require('fs').readFileSync('C:/Users/user/Documents/memory-keeper-plugin/.claude-plugin/plugin.json','utf8')).version;console.log(v==='21.80.0'?'PASS:'+v:'FAIL:'+v)\"",
+      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const v=JSON.parse(require('fs').readFileSync('C:/Users/user/Documents/memory-keeper-plugin/.claude-plugin/plugin.json','utf8')).version;console.log(v==='21.81.0'?'PASS:'+v:'FAIL:'+v)\"",
       "expected": "PASS:",
       "timeout": 5000
     },
@@ -153,15 +153,15 @@
     },
     {
       "id": "V008",
-      "ia": "sycophancy-guard verification-claim path warn-only (P132_T002 / D102 IA-4)",
+      "ia": "sycophancy-guard verification-claim + 4 Stop branches warn-only (P132_T002 / D102 IA-4 / D103 P134_T001 cycle 1)",
       "level": "L1",
       "type": "direct",
       "steps": [
         "Run scripts/_test-sycophancy-claim-detection.js — affected cases assert exit 0 + [BEHAVIOR-WARN] stderr",
-        "All 32 cases must PASS (warn-only flips for verification-claim, blocking preserved for other branches)"
+        "All 35 cases must PASS — D103 cycle 1 added 3 new testWarn cases (oscillation 15a / too-good 15b / context-length 15c) and converted case 15 from expectBlock=true to testWarn"
       ],
       "command": "\"C:/Program Files/nodejs/node.exe\" C:/Users/user/Documents/memory-keeper-plugin/scripts/_test-sycophancy-claim-detection.js",
-      "expected": "32 passed",
+      "expected": "35 passed",
       "observation": null,
       "timeout": 30000
     },
@@ -189,6 +189,20 @@
       ],
       "command": "grep -E \"Final: (Sonnet|Haiku)\" \"C:/Users/user/Documents/memory-keeper-plugin/.crabshell/investigation/I063-behavior-verifier-prototype-measurement.md\" && echo \"PASS:final_decision\"",
       "expected": "PASS:",
+      "timeout": 5000
+    },
+    {
+      "id": "V011",
+      "ia": "D103 cycle 1 — sycophancy 4 Stop branches warn-only + verifier prompt §3.logic 3 sub-clause (P134_T001)",
+      "level": "L3",
+      "type": "indirect",
+      "steps": [
+        "Read prompts/behavior-verifier-prompt.md and confirm 3 sub-clause keywords ('Direction change', 'Session-length', 'Trailing deferral') match exactly 3 lines",
+        "Read scripts/sycophancy-guard.js and confirm process.exit(2) appears exactly once (PreToolUse handler L747 only — 4 Stop branches converted to warn-only)"
+      ],
+      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const fs=require('fs');const p=fs.readFileSync('C:/Users/user/Documents/memory-keeper-plugin/prompts/behavior-verifier-prompt.md','utf8');const subClauseHits=(p.match(/Direction change|Session-length|Trailing deferral/g)||[]).length;const s=fs.readFileSync('C:/Users/user/Documents/memory-keeper-plugin/scripts/sycophancy-guard.js','utf8');const exit2Hits=(s.match(/process\\.exit\\(2\\)/g)||[]).length;const ok=subClauseHits===3&&exit2Hits===1;console.log(ok?'PASS:cycle1-absorption':'FAIL:subClauseHits='+subClauseHits+' exit2Hits='+exit2Hits)\"",
+      "expected": "PASS:",
+      "observation": null,
       "timeout": 5000
     }
   ]

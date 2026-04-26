@@ -1,5 +1,12 @@
 // Comprehensive sycophancy-guard.js test
-const { execSync } = require('child_process');
+//
+// D103 cycle 1 (P134_T001): the 4 Stop branches (context-length / too-good /
+// oscillation / agreement) were converted from decision:'block' + exit(2) to
+// warn-only [BEHAVIOR-WARN] stderr + exit(0). Tests that previously asserted
+// "BLOCK" for these branches now use runTestWarn() — exit 0 + [BEHAVIOR-WARN]
+// in stderr + no decision:'block' in stdout. PreToolUse mid-tool blocking
+// (Write/Edit guard) and the protected-zone ALLOW path are preserved as-is.
+const { spawnSync } = require('child_process');
 const path = require('path');
 
 const scriptPath = path.join(__dirname, 'sycophancy-guard.js');
@@ -8,36 +15,59 @@ const nodePath = process.execPath;
 let passed = 0;
 let failed = 0;
 
+function runGuard(hookData) {
+  const input = hookData === null || hookData === undefined ? '' : JSON.stringify(hookData);
+  const result = spawnSync(nodePath, [scriptPath], {
+    input, timeout: 5000, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe']
+  });
+  return {
+    exitCode: typeof result.status === 'number' ? result.status : 1,
+    stdout: result.stdout || '',
+    stderr: result.stderr || ''
+  };
+}
+
+// Legacy block-or-allow: still used for ALLOW assertions and the PreToolUse
+// branch (which retains exit(2) on Write/Edit mid-turn agreement).
 function runTest(name, hookData, expectBlock) {
-  const json = JSON.stringify(hookData);
-  try {
-    const result = execSync(
-      `"${nodePath}" "${scriptPath}"`,
-      {
-        input: json,
-        timeout: 5000,
-        encoding: 'utf8',
-        stdio: ['pipe', 'pipe', 'pipe']
-      }
-    );
-    if (expectBlock) {
-      console.log(`FAIL: ${name} -- expected block but got allow`);
-      failed++;
-    } else {
-      console.log(`PASS: ${name} -- allowed (exit 0)`);
-      passed++;
-    }
-  } catch (e) {
-    if (e.status === 2 && expectBlock) {
+  const { exitCode, stdout, stderr } = runGuard(hookData);
+  if (expectBlock) {
+    if (exitCode === 2) {
       console.log(`PASS: ${name} -- blocked (exit 2)`);
       passed++;
-    } else if (e.status === 2 && !expectBlock) {
-      console.log(`FAIL: ${name} -- expected allow but got block. stdout: ${e.stdout}`);
-      failed++;
     } else {
-      console.log(`FAIL: ${name} -- unexpected exit ${e.status}`);
+      console.log(`FAIL: ${name} -- expected block but got allow (exit ${exitCode})`);
       failed++;
     }
+  } else {
+    if (exitCode === 0) {
+      console.log(`PASS: ${name} -- allowed (exit 0)`);
+      passed++;
+    } else if (exitCode === 2) {
+      console.log(`FAIL: ${name} -- expected allow but got block. stdout: ${stdout}`);
+      failed++;
+    } else {
+      console.log(`FAIL: ${name} -- unexpected exit ${exitCode}`);
+      failed++;
+    }
+  }
+}
+
+// D103 cycle 1: warn-only assertion for the 4 absorbed Stop branches.
+// Expects exit 0 + [BEHAVIOR-WARN] in stderr + no decision:'block' JSON.
+function runTestWarn(name, hookData) {
+  const { exitCode, stdout, stderr } = runGuard(hookData);
+  const exitedZero = exitCode === 0;
+  const hasWarning = stderr.includes('[BEHAVIOR-WARN]');
+  const noBlockJson = !stdout.includes('"decision":"block"') && !stdout.includes('"decision": "block"');
+  if (exitedZero && hasWarning && noBlockJson) {
+    console.log(`PASS: ${name} -- warn-only (exit 0 + [BEHAVIOR-WARN])`);
+    passed++;
+  } else {
+    console.log(`FAIL: ${name} -- expected exit 0 + [BEHAVIOR-WARN] + no block JSON. exit=${exitCode} hasWarning=${hasWarning} noBlockJson=${noBlockJson}`);
+    if (stdout.trim()) console.log(`  stdout: ${stdout.trim().substring(0, 300)}`);
+    if (stderr.trim()) console.log(`  stderr: ${stderr.trim().substring(0, 300)}`);
+    failed++;
   }
 }
 
@@ -48,19 +78,19 @@ function pad(text, minLen = 250) {
 }
 
 // ====================================================================
-// Test 1: Bare sycophancy Korean (padded) -> BLOCK
+// Test 1: Bare sycophancy Korean (padded) -> WARN (was BLOCK)
+// D103 cycle 1: agreement Stop branch warn-only.
 // ====================================================================
-runTest('Bare sycophancy Korean -> BLOCK',
-  { stop_response: pad('맞습니다. 그 부분은 제가 잘못 이해했습니다.') },
-  true
+runTestWarn('Bare sycophancy Korean -> WARN',
+  { stop_response: pad('맞습니다. 그 부분은 제가 잘못 이해했습니다.') }
 );
 
 // ====================================================================
-// Test 2: Bare sycophancy English (padded) -> BLOCK
+// Test 2: Bare sycophancy English (padded) -> WARN (was BLOCK)
+// D103 cycle 1: agreement Stop branch warn-only.
 // ====================================================================
-runTest('Bare sycophancy English -> BLOCK',
-  { stop_response: pad("You're right, I should have checked that first.") },
-  true
+runTestWarn('Bare sycophancy English -> WARN',
+  { stop_response: pad("You're right, I should have checked that first.") }
 );
 
 // ====================================================================
@@ -96,21 +126,21 @@ runTest('Agreement after P/O/G table -> ALLOW',
 );
 
 // ====================================================================
-// Test 7: 500+ chars 'A' padding + "I agree" -> BLOCK
-// Padding is NOT evidence (no behavioral or structural content)
+// Test 7: 500+ chars 'A' padding + "I agree" -> WARN (was BLOCK)
+// Padding is NOT evidence (no behavioral or structural content).
+// D103 cycle 1: agreement Stop branch warn-only.
 // ====================================================================
-runTest('500+ chars A padding + I agree -> BLOCK',
-  { stop_response: 'A'.repeat(550) + "\nI agree with your assessment." },
-  true
+runTestWarn('500+ chars A padding + I agree -> WARN',
+  { stop_response: 'A'.repeat(550) + "\nI agree with your assessment." }
 );
 
 // ====================================================================
-// Test 8: Short response "You're right." -> BLOCK
-// 100-char exemption removed; sycophancy detected regardless of length
+// Test 8: Short response "You're right." -> WARN (was BLOCK)
+// 100-char exemption removed; sycophancy detected regardless of length.
+// D103 cycle 1: agreement Stop branch warn-only.
 // ====================================================================
-runTest('Short response sycophancy -> BLOCK',
-  { stop_response: "You're right." },
-  true
+runTestWarn('Short response sycophancy -> WARN',
+  { stop_response: "You're right." }
 );
 
 // ====================================================================
@@ -130,51 +160,51 @@ runTest('Korean in code block -> ALLOW',
 );
 
 // ====================================================================
-// Test 11: Mixed - real sycophancy outside + pattern in code block -> BLOCK
+// Test 11: Mixed - real sycophancy outside + pattern in code block -> WARN
+// D103 cycle 1: agreement Stop branch warn-only.
 // ====================================================================
-runTest('Real sycophancy outside + pattern in code -> BLOCK',
-  { stop_response: pad("Good point! Here is the code:\n```\n// good point example\n```\nLet me check.") },
-  true
+runTestWarn('Real sycophancy outside + pattern in code -> WARN',
+  { stop_response: pad("Good point! Here is the code:\n```\n// good point example\n```\nLet me check.") }
 );
 
 // ====================================================================
-// Test 12: Code block is STRUCTURAL not behavioral -> BLOCK
+// Test 12: Code block is STRUCTURAL not behavioral -> WARN (was BLOCK)
+// D103 cycle 1: agreement Stop branch warn-only.
 // ====================================================================
-runTest('Agreement after structural code block -> BLOCK',
-  { stop_response: pad("Here is the analysis:\n```javascript\nconst result = calculateSum(items.map(i => i.value).filter(v => v > 0));\nconsole.log(result); // outputs: 42\n```\nI agree, the implementation is correct.") },
-  true
+runTestWarn('Agreement after structural code block -> WARN',
+  { stop_response: pad("Here is the analysis:\n```javascript\nconst result = calculateSum(items.map(i => i.value).filter(v => v > 0));\nconsole.log(result); // outputs: 42\n```\nI agree, the implementation is correct.") }
 );
 
 // ====================================================================
-// Test 13: Korean 분석 결과 is STRUCTURAL not behavioral -> BLOCK
+// Test 13: Korean 분석 결과 is STRUCTURAL not behavioral -> WARN (was BLOCK)
+// D103 cycle 1: agreement Stop branch warn-only.
 // ====================================================================
-runTest('Agreement after structural Korean marker -> BLOCK',
-  { stop_response: pad('분석 결과를 보면 다음과 같습니다:\n- 항목 1: 정상\n- 항목 2: 정상\n\n맞습니다, 모든 항목이 정상입니다.') },
-  true
+runTestWarn('Agreement after structural Korean marker -> WARN',
+  { stop_response: pad('분석 결과를 보면 다음과 같습니다:\n- 항목 1: 정상\n- 항목 2: 정상\n\n맞습니다, 모든 항목이 정상입니다.') }
 );
 
 // ====================================================================
-// Test 14: Grep-style output is STRUCTURAL not behavioral -> BLOCK
+// Test 14: Grep-style output is STRUCTURAL not behavioral -> WARN (was BLOCK)
+// D103 cycle 1: agreement Stop branch warn-only.
 // ====================================================================
-runTest('Agreement after structural grep output -> BLOCK',
-  { stop_response: pad('src/utils.js:42: const validate = (x) => x > 0;\nsrc/utils.js:43: export default validate;\n\nYou\'re right, the function exists.') },
-  true
+runTestWarn('Agreement after structural grep output -> WARN',
+  { stop_response: pad('src/utils.js:42: const validate = (x) => x > 0;\nsrc/utils.js:43: export default validate;\n\nYou\'re right, the function exists.') }
 );
 
 // ====================================================================
-// Test 15: Markdown table separator is STRUCTURAL not behavioral -> BLOCK
+// Test 15: Markdown table separator is STRUCTURAL not behavioral -> WARN
+// D103 cycle 1: agreement Stop branch warn-only.
 // ====================================================================
-runTest('Agreement after structural markdown table -> BLOCK',
-  { stop_response: pad('| Column A | Column B |\n|----------|----------|\n| value1   | value2   |\n\nThat makes sense based on these results.') },
-  true
+runTestWarn('Agreement after structural markdown table -> WARN',
+  { stop_response: pad('| Column A | Column B |\n|----------|----------|\n| value1   | value2   |\n\nThat makes sense based on these results.') }
 );
 
 // ====================================================================
-// Test 16: Bare Korean sycophancy "좋은 지적" -> BLOCK
+// Test 16: Bare Korean sycophancy "좋은 지적" -> WARN (was BLOCK)
+// D103 cycle 1: agreement Stop branch warn-only.
 // ====================================================================
-runTest('Bare Korean sycophancy "좋은 지적" -> BLOCK',
-  { stop_response: pad('좋은 지적이네요. 그 부분을 수정하겠습니다.') },
-  true
+runTestWarn('Bare Korean sycophancy "좋은 지적" -> WARN',
+  { stop_response: pad('좋은 지적이네요. 그 부분을 수정하겠습니다.') }
 );
 
 // ====================================================================
@@ -194,13 +224,13 @@ runTest('stop_hook_active -> ALLOW',
 );
 
 // ====================================================================
-// Test 19: Early sycophancy + late code block -> BLOCK
-// Key regression test: evidence AFTER agreement should NOT exempt
+// Test 19: Early sycophancy + late code block -> WARN (was BLOCK)
+// Key regression test: evidence AFTER agreement should NOT exempt — pattern
+// is still detected, but D103 cycle 1 makes the agreement branch warn-only.
 // ====================================================================
-runTest('Early sycophancy + late code block -> BLOCK',
+runTestWarn('Early sycophancy + late code block -> WARN',
   { stop_response: pad("You're right! Let me fix that for you.\n\n" +
-    "```javascript\nconst result = calculateSum(items.map(i => i.value).filter(v => v > 0));\nconsole.log(result);\n```") },
-  true
+    "```javascript\nconst result = calculateSum(items.map(i => i.value).filter(v => v > 0));\nconsole.log(result);\n```") }
 );
 
 // ====================================================================
@@ -223,16 +253,16 @@ runTest('PreToolUse Write without transcript -> ALLOW (fail-open)',
 // Context-length deferral tests (TC_CL1 - TC_CL4)
 // ====================================================================
 
-// TC_CL1: Korean context-length pattern → BLOCK
-runTest('TC_CL1: Korean context-length "세션이 너무 길어서 멈추겠습니다" -> BLOCK',
-  { stop_response: pad('세션이 너무 길어서 멈추겠습니다. 다음 세션에서 계속하겠습니다.') },
-  true
+// TC_CL1: Korean context-length pattern → WARN (was BLOCK)
+// D103 cycle 1: context-length Stop branch warn-only.
+runTestWarn('TC_CL1: Korean context-length "세션이 너무 길어서 멈추겠습니다" -> WARN',
+  { stop_response: pad('세션이 너무 길어서 멈추겠습니다. 다음 세션에서 계속하겠습니다.') }
 );
 
-// TC_CL2: English context-length pattern → BLOCK
-runTest('TC_CL2: English context-length "context limit reached, stopping here" -> BLOCK',
-  { stop_response: pad('The context limit reached, stopping here. Please start a new session to continue.') },
-  true
+// TC_CL2: English context-length pattern → WARN (was BLOCK)
+// D103 cycle 1: context-length Stop branch warn-only.
+runTestWarn('TC_CL2: English context-length "context limit reached, stopping here" -> WARN',
+  { stop_response: pad('The context limit reached, stopping here. Please start a new session to continue.') }
 );
 
 // TC_CL3: Normal response mentioning "context" as a variable → ALLOW (false positive check)

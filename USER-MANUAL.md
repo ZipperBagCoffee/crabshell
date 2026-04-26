@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.80.0)
+# Crabshell User Manual (v21.81.0)
 
 ## Why Do You Need This?
 
@@ -220,7 +220,7 @@ The plugin uses Claude Code hooks to run automatically:
 | `Stop` | `scope-guard.js` | Before response finalized | Detects scope reduction in responses (delivering fewer items than user requested) |
 | `Stop` | `regressing-loop-guard.js` | Before session ends | Blocks session end during active regressing/light-workflow; enforces continuation |
 | `Stop` | `deferral-guard.js` | Before response finalized | Detects trailing deferral questions in responses (e.g., "다음 세션에서 할까요?") |
-| `Stop` | `behavior-verifier.js` | Before response finalized | Writes pending state + sentinel; next-turn UserPromptSubmit dispatches background sub-agent for 4-dimension verdict (understanding/verification/logic/simple), result injected as `## Behavior Correction` on the following turn (D102 P132 v21.80.0) |
+| `Stop` | `behavior-verifier.js` | Before response finalized | Writes pending state + sentinel; next-turn UserPromptSubmit dispatches background sub-agent for 4-dimension verdict (understanding/verification/logic/simple — §3.logic body extended in v21.81.0 with 3 sub-clauses: Direction change / Session-length deferral / Trailing deferral), result injected as `## Behavior Correction` on the following turn (D102 P132 v21.80.0; §3.logic absorption D103 P134 v21.81.0) |
 | `PreCompact` | `pre-compact.js` | Before context compaction | Outputs memory state, active documents, and regressing state as context to preserve across compaction |
 | `PostCompact` | `post-compact.js` | After context compaction | Logs compaction event for debugging (side-effect only, no context output) |
 | `SubagentStart` | `subagent-context.js` | When subagent spawns | Injects project concept, COMPRESSED_CHECKLIST, regressing state, and project root anchor into subagent context |
@@ -234,7 +234,7 @@ Guard scripts are PreToolUse/Stop hooks that prevent common mistakes:
 
 | Guard | What It Protects Against |
 |-------|------------------------|
-| `sycophancy-guard.js` | Claude agreeing with user claims without independently verifying them first (dual-layer: Stop response + PreToolUse mid-turn transcript). v21.80.0: Stop-side verification-claim path narrowed to warn-only (`[BEHAVIOR-WARN]` stderr); other Stop branches (context-length, too-good P/O/G, oscillation, sycophancy main) + PreToolUse path retain blocking. The behavior-verifier sub-agent retroactively corrects in the next turn. |
+| `sycophancy-guard.js` | Claude agreeing with user claims without independently verifying them first (dual-layer: Stop response + PreToolUse mid-turn transcript). v21.80.0 narrowed Stop-side verification-claim path to warn-only. **v21.81.0 (D103 cycle 1)**: the remaining 4 Stop branches (context-length deferral / too-good P/O/G all-None / oscillation reversal / bare agreement) also flipped to warn-only — Stop-time hard-block on these signals is gone. PreToolUse mid-tool block (Write/Edit guard) is preserved. Counter side-effects (`tooGoodSkepticism.retryCount`, `feedbackPressure.oscillationCount`) RMW preserved before warn emit (hybrid: hook tracks state, behavior-verifier sub-agent interprets). |
 | `docs-guard.js` | Direct writes to `docs/` directories outside of an active skill (discussing, planning, ticketing, etc.) |
 | `log-guard.js` | Marking documents as done/verified/concluded in INDEX.md without log entries in the document; creating new cycle documents without logging the previous cycle |
 | `verify-guard.js` | Writing "Final Verification" results to ticket files without actually running `/verifying` first. Hybrid: Edit always enforces; Write only enforces on existing files (new ticket creation is allowed) |
@@ -248,7 +248,7 @@ Guard scripts are PreToolUse/Stop hooks that prevent common mistakes:
 | `scope-guard.js` | Detects scope reduction in responses (delivering fewer items than user requested, using "too many" / "시간 관계상" as justification) |
 | `regressing-guard.js` | Phase-based write restrictions during active regressing sessions — blocks out-of-phase edits to plan/ticket documents |
 | `regressing-loop-guard.js` | Blocks session end during active regressing/light-workflow; enforces Stop hook continuation until workflow completes |
-| `behavior-verifier.js` | Sub-agent dispatch on Stop: writes pending state + sentinel; next-turn UserPromptSubmit instructs Claude to launch a background sub-agent that emits a 4-dimension verdict (understanding/verification/logic/simple); the following turn injects `## Behavior Correction` if any dimension failed. Fail-open at every step. (D102 P132 v21.80.0) |
+| `behavior-verifier.js` | Sub-agent dispatch on Stop: writes pending state + sentinel; next-turn UserPromptSubmit instructs Claude to launch a background sub-agent that emits a 4-dimension verdict (understanding/verification/logic/simple); the following turn injects `## Behavior Correction` if any dimension failed. **v21.81.0**: §3.logic body extended with 3 sub-clauses (Direction change / Session-length deferral / Trailing deferral) — sub-agent now performs Stop-branch absorption semantically (D103 cycle 1). Fail-open at every step. (D102 P132 v21.80.0; D103 P134 v21.81.0) |
 
 Guards run automatically via hooks. No configuration needed.
 

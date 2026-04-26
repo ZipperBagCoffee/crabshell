@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.80.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.81.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -339,6 +339,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.81.0 | feat: D103 cycle 1 — sycophancy 4 Stop branches → warn-only + verifier prompt §3.logic 3 sub-clause (P134_T001). `scripts/sycophancy-guard.js` `handleStop` 4 branches (context-length deferral / too-good P/O/G / oscillation / bare agreement) → `[BEHAVIOR-WARN]` stderr + `exit(0)`; PreToolUse handler retained `exit(2)` for Write/Edit mid-tool blocking; counter RMW (`incrementTooGoodRetryCount` / `incrementOscillationCount`) preserved before warn-only emit. `prompts/behavior-verifier-prompt.md` §3.logic body extended with 3 sub-clauses (Direction change PROHIBITED #8 / Session-length deferral #6 / Trailing deferral #7) + key composition directive (single `logic.pass`/`logic.reason`). JSON schema unchanged. Test cascade: `_test-sycophancy-claim-detection.js` case 15 → testWarn + new 15a/15b/15c (oscillation/too-good/context-length); `_test-sycophancy-guard.js` 13 affected cases → `runTestWarn`; `_test-sycophancy-guard-manifest.js` rewritten. `manifest.json` V008 expectation 32→35, new V011 entry (cycle 1 absorption probe), AC-6 21.80.0→21.81.0; total entries 17. 40/40 `_test-*.js` PASS. **Behavioral effect**: 4 absorbed Stop branches no longer hard-block; behavior-verifier sub-agent corrects retroactively on next turn (graceful degradation per I064 Output 4 §"Phase 2"). |
 | 21.80.0 | feat: behavior-verifier sub-agent dispatch architecture (D102 P132 cycle 1) — new `scripts/behavior-verifier.js` Stop hook (B-2 trigger), `inject-rules.js` consumer (dispatch-instruction + correction inject + RMW transition-then-emit), `sycophancy-guard.js` L799-805 warn-only, `prompts/behavior-verifier-prompt.md` 4-criterion evaluation + self-write, `scripts/_prototype-measure.js` measurement scaffolding, `scripts/_test-behavior-verifier-{stop,consumer}.js` 18 behavioral cases, `.crabshell/verification/manifest.json` V006-V009 entries, `.crabshell/investigation/I063-behavior-verifier-prototype-measurement.md`. **Behavioral effect**: verification-claim no longer hard-blocks at Stop; sub-agent verdict retroactively corrects on next turn via `## Behavior Correction` injection (600B/item, 1500B total). |
 | 21.79.0 | feat: NEGATIVE_PATTERNS 욕설-only 축소 + BAILOUT keyword UNLEASH 교체 (W021) — `inject-rules.js` `NEGATIVE_PATTERNS`에서 정정/assessment/논리적-disagreement 패턴 모두 제거, 욕설만 keep. `BAILOUT_KEYWORDS` 영어 키워드 'BAILOUT'→'UNLEASH', '봉인해제' 유지. `pressure-guard.js` L2/L3 메시지 갱신. **행동 효과**: 사용자 정상 정정 표현이 더 이상 pressure escalation 트리거 안 함. W021 100% 수렴 + 229/229 회귀 PASS. |
 | 21.78.4 | fix: NEG 검사 false-positive 차단 (W020) — `inject-rules.js`에 `stripSystemReminders` helper 추가. `detectNegativeFeedback`이 `<system-reminder>...</system-reminder>` 블록을 사전 제거 후 NEGATIVE_PATTERNS 매치. Claude Code가 매 prompt 자동 주입하는 reminder 안 단어(error/wrong/break)에 의한 사용자-무관 압력 상승 차단. WA1+RA1 검증 8/8 IA + 5/5 행동 케이스 + 107/107 회귀 PASS. |
