@@ -122,29 +122,27 @@ function loadMemory(stdinData) {
     try { fs.unlinkSync(waCountPath); } catch {}
   }
 
-  // SessionStart pressure decay — decay to level 1 (not reset to 0)
-  // Level 1 persists so agent stays alert; only normal-prompt decay (in-session) goes below 1
+  // SessionStart: feedbackPressure carries over verbatim (no forced decay).
+  // Per H006 hotfix: previous behavior forced level>1 → 1 ("Level 1 persists so
+  // agent stays alert"), which produced false-positive L1 starts despite no user
+  // negative feedback. Now: level stays at whatever it was (0→0, 1→1, 2→2).
+  // oscillationCount + tooGoodSkepticism still reset on session start (per-session
+  // counters, not user-state carry).
   const pressureIndexPath = path.join(memoryDir, INDEX_FILE);
   const pressureIndex = readJsonOrDefault(pressureIndexPath, {});
-  const needsPressureDecay = pressureIndex.feedbackPressure && pressureIndex.feedbackPressure.level > 1;
   const needsOscillationReset = pressureIndex.feedbackPressure && pressureIndex.feedbackPressure.oscillationCount > 0;
   const needsTooGoodReset = pressureIndex.tooGoodSkepticism && pressureIndex.tooGoodSkepticism.retryCount > 0;
-  if (needsPressureDecay) {
-    pressureIndex.feedbackPressure.level = 1;
-    pressureIndex.feedbackPressure.consecutiveCount = Math.min(1, pressureIndex.feedbackPressure.consecutiveCount);
-    pressureIndex.feedbackPressure.decayCounter = 0;
-  }
   if (needsOscillationReset) {
     pressureIndex.feedbackPressure.oscillationCount = 0;
   }
   if (needsTooGoodReset) {
     pressureIndex.tooGoodSkepticism.retryCount = 0;
   }
-  if (needsPressureDecay || needsOscillationReset || needsTooGoodReset) {
+  if (needsOscillationReset || needsTooGoodReset) {
     const pressureLocked = acquireIndexLock(memoryDir);
     try {
       writeJson(pressureIndexPath, pressureIndex);
-      console.error(`[CRABSHELL] Session start: pressure L${pressureIndex.feedbackPressure.level}, oscillationCount reset to 0, tooGoodSkepticism.retryCount reset to 0`);
+      console.error(`[CRABSHELL] Session start: oscillationCount reset to 0, tooGoodSkepticism.retryCount reset to 0`);
     } catch {} finally {
       if (pressureLocked) releaseIndexLock(memoryDir);
     }

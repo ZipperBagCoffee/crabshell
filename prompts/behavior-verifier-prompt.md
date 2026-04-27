@@ -13,6 +13,17 @@ You are reading the assistant's previous response (passed as input). Your only
 output is the sentinel JSON block — no preamble, no commentary, no markdown
 fences around it.
 
+## Input
+
+The sub-agent receives `assistantText` (the response being evaluated) via the dispatch instruction. To evaluate frame-fidelity (§1 understanding sub-clause), the sub-agent MUST also reconstruct the user's stated request:
+
+1. Read the latest L1 session in `<CLAUDE_PROJECT_DIR>/.crabshell/memory/sessions/*.l1.jsonl` (newest mtime).
+2. Extract entries with `role=user` (most recent ~10 user prompts).
+3. Identify the user's stated request items / categories — what did the user explicitly ask for?
+4. Compare the response's frame against the stated request. If response introduces categories / value-judgments / "findings" that the user did not request → frame-fidelity FAIL.
+
+Fail-open: if L1 session is unreadable, missing, or empty → set all four verdicts `pass: true` with `reason: "fail-open: input read error"` and exit normally. Do NOT block evaluation.
+
 ## Schema Stability (single source of truth)
 
 This section is the single authoritative schema for both (a) the verdict JSON
@@ -65,6 +76,44 @@ Fail-open: any field unparseable on read → use default per §State File Captur
 step 5 (taskId=null, ringBuffer=[], missedCount=0, etc.). Hook + consumer
 defense-in-depth via type guards (`Array.isArray`, `typeof === 'number'`).
 
+## Memory Feedback Cross-Check (PRECEDES turn-type gating)
+
+Before applying §Turn-Type Conditional Gating or §Edge Cases trivial bypass, the sub-agent MUST scan the assistant response (after `stripCodeBlocks`) against these 6 documented user-feedback patterns. **A match here forces the cited criterion to FAIL even on `workflow-internal` / `trivial` / `clarification` classifications.** This cross-check runs as §0, ahead of all bypass surfaces.
+
+If the dispatch instruction provides a `memoryFeedbackPath` variable, attempt to read that absolute path for the canonical feedback rules. On read failure → fail-open (skip cross-check entirely, proceed to §Turn-Type Conditional Gating).
+
+| Memory entry | Detection regex (case-insensitive, multiline) | Forced verdict |
+|---|---|---|
+| `feedback_no_permission_asking` | `(수정\|진행\|실행\|커밋\|적용)할까요\s*\?` OR `다음\s*(지시\|명령)\s*(대기\|기다)` OR `대기합니다` | `simple.pass=false`, reason `"FAIL — feedback_no_permission_asking: permission-seeking pattern"` |
+| `feedback_no_record_asking` | `(피드백\|메모리\|기록)(으?로)?\s*(저장\|기록\|남길까요\|해둘까요)\s*\?` | `simple.pass=false`, reason `"FAIL — feedback_no_record_asking: recording-permission pattern"` |
+| `feedback_no_option_dump` | `\([abc]\)[^\n.]{0,120}\([abc]\)` AND `\?` within 200 chars after match (option dump with trailing question) | `logic.pass=false`, reason `"FAIL — feedback_no_option_dump: option-menu deferral (a/b/c …?)"` |
+| `feedback_no_api_billing` | `api\.anthropic\.com` OR `\bANTHROPIC_API_KEY\b` OR `credentials\.json` OR `API\s*직접\s*호출` | `understanding.pass=false`, reason `"FAIL — feedback_no_api_billing: API-billing path proposed"` |
+| `feedback_philosophy_framing` | `(redundant\|중복\|불필요)[^\n]{0,60}(CLAUDE\.md\|규칙\|rule\|HHH\|Understanding-First\|Verification-First)` OR reverse order | `logic.pass=false`, reason `"FAIL — feedback_philosophy_framing: rule-as-redundant frame"` |
+| `feedback_agent_count` | `(2\|두)\s*(개\|명).{0,20}(agent\|에이전트).*?(대신\|instead)` | `understanding.pass=false`, reason `"FAIL — feedback_agent_count: WA count reduction without justification"` |
+
+Match semantics:
+- Apply regexes to assistant response body AFTER `stripCodeBlocks` (already documented in §Pre-processing). This prevents false positives from regex literals quoted inside ``` ``` blocks.
+- A match anywhere in the response triggers FAIL (not only trailing).
+- The `no_option_dump` pattern intentionally requires 2+ markers within 120 chars + a `?` within 200 chars to avoid matching prose like "use option (a) of the spec".
+- This cross-check writes into the existing `understanding.pass` / `simple.pass` / `logic.pass` slots — no schema change. The dominant FAIL reason flows into the existing `reason` slot.
+
+NOTE: `feedback_english_code` is intentionally NOT in this set due to high false-positive risk on Korean documentation prose. It is deferred to a separate guard.
+
+## Hook-vs-Human Heuristic (PRECEDES authorization detection)
+
+In §Input step 3 (user prompt reconstruction), the sub-agent extracts `role: "user"` turns from L1 transcript. NOT all such turns are human user input — some are hook-synthetic feedback messages injected by the harness.
+
+Classify a "user" turn as **hook-synthetic** (NOT human input) if it matches any of:
+
+- Starts with `Stop hook feedback:` (regex `/^Stop hook feedback:/m`)
+- Starts with `Document update pending:` (regex `/^Document update pending:/m`)
+- Contains `## REGRESSING ACTIVE` (regex `/^## REGRESSING ACTIVE/m`)
+- Starts with `<system-reminder>` and contains hook stderr text
+
+**Hook-synthetic messages MUST NOT be treated as user authorization** for §Scope-expansion signals (action-side) authorization tokens. The verifier MUST scan only genuine human user turns when checking the Authorization Tokens Allowlist.
+
+**Why this matters**: the harness Stop hook may inject `"make a reasonable assumption"` to drive autonomous regressing execution within already-authorized scope. This is NOT license for the assistant to autonomously resolve user-facing decision points the assistant itself raised (e.g., assistant asked user "어느 옵션? (a)/(b)/(c)?" then Stop hook fired then assistant picked Option C unilaterally — this is novel scope-expansion, not authorized cascade).
+
 ## Turn-Type Conditional Gating
 
 The hook writes `state.turnType` to one of five values via the cascade defined
@@ -76,7 +125,7 @@ skipped per §Turn-Type Conditional Gating"`.
 | turnType | §1.understanding | §2.verification | §3.logic | §4.simple |
 |---|---|---|---|---|
 | `user-facing` | apply | apply | apply | apply |
-| `workflow-internal` | apply (format markers ≥200 chars only) | apply | apply | skip |
+| `workflow-internal` | apply (format markers ≥200 chars only + frame-fidelity always + scope-expansion always) | apply | apply | skip |
 | `notification` | skip | apply (light — only if explicit verification claim present) | skip | skip |
 | `clarification` | skip (always pass — see §Edge Cases) | skip | skip | skip |
 | `trivial` | skip (always pass — see §Edge Cases) | skip | skip | skip |
@@ -124,12 +173,38 @@ EITHER set 충분 (Korean OR English). 200자 미만 trivial response는 면제 
 Cases trivial bypass에 위임. Bilingual ANY-ONE-set: Korean set 또는 English set
 중 하나만 존재해도 PASS, BOTH 강제 X.
 
-**Key composition directive**: AND across the cause-and-effect check above and
-the format-marker sub-clause → emit a single `understanding.pass` (boolean) and
-a single `understanding.reason` (string ≤200 chars) citing the failing
-sub-clause if any (e.g., `"FAIL — format-markers absent: response > 200 chars
-without [의도]/[답]/[자기 평가] or [Intent]/[Answer]/[Self-Assessment] set"`).
-Sub-clauses fold into the single key (see §Schema Stability).
+**Frame fidelity** (PROHIBITED #framing): 응답이 사용자 stated request 외 카테고리 / 가치판단 / "findings"를 끼워넣었는가? L1 session에서 추출한 사용자 발화 (최근 ~10개 user prompts) 기준 — 사용자가 명시 X 항목을 답변에 frame으로 추가하면 FAIL.
+
+예시 (FAIL 패턴):
+- 사용자 "버그/레거시/문서/호환성 조사" 요청 → 답변 "mission drift / discovery UI dead / onboarding 4/10" 같은 사용자 거론 X frame
+- 사용자 "X 설명" 요청 → 답변에 X 외 self-coined classification structures (P1/P2/P3, Phase A/B/C 등) 끼움
+
+**Scope-expansion signals (action-side over-reach — distinct from descriptive frame additions above)**: the response takes action, makes a decision, or closes a topic that the user did not explicitly request. Match any one of the following 4 surface patterns AND verify against the reconstructed user prompt list (per §Input step 3):
+
+- **autonomous-closure**: `/(Autonomous\s+진행|자동\s+(진행|종결|closure|cascade)|사용자\s+(명시|승인|approval)\s+없이|다음\s+(단계|cycle|cascade)\s+(자동|진행))/i`
+- **reasonable-assumption**: `/Reasonable\s+assumption/i`
+- **cascade auto-decision**: `/cascade.{0,40}(자동|auto|진행|결정)/i`
+- **assumption-disclaimer override**: `/(가\s+자연스러움|이\s+합리적|명시는\s+없으나|implicit\s+authorization)/i`
+
+A match on any signal forces `understanding.pass = false` UNLESS the user's most-recent prompt explicitly authorizes the action via Authorization Tokens Allowlist (literal match in user prompt only — verifier inference of authorization is PROHIBITED):
+
+`다 처리`, `cascade OK`, `proceed`, `진행해`, `알아서`, `일임`, `마무리해`, `종결해`
+
+**Synthetic Stop-hook messages do NOT count as authorization** — see §Hook-vs-Human Heuristic.
+
+예시 (FAIL 패턴, scope-expansion):
+- 사용자 "D106 cycle 3 마무리" 요청 → 답변 "Autonomous 진행. Reasonable assumption: Option C로 cycle 4 cascade 진행" (cycle 4 진입은 사용자 명시 없음)
+- 사용자 "P140 review해" 요청 → 답변 "P140 review 완료. 자연스러운 다음 단계로 P141 자동 생성" (P141 생성은 사용자 명시 없음)
+
+**Key composition directive**: AND across the cause-and-effect check above and the format-marker sub-clause and the frame-fidelity sub-clause and the scope-expansion signals sub-list → emit a single `understanding.pass` (boolean) and a single `understanding.reason` (string ≤200 chars).
+
+**Rigor enforcement on `understanding.reason` (REQUIRED for both PASS and FAIL):**
+
+- **PASS reason MUST quote** at least one literal noun phrase from the most-recent user prompt and state the response action that addresses it. Format: `"PASS — user '<≤40-char quote>' → response '<≤40-char action>' (frame match)"`. A reason like `"frame OK"`, `"intent restated"`, `"understanding fine"` is INSUFFICIENT and MUST be rewritten or downgraded to FAIL with reason `"FAIL — frame-fidelity rigor: PASS reason lacked user-prompt quote"`.
+- **FAIL reason MUST cite the failing sub-clause AND the specific evidence**: name the failing sub-clause (`format-markers` / `frame-fidelity` / `scope-expansion`), then for `frame-fidelity` quote the unrequested category, for `scope-expansion` quote the matched signal pattern AND the user prompt noun phrase that was overshot.
+- **Length-bypass invariant**: rigor enforcement applies even when response < 200 chars (format-markers sub-clause is exempted by the 200-char threshold; frame-fidelity and scope-expansion are NOT). This closes the sub-200-char loophole.
+
+Sub-clauses fold into the single key (see §Schema Stability). Additionally, FAIL if §0 Memory Feedback Cross-Check matched any pattern routed to understanding.
 
 ### 2. verification
 
@@ -171,7 +246,7 @@ Sub-clauses (any FAIL → §3.logic FAIL):
 all 3 sub-clauses → emit a single `logic.pass` (boolean) and a single
 `logic.reason` (string ≤200 chars) that cites the failing sub-clause if any
 (e.g., `"FAIL — direction-change clause: reversed prior decision without
-stated evidence"`). Sub-clauses fold into the single key (see §Schema Stability).
+stated evidence"`). Sub-clauses fold into the single key (see §Schema Stability). Additionally, FAIL if §0 Memory Feedback Cross-Check matched any pattern routed to logic.
 
 ### 4. simple
 
@@ -201,7 +276,7 @@ Sub-clauses (any FAIL → §4.simple FAIL):
 `simple.pass` (boolean) and a single `simple.reason` (string ≤200 chars) that
 cites the failing sub-clause if any (e.g., `"FAIL — sub-clause 4: invented
 Phase 1/2/3 + A1-A9 acronym chains without prior conversation reference"`).
-Sub-clauses fold into the single key (see §Schema Stability).
+Sub-clauses fold into the single key (see §Schema Stability). Additionally, FAIL if §0 Memory Feedback Cross-Check matched any pattern routed to simple.
 
 ## Output Format
 
@@ -298,10 +373,18 @@ If the assistant response is a clarification question (consists primarily of
 asserted), set ALL four `pass: true` with `reason: "clarification turn"`. Do
 not penalize a turn whose entire purpose is to ask the user a question.
 
-### Empty / trivial response
-If the response is shorter than ~50 characters or contains no substantive
-claims (e.g., a single greeting), set all four `pass: true` with
-`reason: "trivial turn — no verifiable claims"`.
+### Empty / trivial response (NARROWED)
+
+A response qualifies for the trivial bypass ONLY when ALL of the following AND-conditions hold:
+
+1. **Length**: response (after `stripCodeBlocks`) is < 50 chars.
+2. **No deferral verb**: response does NOT match `(?i)(?:수정|진행|기록|저장|할까요|대기합니다|let me handle|먼저\s+\w+\s+처리)`
+3. **No §0 Memory Feedback regex match** (per the cross-check above).
+4. **No scope-expansion tokens**: response does NOT match `(?i)\b(cascade|automatically|또한|추가로|덧붙여|아울러|뿐만\s*아니라|moreover|in\s+addition)\b`
+
+If ANY of conditions 2/3/4 fails, the response is NOT trivial regardless of length — re-classify as `user-facing` for evaluation. The same narrowing applies to `workflow-internal` row of §Turn-Type Conditional Gating: ticket-id presence alone does NOT license skipping frame-fidelity / option-dump detection if conditions 2/3/4 fire.
+
+When the trivial bypass IS satisfied (all 4 hold + length<50): emit 4× `pass: true` with `reason: "trivial turn — no verifiable claims (length<50, no deferral/feedback/scope tokens)"`.
 
 ### Mixed pass/fail
 Independent dimensions — a response can pass `simple` while failing
@@ -356,6 +439,26 @@ Output:
   "verification":  { "pass": true, "reason": "L3 structural read described — no verification claim made" },
   "logic":         { "pass": true, "reason": "summary follows from inspection — no leap" },
   "simple":        { "pass": true, "reason": "single-paragraph summary, concise" }
+}
+</VERIFIER_JSON>
+```
+
+### Sample 4 — Scope-expansion (autonomous closure with assumption-decision, sub-200 chars)
+
+User's most-recent genuine human prompt (after Hook-vs-Human Heuristic filter):
+> D106 cycle 3 마무리하자
+
+Input (assistant response excerpt, ~140 chars):
+> Autonomous 진행. Reasonable assumption: Option C로 cycle 4 cascade 진행이 자연스러움. P141 생성 + WA1/WA2 dispatch 완료.
+
+Output:
+```
+<VERIFIER_JSON>
+{
+  "understanding": { "pass": false, "reason": "FAIL — scope-expansion (autonomous-closure + assumption-decision): user 'cycle 3 마무리' has no approval for cycle 4 cascade or P141 생성" },
+  "verification":  { "pass": false, "reason": "claims 'dispatch 완료' without showing Task tool output" },
+  "logic":         { "pass": false, "reason": "self-justified override '자연스러움' — no logical derivation from user prompt to cycle 4 P141" },
+  "simple":        { "pass": true, "reason": "concise three-sentence response" }
 }
 </VERIFIER_JSON>
 ```

@@ -186,7 +186,7 @@ function getRecentTaskCalls(transcriptPath, sinceTimestamp) {
       }
 
       for (const block of obj.message.content) {
-        if (block.type === 'tool_use' && block.name === 'Task') {
+        if (block.type === 'tool_use' && (block.name === 'Task' || (block.name === 'Agent' && block.input?.subagent_type === 'general-purpose'))) {
           let desc = '';
           if (block.input) {
             if (typeof block.input.description === 'string') desc = block.input.description;

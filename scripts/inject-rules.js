@@ -818,12 +818,24 @@ async function main() {
             // D104 IA-4 — Korean bilingual framing (header only). Code identifiers
             // (subagent_type / CRABSHELL_AGENT / prompt path / output filename)
             // remain byte-identical for backward compat.
+            // P140_T001 AC-4 — resolve absolute MEMORY.md path for verifier §0
+            // Memory Feedback Cross-Check. Fail-open: any error → null fallback.
+            let memoryFeedbackPath = null;
+            try {
+              const memoryProjectDir = (process.env.CLAUDE_PROJECT_DIR || process.cwd())
+                .replace(/[\\/:]/g, '-').replace(/^-/, '');
+              const home = process.env.USERPROFILE || process.env.HOME || '';
+              if (home && memoryProjectDir) {
+                memoryFeedbackPath = home.replace(/\\/g, '/') + '/.claude/projects/' + memoryProjectDir + '/memory/MEMORY.md';
+              }
+            } catch (_) { memoryFeedbackPath = null; }
             context += '\n\n## 감시자 (Behavior Verifier) Dispatch Required\n';
             context += 'Next response: invoke Task tool to launch background verifier sub-agent.\n';
             context += '- subagent_type: general-purpose\n';
             context += '- run_in_background: true\n';
             context += '- env: CRABSHELL_AGENT=behavior-verifier, CRABSHELL_BACKGROUND=1\n';
-            context += '- prompt: contents of prompts/behavior-verifier-prompt.md plus the previous response transcript\n';
+            context += '- prompt: contents of prompts/behavior-verifier-prompt.md plus the previous response transcript and recent user prompts (role=user) extracted from latest L1 session in .crabshell/memory/sessions/ for frame-fidelity sub-clause evaluation\n';
+            context += '- Memory feedback path (read for §0 Memory Feedback Cross-Check; fail-open if null/unreadable): ' + (memoryFeedbackPath || '(unavailable — skip cross-check)') + '\n';
             context += '- output: write verdicts JSON to ' + BEHAVIOR_VERIFIER_STATE_FILE + ' with status=completed\n';
           } else if (bvState.status === 'completed' && bvState.verdicts && typeof bvState.verdicts === 'object') {
             // RMW "transition-then-emit" (P132_T003 AC-4 race fix):

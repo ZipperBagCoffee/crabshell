@@ -1,7 +1,7 @@
 {
   "projectType": "Node.js CLI (Claude Code plugin hooks)",
   "created": "2026-03-28T08:20:00Z",
-  "updated": "2026-04-26T13:00:00.000Z",
+  "updated": "2026-04-26T00:30:00.000Z",
   "tools": {
     "build": null,
     "run": null,
@@ -50,9 +50,9 @@
     },
     {
       "id": "AC-6",
-      "ia": "version 21.84.0 (current)",
+      "ia": "version 21.85.0 (current)",
       "type": "indirect",
-      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const v=JSON.parse(require('fs').readFileSync('C:/Users/user/Documents/memory-keeper-plugin/.claude-plugin/plugin.json','utf8')).version;console.log(v==='21.84.0'?'PASS:'+v:'FAIL:'+v)\"",
+      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const v=JSON.parse(require('fs').readFileSync('C:/Users/user/Documents/memory-keeper-plugin/.claude-plugin/plugin.json','utf8')).version;console.log(v==='21.85.0'?'PASS:'+v:'FAIL:'+v)\"",
       "expected": "PASS:",
       "timeout": 5000
     },
@@ -235,6 +235,58 @@
       "expected": "PASS:",
       "observation": null,
       "timeout": 30000
+    },
+    {
+      "id": "V014",
+      "ia": "P139_T001 AC-5: frame fixture - verifier understanding.pass=false + frame-fidelity reason",
+      "type": "indirect",
+      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const c=JSON.parse(require('fs').readFileSync('C:/Users/user/Documents/memory-keeper-plugin/.crabshell/verification/captures/fixture1.json','utf8'));console.log(c.verdicts.understanding.pass===false&&/frame.fidelity|stated request/.test(c.verdicts.understanding.reason)?'PASS:frame_caught':'FAIL')\"",
+      "expected": "PASS:",
+      "timeout": 10000
+    },
+    {
+      "id": "V015",
+      "ia": "P139_T001 AC-6: normal fixture - verifier 4/4 pass (false-positive 방지)",
+      "type": "indirect",
+      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const c=JSON.parse(require('fs').readFileSync('C:/Users/user/Documents/memory-keeper-plugin/.crabshell/verification/captures/fixture2.json','utf8'));console.log(c.verdicts.understanding.pass&&c.verdicts.verification.pass&&c.verdicts.logic.pass&&c.verdicts.simple.pass?'PASS:4_of_4':'FAIL')\"",
+      "expected": "PASS:",
+      "timeout": 10000
+    },
+    {
+      "id": "V016",
+      "ia": "P139_T001 AC-7: broken L1 fixture - verifier 4/4 pass + fail-open reason",
+      "type": "indirect",
+      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const c=JSON.parse(require('fs').readFileSync('C:/Users/user/Documents/memory-keeper-plugin/.crabshell/verification/captures/fixture3.json','utf8'));console.log(c.verdicts.understanding.pass&&c.verdicts.verification.pass&&c.verdicts.logic.pass&&c.verdicts.simple.pass&&/fail.open/.test(c.verdicts.understanding.reason)?'PASS:fail_open':'FAIL')\"",
+      "expected": "PASS:",
+      "timeout": 10000
+    },
+    {
+      "id": "V017",
+      "type": "structural",
+      "description": "Verifier prompt §0 Memory Feedback Cross-Check section exists with 6 regex entries",
+      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const t=require('fs').readFileSync('prompts/behavior-verifier-prompt.md','utf8');const has=/^## Memory Feedback Cross-Check/m.test(t);const rules=['no_permission_asking','no_record_asking','no_option_dump','no_api_billing','philosophy_framing','agent_count'];const m=rules.every(r=>t.includes(r));console.log(has&&m?'PASS:cross_check_section':'FAIL:cross_check_section');\"",
+      "expected": "PASS:"
+    },
+    {
+      "id": "V018",
+      "type": "structural",
+      "description": "Verifier prompt §Edge Cases trivial bypass uses AND narrowing (4 conditions)",
+      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const t=require('fs').readFileSync('prompts/behavior-verifier-prompt.md','utf8');const has=/Empty \\/ trivial response \\(NARROWED\\)/.test(t)&&/all 4 hold|all of the following AND/i.test(t);console.log(has?'PASS:trivial_narrowed':'FAIL:trivial_narrowed');\"",
+      "expected": "PASS:"
+    },
+    {
+      "id": "V019",
+      "type": "behavioral",
+      "description": "Dispatch tracking — production-shape Agent transcript detected by getRecentTaskCalls",
+      "command": "\"C:/Program Files/nodejs/node.exe\" scripts/_test-dispatch-overdue-detection.js 2>&1 | tail -3",
+      "expected": "passed"
+    },
+    {
+      "id": "V020",
+      "type": "behavioral",
+      "description": "Novel scope-expansion verifier — 5 fixtures (2 FAIL + 3 PASS) regression test",
+      "command": "\"C:/Program Files/nodejs/node.exe\" scripts/_test-v020-novel-scope-expansion.js 2>&1 | tail -1",
+      "expected": "5 passed"
     }
   ]
 }

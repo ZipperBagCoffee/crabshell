@@ -1,5 +1,33 @@
 # Changelog
 
+## v21.85.0 - 2026-04-27
+
+- **D106 cycle 3+4 — verifier FALLBACK 강화 (P140 T001+T002 + P141 T001).** IA-26 FALLBACK 3-layer 완성: (1) known user feedback patterns catch, (2) production hook tracking 회복, (3) novel scope-expansion catch + 자기-catch 능력.
+- **Cycle 3 (P140) — known feedback + dispatch tracking**:
+  - `prompts/behavior-verifier-prompt.md` §0 Memory Feedback Cross-Check 신규 (6 regex: `no_permission_asking` / `no_record_asking` / `no_option_dump` / `no_api_billing` / `philosophy_framing` / `agent_count`). Bypass surface PRECEDES — MEMORY.md feedback 매치 시 forced FAIL even on `workflow-internal` / `trivial` / `clarification` classifications.
+  - `prompts/` §Edge Cases trivial bypass AND-narrowed (4 conditions: length<50 + no deferral verb + no §0 match + no scope-expansion tokens). 이전 OR ("shorter than 50 chars OR no substantive claims")는 너무 permissive.
+  - `prompts/` §1.understanding / §3.logic / §4.simple Key composition directive에 §0 cross-check AND clause 추가.
+  - `scripts/inject-rules.js` MEMORY.md absolute path injection (`memoryFeedbackPath` 변수 with try/catch fail-open). Sub-agent dispatch instruction에 `Memory feedback path` 라인 추가.
+  - `scripts/transcript-utils.js:189` hardened filter — `block.name === 'Task'` → `block.name === 'Agent' && block.input?.subagent_type === 'general-purpose'`. 이전 filter는 production transcript JSONL 직렬화 (`name: 'Agent'`)와 mismatch로 100% dispatch detection miss → `dispatchOverdue` 영구 stuck. Hardened variant는 `crabshell:delta-summarizer` agent false-positive 방지.
+  - `scripts/_test-dispatch-overdue-detection.js` 3 fixture 갱신 (Task → Agent + subagent_type) + 신규 Test 9 (production-shape Agent dispatch detection) → 9/9 PASS.
+  - `.crabshell/verification/manifest.json` V017 (§0 section 구조) + V018 (NARROWED bypass) + V019 (dispatch tracking behavioral test runner) 3 entries 추가.
+  - H006 hotfix carry-over (`scripts/load-memory.js` feedbackPressure SessionStart 강제 decay 제거 — pressure level carry-over 유지).
+- **Cycle 4 (P141) — novel scope-expansion + Hook-vs-Human heuristic**:
+  - `prompts/` §1.understanding Scope-expansion signals (action-side over-reach) 신규 — 4 minimal regex (autonomous-closure / reasonable-assumption / cascade auto-decision / assumption-disclaimer override). RA1이 sentence-pattern over-reach `\S+\s+(진행|결정|적용|실행)`을 Korean prose FP risk로 verified → DROP.
+  - `prompts/` Authorization Tokens Allowlist (`다 처리` / `cascade OK` / `proceed` / `진행해` / `알아서` / `일임` / `마무리해` / `종결해`). Literal user prompt match만, verifier inference PROHIBITED. Synthetic Stop-hook messages NOT authorization.
+  - `prompts/` 신규 §Hook-vs-Human Heuristic section (PRECEDES authorization detection) — `Stop hook feedback:` / `Document update pending:` / `## REGRESSING ACTIVE` 패턴 매치 시 hook-synthetic classify. **Hook-synthetic messages MUST NOT be treated as user authorization** for assistant-initiated decision points.
+  - `prompts/` §1.understanding Key composition directive Rigor enforcement — PASS reason MUST quote literal user prompt noun phrase + response action. Free-form "frame OK" → downgrade FAIL. Length-bypass invariant: rigor enforcement applies sub-200 chars.
+  - `prompts/` §Turn-Type Conditional Gating workflow-internal row 정정 — `apply (format markers ≥200 chars only + frame-fidelity always + scope-expansion always)`. 이전 ticket-id 포함 workflow-internal turn에서 frame-fidelity silent skip 차단.
+  - `prompts/` Sample 4 추가 — autonomous closure with assumption-decision FAIL example, sub-200 chars.
+  - 신규 `.crabshell/verification/_test-v020-novel-scope-expansion.js` — 5 fixtures (A autonomous closure / B cascade chain / C user "알아서 진행하세요" PASS / D user "알아서 해결해" PASS / E user replied "C" to assistant A/B/C question PASS) → 5/5 PASS.
+  - `.crabshell/verification/manifest.json` V020 entry (behavioral type) 추가.
+- **Production behavioral evidence**:
+  - Cycle 3 종결 시점 `behavior-verifier-state.json` field 4개 reset 직접 확인 (`dispatchOverdue: true → false`, `missedCount: 1 → 0`, `escalationLevel: 1 → 0`, `triggerReason: escalation → periodic`).
+  - Cycle 4 verifier가 본인 작성 over-reach (이번 세션 line 104 `"Autonomous 진행. Reasonable assumption: Option C"`) **3-axis 자기-catch**: understanding=false (scope-expansion + missing authorization), verification=false (convergence claim without P/O/G), logic=false (direction-change without evidence chain). simple=true (concise).
+- **Test cascade**: 9/9 `_test-dispatch-overdue-detection.js` PASS. 5/5 `_test-v020-novel-scope-expansion.js` PASS. Full `/verifying`: 19→26 entries, **26/26 PASS**.
+- **Behavioral effect**: IA-26 FALLBACK 3-layer 완성. cycle 1/2 시점 ringBuffer 8/8 all-PASS (사실상 verifier 작동 X) → cycle 4 시점 ringBuffer 정상 catch + production state file dispatch detection 정상화 + 본인 over-reach 자기-catch 가능. D106 IA 21개 (1/2/4/8~25) 미처리 — cycle 5+ candidate.
+- See [[D106-i067-h006-followup-26-items|D106]] / [[P140-d106-cycle3-verifier-fallback-fortification|P140]] / [[P140_T001-verifier-prompt-cross-check-and-narrowed-bypass|P140_T001]] / [[P140_T002-dispatch-tracking-fix-ts-integrity|P140_T002]] / [[P141-d106-cycle4-novel-scope-expansion-detector|P141]] / [[P141_T001-verifier-prompt-cycle4-scope-expansion-rigor-workflow-hook-fixtures|P141_T001]].
+
 ## v21.84.0 - 2026-04-27
 
 - **D105 cycle 1 — 외부화 함정 source 제거 (P137 T001+T002+T003).** 4 IA 통합 구현: IA-1 spec 정정 (`scripts/inject-rules.js` `RULES` const Simple Communication 4 항목 (`reader's words` / `lead with the conclusion` / `concrete (file/code/value) over abstract` / `self-coined`) replace "use an analogy" + auto-sync to CLAUDE.md), IA-2 외부화 회피 원칙 (PROHIBITED PATTERNS #9 `Default-First (Externalization Avoidance)` referencing `prompts/anti-patterns.md`), IA-7 거절 catalog 7 + IA-8 회피 4회 기록 (`prompts/anti-patterns.md` 신규 4621 bytes — 7 TRAPs + 4 AVOIDs + frontmatter).

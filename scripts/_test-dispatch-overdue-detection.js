@@ -96,7 +96,7 @@ const CLARIFY = 'Which file did you want me to inspect? Should I check the test 
       message: {
         content: [
           { type: 'text', text: 'launching agent' },
-          { type: 'tool_use', name: 'Task', id: 'tu-1', input: { description: 'work agent', prompt: 'do stuff' } }
+          { type: 'tool_use', name: 'Agent', id: 'tu-1', input: { subagent_type: 'general-purpose', description: 'work agent', prompt: 'do stuff' } }
         ]
       }
     },
@@ -105,7 +105,7 @@ const CLARIFY = 'Which file did you want me to inspect? Should I check the test 
       timestamp: '2026-04-26T10:01:00.000Z',
       message: {
         content: [
-          { type: 'tool_use', name: 'Task', id: 'tu-2', input: { description: 'review' } }
+          { type: 'tool_use', name: 'Agent', id: 'tu-2', input: { subagent_type: 'general-purpose', description: 'review' } }
         ]
       }
     }
@@ -226,7 +226,7 @@ const CLARIFY = 'Which file did you want me to inspect? Should I check the test 
       message: {
         content: [
           { type: 'text', text: 'launching verifier' },
-          { type: 'tool_use', name: 'Task', id: 'tu-bv', input: { description: 'verifier dispatch' } }
+          { type: 'tool_use', name: 'Agent', id: 'tu-bv', input: { subagent_type: 'general-purpose', description: 'verifier dispatch' } }
         ]
       }
     }
@@ -295,6 +295,37 @@ const CLARIFY = 'Which file did you want me to inspect? Should I check the test 
   ok('8 inject-rules: dispatchOverdue=true → [DISPATCH OVERDUE] prepended',
      r.exitCode === 0 && hasMarker && hasDispatch && ordered,
      'exit=' + r.exitCode + ' marker=' + hasMarker + ' dispatch=' + hasDispatch + ' ordered=' + ordered);
+})();
+
+// ---------- Test 9 — T002 AC-3: production-shape Agent dispatch (name='Agent', subagent_type='general-purpose') ----------
+(function() {
+  const sb = makeSandbox();
+  const transcriptPath = path.join(sb, 'production-agent.jsonl');
+  const lines = [
+    JSON.stringify({
+      type: 'assistant',
+      timestamp: '2026-04-27T10:00:00.000Z',
+      message: {
+        content: [
+          {
+            type: 'tool_use',
+            name: 'Agent',
+            id: 'tu-prod',
+            input: {
+              subagent_type: 'general-purpose',
+              description: 'behavior verifier',
+              prompt: 'CRABSHELL_AGENT=behavior-verifier'
+            }
+          }
+        ]
+      }
+    })
+  ];
+  fs.writeFileSync(transcriptPath, lines.join('\n') + '\n', 'utf8');
+  const tasks = transcriptUtils.getRecentTaskCalls(transcriptPath, '2026-04-27T09:59:00.000Z');
+  ok('9 production-shape Agent dispatch (name=Agent + subagent_type=general-purpose) → detected',
+     Array.isArray(tasks) && tasks.length === 1 && tasks[0].taskDescription === 'behavior verifier',
+     'tasks=' + JSON.stringify(tasks));
 })();
 
 // Cleanup
