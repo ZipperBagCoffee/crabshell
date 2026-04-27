@@ -177,12 +177,31 @@ stated evidence"`). Sub-clauses fold into the single key (see §Schema Stability
 
 Gating: `user-facing` apply · `workflow-internal` skip · `notification` skip · `clarification` skip · `trivial` skip. (See §Turn-Type Conditional Gating.)
 
-Is the user-facing explanation concise and free of unnecessary jargon? Simple
-Communication (CLAUDE.md) requires a one-sentence core idea, optional analogy
-for abstract concepts, and length proportional to the question. PASS if the
-response leads with a clear core statement and avoids verbose preamble. FAIL
-if the response is bloated, buries the answer in jargon, or pads length to
-appear thorough.
+Is the user-facing explanation easy for the reader to understand? Simple
+Communication (CLAUDE.md) requires four properties — fold ANY single FAIL into
+`simple.pass=false` with `simple.reason` citing the failing sub-clause:
+
+Sub-clauses (any FAIL → §4.simple FAIL):
+1. **Reader's words**: Uses domain-appropriate language for the user's mental
+   model. FAIL when response opens with internal jargon (e.g., `§4.simple`,
+   `RA-pivot`, `cross-criterion`) without immediate plain-language equivalent.
+2. **Conclusion first**: Leads with the answer or core verdict before
+   supporting analysis. FAIL when first sentence is preamble/restatement-only
+   and answer arrives sentence 2+.
+3. **Concrete over abstract**: Mentions specific files / lines / values /
+   commands before category labels. FAIL when first 200 chars contain >2
+   abstract nouns (architecture / approach / framework / category) without a
+   concrete identifier.
+4. **No self-coined acronyms or classification structures**: Avoids inventing
+   new abbreviations or hierarchical labels (Phase 1/2/3, A1-A9, T1-T2 tier)
+   that the reader has not been exposed to in the conversation. FAIL when ≥3
+   such constructs introduced without prior reference in the same conversation.
+
+**Key composition directive**: AND across the four sub-clauses → emit a single
+`simple.pass` (boolean) and a single `simple.reason` (string ≤200 chars) that
+cites the failing sub-clause if any (e.g., `"FAIL — sub-clause 4: invented
+Phase 1/2/3 + A1-A9 acronym chains without prior conversation reference"`).
+Sub-clauses fold into the single key (see §Schema Stability).
 
 ## Output Format
 

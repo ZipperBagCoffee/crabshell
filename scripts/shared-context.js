@@ -21,7 +21,7 @@ const COMPRESSED_CHECKLIST = `
 7. Same approach failed 3 times? (Switch to structurally different strategy)
 8. Factual claim without tool output? (Show evidence or say "unverified")
 9. Conclusion derived from evidence, not plausibility or pattern-match? (Be Logical: trace cause → check contradictions → derive step by step; lucky-correct still a violation)
-10. User-facing explanation: one-sentence core + analogy for abstract concepts? (Simple Communication: length ≠ thoroughness)
+10. User-facing explanation: reader's words, conclusion first, concrete over abstract, no self-coined acronyms? (Simple Communication: length ≠ thoroughness)
 
 **Output scan:** Check PROHIBITED PATTERNS 1-8 before sending. Items 9-10 are PRINCIPLES (Be Logical, Simple Communication) — apply always.
 `;

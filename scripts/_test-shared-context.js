@@ -144,6 +144,38 @@ test('readProjectConcept returns empty string for empty file', function() {
 });
 
 // ============================================================
+// 4. COMPRESSED_CHECKLIST item #10 wording lock (D105 P137_T002 AC1)
+// ============================================================
+// Locks Simple Communication 4 keyword properties into checklist item #10.
+// POSITIVE: each of the 4 keywords appears at least once.
+// NEGATIVE: "analogy" must NOT appear (regression guard).
+test('COMPRESSED_CHECKLIST item #10 contains "reader\'s words" keyword', function() {
+  assert(COMPRESSED_CHECKLIST.includes("reader's words"),
+    'item #10 missing "reader\'s words" keyword');
+});
+
+test('COMPRESSED_CHECKLIST item #10 contains "conclusion first" keyword', function() {
+  assert(COMPRESSED_CHECKLIST.includes('conclusion first'),
+    'item #10 missing "conclusion first" keyword');
+});
+
+test('COMPRESSED_CHECKLIST item #10 contains "concrete over abstract" keyword', function() {
+  assert(COMPRESSED_CHECKLIST.includes('concrete over abstract'),
+    'item #10 missing "concrete over abstract" keyword');
+});
+
+test('COMPRESSED_CHECKLIST item #10 contains "self-coined" keyword', function() {
+  assert(COMPRESSED_CHECKLIST.includes('self-coined'),
+    'item #10 missing "self-coined" keyword');
+});
+
+test('COMPRESSED_CHECKLIST contains zero "analogy" wording (regression guard)', function() {
+  const matches = (COMPRESSED_CHECKLIST.match(/analogy/gi) || []).length;
+  assert(matches === 0,
+    'COMPRESSED_CHECKLIST should contain zero "analogy" tokens, found ' + matches);
+});
+
+// ============================================================
 // Summary
 // ============================================================
 console.log('\n' + '='.repeat(50));

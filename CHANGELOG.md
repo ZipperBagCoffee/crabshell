@@ -1,5 +1,14 @@
 # Changelog
 
+## v21.84.0 - 2026-04-27
+
+- **D105 cycle 1 — 외부화 함정 source 제거 (P137 T001+T002+T003).** 4 IA 통합 구현: IA-1 spec 정정 (`scripts/inject-rules.js` `RULES` const Simple Communication 4 항목 (`reader's words` / `lead with the conclusion` / `concrete (file/code/value) over abstract` / `self-coined`) replace "use an analogy" + auto-sync to CLAUDE.md), IA-2 외부화 회피 원칙 (PROHIBITED PATTERNS #9 `Default-First (Externalization Avoidance)` referencing `prompts/anti-patterns.md`), IA-7 거절 catalog 7 + IA-8 회피 4회 기록 (`prompts/anti-patterns.md` 신규 4621 bytes — 7 TRAPs + 4 AVOIDs + frontmatter).
+- **Cross-file sync**: `scripts/shared-context.js` COMPRESSED_CHECKLIST item #10 (157 chars) + `prompts/behavior-verifier-prompt.md` `§4.simple` body restructured (4 sub-clauses + Key composition directive parallel to §3.logic L156-174 pattern).
+- **Test cascade**: `_test-inject-rules.js` (107→114 PASS) + `_test-shared-context.js` (10→15 PASS) updated; new `_test-simple-clause-update.js` (8 PASS) + `_test-externalization-trap-catalog.js` (8 PASS). Full regression 50/50 `scripts/_test-*.js` exit 0.
+- **/verifying manifest expansion**: V013 entry (cycle 1 absorption probe) via helper script `scripts/_v013-cycle1-check.js` (concept-based regex for file-natural variants). AC-6 version probe `21.83.0`→`21.84.0`. Total entries 18→19. **PASS: 19 / FAIL: 0**.
+- **Behavioral effect**: 사용자 정의 4 항목 spec lock across RULES + COMPRESSED_CHECKLIST + §4.simple. Externalization Trap Catalog 7 + Avoidance Pattern History 4 명시 (외부화 함정 5번째 변종 재발 방지). RA3 critical 5번째 함정 risk acknowledged via plan Verification Criteria behavioral validation note (cycle 2 next-session probe deferred).
+- See [[D105-plugin-upgrade-externalization-trap-avoidance|D105]] / [[P137-d105-cycle1-externalization-source-removal|P137]] / [[P137_T001-spec-source-correction-and-trap-catalog|P137_T001]] / [[P137_T002-tests-and-verifying-manifest-v013|P137_T002]] / [[P137_T003-version-bump-and-commit|P137_T003]].
+
 ## v21.83.0 - 2026-04-26
 
 - **D104 cycle 1 — 감시자 (Behavior Verifier) Phase 1 (P136 T001+T002+T003).** Three coordinated tickets implementing IA-1 (trigger 3-layer + verdict ring buffer), IA-2 (turn classification 5-class + criterion gating), IA-3 (hook 일관성), IA-4 (한글 facing rename docs/manual layer), IA-5 (/verifying 매 cycle).

@@ -1246,6 +1246,46 @@ test('TICKET_STATUS: missing INDEX.md -> null (fail-open)', function() {
 });
 
 // ============================================================
+// 23. RULES Simple Communication keyword anchors (D105 P137_T002 AC1)
+// ============================================================
+// Locks the four Simple Communication property keywords into RULES so future
+// edits cannot silently regress to "analogy" wording.
+test('RULES: Simple Communication keyword "reader\'s words" present', function() {
+  assert(mod.RULES.includes("reader's words"), 'RULES missing "reader\'s words" keyword');
+});
+
+test('RULES: Simple Communication keyword "lead with the conclusion" present', function() {
+  assert(mod.RULES.includes('lead with the conclusion'), 'RULES missing "lead with the conclusion" keyword');
+});
+
+test('RULES: Simple Communication keyword "concrete" + "abstract" present', function() {
+  // The spec phrase "concrete (file/code/value) over abstract (categories/labels)"
+  // — we lock the keyword pair, which is the structural anchor.
+  assert(/concrete[^]*abstract/.test(mod.RULES), 'RULES missing concrete/abstract pairing');
+});
+
+test('RULES: Simple Communication keyword "self-coined" present', function() {
+  assert(mod.RULES.includes('self-coined'), 'RULES missing "self-coined" keyword');
+});
+
+test('RULES: PROHIBITED PATTERNS contains "Default-First (Externalization Avoidance)"', function() {
+  assert(mod.RULES.includes('Default-First (Externalization Avoidance)'),
+    'RULES missing PROHIBITED #9 Default-First label');
+});
+
+test('RULES: PROHIBITED #9 references prompts/anti-patterns.md anchor', function() {
+  assert(mod.RULES.includes('prompts/anti-patterns.md'),
+    'RULES PROHIBITED #9 missing anti-patterns.md anchor reference');
+});
+
+test('RULES: zero "analogy" wording (regression lock against analogy default)', function() {
+  // D105 cycle 1 spec correction: "analogy" was the externalized default that
+  // caused repeated regression. Lock count = 0 in RULES body.
+  const matches = (mod.RULES.match(/analogy/gi) || []).length;
+  assertEqual(matches, 0, 'RULES should contain zero "analogy" tokens, found ' + matches);
+});
+
+// ============================================================
 // Summary
 // ============================================================
 console.log('\n========================================');
