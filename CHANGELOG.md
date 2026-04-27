@@ -1,5 +1,13 @@
 # Changelog
 
+## v21.86.0 - 2026-04-27
+
+- **D106 cycle 5 hotfix — `scripts/regressing-guard.js` regex bug fix.** Line 73 regex matched `## <heading>` patterns ANYWHERE in plan files including inline backticked references like `` `## Intent Check` `` within Agent Execution sections. This caused false "empty agent section" detection (the inline reference matched before the actual heading and captured an empty body), blocking ticket creation during cycle 5 P142.
+- **Fix**: prefix `(?:^|\n)` to anchor at start-of-line. Avoids using `m` flag (which would also make `$` match line-end and break the body capture lookahead).
+- **Verification**: regex literal test against P142 confirmed correct match (Intent Check matchedAtIdx=10608, bodyLen=2362; was matchedAtIdx=3273, bodyLen=0 before fix).
+- **Cache refresh required**: user runs `/plugin` → "Update now" to pick up new v21.86.0.
+- See [[D106-i067-h006-followup-26-items|D106]] / [[P142-d106-cycle5-code-doc-bulk-processing|P142]].
+
 ## v21.85.0 - 2026-04-27
 
 - **D106 cycle 3+4 — verifier FALLBACK 강화 (P140 T001+T002 + P141 T001).** IA-26 FALLBACK 3-layer 완성: (1) known user feedback patterns catch, (2) production hook tracking 회복, (3) novel scope-expansion catch + 자기-catch 능력.

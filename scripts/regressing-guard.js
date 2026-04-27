@@ -70,7 +70,12 @@ async function main() {
           const planContent = fs.readFileSync(path.join(planDir, planFiles[0]), 'utf8');
           const sections = ['Analysis Results', 'Review Results', 'Intent Check'];
           const emptySections = sections.filter(name => {
-            const regex = new RegExp('## ' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[^\\n]*\\n([\\s\\S]*?)(?=\\n## |$)');
+            // Bug fix (D106 cycle 5): use (?:^|\n) prefix to anchor at line start
+            // without 'm' flag. Inline backticked references like `## Intent Check`
+            // in Agent Execution section have a backtick (not newline) before them,
+            // so (?:^|\n)## won't match. 'm' flag would also make $ match line-end,
+            // breaking the body capture; explicit prefix avoids that side effect.
+            const regex = new RegExp('(?:^|\\n)## ' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[^\\n]*\\n([\\s\\S]*?)(?=\\n## |$)');
             const match = planContent.match(regex);
             if (!match) return false; // heading absent = unknown state, fail-open
             const body = match[1].trim();
