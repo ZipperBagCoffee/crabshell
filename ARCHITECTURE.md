@@ -355,6 +355,8 @@ Agent orchestration rules (11 rules covering pairing, cross-review, coherence, c
 | `sycophancy-guard.js` | Stop, PreToolUse (Write\|Edit) | Dual-layer sycophancy detection + verification claim detection (4-tier classification): Stop response + mid-turn transcript parsing; block with re-examination |
 | `scope-guard.js` | Stop | Compare user-requested quantity vs response count; block scope reduction without approval |
 | `regressing-loop-guard.js` | Stop | Block stop when regressing active + inject phase-specific context via buildRegressingReminder(); enforce ≥2 parallel WAs in regressing + light-workflow; WA count tracking via wa-count.json |
+| `behavior-verifier.js` | Stop | 감시자 sub-agent dispatch (v21.80.0+): write `behavior-verifier-state.json` `status='pending'` + `[CRABSHELL_BEHAVIOR_VERIFY]` sentinel. v21.83.0 trigger 3-layer (periodic N=8 + workflow-active force + escalation L0/L1) + 5-class turn classification + ring buffer FIFO N=8 + state schema 14 fields |
+| `deferral-guard.js` | Stop | Detect trailing deferral questions (`진행할까요`, `shall I proceed`) via regex against last 300 chars + `hasAnalysisBody` (≥5 lines OR ≥400 chars). v21.81.0+ warn-only: stderr `[BEHAVIOR-WARN]` + exit 0; semantic enforcement absorbed by behavior-verifier §3.logic Trailing-deferral sub-clause |
 | `skill-tracker.js` | PostToolUse (Skill) | Set skill-active flag on Skill tool calls (TTL-based, 5min expiry) |
 | `regressing-state.js` | (library) | Phase tracker: getState, buildReminder, detectSkillCall, advancePhase |
 | `extract-delta.js` | (library) | L1 delta extraction, timestamp watermarks, temp file management |
@@ -380,6 +382,10 @@ Agent orchestration rules (11 rules covering pairing, cross-review, coherence, c
 | MEMORY_FILE | logbook.md | Active memory file |
 | REGRESSING_STATE_FILE | regressing-state.json | Regressing cycle tracker |
 | SKILL_ACTIVE_FILE | skill-active.json | TTL-based skill flag for docs-guard/verify-guard |
+| BEHAVIOR_VERIFIER_STATE_FILE | behavior-verifier-state.json | 감시자 sub-agent state: pending/completed lifecycle, 14 fields including ringBuffer/turnType/escalationLevel (v21.80.0+) |
+| BEHAVIOR_VERIFIER_LOCK_FILE | verifier.lock | RMW lock for `completed→consumed` transition (at-most-once correction emit) |
+| RING_BUFFER_SIZE | 8 | FIFO cap for `state.ringBuffer` (recent verdict UVLS lines, v21.83.0) |
+| VERIFIER_INTERVAL | 8 | Periodic skip threshold: verifier fires when `verifierCounter ≥ lastFiredTurn + 8` (workflow-inactive only, v21.83.0) |
 
 ## Memory Rotation Flow
 
@@ -441,6 +447,9 @@ Save to *.summary.json
 | pendingLastProcessedTs | Temp: max L1 entry ts from last extractDelta(), used by markMemoryUpdated() |
 | lastL1TranscriptMtime | Transcript file mtime at last L1 creation (skip redundant L1 creation) |
 | lastL1TranscriptOffset | Byte offset into transcript file after last L1 creation (incremental reads, v21.10.0) |
+| verifierCounter | PostToolUse counter for behavior-verifier periodic skip (v21.83.0) — separate from `counter` to avoid saveInterval=15 reset conflict; snapshot to `state.lastFiredTurn` on Stop fire |
+| feedbackPressure | Pressure system state: `level` (0-3), `consecutiveCount`, `oscillationCount`, `decayCounter`, `lastShownLevel`, `lastDetectedAt` — RMW under index lock |
+| tooGoodSkepticism | Sycophancy guard "too good" P/O/G all-None retry counter: `retryCount` |
 
 ### counter.json Structure (v20.5.0)
 
