@@ -1,16 +1,14 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const { readStdin, findTranscriptPath, encodeProjectPath, getRecentBashCommands } = require('./transcript-utils');
-const { STORAGE_ROOT } = require('./constants');
-const { acquireIndexLock, releaseIndexLock, writeJson } = require('./utils');
 
 // Skip processing during background memory summarization
+// F1 mitigation: keep inline env check for fail-open invariant — D106 IA-10 RA2
 if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 
-function getProjectDir() {
-  return process.env.CLAUDE_PROJECT_DIR || process.env.PROJECT_DIR || process.cwd();
-}
+const { readStdin, findTranscriptPath, encodeProjectPath, getRecentBashCommands } = require('./transcript-utils');
+const { STORAGE_ROOT } = require('./constants');
+const { acquireIndexLock, releaseIndexLock, writeJson, getProjectDir } = require('./utils');
 
 function getPressureLevel() {
   try {
@@ -231,7 +229,7 @@ function checkTooGoodPOG(response) {
   const afterHeader = response.slice(headerPos + headerMatch[0].length);
 
   // Split into lines, skip separator row (|---|---|...)
-  const lines = afterHeader.split('\n').map(l => l.trim()).filter(l => l.startsWith('|'));
+  const lines = afterHeader.split(/\r?\n/).map(l => l.trim()).filter(l => l.startsWith('|'));
 
   // Skip separator row(s) — rows containing only dashes/colons between pipes
   const dataRows = lines.filter(l => !/^\|[\s|:\-]+\|$/.test(l));
@@ -389,7 +387,7 @@ function extractMidTurnText(transcriptPath) {
     fs.closeSync(fd);
 
     const text = buf.toString('utf8');
-    const lines = text.split('\n').filter(l => l.trim());
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
 
     // Parse lines backward to find latest assistant tool_use, then collect preceding text
     let foundToolUse = false;

@@ -1,12 +1,14 @@
 'use strict';
 
 const path = require('path');
+
+// Skip processing during background memory summarization
+// F1 mitigation: keep inline env check for fail-open invariant — D106 IA-10 RA2
+if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
+
 const { readStdin, normalizePath } = require('./transcript-utils');
 const { getProjectDir, readJsonOrDefault, writeJson } = require('./utils');
 const { STORAGE_ROOT } = require('./constants');
-
-// Skip processing during background memory summarization
-if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 
 // --- Constants ---
 const STATE_FILE = 'verification-state.json';

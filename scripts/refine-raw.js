@@ -91,8 +91,8 @@ function processToolUse(wrapper, toolContent) {
         tool.target = input.file_path;
         // Create diff summary
         if (input.old_string && input.new_string) {
-          const oldLines = input.old_string.split('\n').slice(0, 3).join('\n');
-          const newLines = input.new_string.split('\n').slice(0, 3).join('\n');
+          const oldLines = input.old_string.split(/\r?\n/).slice(0, 3).join('\n');
+          const newLines = input.new_string.split(/\r?\n/).slice(0, 3).join('\n');
           tool.diff = `-${oldLines.substring(0, 100)}\n+${newLines.substring(0, 100)}`;
         }
         break;
@@ -271,7 +271,7 @@ function refineRawSync(inputPath, outputPath, startOffset) {
     content = fs.readFileSync(inputPath, 'utf8');
   }
 
-  const lines = content.split('\n');
+  const lines = content.split(/\r?\n/);
   const output = [];
 
   for (const line of lines) {

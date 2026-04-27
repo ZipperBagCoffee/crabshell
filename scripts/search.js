@@ -74,7 +74,7 @@ function searchCurrentMemory(memoryDir, matcher) {
   if (typeof matcher === 'string') matcher = createMatcher(matcher);
   const memoryPath = path.join(memoryDir, MEMORY_FILE);
   if (!fs.existsSync(memoryPath)) return [];
-  const lines = fs.readFileSync(memoryPath, 'utf8').split('\n');
+  const lines = fs.readFileSync(memoryPath, 'utf8').split(/\r?\n/);
   const matches = [];
   lines.forEach((line, i) => {
     if (matcher.test(line)) matches.push({ line: i + 1, text: line.trim() });
@@ -131,7 +131,7 @@ function searchL2Archives(memoryDir, matcher) {
   const files = fs.readdirSync(memoryDir).filter(f => (f.startsWith(ARCHIVE_PREFIX) || f.startsWith('memory_')) && f.endsWith('.md'));
   const matches = [];
   for (const file of files) {
-    const lines = fs.readFileSync(path.join(memoryDir, file), 'utf8').split('\n');
+    const lines = fs.readFileSync(path.join(memoryDir, file), 'utf8').split(/\r?\n/);
     lines.forEach((line, i) => {
       if (matcher.test(line)) matches.push({ file, line: i + 1, text: line.trim() });
     });
@@ -173,7 +173,7 @@ function searchL1Sessions(projectDir, matcher, options = {}) {
     if (!matcher.test(content)) continue;
 
     // Pass 2: line-by-line JSONL parse
-    const lines = content.split('\n');
+    const lines = content.split(/\r?\n/);
     const entries = [];
     for (const line of lines) {
       if (!line.trim()) continue;
@@ -248,7 +248,7 @@ function findL1ForTimestamp(timestamp, sessionsDir) {
     .map(f => {
       const filePath = path.join(sessionsDir, f);
       try {
-        const firstLine = fs.readFileSync(filePath, 'utf8').split('\n')[0];
+        const firstLine = fs.readFileSync(filePath, 'utf8').split(/\r?\n/)[0];
         const startTs = JSON.parse(firstLine).ts;
         const endTs = parseFilenameTimestamp(f);
         return { file: f, start: new Date(startTs), end: endTs };

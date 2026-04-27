@@ -4,3 +4,4 @@ test-data/
 CLAUDE.md
 docs/
 nul
+*.stackdump

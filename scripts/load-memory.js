@@ -1,12 +1,14 @@
 const path = require('path');
 const fs = require('fs');
+
+// Skip processing during background memory summarization
+// F1 mitigation: keep inline env check for fail-open invariant — D106 IA-10 RA2
+if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
+
 const { getProjectDir, getProjectName, getStorageRoot, readFileOrDefault, readJsonOrDefault, writeJson, estimateTokens, acquireIndexLock, releaseIndexLock } = require('./utils');
 const { ensureMemoryStructure } = require('./init');
 const { MEMORY_DIR, SESSIONS_DIR, INDEX_FILE, MEMORY_FILE, LOGS_DIR, DELTA_TEMP_FILE, REGRESSING_STATE_FILE, SKILL_ACTIVE_FILE, WA_COUNT_FILE } = require('./constants');
 const { getPostCompactWarning: getPostCompactWarningShared } = require('./shared-context');
-
-// Skip processing during background memory summarization
-if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 
 // Legacy global hook registration removed in v19.43.0.
 // Plugin hooks.json is the sole source of hook registration.
@@ -77,14 +79,9 @@ function ensureAutoMemoryWarning(projectDir) {
 
 const getPostCompactWarning = getPostCompactWarningShared;
 
-const { readStdin: readStdinShared } = require('./transcript-utils');
+const { readStdin } = require('./transcript-utils');
 
 const MEMORY_TAIL_LINES = 50;
-
-// Use shared readStdin with 3000ms timeout for SessionStart hook
-function readStdinAsync() {
-  return readStdinShared(3000);
-}
 
 function loadMemory(stdinData) {
   const projectDir = getProjectDir();
@@ -217,7 +214,7 @@ function loadMemory(stdinData) {
   const memoryPath = path.join(memoryDir, MEMORY_FILE);
   if (fs.existsSync(memoryPath)) {
     const content = readFileOrDefault(memoryPath, '');
-    const lines = content.split('\n');
+    const lines = content.split(/\r?\n/);
     if (lines.length > MEMORY_TAIL_LINES) {
       const tail = lines.slice(-MEMORY_TAIL_LINES).join('\n');
       sections.push('## Recent Sessions (last ' + MEMORY_TAIL_LINES + ' lines)\n' + tail);
@@ -261,7 +258,7 @@ function loadMemory(stdinData) {
 function getUnreflectedL1Content(l1Path, memoryContent) {
   try {
     const content = fs.readFileSync(l1Path, 'utf8');
-    const lines = content.split('\n').filter(l => l.trim()).slice(-50);
+    const lines = content.split(/\r?\n/).filter(l => l.trim()).slice(-50);
     const summary = [];
     for (const line of lines) {
       try {
@@ -285,7 +282,7 @@ if (pdIdx >= 0) {
   process.argv.splice(pdIdx, 1);
 }
 
-readStdinAsync().then((stdinData) => {
+readStdin(3000).then((stdinData) => {
   // CLAUDE_PROJECT_DIR (set by Claude Code) is the authoritative project root.
   // Do NOT use stdinData.cwd — it changes when Bash cd's to subdirectories.
   try {

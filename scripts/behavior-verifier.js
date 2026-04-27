@@ -22,6 +22,14 @@
 
 const fs = require('fs');
 const path = require('path');
+
+// Skip during background memory summarization (recursion guard, fail-open early)
+// F1 mitigation: keep inline env check for fail-open invariant — D106 IA-10 RA2
+if (process.env.CRABSHELL_BACKGROUND === '1') process.exit(0);
+
+// Skip when the verifier sub-agent itself is the source (recursion guard)
+if (process.env.CRABSHELL_AGENT === 'behavior-verifier') process.exit(0);
+
 const { writeJson, getStorageRoot } = require('./utils');
 const { readStdin, getRecentTaskCalls } = require('./transcript-utils');
 const { MEMORY_DIR, BEHAVIOR_VERIFIER_STATE_FILE, RING_BUFFER_SIZE, VERIFIER_INTERVAL } = require('./constants');
@@ -35,12 +43,6 @@ try {
   isRegressingActive = () => false;
   isLightWorkflowActive = () => false;
 }
-
-// Skip during background memory summarization (recursion guard, fail-open early)
-if (process.env.CRABSHELL_BACKGROUND === '1') process.exit(0);
-
-// Skip when the verifier sub-agent itself is the source (recursion guard)
-if (process.env.CRABSHELL_AGENT === 'behavior-verifier') process.exit(0);
 
 /**
  * Strip fenced code blocks before sentence inspection so that question marks

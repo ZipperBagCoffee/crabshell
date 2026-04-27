@@ -119,7 +119,7 @@ const SHORT_NO_ANALYSIS =
   // Find every stderr.write line emitted with [BEHAVIOR-WARN] prefix in the Stop
   // branches of sycophancy-guard.js. Count occurrences.
   const sycBehaviorWarnLines = sycSrc
-    .split('\n')
+    .split(/\r?\n/)
     .filter(l => l.includes('process.stderr.write') && l.includes('[BEHAVIOR-WARN]'));
   const sycSuffixHits = sycBehaviorWarnLines
     .filter(l => l.includes('retroactively correct in next turn'));

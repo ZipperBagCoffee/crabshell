@@ -3,6 +3,7 @@
 const { readStdin } = require('./transcript-utils');
 
 // Skip processing during background memory summarization
+// F1 mitigation: keep inline env check for fail-open invariant — D106 IA-10 RA2
 if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 
 /**
@@ -34,7 +35,7 @@ const DEFERRAL_QUESTIONS = [
  */
 function hasAnalysisBody(response) {
   if (!response) return false;
-  const lines = response.split('\n').filter(l => l.trim().length > 0);
+  const lines = response.split(/\r?\n/).filter(l => l.trim().length > 0);
   return lines.length >= 5 || response.length >= 400;
 }
 
@@ -56,7 +57,7 @@ async function main() {
   const response = hookData.stop_response || '';
 
   // Exempt: short responses (≤4 non-empty lines) — likely just clarification questions
-  const nonEmptyLines = response.split('\n').filter(l => l.trim().length > 0);
+  const nonEmptyLines = response.split(/\r?\n/).filter(l => l.trim().length > 0);
   if (nonEmptyLines.length <= 4) process.exit(0);
 
   // Warn if analysis body present AND trailing deferral question detected

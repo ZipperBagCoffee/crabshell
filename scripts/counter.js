@@ -1,16 +1,18 @@
 const path = require('path');
 const fs = require('fs');
-const { getProjectDir, getProjectName, getStorageRoot, readFileOrDefault, writeFile, readJsonOrDefault, readIndexSafe, writeJson, ensureDir, getTimestamp, acquireIndexLock, releaseIndexLock } = require('./utils');
 const os = require('os');
+
+// Skip processing during background memory summarization
+// F1 mitigation: keep inline env check for fail-open invariant — D106 IA-10 RA2
+if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
+
+const { getProjectDir, getProjectName, getStorageRoot, readFileOrDefault, writeFile, readJsonOrDefault, readIndexSafe, writeJson, ensureDir, getTimestamp, acquireIndexLock, releaseIndexLock } = require('./utils');
 const { refineRaw, refineRawSync } = require('./refine-raw');
 const { checkAndRotate } = require('./memory-rotation');
 const { extractDelta } = require('./extract-delta');
 const { MEMORY_DIR, MEMORY_FILE, SESSIONS_DIR, COUNTER_FILE, WA_COUNT_FILE } = require('./constants');
 const { detectRegressingSkillCall, advancePhase } = require('./regressing-state');
-const { readStdin: readStdinShared, findTranscriptPath } = require('./transcript-utils');
-
-// Skip processing during background memory summarization
-if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
+const { readStdin, findTranscriptPath } = require('./transcript-utils');
 
 const GLOBAL_CONFIG_PATH = path.join(os.homedir(), '.crabshell', 'config.json');
 const DEFAULT_INTERVAL = 15;
@@ -31,12 +33,6 @@ function getConfig() {
   }
   return config;
 }
-
-// Use shared readStdin with 1000ms timeout for PostToolUse hook
-function readStdin() {
-  return readStdinShared(1000);
-}
-
 
 // Counter stored in counter.json (separated from memory-index.json)
 function getCounter() {
@@ -84,7 +80,7 @@ function classifyAgent(hookData) {
 }
 
 async function check() {
-  const hookData = await readStdin();
+  const hookData = await readStdin(1000);
   // CLAUDE_PROJECT_DIR (set by Claude Code) is the authoritative project root.
   // Do NOT use hookData.cwd — it changes when Bash cd's to subdirectories.
   const sessionId = hookData.session_id || null;
@@ -244,7 +240,7 @@ async function check() {
 }
 
 async function final() {
-  const hookData = await readStdin();
+  const hookData = await readStdin(1000);
   // CLAUDE_PROJECT_DIR (set by Claude Code) is the authoritative project root.
   const sessionId = hookData.session_id || null;
   const sessionId8 = sessionId ? sessionId.substring(0, 8) : null;
@@ -422,7 +418,7 @@ function reset() {
 function cleanupDuplicateL1(newL1Path) {
   const sessionsDir = path.dirname(newL1Path);
   const newL1Content = fs.readFileSync(newL1Path, 'utf8');
-  const newL1FirstLine = newL1Content.split('\n')[0];
+  const newL1FirstLine = newL1Content.split(/\r?\n/)[0];
 
   let sessionStartTs;
   try {
@@ -441,7 +437,7 @@ function cleanupDuplicateL1(newL1Path) {
     if (fileName === newL1Name) continue;
 
     const filePath = path.join(sessionsDir, fileName);
-    const firstLine = fs.readFileSync(filePath, 'utf8').split('\n')[0];
+    const firstLine = fs.readFileSync(filePath, 'utf8').split(/\r?\n/)[0];
 
     try {
       const fileStartTs = JSON.parse(firstLine).ts;
@@ -517,7 +513,7 @@ function dedupeL1() {
   for (const f of l1Files) {
     try {
       const filePath = path.join(sessionsDir, f);
-      const firstLine = fs.readFileSync(filePath, 'utf8').split('\n')[0];
+      const firstLine = fs.readFileSync(filePath, 'utf8').split(/\r?\n/)[0];
       const ts = JSON.parse(firstLine).ts;
       const size = fs.statSync(filePath).size;
       if (!tsMap[ts]) tsMap[ts] = [];
@@ -679,7 +675,7 @@ function memoryGet(name) {
       const filePath = path.join(memDir, config.file);
       if (fs.existsSync(filePath)) {
         const content = readFileOrDefault(filePath, '').trim();
-        const lines = content.split('\n').length;
+        const lines = content.split(/\r?\n/).length;
         const preview = content.substring(0, 100).replace(/\n/g, ' ');
         console.log(`\n[${key}] ${config.title} (${lines} lines)`);
         console.log(`  ${preview}${content.length > 100 ? '...' : ''}`);
@@ -725,7 +721,7 @@ function memoryList() {
     if (fs.existsSync(filePath)) {
       const stats = fs.statSync(filePath);
       const content = readFileOrDefault(filePath, '');
-      const lines = content.trim().split('\n').length;
+      const lines = content.trim().split(/\r?\n/).length;
       console.log(`  ✓ ${config.file} (${lines} lines, ${stats.size} bytes)`);
       total++;
     } else {
@@ -738,7 +734,7 @@ function memoryList() {
   if (fs.existsSync(memoryPath)) {
     const stats = fs.statSync(memoryPath);
     const content = readFileOrDefault(memoryPath, '');
-    const lines = content.trim().split('\n').length;
+    const lines = content.trim().split(/\r?\n/).length;
     console.log(`  ✓ logbook.md (${lines} lines, ${stats.size} bytes) [rolling]`);
   } else {
     console.log(`  ○ logbook.md - not created [rolling]`);

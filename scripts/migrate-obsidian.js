@@ -116,7 +116,7 @@ function extractTitleFromContent(content) {
 function lookupIndexEntry(indexPath, docId) {
   if (!fs.existsSync(indexPath)) return { status: 'open', created: '' };
   const content = fs.readFileSync(indexPath, 'utf8');
-  const lines = content.split('\n');
+  const lines = content.split(/\r?\n/);
   for (const line of lines) {
     // Table row: | ID | Title | Status | Created | ... |
     const cells = line.split('|').map(c => c.trim());
@@ -284,7 +284,7 @@ function processIndexFile(indexPath) {
   if (!fs.existsSync(indexPath)) return;
 
   const content = fs.readFileSync(indexPath, 'utf8');
-  const lines = content.split('\n');
+  const lines = content.split(/\r?\n/);
   let modified = false;
   let convertedInThisFile = 0;
 

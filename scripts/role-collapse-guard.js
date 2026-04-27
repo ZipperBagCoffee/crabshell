@@ -3,14 +3,13 @@
 const fs = require('fs');
 const path = require('path');
 const { readStdin } = require('./transcript-utils');
-const { isRegressingActive, isLightWorkflowActive, getWaCount } = require('./regressing-loop-guard');
 
 // Skip processing during background memory summarization
+// F1 mitigation: keep inline env check for fail-open invariant — D106 IA-10 RA2
 if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 
-function getProjectDir() {
-  return process.env.CLAUDE_PROJECT_DIR || process.env.PROJECT_DIR || process.cwd();
-}
+const { isRegressingActive, isLightWorkflowActive, getWaCount } = require('./regressing-loop-guard');
+const { getProjectDir } = require('./utils');
 
 /**
  * Determine whether a file path is a source file that an Orchestrator should not write.

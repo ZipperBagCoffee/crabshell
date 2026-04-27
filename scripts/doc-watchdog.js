@@ -4,7 +4,10 @@ const fs = require('fs');
 const { readStdin, normalizePath } = require('./transcript-utils');
 
 // Skip processing during background memory summarization
+// F1 mitigation: keep inline env check for fail-open invariant — D106 IA-10 RA2
 if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
+
+const { getProjectDir } = require('./utils');
 
 // Constants
 const CODE_EXTENSIONS = ['.js','.ts','.jsx','.tsx','.py','.rb','.go','.rs','.java','.c','.cpp','.h','.lua','.php','.sh'];
@@ -12,10 +15,6 @@ const EXCLUDED_DIRS = ['.crabshell','.claude','node_modules','.git','dist','buil
 const DOC_PATTERN = /\.crabshell\/(discussion|plan|ticket|investigation|hotfix)\/[^/]+\.md$/i;
 const DOC_WATCHDOG_THRESHOLD = 5;
 const STATE_FILE = 'doc-watchdog.json';
-
-function getProjectDir() {
-  return process.env.CLAUDE_PROJECT_DIR || process.env.PROJECT_DIR || process.cwd();
-}
 
 function getStatePath() {
   return path.join(getProjectDir(), '.crabshell', 'memory', STATE_FILE);

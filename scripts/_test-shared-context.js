@@ -89,7 +89,7 @@ test('readProjectConcept reads first 20 lines up to 1000 chars', function() {
 
     const result = readProjectConcept(tmpDir);
     // Should have at most 20 lines
-    const resultLines = result.split('\n');
+    const resultLines = result.split(/\r?\n/);
     assert(resultLines.length <= 20, 'should have at most 20 lines, got ' + resultLines.length);
     assert(result.includes('Line 1:'), 'should contain first line');
     assert(!result.includes('Line 21:'), 'should NOT contain line 21');

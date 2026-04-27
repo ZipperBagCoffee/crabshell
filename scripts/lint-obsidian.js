@@ -90,7 +90,7 @@ function extractFrontmatter(content) {
  */
 function parseFrontmatter(raw) {
   const obj = {};
-  for (const line of raw.split('\n')) {
+  for (const line of raw.split(/\r?\n/)) {
     const colon = line.indexOf(':');
     if (colon === -1) continue;
     const key = line.slice(0, colon).trim();
@@ -106,7 +106,7 @@ function parseFrontmatter(raw) {
  */
 function extractWikilinks(content) {
   const links = [];
-  const lines = content.split('\n');
+  const lines = content.split(/\r?\n/);
   const re = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
   lines.forEach((lineText, idx) => {
     let m;
@@ -327,7 +327,7 @@ function checkIndex(crabshellDir) {
       continue;
     }
 
-    const idxLines = idxContent.split('\n');
+    const idxLines = idxContent.split(/\r?\n/);
 
     // For each .md file, check if any INDEX row contains its bare ID
     for (const f of dirFiles) {

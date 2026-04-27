@@ -4,7 +4,7 @@ const { ROTATION_THRESHOLD_TOKENS, CARRYOVER_TOKENS, ARCHIVE_PREFIX } = require(
 const { estimateTokens, extractTailByTokens, updateIndex } = require('./utils');
 
 function parseDateSections(content) {
-  const lines = content.split('\n');
+  const lines = content.split(/\r?\n/);
   const sections = [];
   let currentSection = null;
 
@@ -29,7 +29,7 @@ function forceSplitSection(section, threshold) {
   const tokens = estimateTokens(section.content);
   if (tokens <= threshold) return [section];
 
-  const lines = section.content.split('\n');
+  const lines = section.content.split(/\r?\n/);
   const chunks = [];
   let currentChunk = { lines: [], tokens: 0 };
 

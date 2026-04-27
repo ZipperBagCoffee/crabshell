@@ -38,7 +38,7 @@ function extractDelta(sessionId) {
 
     const l1Path = path.join(sessionsDir, selectedL1);
     const content = fs.readFileSync(l1Path, 'utf8');
-    const lines = content.split('\n').filter(l => l.trim());
+    const lines = content.split(/\r?\n/).filter(l => l.trim());
 
     // Filter entries after lastUpdateTs, track max processed timestamp
     const delta = [];

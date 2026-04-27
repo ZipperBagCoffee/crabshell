@@ -21,6 +21,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Skip during background memory summarization (fail-open early)
+// F1 mitigation: keep inline env check for fail-open invariant — D106 IA-10 RA2
 if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 
 const { getProjectDir, getStorageRoot, readJsonOrDefault, writeJson, ensureDir, acquireIndexLock, releaseIndexLock } = require('./utils');

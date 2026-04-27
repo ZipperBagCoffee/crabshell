@@ -3,6 +3,9 @@ const path = require('path');
 const os = require('os');
 const { STORAGE_ROOT, MEMORY_DIR, INDEX_FILE, MEMORY_FILE, LOCK_FILE, INDEX_LOCK_FILE, LOCK_STALE_MS } = require('./constants');
 
+// Subprocess marker — top-level guard for fail-open invariant. D106 IA-10.
+function isBackground() { return process.env.CRABSHELL_BACKGROUND === '1'; }
+
 function getProjectName() { return path.basename(getProjectDir()); }
 
 function getProjectDir() {
@@ -11,6 +14,11 @@ function getProjectDir() {
   if (process.env.CLAUDE_PROJECT_DIR) return process.env.CLAUDE_PROJECT_DIR;
   if (process.env.PROJECT_DIR) return process.env.PROJECT_DIR;
   return process.cwd();
+}
+
+function parseProjectDirArg(argv) {
+  for (const a of argv) if (a.startsWith('--project-dir=')) return a.slice('--project-dir='.length);
+  return getProjectDir();
 }
 
 function getStorageRoot(projectDir) { return path.join(projectDir || getProjectDir(), STORAGE_ROOT); }
@@ -94,7 +102,7 @@ function estimateTokens(text) { return Math.ceil(Buffer.byteLength(text, 'utf8')
 function estimateTokensFromFile(filePath) { return Math.ceil(fs.statSync(filePath).size / 4); }
 
 function extractTailByTokens(content, targetTokens) {
-  const lines = content.split('\n');
+  const lines = content.split(/\r?\n/);
   let tokens = 0, startIndex = lines.length;
   for (let i = lines.length - 1; i >= 0; i--) {
     const lineTokens = estimateTokens(lines[i] + '\n');
@@ -131,4 +139,4 @@ function acquireIndexLock(memoryDir) {
 
 function releaseIndexLock(memoryDir) { try { fs.unlinkSync(path.join(memoryDir, INDEX_LOCK_FILE)); } catch {} }
 
-module.exports = { MEMORY_ROOT, getProjectName, getProjectDir, getStorageRoot, getMemoryDir, ensureDir, readFileOrDefault, readJsonOrDefault, getDefaultIndex, readIndexSafe, writeFile, writeJson, getTimestamp, estimateTokens, estimateTokensFromFile, extractTailByTokens, updateIndex, acquireLock, releaseLock, acquireIndexLock, releaseIndexLock };
+module.exports = { MEMORY_ROOT, isBackground, getProjectName, getProjectDir, parseProjectDirArg, getStorageRoot, getMemoryDir, ensureDir, readFileOrDefault, readJsonOrDefault, getDefaultIndex, readIndexSafe, writeFile, writeJson, getTimestamp, estimateTokens, estimateTokensFromFile, extractTailByTokens, updateIndex, acquireLock, releaseLock, acquireIndexLock, releaseIndexLock };

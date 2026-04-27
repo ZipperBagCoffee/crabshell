@@ -11,12 +11,14 @@
 
 const fs = require('fs');
 const path = require('path');
+
+// Skip processing during background memory summarization
+// F1 mitigation: keep inline env check for fail-open invariant — D106 IA-10 RA2
+if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
+
 const { readStdin } = require('./transcript-utils');
 const { getProjectDir, getStorageRoot, readJsonOrDefault } = require('./utils');
 const { REGRESSING_STATE_FILE } = require('./constants');
-
-// Skip processing during background memory summarization
-if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 
 function getActiveDocs(projectDir) {
   const storageRoot = getStorageRoot(projectDir);
@@ -33,7 +35,7 @@ function getActiveDocs(projectDir) {
     if (!fs.existsSync(indexPath)) continue;
     try {
       const content = fs.readFileSync(indexPath, 'utf8');
-      const lines = content.split('\n');
+      const lines = content.split(/\r?\n/);
       for (const line of lines) {
         // Table rows: | ID | Title | Status | ...
         // Match rows where status is NOT done/concluded/verified/abandoned
@@ -73,7 +75,7 @@ async function main() {
     const projectMdPath = path.join(getStorageRoot(projectDir), 'project.md');
     if (fs.existsSync(projectMdPath)) {
       const content = fs.readFileSync(projectMdPath, 'utf8').trim();
-      const firstLine = content.split('\n')[0] || '';
+      const firstLine = content.split(/\r?\n/)[0] || '';
       if (firstLine) {
         lines.push(`**Project:** ${firstLine}`);
       }

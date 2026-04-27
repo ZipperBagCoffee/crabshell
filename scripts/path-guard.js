@@ -5,11 +5,10 @@ const os = require('os');
 const { readStdin, normalizePath } = require('./transcript-utils');
 
 // Skip processing during background memory summarization
+// F1 mitigation: keep inline env check for fail-open invariant — D106 IA-10 RA2
 if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 
-function getProjectDir() {
-  return process.env.CLAUDE_PROJECT_DIR || process.env.PROJECT_DIR || process.cwd();
-}
+const { getProjectDir } = require('./utils');
 
 // --- Path validation logic ---
 
@@ -244,12 +243,12 @@ async function main() {
     const filePath = normalizePath(input.file_path || '');
     if (filePath.endsWith('memory/logbook.md')) {
       const newContent = input.content || '';
-      const newLineCount = newContent.split('\n').length;
+      const newLineCount = newContent.split(/\r?\n/).length;
       const fs = require('fs');
       if (fs.existsSync(filePath.replace(/\//g, path.sep))) {
         try {
           const existing = fs.readFileSync(filePath.replace(/\//g, path.sep), 'utf8');
-          const existingLineCount = existing.split('\n').length;
+          const existingLineCount = existing.split(/\r?\n/).length;
           if (newLineCount < existingLineCount) {
             const output = {
               decision: "block",

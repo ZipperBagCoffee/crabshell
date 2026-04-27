@@ -99,7 +99,7 @@ function getRecentBashCommands(transcriptPath) {
     fs.closeSync(fd);
 
     const text = buf.toString('utf8');
-    const lines = text.split('\n').filter(l => l.trim());
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
 
     const commands = [];
     const pendingCommands = new Map();
@@ -168,7 +168,7 @@ function getRecentTaskCalls(transcriptPath, sinceTimestamp) {
     fs.closeSync(fd);
 
     const text = buf.toString('utf8');
-    const lines = text.split('\n').filter(l => l.trim());
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
 
     const sinceMs = sinceTimestamp ? Date.parse(sinceTimestamp) : 0;
     const tasks = [];
@@ -226,7 +226,7 @@ function getLastUserMessage(transcriptPath) {
     fs.closeSync(fd);
 
     const text = buf.toString('utf8');
-    const lines = text.split('\n').filter(l => l.trim());
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
 
     // Search backward for the last human message
     for (let i = lines.length - 1; i >= 0; i--) {

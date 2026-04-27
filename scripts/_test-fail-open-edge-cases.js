@@ -312,6 +312,99 @@ const SUBSTANTIVE = 'I have implemented the function and verified it returns the
      + ' ctx=' + JSON.stringify(ctx.slice(0, 200)));
 })();
 
+// ---------- Case 6 — utils.js load failure → all hooks fail-open via inline check ----------
+//
+// D106 IA-10 (P142_T002 AC-7): rename scripts/utils.js → scripts/utils.js.bak so
+// any hook that does `require('./utils')` throws MODULE_NOT_FOUND. With
+// CRABSHELL_BACKGROUND=1 set, every hook MUST fail-open (exit 0) because the
+// inline `process.env.CRABSHELL_BACKGROUND === '1'` early-exit runs BEFORE the
+// utils.js require statement (F1 mitigation invariant).
+//
+// Defense-in-depth restore: try/finally + process.on('exit') (mirrors Case 1
+// pattern). If the test crashes between rename and restore, exit handler still
+// restores utils.js so subsequent test runs don't break the live scripts/ dir.
+(function() {
+  const liveUtils = path.join(SCRIPTS_DIR, 'utils.js');
+  const bakUtils = path.join(SCRIPTS_DIR, 'utils.js.failopen-test.bak');
+  let renamed = false;
+  // Defense-in-depth restore: even if the test crashes, process.on('exit') runs.
+  const restore = () => {
+    if (renamed && fs.existsSync(bakUtils) && !fs.existsSync(liveUtils)) {
+      try { fs.renameSync(bakUtils, liveUtils); } catch (_) {}
+    }
+  };
+  process.on('exit', restore);
+
+  // 22 hook files (every script in scripts/ that contains the inline
+  // CRABSHELL_BACKGROUND === '1' early-exit, excluding utils.js itself).
+  const HOOK_FILES = [
+    'behavior-verifier.js',
+    'counter.js',
+    'deferral-guard.js',
+    'doc-watchdog.js',
+    'docs-guard.js',
+    'inject-rules.js',
+    'load-memory.js',
+    'log-guard.js',
+    'path-guard.js',
+    'post-compact.js',
+    'pre-compact.js',
+    'pressure-guard.js',
+    'regressing-guard.js',
+    'regressing-loop-guard.js',
+    'role-collapse-guard.js',
+    'scope-guard.js',
+    'skill-tracker.js',
+    'subagent-context.js',
+    'sycophancy-guard.js',
+    'verification-sequence.js',
+    'verify-guard.js',
+    'wa-count-pretool.js'
+  ];
+
+  try {
+    if (!fs.existsSync(liveUtils)) {
+      ok('6 utils.js load fail → all 22 hooks fail-open', false,
+         'precondition: utils.js missing — cannot rename');
+      return;
+    }
+    fs.renameSync(liveUtils, bakUtils);
+    renamed = true;
+
+    const env = Object.assign({}, process.env, { CRABSHELL_BACKGROUND: '1' });
+    delete env.CRABSHELL_AGENT;
+
+    const failures = [];
+    for (const hookName of HOOK_FILES) {
+      const hookPath = path.join(SCRIPTS_DIR, hookName);
+      if (!fs.existsSync(hookPath)) {
+        failures.push(hookName + ' (missing)');
+        continue;
+      }
+      const r = spawnSync(NODE, [hookPath], {
+        input: '',
+        timeout: 5000, encoding: 'utf8',
+        stdio: ['pipe', 'pipe', 'pipe'], env
+      });
+      if (r.status !== 0) {
+        failures.push(hookName + ' (exit=' + r.status
+          + ' stderr=' + JSON.stringify((r.stderr || '').slice(0, 100)) + ')');
+      }
+    }
+
+    ok('6 utils.js load fail → all 22 hooks fail-open (CRABSHELL_BACKGROUND=1 inline early-exit)',
+       failures.length === 0,
+       failures.length > 0 ? 'failed=' + failures.join('; ') : 'all 22 hooks exit 0');
+  } finally {
+    // Synchronous restore — must succeed so subsequent test runs (and the live
+    // plugin) see utils.js back in place.
+    if (renamed && fs.existsSync(bakUtils)) {
+      fs.renameSync(bakUtils, liveUtils);
+      renamed = false;
+    }
+  }
+})();
+
 // Cleanup
 for (const d of tmpDirs) { try { fs.rmSync(d, { recursive: true, force: true }); } catch {} }
 

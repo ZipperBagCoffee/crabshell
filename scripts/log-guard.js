@@ -29,11 +29,10 @@ const fs = require('fs');
 const { readStdin, normalizePath } = require('./transcript-utils');
 
 // Skip processing during background memory summarization
+// F1 mitigation: keep inline env check for fail-open invariant — D106 IA-10 RA2
 if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 
-function getProjectDir() {
-  return process.env.CLAUDE_PROJECT_DIR || process.env.PROJECT_DIR || process.cwd();
-}
+const { getProjectDir } = require('./utils');
 
 // --- Constants ---
 
@@ -115,8 +114,8 @@ function detectStatusChanges(oldString, newString) {
   const changes = [];
   if (!oldString || !newString) return changes;
 
-  const oldLines = oldString.split('\n').filter(l => l.trim().startsWith('|'));
-  const newLines = newString.split('\n').filter(l => l.trim().startsWith('|'));
+  const oldLines = oldString.split(/\r?\n/).filter(l => l.trim().startsWith('|'));
+  const newLines = newString.split(/\r?\n/).filter(l => l.trim().startsWith('|'));
 
   // Build ID→status map from old lines
   const oldMap = new Map();
@@ -154,8 +153,8 @@ function detectStatusChangesWrite(filePath, newContent) {
     return changes; // File doesn't exist — creation, not update
   }
 
-  const oldLines = oldContent.split('\n').filter(l => l.trim().startsWith('|'));
-  const newLines = newContent.split('\n').filter(l => l.trim().startsWith('|'));
+  const oldLines = oldContent.split(/\r?\n/).filter(l => l.trim().startsWith('|'));
+  const newLines = newContent.split(/\r?\n/).filter(l => l.trim().startsWith('|'));
 
   const oldMap = new Map();
   for (const line of oldLines) {
@@ -234,7 +233,7 @@ function parseLogEntries(content) {
     const rawBody = logContent.slice(bodyStart, bodyEnd);
     // Strip blank lines and separator lines (---), then measure
     const body = rawBody
-      .split('\n')
+      .split(/\r?\n/)
       .filter(l => l.trim() !== '' && l.trim() !== '---')
       .map(l => l.trim())
       .join('\n')
@@ -385,7 +384,7 @@ function checkRegressingCycleGuard(filePath, projectDir) {
     return null; // Can't read — fail-open
   }
 
-  const rows = ticketIndex.split('\n').filter(r => r.trim().startsWith('|'));
+  const rows = ticketIndex.split(/\r?\n/).filter(r => r.trim().startsWith('|'));
   const incomplete = [];
 
   for (const row of rows) {

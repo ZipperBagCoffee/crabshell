@@ -69,7 +69,7 @@ function readProjectConcept(projectDir, maxLines = 20, maxChars = 1000) {
   try {
     const content = fs.readFileSync(projectMdPath, 'utf8').trim();
     if (!content) return '';
-    const lines = content.split('\n').slice(0, maxLines).join('\n');
+    const lines = content.split(/\r?\n/).slice(0, maxLines).join('\n');
     return lines.substring(0, maxChars);
   } catch (e) {
     return '';

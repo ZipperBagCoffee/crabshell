@@ -1,25 +1,22 @@
 // scripts/inject-rules.js
 const fs = require('fs');
 const path = require('path');
+
+// Skip processing during background memory summarization
+// F1 mitigation: keep inline env check for fail-open invariant — D106 IA-10 RA2
+if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
+
 const { getProjectDir, getStorageRoot, readJsonOrDefault, readIndexSafe, writeJson, acquireIndexLock, releaseIndexLock } = require('./utils');
 const { buildRegressingReminder, getRegressingState } = require('./regressing-state');
 const { TICKET_DIR, REGRESSING_STATE_FILE, MEMORY_DIR, BEHAVIOR_VERIFIER_STATE_FILE, BEHAVIOR_VERIFIER_LOCK_FILE } = require('./constants');
-const { readStdin: readStdinShared } = require('./transcript-utils');
+const { readStdin } = require('./transcript-utils');
 const { COMPRESSED_CHECKLIST: COMPRESSED_CHECKLIST_SHARED, readProjectConcept } = require('./shared-context');
-
-// Skip processing during background memory summarization
-if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 
 // Emergency stop keywords - when detected, replaces entire context with EMERGENCY STOP
 const EMERGENCY_KEYWORDS = ['아시발멈춰', 'BRAINMELT'];
 
 // Bailout keywords - when detected, resets feedback pressure to L0
 const BAILOUT_KEYWORDS = ['봉인해제', 'UNLEASH'];
-
-// Use shared readStdin with 1000ms timeout for UserPromptSubmit hook
-function readStdin() {
-  return readStdinShared(1000);
-}
 
 function checkEmergencyStop(hookData) {
   const input = (hookData && (hookData.prompt || hookData.input)) || '';
@@ -414,7 +411,7 @@ const ENGLISH_STOP_WORDS = new Set([
 
 function parseMemorySections(content) {
   const sections = [];
-  const lines = content.split('\n');
+  const lines = content.split(/\r?\n/);
   let currentHeading = null;
   let currentBody = [];
 
@@ -567,7 +564,7 @@ function checkTicketStatuses(projectDir) {
     }
 
     // Parse INDEX.md table rows: | ID | Title | Status | Created | Plan |
-    const lines = content.split('\n');
+    const lines = content.split(/\r?\n/);
     const statusMap = {};
     for (const line of lines) {
       if (!line.startsWith('|')) continue;
@@ -596,7 +593,7 @@ function checkTicketStatuses(projectDir) {
 
 async function main() {
   try {
-    const hookData = await readStdin();
+    const hookData = await readStdin(1000);
     const projectDir = getProjectDir();
 
     // Auto-sync RULES to CLAUDE.md

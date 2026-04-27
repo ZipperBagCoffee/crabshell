@@ -4,14 +4,13 @@ const fs = require('fs');
 const path = require('path');
 const { readStdin } = require('./transcript-utils');
 const { STORAGE_ROOT, MEMORY_DIR, SKILL_ACTIVE_FILE, WA_COUNT_FILE } = require('./constants');
-const { buildRegressingReminder } = require('./regressing-state');
 
 // Skip processing during background memory summarization
+// F1 mitigation: keep inline env check for fail-open invariant — D106 IA-10 RA2
 if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 
-function getProjectDir() {
-  return process.env.CLAUDE_PROJECT_DIR || process.env.PROJECT_DIR || process.cwd();
-}
+const { buildRegressingReminder } = require('./regressing-state');
+const { getProjectDir } = require('./utils');
 
 /**
  * Check if regressing workflow is currently active.

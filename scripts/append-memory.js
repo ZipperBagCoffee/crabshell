@@ -11,14 +11,7 @@
 const fs = require('fs');
 const path = require('path');
 const { STORAGE_ROOT, MEMORY_FILE } = require('./constants');
-
-function getProjectDir() {
-  const args = process.argv.slice(2);
-  for (const arg of args) {
-    if (arg.startsWith('--project-dir=')) return arg.slice('--project-dir='.length);
-  }
-  return process.env.CLAUDE_PROJECT_DIR || process.cwd();
-}
+const { parseProjectDirArg } = require('./utils');
 
 function getTimestamps() {
   const d = new Date();
@@ -29,7 +22,7 @@ function getTimestamps() {
 }
 
 function main() {
-  const projectDir = getProjectDir();
+  const projectDir = parseProjectDirArg(process.argv.slice(2));
   const memoryDir = path.join(projectDir, STORAGE_ROOT, 'memory');
   const summaryPath = path.join(memoryDir, 'delta_summary_temp.txt');
   const memoryPath = path.join(memoryDir, MEMORY_FILE);

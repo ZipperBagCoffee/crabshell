@@ -11,12 +11,14 @@
 
 const fs = require('fs');
 const path = require('path');
+
+// Skip processing during background memory summarization
+// F1 mitigation: keep inline env check for fail-open invariant — D106 IA-10 RA2
+if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
+
 const { readStdin } = require('./transcript-utils');
 const { getProjectDir, getStorageRoot, readJsonOrDefault, writeJson, acquireIndexLock, releaseIndexLock } = require('./utils');
 const { REGRESSING_STATE_FILE } = require('./constants');
-
-// Skip processing during background memory summarization
-if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 
 async function main() {
   let stdinData = {};

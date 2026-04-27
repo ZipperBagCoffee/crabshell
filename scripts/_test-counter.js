@@ -1133,7 +1133,7 @@ test('OFFSET: refineRawSync with positive offset returns object with newOffset',
 
     // Output should contain both old and new data
     const finalOutput = fs.readFileSync(outputPath, 'utf8');
-    const outputLines = finalOutput.split('\n').filter(l => l.trim());
+    const outputLines = finalOutput.split(/\r?\n/).filter(l => l.trim());
     assertEqual(outputLines.length, 3, 'output should have 3 lines total');
   } finally {
     cleanupDir(tmpDir);
@@ -1399,7 +1399,7 @@ test('OFFSET EDGE: incremental append to existing L1 file', function() {
     assertEqual(r2.lineCount, 1, 'second run processes 1 new line');
 
     const output = fs.readFileSync(outputPath, 'utf8');
-    const outputLines = output.split('\n').filter(l => l.trim());
+    const outputLines = output.split(/\r?\n/).filter(l => l.trim());
     assertEqual(outputLines.length, 2, 'total 2 lines in output');
   } finally {
     cleanupDir(tmpDir);

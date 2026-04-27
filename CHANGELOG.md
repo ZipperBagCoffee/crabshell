@@ -1,10 +1,21 @@
 # Changelog
 
+## v21.87.0 - 2026-04-27
+
+- **D106 cycle 5 ship — code/doc IA bulk processing (IA-9/10/13/15/16).** P142 cycle 5 종결. 3 ticket all verified.
+- **T001 (IA-9 dead code delete)**: `scripts/test-cwd-isolation.js` (274줄) + `scripts/delta-background.js` (200줄) + `scripts/_test-delta-background.js` (~565줄) + `scripts/_prototype-measure.js` (130줄) 삭제. 약 1,169줄 제거. STRUCTURE.md "retained for reference" 정책 reversal + I063 future-work 정책 reversal.
+- **T002 (IA-10 utils.js 통합 + F1 mitigation)**: `scripts/utils.js`에 `isBackground()` + `parseProjectDirArg()` 추가. 22 hook file inline `process.env.CRABSHELL_BACKGROUND === '1'` early-exit 보존 (F1 mitigation 옵션 A) + utils require + F1 mitigation 주석. 12 inline `getProjectDir` 제거. 3 readStdin wrapper 제거 (counter/inject-rules/load-memory). `append-memory.js` Variant B → `parseProjectDirArg(process.argv.slice(2))`. **WA-fix critical**: 11 hook + 6 transitive consumer 의 require 가 inline env check 앞에 실행되던 invariant 위반 — 순서 reorder 로 fail-open invariant 보존.
+- **T003 (IA-13/15/16 cross-platform)**: `scripts/find-node.sh` CRLF → LF normalization. 49+3=52 split('\n') sites → split(/\r?\n/) 변경. `.gitignore` `*.stackdump` 추가.
+- **회귀 테스트**: `_test-fail-open-edge-cases.js` Case 6 추가 (utils.js load fail simulation, 22 hook fail-open 보장). `/verifying run` 26/26 PASS. fail-open edge cases 6/6 PASS.
+- **Cleanup**: 6 .bak file 제거 (T001 4 + T003 swap 2).
+- See [[D106-i067-h006-followup-26-items|D106]] / [[P142-d106-cycle5-code-doc-bulk-processing|P142]] / P142_T001 / P142_T002 / P142_T003 / [[I068-verifier-vs-inject-rules-comparison|I068]].
+
 ## v21.86.0 - 2026-04-27
 
 - **D106 cycle 5 hotfix — `scripts/regressing-guard.js` regex bug fix.** Line 73 regex matched `## <heading>` patterns ANYWHERE in plan files including inline backticked references like `` `## Intent Check` `` within Agent Execution sections. This caused false "empty agent section" detection (the inline reference matched before the actual heading and captured an empty body), blocking ticket creation during cycle 5 P142.
 - **Fix**: prefix `(?:^|\n)` to anchor at start-of-line. Avoids using `m` flag (which would also make `$` match line-end and break the body capture lookahead).
 - **Verification**: regex literal test against P142 confirmed correct match (Intent Check matchedAtIdx=10608, bodyLen=2362; was matchedAtIdx=3273, bodyLen=0 before fix).
+- **D106 IA-9 cycle 5 (P142_T001)**: deleted dead-code files `scripts/test-cwd-isolation.js` (274 LOC), `scripts/delta-background.js` (200 LOC) + `scripts/_test-delta-background.js` (~565 LOC), `scripts/_prototype-measure.js` (130 LOC). Total ~1,169 LOC. STRUCTURE.md "retained for reference" 정책 reversal per user 결정.
 - **Cache refresh required**: user runs `/plugin` → "Update now" to pick up new v21.86.0.
 - See [[D106-i067-h006-followup-26-items|D106]] / [[P142-d106-cycle5-code-doc-bulk-processing|P142]].
 

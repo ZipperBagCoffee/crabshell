@@ -3,6 +3,7 @@
 const { readStdin, findTranscriptPath, getLastUserMessage } = require('./transcript-utils');
 
 // Skip processing during background memory summarization
+// F1 mitigation: keep inline env check for fail-open invariant — D106 IA-10 RA2
 if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 
 // Temporal units to EXCLUDE from quantity detection (prevents "3개월" = "3 months" false positive)

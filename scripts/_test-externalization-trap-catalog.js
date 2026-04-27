@@ -40,7 +40,7 @@ if (!fs.existsSync(ANTIPATTERNS_PATH)) {
 }
 
 const text = fs.readFileSync(ANTIPATTERNS_PATH, 'utf8');
-const lines = text.split('\n');
+const lines = text.split(/\r?\n/);
 
 // ---------- Test 1 — File exists with non-empty content ----------
 ok('1 prompts/anti-patterns.md exists with content',
