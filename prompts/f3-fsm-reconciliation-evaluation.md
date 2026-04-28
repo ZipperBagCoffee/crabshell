@@ -212,6 +212,7 @@ D107 cycle 6 (P148_T001) opens the F-4 measurement window **passively** — the 
   - (a) **Sample threshold**: `acquireCount ≥ N` for the lock under measurement (N TBD; floor ~100 turns × ~5 acquires per turn ≈ 500, but should be calibrated to observed contention sparseness — fewer samples needed if `contendedCount/acquireCount` is stable, more if it oscillates).
   - (b) **Elapsed-time threshold**: `now − measurementWindowStart ≥ T` (T TBD; floor ~24h to capture diurnal load variation, ceiling bounded by F-3 implementation urgency).
   - (c) **Contention-rate threshold**: `contendedCount / acquireCount ≥ R` for ratification trigger (R TBD; if observed rate is below `R_low`, F-3 path (a) lock-merge is overkill; if above `R_high`, path (b) hand-off becomes mandatory). Cycle 8+ to populate `R_low` / `R_high` from baseline data.
+- **Cycle 9 baseline status (informational, captured 2026-04-28T08:15Z)**: `acquireCount=71` (14.2% of floor target ~500); `contendedCount=64` (90.1% contention rate per acquire — high); `measurementWindowStart=2026-04-28T06:36:39.158Z`; elapsed=1.6h; observed rate ≈ 44.56 acquires/h; **projected days-to-floor at observed rate ≈ 0.4d (~10h of organic plugin use)** — much faster than cycle 7 projection (~50-65d). F-3 ratification readiness: NOT YET (14.2% < 100% floor) but reaching floor is days away, not months. D108+ cycle entry timing: shortly after acquireCount ≥ 500 (estimated within 1-2 weeks of typical organic plugin use, or sooner under heavy session use).
 
 ### F-3 ship before F-4 audit = risk?
 

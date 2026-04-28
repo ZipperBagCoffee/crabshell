@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.88.0)
+# Crabshell User Manual (v21.89.0)
 
 ## Why Do You Need This?
 
@@ -226,6 +226,40 @@ The plugin uses Claude Code hooks to run automatically:
 | `SubagentStart` | `subagent-context.js` | When subagent spawns | Injects project concept, COMPRESSED_CHECKLIST, regressing state, and project root anchor into subagent context |
 | `SessionEnd` | `counter.js final` | Session ends | Creates final L1 backup, extracts remaining delta |
 
+### SKELETON_5FIELD — 5-Field Response Skeleton
+
+**What it is:** A pure-Korean 5-field schema injected at the top of Claude's prompt context on every `UserPromptSubmit`. The fields are `[의도]` (restate user intent in user's words, 1 line) / `[이해]` (own interpretation + uncertainty list) / `[검증]` (cite tool output per claim, mark "미검증" otherwise) / `[논리]` (step-by-step reasoning, or explicit "추론 불필요 — 사유:" note) / `[쉬운 설명]` (plain-text summary ≤200 chars, no jargon, no analogy).
+
+**Where it's injected:** `scripts/inject-rules.js` — declared as the `SKELETON_5FIELD` constant (L311-318, template literal); appended to the per-turn `context` string at L828 inside the `UserPromptSubmit` handler. Injection ordering (L820-830): ringBuffer FAIL surface → **SKELETON_5FIELD** → ANTI_PATTERNS_INLINE → COMPRESSED_CHECKLIST → Project Concept → Node.js Path → Project Root Anchor.
+
+**Why (D107 IA-1, P143_T001):** Default-behavior addition — every prompt now carries the 5-field skeleton so the response format is enforced from the prompt itself, instead of relying on Claude to recall CLAUDE.md format conventions per turn. Targets the recurring marker FAIL pattern (response > 200 chars without `[의도]/[답]/[자기 평가]` markers triggers behavior-verifier `§1.understanding` FAIL in v21.82.0+).
+
+**How it interacts with the verifier (감시자):** The `behavior-verifier.js` sub-agent's `§1.understanding` Format-markers sub-clause checks for the presence of any one marker set (`[의도]/[답]/[자기 평가]` Korean OR `[Intent]/[Answer]/[Self-Assessment]` English) when `response.length > 200`. Missing markers → understanding FAIL → ringBuffer entry → next-turn `## Behavior Correction` injection. SKELETON_5FIELD raises the floor by reminding Claude of the canonical Korean marker set every prompt.
+
+**Byte cost:** 458 B body (UTF-8 measured, target envelope 513 B per RA1).
+
+**Configuration knobs:** None. Always-on per cycle 5 (D107). Cannot be disabled; behavior is part of the default prompt envelope.
+
+**Form-game prevention:** The constant is schema-only — no example outputs are listed for any of the 5 fields. Per IA-7 / TRAP-1, listing example outputs would let Claude pattern-match the example shape instead of doing the underlying work; the schema-only form forces real per-turn instantiation.
+
+**Related:** [Hooks](#hooks) (UserPromptSubmit row covers the parent injection mechanism); [Pressure System](#pressure-system) (verifier ring-buffer + Behavior Correction surface).
+
+### ANTI_PATTERNS_INLINE — Inline Anti-Patterns Injection
+
+**What it is:** A hardcoded Korean restatement of the 9 PROHIBITED PATTERNS + 4 AVOID cases from `prompts/anti-patterns.md` (mirrored in `CLAUDE.md` `## PROHIBITED PATTERNS`), injected immediately after `SKELETON_5FIELD` on every `UserPromptSubmit`. Contents: PROHIBITED 1-9 (scope reduction / verified-without-Bash / agreement-without-evidence / same-fix-3x / prediction=observation / takes-too-long / suggesting-stop / direction-change-no-reasoning / default-first externalization) + AVOID 1-4 (analogy / regex-signal / user-catch / measurement-system) + Meta-cause line.
+
+**Where it's injected:** `scripts/inject-rules.js` — declared as the `ANTI_PATTERNS_INLINE` constant (L329-349, template literal); appended to the per-turn `context` string at L829 immediately after `SKELETON_5FIELD`.
+
+**Why (D107 IA-2, P143_T001):** Runtime enforcement instead of relying on Claude to recall the CLAUDE.md anti-pattern catalogue per turn. By inlining the patterns into the prompt, every response is composed against an in-context checklist rather than from memory.
+
+**Byte cost:** 1701 B body (UTF-8 measured, target envelope 1511 B per RA1).
+
+**Relationship to CLAUDE.md (4-source design — defense-in-depth duplication is FEATURE):** Source-of-truth is `prompts/anti-patterns.md` (anchor file) and `CLAUDE.md` `## PROHIBITED PATTERNS` (the user-facing rule surface). `ANTI_PATTERNS_INLINE` is a synchronized inline copy. The decision to **hardcode the constant** (rather than `fs.readFileSync('prompts/anti-patterns.md')` at runtime) is per `prompts/anti-patterns.md` TRAP-6 self-consistency — TRAP-6 itself rejects shared-module extraction; reading the anchor file from disk to satisfy DRY would instantiate the very trap it describes. **Drift mitigation:** when `prompts/anti-patterns.md` PROHIBITED/AVOID changes, update `ANTI_PATTERNS_INLINE` in lockstep (CLAUDE.md version-bump checklist anchor). USER-MANUAL.md does NOT re-enumerate the 9+4 patterns — see CLAUDE.md `## PROHIBITED PATTERNS` for the canonical list.
+
+**Configuration knobs:** None. Always-on per cycle 5 (D107).
+
+**Related:** [CLAUDE.md Integration](#claudemd-integration) (parent rule-injection pipeline); CRITICAL RULES section in CLAUDE.md (project source-of-truth for PROHIBITED PATTERNS — canonical text lives in CLAUDE.md, not USER-MANUAL.md).
+
 ---
 
 ## Guards
@@ -350,6 +384,14 @@ The plugin uses two injection mechanisms:
 | `memoryRotation.thresholdTokens` | 25000 | Token threshold for logbook.md rotation (with 0.95 safety margin) |
 | `memoryRotation.carryoverTokens` | 2500 | Tokens to keep as carryover after rotation (with 0.95 safety margin) |
 
+### lock-contention.json — F-4 Instrumentation State
+
+`.crabshell/memory/lock-contention.json`. Per-lock object (keyed by lock filename), 9 fields: `acquireCount`, `releaseCount`, `contendedCount`, `totalWaitMs`, `totalHeldMs`, `maxWaitMs`, `maxHeldMs`, `lastAcquiredPid`, `lastUpdatedAt`; top-level `measurementWindowStart` ISO marker. F-4 lock contention measurement → F-3 ratification. Additive top-level keys safe (`_recordContention` reads `state[lockName]` only). **Related:** `### _recordContention`.
+
+### _recordContention — Lock Hold/Wait Measurement
+
+`scripts/utils.js` L145-181. Three call sites (D107 D4): `acquireIndexLock` success L190, failure L205, `releaseIndexLock` L221. Unprotected `writeJson` avoids recursive-lock deadlock (L139-141). Race: concurrent writes may drop increments → conservative undercount (real ≥ measured); cycle 7+ ratification factors margin. Fail-open. **Related:** `### lock-contention.json`.
+
 ---
 
 ## Setting Project Information
@@ -459,12 +501,12 @@ L1 files are deduplicated automatically when created, but manual cleanup may som
 
 The following cycle 5 (D107) features were shipped in v21.88.0 but their dedicated USER-MANUAL.md sections are pending — explicit deferral per P149_T001 D1 directive (path b) to avoid cycle 7 scope creep and the v21.83.0 ARCHITECTURE.md backfill class bug (commit `de04944`). Cycle 8+ doc cycle to write the proper sections.
 
-| # | Feature | Source | What it does | Section it belongs to |
-|---|---------|--------|--------------|-----------------------|
-| 1 | `SKELETON_5FIELD` | `scripts/inject-rules.js` (~458 B injection) | Every-prompt 5-field response skeleton ([의도] / [이해] / [검증] / [논리] / [쉬운 설명]) injected into Claude's context to enforce structured response format. | Hooks (UserPromptSubmit) and/or Pressure System §Response Skeleton |
-| 2 | `ANTI_PATTERNS_INLINE` | `scripts/inject-rules.js` (~1701 B injection) | Every-prompt anti-patterns hardcode (9 PROHIBITED + 4 AVOID patterns from CLAUDE.md). Inlines them into Claude's prompt context for runtime enforcement instead of relying on Claude to recall CLAUDE.md. | Hooks (UserPromptSubmit) §Anti-Patterns Inline |
-| 3 | `.crabshell/memory/lock-contention.json` | F-4 instrumentation state file (NEW) | Per-lock metrics file: `acquireCount`, `releaseCount`, `contendedCount`, `totalWaitMs`, `totalHeldMs`, `maxWaitMs`, `maxHeldMs`, `lastAcquiredPid`, `lastUpdatedAt`, plus top-level `measurementWindowStart` ISO marker (cycle 6). Powers F-3 path-choice ratification analysis. | Configuration §Memory Files |
-| 4 | `_recordContention` (utils.js F-4 instrumentation) | `scripts/utils.js` (~47 lines, called from inside `acquireIndexLock` / `releaseIndexLock`) | Lock-contention measurement helper. Intentionally uses unprotected `writeJson` to avoid recursive lock acquisition (deadlock prevention) — accepts conservative undercount bias as a documented trade-off. | Hooks/Guards §Lock Contention Measurement |
+| # | Feature | Source | What it does | Section it belongs to | Status |
+|---|---------|--------|--------------|-----------------------|--------|
+| 1 | `SKELETON_5FIELD` | `scripts/inject-rules.js` (~458 B injection) | Every-prompt 5-field response skeleton ([의도] / [이해] / [검증] / [논리] / [쉬운 설명]) injected into Claude's context to enforce structured response format. | Hooks (UserPromptSubmit) and/or Pressure System §Response Skeleton | Done — section: `### SKELETON_5FIELD — 5-Field Response Skeleton` (under `## Hooks`) |
+| 2 | `ANTI_PATTERNS_INLINE` | `scripts/inject-rules.js` (~1701 B injection) | Every-prompt anti-patterns hardcode (9 PROHIBITED + 4 AVOID patterns from CLAUDE.md). Inlines them into Claude's prompt context for runtime enforcement instead of relying on Claude to recall CLAUDE.md. | Hooks (UserPromptSubmit) §Anti-Patterns Inline | Done — section: `### ANTI_PATTERNS_INLINE — Inline Anti-Patterns Injection` (under `## Hooks`) |
+| 3 | `.crabshell/memory/lock-contention.json` | F-4 instrumentation state file (NEW) | Per-lock metrics file: `acquireCount`, `releaseCount`, `contendedCount`, `totalWaitMs`, `totalHeldMs`, `maxWaitMs`, `maxHeldMs`, `lastAcquiredPid`, `lastUpdatedAt`, plus top-level `measurementWindowStart` ISO marker (cycle 6). Powers F-3 path-choice ratification analysis. | Configuration §Memory Files | Done — section: `### lock-contention.json` (under `## Configuration`) |
+| 4 | `_recordContention` (utils.js F-4 instrumentation) | `scripts/utils.js` (~47 lines, called from inside `acquireIndexLock` / `releaseIndexLock`) | Lock-contention measurement helper. Intentionally uses unprotected `writeJson` to avoid recursive lock acquisition (deadlock prevention) — accepts conservative undercount bias as a documented trade-off. | Hooks/Guards §Lock Contention Measurement | Done — section: `### _recordContention` (under `## Configuration`) |
 
 Each item above will get its own USER-MANUAL.md section in cycle 8+ doc cycle. Until then, source files (`scripts/inject-rules.js`, `scripts/utils.js`, `prompts/f3-fsm-reconciliation-evaluation.md`) are the canonical reference.
 
