@@ -50,9 +50,9 @@
     },
     {
       "id": "AC-6",
-      "ia": "version 21.87.0 (current)",
+      "ia": "version 21.88.0 (current)",
       "type": "indirect",
-      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const v=JSON.parse(require('fs').readFileSync('C:/Users/user/Documents/memory-keeper-plugin/.claude-plugin/plugin.json','utf8')).version;console.log(v==='21.87.0'?'PASS:'+v:'FAIL:'+v)\"",
+      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const v=JSON.parse(require('fs').readFileSync('C:/Users/user/Documents/memory-keeper-plugin/.claude-plugin/plugin.json','utf8')).version;console.log(v==='21.88.0'?'PASS:'+v:'FAIL:'+v)\"",
       "expected": "PASS:",
       "timeout": 5000
     },
@@ -287,6 +287,33 @@
       "description": "Novel scope-expansion verifier — 5 fixtures (2 FAIL + 3 PASS) regression test",
       "command": "\"C:/Program Files/nodejs/node.exe\" scripts/_test-v020-novel-scope-expansion.js 2>&1 | tail -1",
       "expected": "5 passed"
+    },
+    {
+      "id": "V021",
+      "ia": "D107 cycle 1 inject-rules enhancement — 5-field skeleton + anti-patterns inline + ringBuffer FAIL surface w/ 30-min TTL",
+      "level": "L1",
+      "type": "direct",
+      "command": "\"C:/Program Files/nodejs/node.exe\" C:/Users/user/Documents/memory-keeper-plugin/scripts/_test-d107-cycle1-inject-enhancement.js",
+      "expected": "PASS:",
+      "timeout": 15000
+    },
+    {
+      "id": "V022",
+      "ia": "D107 cycle 2 IA-4 verifier audit role + IA-7 form-game detection — §0.5 audit algorithm L1 fixture (form-game positive + semantic alignment OK) + ringBuffer legacy fallback + consumer filter byte-identical + 36 KB token cap",
+      "level": "L1",
+      "type": "direct",
+      "command": "\"C:/Program Files/nodejs/node.exe\" \"C:/Users/user/Documents/memory-keeper-plugin/scripts/_test-d107-cycle2-verifier-audit.js\"",
+      "expected": "PASS:",
+      "timeout": 15000
+    },
+    {
+      "id": "V023",
+      "ia": "D107 cycle 3 IA-5 frontier F-2 — V023 synthetic LLM-compliance harness (5 cases) + manual capture archive presence",
+      "level": "L1",
+      "type": "direct",
+      "command": "\"C:/Program Files/nodejs/node.exe\" \"C:/Users/user/Documents/memory-keeper-plugin/scripts/_test-d107-cycle3-llm-compliance.js\"",
+      "expected": "PASS:",
+      "timeout": 15000
     }
   ]
 }

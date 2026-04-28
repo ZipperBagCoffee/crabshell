@@ -131,12 +131,94 @@ function acquireLock(memoryDir) {
 
 function releaseLock(memoryDir) { try { fs.unlinkSync(path.join(memoryDir, LOCK_FILE)); } catch {} }
 
-function acquireIndexLock(memoryDir) {
-  const lockPath = path.join(memoryDir, INDEX_LOCK_FILE);
-  try { fs.writeFileSync(lockPath, process.pid.toString(), { flag: 'wx' }); return true; }
-  catch (e) { try { if (Date.now() - fs.statSync(lockPath).mtimeMs > LOCK_STALE_MS) { fs.unlinkSync(lockPath); return acquireIndexLock(memoryDir); } } catch {} return false; }
+// D107 cycle 5 F-4 instrumentation — best-effort lock-contention measurement.
+// In-process map of acquire timestamps keyed by lockName for accurate held-time
+// pairing in single-process scope. Cross-process held time is approximated via
+// `lastAcquiredAt` on disk (read by releaseIndexLock). Under-counting bias is
+// acceptable: F-4 reports lower bound; concurrent writes to lock-contention.json
+// may lose increments since recordContention CANNOT acquire any lock (deadlock
+// prevention per P147 RA1 R-1 — `recordContention` invoked from inside the lock
+// primitive itself, recursive lock acquisition would infinite-loop).
+const _acquireTimeStore = new Map();
+const CONTENTION_FILE = 'lock-contention.json';
+
+function _recordContention(memoryDir, lockName, op, ms) {
+  // Fail-open: any error during instrumentation must NOT propagate to the lock
+  // primitive. Caller wraps this in try/catch but we also catch internally as
+  // defense-in-depth (per P147 AC-6 fail-open invariant).
+  try {
+    const filePath = path.join(memoryDir, CONTENTION_FILE);
+    const state = readJsonOrDefault(filePath, {});
+    if (!state[lockName] || typeof state[lockName] !== 'object') {
+      state[lockName] = {
+        acquireCount: 0,
+        releaseCount: 0,
+        totalWaitMs: 0,
+        totalHeldMs: 0,
+        maxWaitMs: 0,
+        maxHeldMs: 0,
+        contendedCount: 0,
+        lastAcquiredPid: null,
+        lastUpdatedAt: null
+      };
+    }
+    const m = state[lockName];
+    const nowIso = new Date().toISOString();
+    if (op === 'acquire') {
+      m.acquireCount = (m.acquireCount || 0) + 1;
+      m.totalWaitMs = (m.totalWaitMs || 0) + (ms || 0);
+      if ((ms || 0) > (m.maxWaitMs || 0)) m.maxWaitMs = ms;
+      if ((ms || 0) > 0) m.contendedCount = (m.contendedCount || 0) + 1;
+      m.lastAcquiredPid = process.pid;
+    } else if (op === 'release') {
+      m.releaseCount = (m.releaseCount || 0) + 1;
+      m.totalHeldMs = (m.totalHeldMs || 0) + (ms || 0);
+      if ((ms || 0) > (m.maxHeldMs || 0)) m.maxHeldMs = ms;
+    }
+    m.lastUpdatedAt = nowIso;
+    writeJson(filePath, state);
+  } catch {}
 }
 
-function releaseIndexLock(memoryDir) { try { fs.unlinkSync(path.join(memoryDir, INDEX_LOCK_FILE)); } catch {} }
+function acquireIndexLock(memoryDir) {
+  const lockPath = path.join(memoryDir, INDEX_LOCK_FILE);
+  const _start = Date.now();
+  try {
+    fs.writeFileSync(lockPath, process.pid.toString(), { flag: 'wx' });
+    const _waitMs = Date.now() - _start;
+    try { _acquireTimeStore.set(lockPath, Date.now()); } catch {}
+    try { _recordContention(memoryDir, INDEX_LOCK_FILE, 'acquire', _waitMs); } catch {}
+    return true;
+  }
+  catch (e) {
+    try {
+      if (Date.now() - fs.statSync(lockPath).mtimeMs > LOCK_STALE_MS) {
+        fs.unlinkSync(lockPath);
+        // Recursion: inner frame records its own metrics; outer frame returns
+        // the inner result. No double-counting because only the successful
+        // writeFileSync branch records.
+        return acquireIndexLock(memoryDir);
+      }
+    } catch {}
+    // Failed acquire: record wait time as contended (best-effort sample).
+    const _waitMs = Date.now() - _start;
+    try { _recordContention(memoryDir, INDEX_LOCK_FILE, 'acquire', _waitMs); } catch {}
+    return false;
+  }
+}
 
-module.exports = { MEMORY_ROOT, isBackground, getProjectName, getProjectDir, parseProjectDirArg, getStorageRoot, getMemoryDir, ensureDir, readFileOrDefault, readJsonOrDefault, getDefaultIndex, readIndexSafe, writeFile, writeJson, getTimestamp, estimateTokens, estimateTokensFromFile, extractTailByTokens, updateIndex, acquireLock, releaseLock, acquireIndexLock, releaseIndexLock };
+function releaseIndexLock(memoryDir) {
+  const lockPath = path.join(memoryDir, INDEX_LOCK_FILE);
+  let _heldMs = 0;
+  try {
+    const _acquireTimeStored = _acquireTimeStore.get(lockPath);
+    if (typeof _acquireTimeStored === 'number') {
+      _heldMs = Date.now() - _acquireTimeStored;
+      _acquireTimeStore.delete(lockPath);
+    }
+  } catch {}
+  try { fs.unlinkSync(lockPath); } catch {}
+  try { _recordContention(memoryDir, INDEX_LOCK_FILE, 'release', _heldMs); } catch {}
+}
+
+module.exports = { MEMORY_ROOT, isBackground, getProjectName, getProjectDir, parseProjectDirArg, getStorageRoot, getMemoryDir, ensureDir, readFileOrDefault, readJsonOrDefault, getDefaultIndex, readIndexSafe, writeFile, writeJson, getTimestamp, estimateTokens, estimateTokensFromFile, extractTailByTokens, updateIndex, acquireLock, releaseLock, acquireIndexLock, releaseIndexLock, _recordContention };

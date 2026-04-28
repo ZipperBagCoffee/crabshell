@@ -1,5 +1,18 @@
 # Changelog
 
+## v21.88.0 - 2026-04-28
+
+- **D107 cycle 5+6 ship — F-4 lock contention instrumentation + measurement window opening + race undercount disclosure.** P143 + P148 cycle 5+6 종결. Operator gate resolution per user authorization "커밋하고 계속진행".
+- **Cycle 5 (P143_T001) — F-4 instrumentation**: `scripts/utils.js` `_recordContention` 신규 (deadlock-prevention — invoked from inside lock primitive, unprotected `writeJson` 사용; race undercount caveat 의도적). `acquireIndexLock` / `releaseIndexLock` 에 hold-duration 측정 + per-lock metrics 기록 wiring (`acquireCount`, `contendedCount`, `totalWaitMs`, `totalHeldMs`, `maxWaitMs`, `maxHeldMs`). `.crabshell/memory/lock-contention.json` NEW state file. `scripts/inject-rules.js` D107 IA-1 (`SKELETON_5FIELD` ~458B 5-field response skeleton injection) + D107 IA-2 (`ANTI_PATTERNS_INLINE` ~1701B anti-patterns inline injection) — every-prompt default-behavior addition.
+- **Cycle 6 (P148_T001) — measurement window opening**: `lock-contention.json` top-level `measurementWindowStart` ISO 8601 marker (additive, sibling to per-lock metric sub-objects; atomic write while holding `.memory-index.lock`). One-shot helper `scripts/_p148-t001-marker-write.js` 사용 후 cycle 7에서 cleanup. F-4 baseline accumulation passive (operator's normal use 동안 sample 누적).
+- **Cycle 6 doc patches**: `prompts/f3-fsm-reconciliation-evaluation.md` `### Cycle 6 measurement window opening` subsection 신규 — `measurementWindowStart` 의미 + close-criterion deferred (cycle 7+ entry assessment) + RA1 race undercount caveat (`_recordContention` race loss = conservative undercount, F-3 ratification 시 margin 필요).
+- **Cycle 7 (P149_T001) — operator gate resolution + housekeeping**: helper `_p148-t001-marker-write.js` 삭제, vbump v21.87.0 → v21.88.0, F-5 self-instrumentation tautology disclosure note + F-4 close-criterion threshold candidates (a) sample / (b) elapsed-time / (c) contention-rate (TBD values pending cycle 8+ baseline data) — `prompts/f3-fsm-reconciliation-evaluation.md`에 enrichment.
+- **신규 test files**: `_test-d107-cycle1-inject-enhancement.js` / `_test-d107-cycle2-verifier-audit.js` / `_test-d107-cycle3-llm-compliance.js`. `_test-fail-open-edge-cases.js` Case 7 추가 (F-4 instrumentation fail-open). `prompts/marker-set-unification-audit.md` + `prompts/output-schema-2tier-proposal.md` 신규 cycle 5 audit docs.
+- **/verifying** 29/29 PASS post-vbump (manifest AC-6 version probe `21.87.0` → `21.88.0`). **fail-open** 7/7 PASS.
+- **Known doc gap**: USER-MANUAL.md cycle 5 features (`SKELETON_5FIELD` / `ANTI_PATTERNS_INLINE` / `lock-contention.json` / `_recordContention`) 본문 sections 미작성 — cycle 7 lightweight scope에서 explicit deferral path (b) 선택. USER-MANUAL.md `## Doc Debt` section에 4 items TODO 등록, cycle 8+ doc cycle에서 정식 sections 작성. 회피 사유: cycle 7 = operator gate resolution + 2 mechanical doc patches scope, full doc cycle 시 scope creep + v21.83.0 ARCHITECTURE.md backfill 사례 (commit `de04944`)와 동일 class bug 회피.
+- **Excluded (cycle 8+)**: F-3 path implementation (path a lock-merge OR path b hand-off — explicit user path selection prerequisite), §1+§0.5 marker set unification Option ii cross-ref, close-criterion threshold values (N/T/R) 구체화, F-1 trigger axis unification, Tier 2 narrative producer.
+- See [[D107-llm-correction-evolution|D107]] / [[P143-d107-cycle1-comprehensive-llm-correction-injection-enhancement|P143]] / [[P148-d107-cycle6-measurement-window-opening|P148]] / [[P149-d107-cycle7-operator-gate-resolution-housekeeping-bundle|P149]] / P143_T001 / P148_T001 / P149_T001.
+
 ## v21.87.0 - 2026-04-27
 
 - **D106 cycle 5 ship — code/doc IA bulk processing (IA-9/10/13/15/16).** P142 cycle 5 종결. 3 ticket all verified.

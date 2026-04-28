@@ -6,7 +6,7 @@ const path = require('path');
 // F1 mitigation: keep inline env check for fail-open invariant — D106 IA-10 RA2
 if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 
-const { getProjectDir, getStorageRoot, readJsonOrDefault, readIndexSafe, writeJson, acquireIndexLock, releaseIndexLock } = require('./utils');
+const { getProjectDir, getStorageRoot, readJsonOrDefault, readIndexSafe, writeJson, acquireIndexLock, releaseIndexLock, _recordContention } = require('./utils');
 const { buildRegressingReminder, getRegressingState } = require('./regressing-state');
 const { TICKET_DIR, REGRESSING_STATE_FILE, MEMORY_DIR, BEHAVIOR_VERIFIER_STATE_FILE, BEHAVIOR_VERIFIER_LOCK_FILE } = require('./constants');
 const { readStdin } = require('./transcript-utils');
@@ -304,6 +304,50 @@ const DEFAULT_NO_EXECUTION = `\n## Execution Default\nDefault: respond with expl
 // IA-3: Execution judgment prompt
 const EXECUTION_JUDGMENT = `\n## Execution Pattern Detected\nExecution pattern detected in user message. Before acting: verify this is truly an execution instruction, not a question containing action words (e.g., '설명해라' = explain, not execute). If uncertain, explain your intended action first.\n`;
 
+// D107 IA-1 (P143_T001) — 5-field response skeleton, top-prepended every turn.
+// Pure Korean canonical (P143 Intent Check Decision condition 1: drop bilingual slash form).
+// Schema-only — no example outputs (form-game prevention per IA-7 / TRAP-1).
+// L1 measured ~458B UTF-8 (target envelope ~513B per RA1).
+const SKELETON_5FIELD = `
+## Response Skeleton — fill 5 fields (apply to every response)
+[의도]: 사용자 요청을 사용자의 말로 1줄 재진술.
+[이해]: 본인 해석 + 불확실 항목 (있으면 확인 요청).
+[검증]: 주장마다 tool output 인용, 없으면 '미검증' 명시.
+[논리]: 추론 단계별 서술, 또는 '추론 불필요 — 사유:' 명시.
+[쉬운 설명]: 사용자 말로 평문 요약 (200자 이하, 전문용어 금지, analogy 금지).
+`;
+
+// D107 IA-2 (P143_T001) — anti-patterns.md 직접 인용 (Korean hardcode).
+// Source of truth: prompts/anti-patterns.md PROHIBITED 1-9 + 4 AVOID 사례.
+// Decision: hardcode constant (NOT fs.readFileSync) per TRAP-6 self-consistency
+// — TRAP-6 in anti-patterns.md itself rejects shared-module extraction; reading
+// anti-patterns.md from disk to satisfy DRY would instantiate the very trap it
+// describes. Defense-in-depth duplication is FEATURE.
+// Drift mitigation: when prompts/anti-patterns.md PROHIBITED/AVOID changes,
+// update this constant (CLAUDE.md version-bump checklist anchor).
+// L1 measured ~1701B UTF-8 (target envelope ~1511B per RA1).
+const ANTI_PATTERNS_INLINE = `
+## Anti-Patterns — 직접 인용 (anchor: prompts/anti-patterns.md)
+PROHIBITED PATTERNS (응답 송신 전 점검):
+1. Scope reduction without approval — 요청 N건보다 적게 처리 시도 → STOP, 사용자 확인.
+2. 'Verified' without Bash — 최근 5 tool call 안에 근거 없음 → 주장 철회 또는 재실행.
+3. Agreement without evidence — '맞아요/그렇네요' tool output 없이 동의 → 근거 추가 또는 '미검증' 명시.
+4. Same fix repeated — 같은 유형 수정 3회 무결과 → 중단, 시도 보고, 방향 질의.
+5. Prediction = Observation verbatim — P/O/G 칸 동일 = 복사 → 재관찰.
+6. 'Takes too long' justification — 시간 판단은 사용자 몫. 추정치 보고 후 질의.
+7. Suggesting to stop/defer — '나중에/불가능' 증거 없이 → 제약+대안 보고.
+8. Direction change without stated reasoning — 이전 결정 변경 시 무엇이 왜 바뀌었는지 명시.
+9. Default-First (Externalization Avoidance) — 행동 axis 실패 시 FIRST fix는 default 변경, 측정/자동화/hook scaffolding 아님. 외부화 = 회피.
+
+AVOID 사례 (4건 — 변형으로 재출현 금지):
+AVOID-1. Analogy 회귀 — '쉬운 설명 = analogy' 함정. analogy 대신 평문.
+AVOID-2. Regex 측정 신호 — §4.simple PASS를 regex 매칭으로 정의 시도 = gameable, 기각.
+AVOID-3. User catch 신호 — '사용자가 catch해야 FAIL' = 책임 transfer, 기각.
+AVOID-4. Measurement system 전반 — '1주일 누적 후 행동 변경' = default 변경 회피, 기각.
+
+Meta cause (4회 공통): 본인 default 안 바꾸고 외부 시스템(감시자/hook/RULES injection/측정/자동화)으로 떠넘기기.
+`;
+
 function classifyUserIntent(userPrompt) {
   if (!userPrompt) return 'default';
   if (KOREAN_EXECUTION_PATTERNS.test(userPrompt)) return 'execution';
@@ -520,6 +564,58 @@ function getRelevantMemorySnippets(projectDir, userPrompt) {
   return result;
 }
 
+// D107 cycle 1 (P143_T001 WA2) — TTL gate for ringBuffer FAIL surface.
+// Last verifier entry older than this is considered stale and suppressed.
+const FAIL_SURFACE_FRESHNESS_TTL_MS = 30 * 60 * 1000; // 30 min
+
+/**
+ * D107 cycle 1 (P143_T001 WA2) — Build prominent ringBuffer FAIL surface.
+ *
+ * Reads the LAST entry of priorState.ringBuffer and, if any of axes u/v/l/s
+ * is false AND the entry is fresh (within FAIL_SURFACE_FRESHNESS_TTL_MS),
+ * returns a 2-line markdown surface (header + 1 data line, ~120-180 chars).
+ * Otherwise returns '' (silent skip).
+ *
+ * Format:
+ *   ## Prior Verifier FAIL — apply correction this turn
+ *   [HH:MM:SS] FAIL u/v/l/s — <reason ≤80 char>
+ *
+ * Edge cases (all silent skip → returns ''):
+ *  - priorState null / not an object
+ *  - ringBuffer missing / not an array / empty
+ *  - last entry malformed (null / non-object)
+ *  - last entry ts unparseable / older than TTL
+ *  - all axes pass (no FAIL)
+ *  - any thrown error inside body (fail-open invariant)
+ */
+function buildRingBufferFailSurface(priorState) {
+  try {
+    if (!priorState || typeof priorState !== 'object') return '';
+    if (!Array.isArray(priorState.ringBuffer) || priorState.ringBuffer.length === 0) return '';
+    const last = priorState.ringBuffer[priorState.ringBuffer.length - 1];
+    if (!last || typeof last !== 'object') return '';
+    // 30-min TTL gate — drop stale entries
+    const lastTs = Date.parse(last.ts);
+    if (isNaN(lastTs)) return '';
+    if ((Date.now() - lastTs) > FAIL_SURFACE_FRESHNESS_TTL_MS) return '';
+    // FAIL detection — only false (not falsy) counts as FAIL
+    const failedAxes = [];
+    if (last.u === false) failedAxes.push('u');
+    if (last.v === false) failedAxes.push('v');
+    if (last.l === false) failedAxes.push('l');
+    if (last.s === false) failedAxes.push('s');
+    if (failedAxes.length === 0) return '';
+    // HH:MM:SS slice from ISO 8601 ts (matches existing block at L780)
+    const tsStr = String(last.ts || '');
+    const hhmmss = tsStr.length >= 19 ? tsStr.slice(11, 19) : '--:--:--';
+    const reason = String(last.reason || '').slice(0, 80);
+    return '## Prior Verifier FAIL — apply correction this turn\n['
+      + hhmmss + '] FAIL ' + failedAxes.join('/') + ' — ' + reason + '\n\n';
+  } catch (_) {
+    return '';
+  }
+}
+
 /**
  * Read behavior-verifier state file. Fail-open: returns null on any error
  * (file missing, malformed JSON, read failure).
@@ -706,7 +802,31 @@ async function main() {
       // Read project concept for per-prompt anchoring
       const projectConcept = readProjectConcept(projectDir);
 
+      // D107 cycle 1 (P143_T001 WA2) — read priorState ONCE up front so
+      // ringBuffer FAIL surface can top-prepend BEFORE every other block.
+      // D107 cycle 2 (P144_T001 WA2) — hoisted single read shared with the
+      // behavior-verifier consumer block below (same projectDir, same turn).
+      // L977 lock-internal `fresh` re-read is INTENTIONALLY NOT consolidated
+      // here — it must run inside the bv lock for RMW correctness (see L975).
+      // readBehaviorVerifierState fail-opens to null on any error.
+      const priorState = readBehaviorVerifierState(projectDir);
+      // Alias used by the behavior-verifier consumer block (L862+). Single read
+      // covers both call sites (priorState ringBuffer surface + bvState
+      // dispatch/correction emit). Pre-hoist this was a duplicate read.
+      const bvState = priorState;
+
       let context = '';
+      // D107 cycle 1 (P143_T001 WA2) — top-prepend ringBuffer FAIL surface
+      // (silent skip if no FAIL / stale > 30min / no priorState). Order:
+      // [ringBuffer FAIL] → [SKELETON_5FIELD (WA1)] → [ANTI_PATTERNS_INLINE (WA1)]
+      // → [COMPRESSED_CHECKLIST] → [project concept] → ... → [Watcher Recent Verdicts]
+      context += buildRingBufferFailSurface(priorState);
+      // D107 cycle 1 (P143_T001 WA1) — 5-field response skeleton + anti-patterns
+      // 직접 인용. Top-prepend BEFORE existing COMPRESSED_CHECKLIST + Project Concept
+      // blocks (Lost-in-the-Middle: rank 1+2 of always-present per-turn signals).
+      // Pure Korean canonical (no bilingual slash form).
+      context += SKELETON_5FIELD;
+      context += ANTI_PATTERNS_INLINE;
       context += COMPRESSED_CHECKLIST;
       if (projectConcept) {
         context += `\n## Project Concept\n${projectConcept}\n\n`;
@@ -750,9 +870,11 @@ async function main() {
       // Behavior-verifier consumer (P132_T002): read state file, emit dispatch
       // instruction (pending) or correction (completed with failures), apply byte
       // caps, and transition status (consumed/stale). Fail-open on every path.
+      // D107 cycle 2 (P144_T001 WA2) — `bvState` hoisted up to L808 area; this
+      // block reuses the single read. L977 lock-internal `fresh` re-read is
+      // intentionally retained (RMW correctness inside bv lock).
       try {
         const stateFilePath = path.join(getStorageRoot(projectDir), MEMORY_DIR, BEHAVIOR_VERIFIER_STATE_FILE);
-        const bvState = readBehaviorVerifierState(projectDir);
         if (bvState) {
           const TTL_MS = 10 * 60 * 1000;
           const launchedMs = bvState.launchedAt ? Date.parse(bvState.launchedAt) : 0;
@@ -785,8 +907,15 @@ async function main() {
                   const v = e.v ? 'V' : 'v';
                   const l = e.l ? 'L' : 'l';
                   const s = e.s ? 'S' : 's';
+                  // D107 cycle 2 (P144_T001 WA2) — orchestrator audit flags.
+                  // sa = semanticAlignment, fg = formGameDetected. Legacy
+                  // entries pre-cycle-2 lack these fields → render '?' (NOT
+                  // 'a'/'A'/'f'/'F') to distinguish missing from PASS/FAIL.
+                  // 8-turn migration window until ring buffer fully rotates.
+                  const sa = (e.sa === undefined) ? '?' : (e.sa ? 'A' : 'a');
+                  const fg = (e.fg === undefined) ? '?' : (e.fg ? 'F' : 'f');
                   const reason = String(e.reason || '').slice(0, 80);
-                  const line = '- [' + hhmmss + '] ' + u + v + l + s + ' — ' + reason + '\n';
+                  const line = '- [' + hhmmss + '] ' + u + v + l + s + sa + fg + ' — ' + reason + '\n';
                   if ((rb.length + line.length) > RING_BYTE_CAP) {
                     rb += '...\n';
                     break;
@@ -844,6 +973,13 @@ async function main() {
             const lockPath = path.join(memoryDir, BEHAVIOR_VERIFIER_LOCK_FILE);
             let bvLocked = false;
             let stateForEmit = null; // populated only when we win the transition
+            // D107 cycle 5 F-4 instrumentation — verifier.lock contention measurement.
+            // Inline raw fs.writeFileSync RMW (NOT routed through acquireIndexLock —
+            // verifier.lock is a separate file from .memory-index.lock), so the
+            // utils.js wrapper can't capture this site. Apply the same _recordContention
+            // pattern inline. Fail-open: instrumentation errors silently swallowed.
+            const _bvStart = Date.now();
+            let _bvAcquireTime = null;
             try {
               try {
                 fs.writeFileSync(lockPath, String(process.pid), { flag: 'wx' });
@@ -858,6 +994,13 @@ async function main() {
                   }
                 } catch (_) {}
               }
+              try {
+                const _bvWaitMs = Date.now() - _bvStart;
+                if (bvLocked) _bvAcquireTime = Date.now();
+                if (typeof _recordContention === 'function') {
+                  _recordContention(memoryDir, BEHAVIOR_VERIFIER_LOCK_FILE, 'acquire', _bvWaitMs);
+                }
+              } catch {}
               if (bvLocked) {
                 try {
                   // Re-read inside lock — may show 'consumed' if another invocation
@@ -873,6 +1016,12 @@ async function main() {
                   // race — silently skip emit to maintain at-most-once semantics.
                 } finally {
                   try { fs.unlinkSync(lockPath); } catch (_) {}
+                  try {
+                    const _bvHeldMs = _bvAcquireTime ? (Date.now() - _bvAcquireTime) : 0;
+                    if (typeof _recordContention === 'function') {
+                      _recordContention(memoryDir, BEHAVIOR_VERIFIER_LOCK_FILE, 'release', _bvHeldMs);
+                    }
+                  } catch {}
                 }
               }
               // If lock not acquired, skip emit (another process is mid-RMW).
@@ -1010,6 +1159,9 @@ module.exports = {
   getRelevantMemorySnippets,
   shouldInjectParallelReminder,
   classifyUserIntent,
+  // D107 cycle 1 (P143_T001 WA2) — ringBuffer FAIL surface
+  buildRingBufferFailSurface,
+  FAIL_SURFACE_FRESHNESS_TTL_MS,
   // Re-export from regressing-state for convenience
   buildRegressingReminder,
   // Bailout
@@ -1032,4 +1184,7 @@ module.exports = {
   PRESSURE_L3,
   DEFAULT_NO_EXECUTION,
   EXECUTION_JUDGMENT,
+  // D107 cycle 1 (P143_T001 WA1) — 5-field skeleton + anti-patterns 직접 인용
+  SKELETON_5FIELD,
+  ANTI_PATTERNS_INLINE,
 };

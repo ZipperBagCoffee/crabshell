@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.87.0)
+# Crabshell User Manual (v21.88.0)
 
 ## Why Do You Need This?
 
@@ -452,6 +452,21 @@ L1 files are deduplicated automatically when created, but manual cleanup may som
 1. Check that `CLAUDE.md` exists in your project root
 2. Look for the `## CRITICAL RULES (Core Principles Alignment)` marker
 3. Check `.crabshell/memory/logs/inject-debug.log` for errors
+
+---
+
+## Doc Debt
+
+The following cycle 5 (D107) features were shipped in v21.88.0 but their dedicated USER-MANUAL.md sections are pending — explicit deferral per P149_T001 D1 directive (path b) to avoid cycle 7 scope creep and the v21.83.0 ARCHITECTURE.md backfill class bug (commit `de04944`). Cycle 8+ doc cycle to write the proper sections.
+
+| # | Feature | Source | What it does | Section it belongs to |
+|---|---------|--------|--------------|-----------------------|
+| 1 | `SKELETON_5FIELD` | `scripts/inject-rules.js` (~458 B injection) | Every-prompt 5-field response skeleton ([의도] / [이해] / [검증] / [논리] / [쉬운 설명]) injected into Claude's context to enforce structured response format. | Hooks (UserPromptSubmit) and/or Pressure System §Response Skeleton |
+| 2 | `ANTI_PATTERNS_INLINE` | `scripts/inject-rules.js` (~1701 B injection) | Every-prompt anti-patterns hardcode (9 PROHIBITED + 4 AVOID patterns from CLAUDE.md). Inlines them into Claude's prompt context for runtime enforcement instead of relying on Claude to recall CLAUDE.md. | Hooks (UserPromptSubmit) §Anti-Patterns Inline |
+| 3 | `.crabshell/memory/lock-contention.json` | F-4 instrumentation state file (NEW) | Per-lock metrics file: `acquireCount`, `releaseCount`, `contendedCount`, `totalWaitMs`, `totalHeldMs`, `maxWaitMs`, `maxHeldMs`, `lastAcquiredPid`, `lastUpdatedAt`, plus top-level `measurementWindowStart` ISO marker (cycle 6). Powers F-3 path-choice ratification analysis. | Configuration §Memory Files |
+| 4 | `_recordContention` (utils.js F-4 instrumentation) | `scripts/utils.js` (~47 lines, called from inside `acquireIndexLock` / `releaseIndexLock`) | Lock-contention measurement helper. Intentionally uses unprotected `writeJson` to avoid recursive lock acquisition (deadlock prevention) — accepts conservative undercount bias as a documented trade-off. | Hooks/Guards §Lock Contention Measurement |
+
+Each item above will get its own USER-MANUAL.md section in cycle 8+ doc cycle. Until then, source files (`scripts/inject-rules.js`, `scripts/utils.js`, `prompts/f3-fsm-reconciliation-evaluation.md`) are the canonical reference.
 
 ---
 

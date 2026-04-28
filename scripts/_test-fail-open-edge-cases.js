@@ -405,6 +405,53 @@ const SUBSTANTIVE = 'I have implemented the function and verified it returns the
   }
 })();
 
+// ---------- Case 7 — lock-contention.json unwritable → instrumentation silent skip, lock semantics preserved ----------
+//
+// D107 cycle 5 F-4 (P147 AC-6 + RA1 R-1 fail-open invariant): make
+// .crabshell/memory/lock-contention.json a DIRECTORY (not a file) so the
+// instrumentation `writeJson` call inside `_recordContention` throws on
+// rename-to-directory (EISDIR / EPERM on Win32). The instrumentation MUST
+// silently swallow the error and the lock acquire/release MUST proceed
+// normally with correct boolean return semantics:
+//   - first acquireIndexLock → true (lock created)
+//   - second acquireIndexLock → false (lock held)
+//   - releaseIndexLock → no throw
+//   - third acquireIndexLock after release → true (lock available again)
+//
+// In-process L1 — direct execution of utils.js exports, no spawn needed.
+(function() {
+  // Use a fresh sandbox; require utils.js fresh against a clean temp dir.
+  const sb = makeSandbox('c7');
+  const memoryDir = path.join(sb, '.crabshell', 'memory');
+  // POISON: make lock-contention.json a directory so writeJson temp+rename fails.
+  fs.mkdirSync(path.join(memoryDir, 'lock-contention.json'));
+
+  // Require utils with cleared cache so it picks up no stale module state.
+  const utilsPath = path.join(SCRIPTS_DIR, 'utils.js');
+  delete require.cache[utilsPath];
+  const { acquireIndexLock, releaseIndexLock } = require(utilsPath);
+
+  let r1, r2, r3;
+  let releaseThrew = false;
+  try {
+    r1 = acquireIndexLock(memoryDir);
+    r2 = acquireIndexLock(memoryDir);
+    try { releaseIndexLock(memoryDir); } catch (e) { releaseThrew = true; }
+    r3 = acquireIndexLock(memoryDir);
+    try { releaseIndexLock(memoryDir); } catch {}
+  } catch (e) {
+    // Any throw out of acquire/release violates fail-open invariant.
+    ok('7 lock-contention.json as directory → instrumentation silent skip + lock semantics preserved',
+       false, 'unexpected throw: ' + (e && e.message));
+    return;
+  }
+
+  const condition = r1 === true && r2 === false && !releaseThrew && r3 === true;
+  ok('7 lock-contention.json as directory → instrumentation silent skip + lock semantics preserved',
+     condition,
+     'r1=' + r1 + ' r2=' + r2 + ' releaseThrew=' + releaseThrew + ' r3=' + r3);
+})();
+
 // Cleanup
 for (const d of tmpDirs) { try { fs.rmSync(d, { recursive: true, force: true }); } catch {} }
 
