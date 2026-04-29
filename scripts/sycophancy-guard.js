@@ -769,39 +769,6 @@ function handleStop(hookData) {
   // Read pressure level once
   const pLevel = getPressureLevel();
 
-  // Step 0: Check context-length deferral BEFORE all other checks
-  // Context/session length as a reason to stop = PROHIBITED PATTERN #6
-  // D103 cycle 1 (P134_T001): converted from decision:'block' + exit(2) to
-  // warn-only [BEHAVIOR-WARN] + exit(0). The behavior-verifier sub-agent's
-  // §3.logic Session-length deferral sub-clause retroactively corrects in
-  // the next turn. Hook side-effects (none in this branch) preserved.
-  const contextLengthMatch = checkContextLength(response);
-  if (contextLengthMatch) {
-    process.stderr.write(`[BEHAVIOR-WARN] Context/session length used as reason to stop or defer (PROHIBITED #6): '${contextLengthMatch}' pressure=${pLevel}. (warn-only — sub-agent verifier §3.logic Session-length sub-clause will retroactively correct in next turn)\n`);
-    process.exit(0);
-  }
-
-  // Step 1: Check verification claims BEFORE sycophancy check
-  const claimResult = checkVerificationClaims(response, hookData.transcript_path, pLevel);
-  if (claimResult && claimResult.blocked) {
-    let tierMsg;
-    if (claimResult.tier === 'NONE') {
-      tierMsg = 'No Bash commands found in session history.';
-    } else if (claimResult.tier === 'PARTIAL') {
-      tierMsg = 'Only non-test Bash commands found — test execution required at this pressure level.';
-    } else {
-      tierMsg = 'Only structural commands (grep/read) found — no test execution.';
-    }
-    // Warn-only (P132_T002 / D102 IA-4): verification-claim detection emits a
-    // warning but does not block. The behavior-verifier sub-agent (Stop hook
-    // launches it; UserPromptSubmit consumes the verdict) retroactively
-    // corrects in the next turn. This narrowing is scoped to L799 only —
-    // other Stop branches (context-length, too-good P/O/G, oscillation,
-    // sycophancy) and PreToolUse retain their blocking behavior.
-    process.stderr.write(`[BEHAVIOR-WARN] Verification claim detected without behavioral evidence: '${claimResult.claim}' [tier=${claimResult.tier}] pressure=${pLevel}. (warn-only — sub-agent verifier will retroactively correct in next turn)\n`);
-    process.exit(0);
-  }
-
   // Step 1.5: Too-good P/O/G check — all Gap values None/없음/N/A
   // Use stripped response so table content is not obscured by code blocks
   const strippedResponse = stripProtectedZones(response);
@@ -836,20 +803,6 @@ function handleStop(hookData) {
   // Step 2: Run sycophancy check
   const result = checkSycophancy(response, pLevel);
   if (!result) {
-    // Step 3: Oscillation check (only when sycophancy is clean — not double-blocking)
-    // D103 cycle 1 (P134_T001): converted from decision:'block' + exit(2) to
-    // warn-only [BEHAVIOR-WARN] + exit(0). oscillationCount RMW happens BEFORE
-    // the warn so the cumulative counter is preserved (hybrid: hook tracks
-    // state, verifier interprets meaning). The behavior-verifier sub-agent's
-    // §3.logic Direction-change sub-clause retroactively corrects in next turn.
-    const reversalCount = checkReversalPhrases(response);
-    if (reversalCount > 0) {
-      const newCount = incrementOscillationCount();
-      if (newCount >= 1) {
-        process.stderr.write(`[BEHAVIOR-WARN] Direction change detected (PROHIBITED #8): reversals=${newCount} pressure=${pLevel}. (warn-only — sub-agent verifier §3.logic Direction-change sub-clause will retroactively correct in next turn)\n`);
-        process.exit(0);
-      }
-    }
     process.exit(0); // clean
   }
 

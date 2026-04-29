@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.90.0)
+# Crabshell Architecture (v21.91.0)
 
 ## Overview
 
@@ -356,7 +356,6 @@ Agent orchestration rules (11 rules covering pairing, cross-review, coherence, c
 | `scope-guard.js` | Stop | Compare user-requested quantity vs response count; block scope reduction without approval |
 | `regressing-loop-guard.js` | Stop | Block stop when regressing active + inject phase-specific context via buildRegressingReminder(); enforce ≥2 parallel WAs in regressing + light-workflow; WA count tracking via wa-count.json |
 | `behavior-verifier.js` | Stop | 감시자 sub-agent dispatch (v21.80.0+): write `behavior-verifier-state.json` `status='pending'` + `[CRABSHELL_BEHAVIOR_VERIFY]` sentinel. v21.83.0 trigger 3-layer (periodic N=8 + workflow-active force + escalation L0/L1) + 5-class turn classification + ring buffer FIFO N=8 + state schema 14 fields |
-| `deferral-guard.js` | Stop | Detect trailing deferral questions (`진행할까요`, `shall I proceed`) via regex against last 300 chars + `hasAnalysisBody` (≥5 lines OR ≥400 chars). v21.81.0+ warn-only: stderr `[BEHAVIOR-WARN]` + exit 0; semantic enforcement absorbed by behavior-verifier §3.logic Trailing-deferral sub-clause |
 | `skill-tracker.js` | PostToolUse (Skill) | Set skill-active flag on Skill tool calls (TTL-based, 5min expiry) |
 | `regressing-state.js` | (library) | Phase tracker: getState, buildReminder, detectSkillCall, advancePhase |
 | `extract-delta.js` | (library) | L1 delta extraction, timestamp watermarks, temp file management |

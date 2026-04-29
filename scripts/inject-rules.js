@@ -317,36 +317,6 @@ const SKELETON_5FIELD = `
 [쉬운 설명]: 사용자 말로 평문 요약 (200자 이하, 전문용어 금지, analogy 금지).
 `;
 
-// D107 IA-2 (P143_T001) — anti-patterns.md 직접 인용 (Korean hardcode).
-// Source of truth: prompts/anti-patterns.md PROHIBITED 1-9 + 4 AVOID 사례.
-// Decision: hardcode constant (NOT fs.readFileSync) per TRAP-6 self-consistency
-// — TRAP-6 in anti-patterns.md itself rejects shared-module extraction; reading
-// anti-patterns.md from disk to satisfy DRY would instantiate the very trap it
-// describes. Defense-in-depth duplication is FEATURE.
-// Drift mitigation: when prompts/anti-patterns.md PROHIBITED/AVOID changes,
-// update this constant (CLAUDE.md version-bump checklist anchor).
-// L1 measured ~1701B UTF-8 (target envelope ~1511B per RA1).
-const ANTI_PATTERNS_INLINE = `
-## Anti-Patterns — 직접 인용 (anchor: prompts/anti-patterns.md)
-PROHIBITED PATTERNS (응답 송신 전 점검):
-1. Scope reduction without approval — 요청 N건보다 적게 처리 시도 → STOP, 사용자 확인.
-2. 'Verified' without Bash — 최근 5 tool call 안에 근거 없음 → 주장 철회 또는 재실행.
-3. Agreement without evidence — '맞아요/그렇네요' tool output 없이 동의 → 근거 추가 또는 '미검증' 명시.
-4. Same fix repeated — 같은 유형 수정 3회 무결과 → 중단, 시도 보고, 방향 질의.
-5. Prediction = Observation verbatim — P/O/G 칸 동일 = 복사 → 재관찰.
-6. 'Takes too long' justification — 시간 판단은 사용자 몫. 추정치 보고 후 질의.
-7. Suggesting to stop/defer — '나중에/불가능' 증거 없이 → 제약+대안 보고.
-8. Direction change without stated reasoning — 이전 결정 변경 시 무엇이 왜 바뀌었는지 명시.
-9. Default-First (Externalization Avoidance) — 행동 axis 실패 시 FIRST fix는 default 변경, 측정/자동화/hook scaffolding 아님. 외부화 = 회피.
-
-AVOID 사례 (4건 — 변형으로 재출현 금지):
-AVOID-1. Analogy 회귀 — '쉬운 설명 = analogy' 함정. analogy 대신 평문.
-AVOID-2. Regex 측정 신호 — §4.simple PASS를 regex 매칭으로 정의 시도 = gameable, 기각.
-AVOID-3. User catch 신호 — '사용자가 catch해야 FAIL' = 책임 transfer, 기각.
-AVOID-4. Measurement system 전반 — '1주일 누적 후 행동 변경' = default 변경 회피, 기각.
-
-Meta cause (4회 공통): 본인 default 안 바꾸고 외부 시스템(감시자/hook/RULES injection/측정/자동화)으로 떠넘기기.
-`;
 
 function classifyUserIntent(userPrompt) {
   if (!userPrompt) return 'default';
@@ -818,21 +788,20 @@ async function main() {
       let context = '';
       // D107 cycle 1 (P143_T001 WA2) — top-prepend ringBuffer FAIL surface
       // (silent skip if no FAIL / stale > 30min / no priorState). Order:
-      // [ringBuffer FAIL] → [SKELETON_5FIELD (WA1)] → [ANTI_PATTERNS_INLINE (WA1)]
+      // [ringBuffer FAIL] → [SKELETON_5FIELD (WA1)]
       // → [COMPRESSED_CHECKLIST] → [project concept] → ... → [Watcher Recent Verdicts]
       context += buildRingBufferFailSurface(priorState);
-      // D107 cycle 1 (P143_T001 WA1) — 5-field response skeleton + anti-patterns
-      // 직접 인용. Top-prepend BEFORE existing COMPRESSED_CHECKLIST + Project Concept
+      // D107 cycle 1 (P143_T001 WA1) — 5-field response skeleton.
+      // Top-prepend BEFORE existing COMPRESSED_CHECKLIST + Project Concept
       // blocks (Lost-in-the-Middle: rank 1+2 of always-present per-turn signals).
       // Pure Korean canonical (no bilingual slash form).
       context += SKELETON_5FIELD;
-      context += ANTI_PATTERNS_INLINE;
       context += COMPRESSED_CHECKLIST;
       if (projectConcept) {
         context += `\n## Project Concept\n${projectConcept}\n\n`;
       }
       context += `\n## Node.js Path\nWhen running node commands in Bash, use this absolute path instead of bare \`node\`:\n\`${nodePathFwd}\`\n`;
-      context += `\n## Project Root Anchor (OVERRIDES Primary working directory)\nYour ACTUAL project root is: \`${projectDir}\`\n- If "Primary working directory" in your environment shows a SUBDIRECTORY of this path, it is WRONG. This is a known Claude Code bug after compaction (GitHub #7442).\n- Trust THIS anchor over Primary working directory. This value comes from CLAUDE_PROJECT_DIR which Claude Code sets at launch and never changes.\n- ALL file operations (Read, Edit, Write, Glob, Grep) use this as base directory.\n- When user says "read CLAUDE.md" → read \`${projectDir}/CLAUDE.md\`, not a subdirectory's.\n`;
+      context += `\n## Project Root Anchor\nProject root: \`${projectDir}\`\n`;
       // Timezone offset for memory delta timestamp generation
       const tzOffsetMinutes = new Date().getTimezoneOffset();
       const tzSign = tzOffsetMinutes <= 0 ? '+' : '-';
@@ -1099,8 +1068,6 @@ async function main() {
         }
       }
 
-      context += '\n**Verification reminder:** Before claiming any result verified, ensure you have execution output (not just file reads). Structural checks (grep/read) are not behavioral verification.\n';
-
       // Output rules via additionalContext (hidden from user, seen by Claude)
       const output = {
         hookSpecificOutput: {
@@ -1185,7 +1152,6 @@ module.exports = {
   PRESSURE_L3,
   DEFAULT_NO_EXECUTION,
   EXECUTION_JUDGMENT,
-  // D107 cycle 1 (P143_T001 WA1) — 5-field skeleton + anti-patterns 직접 인용
+  // D107 cycle 1 (P143_T001 WA1) — 5-field skeleton
   SKELETON_5FIELD,
-  ANTI_PATTERNS_INLINE,
 };

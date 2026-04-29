@@ -1,5 +1,15 @@
 # Changelog
 
+## v21.91.0 - 2026-04-29
+
+- **D108 cycle 1 — I069 토큰 절약 즉시 실행 항목 적용.** I069 5-agent 조사에서 risk 0, 기능 손실 0 분류된 5건 실행.
+- **inject-rules.js**: ANTI_PATTERNS_INLINE (~1,701 B) 제거 (변수 정의 + 사용 + exports 3 sites), Project Root Anchor 5줄→1줄 압축 (~504 B 절감), Verification Reminder (~184 B) 삭제. Per-turn static injection ~2,389 B 절감.
+- **deferral-guard.js 폐지**: 파일 삭제 (77 LOC) + hooks.json Stop 등록 제거. 기능은 behavior-verifier §3.logic Trailing-deferral sub-clause에서 이미 흡수됨. Guard 12→11개.
+- **sycophancy-guard.js Stop handler 정리**: Step 0 (context-length), Step 1 (verification-claims), Step 3 (reversal/oscillation) 3개 branch 제거. PreToolUse agreement-blocking + Step 1.5 (too-good P/O/G) + Step 2 (sycophancy) 유지. 제거된 행동은 behavior-verifier에서 커버.
+- **테스트 업데이트**: V021 Case 2 제거 (6 cases), V008 11 cases 제거 (24 cases), deferral-guard 테스트 2파일 삭제 + fail-open HOOK_FILES 21→20.
+- **/verifying** 29/29 PASS, **fail-open** 7/7 PASS.
+- See [[D108-i069-토큰-절약-실행|D108]] / [[P152-d108-cycle1-i069-token-savings|P152]] / P152_T001.
+
 ## v21.90.0 - 2026-04-28
 
 - **H008 hotfix — behavior-verifier sub-agent dispatch에 `model: opus` 명시 추가.** `scripts/inject-rules.js:961` 의 dispatch instruction emit block에 한 줄 추가 (`context += '- model: opus\n';` between `subagent_type` and `run_in_background`). 이전 dispatch 는 `subagent_type: general-purpose` 만 명시 → harness default 모델 사용 → `.crabshell/project.md` Model Routing rule (T1 = Opus = "verification requiring interpretation") 위반.

@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.90.0)
+# Crabshell User Manual (v21.91.0)
 
 ## Why Do You Need This?
 
@@ -219,7 +219,6 @@ The plugin uses Claude Code hooks to run automatically:
 | `PreToolUse` | `role-collapse-guard.js` | Before Write/Edit | Blocks Orchestrator from directly writing source code files (should delegate to Work Agents) |
 | `Stop` | `scope-guard.js` | Before response finalized | Detects scope reduction in responses (delivering fewer items than user requested) |
 | `Stop` | `regressing-loop-guard.js` | Before session ends | Blocks session end during active regressing/light-workflow; enforces continuation |
-| `Stop` | `deferral-guard.js` | Before response finalized | Detects trailing deferral questions in responses (e.g., "다음 세션에서 할까요?") |
 | `Stop` | `behavior-verifier.js` (감시자) | Before response finalized | Writes pending state + sentinel; next-turn UserPromptSubmit dispatches background sub-agent for 4-dimension verdict (understanding/verification/logic/simple — §3.logic body extended in v21.81.0 with 3 sub-clauses: Direction change / Session-length deferral / Trailing deferral; §1.understanding extended in **v21.82.0** with Format markers sub-clause: response > 200 chars without ANY-ONE-set of `[의도]/[답]/[자기 평가]` or `[Intent]/[Answer]/[Self-Assessment]` → FAIL), result injected as `## Behavior Correction` on the following turn. **v21.82.0 (D103 cycle 2)**: Stop hook also reads prior state, scans transcript via `getRecentTaskCalls`, sets `state.dispatchOverdue=true` when prior `status='pending'` + zero Task tool_use since prior `launchedAt` (clarification + length<50 bypasses preserved); inject-rules consumer prepends `**[DISPATCH OVERDUE]** Previous turn did not invoke Task. Invoke NOW.` before the dispatch instruction. **v21.83.0 (D104 cycle 1, P136)**: trigger redesigned 3-layer (periodic N=8 skip when workflow inactive + workflow-active force layer overrides length<50/clarification bypass during regressing/light-workflow + escalation L0→L1 marker on `missedCount>=2`); 5-class turn classification (`user-facing`/`workflow-internal`/`notification`/`clarification`/`trivial`) gates which criteria apply; verdict ring buffer (FIFO N=8) injected as `## Watcher Recent Verdicts` cross-turn context (~50-100 tokens/turn, ≤800 chars cap); state schema 7→14 fields (`triggerReason`/`lastFiredAt`/`lastFiredTurn`/`missedCount`/`escalationLevel`/`ringBuffer`/`turnType`); hooks.json Stop section 순서 swap (behavior-verifier above regressing-loop-guard, RA8 MISS-1 mitigation) (D102 P132 v21.80.0; §3.logic absorption D103 P134 v21.81.0; dispatch overdue + format markers D103 P135 v21.82.0; trigger 3-layer + ring buffer + turn classification D104 P136 v21.83.0) |
 | `PreCompact` | `pre-compact.js` | Before context compaction | Outputs memory state, active documents, and regressing state as context to preserve across compaction |
 | `PostCompact` | `post-compact.js` | After context compaction | Logs compaction event for debugging (side-effect only, no context output) |
@@ -230,7 +229,7 @@ The plugin uses Claude Code hooks to run automatically:
 
 **What it is:** A pure-Korean 5-field schema injected at the top of Claude's prompt context on every `UserPromptSubmit`. The fields are `[의도]` (restate user intent in user's words, 1 line) / `[이해]` (own interpretation + uncertainty list) / `[검증]` (cite tool output per claim, mark "미검증" otherwise) / `[논리]` (step-by-step reasoning, or explicit "추론 불필요 — 사유:" note) / `[쉬운 설명]` (plain-text summary ≤200 chars, no jargon, no analogy).
 
-**Where it's injected:** `scripts/inject-rules.js` — declared as the `SKELETON_5FIELD` constant (L311-318, template literal); appended to the per-turn `context` string at L828 inside the `UserPromptSubmit` handler. Injection ordering (L820-830): ringBuffer FAIL surface → **SKELETON_5FIELD** → ANTI_PATTERNS_INLINE → COMPRESSED_CHECKLIST → Project Concept → Node.js Path → Project Root Anchor.
+**Where it's injected:** `scripts/inject-rules.js` — declared as the `SKELETON_5FIELD` constant (L311-318, template literal); appended to the per-turn `context` string at L828 inside the `UserPromptSubmit` handler. Injection ordering: ringBuffer FAIL surface → **SKELETON_5FIELD** → COMPRESSED_CHECKLIST → Project Concept → Node.js Path → Project Root Anchor.
 
 **Why (D107 IA-1, P143_T001):** Default-behavior addition — every prompt now carries the 5-field skeleton so the response format is enforced from the prompt itself, instead of relying on Claude to recall CLAUDE.md format conventions per turn. Targets the recurring marker FAIL pattern (response > 200 chars without `[의도]/[답]/[자기 평가]` markers triggers behavior-verifier `§1.understanding` FAIL in v21.82.0+).
 
@@ -243,22 +242,6 @@ The plugin uses Claude Code hooks to run automatically:
 **Form-game prevention:** The constant is schema-only — no example outputs are listed for any of the 5 fields. Per IA-7 / TRAP-1, listing example outputs would let Claude pattern-match the example shape instead of doing the underlying work; the schema-only form forces real per-turn instantiation.
 
 **Related:** [Hooks](#hooks) (UserPromptSubmit row covers the parent injection mechanism); [Pressure System](#pressure-system) (verifier ring-buffer + Behavior Correction surface).
-
-### ANTI_PATTERNS_INLINE — Inline Anti-Patterns Injection
-
-**What it is:** A hardcoded Korean restatement of the 9 PROHIBITED PATTERNS + 4 AVOID cases from `prompts/anti-patterns.md` (mirrored in `CLAUDE.md` `## PROHIBITED PATTERNS`), injected immediately after `SKELETON_5FIELD` on every `UserPromptSubmit`. Contents: PROHIBITED 1-9 (scope reduction / verified-without-Bash / agreement-without-evidence / same-fix-3x / prediction=observation / takes-too-long / suggesting-stop / direction-change-no-reasoning / default-first externalization) + AVOID 1-4 (analogy / regex-signal / user-catch / measurement-system) + Meta-cause line.
-
-**Where it's injected:** `scripts/inject-rules.js` — declared as the `ANTI_PATTERNS_INLINE` constant (L329-349, template literal); appended to the per-turn `context` string at L829 immediately after `SKELETON_5FIELD`.
-
-**Why (D107 IA-2, P143_T001):** Runtime enforcement instead of relying on Claude to recall the CLAUDE.md anti-pattern catalogue per turn. By inlining the patterns into the prompt, every response is composed against an in-context checklist rather than from memory.
-
-**Byte cost:** 1701 B body (UTF-8 measured, target envelope 1511 B per RA1).
-
-**Relationship to CLAUDE.md (4-source design — defense-in-depth duplication is FEATURE):** Source-of-truth is `prompts/anti-patterns.md` (anchor file) and `CLAUDE.md` `## PROHIBITED PATTERNS` (the user-facing rule surface). `ANTI_PATTERNS_INLINE` is a synchronized inline copy. The decision to **hardcode the constant** (rather than `fs.readFileSync('prompts/anti-patterns.md')` at runtime) is per `prompts/anti-patterns.md` TRAP-6 self-consistency — TRAP-6 itself rejects shared-module extraction; reading the anchor file from disk to satisfy DRY would instantiate the very trap it describes. **Drift mitigation:** when `prompts/anti-patterns.md` PROHIBITED/AVOID changes, update `ANTI_PATTERNS_INLINE` in lockstep (CLAUDE.md version-bump checklist anchor). USER-MANUAL.md does NOT re-enumerate the 9+4 patterns — see CLAUDE.md `## PROHIBITED PATTERNS` for the canonical list.
-
-**Configuration knobs:** None. Always-on per cycle 5 (D107).
-
-**Related:** [CLAUDE.md Integration](#claudemd-integration) (parent rule-injection pipeline); CRITICAL RULES section in CLAUDE.md (project source-of-truth for PROHIBITED PATTERNS — canonical text lives in CLAUDE.md, not USER-MANUAL.md).
 
 ---
 
@@ -278,7 +261,6 @@ Guard scripts are PreToolUse/Stop hooks that prevent common mistakes:
 | `skill-tracker.js` | Supporting guard: sets the `skill-active` flag when a Skill tool call is detected, so `docs-guard` and `verify-guard` know when writes are authorized |
 | `pressure-guard.js` | Graduated tool blocking when consecutive negative feedback detected. L2: blocks 6 primary tools (Read/Grep/Glob/Bash/Write/Edit). L3: blocks ALL tools. Resets via positive feedback decay or user bailout keywords ("봉인해제" / "UNLEASH"). See [Pressure System](#pressure-system) |
 | `role-collapse-guard.js` | Blocks Orchestrator from directly writing source code files (.js/.json/.sh/.ts) — should delegate to Work Agents during regressing/light-workflow |
-| `deferral-guard.js` | Detects trailing deferral questions ("다음 세션에서 할까요?", "shall I proceed?") in responses — prevents the assistant from asking permission instead of acting |
 | `scope-guard.js` | Detects scope reduction in responses (delivering fewer items than user requested, using "too many" / "시간 관계상" as justification) |
 | `regressing-guard.js` | Phase-based write restrictions during active regressing sessions — blocks out-of-phase edits to plan/ticket documents |
 | `regressing-loop-guard.js` | Blocks session end during active regressing/light-workflow; enforces Stop hook continuation until workflow completes |
@@ -504,7 +486,7 @@ The following cycle 5 (D107) features were shipped in v21.88.0 but their dedicat
 | # | Feature | Source | What it does | Section it belongs to | Status |
 |---|---------|--------|--------------|-----------------------|--------|
 | 1 | `SKELETON_5FIELD` | `scripts/inject-rules.js` (~458 B injection) | Every-prompt 5-field response skeleton ([의도] / [이해] / [검증] / [논리] / [쉬운 설명]) injected into Claude's context to enforce structured response format. | Hooks (UserPromptSubmit) and/or Pressure System §Response Skeleton | Done — section: `### SKELETON_5FIELD — 5-Field Response Skeleton` (under `## Hooks`) |
-| 2 | `ANTI_PATTERNS_INLINE` | `scripts/inject-rules.js` (~1701 B injection) | Every-prompt anti-patterns hardcode (9 PROHIBITED + 4 AVOID patterns from CLAUDE.md). Inlines them into Claude's prompt context for runtime enforcement instead of relying on Claude to recall CLAUDE.md. | Hooks (UserPromptSubmit) §Anti-Patterns Inline | Done — section: `### ANTI_PATTERNS_INLINE — Inline Anti-Patterns Injection` (under `## Hooks`) |
+| 2 | ~~`ANTI_PATTERNS_INLINE`~~ | ~~`scripts/inject-rules.js`~~ | **Removed in v21.91.0** (D108/I069). Per-turn inline injection of 9 PROHIBITED + 4 AVOID patterns (~1,701 B). Removed because CLAUDE.md PROHIBITED PATTERNS section and behavior-verifier §3.logic provide equivalent coverage without the per-turn token cost. | N/A | Removed |
 | 3 | `.crabshell/memory/lock-contention.json` | F-4 instrumentation state file (NEW) | Per-lock metrics file: `acquireCount`, `releaseCount`, `contendedCount`, `totalWaitMs`, `totalHeldMs`, `maxWaitMs`, `maxHeldMs`, `lastAcquiredPid`, `lastUpdatedAt`, plus top-level `measurementWindowStart` ISO marker (cycle 6). Powers F-3 path-choice ratification analysis. | Configuration §Memory Files | Done — section: `### lock-contention.json` (under `## Configuration`) |
 | 4 | `_recordContention` (utils.js F-4 instrumentation) | `scripts/utils.js` (~47 lines, called from inside `acquireIndexLock` / `releaseIndexLock`) | Lock-contention measurement helper. Intentionally uses unprotected `writeJson` to avoid recursive lock acquisition (deadlock prevention) — accepts conservative undercount bias as a documented trade-off. | Hooks/Guards §Lock Contention Measurement | Done — section: `### _recordContention` (under `## Configuration`) |
 

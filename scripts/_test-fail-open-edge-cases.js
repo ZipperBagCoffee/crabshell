@@ -335,12 +335,12 @@ const SUBSTANTIVE = 'I have implemented the function and verified it returns the
   };
   process.on('exit', restore);
 
-  // 22 hook files (every script in scripts/ that contains the inline
+  // 21 hook files (every script in scripts/ that contains the inline
   // CRABSHELL_BACKGROUND === '1' early-exit, excluding utils.js itself).
+  // deferral-guard.js removed (P152_T001 AC-4 — file deleted).
   const HOOK_FILES = [
     'behavior-verifier.js',
     'counter.js',
-    'deferral-guard.js',
     'doc-watchdog.js',
     'docs-guard.js',
     'inject-rules.js',
@@ -392,9 +392,9 @@ const SUBSTANTIVE = 'I have implemented the function and verified it returns the
       }
     }
 
-    ok('6 utils.js load fail → all 22 hooks fail-open (CRABSHELL_BACKGROUND=1 inline early-exit)',
+    ok('6 utils.js load fail → all 21 hooks fail-open (CRABSHELL_BACKGROUND=1 inline early-exit)',
        failures.length === 0,
-       failures.length > 0 ? 'failed=' + failures.join('; ') : 'all 22 hooks exit 0');
+       failures.length > 0 ? 'failed=' + failures.join('; ') : 'all 21 hooks exit 0');
   } finally {
     // Synchronous restore — must succeed so subsequent test runs (and the live
     // plugin) see utils.js back in place.

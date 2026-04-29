@@ -91,37 +91,8 @@ function ok(name, cond, detail) {
      'exit=' + r.exitCode + ' missing=' + JSON.stringify(missing) + ' ctx_len=' + r.ctx.length);
 })();
 
-// ---------- Case 2 — anti-patterns inline Korean phrases ----------
-// Phrase anchors extracted byte-for-byte from WA1's authored
-// ANTI_PATTERNS_INLINE constant (scripts/inject-rules.js L329-349).
-(function() {
-  const sb = makeSandbox();
-  const r = runInjectRules(sb);
-  // 9 PROHIBITED key phrases (Korean exact, from authored constant body).
-  const prohibitedPhrases = [
-    'Scope reduction without approval',           // #1
-    "'Verified' without Bash",                    // #2
-    'Agreement without evidence',                 // #3
-    'Same fix repeated',                          // #4
-    'Prediction = Observation verbatim',          // #5
-    "'Takes too long' justification",             // #6
-    'Suggesting to stop/defer',                   // #7
-    'Direction change without stated reasoning',  // #8
-    'Default-First (Externalization Avoidance)'   // #9
-  ];
-  // 4 AVOID phrases (Korean exact).
-  const avoidPhrases = [
-    'AVOID-1. Analogy 회귀',
-    'AVOID-2. Regex 측정 신호',
-    'AVOID-3. User catch 신호',
-    'AVOID-4. Measurement system 전반'
-  ];
-  const allPhrases = prohibitedPhrases.concat(avoidPhrases);
-  const missing = allPhrases.filter(p => !r.ctx.includes(p));
-  ok('2 anti-patterns inline — 9 PROHIBITED + 4 AVOID Korean phrases present',
-     r.exitCode === 0 && missing.length === 0,
-     'exit=' + r.exitCode + ' missing=' + JSON.stringify(missing));
-})();
+// Case 2 (anti-patterns inline) removed: ANTI_PATTERNS_INLINE was removed from
+// inject-rules.js injection (P152_T001 AC-1). No assertion needed.
 
 // ---------- Case 3 — ringBuffer FAIL surface (fresh, multi-axis) ----------
 (function() {

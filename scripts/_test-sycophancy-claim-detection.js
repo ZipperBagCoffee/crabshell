@@ -151,23 +151,11 @@ tmpFiles.push(transcriptEmpty);
 
 console.log('=== Verification Claim Detection Tests ===\n');
 
-// --- EN claim patterns ---
-testWarn('1: EN "verified" + no bash → WARN (NONE, was BLOCK)',
-  { stop_response: 'The implementation has been verified and works correctly.', transcript_path: transcriptNoBash });
+// Cases 1-5 (EN/KR claim patterns + structural-only tier) removed:
+// Step 1 verification-claim detection was removed from sycophancy-guard.js
+// Stop handler (P152_T001 AC-5). These testWarn cases no longer apply.
 
-testWarn('2: EN "all tests pass" + no bash → WARN (NONE, was BLOCK)',
-  { stop_response: 'All tests pass after the refactoring.', transcript_path: transcriptNoBash });
-
-// --- KR claim patterns ---
-testWarn('3: KR "검증완료" + no bash → WARN (NONE, was BLOCK)',
-  { stop_response: '검증완료 되었습니다. 모든 기능이 정상입니다.', transcript_path: transcriptNoBash });
-
-testWarn('4: KR "테스트 통과" + no bash → WARN (NONE, was BLOCK)',
-  { stop_response: '모든 항목이 테스트 통과하였습니다.', transcript_path: transcriptNoBash });
-
-// --- 4-tier classification ---
-testWarn('5: EN "verified" + structural-only bash → WARN (STRUCTURAL_ONLY, was BLOCK)',
-  { stop_response: 'The code has been verified and is correct.', transcript_path: transcriptStructuralOnly });
+// --- 4-tier classification (non-claim cases kept) ---
 
 test('6: EN "verified" + npm test → ALLOW (BEHAVIORAL)',
   { stop_response: 'The implementation has been verified. All tests pass.', transcript_path: transcriptWithTest }, false);
@@ -196,9 +184,8 @@ test('12: No claim pattern → ALLOW',
 test('13: stop_hook_active → ALLOW (infinite loop guard)',
   { stop_hook_active: true, stop_response: 'Verified and all tests pass.', transcript_path: transcriptNoBash }, false);
 
-// --- Empty/missing transcript ---
-testWarn('14: EN claim + empty transcript → WARN (NONE, was BLOCK)',
-  { stop_response: 'Successfully tested the changes.', transcript_path: transcriptEmpty });
+// Case 14 (EN claim + empty transcript → WARN) removed:
+// Step 1 verification-claim detection removed (P152_T001 AC-5).
 
 // --- D103 cycle 1 (P134_T001): sycophancy 4 Stop branches → warn-only ---
 // Case 15 was previously expectBlock=true. The agreement Stop branch is now
@@ -212,44 +199,22 @@ testWarn('15: Sycophancy without claim → WARN (was BLOCK, agreement branch war
 // (a) oscillation reversal, (b) too-good P/O/G, (c) context-length deferral.
 // All three exit 0 with [BEHAVIOR-WARN] stderr and no decision:'block' JSON.
 
-// (a) oscillation reversal — direction change without reasoning (PROHIBITED #8)
-testWarn('15a: Oscillation reversal phrase → WARN (was BLOCK, oscillation branch warn-only)',
-  { stop_response: 'Actually, I should reconsider that earlier point. On second thought, my previous answer was wrong about the configuration. Let me change the approach entirely.', transcript_path: transcriptNoBash });
+// Case 15a (oscillation reversal) removed:
+// Step 3 oscillation check was removed from sycophancy-guard.js Stop handler (P152_T001 AC-5).
 
 // (b) too-good P/O/G — all Gap values None across ≥2 data rows
 testWarn('15b: Too-good P/O/G all-None → WARN (was BLOCK, too-good branch warn-only)',
   { stop_response: 'Verification:\n\n| Item | Prediction | Observation | Gap |\n|------|-----------|-------------|-----|\n| File exists | yes | yes | None |\n| Lines correct | 100 | 100 | None |\n| Schema valid | yes | yes | None |\n', transcript_path: transcriptNoBash });
 
-// (c) context-length deferral — using session length as reason to stop (PROHIBITED #6)
-testWarn('15c: Context-length deferral → WARN (was BLOCK, context-length branch warn-only)',
-  { stop_response: 'The session is getting long, so let us continue in a new session for the remaining work.', transcript_path: transcriptNoBash });
+// Case 15c (context-length deferral) removed:
+// Step 0 context-length deferral check was removed from sycophancy-guard.js Stop handler (P152_T001 AC-5).
 
 test('16: Clean response → ALLOW',
   { stop_response: 'I have updated the configuration as requested. The changes include new timeout values and retry logic.', transcript_path: transcriptNoBash }, false);
 
-// --- Claim before sycophancy (ordering) — P132_T002 update ---
-// Verification-claim warn-only (L799) emits [BEHAVIOR-WARN] to stderr and
-// exits 0 BEFORE sycophancy main (L838+) is reached. The sub-agent verifier
-// (D102) replaces the immediate sycophancy block with retroactive correction
-// in the next turn. Expected: exit 0 + stderr [BEHAVIOR-WARN] + no block JSON.
-{
-  const { exitCode, stdout, stderr } = runGuard({
-    stop_response: "You're right, the implementation is verified and working correctly.",
-    transcript_path: transcriptNoBash
-  });
-  const exitedZero = exitCode === 0;
-  const claimWarned = stderr.includes('[BEHAVIOR-WARN]');
-  const noBlockJson = !stdout.includes('"decision":"block"') && !stdout.includes('"decision": "block"');
-  if (exitedZero && claimWarned && noBlockJson) {
-    console.log('PASS: 17: Claim+sycophancy ordering: warn-only exits before sycophancy step 2');
-    passed++;
-  } else {
-    console.log(`FAIL: 17: Expected exit 0 + [BEHAVIOR-WARN] + no block JSON. exit=${exitCode}, claimWarned=${claimWarned}, noBlockJson=${noBlockJson}`);
-    if (stdout.trim()) console.log(`  stdout: ${stdout.trim().substring(0, 300)}`);
-    if (stderr.trim()) console.log(`  stderr: ${stderr.trim().substring(0, 300)}`);
-    failed++;
-  }
-}
+// Case 17 (claim+sycophancy ordering) removed:
+// Step 1 verification-claim detection removed (P152_T001 AC-5).
+// The ordering test was specific to claim warn-only exiting before sycophancy step 2.
 
 // --- transcript-utils exports ---
 {
@@ -298,8 +263,8 @@ test('16: Clean response → ALLOW',
 }
 
 // --- More KR + structural ---
-testWarn('22: KR "확인됨" + structural only → WARN (STRUCTURAL_ONLY, was BLOCK)',
-  { stop_response: '모든 항목이 확인됨. 코드가 올바릅니다.', transcript_path: transcriptStructuralOnly });
+// Case 22 (KR "확인됨" + structural only → WARN) removed:
+// Step 1 verification-claim detection removed (P152_T001 AC-5).
 
 test('23: EN "no errors found" + test → ALLOW',
   { stop_response: 'No errors found during testing.', transcript_path: transcriptWithTest }, false);
@@ -324,16 +289,8 @@ test('28: Short response "Done." → ALLOW (≤15 chars)',
 test('29: Short "Verified." → ALLOW (≤15 chars exempt)',
   { stop_response: 'Verified.', transcript_path: transcriptNoBash }, false);
 
-// --- Trivial test defense (from WA4) ---
-{
-  const bashEcho = assistantBash('echo PASS', 'toolu_echo1');
-  const transcriptTrivial = writeTempTranscript([
-    humanText('Test.'), bashEcho, toolResult('toolu_echo1', 'PASS'),
-  ]);
-  // echo PASS is not a real test → should still block
-  testWarn('30: "echo PASS" in transcript → WARN (trivial test rejected, was BLOCK)',
-    { stop_response: 'Verified working correctly.', transcript_path: transcriptTrivial });
-}
+// Case 30 (trivial test defense, echo PASS → WARN) removed:
+// Step 1 verification-claim detection removed (P152_T001 AC-5).
 
 // --- PreToolUse unaffected ---
 test('31: PreToolUse Write + no transcript → ALLOW (unchanged)',
