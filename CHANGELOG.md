@@ -1,5 +1,14 @@
 # Changelog
 
+## v21.90.0 - 2026-04-28
+
+- **H008 hotfix — behavior-verifier sub-agent dispatch에 `model: opus` 명시 추가.** `scripts/inject-rules.js:961` 의 dispatch instruction emit block에 한 줄 추가 (`context += '- model: opus\n';` between `subagent_type` and `run_in_background`). 이전 dispatch 는 `subagent_type: general-purpose` 만 명시 → harness default 모델 사용 → `.crabshell/project.md` Model Routing rule (T1 = Opus = "verification requiring interpretation") 위반.
+- **Rationale**: behavior-verifier 작업 = UVLS 4축 + §0.5 auditVerdict (semanticAlignment vs formGameDetected). Type B (interpretation-heavy: form-game vs substantive 구분, frame-fidelity, scope-expansion semantic detection) 비중 큼. project.md T1 = Opus. Sonnet 도 Type A (mechanical: marker existence, format match) 처리 가능하지만 Type B 정확도는 Opus 가 더 높을 가능성.
+- **Verification**: pre-fix grep `model:` in `inject-rules.js` dispatch context = 0 hits; post-fix Read of L958-967 confirms new line in place. Agent tool schema accepts `model` enum `["sonnet", "opus", "haiku"]` (verified). 다음 verifier dispatch 부터 Opus 명시 적용.
+- **Operational**: vbump v21.89.0 → v21.90.0; CHANGELOG/README/STRUCTURE/ARCHITECTURE/USER-MANUAL/manifest.json AC-6 version-string sweep; /verifying 29/29 + fail-open 7/7 preserved.
+- **No related D-document** — single-line behavior-enforcement hotfix, no architecture cycle needed.
+- See [[H008-behavior-verifier-explicit-opus-model|H008]].
+
 ## v21.89.0 - 2026-04-28
 
 - **D107 cycle 8+9 ship — USER-MANUAL.md doc cycle (Doc Debt resolution) + cycle 9 lightweight bundle (cross-ref fix + baseline status note) + operator gate resolution.** P150 cycle 8 + P151 cycle 9 종결.

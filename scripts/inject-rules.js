@@ -958,6 +958,7 @@ async function main() {
             context += '\n\n## 감시자 (Behavior Verifier) Dispatch Required\n';
             context += 'Next response: invoke Task tool to launch background verifier sub-agent.\n';
             context += '- subagent_type: general-purpose\n';
+            context += '- model: opus\n';
             context += '- run_in_background: true\n';
             context += '- env: CRABSHELL_AGENT=behavior-verifier, CRABSHELL_BACKGROUND=1\n';
             context += '- prompt: contents of prompts/behavior-verifier-prompt.md plus the previous response transcript and recent user prompts (role=user) extracted from latest L1 session in .crabshell/memory/sessions/ for frame-fidelity sub-clause evaluation\n';
