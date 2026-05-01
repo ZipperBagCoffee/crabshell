@@ -40,6 +40,7 @@ node scripts/codex-memory.js load
 node scripts/codex-memory.js save --title="Codex session note" --message="..."
 node scripts/codex-memory.js search "query"
 node scripts/claude-to-agents.js
+node scripts/codex-docs.js investigation "research topic"
 node scripts/codex-docs.js worklog "task title"
 ```
 
@@ -222,6 +223,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.95.0 | feat: Codex `investigating` skill + `scripts/codex-docs.js investigation`/`investigating` commands; creates I documents with Topic, Constraints, Questions, Sources, Investigation Log, Cross-Review, Synthesis, Conclusions, and INDEX row. |
 | 21.94.0 | feat: `/crabshell:install-codex` manual bridge command + `scripts/install-codex.js`; links Claude-installed Crabshell checkout into Codex marketplace and `~/.codex/skills`, with dry-run, temp-home testability, idempotent rerun, marketplace backup, and non-link replacement guard. |
 | 21.93.0 | feat: Codex 호환층 추가 — `.codex-plugin/plugin.json` + `codex-skills/` 10 skills + `scripts/codex-memory.js` + `scripts/codex-docs.js` + `scripts/claude-to-agents.js` + `AGENTS.md`. README/STRUCTURE dual-runtime 문서. H009 hotfix: codex-docs `wikiTarget()` regex fix + ticket `--plan` fail-fast + claude-to-agents `--force` overwrite protection. |
 | 21.92.0 | feat: I070 결함 수정 — SKELETON_5FIELD→SKELETON_6FIELD (6번째 필드 `[동조화 및 일관성]` 추가). Behavior-verifier dispatch 위치 position 9→5 상향 (positional attention skip 해결). §1 format markers OLD→NEW 6-field 통일 (§0.5 marker mismatch 해소). §0.5 stale ANTI_PATTERNS_INLINE 참조 제거. sycophancy-guard dead code 제거. Test stale assertions 수정. inject-rules 114/114 + sycophancy-guard 23/23 PASS. |
