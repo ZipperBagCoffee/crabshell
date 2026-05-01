@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.93.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.94.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -48,7 +48,8 @@ crabshell/
 │   ├── save-memory.md                # Manual save command
 │   ├── load-memory.md                # Memory load command
 │   ├── search-memory.md              # Session search command
-│   └── clear-memory.md               # Cleanup command
+│   ├── clear-memory.md               # Cleanup command
+│   └── install-codex.md              # Manual Codex bridge command (v21.94.0)
 │
 ├── hooks/                            # Lifecycle hooks
 │   └── hooks.json                    # Hook config
@@ -111,6 +112,7 @@ crabshell/
 │   ├── utils.js                      # Shared utilities (getStorageRoot, getProjectDir)
 │   ├── lint-obsidian.js              # 5-check Obsidian document linter (orphans, wikilinks, stale, frontmatter, INDEX) (v21.70.0)
 │   ├── search-docs.js                # BM25 full-text search across D/P/T/I/H/W/K documents (v21.72.0, hotfix/ added v21.75.0)
+│   ├── install-codex.js              # Manual Claude-installed checkout -> Codex marketplace/skills bridge (v21.94.0)
 │   └── migrate-obsidian.js           # Frontmatter + wikilink migration; --generate-digest; hotfix + knowledge sections (v21.75.0)
 │
 ├── skills/                           # Slash command skills (22 total)
@@ -164,6 +166,7 @@ The repository intentionally keeps Claude and Codex runtime surfaces side by sid
 | `scripts/codex-memory.js` | Codex | Manual memory load/save/search/status wrapper |
 | `scripts/codex-docs.js` | Codex | Manual W/H/D/P/T document creation wrapper |
 | `scripts/claude-to-agents.js` | Codex | `CLAUDE.md` to `AGENTS.md` conversion |
+| `scripts/install-codex.js` | Claude Code -> Codex | Manual bridge from Claude marketplace checkout to Codex home-local plugin and skills |
 
 Installing one runtime does not activate the other runtime. Both runtimes can share `.crabshell/` storage when used in the same project.
 
@@ -356,6 +359,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.94.0 | feat: `/crabshell:install-codex` manual bridge command + `scripts/install-codex.js`; links Claude-installed Crabshell checkout into Codex marketplace and skill locations with dry-run, idempotency, marketplace backup, and non-link replacement guard. |
 | 21.93.0 | feat: Codex 호환층 추가 — `.codex-plugin/plugin.json` + `codex-skills/` 10 skills + `scripts/codex-memory.js` + `scripts/codex-docs.js` + `scripts/claude-to-agents.js` + `AGENTS.md`. dual-runtime README/STRUCTURE 문서화. H009 hotfix: `wikiTarget()` regex + ticket `--plan` fail-fast + claude-to-agents `--force` overwrite protection. |
 | 21.92.0 | feat: I070 결함 수정 — SKELETON_6FIELD 6-field 확장 + dispatch 위치 상향 + §1/§0.5 marker 통일 + stale ref 제거 + dead code 제거 + test 수정. inject-rules 114/114 + sycophancy-guard 23/23 PASS. |
 | 21.91.0 | feat: D108 cycle 1 — I069 토큰 절약 즉시 실행. ANTI_PATTERNS_INLINE 제거 (~1,701 B) + Root Anchor 압축 (~504 B) + Verification Reminder 삭제 (~184 B). deferral-guard.js 폐지 (77 LOC + hooks.json). sycophancy-guard.js Stop 3 branch 제거. Per-turn static savings ~2,389 B. Guard 12→11. /verifying 29/29 + fail-open 7/7. |

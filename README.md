@@ -27,6 +27,12 @@ This repository is a dual-runtime plugin repo:
 
 Installing the plugin in one runtime does not automatically activate the other runtime. The files can ship in the same GitHub repository, but each product only reads its own manifest and entrypoints.
 
+After installing through Claude, run the manual bridge command when you want the same checkout available in Codex:
+
+```text
+/crabshell:install-codex
+```
+
 The shared state is `.crabshell/`. Claude and Codex can both read and write the same memory/document store when they are used in the same project:
 
 ```bash
@@ -83,6 +89,7 @@ With this setup, **Claude starts every new session knowing this information**.
 | `/crabshell:light-workflow` | Run the 11-phase agent orchestration workflow (standalone tasks) |
 | `/crabshell:verifying` | Create/run project-specific verification tools |
 | `/crabshell:status` | Healthcheck of plugin state (memory, regressing, verification, version) |
+| `/crabshell:install-codex` | Link the Claude-installed Crabshell checkout into Codex plugin and skill locations |
 | `/crabshell:lint` | Run Obsidian document lint checks (orphans, broken wikilinks, stale, missing frontmatter, INDEX inconsistencies) |
 | `/crabshell:search-docs query` | BM25 full-text search across all D/P/T/I/W documents |
 | `/crabshell:knowledge "title"` | Create a K-page (verified fact or operational tip) in .crabshell/knowledge/ |
@@ -215,6 +222,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.94.0 | feat: `/crabshell:install-codex` manual bridge command + `scripts/install-codex.js`; links Claude-installed Crabshell checkout into Codex marketplace and `~/.codex/skills`, with dry-run, temp-home testability, idempotent rerun, marketplace backup, and non-link replacement guard. |
 | 21.93.0 | feat: Codex 호환층 추가 — `.codex-plugin/plugin.json` + `codex-skills/` 10 skills + `scripts/codex-memory.js` + `scripts/codex-docs.js` + `scripts/claude-to-agents.js` + `AGENTS.md`. README/STRUCTURE dual-runtime 문서. H009 hotfix: codex-docs `wikiTarget()` regex fix + ticket `--plan` fail-fast + claude-to-agents `--force` overwrite protection. |
 | 21.92.0 | feat: I070 결함 수정 — SKELETON_5FIELD→SKELETON_6FIELD (6번째 필드 `[동조화 및 일관성]` 추가). Behavior-verifier dispatch 위치 position 9→5 상향 (positional attention skip 해결). §1 format markers OLD→NEW 6-field 통일 (§0.5 marker mismatch 해소). §0.5 stale ANTI_PATTERNS_INLINE 참조 제거. sycophancy-guard dead code 제거. Test stale assertions 수정. inject-rules 114/114 + sycophancy-guard 23/23 PASS. |
 | 21.91.0 | feat: D108 cycle 1 — I069 토큰 절약 즉시 실행. inject-rules.js: ANTI_PATTERNS_INLINE 제거 (~1,701 B), Root Anchor 5→1줄 압축 (~504 B), Verification Reminder 삭제 (~184 B). deferral-guard.js 폐지 (77 LOC, behavior-verifier §3.logic에서 흡수). sycophancy-guard.js Stop handler 3 branch 제거 (context-length, verification-claims, reversal/oscillation). Per-turn static savings ~2,389 B (~43%). Guard hooks 12→11. Test updates: V021 6 cases, V008 24 cases, fail-open 7/7. /verifying 29/29 PASS. |

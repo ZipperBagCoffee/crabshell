@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.93.0)
+# Crabshell Architecture (v21.94.0)
 
 ## Overview
 
@@ -498,6 +498,7 @@ The 5 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.94.0 | feat: `/crabshell:install-codex` manual bridge command and `scripts/install-codex.js` for linking a Claude-installed checkout into Codex marketplace and skill locations. |
 | 21.60.0 | feat: role-collapse-guard.js (Orchestrator source-write block), deferral-guard.js (warn-only trailing question detection); fix: context-length "세션" + stoppage patterns, narrowed English session patterns; fix: memory-delta SKILL.md "foreground" → "wait for completion" |
 | 21.59.0 | feat: Discussion Edit guard during regressing (docs-guard.js), context-length deferral detection (sycophancy-guard.js Step 0), discussing SKILL.md Rule 1 conditional, regressing SKILL.md pre-partitioning warning in Step 2.5 |
 | 21.58.0 | feat: Pressure system redesign — L2 blocks 6 tools, L3 full lockdown (all tools including TaskCreate); block messages with user feedback solicitation; fix: counter.js TaskCreate reset gated, hooks.json matcher `.*`, verify-guard timeout 30s→60s |
