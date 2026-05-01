@@ -158,6 +158,8 @@ function migrateMemoryToLogbook(projectDir) {
     const oldPath = path.join(memoryDir, 'memory.md');
     const newPath = path.join(memoryDir, MEMORY_FILE); // 'logbook.md'
 
+    if (!fs.existsSync(memoryDir)) return;
+
     // Case 1: only memory.md exists → rename
     if (fs.existsSync(oldPath) && !fs.existsSync(newPath)) {
       fs.renameSync(oldPath, newPath);
