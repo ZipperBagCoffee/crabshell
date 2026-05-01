@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.91.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.92.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -336,6 +336,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.92.0 | feat: I070 결함 수정 — SKELETON_6FIELD 6-field 확장 + dispatch 위치 상향 + §1/§0.5 marker 통일 + stale ref 제거 + dead code 제거 + test 수정. inject-rules 114/114 + sycophancy-guard 23/23 PASS. |
 | 21.91.0 | feat: D108 cycle 1 — I069 토큰 절약 즉시 실행. ANTI_PATTERNS_INLINE 제거 (~1,701 B) + Root Anchor 압축 (~504 B) + Verification Reminder 삭제 (~184 B). deferral-guard.js 폐지 (77 LOC + hooks.json). sycophancy-guard.js Stop 3 branch 제거. Per-turn static savings ~2,389 B. Guard 12→11. /verifying 29/29 + fail-open 7/7. |
 | 21.90.0 | feat: H008 hotfix — behavior-verifier dispatch model: opus 명시. `scripts/inject-rules.js:961` 한 줄 추가, project.md T1 routing rule enforcement (verification requiring interpretation = §0.5 form-game detection). /verifying 29/29 + fail-open 7/7 preserved. |
 | 21.89.0 | feat: D107 cycle 8+9 — USER-MANUAL.md doc cycle (Doc Debt resolution) + cycle 9 lightweight bundle (cross-ref fix + baseline status). **Cycle 8 (P150_T001)**: 4 dedicated USER-MANUAL.md subsections written for cycle 5 features (SKELETON_5FIELD L229 / ANTI_PATTERNS_INLINE L247 / lock-contention.json L387 / _recordContention L391). Doc Debt 4/4 rows Done. AC-7 +110 B / 1.79% overrun ratified (doc-only, no commit). **Cycle 9 (P151_T001)**: WA1 cross-ref `#critical-rules-core-principles-alignment` invalid same-page anchor → project-wide CLAUDE.md reference; `prompts/f3-fsm-reconciliation-evaluation.md` baseline status note (acquireCount=71 / 14.2% of floor 500 / observed rate 44.56/h / projected days-to-floor ~0.4d). Vbump v21.88.0 → v21.89.0. **F-3 implementation D108+ defer** per Orchestrator C recommendation (evidence-based, 14.2% baseline insufficient for path a/b ratification per cycle 4 RA1 rule). /verifying 29/29 + fail-open 7/7 + behavior-verifier-prompt.md 36835 B preserved. |

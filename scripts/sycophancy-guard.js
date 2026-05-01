@@ -130,20 +130,9 @@ const CONTEXT_LENGTH_PATTERNS = [
   /(?:start\s+a?\s*)?(?:new|fresh)\s+(?:claude\s+)?session\s+(?:for\s+this|to\s+continue)/i,
 ];
 
-/**
- * Check response for context/session-length deferral patterns.
- * Strips protected zones before matching to avoid false positives in code blocks.
- * Returns the matched pattern string if detected, null if clean.
- */
-function checkContextLength(response) {
-  if (!response) return null;
-  const stripped = stripProtectedZones(response);
-  for (const pattern of CONTEXT_LENGTH_PATTERNS) {
-    const match = stripped.match(pattern);
-    if (match) return match[0];
-  }
-  return null;
-}
+// D108 IA-5: checkContextLength removed — dead code since v21.91.0 (never called
+// from any hook path; confirmed by I070 investigation). CONTEXT_LENGTH_PATTERNS
+// array retained above for potential future use.
 
 // Reversal patterns: detect when assistant is changing direction without stated reasoning
 const REVERSAL_PATTERNS = [
@@ -835,5 +824,5 @@ main().catch(() => process.exit(0)); // fail-open on any error
 
 // Export for unit testing
 if (require.main !== module) {
-  module.exports = { checkSycophancy, checkVerificationClaims, getPressureLevel, pressureHint, checkReversalPhrases, getOscillationCount, incrementOscillationCount, checkTooGoodPOG, findGapColumnIndex, getTooGoodRetryCount, incrementTooGoodRetryCount, resetTooGoodRetryCount, checkContextLength };
+  module.exports = { checkSycophancy, checkVerificationClaims, getPressureLevel, pressureHint, checkReversalPhrases, getOscillationCount, incrementOscillationCount, checkTooGoodPOG, findGapColumnIndex, getTooGoodRetryCount, incrementTooGoodRetryCount, resetTooGoodRetryCount };
 }

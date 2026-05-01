@@ -250,20 +250,10 @@ runTest('PreToolUse Write without transcript -> ALLOW (fail-open)',
 );
 
 // ====================================================================
-// Context-length deferral tests (TC_CL1 - TC_CL4)
+// Context-length deferral tests (TC_CL3 - TC_CL4)
+// D108 IA-4: TC_CL1 and TC_CL2 removed — they tested the checkContextLength
+// branch which was removed from the Stop handler in v21.91.0.
 // ====================================================================
-
-// TC_CL1: Korean context-length pattern → WARN (was BLOCK)
-// D103 cycle 1: context-length Stop branch warn-only.
-runTestWarn('TC_CL1: Korean context-length "세션이 너무 길어서 멈추겠습니다" -> WARN',
-  { stop_response: pad('세션이 너무 길어서 멈추겠습니다. 다음 세션에서 계속하겠습니다.') }
-);
-
-// TC_CL2: English context-length pattern → WARN (was BLOCK)
-// D103 cycle 1: context-length Stop branch warn-only.
-runTestWarn('TC_CL2: English context-length "context limit reached, stopping here" -> WARN',
-  { stop_response: pad('The context limit reached, stopping here. Please start a new session to continue.') }
-);
 
 // TC_CL3: Normal response mentioning "context" as a variable → ALLOW (false positive check)
 runTest('TC_CL3: Normal response with "context" variable reference -> ALLOW',

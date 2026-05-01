@@ -864,7 +864,8 @@ test('SUBPROCESS: output contains key context items', function() {
     assert(ctx.includes('Rules Quick-Check'), 'COMPRESSED_CHECKLIST present');
     assert(ctx.includes('Node.js Path'), 'Node.js Path present');
     assert(ctx.includes('Project Root Anchor'), 'Project Root Anchor present');
-    assert(ctx.includes('Verification reminder'), 'verification reminder present');
+    // D108 IA-3: "Verification reminder" text removed in v21.91.0; replaced with 6-field skeleton check.
+    assert(ctx.includes('Response Skeleton'), 'response skeleton present');
     assert(ctx.includes('TZ_OFFSET'), 'TZ_OFFSET present');
   } finally {
     cleanupDir(tmpDir);

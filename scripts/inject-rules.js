@@ -304,17 +304,18 @@ const DEFAULT_NO_EXECUTION = `\n## Execution Default\nDefault: respond with expl
 // IA-3: Execution judgment prompt
 const EXECUTION_JUDGMENT = `\n## Execution Pattern Detected\nExecution pattern detected in user message. Before acting: verify this is truly an execution instruction, not a question containing action words (e.g., '설명해라' = explain, not execute). If uncertain, explain your intended action first.\n`;
 
-// D107 IA-1 (P143_T001) — 5-field response skeleton, top-prepended every turn.
+// D107 IA-1 (P143_T001) — 6-field response skeleton, top-prepended every turn.
 // Pure Korean canonical (P143 Intent Check Decision condition 1: drop bilingual slash form).
 // Schema-only — no example outputs (form-game prevention per IA-7 / TRAP-1).
 // L1 measured ~458B UTF-8 (target envelope ~513B per RA1).
-const SKELETON_5FIELD = `
-## Response Skeleton — fill 5 fields (apply to every response)
+const SKELETON_6FIELD = `
+## Response Skeleton — fill 6 fields (apply to every response)
 [의도]: 사용자 요청을 사용자의 말로 1줄 재진술.
 [이해]: 본인 해석 + 불확실 항목 (있으면 확인 요청).
 [검증]: 주장마다 tool output 인용, 없으면 '미검증' 명시.
 [논리]: 추론 단계별 서술, 또는 '추론 불필요 — 사유:' 명시.
 [쉬운 설명]: 사용자 말로 평문 요약 (200자 이하, 전문용어 금지, analogy 금지).
+[동조화 및 일관성]: 본인 응답이 증거 없이 사용자에게 동조하거나, 이전 발언과 모순되지 않는지 점검. 위반 시 명시.
 `;
 
 
@@ -788,14 +789,14 @@ async function main() {
       let context = '';
       // D107 cycle 1 (P143_T001 WA2) — top-prepend ringBuffer FAIL surface
       // (silent skip if no FAIL / stale > 30min / no priorState). Order:
-      // [ringBuffer FAIL] → [SKELETON_5FIELD (WA1)]
+      // [ringBuffer FAIL] → [SKELETON_6FIELD (WA1)]
       // → [COMPRESSED_CHECKLIST] → [project concept] → ... → [Watcher Recent Verdicts]
       context += buildRingBufferFailSurface(priorState);
-      // D107 cycle 1 (P143_T001 WA1) — 5-field response skeleton.
+      // D107 cycle 1 (P143_T001 WA1) — 6-field response skeleton.
       // Top-prepend BEFORE existing COMPRESSED_CHECKLIST + Project Concept
       // blocks (Lost-in-the-Middle: rank 1+2 of always-present per-turn signals).
       // Pure Korean canonical (no bilingual slash form).
-      context += SKELETON_5FIELD;
+      context += SKELETON_6FIELD;
       context += COMPRESSED_CHECKLIST;
       if (projectConcept) {
         context += `\n## Project Concept\n${projectConcept}\n\n`;
@@ -811,37 +812,14 @@ async function main() {
       const tzOffset = `${tzSign}${tzHours}${tzMins}`;
       context += `\n## Timezone\nTZ_OFFSET: ${tzOffset}\n`;
 
-      if (hasPendingDelta) {
-        context += DELTA_INSTRUCTION;
-      }
-      if (pendingRotations.length > 0) {
-        context += ROTATION_INSTRUCTION;
-        context += `\nFiles: ${pendingRotations.map(f => f.file).join(', ')}`;
-      }
-
-      // Check for active regressing session
-      const regressingReminder = buildRegressingReminder(projectDir);
-      if (regressingReminder) {
-        context += regressingReminder;
-      }
-
-      // Check ticket statuses for active regressing
-      const ticketWarning = checkTicketStatuses(projectDir);
-      if (ticketWarning) {
-        context += ticketWarning;
-      }
-
-      // Parallel processing reminder (injected after regressing reminder, before memory snippets)
-      if (shouldInjectParallelReminder(userPrompt, !!regressingReminder)) {
-        context += PARALLEL_REMINDER;
-      }
-
       // Behavior-verifier consumer (P132_T002): read state file, emit dispatch
       // instruction (pending) or correction (completed with failures), apply byte
       // caps, and transition status (consumed/stale). Fail-open on every path.
       // D107 cycle 2 (P144_T001 WA2) — `bvState` hoisted up to L808 area; this
       // block reuses the single read. L977 lock-internal `fresh` re-read is
       // intentionally retained (RMW correctness inside bv lock).
+      // D108 IA-2: moved before delta/rotation/regressing blocks so dispatch
+      // instruction appears early in system-reminder (position 5 vs former 9).
       try {
         const stateFilePath = path.join(getStorageRoot(projectDir), MEMORY_DIR, BEHAVIOR_VERIFIER_STATE_FILE);
         if (bvState) {
@@ -1038,6 +1016,31 @@ async function main() {
         }
       } catch (e) { /* fail-open: never break the user's workflow */ }
 
+      if (hasPendingDelta) {
+        context += DELTA_INSTRUCTION;
+      }
+      if (pendingRotations.length > 0) {
+        context += ROTATION_INSTRUCTION;
+        context += `\nFiles: ${pendingRotations.map(f => f.file).join(', ')}`;
+      }
+
+      // Check for active regressing session
+      const regressingReminder = buildRegressingReminder(projectDir);
+      if (regressingReminder) {
+        context += regressingReminder;
+      }
+
+      // Check ticket statuses for active regressing
+      const ticketWarning = checkTicketStatuses(projectDir);
+      if (ticketWarning) {
+        context += ticketWarning;
+      }
+
+      // Parallel processing reminder (injected after regressing reminder, before memory snippets)
+      if (shouldInjectParallelReminder(userPrompt, !!regressingReminder)) {
+        context += PARALLEL_REMINDER;
+      }
+
       // Prompt-aware memory loading
       const memorySnippets = getRelevantMemorySnippets(projectDir, userPrompt);
       if (memorySnippets) {
@@ -1152,6 +1155,6 @@ module.exports = {
   PRESSURE_L3,
   DEFAULT_NO_EXECUTION,
   EXECUTION_JUDGMENT,
-  // D107 cycle 1 (P143_T001 WA1) — 5-field skeleton
-  SKELETON_5FIELD,
+  // D107 cycle 1 (P143_T001 WA1) — 6-field skeleton
+  SKELETON_6FIELD,
 };

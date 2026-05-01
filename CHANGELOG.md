@@ -1,5 +1,15 @@
 # Changelog
 
+## v21.92.0 - 2026-04-30
+
+- **I070 결함 수정 — skeleton 6-field 확장 + verifier prompt 통일 + dispatch 위치 상향.** I070 5-agent 조사에서 발견된 CRITICAL 결함 2건 + HIGH 2건 + MEDIUM/LOW 4건 수정.
+- **inject-rules.js**: `SKELETON_5FIELD` → `SKELETON_6FIELD` (6번째 필드 `[동조화 및 일관성]` 추가). Behavior-verifier dispatch 블록을 Timezone 직후로 이동 (system-reminder position 9→5, positional attention skip 해결).
+- **behavior-verifier-prompt.md**: §1 format markers OLD `[답]/[자기 평가]` → NEW 6-field Korean set으로 교체 (§0.5와 통일). §0.5 stale `ANTI_PATTERNS_INLINE` 참조 제거. Pseudocode/sample 6-field 반영.
+- **sycophancy-guard.js**: dead code `checkContextLength` 함수 + export 제거.
+- **테스트 수정**: `_test-inject-rules.js` stale "Verification reminder" assertion 교체, `_test-sycophancy-guard.js` TC_CL1/TC_CL2 제거.
+- **inject-rules** 114/114, **sycophancy-guard** 23/23 PASS.
+- See [[I070-behavior-verifier-plugin-malfunction-post-patch|I070]] / [[W022-i070-verifier-skeleton-fix|W022]].
+
 ## v21.91.0 - 2026-04-29
 
 - **D108 cycle 1 — I069 토큰 절약 즉시 실행 항목 적용.** I069 5-agent 조사에서 risk 0, 기능 손실 0 분류된 5건 실행.

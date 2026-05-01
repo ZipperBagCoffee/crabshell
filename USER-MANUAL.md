@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.91.0)
+# Crabshell User Manual (v21.92.0)
 
 ## Why Do You Need This?
 
@@ -225,21 +225,21 @@ The plugin uses Claude Code hooks to run automatically:
 | `SubagentStart` | `subagent-context.js` | When subagent spawns | Injects project concept, COMPRESSED_CHECKLIST, regressing state, and project root anchor into subagent context |
 | `SessionEnd` | `counter.js final` | Session ends | Creates final L1 backup, extracts remaining delta |
 
-### SKELETON_5FIELD — 5-Field Response Skeleton
+### SKELETON_6FIELD — 6-Field Response Skeleton
 
-**What it is:** A pure-Korean 5-field schema injected at the top of Claude's prompt context on every `UserPromptSubmit`. The fields are `[의도]` (restate user intent in user's words, 1 line) / `[이해]` (own interpretation + uncertainty list) / `[검증]` (cite tool output per claim, mark "미검증" otherwise) / `[논리]` (step-by-step reasoning, or explicit "추론 불필요 — 사유:" note) / `[쉬운 설명]` (plain-text summary ≤200 chars, no jargon, no analogy).
+**What it is:** A pure-Korean 6-field schema injected at the top of Claude's prompt context on every `UserPromptSubmit`. The fields are `[의도]` (restate user intent in user's words, 1 line) / `[이해]` (own interpretation + uncertainty list) / `[검증]` (cite tool output per claim, mark "미검증" otherwise) / `[논리]` (step-by-step reasoning, or explicit "추론 불필요 — 사유:" note) / `[쉬운 설명]` (plain-text summary ≤200 chars, no jargon, no analogy) / `[동조화 및 일관성]` (check for sycophancy or inconsistency with prior statements, flag violations).
 
-**Where it's injected:** `scripts/inject-rules.js` — declared as the `SKELETON_5FIELD` constant (L311-318, template literal); appended to the per-turn `context` string at L828 inside the `UserPromptSubmit` handler. Injection ordering: ringBuffer FAIL surface → **SKELETON_5FIELD** → COMPRESSED_CHECKLIST → Project Concept → Node.js Path → Project Root Anchor.
+**Where it's injected:** `scripts/inject-rules.js` — declared as the `SKELETON_6FIELD` constant (L311-319, template literal); appended to the per-turn `context` string inside the `UserPromptSubmit` handler. Injection ordering: ringBuffer FAIL surface → **SKELETON_6FIELD** → COMPRESSED_CHECKLIST → Project Concept → Node.js Path → Project Root Anchor → **Behavior Verifier** (dispatch/correction) → Delta/Rotation → Regressing.
 
-**Why (D107 IA-1, P143_T001):** Default-behavior addition — every prompt now carries the 5-field skeleton so the response format is enforced from the prompt itself, instead of relying on Claude to recall CLAUDE.md format conventions per turn. Targets the recurring marker FAIL pattern (response > 200 chars without `[의도]/[답]/[자기 평가]` markers triggers behavior-verifier `§1.understanding` FAIL in v21.82.0+).
+**Why (D107 IA-1 + I070 W022):** Default-behavior addition — every prompt carries the 6-field skeleton so response format is enforced from the prompt itself. The 6th field `[동조화 및 일관성]` was added in v21.92.0 (I070) to enforce per-response sycophancy/consistency self-check.
 
-**How it interacts with the verifier (감시자):** The `behavior-verifier.js` sub-agent's `§1.understanding` Format-markers sub-clause checks for the presence of any one marker set (`[의도]/[답]/[자기 평가]` Korean OR `[Intent]/[Answer]/[Self-Assessment]` English) when `response.length > 200`. Missing markers → understanding FAIL → ringBuffer entry → next-turn `## Behavior Correction` injection. SKELETON_5FIELD raises the floor by reminding Claude of the canonical Korean marker set every prompt.
+**How it interacts with the verifier (감시자):** The `behavior-verifier.js` sub-agent's `§0.5` audit checks all 6 markers via regex + content-presence rules. `§1.understanding` Format-markers sub-clause checks for the same 6 Korean markers when `response.length > 200`. Missing markers → understanding FAIL → ringBuffer entry → next-turn `## Behavior Correction` injection.
 
-**Byte cost:** 458 B body (UTF-8 measured, target envelope 513 B per RA1).
+**Byte cost:** ~530 B body (UTF-8).
 
-**Configuration knobs:** None. Always-on per cycle 5 (D107). Cannot be disabled; behavior is part of the default prompt envelope.
+**Configuration knobs:** None. Always-on. Cannot be disabled; behavior is part of the default prompt envelope.
 
-**Form-game prevention:** The constant is schema-only — no example outputs are listed for any of the 5 fields. Per IA-7 / TRAP-1, listing example outputs would let Claude pattern-match the example shape instead of doing the underlying work; the schema-only form forces real per-turn instantiation.
+**Form-game prevention:** The constant is schema-only — no example outputs are listed for any of the 6 fields. Per IA-7 / TRAP-1, listing example outputs would let Claude pattern-match the example shape instead of doing the underlying work; the schema-only form forces real per-turn instantiation.
 
 **Related:** [Hooks](#hooks) (UserPromptSubmit row covers the parent injection mechanism); [Pressure System](#pressure-system) (verifier ring-buffer + Behavior Correction surface).
 
