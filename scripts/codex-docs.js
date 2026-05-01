@@ -9,6 +9,7 @@ const TYPES = {
   discussion: { dir: 'discussion', prefix: 'D', title: 'Discussion', index: ['ID', 'Topic', 'Status', 'Date'] },
   plan: { dir: 'plan', prefix: 'P', title: 'Plan', index: ['ID', 'Plan', 'Status', 'Date', 'Related'] },
   ticket: { dir: 'ticket', prefix: 'T', title: 'Ticket', index: ['ID', 'Ticket', 'Status', 'Date', 'Plan'] },
+  investigation: { dir: 'investigation', prefix: 'I', title: 'Investigation', index: ['ID', 'Title', 'Status', 'Created', 'Related'] },
   hotfix: { dir: 'hotfix', prefix: 'H', title: 'Hotfix', index: ['ID', 'Title', 'Status', 'Date'] },
   worklog: { dir: 'worklog', prefix: 'W', title: 'Worklog', index: ['ID', 'Task', 'Status', 'Date', 'Related'] }
 };
@@ -120,6 +121,39 @@ function createHotfix(root, title, args) {
   console.log(path.relative(root, filePath));
 }
 
+function listFromArg(value, fallback) {
+  const text = String(value || '').trim();
+  if (!text) return fallback;
+  return text.split(/\s*(?:\r?\n|;)\s*/).filter(Boolean).map(item => `- ${item}`).join('\n');
+}
+
+function numberedListFromArg(value, fallbackItems) {
+  const text = String(value || '').trim();
+  const items = text ? text.split(/\s*(?:\r?\n|;)\s*/).filter(Boolean) : fallbackItems;
+  return items.map((item, i) => `${i + 1}. ${item}`).join('\n');
+}
+
+function createInvestigation(root, title, args) {
+  const { dir, indexPath } = ensureIndex(root, 'investigation');
+  const id = nextId(dir, 'I');
+  const slug = slugify(title);
+  const t = nowParts();
+  const filename = `${id}-${slug}.md`;
+  const filePath = path.join(dir, filename);
+  const topic = args.topic || args.intent || title;
+  const questions = numberedListFromArg(args.questions, [
+    'What is the current state?',
+    'What evidence supports the conclusion?',
+    'What gaps or risks remain?'
+  ]);
+  const constraints = listFromArg(args.constraints, '- [Inferred] Use at least two source types unless the user explicitly restricts sources.');
+  const sources = listFromArg(args.sources, '- Internet: TBD\n- Local: TBD\n- User-specified: TBD');
+  const content = `---\ntype: investigation\nid: ${id}\ntitle: "${title}"\nstatus: open\ncreated: ${t.date}\ntags: []\n---\n\n# ${id} - ${title}\n\n## Topic\n${topic}\n\n## Constraints\n${constraints}\n\n## Questions\n${questions}\n\n## Sources\n${sources}\n\n## Investigation Log\n\n### Workstream 1: Internet or external sources\nTBD. Record queries, URLs, dates, and source-specific evidence.\n\n### Workstream 2: Local project evidence\nTBD. Record files, commands, code paths, and observed outputs.\n\n### Workstream 3: Additional angle\nTBD. Use for user-specified sources, comparative analysis, or an independent counter-hypothesis.\n\n## Cross-Review\nTBD. Compare workstreams, list contradictions, weak evidence, and findings that survived review.\n\n## Synthesis\nTBD. Integrate the reviewed evidence into a coherent answer.\n\n## Conclusions\n- Key findings: TBD\n- Confidence level: TBD\n- Gaps/unknowns: TBD\n\n## Log\n### [${t.minute}] Investigation started\nCreated from Codex investigating skill. Update the workstream sections before reporting final conclusions.\n`;
+  fs.writeFileSync(filePath, content, 'utf8');
+  appendIndex(indexPath, `| [[${wikiTarget(filename)}|${id}]] | ${title} | open | ${t.date} | ${args.related || ''} |`);
+  console.log(path.relative(root, filePath));
+}
+
 function createSimple(root, type, title, args) {
   const { dir, indexPath, spec } = ensureIndex(root, type);
   const planId = type === 'ticket' ? planIdFromLink(args.plan) : null;
@@ -148,11 +182,12 @@ function main() {
   const title = args._.join(' ').trim() || args.title;
   const root = path.resolve(args['project-dir'] || process.cwd());
   if (!command || !title) {
-    console.error('Usage: node scripts/codex-docs.js <worklog|hotfix|discussion|plan|ticket> <title>');
+    console.error('Usage: node scripts/codex-docs.js <worklog|hotfix|discussion|plan|ticket|investigation> <title>');
     process.exit(1);
   }
   if (command === 'worklog' || command === 'light-workflow') return createWorklog(root, title, args);
   if (command === 'hotfix') return createHotfix(root, title, args);
+  if (command === 'investigation' || command === 'investigating') return createInvestigation(root, title, args);
   if (command === 'discussion' || command === 'plan' || command === 'ticket') return createSimple(root, command, title, args);
   console.error(`Unknown command: ${command}`);
   process.exit(1);
@@ -160,4 +195,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { createWorklog, createHotfix, createSimple, slugify };
+module.exports = { createWorklog, createHotfix, createInvestigation, createSimple, slugify };

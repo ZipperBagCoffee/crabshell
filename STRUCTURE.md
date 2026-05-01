@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.94.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.95.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -164,7 +164,7 @@ The repository intentionally keeps Claude and Codex runtime surfaces side by sid
 | `.codex-plugin/plugin.json` | Codex | Codex plugin metadata and `codex-skills/` pointer |
 | `codex-skills/` | Codex | Explicit Codex skill wrappers |
 | `scripts/codex-memory.js` | Codex | Manual memory load/save/search/status wrapper |
-| `scripts/codex-docs.js` | Codex | Manual W/H/D/P/T document creation wrapper |
+| `scripts/codex-docs.js` | Codex | Manual W/H/D/P/T/I document creation wrapper |
 | `scripts/claude-to-agents.js` | Codex | `CLAUDE.md` to `AGENTS.md` conversion |
 | `scripts/install-codex.js` | Claude Code -> Codex | Manual bridge from Claude marketplace checkout to Codex home-local plugin and skills |
 
@@ -359,6 +359,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.95.0 | feat: Codex `investigating` skill + `scripts/codex-docs.js investigation`/`investigating` commands; creates I documents with investigation sections and INDEX row. |
 | 21.94.0 | feat: `/crabshell:install-codex` manual bridge command + `scripts/install-codex.js`; links Claude-installed Crabshell checkout into Codex marketplace and skill locations with dry-run, idempotency, marketplace backup, and non-link replacement guard. |
 | 21.93.0 | feat: Codex 호환층 추가 — `.codex-plugin/plugin.json` + `codex-skills/` 10 skills + `scripts/codex-memory.js` + `scripts/codex-docs.js` + `scripts/claude-to-agents.js` + `AGENTS.md`. dual-runtime README/STRUCTURE 문서화. H009 hotfix: `wikiTarget()` regex + ticket `--plan` fail-fast + claude-to-agents `--force` overwrite protection. |
 | 21.92.0 | feat: I070 결함 수정 — SKELETON_6FIELD 6-field 확장 + dispatch 위치 상향 + §1/§0.5 marker 통일 + stale ref 제거 + dead code 제거 + test 수정. inject-rules 114/114 + sycophancy-guard 23/23 PASS. |

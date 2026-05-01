@@ -1,5 +1,12 @@
 # Changelog
 
+## v21.95.0 - 2026-05-01
+
+- **Codex investigating skill.** Added `codex-skills/investigating/SKILL.md` so Codex can run the Crabshell investigation workflow with document-first I records, multi-source evidence, cross-review, synthesis, and conclusions.
+- **I-document generator**: extended `scripts/codex-docs.js` with `investigation` and `investigating` commands. The generated document includes Topic, Constraints, Questions, Sources, Investigation Log, Cross-Review, Synthesis, Conclusions, and Log sections.
+- **Docs**: updated README/STRUCTURE Codex compatibility notes to include I-document support.
+- **Verification**: `node --check scripts/codex-docs.js`; temp project smoke tests for both `investigation` and `investigating` commands; INDEX row confirmed. See [[H011-codex-investigating-skill|H011]].
+
 ## v21.94.0 - 2026-05-01
 
 - **Codex manual install command.** Added `commands/install-codex.md` so Claude users can run `/crabshell:install-codex` after installing the Claude plugin and manually link the same checkout into Codex.
