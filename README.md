@@ -223,6 +223,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.96.0 | fix: behavior-verifier workflow-active idle echo loop; `scripts/behavior-verifier.js` now skips verifier/monitor wait echoes before writing pending state, with `_test-trigger-model.js` coverage preserving real workflow-active force-fire. |
 | 21.95.0 | feat: Codex `investigating` skill + `scripts/codex-docs.js investigation`/`investigating` commands; creates I documents with Topic, Constraints, Questions, Sources, Investigation Log, Cross-Review, Synthesis, Conclusions, and INDEX row. |
 | 21.94.0 | feat: `/crabshell:install-codex` manual bridge command + `scripts/install-codex.js`; links Claude-installed Crabshell checkout into Codex marketplace and `~/.codex/skills`, with dry-run, temp-home testability, idempotent rerun, marketplace backup, and non-link replacement guard. |
 | 21.93.0 | feat: Codex 호환층 추가 — `.codex-plugin/plugin.json` + `codex-skills/` 10 skills + `scripts/codex-memory.js` + `scripts/codex-docs.js` + `scripts/claude-to-agents.js` + `AGENTS.md`. README/STRUCTURE dual-runtime 문서. H009 hotfix: codex-docs `wikiTarget()` regex fix + ticket `--plan` fail-fast + claude-to-agents `--force` overwrite protection. |

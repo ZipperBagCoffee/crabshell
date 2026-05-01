@@ -71,6 +71,16 @@ function isClarificationOnly(text) {
   return sentences.every(s => /\?$/.test(s));
 }
 
+function isOperationalIdleTurn(text) {
+  const cleaned = stripCodeBlocks(text).trim();
+  if (!cleaned) return false;
+  const hasVerifierEcho = /Behavior verifier dispatch|Verifier dispatched|Agent "Behavior verifier dispatch" completed|verifier (?:PASS|dispatched)|UVLS PASS|PASS streak/i.test(cleaned);
+  const hasWaitEcho = /Monitor task|monitor wait|waiting for|continuing to wait|no additional action|no user input|사용자 입력 없음|대기/i.test(cleaned);
+  const hasOnlyStatusIntent = /입장 변경 없음|no position change|continue waiting|대기/i.test(cleaned);
+  return (hasVerifierEcho && (hasWaitEcho || hasOnlyStatusIntent))
+    || (/^Verifier dispatched\b/i.test(cleaned) && cleaned.length < 240);
+}
+
 /**
  * D104 IA-2 — turn classification 5-class detection cascade.
  * Returns one of: 'clarification' | 'trivial' | 'notification' |
@@ -134,6 +144,7 @@ async function main() {
     if (assistantText.length < 50) process.exit(0);
     if (isClarificationOnly(assistantText)) process.exit(0);
   }
+  if (isOperationalIdleTurn(assistantText)) process.exit(0);
 
   // Compose state-file path under .crabshell/memory/ (storage root).
   const projectDir = process.env.CLAUDE_PROJECT_DIR || process.env.PROJECT_DIR || process.cwd();
@@ -277,4 +288,4 @@ if (require.main === module) {
   main().catch(() => process.exit(0)); // fail-open on any error
 }
 
-module.exports = { isClarificationOnly, stripCodeBlocks, classifyTurnType };
+module.exports = { isClarificationOnly, stripCodeBlocks, isOperationalIdleTurn, classifyTurnType };

@@ -1,5 +1,11 @@
 # Changelog
 
+## v21.96.0 - 2026-05-01
+
+- **Behavior verifier idle echo skip.** Added `isOperationalIdleTurn()` in `scripts/behavior-verifier.js` so workflow-active verifier/monitor wait echoes no longer create a new pending verifier state.
+- **Trigger policy preserved.** Existing workflow-active short-response force-fire remains; only operational idle/status echoes such as `Verifier dispatched` + monitor wait/PASS streak messages are skipped.
+- **Verification**: `node --check scripts/behavior-verifier.js`, `node --check scripts/_test-trigger-model.js`, `_test-trigger-model.js` 6/6 PASS, and direct helper probe true for verifier/monitor idle sample + false for substantive fix sample. See [[H012-behavior-verifier-idle-echo-skip|H012]].
+
 ## v21.95.0 - 2026-05-01
 
 - **Codex investigating skill.** Added `codex-skills/investigating/SKILL.md` so Codex can run the Crabshell investigation workflow with document-first I records, multi-source evidence, cross-review, synthesis, and conclusions.
