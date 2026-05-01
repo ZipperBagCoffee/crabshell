@@ -18,6 +18,27 @@ All plugin output lives under `.crabshell/` — gitignored, clean project root.
 
 After installation, **you don't need to do anything**. It works automatically.
 
+## Codex Compatibility
+
+This repository is a dual-runtime plugin repo:
+
+- **Claude Code** uses `.claude-plugin/plugin.json`, `hooks/hooks.json`, `commands/`, and `skills/`.
+- **Codex** uses `.codex-plugin/plugin.json`, `codex-skills/`, and the `scripts/codex-*.js` wrappers.
+
+Installing the plugin in one runtime does not automatically activate the other runtime. The files can ship in the same GitHub repository, but each product only reads its own manifest and entrypoints.
+
+The shared state is `.crabshell/`. Claude and Codex can both read and write the same memory/document store when they are used in the same project:
+
+```bash
+node scripts/codex-memory.js load
+node scripts/codex-memory.js save --title="Codex session note" --message="..."
+node scripts/codex-memory.js search "query"
+node scripts/claude-to-agents.js
+node scripts/codex-docs.js worklog "task title"
+```
+
+Codex compatibility is explicit skill/script based. Claude-style automatic hooks such as `SessionStart`, `PostToolUse`, `PreToolUse`, and `Stop` are not activated by Codex.
+
 ## How It Works
 
 1. **Session start** - Loads saved content from previous sessions into Claude's context
@@ -194,6 +215,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.93.0 | feat: Codex 호환층 추가 — `.codex-plugin/plugin.json` + `codex-skills/` 10 skills + `scripts/codex-memory.js` + `scripts/codex-docs.js` + `scripts/claude-to-agents.js` + `AGENTS.md`. README/STRUCTURE dual-runtime 문서. H009 hotfix: codex-docs `wikiTarget()` regex fix + ticket `--plan` fail-fast + claude-to-agents `--force` overwrite protection. |
 | 21.92.0 | feat: I070 결함 수정 — SKELETON_5FIELD→SKELETON_6FIELD (6번째 필드 `[동조화 및 일관성]` 추가). Behavior-verifier dispatch 위치 position 9→5 상향 (positional attention skip 해결). §1 format markers OLD→NEW 6-field 통일 (§0.5 marker mismatch 해소). §0.5 stale ANTI_PATTERNS_INLINE 참조 제거. sycophancy-guard dead code 제거. Test stale assertions 수정. inject-rules 114/114 + sycophancy-guard 23/23 PASS. |
 | 21.91.0 | feat: D108 cycle 1 — I069 토큰 절약 즉시 실행. inject-rules.js: ANTI_PATTERNS_INLINE 제거 (~1,701 B), Root Anchor 5→1줄 압축 (~504 B), Verification Reminder 삭제 (~184 B). deferral-guard.js 폐지 (77 LOC, behavior-verifier §3.logic에서 흡수). sycophancy-guard.js Stop handler 3 branch 제거 (context-length, verification-claims, reversal/oscillation). Per-turn static savings ~2,389 B (~43%). Guard hooks 12→11. Test updates: V021 6 cases, V008 24 cases, fail-open 7/7. /verifying 29/29 PASS. |
 | 21.90.0 | feat: H008 hotfix — `scripts/inject-rules.js:961` behavior-verifier dispatch instruction에 `model: opus` 명시 추가. 이전 dispatch = `subagent_type: general-purpose` 만 → harness default model. `.crabshell/project.md` Model Routing rule (T1=Opus = "verification requiring interpretation") enforcement. Behavior-verifier = UVLS 4축 + §0.5 auditVerdict (form-game detection, frame-fidelity) → Type B interpretation-heavy → Opus 적합. /verifying 29/29 + fail-open 7/7 preserved. |

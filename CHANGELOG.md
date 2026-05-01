@@ -1,5 +1,14 @@
 # Changelog
 
+## v21.93.0 - 2026-04-30
+
+- **Codex 호환층 추가 + H009 hotfix (Findings 1-3 from I071 review).** 같은 repo에서 Codex CLI runtime 활성화 가능. 기존 Claude Code runtime 무영향.
+- **새 파일**: `.codex-plugin/plugin.json` (Codex manifest, `"skills": "./codex-skills/"`), `codex-skills/` 10 skill (load/save/search-memory, light-workflow, discussing, hotfix, planning, regressing, ticketing, claude-to-agents), `scripts/codex-memory.js` (Codex side memory pipeline), `scripts/codex-docs.js` (D/P/T/I/H/W creation), `scripts/claude-to-agents.js` (CLAUDE.md → AGENTS.md 변환), `AGENTS.md` (생성된 Codex 룰).
+- **변경 파일**: `README.md` + `STRUCTURE.md` dual-runtime 모델 문서화 (Claude `.claude-plugin/` vs Codex `.codex-plugin/` 분리, 공유 `.crabshell/` storage), `scripts/init.js` new-project guard.
+- **H009 hotfix**: (1) `codex-docs.js` `wikiTarget()` 추가, INDEX wikilink 생성 시 `.md` 정확히 strip (regex `/\.md$/`); (2) ticket 생성 시 `--plan` 누락/유효한 P### 미포함이면 fail-fast — 이전엔 `P000_T001` silent fallback; (3) `claude-to-agents.js` 기존 AGENTS.md 존재 시 `--force` 없이 거부 — 이전엔 silent overwrite.
+- **Verification**: codex-docs.js / claude-to-agents.js / codex-memory.js `node --check` syntax pass. Smoke test under `C:\tmp` confirmed clean wikilinks, ticket fail-fast, overwrite protection, `--force` path.
+- See [[I071-codex-claude-coexistence-vscode-cli|I071]] / [[H009-codex-compatibility-review-fixes|H009]].
+
 ## v21.92.0 - 2026-04-30
 
 - **I070 결함 수정 — skeleton 6-field 확장 + verifier prompt 통일 + dispatch 위치 상향.** I070 5-agent 조사에서 발견된 CRITICAL 결함 2건 + HIGH 2건 + MEDIUM/LOW 4건 수정.

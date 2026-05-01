@@ -1,10 +1,12 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.92.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.93.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
 Crabshell is a Claude Code plugin with two pillars: (1) session memory — L1 delta extraction, Haiku summarization, logbook.md rotation, auto-restore on restart; (2) LLM behavioral correction — injects VERIFICATION-FIRST, UNDERSTANDING-FIRST, INTERFERENCE PATTERNS every prompt, twelve guard hooks block violations at runtime. D/P/T/I/W/K document system, 21 skills, Node.js hooks. All output under .crabshell/.
+
+Codex compatibility is provided in the same repository through a separate `.codex-plugin/plugin.json`, `codex-skills/`, and explicit wrapper scripts. Claude Code and Codex ship from the same repo but activate different manifests; both can share the `.crabshell/` memory and document store.
 
 ## Directory Structure
 
@@ -146,6 +148,24 @@ crabshell/
 ├── .gitattributes                    # LF line ending enforcement (v21.6.0)
 └── STRUCTURE.md                      # This file
 ```
+
+## Codex Compatibility Layout
+
+The repository intentionally keeps Claude and Codex runtime surfaces side by side:
+
+| Path | Runtime | Purpose |
+|------|---------|---------|
+| `.claude-plugin/plugin.json` | Claude Code | Claude plugin metadata and install entrypoint |
+| `hooks/hooks.json` | Claude Code | Automatic lifecycle hooks |
+| `commands/` | Claude Code | Slash command definitions |
+| `skills/` | Claude Code | Claude-oriented skill instructions |
+| `.codex-plugin/plugin.json` | Codex | Codex plugin metadata and `codex-skills/` pointer |
+| `codex-skills/` | Codex | Explicit Codex skill wrappers |
+| `scripts/codex-memory.js` | Codex | Manual memory load/save/search/status wrapper |
+| `scripts/codex-docs.js` | Codex | Manual W/H/D/P/T document creation wrapper |
+| `scripts/claude-to-agents.js` | Codex | `CLAUDE.md` to `AGENTS.md` conversion |
+
+Installing one runtime does not activate the other runtime. Both runtimes can share `.crabshell/` storage when used in the same project.
 
 ## Core Scripts
 
@@ -336,6 +356,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.93.0 | feat: Codex 호환층 추가 — `.codex-plugin/plugin.json` + `codex-skills/` 10 skills + `scripts/codex-memory.js` + `scripts/codex-docs.js` + `scripts/claude-to-agents.js` + `AGENTS.md`. dual-runtime README/STRUCTURE 문서화. H009 hotfix: `wikiTarget()` regex + ticket `--plan` fail-fast + claude-to-agents `--force` overwrite protection. |
 | 21.92.0 | feat: I070 결함 수정 — SKELETON_6FIELD 6-field 확장 + dispatch 위치 상향 + §1/§0.5 marker 통일 + stale ref 제거 + dead code 제거 + test 수정. inject-rules 114/114 + sycophancy-guard 23/23 PASS. |
 | 21.91.0 | feat: D108 cycle 1 — I069 토큰 절약 즉시 실행. ANTI_PATTERNS_INLINE 제거 (~1,701 B) + Root Anchor 압축 (~504 B) + Verification Reminder 삭제 (~184 B). deferral-guard.js 폐지 (77 LOC + hooks.json). sycophancy-guard.js Stop 3 branch 제거. Per-turn static savings ~2,389 B. Guard 12→11. /verifying 29/29 + fail-open 7/7. |
 | 21.90.0 | feat: H008 hotfix — behavior-verifier dispatch model: opus 명시. `scripts/inject-rules.js:961` 한 줄 추가, project.md T1 routing rule enforcement (verification requiring interpretation = §0.5 form-game detection). /verifying 29/29 + fail-open 7/7 preserved. |
