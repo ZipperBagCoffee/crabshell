@@ -2,6 +2,7 @@
 .crabshell/
 test-data/
 CLAUDE.md
+AGENTS.md
 docs/
 nul
 *.stackdump

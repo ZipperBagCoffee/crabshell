@@ -1,5 +1,12 @@
 # Changelog
 
+## v21.94.0 - 2026-05-01
+
+- **Codex manual install command.** Added `commands/install-codex.md` so Claude users can run `/crabshell:install-codex` after installing the Claude plugin and manually link the same checkout into Codex.
+- **Installer script**: added `scripts/install-codex.js`, which links the plugin root into `~/.agents/plugins/plugins/crabshell`, upserts `~/.agents/plugins/marketplace.json`, and links all `codex-skills/*` directories into `~/.codex/skills`.
+- **Safety/ops**: installer supports `--dry-run`, `--home`, `--plugin-root`, and `--force`; it is idempotent, backs up existing marketplace files before edits, and refuses to replace non-link destinations unless forced.
+- **Verification**: dry-run and temp-home real install confirmed marketplace creation, 10 Codex skill links, and clean idempotent rerun. See [[H010-codex-manual-install-command|H010]].
+
 ## v21.93.0 - 2026-04-30
 
 - **Codex 호환층 추가 + H009 hotfix (Findings 1-3 from I071 review).** 같은 repo에서 Codex CLI runtime 활성화 가능. 기존 Claude Code runtime 무영향.
