@@ -80,6 +80,7 @@ function ok(name, cond, detail) {
 
 const SUBSTANTIVE = 'I have implemented the function and verified it returns the expected value across three test cases. The behavior matches the specification.';
 const SHORT = 'Done.';
+const OPERATIONAL_IDLE = 'Verifier dispatched (Agent output: Async agent launched successfully. agentId: abc123). Monitor task b7aq3xrdw waiting for the next training notification. No additional action.';
 
 // ---------- Case 1 — periodic skip ----------
 (function() {
@@ -229,6 +230,36 @@ const SHORT = 'Done.';
   ok('5 missedCount=1 → 2, escalationLevel=2 (L1 marker semantics)',
      r.status === 0 && post && post.dispatchOverdue === true
      && post.missedCount === 2 && post.escalationLevel === 2,
+     'exit=' + r.status + ' state=' + JSON.stringify(post));
+})();
+
+// ---------- Case 6 ??workflow active + verifier/monitor idle echo ??SKIP ----------
+(function() {
+  const sb = makeSandbox();
+  fs.writeFileSync(regressingStatePath(sb), JSON.stringify({
+    active: true, topic: 'D104', cycleCap: 10, cycleNum: 1
+  }, null, 2), 'utf8');
+  const PRIOR = {
+    taskId: 'verify-prior-c6', lastResponseId: 'sess-c6', status: 'completed',
+    launchedAt: new Date(Date.now() - 60 * 1000).toISOString(),
+    verdicts: { understanding: { pass: true, reason: '' }, verification: { pass: true, reason: '' }, logic: { pass: true, reason: '' }, simple: { pass: true, reason: '' } },
+    dispatchOverdue: false,
+    triggerReason: 'workflow-active',
+    lastFiredAt: new Date(Date.now() - 60 * 1000).toISOString(),
+    lastFiredTurn: 1,
+    missedCount: 0,
+    escalationLevel: 0,
+    ringBuffer: [],
+    turnType: 'workflow-internal',
+    lastUpdatedAt: new Date(Date.now() - 60 * 1000).toISOString()
+  };
+  writeState(sb, PRIOR);
+  writeIndex(sb, { verifierCounter: 2 });
+  const r = runStop(sb, { stop_response: OPERATIONAL_IDLE, session_id: 'sess-c6' });
+  const post = readState(sb);
+  ok('6 workflow active + verifier/monitor idle echo ??SKIP (state unchanged)',
+     r.status === 0 && post && post.taskId === 'verify-prior-c6'
+     && post.status === 'completed' && post.lastFiredTurn === 1,
      'exit=' + r.status + ' state=' + JSON.stringify(post));
 })();
 

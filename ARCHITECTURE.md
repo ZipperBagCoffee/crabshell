@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.95.0)
+# Crabshell Architecture (v21.96.0)
 
 ## Overview
 
@@ -355,7 +355,7 @@ Agent orchestration rules (11 rules covering pairing, cross-review, coherence, c
 | `sycophancy-guard.js` | Stop, PreToolUse (Write\|Edit) | Dual-layer sycophancy detection + verification claim detection (4-tier classification): Stop response + mid-turn transcript parsing; block with re-examination |
 | `scope-guard.js` | Stop | Compare user-requested quantity vs response count; block scope reduction without approval |
 | `regressing-loop-guard.js` | Stop | Block stop when regressing active + inject phase-specific context via buildRegressingReminder(); enforce ≥2 parallel WAs in regressing + light-workflow; WA count tracking via wa-count.json |
-| `behavior-verifier.js` | Stop | 감시자 sub-agent dispatch (v21.80.0+): write `behavior-verifier-state.json` `status='pending'` + `[CRABSHELL_BEHAVIOR_VERIFY]` sentinel. v21.83.0 trigger 3-layer (periodic N=8 + workflow-active force + escalation L0/L1) + 5-class turn classification + ring buffer FIFO N=8 + state schema 14 fields |
+| `behavior-verifier.js` | Stop | 감시자 sub-agent dispatch (v21.80.0+): write `behavior-verifier-state.json` `status='pending'` + `[CRABSHELL_BEHAVIOR_VERIFY]` sentinel. v21.83.0 trigger 3-layer (periodic N=8 + workflow-active force + escalation L0/L1) + 5-class turn classification + ring buffer FIFO N=8 + state schema 14 fields. v21.96.0 skips workflow-active verifier/monitor idle echoes before pending-state write. |
 | `skill-tracker.js` | PostToolUse (Skill) | Set skill-active flag on Skill tool calls (TTL-based, 5min expiry) |
 | `regressing-state.js` | (library) | Phase tracker: getState, buildReminder, detectSkillCall, advancePhase |
 | `extract-delta.js` | (library) | L1 delta extraction, timestamp watermarks, temp file management |
@@ -498,6 +498,7 @@ The 5 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.96.0 | fix: behavior-verifier workflow-active idle echo loop by skipping verifier/monitor wait echoes before pending-state write. |
 | 21.95.0 | feat: Codex investigating skill and I-document generation via `scripts/codex-docs.js investigation` / `investigating`. |
 | 21.94.0 | feat: `/crabshell:install-codex` manual bridge command and `scripts/install-codex.js` for linking a Claude-installed checkout into Codex marketplace and skill locations. |
 | 21.60.0 | feat: role-collapse-guard.js (Orchestrator source-write block), deferral-guard.js (warn-only trailing question detection); fix: context-length "세션" + stoppage patterns, narrowed English session patterns; fix: memory-delta SKILL.md "foreground" → "wait for completion" |

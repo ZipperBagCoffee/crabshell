@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.95.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.96.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -359,6 +359,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.96.0 | fix: behavior-verifier workflow-active idle echo loop; skip verifier/monitor wait echoes before writing pending state, with trigger-model regression coverage. |
 | 21.95.0 | feat: Codex `investigating` skill + `scripts/codex-docs.js investigation`/`investigating` commands; creates I documents with investigation sections and INDEX row. |
 | 21.94.0 | feat: `/crabshell:install-codex` manual bridge command + `scripts/install-codex.js`; links Claude-installed Crabshell checkout into Codex marketplace and skill locations with dry-run, idempotency, marketplace backup, and non-link replacement guard. |
 | 21.93.0 | feat: Codex 호환층 추가 — `.codex-plugin/plugin.json` + `codex-skills/` 10 skills + `scripts/codex-memory.js` + `scripts/codex-docs.js` + `scripts/claude-to-agents.js` + `AGENTS.md`. dual-runtime README/STRUCTURE 문서화. H009 hotfix: `wikiTarget()` regex + ticket `--plan` fail-fast + claude-to-agents `--force` overwrite protection. |
