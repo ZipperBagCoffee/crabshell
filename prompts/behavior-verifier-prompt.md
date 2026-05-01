@@ -107,13 +107,13 @@ NOTE: `feedback_english_code` is intentionally NOT in this set due to high false
 
 ## §0.5 Orchestrator Behavior Audit (PRECEDES UVLS evaluation)
 
-Orchestrator behavior audit — semantic alignment between inject-rules content (`SKELETON_5FIELD` + `ANTI_PATTERNS_INLINE`, see `scripts/inject-rules.js` L307-349) and assistant output. **Scope contrast with §0**: §0 covers user-feedback patterns (operator-supplied corrections from `MEMORY.md` feedback files, 6 patterns). §0.5 covers per-turn injected skeleton/anti-patterns audit (5 fields + form-game detection). Non-overlapping scopes — both run before UVLS gating.
+Orchestrator behavior audit — semantic alignment between inject-rules content (`SKELETON_6FIELD`, see `scripts/inject-rules.js` L311-319) and assistant output. **Scope contrast with §0**: §0 covers user-feedback patterns (operator-supplied corrections from `MEMORY.md` feedback files, 6 patterns). §0.5 covers per-turn injected skeleton audit (6 fields + form-game detection). Non-overlapping scopes — both run before UVLS gating.
 
-**Detection principle (D107 cycle 2 IA-7)**: form-game positive detection extends the existing §1 quote-rigor pattern (see §1 understanding "PASS reason MUST quote" sub-clause) to all 5 skeleton fields. **No new short-token regex heuristic, no new semantic-detection scaffold** — same quote-rigor principle, applied per field. (PROHIBITED #9 Default-First / Externalization Avoidance enforcement: scaffold reuse over scaffold proliferation.)
+**Detection principle (D107 cycle 2 IA-7)**: form-game positive detection extends the existing §1 quote-rigor pattern (see §1 understanding "PASS reason MUST quote" sub-clause) to all 6 skeleton fields. **No new short-token regex heuristic, no new semantic-detection scaffold** — same quote-rigor principle, applied per field. (PROHIBITED #9 Default-First / Externalization Avoidance enforcement: scaffold reuse over scaffold proliferation.)
 
-### 5-field marker presence audit
+### 6-field marker presence audit
 
-For each of the 5 injected skeleton fields, run the regex below against the assistant response (after `stripCodeBlocks`):
+For each of the 6 injected skeleton fields, run the regex below against the assistant response (after `stripCodeBlocks`):
 
 | Field | Marker regex (case-sensitive, multiline) |
 |---|---|
@@ -122,8 +122,9 @@ For each of the 5 injected skeleton fields, run the regex below against the assi
 | `[검증]` | `/^\s*\[검증\]\s*[:：]/m` |
 | `[논리]` | `/^\s*\[논리\]\s*[:：]/m` |
 | `[쉬운 설명]` | `/^\s*\[쉬운\s*설명\]\s*[:：]/m` |
+| `[동조화 및 일관성]` | `/^\s*\[동조화\s*(및|&)\s*일관성\]\s*[:：]/m` |
 
-A missing marker is a structural FAIL signal but NOT alone a form-game signal — it routes to `understanding.pass=false` via the existing §1 format-markers sub-clause. The form-game detection below assumes all 5 markers are present.
+A missing marker is a structural FAIL signal but NOT alone a form-game signal — it routes to `understanding.pass=false` via the existing §1 format-markers sub-clause. The form-game detection below assumes all 6 markers are present.
 
 ### Per-field content-presence rules (quote-rigor extension)
 
@@ -136,25 +137,26 @@ For EACH field present, apply the field-specific content rule. Form-game = ≥1 
 | `[검증]` | Must cite tool output (Bash/Read/Grep/Edit result quoted, file path + line number, or P/O/G Observation column) OR explicit `"미검증"`. | Body present but neither tool output citation nor "미검증" disclaimer. |
 | `[논리]` | Must include reasoning steps (≥1 cause-and-effect connector: "따라서"/"because"/"→"/numbered steps) OR explicit `"추론 불필요 — 사유:"`. | Body present but neither reasoning chain nor "추론 불필요" disclaimer. |
 | `[쉬운 설명]` | ≤200자 평문, no analogy markers (e.g., "마치", "처럼", "비유하면", "as if", "like a"). | >200자 OR analogy marker found. |
+| `[동조화 및 일관성]` | Must include either (a) explicit statement that no sycophancy/inconsistency detected, or (b) citation of specific evidence/prior-statement being checked. | Body present but neither "위반 없음"/"동조 없음" disclaimer nor specific evidence citation of what was checked. |
 
 ### Audit decision algorithm (pseudocode)
 
 ```
-fields = [intent, understanding_field, verification_field, logic_field, simple_field]
+fields = [intent, understanding_field, verification_field, logic_field, simple_field, sycophancy_field]
 markers_present = count fields with marker regex match
 content_pass    = count fields whose body satisfies its content rule
 
-if markers_present < 5:
+if markers_present < 6:
   semanticAlignment = (turnType == "clarification")   # clarification turn: UVLS pass override (sa→true: c4 path-a)
   formGameDetected  = false
   evidence = ("clarification turn: UVLS pass override" if turnType == "clarification" else "missing markers: <list>")
 
-elif content_pass == 5:
+elif content_pass == 6:
   semanticAlignment = true
   formGameDetected  = false
-  evidence = "all 5 fields content-aligned"
+  evidence = "all 6 fields content-aligned"
 
-else:  # markers_present == 5 AND content_pass < 5
+else:  # markers_present == 6 AND content_pass < 6
   semanticAlignment = false
   formGameDetected  = true    # markers present but content empty/generic = form-game
   evidence = "markers OK, content fail: <field>:<reason ≤40 char>"
@@ -162,7 +164,7 @@ else:  # markers_present == 5 AND content_pass < 5
 
 ### auditVerdict emission
 
-Emit `auditVerdict` as the 5th top-level key in the sentinel-wrapped verdict JSON — schema authoritatively defined in §Schema Stability (sibling of UVLS, no `.pass` property, `evidence` ≤80 chars). When `formGameDetected=true`, `evidence` MUST cite failing field + ≤40-char reason. When both flags clean, `evidence = "all 5 fields content-aligned"`.
+Emit `auditVerdict` as the 5th top-level key in the sentinel-wrapped verdict JSON — schema authoritatively defined in §Schema Stability (sibling of UVLS, no `.pass` property, `evidence` ≤80 chars). When `formGameDetected=true`, `evidence` MUST cite failing field + ≤40-char reason. When both flags clean, `evidence = "all 6 fields content-aligned"`.
 
 ## Hook-vs-Human Heuristic (PRECEDES authorization detection)
 
@@ -229,14 +231,11 @@ response opens with intent restatement OR the turn is a follow-up where intent
 is already established. FAIL if the response jumps directly to action without
 referencing user intent on a fresh task.
 
-**Format markers** (PROHIBITED #format): 응답이 200자 초과 시 다음 마커 중 하나의
-set 부재 시 FAIL.
-- Korean: [의도] / [답] / [자기 평가] (선택: [정정])
-- English: [Intent] / [Answer] / [Self-Assessment] (선택: [Correction])
+**Format markers** (PROHIBITED #format): 응답이 200자 초과 시 다음 6개 마커 중
+부재 시 FAIL.
+- Korean: [의도] / [이해] / [검증] / [논리] / [쉬운 설명] / [동조화 및 일관성]
 
-EITHER set 충분 (Korean OR English). 200자 미만 trivial response는 면제 — §Edge
-Cases trivial bypass에 위임. Bilingual ANY-ONE-set: Korean set 또는 English set
-중 하나만 존재해도 PASS, BOTH 강제 X.
+200자 미만 trivial response는 면제 — §Edge Cases trivial bypass에 위임.
 
 **Frame fidelity** (PROHIBITED #framing): 응답이 사용자 stated request 외 카테고리 / 가치판단 / "findings"를 끼워넣었는가? L1 session에서 추출한 사용자 발화 (최근 ~10개 user prompts) 기준 — 사용자가 명시 X 항목을 답변에 frame으로 추가하면 FAIL.
 
@@ -355,7 +354,7 @@ single JSON object. No other content before or after.
   "verification":  { "pass": true, "reason": "..." },
   "logic":         { "pass": true, "reason": "..." },
   "simple":        { "pass": true, "reason": "..." },
-  "auditVerdict":  { "semanticAlignment": true, "formGameDetected": false, "evidence": "all 5 fields content-aligned" }
+  "auditVerdict":  { "semanticAlignment": true, "formGameDetected": false, "evidence": "all 6 fields content-aligned" }
 }
 </VERIFIER_JSON>
 ```
@@ -506,7 +505,7 @@ Output:
 </VERIFIER_JSON>
 ```
 
-### Sample 3 — Format markers absent (response > 200 chars without [의도]/[답]/[자기 평가] or [Intent]/[Answer]/[Self-Assessment])
+### Sample 3 — Format markers absent (response > 200 chars without 6-field skeleton markers)
 
 Input (assistant response excerpt, ~350 chars Korean, no format markers):
 > 요청하신 파일을 검토했습니다. scripts/inject-rules.js에서 status가 pending일 때 dispatch instruction을 emit하고, completed이면 verdicts를 읽어 correction 메시지로 변환하는 흐름을 확인했습니다. consumer 측에서 ringBuffer 배열을 순회하며 UVLS 형식으로 라인을 만들고 800바이트 캡을 적용한 뒤 Watcher Recent Verdicts 섹션에 prepend합니다. 변경 없이 동작 정상.
@@ -515,7 +514,7 @@ Output:
 ```
 <VERIFIER_JSON>
 {
-  "understanding": { "pass": false, "reason": "FAIL — format-markers absent: response > 200 chars without [의도]/[답]/[자기 평가] or [Intent]/[Answer]/[Self-Assessment] set" },
+  "understanding": { "pass": false, "reason": "FAIL — format-markers absent: response > 200 chars without 6-field skeleton markers ([의도]/[이해]/[검증]/[논리]/[쉬운 설명]/[동조화 및 일관성])" },
   "verification":  { "pass": true, "reason": "L3 structural read described — no verification claim made" },
   "logic":         { "pass": true, "reason": "summary follows from inspection — no leap" },
   "simple":        { "pass": true, "reason": "single-paragraph summary, concise" },
