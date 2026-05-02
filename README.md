@@ -223,6 +223,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.96.1 | fix: H013 — behavior-verifier rubric path resolution. `scripts/inject-rules.js:911` dispatch instruction now emits `__dirname`-derived absolute plugin install path for `prompts/behavior-verifier-prompt.md` instead of a relative literal that the consuming agent resolved against `CLAUDE_PROJECT_DIR`, leaving any project without a sibling `prompts/` folder permanently `status=pending` with escalating `[DISPATCH OVERDUE]` reminders. Aligns with `memoryFeedbackPath` (already absolute). Tests: `_test-d107-cycle3-llm-compliance.js` 5/5 PASS. |
 | 21.96.0 | fix: behavior-verifier workflow-active idle echo loop; `scripts/behavior-verifier.js` now skips verifier/monitor wait echoes before writing pending state, with `_test-trigger-model.js` coverage preserving real workflow-active force-fire. |
 | 21.95.0 | feat: Codex `investigating` skill + `scripts/codex-docs.js investigation`/`investigating` commands; creates I documents with Topic, Constraints, Questions, Sources, Investigation Log, Cross-Review, Synthesis, Conclusions, and INDEX row. |
 | 21.94.0 | feat: `/crabshell:install-codex` manual bridge command + `scripts/install-codex.js`; links Claude-installed Crabshell checkout into Codex marketplace and `~/.codex/skills`, with dry-run, temp-home testability, idempotent rerun, marketplace backup, and non-link replacement guard. |

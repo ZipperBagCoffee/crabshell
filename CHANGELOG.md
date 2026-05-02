@@ -1,5 +1,12 @@
 # Changelog
 
+## v21.96.1 - 2026-05-02
+
+- **Behavior verifier rubric path fix.** `scripts/inject-rules.js:911` dispatch instruction now emits an absolute plugin install dir path (`__dirname`-derived) for `prompts/behavior-verifier-prompt.md` instead of a relative `prompts/...` literal. The relative path was resolved against `CLAUDE_PROJECT_DIR` by the consuming agent, so any project without a sibling `prompts/` folder failed dispatch with file-not-found, leaving `behavior-verifier-state.json` permanently `status=pending` and re-emitting `[DISPATCH OVERDUE]` reminders every turn until `escalationLevel=2`.
+- **Consistency**: aligns rubric path resolution with `memoryFeedbackPath` (line 902), which was already absolute. Fail-open: `path.join` failure falls back to the old relative literal.
+- **Tests updated**: `_test-d107-cycle3-llm-compliance.js:278/313` regexes generalised to match new absolute-path emit format.
+- **Verification**: `node --check` on both modified files; path-resolution probe confirmed dev tree + simulated cache install both resolve to existing files; `_test-d107-cycle3-llm-compliance.js` 5/5 PASS. See [[H013-verifier-rubric-absolute-path|H013]].
+
 ## v21.96.0 - 2026-05-01
 
 - **Behavior verifier idle echo skip.** Added `isOperationalIdleTurn()` in `scripts/behavior-verifier.js` so workflow-active verifier/monitor wait echoes no longer create a new pending verifier state.

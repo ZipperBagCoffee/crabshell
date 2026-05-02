@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.96.0)
+# Crabshell Architecture (v21.96.1)
 
 ## Overview
 
@@ -498,6 +498,7 @@ The 5 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.96.1 | fix: H013 — verifier rubric path absolutized in `scripts/inject-rules.js:911` so dispatch resolves against the plugin install dir instead of `CLAUDE_PROJECT_DIR`. |
 | 21.96.0 | fix: behavior-verifier workflow-active idle echo loop by skipping verifier/monitor wait echoes before pending-state write. |
 | 21.95.0 | feat: Codex investigating skill and I-document generation via `scripts/codex-docs.js investigation` / `investigating`. |
 | 21.94.0 | feat: `/crabshell:install-codex` manual bridge command and `scripts/install-codex.js` for linking a Claude-installed checkout into Codex marketplace and skill locations. |
