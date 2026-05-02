@@ -275,7 +275,9 @@ function runInjectRules(sandbox) {
   const subagentTypeInSrc = irSrc.includes("- subagent_type: general-purpose");
   const runInBgInSrc = irSrc.includes("- run_in_background: true");
   const envInSrc = irSrc.includes("- env: CRABSHELL_AGENT=behavior-verifier, CRABSHELL_BACKGROUND=1");
-  const promptInSrc = irSrc.includes("- prompt: contents of prompts/behavior-verifier-prompt.md");
+  // H013 — emit format changed from relative `prompts/...` to absolute
+  // __dirname-derived plugin path. Match on the stable prefix only.
+  const promptInSrc = irSrc.includes("- prompt: contents of ' + verifierPromptAbsPath + '");
   const memoryInSrc = irSrc.includes("- Memory feedback path");
   const outputInSrc = irSrc.includes("- output: write verdicts JSON to");
 
@@ -308,7 +310,10 @@ function runInjectRules(sandbox) {
   const hasSubagentType = /^- subagent_type: general-purpose$/m.test(dispatchBlock);
   const hasRunInBg = /^- run_in_background: true$/m.test(dispatchBlock);
   const hasEnv = /^- env: CRABSHELL_AGENT=behavior-verifier, CRABSHELL_BACKGROUND=1$/m.test(dispatchBlock);
-  const hasPrompt = /^- prompt: contents of prompts\/behavior-verifier-prompt\.md/m.test(dispatchBlock);
+  // H013 — spawn output now emits absolute plugin install path. Match on the
+  // stable rubric filename suffix (which always ends the path) instead of the
+  // old relative `prompts/...` literal.
+  const hasPrompt = /^- prompt: contents of .*behavior-verifier-prompt\.md/m.test(dispatchBlock);
   const hasMemory = /^- Memory feedback path/m.test(dispatchBlock);
   const hasOutput = /^- output: write verdicts JSON to/m.test(dispatchBlock);
 

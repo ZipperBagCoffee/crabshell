@@ -902,13 +902,24 @@ async function main() {
                 memoryFeedbackPath = home.replace(/\\/g, '/') + '/.claude/projects/' + memoryProjectDir + '/memory/MEMORY.md';
               }
             } catch (_) { memoryFeedbackPath = null; }
+            // H013 — emit absolute plugin install dir path for rubric file.
+            // Relative 'prompts/...' was resolved against CLAUDE_PROJECT_DIR by
+            // the consuming agent, so any project without a sibling prompts/
+            // folder (e.g. user's own repos) failed dispatch with file-not-found,
+            // leaving status='pending' forever and escalating missedCount each
+            // turn. __dirname here is plugin/scripts → ../prompts is the rubric
+            // shipped inside the plugin install dir.
+            let verifierPromptAbsPath = 'prompts/behavior-verifier-prompt.md';
+            try {
+              verifierPromptAbsPath = path.join(__dirname, '..', 'prompts', 'behavior-verifier-prompt.md').replace(/\\/g, '/');
+            } catch (_) { /* fail-open: keep relative fallback */ }
             context += '\n\n## 감시자 (Behavior Verifier) Dispatch Required\n';
             context += 'Next response: invoke Task tool to launch background verifier sub-agent.\n';
             context += '- subagent_type: general-purpose\n';
             context += '- model: opus\n';
             context += '- run_in_background: true\n';
             context += '- env: CRABSHELL_AGENT=behavior-verifier, CRABSHELL_BACKGROUND=1\n';
-            context += '- prompt: contents of prompts/behavior-verifier-prompt.md plus the previous response transcript and recent user prompts (role=user) extracted from latest L1 session in .crabshell/memory/sessions/ for frame-fidelity sub-clause evaluation\n';
+            context += '- prompt: contents of ' + verifierPromptAbsPath + ' (plugin install dir absolute path — do NOT resolve against CLAUDE_PROJECT_DIR) plus the previous response transcript and recent user prompts (role=user) extracted from latest L1 session in .crabshell/memory/sessions/ for frame-fidelity sub-clause evaluation\n';
             context += '- Memory feedback path (read for §0 Memory Feedback Cross-Check; fail-open if null/unreadable): ' + (memoryFeedbackPath || '(unavailable — skip cross-check)') + '\n';
             context += '- output: write verdicts JSON to ' + BEHAVIOR_VERIFIER_STATE_FILE + ' with status=completed\n';
           } else if (bvState.status === 'completed' && bvState.verdicts && typeof bvState.verdicts === 'object') {
