@@ -254,8 +254,8 @@ const EMERGENCY_STOP_CONTEXT = `
 1. STOP all current work immediately. Do NOT continue your previous task.
 2. Use the Read tool to read CLAUDE.md right now. Actually read the file — do not rely on memory.
 3. Read CLAUDE.md line by line. For EACH rule, explain in your own words what it means and where a gap appeared in the current session.
-4. After explaining all rules, ask the user: "What did I get wrong? What should I do differently?"
-5. Do NOT apologize. Do NOT make excuses. Demonstrate understanding through explanation.
+4. After explaining all rules, state — declaratively, not as a question — what you inferred went wrong from the re-read + recent transcript: which specific rule was violated, in which turn, with the offending phrase quoted. Do NOT ask the user "what did I get wrong" — the user already signalled it by triggering the diagnostic reset; asking back is deflection.
+5. Do NOT apologize. Do NOT make excuses. Demonstrate understanding through the declarative gap statement in step 4.
 6. Memory operations (delta, rotation) may continue normally.
 
 This context REPLACES all normal rules. Your ONLY job right now is steps 1-5.

@@ -1,5 +1,12 @@
 # Changelog
 
+## v21.96.2 - 2026-05-02
+
+- **EMERGENCY_STOP Step 4: question → declarative.** `scripts/inject-rules.js` `EMERGENCY_STOP_CONTEXT` Step 4 no longer instructs Claude to ask "What did I get wrong? What should I do differently?" after a `BRAINMELT` / `아시발멈춰` reset. The user already signalled the gap by triggering the reset; asking back was deflection that compounded frustration the reset was supposed to defuse.
+- **New behaviour**: Step 4 now requires a declarative gap statement — which specific rule was violated, in which turn, with the offending phrase quoted, derived from Steps 2-3's CLAUDE.md re-read + recent transcript. Diagnostic value preserved; burden of naming the gap shifts from user to Claude.
+- **Step 5** touched in one line so "demonstrate understanding" anchor points to the new declarative output instead of the removed question.
+- **Verification**: `_test-inject-rules.js` 114/114 PASS (`DIAGNOSTIC RESET` substring assertion intact); shape probe confirms old question literal absent, new declarative phrase present. See [[H014-emergency-stop-step4-declarative|H014]].
+
 ## v21.96.1 - 2026-05-02
 
 - **Behavior verifier rubric path fix.** `scripts/inject-rules.js:911` dispatch instruction now emits an absolute plugin install dir path (`__dirname`-derived) for `prompts/behavior-verifier-prompt.md` instead of a relative `prompts/...` literal. The relative path was resolved against `CLAUDE_PROJECT_DIR` by the consuming agent, so any project without a sibling `prompts/` folder failed dispatch with file-not-found, leaving `behavior-verifier-state.json` permanently `status=pending` and re-emitting `[DISPATCH OVERDUE]` reminders every turn until `escalationLevel=2`.
