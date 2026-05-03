@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.96.2)
+# Crabshell Architecture (v21.97.0)
 
 ## Overview
 
@@ -498,6 +498,7 @@ The 5 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.97.0 | feat: Codex knowledge skill and K-page generation via `scripts/codex-docs.js knowledge`. |
 | 21.96.2 | fix: H014 — `EMERGENCY_STOP_CONTEXT` Step 4 rewritten from "ask the user what went wrong" to "state the inferred gap declaratively." Removes deflection that compounded frustration the diagnostic reset was meant to defuse. |
 | 21.96.1 | fix: H013 — verifier rubric path absolutized in `scripts/inject-rules.js:911` so dispatch resolves against the plugin install dir instead of `CLAUDE_PROJECT_DIR`. |
 | 21.96.0 | fix: behavior-verifier workflow-active idle echo loop by skipping verifier/monitor wait echoes before pending-state write. |
