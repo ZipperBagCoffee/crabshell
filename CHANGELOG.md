@@ -1,5 +1,12 @@
 # Changelog
 
+## v21.97.0 - 2026-05-03
+
+- **Codex knowledge skill.** Added `codex-skills/knowledge/SKILL.md` so Codex can record verified facts and operational tips as Crabshell K-pages. Closes the gap where `/install-codex` enumerated `codex-skills/` dynamically but the directory did not contain a `knowledge` entry, leaving Codex without `/knowledge`.
+- **K-page generator**: extended `scripts/codex-docs.js` with a `knowledge` command and `createKnowledge()` function. Generated documents include `category` (fact|tip), `source`, `tags`, `created` frontmatter plus `## What` and `## When` sections; INDEX rows use `[[K{NNN}-{slug}|K{NNN}]]` wikilinks with `Cat | Tags | Source` columns.
+- **Defaults**: `category` defaults to `fact` (`tip` accepted), `source` defaults to `observation`, `what`/`when` default to `TBD.` if omitted. `tags` accepts a comma-separated list.
+- **Verification**: `node --check scripts/codex-docs.js`; inline smoke test creating `K001-test-fact.md` in a temp project root confirmed frontmatter, body, and INDEX wikilink row match the Claude-side `/knowledge` skill format.
+
 ## v21.96.2 - 2026-05-02
 
 - **EMERGENCY_STOP Step 4: question → declarative.** `scripts/inject-rules.js` `EMERGENCY_STOP_CONTEXT` Step 4 no longer instructs Claude to ask "What did I get wrong? What should I do differently?" after a `BRAINMELT` / `아시발멈춰` reset. The user already signalled the gap by triggering the reset; asking back was deflection that compounded frustration the reset was supposed to defuse.

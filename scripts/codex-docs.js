@@ -11,7 +11,8 @@ const TYPES = {
   ticket: { dir: 'ticket', prefix: 'T', title: 'Ticket', index: ['ID', 'Ticket', 'Status', 'Date', 'Plan'] },
   investigation: { dir: 'investigation', prefix: 'I', title: 'Investigation', index: ['ID', 'Title', 'Status', 'Created', 'Related'] },
   hotfix: { dir: 'hotfix', prefix: 'H', title: 'Hotfix', index: ['ID', 'Title', 'Status', 'Date'] },
-  worklog: { dir: 'worklog', prefix: 'W', title: 'Worklog', index: ['ID', 'Task', 'Status', 'Date', 'Related'] }
+  worklog: { dir: 'worklog', prefix: 'W', title: 'Worklog', index: ['ID', 'Task', 'Status', 'Date', 'Related'] },
+  knowledge: { dir: 'knowledge', prefix: 'K', title: 'Knowledge', index: ['ID', 'Title', 'Cat', 'Tags', 'Source'] }
 };
 
 function parseArgs(argv) {
@@ -133,6 +134,26 @@ function numberedListFromArg(value, fallbackItems) {
   return items.map((item, i) => `${i + 1}. ${item}`).join('\n');
 }
 
+function createKnowledge(root, title, args) {
+  const { dir, indexPath } = ensureIndex(root, 'knowledge');
+  const id = nextId(dir, 'K');
+  const slug = slugify(title);
+  const t = nowParts();
+  const filename = `${id}-${slug}.md`;
+  const filePath = path.join(dir, filename);
+  const category = (args.category === 'tip') ? 'tip' : 'fact';
+  const source = args.source || 'observation';
+  const tagsArr = String(args.tags || '').split(',').map(s => s.trim()).filter(Boolean);
+  const tagsYaml = `[${tagsArr.join(', ')}]`;
+  const tagsCell = tagsArr.join(', ');
+  const what = args.what || 'TBD.';
+  const when = args.when || 'TBD.';
+  const content = `---\ntype: knowledge\nid: ${id}\ncategory: ${category}\ntitle: "${title}"\nsource: ${source}\ncreated: ${t.date}\ntags: ${tagsYaml}\n---\n\n# ${id} - ${title}\n\n## What\n${what}\n\n## When\n${when}\n`;
+  fs.writeFileSync(filePath, content, 'utf8');
+  appendIndex(indexPath, `| [[${wikiTarget(filename)}|${id}]] | ${title} | ${category} | ${tagsCell} | ${source} |`);
+  console.log(path.relative(root, filePath));
+}
+
 function createInvestigation(root, title, args) {
   const { dir, indexPath } = ensureIndex(root, 'investigation');
   const id = nextId(dir, 'I');
@@ -182,12 +203,13 @@ function main() {
   const title = args._.join(' ').trim() || args.title;
   const root = path.resolve(args['project-dir'] || process.cwd());
   if (!command || !title) {
-    console.error('Usage: node scripts/codex-docs.js <worklog|hotfix|discussion|plan|ticket|investigation> <title>');
+    console.error('Usage: node scripts/codex-docs.js <worklog|hotfix|discussion|plan|ticket|investigation|knowledge> <title>');
     process.exit(1);
   }
   if (command === 'worklog' || command === 'light-workflow') return createWorklog(root, title, args);
   if (command === 'hotfix') return createHotfix(root, title, args);
   if (command === 'investigation' || command === 'investigating') return createInvestigation(root, title, args);
+  if (command === 'knowledge') return createKnowledge(root, title, args);
   if (command === 'discussion' || command === 'plan' || command === 'ticket') return createSimple(root, command, title, args);
   console.error(`Unknown command: ${command}`);
   process.exit(1);
@@ -195,4 +217,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { createWorklog, createHotfix, createInvestigation, createSimple, slugify };
+module.exports = { createWorklog, createHotfix, createInvestigation, createKnowledge, createSimple, slugify };
