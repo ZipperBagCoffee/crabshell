@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.97.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.98.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -359,6 +359,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.98.0 | feat: W024 — `[완결 충동]` 7th skeleton field. `SKELETON_6FIELD`→`SKELETON_7FIELD` in `scripts/inject-rules.js`; `COMPRESSED_CHECKLIST` item 11 (closure-driven fabrication check) in `shared-context.js`; `behavior-verifier-prompt.md` §0.5 marker table + content-rule + pseudocode 6→7 fields; §1 format-markers list updated; Sample 3 reason updated. Forces every response to declare "완결 충동 없음" or name a flagged unknown / deferred verification. |
 | 21.97.0 | feat: Codex `knowledge` skill + `scripts/codex-docs.js knowledge` command; K-page generator with `category` (fact/tip), `source`, `tags` frontmatter, `## What`/`## When` sections, INDEX wikilink row. Closes `/install-codex` gap where `codex-skills/knowledge/` was absent. |
 | 21.96.2 | fix: H014 — `EMERGENCY_STOP_CONTEXT` Step 4 declarative; user-facing "what did I get wrong?" prompt removed, Claude commits to named gap from CLAUDE.md re-read + recent transcript. 114/114 inject-rules tests PASS. |
 | 21.96.1 | fix: H013 — verifier rubric path absolutized. `scripts/inject-rules.js:911` emits `__dirname`-derived plugin install path instead of relative `prompts/...` literal, preventing dispatch failure + escalation loop in any project without a sibling `prompts/` folder. Test regex generalised. 5/5 cycle3 compliance PASS. |
