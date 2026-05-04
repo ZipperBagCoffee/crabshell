@@ -1,5 +1,14 @@
 # Changelog
 
+## v21.98.0 - 2026-05-03
+
+- **[완결 충동] 7th skeleton field — completion-drive self-check.** Response Skeleton expanded 6 → 7 fields. New field `[완결 충동]` forces every response to either (a) declare "완결 충동 없음" / "추측 메우기 없음", or (b) name a specific unknown left flagged ("미검증" / "확인 필요" / "모름") OR a verification step deferred and named as such. Closes the gap where completion-drive failures (filling unknowns with plausible-sounding text, wrapping up without verifying) leaked into other UVLS axes without naming the root cause.
+- **inject-rules.js**: `SKELETON_6FIELD` → `SKELETON_7FIELD`. Constant rename + 7th line added + comment + module.exports updated. Pure Korean canonical preserved (no bilingual slash form). Schema-only — no example outputs (form-game prevention per IA-7 / TRAP-1).
+- **shared-context.js COMPRESSED_CHECKLIST**: appended item 11 ("Closure-driven fabrication?…"). Output scan summary updated to "items 9-11 are PRINCIPLES (Be Logical, Simple Communication, Anti-Completion-Drive)".
+- **behavior-verifier-prompt.md §0.5 Orchestrator Behavior Audit**: marker presence audit table 6 → 7 rows (+`[완결 충동]` regex `/^\s*\[완결\s*충동\]\s*[:：]/m`); per-field content-presence rule table 6 → 7 rows (PASS = explicit "없음" disclaimer OR named unknown / deferred verification; FAIL = body asserts conclusions without naming what was NOT verified); pseudocode `markers_present < 6` → `< 7`, `content_pass == 6` → `== 7`, `fields = […, completion_drive_field]`. §1 understanding Format-markers sub-clause list 6 → 7 markers. Sample 3 reason text updated.
+- **Why now (W024 — user instruction)**: user explicitly requested `[완결 충동]` as the Korean label for completion drive and asked to add the same check to "감시자 + 다른 뭐든간에 체크하는거" (verifier + everywhere else that checks). All three injection surfaces — per-prompt skeleton, per-prompt Quick-Check, per-Stop verifier rubric — updated in lockstep so the same axis is enforced from prompt-time, response-time, and verdict-time.
+- **Verification**: `node --check scripts/inject-rules.js` PASS; `node --check scripts/shared-context.js` PASS; subprocess `_test-inject-rules.js` 114/114 PASS; spawnSync probe confirms additionalContext now contains all 7 markers `[의도]/[이해]/[검증]/[논리]/[쉬운 설명]/[동조화 및 일관성]/[완결 충동]`. See [[W024-completion-drive-7th-field|W024]].
+
 ## v21.97.0 - 2026-05-03
 
 - **Codex knowledge skill.** Added `codex-skills/knowledge/SKILL.md` so Codex can record verified facts and operational tips as Crabshell K-pages. Closes the gap where `/install-codex` enumerated `codex-skills/` dynamically but the directory did not contain a `knowledge` entry, leaving Codex without `/knowledge`.

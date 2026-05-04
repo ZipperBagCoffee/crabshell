@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.97.0)
+# Crabshell User Manual (v21.98.0)
 
 ## Why Do You Need This?
 
@@ -228,21 +228,21 @@ Behavior-verifier v21.96.0 note: workflow-active verifier/monitor idle echoes ar
 | `SubagentStart` | `subagent-context.js` | When subagent spawns | Injects project concept, COMPRESSED_CHECKLIST, regressing state, and project root anchor into subagent context |
 | `SessionEnd` | `counter.js final` | Session ends | Creates final L1 backup, extracts remaining delta |
 
-### SKELETON_6FIELD — 6-Field Response Skeleton
+### SKELETON_7FIELD — 7-Field Response Skeleton
 
-**What it is:** A pure-Korean 6-field schema injected at the top of Claude's prompt context on every `UserPromptSubmit`. The fields are `[의도]` (restate user intent in user's words, 1 line) / `[이해]` (own interpretation + uncertainty list) / `[검증]` (cite tool output per claim, mark "미검증" otherwise) / `[논리]` (step-by-step reasoning, or explicit "추론 불필요 — 사유:" note) / `[쉬운 설명]` (plain-text summary ≤200 chars, no jargon, no analogy) / `[동조화 및 일관성]` (check for sycophancy or inconsistency with prior statements, flag violations).
+**What it is:** A pure-Korean 7-field schema injected at the top of Claude's prompt context on every `UserPromptSubmit`. The fields are `[의도]` (restate user intent in user's words, 1 line) / `[이해]` (own interpretation + uncertainty list) / `[검증]` (cite tool output per claim, mark "미검증" otherwise) / `[논리]` (step-by-step reasoning, or explicit "추론 불필요 — 사유:" note) / `[쉬운 설명]` (plain-text summary ≤200 chars, no jargon, no analogy) / `[동조화 및 일관성]` (check for sycophancy or inconsistency with prior statements, flag violations) / `[완결 충동]` (completion-drive: did the response fill an unknown with plausible text or wrap up without verifying just to look complete? — declare "없음" or name the flagged unknown / deferred verification).
 
-**Where it's injected:** `scripts/inject-rules.js` — declared as the `SKELETON_6FIELD` constant (L311-319, template literal); appended to the per-turn `context` string inside the `UserPromptSubmit` handler. Injection ordering: ringBuffer FAIL surface → **SKELETON_6FIELD** → COMPRESSED_CHECKLIST → Project Concept → Node.js Path → Project Root Anchor → **Behavior Verifier** (dispatch/correction) → Delta/Rotation → Regressing.
+**Where it's injected:** `scripts/inject-rules.js` — declared as the `SKELETON_7FIELD` constant (L311-320, template literal); appended to the per-turn `context` string inside the `UserPromptSubmit` handler. Injection ordering: ringBuffer FAIL surface → **SKELETON_7FIELD** → COMPRESSED_CHECKLIST → Project Concept → Node.js Path → Project Root Anchor → **Behavior Verifier** (dispatch/correction) → Delta/Rotation → Regressing.
 
-**Why (D107 IA-1 + I070 W022):** Default-behavior addition — every prompt carries the 6-field skeleton so response format is enforced from the prompt itself. The 6th field `[동조화 및 일관성]` was added in v21.92.0 (I070) to enforce per-response sycophancy/consistency self-check.
+**Why (D107 IA-1 + I070 W022 + W024):** Default-behavior addition — every prompt carries the 7-field skeleton so response format is enforced from the prompt itself. The 6th field `[동조화 및 일관성]` was added in v21.92.0 (I070) to enforce per-response sycophancy/consistency self-check; the 7th field `[완결 충동]` was added in v21.98.0 (W024) to surface completion-drive failures (fill-and-finish bias) as a discrete signal instead of letting them leak silently into the other UVLS axes.
 
-**How it interacts with the verifier (감시자):** The `behavior-verifier.js` sub-agent's `§0.5` audit checks all 6 markers via regex + content-presence rules. `§1.understanding` Format-markers sub-clause checks for the same 6 Korean markers when `response.length > 200`. Missing markers → understanding FAIL → ringBuffer entry → next-turn `## Behavior Correction` injection.
+**How it interacts with the verifier (감시자):** The `behavior-verifier.js` sub-agent's `§0.5` audit checks all 7 markers via regex + content-presence rules. `§1.understanding` Format-markers sub-clause checks for the same 7 Korean markers when `response.length > 200`. Missing markers → understanding FAIL → ringBuffer entry → next-turn `## Behavior Correction` injection.
 
-**Byte cost:** ~530 B body (UTF-8).
+**Byte cost:** ~700 B body (UTF-8) after the 7th field addition.
 
 **Configuration knobs:** None. Always-on. Cannot be disabled; behavior is part of the default prompt envelope.
 
-**Form-game prevention:** The constant is schema-only — no example outputs are listed for any of the 6 fields. Per IA-7 / TRAP-1, listing example outputs would let Claude pattern-match the example shape instead of doing the underlying work; the schema-only form forces real per-turn instantiation.
+**Form-game prevention:** The constant is schema-only — no example outputs are listed for any of the 7 fields. Per IA-7 / TRAP-1, listing example outputs would let Claude pattern-match the example shape instead of doing the underlying work; the schema-only form forces real per-turn instantiation.
 
 **Related:** [Hooks](#hooks) (UserPromptSubmit row covers the parent injection mechanism); [Pressure System](#pressure-system) (verifier ring-buffer + Behavior Correction surface).
 
