@@ -1,5 +1,13 @@
 # Changelog
 
+## v21.98.1 - 2026-05-04
+
+- **H015 — Verifier KR idle echo + 7-field skeleton bottom placement.** Closes infinite-dispatch loop seen in `docs/feedback_050426.md` Korean session, plus a UX collision between top-prepended skeleton and the verbose answer body.
+- **`scripts/behavior-verifier.js`**: extended `hasVerifierEcho` regex (L77) with Korean tokens `검증자 디스패치|감시자 디스패치|디스패치 완료`. English-only regex caused `isOperationalIdleTurn()` to return false for Korean idle stubs like `검증자 디스패치 완료. 다음 사용자 입력 대기 중`, leaving status=`pending` and triggering next-turn `Dispatch Required` injection — task-notification synthetic prompt then fed back into the Stop/UserPromptSubmit loop indefinitely.
+- **`scripts/inject-rules.js`**: prepended `SKELETON_7FIELD` (L311) with placement instruction — `Place this 7-field block AT THE BOTTOM of your response, after the main answer body. The main answer comes first; the skeleton self-check is the trailing summary, not the opening.` Schema lines unchanged. Resolves user feedback that top-placed skeleton visually collides with verbose answer text.
+- **`scripts/_test-trigger-model.js`**: added Case 7 — workflow active + Korean idle echo → SKIP (state unchanged).
+- **Verification**: `node --check` PASS on three modified files; `_test-trigger-model.js` 7/7 PASS; direct helper probe — KR idle `true`, KR substantive `false`, EN idle `true` (regression preserved). See [[H015-verifier-kr-idle-echo-skeleton-bottom|H015]].
+
 ## v21.98.0 - 2026-05-03
 
 - **[완결 충동] 7th skeleton field — completion-drive self-check.** Response Skeleton expanded 6 → 7 fields. New field `[완결 충동]` forces every response to either (a) declare "완결 충동 없음" / "추측 메우기 없음", or (b) name a specific unknown left flagged ("미검증" / "확인 필요" / "모름") OR a verification step deferred and named as such. Closes the gap where completion-drive failures (filling unknowns with plausible-sounding text, wrapping up without verifying) leaked into other UVLS axes without naming the root cause.

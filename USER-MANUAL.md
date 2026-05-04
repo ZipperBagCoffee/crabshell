@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.98.0)
+# Crabshell User Manual (v21.98.1)
 
 ## Why Do You Need This?
 
@@ -230,7 +230,7 @@ Behavior-verifier v21.96.0 note: workflow-active verifier/monitor idle echoes ar
 
 ### SKELETON_7FIELD — 7-Field Response Skeleton
 
-**What it is:** A pure-Korean 7-field schema injected at the top of Claude's prompt context on every `UserPromptSubmit`. The fields are `[의도]` (restate user intent in user's words, 1 line) / `[이해]` (own interpretation + uncertainty list) / `[검증]` (cite tool output per claim, mark "미검증" otherwise) / `[논리]` (step-by-step reasoning, or explicit "추론 불필요 — 사유:" note) / `[쉬운 설명]` (plain-text summary ≤200 chars, no jargon, no analogy) / `[동조화 및 일관성]` (check for sycophancy or inconsistency with prior statements, flag violations) / `[완결 충동]` (completion-drive: did the response fill an unknown with plausible text or wrap up without verifying just to look complete? — declare "없음" or name the flagged unknown / deferred verification).
+**What it is:** A pure-Korean 7-field schema injected into Claude's prompt context on every `UserPromptSubmit`. The fields are `[의도]` (restate user intent in user's words, 1 line) / `[이해]` (own interpretation + uncertainty list) / `[검증]` (cite tool output per claim, mark "미검증" otherwise) / `[논리]` (step-by-step reasoning, or explicit "추론 불필요 — 사유:" note) / `[쉬운 설명]` (plain-text summary ≤200 chars, no jargon, no analogy) / `[동조화 및 일관성]` (check for sycophancy or inconsistency with prior statements, flag violations) / `[완결 충동]` (completion-drive: did the response fill an unknown with plausible text or wrap up without verifying just to look complete? — declare "없음" or name the flagged unknown / deferred verification). As of v21.98.1 (H015), the schema header instructs Claude to render the 7-field block AT THE BOTTOM of the response, after the main answer body — the skeleton is a trailing self-check, not an opening.
 
 **Where it's injected:** `scripts/inject-rules.js` — declared as the `SKELETON_7FIELD` constant (L311-320, template literal); appended to the per-turn `context` string inside the `UserPromptSubmit` handler. Injection ordering: ringBuffer FAIL surface → **SKELETON_7FIELD** → COMPRESSED_CHECKLIST → Project Concept → Node.js Path → Project Root Anchor → **Behavior Verifier** (dispatch/correction) → Delta/Rotation → Regressing.
 

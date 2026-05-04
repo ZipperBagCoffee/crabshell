@@ -309,7 +309,8 @@ const EXECUTION_JUDGMENT = `\n## Execution Pattern Detected\nExecution pattern d
 // Pure Korean canonical (P143 Intent Check Decision condition 1: drop bilingual slash form).
 // Schema-only — no example outputs (form-game prevention per IA-7 / TRAP-1).
 const SKELETON_7FIELD = `
-## Response Skeleton — fill 7 fields (apply to every response)
+## Response Skeleton — fill 7 fields at END of response
+Place this 7-field block AT THE BOTTOM of your response, after the main answer body. The main answer comes first; the skeleton self-check is the trailing summary, not the opening.
 [의도]: 사용자 요청을 사용자의 말로 1줄 재진술.
 [이해]: 본인 해석 + 불확실 항목 (있으면 확인 요청).
 [검증]: 주장마다 tool output 인용, 없으면 '미검증' 명시.
