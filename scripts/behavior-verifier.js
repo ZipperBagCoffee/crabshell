@@ -74,7 +74,7 @@ function isClarificationOnly(text) {
 function isOperationalIdleTurn(text) {
   const cleaned = stripCodeBlocks(text).trim();
   if (!cleaned) return false;
-  const hasVerifierEcho = /Behavior verifier dispatch|Verifier dispatched|Agent "Behavior verifier dispatch" completed|verifier (?:PASS|dispatched)|UVLS PASS|PASS streak/i.test(cleaned);
+  const hasVerifierEcho = /Behavior verifier dispatch|Verifier dispatched|Agent "Behavior verifier dispatch" completed|verifier (?:PASS|dispatched)|UVLS PASS|PASS streak|검증자 디스패치|감시자 디스패치|디스패치 완료/i.test(cleaned);
   const hasWaitEcho = /Monitor task|monitor wait|waiting for|continuing to wait|no additional action|no user input|사용자 입력 없음|대기/i.test(cleaned);
   const hasOnlyStatusIntent = /입장 변경 없음|no position change|continue waiting|대기/i.test(cleaned);
   return (hasVerifierEcho && (hasWaitEcho || hasOnlyStatusIntent))

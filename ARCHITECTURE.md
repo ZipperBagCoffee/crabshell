@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.98.0)
+# Crabshell Architecture (v21.98.1)
 
 ## Overview
 
@@ -498,6 +498,7 @@ The 5 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.98.1 | fix: H015 — Korean idle echo regex extension in `scripts/behavior-verifier.js` (`hasVerifierEcho` matches Korean dispatch echoes); `SKELETON_7FIELD` in `scripts/inject-rules.js` prepended with bottom-placement instruction. Closes infinite verifier-dispatch loop on Korean sessions and resolves skeleton/answer visual collision. |
 | 21.98.0 | feat: W024 — `[완결 충동]` 7th skeleton field; `SKELETON_6FIELD`→`SKELETON_7FIELD` in inject-rules.js; `COMPRESSED_CHECKLIST` item 11 appended; verifier prompt §0.5 marker table + content-rule + pseudocode 6→7. |
 | 21.97.0 | feat: Codex knowledge skill and K-page generation via `scripts/codex-docs.js knowledge`. |
 | 21.96.2 | fix: H014 — `EMERGENCY_STOP_CONTEXT` Step 4 rewritten from "ask the user what went wrong" to "state the inferred gap declaratively." Removes deflection that compounded frustration the diagnostic reset was meant to defuse. |

@@ -263,6 +263,37 @@ const OPERATIONAL_IDLE = 'Verifier dispatched (Agent output: Async agent launche
      'exit=' + r.status + ' state=' + JSON.stringify(post));
 })();
 
+// ---------- Case 7 (H015) — workflow active + Korean idle echo → SKIP ----------
+(function() {
+  const sb = makeSandbox();
+  fs.writeFileSync(regressingStatePath(sb), JSON.stringify({
+    active: true, topic: 'H015', cycleCap: 10, cycleNum: 1
+  }, null, 2), 'utf8');
+  const PRIOR = {
+    taskId: 'verify-prior-c7', lastResponseId: 'sess-c7', status: 'completed',
+    launchedAt: new Date(Date.now() - 60 * 1000).toISOString(),
+    verdicts: { understanding: { pass: true, reason: '' }, verification: { pass: true, reason: '' }, logic: { pass: true, reason: '' }, simple: { pass: true, reason: '' } },
+    dispatchOverdue: false,
+    triggerReason: 'workflow-active',
+    lastFiredAt: new Date(Date.now() - 60 * 1000).toISOString(),
+    lastFiredTurn: 1,
+    missedCount: 0,
+    escalationLevel: 0,
+    ringBuffer: [],
+    turnType: 'workflow-internal',
+    lastUpdatedAt: new Date(Date.now() - 60 * 1000).toISOString()
+  };
+  writeState(sb, PRIOR);
+  writeIndex(sb, { verifierCounter: 2 });
+  const KR_IDLE = '검증자 디스패치 완료. 다음 사용자 입력 대기 중. 사용자 입력 없음.';
+  const r = runStop(sb, { stop_response: KR_IDLE, session_id: 'sess-c7' });
+  const post = readState(sb);
+  ok('7 (H015) workflow active + KR idle echo → SKIP (state unchanged)',
+     r.status === 0 && post && post.taskId === 'verify-prior-c7'
+     && post.status === 'completed' && post.lastFiredTurn === 1,
+     'exit=' + r.status + ' state=' + JSON.stringify(post));
+})();
+
 // Cleanup
 for (const d of tmpDirs) { try { fs.rmSync(d, { recursive: true, force: true }); } catch {} }
 console.log('\nResults: ' + passed + ' passed, ' + failed + ' failed out of ' + (passed + failed));
