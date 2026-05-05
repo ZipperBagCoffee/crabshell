@@ -1,5 +1,13 @@
 # Changelog
 
+## v21.99.1 - 2026-05-05
+
+### fix: D109 cycle 2 — argv[2] flag guard + V012/V022 regex tightening (P154_T001)
+- `.crabshell/verification/run-verify.js` `parseArgs()`: `-f`/`--flat` and all dash-prefixed flags excluded from `targetId` capture (`startsWith('-')`). Fixes MEDIUM finding from cycle 1 where `--flat` was captured as entry id, producing empty entries array.
+- `scripts/verify-classify.js` (+ `.crabshell/verification/verify-classify.js` sibling): `assertion-fail` regex extended with `^FAIL:|\nFAIL:` (V012 line-start FAIL marker) and `Command failed:.*\.exe.*_test-[\w.-]+\.js` (V022 node execSync wrapper); data-drift order preserved. `unknown` ratio 40% → 0%, `[VERIFY] WARN` eliminated.
+- `scripts/_test-verify-classify.js`: 15-case / 31-assertion coverage including V012/V022/V008-style/data-drift-order + `parseArgs()` argv[2] arg-path tests (cases 11-15). All PASS, exit 0.
+- Version-bump operational follow-through: `plugin.json` (×2), CHANGELOG, doc headers (ARCHITECTURE.md, STRUCTURE.md, USER-MANUAL.md), version-history table rows, manifest AC-6 sync `v==='21.99.0'` → `v==='21.99.1'`. Completes D109 cycle 2 (P154_T001).
+
 ## v21.99.0 - 2026-05-04
 
 ### feat: D109 cycle 1 — failure classification renderer (I074 Stage 1)
