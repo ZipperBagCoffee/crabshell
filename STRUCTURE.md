@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.99.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.99.1 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -359,6 +359,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.99.1 | fix: D109 cycle 2 — `run-verify.js` `parseArgs()` `startsWith('-')` argv[2] flag-capture fix; `verify-classify.js` assertion-fail regex + V012/V022 patterns; `unknown` ratio 40%→0%; 31-assertion unit test PASS; manifest AC-6 sync `v==='21.99.1'`. |
 | 21.99.0 | feat: D109 cycle 1 — `verify-classify.js` classifier (5 categories, fail-open); `run-verify.js` grouped summary + `--flat`/`-f` flag; `verify-guard.js` `[<failureClass>]` prefix at success+catch paths; 15-case / 31-assertion unit test; 6 manifest entries. fix: `parseArgs()` + `RUNNER_RECURSION` nested full-manifest guard prevents runner self-recursion. fix: AC-6 manifest sync (`v==='21.96.2'`→`v==='21.99.0'`). |
 | 21.98.1 | fix: H015 — Korean idle echo regex extension in `scripts/behavior-verifier.js:77` (`hasVerifierEcho` matches `검증자 디스패치|감시자 디스패치|디스패치 완료`); `SKELETON_7FIELD` in `scripts/inject-rules.js:311` prepended with bottom-placement instruction so the 7-field self-check renders after the main answer body. Closes infinite verifier-dispatch loop on Korean sessions (`docs/feedback_050426.md`) and resolves visual collision between top-placed skeleton and verbose answer. `_test-trigger-model.js` Case 7 added; 7/7 PASS. |
 | 21.98.0 | feat: W024 — `[완결 충동]` 7th skeleton field. `SKELETON_6FIELD`→`SKELETON_7FIELD` in `scripts/inject-rules.js`; `COMPRESSED_CHECKLIST` item 11 (closure-driven fabrication check) in `shared-context.js`; `behavior-verifier-prompt.md` §0.5 marker table + content-rule + pseudocode 6→7 fields; §1 format-markers list updated; Sample 3 reason updated. Forces every response to declare "완결 충동 없음" or name a flagged unknown / deferred verification. |
