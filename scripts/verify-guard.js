@@ -127,7 +127,17 @@ async function main() {
     const results = JSON.parse(jsonMatch[0]);
     const failures = results.filter(r => r.status === 'FAIL');
     if (failures.length > 0) {
-      const failDetails = failures.map(f => `${f.id}: ${f.error || f.output || 'FAIL'}`).join('; ');
+      let classifyFn = null;
+      try { classifyFn = require('./verify-classify').classify; } catch (_) {}
+      const failDetails = failures.map(f => {
+        try {
+          const cls = f.failureClass || (classifyFn ? classifyFn(f.error, f.output) : null);
+          const prefix = cls ? `[${cls}] ` : '';
+          return `${prefix}${f.id}: ${f.error || f.output || 'FAIL'}`;
+        } catch (_) {
+          return `${f.id}: ${f.error || f.output || 'FAIL'}`;
+        }
+      }).join('; ');
       const output = {
         decision: "block",
         reason: `Final Verification section blocked. Verification tool found failures: ${failDetails}. Fix failures before writing Final Verification.`
@@ -169,7 +179,17 @@ async function main() {
         try {
           const results = JSON.parse(jsonMatch[0]);
           const failures = results.filter(r => r.status === 'FAIL');
-          const failDetails = failures.map(f => `${f.id}: ${f.error || f.output || 'FAIL'}`).join('; ');
+          let classifyFn2 = null;
+          try { classifyFn2 = require('./verify-classify').classify; } catch (_) {}
+          const failDetails = failures.map(f => {
+            try {
+              const cls = f.failureClass || (classifyFn2 ? classifyFn2(f.error, f.output) : null);
+              const prefix = cls ? `[${cls}] ` : '';
+              return `${prefix}${f.id}: ${f.error || f.output || 'FAIL'}`;
+            } catch (_) {
+              return `${f.id}: ${f.error || f.output || 'FAIL'}`;
+            }
+          }).join('; ');
           const output = {
             decision: "block",
             reason: `Final Verification section blocked. Verification tool found failures: ${failDetails}. Fix failures before writing Final Verification.`
