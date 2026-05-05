@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.99.2 | **Author**: TaWa | **License**: MIT
+**Version**: 21.99.3 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -55,7 +55,7 @@ crabshell/
 │   └── hooks.json                    # Hook config
 │
 ├── scripts/                          # Core implementation (Node.js)
-│   ├── find-node.sh                  # Cross-platform Node.js locator (v18.0.0)
+│   ├── find-node.sh                  # Fallback Node.js locator utility (v18.0.0, hardened v21.99.3)
 │   ├── counter.js                    # Main engine
 │   ├── load-memory.js                # Load memory on session start
 │   ├── inject-rules.js               # UserPromptSubmit rules injection
@@ -173,10 +173,10 @@ Installing one runtime does not activate the other runtime. Both runtimes can sh
 ## Core Scripts
 
 ### scripts/find-node.sh
-Cross-platform Node.js locator for hook commands:
+Fallback Node.js locator utility:
 - 6-stage fallback: NODE_BIN env → PATH → Windows paths → nvm/volta/fnm → Homebrew → Linux paths
-- Uses `exec` for zero-overhead stdin passthrough to Node.js
-- Referenced by hooks/hooks.json for all hook commands
+- Windows/WSL guard: checks `/mnt/c/Program Files/...` and protects optional `$PROGRAMFILES` variables with `${VAR:-}` expansion
+- Retained for fallback/manual paths; since v21.99.3 `hooks/hooks.json` runs hook scripts through direct `node` commands by default
 
 ### scripts/regressing-state.js
 Regressing phase tracker (v19.23.0):
@@ -359,6 +359,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.99.3 | fix: I076/W026 latest release risk cleanup — `hooks/hooks.json` direct `node` launcher for all 26 hooks; `find-node.sh` retained as hardened fallback utility; marketplace metadata version sync; manifest V010/V012/V019/V020/V022 repair; stale regression tests aligned with current 7-field verifier/D108 behavior; docs updated. |
 | 21.99.2 | fix: 7-field skeleton 가독성 (H016 빈 줄 + 압축 지시, H017 [의도]/[이해]/[쉬운 설명] 하단 재배치). 사용자 transparency 회복. cycle1 inject test 6/6 PASS. |
 | 21.99.1 | fix: D109 cycle 2 — `run-verify.js` `parseArgs()` `startsWith('-')` argv[2] flag-capture fix; `verify-classify.js` assertion-fail regex + V012/V022 patterns; `unknown` ratio 40%→0%; 31-assertion unit test PASS; manifest AC-6 sync `v==='21.99.1'`. |
 | 21.99.0 | feat: D109 cycle 1 — `verify-classify.js` classifier (5 categories, fail-open); `run-verify.js` grouped summary + `--flat`/`-f` flag; `verify-guard.js` `[<failureClass>]` prefix at success+catch paths; 15-case / 31-assertion unit test; 6 manifest entries. fix: `parseArgs()` + `RUNNER_RECURSION` nested full-manifest guard prevents runner self-recursion. fix: AC-6 manifest sync (`v==='21.96.2'`→`v==='21.99.0'`). |

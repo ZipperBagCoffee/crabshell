@@ -153,11 +153,10 @@ test('AC-5: load-memory.js references feedbackPressure', function() {
   const src = fs2.readFileSync(path.join(__dirname, 'load-memory.js'), 'utf8');
   assert(src.includes('feedbackPressure'), 'should reference feedbackPressure');
 });
-test('AC-5: load-memory.js decays to level 1 not 0', function() {
+test('AC-5: load-memory.js carries feedbackPressure over verbatim', function() {
   const src = fs2.readFileSync(path.join(__dirname, 'load-memory.js'), 'utf8');
-  assert(src.includes('level > 1'), 'should check level > 1 (not level > 0)');
-  assert(src.includes('level = 1'), 'should set level = 1 (decay to 1, not to 0)');
-  assert(src.includes('Session start: pressure'), 'should log decay');
+  assert(src.includes('feedbackPressure carries over verbatim'), 'should document carry-over');
+  assert(!src.includes('Session start: pressure'), 'should not log SessionStart pressure decay');
 });
 
 // BAILOUT keyword detection

@@ -369,19 +369,15 @@ around the sentinel. `auditVerdict` is a sibling of UVLS, not wrapping.
 
 ## State File Capture (REQUIRED — sub-agent self-write)
 
-After producing the sentinel JSON above, you MUST write the verdict to the
-state file so the next-turn UserPromptSubmit hook can consume it.
+After producing the sentinel JSON, write it to
+`<CLAUDE_PROJECT_DIR>/.crabshell/memory/behavior-verifier-state.json` so the
+next UserPromptSubmit hook can consume it. Perform in order:
 
-Steps (perform in this order):
+1. Read current state. Preserve `taskId`, `lastResponseId`, `launchedAt`,
+   `dispatchOverdue`, `triggerReason`, `lastFiredAt`, `lastFiredTurn`,
+   `missedCount`, `escalationLevel`, `ringBuffer`, and `turnType`.
 
-1. Use the Read tool to read the current state file at:
-   `<CLAUDE_PROJECT_DIR>/.crabshell/memory/behavior-verifier-state.json`
-   Preserve the existing `taskId`, `lastResponseId`, `launchedAt`, and
-   `dispatchOverdue` fields. **D104 IA-1 + IA-2 — preserve from step 1**: also
-   carry over the seven new fields verbatim — `triggerReason`, `lastFiredAt`,
-   `lastFiredTurn`, `missedCount`, `escalationLevel`, `ringBuffer`, `turnType`.
-
-2. Use the Write tool to overwrite the same file with:
+2. Overwrite the same file with:
 
    ```json
    {
@@ -408,14 +404,11 @@ Steps (perform in this order):
    }
    ```
 
-3. The `status` field MUST transition `pending` → `completed`. Do not skip
-   this — the consumer hook (`inject-rules.js`) will only emit the correction
-   on the next prompt when it sees `status === 'completed'`.
+3. `status` MUST become `completed`; `inject-rules.js` only emits corrections
+   for `status === 'completed'`.
 
-4. **Ring buffer push (D104 IA-1 d / D107 cycle 2 — FIFO N=8, 8 fields)**:
-   Append a new entry summarising this turn's verdicts to `ringBuffer`.
-   Entry shape (8 fields, `sa`/`fg` added in D107 cycle 2 for orchestrator
-   audit signal):
+4. **Ring buffer push (FIFO N=8, 8 fields)**: append this turn's verdicts to
+   `ringBuffer`:
 
    ```json
    { "ts": "<current ISO 8601>",
@@ -428,19 +421,12 @@ Steps (perform in this order):
      "reason": "<≤80 chars summary of dominant FAIL reason; or 'all pass' if all four UVLS pass and audit clean>" }
    ```
 
-   - `sa`/`fg` carry the §0.5 audit decision into the rolling buffer so the
-     consumer renderer can surface form-game streaks distinct from UVLS FAIL.
-   - Legacy entries (pre-cycle-2) without `sa`/`fg` render as `?` in
-     `scripts/inject-rules.js` Watcher Recent Verdicts (8-turn migration
-     window). Do NOT back-fill `sa`/`fg` for old entries.
-   - After appending, if `ringBuffer.length > 8`, drop the oldest entry (FIFO
-     N=8 cap). The next-turn UserPromptSubmit consumer reads this buffer and
-     prepends a `## Watcher Recent Verdicts` section to additionalContext.
+   `sa`/`fg` carry §0.5 audit state; legacy entries without them render as `?`.
+   If `ringBuffer.length > 8`, drop oldest. UserPromptSubmit renders this as
+   `## Watcher Recent Verdicts`.
 
-5. If the state file is missing or unreadable in step 1, still emit the
-   sentinel JSON above and write a fresh state object with whatever taskId
-   you can derive (or `"taskId": null`) and `ringBuffer: [<new entry>]`. The
-   consumer is fail-open.
+5. If the state file is missing/unreadable, still emit sentinel JSON and write
+   fresh state with derived `taskId` or `null`, plus `ringBuffer: [<new entry>]`.
 
 6. Do NOT re-read or re-modify the file after writing — atomic write only.
 

@@ -35,7 +35,10 @@ fi
 for p in \
   "/c/Program Files/nodejs/node.exe" \
   "/c/Program Files (x86)/nodejs/node.exe" \
-  "$PROGRAMFILES/nodejs/node.exe" \
+  "/mnt/c/Program Files/nodejs/node.exe" \
+  "/mnt/c/Program Files (x86)/nodejs/node.exe" \
+  "${PROGRAMFILES:-}/nodejs/node.exe" \
+  "${ProgramFiles:-}/nodejs/node.exe" \
   "${LOCALAPPDATA:-}/Programs/node/node.exe" \
   "${LOCALAPPDATA:-}/Programs/nodejs/node.exe"; do
   if [[ -n "$p" ]] && [[ -x "$p" ]]; then

@@ -223,6 +223,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.99.3 | fix: I076/W026 latest release risk cleanup — `hooks/hooks.json` now runs 26 hooks through direct `node` commands instead of Git Bash `find-node.sh`; `find-node.sh` remains as a hardened fallback utility for WSL/Windows path cases; marketplace plugin version drift fixed; manifest V010/V012/V019/V020/V022 candidates repaired; stale `_test-*.js` expectations updated for the current 7-field verifier and D108 cleanup. |
 | 21.99.2 | fix: 7-field skeleton 가독성 — `inject-rules.js` `SKELETON_7FIELD` 필드 사이 빈 줄 + 압축 지시 (H016) + [의도]/[이해]/[쉬운 설명] 하단 재배치 (H017). 사용자 transparency 회복. cycle1 inject test 6/6 PASS. |
 | 21.99.1 | fix: D109 cycle 2 — `run-verify.js` `parseArgs()` `startsWith('-')` guard fixes argv[2] flag-capture bug; `verify-classify.js` assertion-fail regex extended with `^FAIL:\|\nFAIL:` (V012) + `Command failed:.*\.exe.*_test-[\w.-]+\.js` (V022); `unknown` ratio 40%→0%, `[VERIFY] WARN` eliminated; 31-assertion unit test all PASS. |
 | 21.99.0 | feat: D109 cycle 1 — failure classification renderer (`verify-classify.js`, grouped summary in `run-verify.js`, `[<failureClass>]` prefix in `verify-guard.js`, 15-case / 31-assertion unit test); fix: runner `parseArgs()` + `RUNNER_RECURSION` guard prevents nested full-manifest self-recursion; fix: AC-6 manifest sync (`v==='21.96.2'` → `v==='21.99.0'` — stale since v21.97.0, two missed checklist step 5c). |
