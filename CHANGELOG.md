@@ -1,5 +1,12 @@
 # Changelog
 
+## v21.99.2 - 2026-05-05
+
+### fix: 7-field skeleton 가독성 — 필드 사이 빈 줄 + 사용자 대면 필드 (의도/이해/쉬운 설명) 하단 배치 (H016, H017)
+- `scripts/inject-rules.js` `SKELETON_7FIELD` (L311-L325): 각 [field]: 사이 빈 줄 1개 추가 + 압축 지시 1줄 (H016). 7개 필드를 4+3 그룹으로 재배치 — [검증]/[논리]/[동조화 및 일관성]/[완결 충동]을 위로, [의도]/[이해]/[쉬운 설명]을 하단으로 (H017).
+- 사용자 직접 피드백: "나 이거 읽을 수가 없음 뭐 어떻게 안됨?" + "의도 이해 쉬운설명을 제일 밑으로 옮겨라". 7-field skeleton의 두 목적 (자기점검 + 사용자 transparency) 중 transparency 측면 회복.
+- `_test-d107-cycle1-inject-enhancement.js` 6/6 PASS (회귀 0). cycle2-verifier-audit token budget overflow + format-clause-detection 3 fail은 stash 전후 동일 측정 = pre-existing tech debt, 별도 D 후속.
+
 ## v21.99.1 - 2026-05-05
 
 ### fix: D109 cycle 2 — argv[2] flag guard + V012/V022 regex tightening (P154_T001)
