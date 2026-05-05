@@ -140,7 +140,7 @@ function countSubstr(haystack, needle) {
         'hooks/hooks.json',
         'prompts/behavior-verifier-prompt.md'
       ],
-      22
+      23
     ]
   ];
 

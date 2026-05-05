@@ -1,5 +1,15 @@
 # Changelog
 
+## v21.99.3 - 2026-05-05
+
+### fix: latest release risk cleanup (I076/W026)
+- `hooks/hooks.json`: changed all 26 hook commands from Git Bash `find-node.sh` launcher form to direct `node "${CLAUDE_PLUGIN_ROOT}/scripts/*.js"` execution. This removes the Windows process fan-out risk seen when every hook shells through Git Bash.
+- `scripts/find-node.sh`: retained as fallback utility and hardened Windows path handling (`/mnt/c/Program Files/...`, guarded `${PROGRAMFILES:-}` / `${ProgramFiles:-}`) so WSL-style fallback no longer trips on unbound variables.
+- `.claude-plugin/marketplace.json`: synced marketplace plugin version with source plugin metadata.
+- `.crabshell/verification/manifest.json`: V010/V019/V020 no longer depend on shell-only `grep`/`tail`; V012 now checks the current 7 Korean format markers instead of stale v21.82 marker sets; AC-6 synced to v21.99.3.
+- Regression tests updated for current behavior: format-marker schema, D108 context-length cleanup, feedback carry-over, behavior-verifier count, UVLS+audit verdict marker, and verifier prompt byte budget.
+- Documentation updated for direct Node hook execution, current 7-field verifier marker rules, and v21.99.3 version rows.
+
 ## v21.99.2 - 2026-05-05
 
 ### fix: 7-field skeleton 가독성 — 필드 사이 빈 줄 + 사용자 대면 필드 (의도/이해/쉬운 설명) 하단 배치 (H016, H017)

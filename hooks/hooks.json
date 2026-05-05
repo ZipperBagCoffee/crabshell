@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/inject-rules.js\""
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/inject-rules.js\""
           }
         ]
       }
@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/load-memory.js\""
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/load-memory.js\""
           }
         ]
       }
@@ -27,7 +27,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/counter.js\" check"
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/counter.js\" check"
           }
         ]
       },
@@ -36,7 +36,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/verification-sequence.js\" record"
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/verification-sequence.js\" record"
           }
         ]
       },
@@ -45,7 +45,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/skill-tracker.js\"",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/skill-tracker.js\"",
             "async": true
           }
         ]
@@ -55,7 +55,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/doc-watchdog.js\" record",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/doc-watchdog.js\" record",
             "async": true
           }
         ]
@@ -67,7 +67,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/path-guard.js\""
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/path-guard.js\""
           }
         ]
       },
@@ -76,7 +76,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/regressing-guard.js\""
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/regressing-guard.js\""
           }
         ]
       },
@@ -85,7 +85,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/docs-guard.js\""
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/docs-guard.js\""
           }
         ]
       },
@@ -94,7 +94,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/log-guard.js\""
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/log-guard.js\""
           }
         ]
       },
@@ -103,7 +103,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/verify-guard.js\""
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/verify-guard.js\""
           }
         ]
       },
@@ -112,7 +112,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/verification-sequence.js\" gate"
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/verification-sequence.js\" gate"
           }
         ]
       },
@@ -121,7 +121,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/doc-watchdog.js\" gate"
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/doc-watchdog.js\" gate"
           }
         ]
       },
@@ -130,7 +130,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/wa-count-pretool.js\""
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/wa-count-pretool.js\""
           }
         ]
       },
@@ -139,7 +139,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/pressure-guard.js\""
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/pressure-guard.js\""
           }
         ]
       },
@@ -148,7 +148,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/sycophancy-guard.js\""
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/sycophancy-guard.js\""
           }
         ]
       },
@@ -157,7 +157,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/role-collapse-guard.js\""
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/role-collapse-guard.js\""
           }
         ]
       }
@@ -168,7 +168,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/sycophancy-guard.js\""
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/sycophancy-guard.js\""
           }
         ]
       },
@@ -177,7 +177,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/doc-watchdog.js\" stop"
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/doc-watchdog.js\" stop"
           }
         ]
       },
@@ -186,7 +186,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/scope-guard.js\""
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/scope-guard.js\""
           }
         ]
       },
@@ -195,7 +195,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/behavior-verifier.js\""
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/behavior-verifier.js\""
           }
         ]
       },
@@ -204,7 +204,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/regressing-loop-guard.js\""
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/regressing-loop-guard.js\""
           }
         ]
       }
@@ -214,7 +214,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/counter.js\" final"
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/counter.js\" final"
           }
         ]
       }
@@ -224,7 +224,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/pre-compact.js\""
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/pre-compact.js\""
           }
         ]
       }
@@ -234,7 +234,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/post-compact.js\""
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/post-compact.js\""
           }
         ]
       }
@@ -244,7 +244,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh\" \"${CLAUDE_PLUGIN_ROOT}/scripts/subagent-context.js\""
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/subagent-context.js\""
           }
         ]
       }

@@ -11,7 +11,7 @@
  *  3) Entry shape — keys u/v/l/s booleans + reason ≤80 chars (validated
  *     against schema expectation when ring buffer is read by consumer).
  *  4) inject-rules.js consumer — bvState.ringBuffer present + status=pending
- *     → context contains "## Watcher Recent Verdicts" header + UVLS line.
+ *     → context contains "## Watcher Recent Verdicts" header + UVLS+audit line.
  *  5) inject-rules.js consumer — overlong reason chain → byte cap enforced
  *     (~800 chars; truncation '...' suffix appears).
  */
@@ -197,9 +197,9 @@ function makeEntry(suffix, allPass) {
   });
   const r = runInjectRules(sb);
   const hasHeader = r.ctx.includes('## Watcher Recent Verdicts');
-  // UVLS pattern: each entry rendered as e.g. "- [HHMMSS] uVlS — reason"
-  const hasUvlsLine = /- \[\d{6}\] [UuVvLlSs]{4} — /.test(r.ctx);
-  ok('4 inject-rules consumer reads ringBuffer → "## Watcher Recent Verdicts" header + UVLS line',
+  // Current pattern: UVLS + audit flags, e.g. "- [HHMMSS] uVlS?f — reason".
+  const hasUvlsLine = /- \[\d{6}\] [UuVvLlSs]{4}[Aa?][Ff?] — /.test(r.ctx);
+  ok('4 inject-rules consumer reads ringBuffer → "## Watcher Recent Verdicts" header + UVLS+audit line',
      r.exitCode === 0 && hasHeader && hasUvlsLine,
      'exit=' + r.exitCode + ' header=' + hasHeader + ' uvls=' + hasUvlsLine);
 })();

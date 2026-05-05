@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.99.2)
+# Crabshell Architecture (v21.99.3)
 
 ## Overview
 
@@ -103,8 +103,8 @@ Two meta-principles guide Claude's approach to obstacles:
 |  | - thresholds       |                                                  |
 |  | - file paths       |  +-------------------+  +--------------------+   |
 |  +--------------------+  | find-node.sh      |  | search-docs.js     |   |
-|                          | - 6-stage fallback|  | - BM25 full-text   |   |
-|  +--------------------+  | - exec passthrough|  | - field boosting   |   |
+|                          | - fallback locator|  | - BM25 full-text   |   |
+|  +--------------------+  | - WSL path guard  |  | - field boosting   |   |
 |  | utils.js           |  +-------------------+  +--------------------+   |
 |  | - shared helpers   |                                                  |
 |  +--------------------+  +-------------------+  +--------------------+   |
@@ -342,7 +342,7 @@ Agent orchestration rules (11 rules covering pairing, cross-review, coherence, c
 
 | Script | Hook | Purpose |
 |--------|------|---------|
-| `find-node.sh` | (bootstrap) | Cross-platform Node.js locator, 6-stage fallback, `exec` passthrough |
+| `find-node.sh` | (fallback utility) | Cross-platform Node.js locator retained for fallback use; direct hooks run `node` from `hooks.json` in v21.99.3 |
 | `load-memory.js` | SessionStart | Load memory hierarchy, MEMORY.md warning |
 | `inject-rules.js` | UserPromptSubmit | Dual injection (CLAUDE.md + additionalContext), delta/rotation/regressing detection |
 | `counter.js` | PostToolUse, SessionEnd | Main engine: counter, L1 creation, rotation, regressing phase detection |
@@ -498,6 +498,7 @@ The 5 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.99.3 | fix: I076/W026 latest release risk cleanup — direct `node` hook launcher for all 26 hooks; hardened `find-node.sh` fallback; marketplace version sync; manifest shell-portability + stale-marker fixes; regression tests aligned with current 7-field verifier and D108 cleanup. |
 | 21.99.2 | fix: 7-field skeleton 가독성 (H016 빈 줄 + 압축 지시, H017 [의도]/[이해]/[쉬운 설명] 하단 재배치). 사용자 transparency 회복. cycle1 inject test 6/6 PASS. |
 | 21.99.1 | fix: D109 cycle 2 — `run-verify.js` `parseArgs()` `startsWith('-')` closes argv[2] single-dash flag capture bug; `verify-classify.js` assertion-fail regex extended with V012 (`^FAIL:\|\nFAIL:`) + V022 (`Command failed:.*\.exe.*_test-[\w.-]+\.js`); `unknown` ratio 40%→0%; manifest AC-6 `v==='21.99.1'`. |
 | 21.99.0 | feat: D109 cycle 1 — failure classification renderer (`verify-classify.js`, grouped `run-verify.js` output, `[<failureClass>]` prefix in `verify-guard.js`, 15-case / 31-assertion unit test, 6 manifest entries). fix: runner `parseArgs()` + `RUNNER_RECURSION` nested full-manifest guard; AC-6 manifest sync to current version. |
