@@ -311,13 +311,21 @@ const EXECUTION_JUDGMENT = `\n## Execution Pattern Detected\nExecution pattern d
 const SKELETON_7FIELD = `
 ## Response Skeleton — fill 7 fields at END of response
 Place this 7-field block AT THE BOTTOM of your response, after the main answer body. The main answer comes first; the skeleton self-check is the trailing summary, not the opening.
-[의도]: 사용자 요청을 사용자의 말로 1줄 재진술.
-[이해]: 본인 해석 + 불확실 항목 (있으면 확인 요청).
+Render with a blank line between each field, and keep each field body to 1-2 lines (compress aggressively; fragmented inline cites are fine).
+
 [검증]: 주장마다 tool output 인용, 없으면 '미검증' 명시.
+
 [논리]: 추론 단계별 서술, 또는 '추론 불필요 — 사유:' 명시.
-[쉬운 설명]: 사용자 말로 평문 요약 (200자 이하, 전문용어 금지, analogy 금지).
+
 [동조화 및 일관성]: 본인 응답이 증거 없이 사용자에게 동조하거나, 이전 발언과 모순되지 않는지 점검. 위반 시 명시.
+
 [완결 충동]: 모르는 부분을 그럴듯하게 메우거나 검증 없이 결론 내려서 응답을 끝낸 모양새로 만들었는지 점검. 위반 시 명시, 없으면 '완결 충동 없음'.
+
+[의도]: 사용자 요청을 사용자의 말로 1줄 재진술.
+
+[이해]: 본인 해석 + 불확실 항목 (있으면 확인 요청).
+
+[쉬운 설명]: 사용자 말로 평문 요약 (200자 이하, 전문용어 금지, analogy 금지).
 `;
 
 

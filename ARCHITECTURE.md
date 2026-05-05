@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.99.1)
+# Crabshell Architecture (v21.99.2)
 
 ## Overview
 
@@ -498,6 +498,7 @@ The 5 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.99.2 | fix: 7-field skeleton 가독성 (H016 빈 줄 + 압축 지시, H017 [의도]/[이해]/[쉬운 설명] 하단 재배치). 사용자 transparency 회복. cycle1 inject test 6/6 PASS. |
 | 21.99.1 | fix: D109 cycle 2 — `run-verify.js` `parseArgs()` `startsWith('-')` closes argv[2] single-dash flag capture bug; `verify-classify.js` assertion-fail regex extended with V012 (`^FAIL:\|\nFAIL:`) + V022 (`Command failed:.*\.exe.*_test-[\w.-]+\.js`); `unknown` ratio 40%→0%; manifest AC-6 `v==='21.99.1'`. |
 | 21.99.0 | feat: D109 cycle 1 — failure classification renderer (`verify-classify.js`, grouped `run-verify.js` output, `[<failureClass>]` prefix in `verify-guard.js`, 15-case / 31-assertion unit test, 6 manifest entries). fix: runner `parseArgs()` + `RUNNER_RECURSION` nested full-manifest guard; AC-6 manifest sync to current version. |
 | 21.98.1 | fix: H015 — Korean idle echo regex extension in `scripts/behavior-verifier.js` (`hasVerifierEcho` matches Korean dispatch echoes); `SKELETON_7FIELD` in `scripts/inject-rules.js` prepended with bottom-placement instruction. Closes infinite verifier-dispatch loop on Korean sessions and resolves skeleton/answer visual collision. |
