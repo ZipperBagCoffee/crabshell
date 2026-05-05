@@ -50,9 +50,9 @@
     },
     {
       "id": "AC-6",
-      "ia": "version 21.96.2 (current)",
+      "ia": "version 21.99.0 (current)",
       "type": "indirect",
-      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const v=JSON.parse(require('fs').readFileSync('C:/Users/chulg/Documents/memory-keeper-plugin/.claude-plugin/plugin.json','utf8')).version;console.log(v==='21.96.2'?'PASS:'+v:'FAIL:'+v)\"",
+      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const v=JSON.parse(require('fs').readFileSync('C:/Users/chulg/Documents/memory-keeper-plugin/.claude-plugin/plugin.json','utf8')).version;console.log(v==='21.99.0'?'PASS:'+v:'FAIL:'+v)\"",
       "expected": "PASS:",
       "timeout": 5000
     },
@@ -314,6 +314,54 @@
       "command": "\"C:/Program Files/nodejs/node.exe\" \"C:/Users/chulg/Documents/memory-keeper-plugin/scripts/_test-d107-cycle3-llm-compliance.js\"",
       "expected": "PASS:",
       "timeout": 15000
+    },
+    {
+      "id": "AC-D109-1",
+      "ia": "IA-1: classify env-incompatible — 'python3: command not found' returns env-incompatible",
+      "type": "direct",
+      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"console.log(require('C:/Users/chulg/Documents/memory-keeper-plugin/scripts/verify-classify.js').classify('python3: command not found', '') === 'env-incompatible' ? 'PASS:env' : 'FAIL')\"",
+      "expected": "PASS:env",
+      "timeout": 5000
+    },
+    {
+      "id": "AC-D109-2",
+      "ia": "IA-2: classify unknown default — unrecognized error string returns unknown",
+      "type": "direct",
+      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"console.log(require('C:/Users/chulg/Documents/memory-keeper-plugin/scripts/verify-classify.js').classify('완전 새 에러 xyzzy', '') === 'unknown' ? 'PASS:default' : 'FAIL')\"",
+      "expected": "PASS:default",
+      "timeout": 5000
+    },
+    {
+      "id": "AC-D109-3",
+      "ia": "IA-5: classify null-safe / fail-open — null input returns unknown without throwing",
+      "type": "direct",
+      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"try{const r=require('C:/Users/chulg/Documents/memory-keeper-plugin/scripts/verify-classify.js').classify(null,undefined); console.log(r==='unknown'?'PASS:noThrow':'FAIL')}catch(e){console.log('FAIL:threw')}\"",
+      "expected": "PASS:noThrow",
+      "timeout": 5000
+    },
+    {
+      "id": "AC-D109-4",
+      "ia": "IA-1 sibling parity — scripts/ and .crabshell/verification/ copies produce identical classify output",
+      "type": "direct",
+      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const a=require('C:/Users/chulg/Documents/memory-keeper-plugin/scripts/verify-classify.js'); const b=require('C:/Users/chulg/Documents/memory-keeper-plugin/.crabshell/verification/verify-classify.js'); console.log(a.classify('AssertionError: x','')===b.classify('AssertionError: x','') ? 'PASS:parity' : 'FAIL')\"",
+      "expected": "PASS:parity",
+      "timeout": 5000
+    },
+    {
+      "id": "AC-D109-5",
+      "ia": "IA-3: grouped output — run-verify.js contains failureClass and Failure Categories fields",
+      "type": "indirect",
+      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const fs=require('fs'); const src=fs.readFileSync('C:/Users/chulg/Documents/memory-keeper-plugin/.crabshell/verification/run-verify.js','utf8'); console.log(src.includes('failureClass')&&src.includes('Failure Categories')?'PASS:grouped':'FAIL')\"",
+      "expected": "PASS:grouped",
+      "timeout": 5000
+    },
+    {
+      "id": "AC-D109-6",
+      "ia": "IA-2 + IA-5: unit test suite — _test-verify-classify.js exits 0 with parse-only runner arg coverage and 31 passed, 0 failed",
+      "type": "direct",
+      "command": "\"C:/Program Files/nodejs/node.exe\" C:/Users/chulg/Documents/memory-keeper-plugin/scripts/_test-verify-classify.js",
+      "expected": "passed, 0 failed",
+      "timeout": 5000
     }
   ]
 }

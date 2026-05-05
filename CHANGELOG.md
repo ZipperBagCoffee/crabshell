@@ -1,5 +1,21 @@
 # Changelog
 
+## v21.99.0 - 2026-05-04
+
+### feat: D109 cycle 1 — failure classification renderer (I074 Stage 1)
+- Added `scripts/verify-classify.js` (and `.crabshell/verification/verify-classify.js` sibling): `classify(err, output)` returns one of `env-incompatible`, `data-drift`, `missing-file`, `assertion-fail`, `unknown` (default branch, fail-open — never throws). `shouldWarn(results)` helper exports threshold logic. `THRESHOLD_PERCENT = 30`.
+- Modified `.crabshell/verification/run-verify.js` and `skills/verifying/SKILL.md` template: result objects now carry `failureClass`; summary output groups failures by category with counts; `--flat`/`-f` or `CRABSHELL_VERIFY_FLAT=1` suppresses grouping; `unknown` ratio > 30% emits `[VERIFY] WARN` to stderr. Added `parseArgs()` + `require.main` guard for import-safe tests, and `CRABSHELL_VERIFY_RUNNING` nested full-manifest guard (`RUNNER_RECURSION`) to prevent runner self-recursion.
+- Modified `scripts/verify-guard.js` failDetails rendering at success path (~L130) and catch path (~L172): each failure entry prefixed with `[<failureClass>]`. Wrapped in try/catch — if classify is missing or throws, falls back to original no-prefix render (fail-open).
+- Added `scripts/_test-verify-classify.js`: 15-case / 31-assertion unit test covering 5 categories + null/undefined/object/empty input + threshold helper + runner `parseArgs()` behavior. Case 15 is parse-only to avoid recursive full-manifest runner execution from inside manifest entry AC-D109-6. Exits 0 on PASS.
+- Added 6 manifest entries (AC-D109-1 through AC-D109-6) verifying classify behavior, sibling parity, grouped output presence, and unit test invocation — all PASS via `/verifying run`.
+
+### fix: AC-6 stale version manifest entry
+- `.crabshell/verification/manifest.json` AC-6 was stuck at `v==='21.96.2'` since v21.97.0 ship; v21.98.0 and v21.98.1 both violated project version-bump checklist step 5c (manifest sync). This bump restores AC-6 to `v==='21.99.0'` atomically with `.claude-plugin/plugin.json`.
+
+### Remaining findings (not part of D109 cycle 1)
+- Full runner now terminates without process storm, but current Windows run still reports 5 unrelated manifest failures: V010/V019/V020 use shell tools absent on Windows (`grep`/`tail`), and V012/V022 are assertion failures.
+- `[INFO]` `cannot find` regex matches Windows "Cannot find path" → env-incompatible. Plausibly missing-file. Spec-undefined boundary.
+
 ## v21.98.1 - 2026-05-04
 
 - **H015 — Verifier KR idle echo + 7-field skeleton bottom placement.** Closes infinite-dispatch loop seen in `docs/feedback_050426.md` Korean session, plus a UX collision between top-prepended skeleton and the verbose answer body.
