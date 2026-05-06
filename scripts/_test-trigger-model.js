@@ -294,6 +294,70 @@ const OPERATIONAL_IDLE = 'Verifier dispatched (Agent output: Async agent launche
      'exit=' + r.status + ' state=' + JSON.stringify(post));
 })();
 
+// ---------- Case 8 (I077) — workflow active + verifier result echo → SKIP ----------
+(function() {
+  const sb = makeSandbox();
+  fs.writeFileSync(regressingStatePath(sb), JSON.stringify({
+    active: true, topic: 'I077', cycleCap: 10, cycleNum: 1
+  }, null, 2), 'utf8');
+  const PRIOR = {
+    taskId: 'verify-prior-c8', lastResponseId: 'sess-c8', status: 'completed',
+    launchedAt: new Date(Date.now() - 60 * 1000).toISOString(),
+    verdicts: { understanding: { pass: true, reason: '' }, verification: { pass: true, reason: '' }, logic: { pass: true, reason: '' }, simple: { pass: true, reason: '' } },
+    dispatchOverdue: false,
+    triggerReason: 'workflow-active',
+    lastFiredAt: new Date(Date.now() - 60 * 1000).toISOString(),
+    lastFiredTurn: 1,
+    missedCount: 0,
+    escalationLevel: 0,
+    ringBuffer: [],
+    turnType: 'workflow-internal',
+    lastUpdatedAt: new Date(Date.now() - 60 * 1000).toISOString()
+  };
+  writeState(sb, PRIOR);
+  writeIndex(sb, { verifierCounter: 200 });
+  const VERIFIER_RESULT_ECHO = 'Verifier 결과 (128번째): 4축 ALL PASS. 사용자 결정 대기.';
+  const r = runStop(sb, { stop_response: VERIFIER_RESULT_ECHO, session_id: 'sess-c8' });
+  const post = readState(sb);
+  ok('8 (I077) workflow active + verifier result echo → SKIP (state unchanged)',
+     r.status === 0 && post && post.taskId === 'verify-prior-c8'
+     && post.status === 'completed' && !r.stderr.includes('[CRABSHELL_BEHAVIOR_VERIFY]'),
+     'exit=' + r.status + ' stderr=' + r.stderr + ' state=' + JSON.stringify(post));
+})();
+
+// ---------- Case 9 (I077) — verifier task-notification completion → SKIP ----------
+(function() {
+  const sb = makeSandbox();
+  writeIndex(sb, { verifierCounter: 200 });
+  const VERIFIER_NOTIFICATION = 'Agent "Behavior verifier background" completed\n\nI071 결론 후 사용자 워크플로우 결정 대기 중. 추가 substantive 작업 없음.';
+  const r = runStop(sb, {
+    stop_response: VERIFIER_NOTIFICATION,
+    prompt: '<task-notification>Behavior verifier background completed.</task-notification>',
+    session_id: 'sess-c9'
+  });
+  const post = readState(sb);
+  ok('9 (I077) verifier task-notification completion → SKIP (no state)',
+     r.status === 0 && post === null && !r.stderr.includes('[CRABSHELL_BEHAVIOR_VERIFY]'),
+     'exit=' + r.status + ' stderr=' + r.stderr + ' state=' + JSON.stringify(post));
+})();
+
+// ---------- Case 10 (I077) — regular task-notification remains eligible ----------
+(function() {
+  const sb = makeSandbox();
+  writeIndex(sb, { verifierCounter: 200 });
+  const REGULAR_NOTIFICATION = 'Build agent completed. It changed two source files and found a failing parser test that needs user-facing follow-up.';
+  const r = runStop(sb, {
+    stop_response: REGULAR_NOTIFICATION,
+    prompt: '<task-notification>Build agent completed.</task-notification>',
+    session_id: 'sess-c10'
+  });
+  const post = readState(sb);
+  ok('10 (I077) regular task-notification remains eligible → FIRE',
+     r.status === 0 && post && post.status === 'pending' && post.turnType === 'notification'
+     && r.stderr.includes('[CRABSHELL_BEHAVIOR_VERIFY]'),
+     'exit=' + r.status + ' stderr=' + r.stderr + ' state=' + JSON.stringify(post));
+})();
+
 // Cleanup
 for (const d of tmpDirs) { try { fs.rmSync(d, { recursive: true, force: true }); } catch {} }
 console.log('\nResults: ' + passed + ' passed, ' + failed + ' failed out of ' + (passed + failed));

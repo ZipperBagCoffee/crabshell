@@ -1,5 +1,13 @@
 # Changelog
 
+## v21.99.4 - 2026-05-05
+
+### fix: behavior-verifier self-dispatch loop guard (I077/H018)
+- `scripts/behavior-verifier.js`: added `isVerifierMetaTurn()` early-exit before writing `behavior-verifier-state.json` `status='pending'`. It detects verifier-specific result/completion/status turns (`Verifier 결과`, `Behavior verifier background`, `4축 ALL PASS`, `semanticAlignment=true`, `trivial bypass`, `verifier dispatch agentId`) only when paired with idle/meta/task-notification context, so the verifier no longer verifies its own PASS/status echo.
+- The guard is intentionally narrow: ordinary non-verifier `<task-notification>` turns remain eligible for verifier coverage.
+- `scripts/_test-trigger-model.js`: added I077 regression cases 8-10 for verifier result echo skip, verifier task-notification completion skip, and regular task-notification FIRE preservation.
+- Verification: `_test-trigger-model.js` 10/10 PASS; full `_test-*.js` sweep 52/52 PASS; full manifest 35/35 PASS. See local docs `I077` and `H018`.
+
 ## v21.99.3 - 2026-05-05
 
 ### fix: latest release risk cleanup (I076/W026)

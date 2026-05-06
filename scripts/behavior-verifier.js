@@ -81,6 +81,22 @@ function isOperationalIdleTurn(text) {
     || (/^Verifier dispatched\b/i.test(cleaned) && cleaned.length < 240);
 }
 
+function isVerifierMetaTurn(text, hookData) {
+  const cleaned = stripCodeBlocks(text).trim();
+  if (!cleaned) return false;
+
+  const promptText = (hookData && (hookData.prompt || hookData.input)) || '';
+  const hasTaskNotification = typeof promptText === 'string' && /^<task-notification>/m.test(promptText);
+
+  const hasVerifierMarker = /Behavior verifier background|Behavior verifier dispatch|Verifier 결과|Verifier result|verifier result|4축\s*(?:ALL\s*)?PASS|4-axis\s*(?:ALL\s*)?PASS|UVLS PASS|semanticAlignment\s*=\s*true|formGameDetected\s*=\s*false|trivial bypass|새\s+verifier dispatch agentId|verifier dispatch agentId|직전\s+task-notification result|CRABSHELL_BEHAVIOR_VERIFY/i.test(cleaned);
+  const hasVerifierCompletion = /(?:Agent|Task) "Behavior verifier background" completed|Agent "Behavior verifier dispatch" completed/i.test(cleaned);
+  const hasIdleStatus = /사용자\s*(?:결정|입력)?\s*대기|사용자\s*워크플로우\s*결정\s*대기|결정\s*대기|상태\s*(?:변경|변동)\s*없음|Task list\s*변동\s*없음|작업\s*상태\s*변동\s*없음|추가\s+(?:substantive\s+)?작업\s+없음|no additional action|no user input|awaiting|waiting|decision pending/i.test(cleaned);
+  const hasMetaContext = /사용자 발화 아님|system notification|system reminder|hook-driven turn|task-notification result|직전\s+task-notification/i.test(cleaned);
+
+  return (hasVerifierMarker || hasVerifierCompletion)
+    && (hasIdleStatus || hasMetaContext || hasTaskNotification);
+}
+
 /**
  * D104 IA-2 — turn classification 5-class detection cascade.
  * Returns one of: 'clarification' | 'trivial' | 'notification' |
@@ -144,6 +160,7 @@ async function main() {
     if (assistantText.length < 50) process.exit(0);
     if (isClarificationOnly(assistantText)) process.exit(0);
   }
+  if (isVerifierMetaTurn(assistantText, hookData)) process.exit(0);
   if (isOperationalIdleTurn(assistantText)) process.exit(0);
 
   // Compose state-file path under .crabshell/memory/ (storage root).
@@ -288,4 +305,4 @@ if (require.main === module) {
   main().catch(() => process.exit(0)); // fail-open on any error
 }
 
-module.exports = { isClarificationOnly, stripCodeBlocks, isOperationalIdleTurn, classifyTurnType };
+module.exports = { isClarificationOnly, stripCodeBlocks, isOperationalIdleTurn, isVerifierMetaTurn, classifyTurnType };
