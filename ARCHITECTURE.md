@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.99.3)
+# Crabshell Architecture (v21.99.4)
 
 ## Overview
 
@@ -355,7 +355,7 @@ Agent orchestration rules (11 rules covering pairing, cross-review, coherence, c
 | `sycophancy-guard.js` | Stop, PreToolUse (Write\|Edit) | Dual-layer sycophancy detection + verification claim detection (4-tier classification): Stop response + mid-turn transcript parsing; block with re-examination |
 | `scope-guard.js` | Stop | Compare user-requested quantity vs response count; block scope reduction without approval |
 | `regressing-loop-guard.js` | Stop | Block stop when regressing active + inject phase-specific context via buildRegressingReminder(); enforce ≥2 parallel WAs in regressing + light-workflow; WA count tracking via wa-count.json |
-| `behavior-verifier.js` | Stop | 감시자 sub-agent dispatch (v21.80.0+): write `behavior-verifier-state.json` `status='pending'` + `[CRABSHELL_BEHAVIOR_VERIFY]` sentinel. v21.83.0 trigger 3-layer (periodic N=8 + workflow-active force + escalation L0/L1) + 5-class turn classification + ring buffer FIFO N=8 + state schema 14 fields. v21.96.0 skips workflow-active verifier/monitor idle echoes before pending-state write. |
+| `behavior-verifier.js` | Stop | 감시자 sub-agent dispatch (v21.80.0+): write `behavior-verifier-state.json` `status='pending'` + `[CRABSHELL_BEHAVIOR_VERIFY]` sentinel. v21.83.0 trigger 3-layer (periodic N=8 + workflow-active force + escalation L0/L1) + 5-class turn classification + ring buffer FIFO N=8 + state schema 14 fields. v21.96.0 skips workflow-active verifier/monitor idle echoes before pending-state write. v21.99.4 skips verifier-meta result/status/task-notification echoes to prevent self-dispatch loops. |
 | `skill-tracker.js` | PostToolUse (Skill) | Set skill-active flag on Skill tool calls (TTL-based, 5min expiry) |
 | `regressing-state.js` | (library) | Phase tracker: getState, buildReminder, detectSkillCall, advancePhase |
 | `extract-delta.js` | (library) | L1 delta extraction, timestamp watermarks, temp file management |
@@ -498,6 +498,7 @@ The 5 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.99.4 | fix: I077/H018 behavior-verifier self-dispatch loop guard — narrow verifier-meta early-exit before pending state write; ordinary task notifications preserved; `_test-trigger-model.js` cases 8-10; full regression 52/52 + manifest 35/35 PASS. |
 | 21.99.3 | fix: I076/W026 latest release risk cleanup — direct `node` hook launcher for all 26 hooks; hardened `find-node.sh` fallback; marketplace version sync; manifest shell-portability + stale-marker fixes; regression tests aligned with current 7-field verifier and D108 cleanup. |
 | 21.99.2 | fix: 7-field skeleton 가독성 (H016 빈 줄 + 압축 지시, H017 [의도]/[이해]/[쉬운 설명] 하단 재배치). 사용자 transparency 회복. cycle1 inject test 6/6 PASS. |
 | 21.99.1 | fix: D109 cycle 2 — `run-verify.js` `parseArgs()` `startsWith('-')` closes argv[2] single-dash flag capture bug; `verify-classify.js` assertion-fail regex extended with V012 (`^FAIL:\|\nFAIL:`) + V022 (`Command failed:.*\.exe.*_test-[\w.-]+\.js`); `unknown` ratio 40%→0%; manifest AC-6 `v==='21.99.1'`. |

@@ -223,6 +223,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.99.4 | fix: I077/H018 behavior-verifier self-dispatch loop guard — `behavior-verifier.js` now skips verifier-meta result/status/task-notification echoes before writing pending state, while preserving ordinary task-notification verifier coverage. `_test-trigger-model.js` adds 3 regression cases; full `_test-*.js` 52/52 and manifest 35/35 PASS. |
 | 21.99.3 | fix: I076/W026 latest release risk cleanup — `hooks/hooks.json` now runs 26 hooks through direct `node` commands instead of Git Bash `find-node.sh`; `find-node.sh` remains as a hardened fallback utility for WSL/Windows path cases; marketplace plugin version drift fixed; manifest V010/V012/V019/V020/V022 candidates repaired; stale `_test-*.js` expectations updated for the current 7-field verifier and D108 cleanup. |
 | 21.99.2 | fix: 7-field skeleton 가독성 — `inject-rules.js` `SKELETON_7FIELD` 필드 사이 빈 줄 + 압축 지시 (H016) + [의도]/[이해]/[쉬운 설명] 하단 재배치 (H017). 사용자 transparency 회복. cycle1 inject test 6/6 PASS. |
 | 21.99.1 | fix: D109 cycle 2 — `run-verify.js` `parseArgs()` `startsWith('-')` guard fixes argv[2] flag-capture bug; `verify-classify.js` assertion-fail regex extended with `^FAIL:\|\nFAIL:` (V012) + `Command failed:.*\.exe.*_test-[\w.-]+\.js` (V022); `unknown` ratio 40%→0%, `[VERIFY] WARN` eliminated; 31-assertion unit test all PASS. |
