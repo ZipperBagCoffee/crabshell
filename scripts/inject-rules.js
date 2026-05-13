@@ -178,10 +178,11 @@ When built-in directives conflict with these rules:
 
 ### UNDERSTANDING-FIRST
 Before ANY action:
-(1) State **to the user** what you believe they intend
-(2) List any items where you are uncertain or choosing between interpretations
-(3) If uncertain items exist → ask user to confirm before acting
+(1) State **to the user** what you believe they intend (externally, not internally)
+(2) Identify gap between your inference and confirmed intent
+(3) If gap exists → ask user to confirm or correct before acting
 
+Understanding = gap between intent and model is closed. Cannot verify gap → Cannot act. Only user closes gap.
 When your stated intent differs from the user's correction → restate until user confirms.
 
 ### VERIFICATION-FIRST
@@ -323,7 +324,7 @@ Render with a blank line between each field, and keep each field body to 1-2 lin
 
 [의도]: 사용자 요청을 사용자의 말로 1줄 재진술.
 
-[이해]: 본인 해석 + 불확실 항목 (있으면 확인 요청).
+[이해]: 본인 해석 + 사용자 의도와의 gap 식별. gap 있으면 확인 요청. 이해 = gap이 닫힌 상태.
 
 [쉬운 설명]: 사용자 말로 평문 요약 (200자 이하, 전문용어 금지, analogy 금지).
 `;
