@@ -1,6 +1,6 @@
 {
   "name": "crabshell",
-  "version": "21.99.4",
+  "version": "21.99.5",
   "description": "Codex-compatible wrappers for Crabshell memory and document workflows.",
   "author": {
     "name": "TaWa"

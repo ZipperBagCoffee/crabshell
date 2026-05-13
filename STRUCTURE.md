@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.99.4 | **Author**: TaWa | **License**: MIT
+**Version**: 21.99.5 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -359,6 +359,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.99.5 | fix: restore UNDERSTANDING-FIRST gap definition — `inject-rules.js` UNDERSTANDING-FIRST + SKELETON_7FIELD [이해] + `CLAUDE.md` + verifier prompt content rule; `Understanding = gap closed` restored. Tests 6/6 + 5/5 PASS. |
 | 21.99.4 | fix: I077/H018 behavior-verifier self-dispatch loop guard — verifier-meta result/status/task-notification echoes exit before pending state write; ordinary task notifications still FIRE. `_test-trigger-model.js` cases 8-10; full regression 52/52 + manifest 35/35 PASS. |
 | 21.99.3 | fix: I076/W026 latest release risk cleanup — `hooks/hooks.json` direct `node` launcher for all 26 hooks; `find-node.sh` retained as hardened fallback utility; marketplace metadata version sync; manifest V010/V012/V019/V020/V022 repair; stale regression tests aligned with current 7-field verifier/D108 behavior; docs updated. |
 | 21.99.2 | fix: 7-field skeleton 가독성 (H016 빈 줄 + 압축 지시, H017 [의도]/[이해]/[쉬운 설명] 하단 재배치). 사용자 transparency 회복. cycle1 inject test 6/6 PASS. |
