@@ -223,6 +223,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.99.5 | fix: restore UNDERSTANDING-FIRST gap definition — `inject-rules.js` UNDERSTANDING-FIRST + SKELETON_7FIELD [이해] field + `CLAUDE.md` + `behavior-verifier-prompt.md` content rule updated with `Understanding = gap between intent and model is closed` (lost in v21.9.0→v21.78.0 compression). Tests 6/6 + 5/5 PASS. |
 | 21.99.4 | fix: I077/H018 behavior-verifier self-dispatch loop guard — `behavior-verifier.js` now skips verifier-meta result/status/task-notification echoes before writing pending state, while preserving ordinary task-notification verifier coverage. `_test-trigger-model.js` adds 3 regression cases; full `_test-*.js` 52/52 and manifest 35/35 PASS. |
 | 21.99.3 | fix: I076/W026 latest release risk cleanup — `hooks/hooks.json` now runs 26 hooks through direct `node` commands instead of Git Bash `find-node.sh`; `find-node.sh` remains as a hardened fallback utility for WSL/Windows path cases; marketplace plugin version drift fixed; manifest V010/V012/V019/V020/V022 candidates repaired; stale `_test-*.js` expectations updated for the current 7-field verifier and D108 cleanup. |
 | 21.99.2 | fix: 7-field skeleton 가독성 — `inject-rules.js` `SKELETON_7FIELD` 필드 사이 빈 줄 + 압축 지시 (H016) + [의도]/[이해]/[쉬운 설명] 하단 재배치 (H017). 사용자 transparency 회복. cycle1 inject test 6/6 PASS. |

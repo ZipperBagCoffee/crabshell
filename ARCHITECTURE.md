@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.99.4)
+# Crabshell Architecture (v21.99.5)
 
 ## Overview
 
@@ -498,6 +498,7 @@ The 5 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.99.5 | fix: restore UNDERSTANDING-FIRST gap definition — UNDERSTANDING-FIRST section + SKELETON_7FIELD [이해] field + CLAUDE.md + verifier prompt content rule; `Understanding = gap closed` definition restored from v21.9.0. |
 | 21.99.4 | fix: I077/H018 behavior-verifier self-dispatch loop guard — narrow verifier-meta early-exit before pending state write; ordinary task notifications preserved; `_test-trigger-model.js` cases 8-10; full regression 52/52 + manifest 35/35 PASS. |
 | 21.99.3 | fix: I076/W026 latest release risk cleanup — direct `node` hook launcher for all 26 hooks; hardened `find-node.sh` fallback; marketplace version sync; manifest shell-portability + stale-marker fixes; regression tests aligned with current 7-field verifier and D108 cleanup. |
 | 21.99.2 | fix: 7-field skeleton 가독성 (H016 빈 줄 + 압축 지시, H017 [의도]/[이해]/[쉬운 설명] 하단 재배치). 사용자 transparency 회복. cycle1 inject test 6/6 PASS. |

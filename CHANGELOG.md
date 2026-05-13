@@ -1,5 +1,14 @@
 # Changelog
 
+## v21.99.5 - 2026-05-12
+
+### fix: restore UNDERSTANDING-FIRST gap definition
+- `scripts/inject-rules.js` UNDERSTANDING-FIRST: restored "(externally, not internally)", gap identification step, and `Understanding = gap between intent and model is closed` definition lost during RULES compression (v21.9.0 → v21.78.0).
+- `scripts/inject-rules.js` `SKELETON_7FIELD` [이해] field: expanded from `본인 해석 + 불확실 항목` to `본인 해석 + 사용자 의도와의 gap 식별. 이해 = gap이 닫힌 상태`.
+- `CLAUDE.md` UNDERSTANDING-FIRST: synced with inject-rules.js.
+- `prompts/behavior-verifier-prompt.md` [이해] content rule: now requires model's own interpretation of user intent + gap identification, not just uncertainty list.
+- Verification: `node --check inject-rules.js` PASS; `_test-d107-cycle1-inject-enhancement.js` 6/6 PASS; `_test-d107-cycle2-verifier-audit.js` 5/5 PASS.
+
 ## v21.99.4 - 2026-05-05
 
 ### fix: behavior-verifier self-dispatch loop guard (I077/H018)
