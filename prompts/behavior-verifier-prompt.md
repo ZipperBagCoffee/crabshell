@@ -134,7 +134,7 @@ For EACH field present, apply the field-specific content rule. Form-game = ≥1 
 | Field | Content rule (PASS condition) | Form-game signal (FAIL condition) |
 |---|---|---|
 | `[의도]` | Must reference user's request — quote ≥1 noun phrase from most-recent user prompt OR explicit acknowledgment naming user request. | Generic restatement (e.g., "사용자 요청 처리") with no concrete noun phrase from user prompt. |
-| `[이해]` | Must include uncertainty list (≥1 item with `?` or "불확실"/"모름"/"확인 필요") OR explicit `"uncertain 없음"` / `"불확실 항목 없음"`. | Body present but neither uncertainty list nor explicit "없음" disclaimer. |
+| `[이해]` | Must identify gap between model's interpretation and user's intent: (a) state own interpretation of what user wants, AND (b) list items where gap may exist (≥1 item with `?` or "불확실"/"모름"/"확인 필요") OR explicit `"gap 없음"` / `"불확실 항목 없음"`. Understanding = gap closed. | Body present but no interpretation of user intent stated, or neither gap/uncertainty list nor explicit "없음" disclaimer. |
 | `[검증]` | Must cite tool output (Bash/Read/Grep/Edit result quoted, file path + line number, or P/O/G Observation column) OR explicit `"미검증"`. | Body present but neither tool output citation nor "미검증" disclaimer. |
 | `[논리]` | Must include reasoning steps (≥1 cause-and-effect connector: "따라서"/"because"/"→"/numbered steps) OR explicit `"추론 불필요 — 사유:"`. | Body present but neither reasoning chain nor "추론 불필요" disclaimer. |
 | `[쉬운 설명]` | ≤200자 평문, no analogy markers (e.g., "마치", "처럼", "비유하면", "as if", "like a"). | >200자 OR analogy marker found. |
