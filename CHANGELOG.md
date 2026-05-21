@@ -1,5 +1,13 @@
 # Changelog
 
+## v21.99.6 - 2026-05-20
+
+### fix: remove Edit→Grep cycle gate from verification-sequence
+- `scripts/verification-sequence.js`: removed Gate 1 (edit-grep cycle detection) — incomplete detection (only tracked Bash grep, not built-in Grep tool), hard block at threshold 3 created deadlocks in projects without test suites, and the behavior is already covered by VERIFICATION-FIRST prompt rules.
+- Removed: `isGrepOnFile()` function, `editGrepCycleCount` state field, grep cycle counter in record mode.
+- Kept: Gate 2 (git commit without test), all record logic for edit/test tracking.
+- `scripts/_test-verification-sequence.js`: converted 7 source-file-detection tests from gate-based (Gate 1 block) to record-based (state transition), removed 3 edit-grep cycle tests. 30/30 PASS.
+
 ## v21.99.5 - 2026-05-12
 
 ### fix: restore UNDERSTANDING-FIRST gap definition

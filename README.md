@@ -223,6 +223,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.99.6 | fix: remove Edit→Grep cycle gate from `verification-sequence.js` — Gate 1 removed (incomplete Bash-only grep detection, hard block deadlocked projects without tests); kept Gate 2 (commit without test); `isGrepOnFile()` + `editGrepCycleCount` removed; tests 30/30 PASS. |
 | 21.99.5 | fix: restore UNDERSTANDING-FIRST gap definition — `inject-rules.js` UNDERSTANDING-FIRST + SKELETON_7FIELD [이해] field + `CLAUDE.md` + `behavior-verifier-prompt.md` content rule updated with `Understanding = gap between intent and model is closed` (lost in v21.9.0→v21.78.0 compression). Tests 6/6 + 5/5 PASS. |
 | 21.99.4 | fix: I077/H018 behavior-verifier self-dispatch loop guard — `behavior-verifier.js` now skips verifier-meta result/status/task-notification echoes before writing pending state, while preserving ordinary task-notification verifier coverage. `_test-trigger-model.js` adds 3 regression cases; full `_test-*.js` 52/52 and manifest 35/35 PASS. |
 | 21.99.3 | fix: I076/W026 latest release risk cleanup — `hooks/hooks.json` now runs 26 hooks through direct `node` commands instead of Git Bash `find-node.sh`; `find-node.sh` remains as a hardened fallback utility for WSL/Windows path cases; marketplace plugin version drift fixed; manifest V010/V012/V019/V020/V022 candidates repaired; stale `_test-*.js` expectations updated for the current 7-field verifier and D108 cleanup. |

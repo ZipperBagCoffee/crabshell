@@ -29,7 +29,6 @@ const DEFAULT_STATE = {
   lastUpdated: null,
   state: 'CLEAN',
   editsSinceTest: [],
-  editGrepCycleCount: 0,
   lastTestTs: null
 };
 
@@ -135,23 +134,6 @@ function isGitCommit(command) {
 }
 
 /**
- * Check if a Bash command is a grep on a specific file.
- */
-function isGrepOnFile(command, editedFiles) {
-  if (!command || typeof command !== 'string') return false;
-  const cmd = command.trim();
-  if (!/\bgrep\b/.test(cmd)) return false;
-
-  // Check if any recently edited file appears in the grep command
-  for (const f of editedFiles) {
-    const normalized = normalizePath(f).toLowerCase();
-    const basename = path.basename(normalized);
-    if (cmd.toLowerCase().includes(basename)) return true;
-  }
-  return false;
-}
-
-/**
  * Handle session isolation: reset state if session changed and state is old.
  */
 function handleSessionIsolation(state, sessionId) {
@@ -193,12 +175,8 @@ async function handleRecord(hookData, projectDir) {
     if (isTestExecution(input.command)) {
       state.state = 'TESTED';
       state.editsSinceTest = [];
-      state.editGrepCycleCount = 0;
       state.lastTestTs = new Date().toISOString();
       process.stderr.write(`[VERIFICATION_SEQ] Recorded test execution, state → TESTED\n`);
-    } else if (isGrepOnFile(input.command, state.editsSinceTest)) {
-      state.editGrepCycleCount = (state.editGrepCycleCount || 0) + 1;
-      process.stderr.write(`[VERIFICATION_SEQ] Grep on edited file, cycle count → ${state.editGrepCycleCount}\n`);
     }
   }
 
@@ -215,26 +193,7 @@ async function handleGate(hookData, projectDir) {
   let state = loadState(projectDir);
   state = handleSessionIsolation(state, hookData.session_id);
 
-  // Gate 1: Edit/Write on source file when edit-grep cycle count >= 3
-  if ((toolName === 'Edit' || toolName === 'Write') && input.file_path) {
-    if (isSourceFile(input.file_path) && state.editGrepCycleCount >= 3) {
-      const output = {
-        decision: 'block',
-        reason: `Edit→Grep cycle detected (${state.editGrepCycleCount} cycles without testing). You are editing source files and checking with grep instead of running tests. Run the test suite first to verify your changes work, then continue editing.`
-      };
-      process.stderr.write(`[VERIFICATION_SEQ] Blocked: edit-grep cycle count ${state.editGrepCycleCount} >= 3\n`);
-      console.log(JSON.stringify(output));
-      process.exit(2);
-      return;
-    }
-    // Non-source files always pass
-    if (!isSourceFile(input.file_path)) {
-      process.exit(0);
-      return;
-    }
-  }
-
-  // Gate 2: git commit without test
+  // Gate: git commit without test
   if (toolName === 'Bash' && input.command && isGitCommit(input.command)) {
     if (state.state === 'EDITED') {
       const files = state.editsSinceTest.join(', ');

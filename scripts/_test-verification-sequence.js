@@ -63,50 +63,49 @@ function assert(condition, message) {
 }
 
 // ============================================================
-// Unit tests: isSourceFile (via gate behavior on non-source files)
+// Unit tests: isSourceFile (via record behavior)
 // ============================================================
 
-test('Source file detection: .js = source file', () => {
-  resetState({ sessionId: null, lastUpdated: null, state: 'CLEAN', editsSinceTest: [], editGrepCycleCount: 3, lastTestTs: null });
-  // With cycleCount=3, a source file edit should be blocked
-  const r = runScript('gate', { tool_name: 'Edit', tool_input: { file_path: 'src/app.js' } });
-  assert(r.exitCode === 2, `expected exit 2 (block), got ${r.exitCode}`);
+test('Source file detection: .js = source file (state → EDITED)', () => {
+  resetState({ sessionId: null, lastUpdated: null, state: 'CLEAN', editsSinceTest: [], lastTestTs: null });
+  runScript('record', { tool_name: 'Edit', tool_input: { file_path: 'src/app.js' } });
+  const state = readState();
+  assert(state.state === 'EDITED', `expected EDITED, got ${state.state}`);
 });
 
-test('Source file detection: .md = NOT source file', () => {
-  resetState({ sessionId: null, lastUpdated: null, state: 'CLEAN', editsSinceTest: [], editGrepCycleCount: 3, lastTestTs: null });
-  const r = runScript('gate', { tool_name: 'Edit', tool_input: { file_path: 'README.md' } });
-  assert(r.exitCode === 0, `expected exit 0 (allow), got ${r.exitCode}`);
+test('Source file detection: .md = NOT source file (state stays CLEAN)', () => {
+  resetState({ sessionId: null, lastUpdated: null, state: 'CLEAN', editsSinceTest: [], lastTestTs: null });
+  runScript('record', { tool_name: 'Edit', tool_input: { file_path: 'README.md' } });
+  const state = readState();
+  assert(state.state === 'CLEAN', `expected CLEAN, got ${state.state}`);
 });
 
 test('Source file detection: .json in .crabshell/ = NOT source file', () => {
-  resetState({ sessionId: null, lastUpdated: null, state: 'CLEAN', editsSinceTest: [], editGrepCycleCount: 3, lastTestTs: null });
-  const r = runScript('gate', { tool_name: 'Edit', tool_input: { file_path: '.crabshell/memory/memory-index.json' } });
-  assert(r.exitCode === 0, `expected exit 0 (allow), got ${r.exitCode}`);
+  resetState({ sessionId: null, lastUpdated: null, state: 'CLEAN', editsSinceTest: [], lastTestTs: null });
+  runScript('record', { tool_name: 'Edit', tool_input: { file_path: '.crabshell/memory/memory-index.json' } });
+  const state = readState();
+  assert(state.state === 'CLEAN', `expected CLEAN, got ${state.state}`);
 });
 
-test('Source file detection: CLAUDE.md = NOT source file', () => {
-  resetState({ sessionId: null, lastUpdated: null, state: 'CLEAN', editsSinceTest: [], editGrepCycleCount: 3, lastTestTs: null });
-  const r = runScript('gate', { tool_name: 'Edit', tool_input: { file_path: 'CLAUDE.md' } });
-  assert(r.exitCode === 0, `expected exit 0 (allow), got ${r.exitCode}`);
+test('Source file detection: .ts = source file (state → EDITED)', () => {
+  resetState({ sessionId: null, lastUpdated: null, state: 'CLEAN', editsSinceTest: [], lastTestTs: null });
+  runScript('record', { tool_name: 'Write', tool_input: { file_path: 'src/index.ts' } });
+  const state = readState();
+  assert(state.state === 'EDITED', `expected EDITED, got ${state.state}`);
 });
 
-test('Source file detection: .ts = source file', () => {
-  resetState({ sessionId: null, lastUpdated: null, state: 'CLEAN', editsSinceTest: [], editGrepCycleCount: 3, lastTestTs: null });
-  const r = runScript('gate', { tool_name: 'Write', tool_input: { file_path: 'src/index.ts' } });
-  assert(r.exitCode === 2, `expected exit 2 (block), got ${r.exitCode}`);
-});
-
-test('Source file detection: .py = source file', () => {
-  resetState({ sessionId: null, lastUpdated: null, state: 'CLEAN', editsSinceTest: [], editGrepCycleCount: 3, lastTestTs: null });
-  const r = runScript('gate', { tool_name: 'Edit', tool_input: { file_path: 'app.py' } });
-  assert(r.exitCode === 2, `expected exit 2 (block), got ${r.exitCode}`);
+test('Source file detection: .py = source file (state → EDITED)', () => {
+  resetState({ sessionId: null, lastUpdated: null, state: 'CLEAN', editsSinceTest: [], lastTestTs: null });
+  runScript('record', { tool_name: 'Edit', tool_input: { file_path: 'app.py' } });
+  const state = readState();
+  assert(state.state === 'EDITED', `expected EDITED, got ${state.state}`);
 });
 
 test('Source file detection: node_modules/ path = NOT source file', () => {
-  resetState({ sessionId: null, lastUpdated: null, state: 'CLEAN', editsSinceTest: [], editGrepCycleCount: 3, lastTestTs: null });
-  const r = runScript('gate', { tool_name: 'Edit', tool_input: { file_path: 'node_modules/foo/index.js' } });
-  assert(r.exitCode === 0, `expected exit 0 (allow), got ${r.exitCode}`);
+  resetState({ sessionId: null, lastUpdated: null, state: 'CLEAN', editsSinceTest: [], lastTestTs: null });
+  runScript('record', { tool_name: 'Edit', tool_input: { file_path: 'node_modules/foo/index.js' } });
+  const state = readState();
+  assert(state.state === 'CLEAN', `expected CLEAN, got ${state.state}`);
 });
 
 // ============================================================
@@ -114,7 +113,7 @@ test('Source file detection: node_modules/ path = NOT source file', () => {
 // ============================================================
 
 test('Test execution detection: npm test = true', () => {
-  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], editGrepCycleCount: 0, lastTestTs: null });
+  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], lastTestTs: null });
   runScript('record', { tool_name: 'Bash', tool_input: { command: 'npm test' } });
   const state = readState();
   assert(state.state === 'TESTED', `expected TESTED, got ${state.state}`);
@@ -122,70 +121,70 @@ test('Test execution detection: npm test = true', () => {
 });
 
 test('Test execution detection: npx jest = true', () => {
-  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], editGrepCycleCount: 0, lastTestTs: null });
+  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], lastTestTs: null });
   runScript('record', { tool_name: 'Bash', tool_input: { command: 'npx jest --coverage' } });
   const state = readState();
   assert(state.state === 'TESTED', `expected TESTED, got ${state.state}`);
 });
 
 test('Test execution detection: node _test-file.js = true', () => {
-  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], editGrepCycleCount: 0, lastTestTs: null });
+  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], lastTestTs: null });
   runScript('record', { tool_name: 'Bash', tool_input: { command: 'node scripts/_test-verification-sequence.js' } });
   const state = readState();
   assert(state.state === 'TESTED', `expected TESTED, got ${state.state}`);
 });
 
 test('Test execution detection: grep foo = false', () => {
-  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], editGrepCycleCount: 0, lastTestTs: null });
+  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], lastTestTs: null });
   runScript('record', { tool_name: 'Bash', tool_input: { command: 'grep foo src/app.js' } });
   const state = readState();
   assert(state.state === 'EDITED', `expected EDITED (unchanged), got ${state.state}`);
 });
 
 test('Test execution detection: echo PASS = false (trivial)', () => {
-  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], editGrepCycleCount: 0, lastTestTs: null });
+  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], lastTestTs: null });
   runScript('record', { tool_name: 'Bash', tool_input: { command: 'echo PASS' } });
   const state = readState();
   assert(state.state === 'EDITED', `expected EDITED (unchanged), got ${state.state}`);
 });
 
 test('Test execution detection: tsc = true', () => {
-  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.ts'], editGrepCycleCount: 0, lastTestTs: null });
+  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.ts'], lastTestTs: null });
   runScript('record', { tool_name: 'Bash', tool_input: { command: 'tsc --noEmit' } });
   const state = readState();
   assert(state.state === 'TESTED', `expected TESTED, got ${state.state}`);
 });
 
 test('Test execution detection: npm run lint = true', () => {
-  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], editGrepCycleCount: 0, lastTestTs: null });
+  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], lastTestTs: null });
   runScript('record', { tool_name: 'Bash', tool_input: { command: 'npm run lint' } });
   const state = readState();
   assert(state.state === 'TESTED', `expected TESTED, got ${state.state}`);
 });
 
 test('Test execution detection: node.exe _test-file.js = true', () => {
-  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], editGrepCycleCount: 0, lastTestTs: null });
+  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], lastTestTs: null });
   runScript('record', { tool_name: 'Bash', tool_input: { command: 'node.exe scripts/_test-verification-sequence.js' } });
   const state = readState();
   assert(state.state === 'TESTED', `expected TESTED, got ${state.state}`);
 });
 
 test('Test execution detection: quoted node.exe path with space = true', () => {
-  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], editGrepCycleCount: 0, lastTestTs: null });
+  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], lastTestTs: null });
   runScript('record', { tool_name: 'Bash', tool_input: { command: '"C:/Program Files/nodejs/node.exe" scripts/_test-inject-rules.js' } });
   const state = readState();
   assert(state.state === 'TESTED', `expected TESTED, got ${state.state}`);
 });
 
 test('Test execution detection: node.exe .test. pattern = true', () => {
-  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], editGrepCycleCount: 0, lastTestTs: null });
+  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], lastTestTs: null });
   runScript('record', { tool_name: 'Bash', tool_input: { command: 'node.exe src/app.test.js' } });
   const state = readState();
   assert(state.state === 'TESTED', `expected TESTED, got ${state.state}`);
 });
 
 test('Test execution detection: echo test = false (negative)', () => {
-  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], editGrepCycleCount: 0, lastTestTs: null });
+  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], lastTestTs: null });
   runScript('record', { tool_name: 'Bash', tool_input: { command: 'echo test passed' } });
   const state = readState();
   assert(state.state === 'EDITED', `expected EDITED (unchanged), got ${state.state}`);
@@ -196,58 +195,35 @@ test('Test execution detection: echo test = false (negative)', () => {
 // ============================================================
 
 test('Gate: EDITED state + git commit → exit 2 (block)', () => {
-  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], editGrepCycleCount: 0, lastTestTs: null });
+  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], lastTestTs: null });
   const r = runScript('gate', { tool_name: 'Bash', tool_input: { command: 'git commit -m "test"' } });
   assert(r.exitCode === 2, `expected exit 2 (block), got ${r.exitCode}`);
 });
 
 test('Gate: TESTED state + git commit → exit 0 (allow)', () => {
-  resetState({ sessionId: null, lastUpdated: null, state: 'TESTED', editsSinceTest: [], editGrepCycleCount: 0, lastTestTs: '2026-03-29T00:00:00.000Z' });
+  resetState({ sessionId: null, lastUpdated: null, state: 'TESTED', editsSinceTest: [], lastTestTs: '2026-03-29T00:00:00.000Z' });
   const r = runScript('gate', { tool_name: 'Bash', tool_input: { command: 'git commit -m "test"' } });
   assert(r.exitCode === 0, `expected exit 0 (allow), got ${r.exitCode}`);
 });
 
 test('Gate: CLEAN state + git commit → exit 0 (allow)', () => {
-  resetState({ sessionId: null, lastUpdated: null, state: 'CLEAN', editsSinceTest: [], editGrepCycleCount: 0, lastTestTs: null });
+  resetState({ sessionId: null, lastUpdated: null, state: 'CLEAN', editsSinceTest: [], lastTestTs: null });
   const r = runScript('gate', { tool_name: 'Bash', tool_input: { command: 'git commit -m "initial"' } });
   assert(r.exitCode === 0, `expected exit 0 (allow), got ${r.exitCode}`);
 });
 
 // ============================================================
-// Edit-Grep cycle blocking
-// ============================================================
-
-test('Edit-Grep cycle: 3 cycles → exit 2 on next source Edit', () => {
-  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], editGrepCycleCount: 3, lastTestTs: null });
-  const r = runScript('gate', { tool_name: 'Edit', tool_input: { file_path: 'src/app.js' } });
-  assert(r.exitCode === 2, `expected exit 2 (block), got ${r.exitCode}`);
-});
-
-test('Edit-Grep cycle: 2 cycles → exit 0 (not yet blocked)', () => {
-  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], editGrepCycleCount: 2, lastTestTs: null });
-  const r = runScript('gate', { tool_name: 'Edit', tool_input: { file_path: 'src/app.js' } });
-  assert(r.exitCode === 0, `expected exit 0 (allow), got ${r.exitCode}`);
-});
-
-test('Edit-Grep cycle: counter increments on grep of edited file', () => {
-  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], editGrepCycleCount: 0, lastTestTs: null });
-  runScript('record', { tool_name: 'Bash', tool_input: { command: 'grep function src/app.js' } });
-  const state = readState();
-  assert(state.editGrepCycleCount === 1, `expected cycleCount 1, got ${state.editGrepCycleCount}`);
-});
-
-// ============================================================
-// Non-source files: always exit 0
+// Non-source files: always exit 0 through gate
 // ============================================================
 
 test('Non-source file edit: .json → exit 0', () => {
-  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], editGrepCycleCount: 5, lastTestTs: null });
+  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], lastTestTs: null });
   const r = runScript('gate', { tool_name: 'Edit', tool_input: { file_path: 'package.json' } });
   assert(r.exitCode === 0, `expected exit 0 (allow), got ${r.exitCode}`);
 });
 
 test('Non-source file edit: .yaml → exit 0', () => {
-  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], editGrepCycleCount: 5, lastTestTs: null });
+  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], lastTestTs: null });
   const r = runScript('gate', { tool_name: 'Write', tool_input: { file_path: 'config.yaml' } });
   assert(r.exitCode === 0, `expected exit 0 (allow), got ${r.exitCode}`);
 });
@@ -257,7 +233,7 @@ test('Non-source file edit: .yaml → exit 0', () => {
 // ============================================================
 
 test('Record: source file Edit → state becomes EDITED', () => {
-  resetState({ sessionId: null, lastUpdated: null, state: 'CLEAN', editsSinceTest: [], editGrepCycleCount: 0, lastTestTs: null });
+  resetState({ sessionId: null, lastUpdated: null, state: 'CLEAN', editsSinceTest: [], lastTestTs: null });
   runScript('record', { tool_name: 'Edit', tool_input: { file_path: 'src/app.js' } });
   const state = readState();
   assert(state.state === 'EDITED', `expected EDITED, got ${state.state}`);
@@ -265,7 +241,7 @@ test('Record: source file Edit → state becomes EDITED', () => {
 });
 
 test('Record: non-source file Edit → state stays CLEAN', () => {
-  resetState({ sessionId: null, lastUpdated: null, state: 'CLEAN', editsSinceTest: [], editGrepCycleCount: 0, lastTestTs: null });
+  resetState({ sessionId: null, lastUpdated: null, state: 'CLEAN', editsSinceTest: [], lastTestTs: null });
   runScript('record', { tool_name: 'Edit', tool_input: { file_path: 'README.md' } });
   const state = readState();
   assert(state.state === 'CLEAN', `expected CLEAN, got ${state.state}`);
@@ -294,7 +270,7 @@ test('Unknown mode → exit 0', () => {
 });
 
 test('Bash non-commit non-test → exit 0', () => {
-  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], editGrepCycleCount: 0, lastTestTs: null });
+  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], lastTestTs: null });
   const r = runScript('gate', { tool_name: 'Bash', tool_input: { command: 'ls -la' } });
   assert(r.exitCode === 0, `expected exit 0, got ${r.exitCode}`);
 });

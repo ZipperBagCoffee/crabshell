@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.99.5)
+# Crabshell Architecture (v21.99.6)
 
 ## Overview
 
@@ -220,8 +220,7 @@ Two meta-principles guide Claude's approach to obstacles:
    │   ├─> Block Final Verification writes without prior /verifying run call
    │   └─> Require at least 1 behavioral (type: "direct") AC in manifest (v20.3.0)
    ├─> verification-sequence.js gate (Write|Edit|Bash) — v21.0.0+
-   │   ├─> Block git commit if source files edited but no test run
-   │   └─> Block source file edits after 3+ edit-grep cycles without testing
+   │   └─> Block git commit if source files edited but no test run
    ├─> doc-watchdog.js gate (Write|Edit) — v21.18.0+
    │   └─> Soft warning (additionalContext) when code edits >= 5 without D/P/T doc update (regressing only)
    ├─> pressure-guard.js (Read|Grep|Glob|Bash|Write|Edit) — v19.47.0+, v21.1.0 L3, v21.71.0 short msgs
@@ -249,7 +248,7 @@ Two meta-principles guide Claude's approach to obstacles:
    │   ├─> checkAndRotate() — archive if > 23,750 tokens
    │   └─> At threshold: create/update L1 (session-aware reuse + incremental offset read) → extractDelta() → creates delta_temp.txt
    ├─> verification-sequence.js record (.*) — v21.0.0+
-   │   └─> Track source file edits, test executions, grep cycles in verification-state.json
+   │   └─> Track source file edits and test executions in verification-state.json
    ├─> doc-watchdog.js record (Write|Edit) — v21.18.0+
    │   └─> Track code edits (increment) and D/P/T doc edits (reset) in doc-watchdog.json
    └─> skill-tracker.js (Skill) — v19.33.0+
@@ -498,6 +497,7 @@ The 5 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.99.6 | fix: remove Edit→Grep cycle gate from verification-sequence — Gate 1 removed (incomplete detection, deadlock-prone); kept Gate 2 (commit without test); tests 30/30 PASS. |
 | 21.99.5 | fix: restore UNDERSTANDING-FIRST gap definition — UNDERSTANDING-FIRST section + SKELETON_7FIELD [이해] field + CLAUDE.md + verifier prompt content rule; `Understanding = gap closed` definition restored from v21.9.0. |
 | 21.99.4 | fix: I077/H018 behavior-verifier self-dispatch loop guard — narrow verifier-meta early-exit before pending state write; ordinary task notifications preserved; `_test-trigger-model.js` cases 8-10; full regression 52/52 + manifest 35/35 PASS. |
 | 21.99.3 | fix: I076/W026 latest release risk cleanup — direct `node` hook launcher for all 26 hooks; hardened `find-node.sh` fallback; marketplace version sync; manifest shell-portability + stale-marker fixes; regression tests aligned with current 7-field verifier and D108 cleanup. |
