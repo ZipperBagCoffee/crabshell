@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.99.5 | **Author**: TaWa | **License**: MIT
+**Version**: 21.99.6 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -311,8 +311,7 @@ L1 generation:
    ├─> verify-guard.js (Write|Edit) — block Final Verification without /verifying run
    │   └─> Require at least 1 behavioral (type: "direct") AC in manifest (v20.3.0)
    ├─> verification-sequence.js gate (Write|Edit|Bash) — source edit→test→commit enforcement (v21.0.0)
-   │   ├─> Block git commit if source files edited but no test run
-   │   └─> Block source file edits after 3+ edit-grep cycles without testing
+   │   └─> Block git commit if source files edited but no test run
    ├─> doc-watchdog.js gate (Write|Edit) — soft warning when code edits >= 5 without D/P/T doc update during regressing (v21.18.0)
    ├─> pressure-guard.js (Read|Grep|Glob|Bash|Write|Edit) — detect feedback pressure escalation
    └─> sycophancy-guard.js (Write|Edit) — mid-turn transcript parsing for sycophancy + verification claim detection (v20.7.0, v21.1.0)
@@ -333,7 +332,7 @@ L1 generation:
    │   ├─> Increment counter
    │   ├─> checkAndRotate() - archive if > 23,750 tokens
    │   └─> At threshold: create/update L1 (session-aware reuse + incremental offset read) → extractDelta() → creates delta_temp.txt
-   ├─> verification-sequence.js record (.*) — track source edits, test runs, grep cycles (v21.0.0)
+   ├─> verification-sequence.js record (.*) — track source edits and test runs (v21.0.0)
    ├─> skill-tracker.js (Skill, async) — set skill-active flag on Skill tool calls (v19.33.0)
    └─> doc-watchdog.js record (Write|Edit, async) — track code edits and D/P/T doc edits (v21.18.0)
 
@@ -359,6 +358,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.99.6 | fix: remove Edit→Grep cycle gate from verification-sequence — Gate 1 removed (incomplete detection, deadlock-prone); kept Gate 2 (commit without test); tests 30/30 PASS. |
 | 21.99.5 | fix: restore UNDERSTANDING-FIRST gap definition — `inject-rules.js` UNDERSTANDING-FIRST + SKELETON_7FIELD [이해] + `CLAUDE.md` + verifier prompt content rule; `Understanding = gap closed` restored. Tests 6/6 + 5/5 PASS. |
 | 21.99.4 | fix: I077/H018 behavior-verifier self-dispatch loop guard — verifier-meta result/status/task-notification echoes exit before pending state write; ordinary task notifications still FIRE. `_test-trigger-model.js` cases 8-10; full regression 52/52 + manifest 35/35 PASS. |
 | 21.99.3 | fix: I076/W026 latest release risk cleanup — `hooks/hooks.json` direct `node` launcher for all 26 hooks; `find-node.sh` retained as hardened fallback utility; marketplace metadata version sync; manifest V010/V012/V019/V020/V022 repair; stale regression tests aligned with current 7-field verifier/D108 behavior; docs updated. |
