@@ -1,5 +1,13 @@
 # Changelog
 
+## v21.100.0 - 2026-05-28
+
+### feat: disable behavior-verifier (감시자) Stop hook dispatch
+- `hooks/hooks.json`: removed the `behavior-verifier.js` Stop hook entry. No `[CRABSHELL_BEHAVIOR_VERIFY]` sentinel is written, so the verifier sub-agent is never dispatched in any install.
+- Rationale (Opus 4.8 model-upgrade audit per CLAUDE.md): the recorded verdict ring buffer (8 entries) caught only format-marker (7-field skeleton) absences — zero substantive UVLS / memory-feedback / scope-expansion failures. The verifier dispatched an Opus background sub-agent on every substantive turn for every install; its only demonstrated value (skeleton presence) is already enforced independently by the per-turn `SKELETON_7FIELD` injection in `inject-rules.js`.
+- Retained dormant (not deleted, reversible): `scripts/behavior-verifier.js`, the `inject-rules.js` consumer block, `prompts/behavior-verifier-prompt.md`, the verdict/ring-buffer state schema, and all related tests. Re-enable by restoring the Stop hook entry in `hooks/hooks.json`.
+- Unchanged: `SKELETON_7FIELD` format injection, and all other guard hooks (sycophancy, pressure, verify, docs, log, scope, path, verification-sequence, regressing-loop).
+
 ## v21.99.6 - 2026-05-20
 
 ### fix: remove Edit→Grep cycle gate from verification-sequence

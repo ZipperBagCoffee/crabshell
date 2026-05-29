@@ -223,6 +223,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.100.0 | feat: disable behavior-verifier (감시자) — removed Stop hook entry from hooks.json so the verifier sub-agent is never dispatched (Opus 4.8 model-upgrade audit: recorded verdicts caught only format-marker absences, zero substantive failures; it ran an Opus background agent per turn). Consumer code/script/prompt retained dormant; SKELETON_7FIELD format injection + all other guards unchanged. |
 | 21.99.6 | fix: remove Edit→Grep cycle gate from `verification-sequence.js` — Gate 1 removed (incomplete Bash-only grep detection, hard block deadlocked projects without tests); kept Gate 2 (commit without test); `isGrepOnFile()` + `editGrepCycleCount` removed; tests 30/30 PASS. |
 | 21.99.5 | fix: restore UNDERSTANDING-FIRST gap definition — `inject-rules.js` UNDERSTANDING-FIRST + SKELETON_7FIELD [이해] field + `CLAUDE.md` + `behavior-verifier-prompt.md` content rule updated with `Understanding = gap between intent and model is closed` (lost in v21.9.0→v21.78.0 compression). Tests 6/6 + 5/5 PASS. |
 | 21.99.4 | fix: I077/H018 behavior-verifier self-dispatch loop guard — `behavior-verifier.js` now skips verifier-meta result/status/task-notification echoes before writing pending state, while preserving ordinary task-notification verifier coverage. `_test-trigger-model.js` adds 3 regression cases; full `_test-*.js` 52/52 and manifest 35/35 PASS. |

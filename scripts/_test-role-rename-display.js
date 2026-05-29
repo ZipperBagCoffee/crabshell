@@ -88,6 +88,9 @@ function countSubstr(haystack, needle) {
   // Pre-T003 baseline counts captured 2026-04-26 (post-T002 state, no T003 edits yet).
   // T003 changes ONLY: USER-MANUAL.md / README.md / STRUCTURE.md / prompts/behavior-verifier-prompt.md L1.
   // Code identifiers below MUST remain unchanged (Phase 3 carry-over for v22).
+  // v21.100.0: behavior-verifier disabled — Stop hook entry removed from hooks/hooks.json,
+  // so the 'behavior-verifier.js' count there dropped 1 (1→0). Expected total 23→22.
+  // This is a legitimate removal (not a rename); all other identifier baselines unchanged.
   // Files inspected use forward-slash paths for cross-platform stability.
   const targets = [
     // [identifier, [file paths], expected total count]
@@ -140,7 +143,7 @@ function countSubstr(haystack, needle) {
         'hooks/hooks.json',
         'prompts/behavior-verifier-prompt.md'
       ],
-      23
+      22
     ]
   ];
 

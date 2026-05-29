@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.99.6 | **Author**: TaWa | **License**: MIT
+**Version**: 21.100.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -358,6 +358,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.100.0 | feat: disable behavior-verifier (감시자) — removed Stop hook entry from hooks.json so the verifier sub-agent is never dispatched (Opus 4.8 model-upgrade audit: recorded verdicts caught only format-marker absences, zero substantive failures; it ran an Opus background agent per turn). Consumer code/script/prompt retained dormant; SKELETON_7FIELD format injection + all other guards unchanged. |
 | 21.99.6 | fix: remove Edit→Grep cycle gate from verification-sequence — Gate 1 removed (incomplete detection, deadlock-prone); kept Gate 2 (commit without test); tests 30/30 PASS. |
 | 21.99.5 | fix: restore UNDERSTANDING-FIRST gap definition — `inject-rules.js` UNDERSTANDING-FIRST + SKELETON_7FIELD [이해] + `CLAUDE.md` + verifier prompt content rule; `Understanding = gap closed` restored. Tests 6/6 + 5/5 PASS. |
 | 21.99.4 | fix: I077/H018 behavior-verifier self-dispatch loop guard — verifier-meta result/status/task-notification echoes exit before pending state write; ordinary task notifications still FIRE. `_test-trigger-model.js` cases 8-10; full regression 52/52 + manifest 35/35 PASS. |

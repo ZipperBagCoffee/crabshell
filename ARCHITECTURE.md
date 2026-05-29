@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.99.6)
+# Crabshell Architecture (v21.100.0)
 
 ## Overview
 
@@ -354,7 +354,7 @@ Agent orchestration rules (11 rules covering pairing, cross-review, coherence, c
 | `sycophancy-guard.js` | Stop, PreToolUse (Write\|Edit) | Dual-layer sycophancy detection + verification claim detection (4-tier classification): Stop response + mid-turn transcript parsing; block with re-examination |
 | `scope-guard.js` | Stop | Compare user-requested quantity vs response count; block scope reduction without approval |
 | `regressing-loop-guard.js` | Stop | Block stop when regressing active + inject phase-specific context via buildRegressingReminder(); enforce ≥2 parallel WAs in regressing + light-workflow; WA count tracking via wa-count.json |
-| `behavior-verifier.js` | Stop | 감시자 sub-agent dispatch (v21.80.0+): write `behavior-verifier-state.json` `status='pending'` + `[CRABSHELL_BEHAVIOR_VERIFY]` sentinel. v21.83.0 trigger 3-layer (periodic N=8 + workflow-active force + escalation L0/L1) + 5-class turn classification + ring buffer FIFO N=8 + state schema 14 fields. v21.96.0 skips workflow-active verifier/monitor idle echoes before pending-state write. v21.99.4 skips verifier-meta result/status/task-notification echoes to prevent self-dispatch loops. |
+| `behavior-verifier.js` | Stop | 감시자 sub-agent dispatch (v21.80.0+): write `behavior-verifier-state.json` `status='pending'` + `[CRABSHELL_BEHAVIOR_VERIFY]` sentinel. v21.83.0 trigger 3-layer (periodic N=8 + workflow-active force + escalation L0/L1) + 5-class turn classification + ring buffer FIFO N=8 + state schema 14 fields. v21.96.0 skips workflow-active verifier/monitor idle echoes before pending-state write. v21.99.4 skips verifier-meta result/status/task-notification echoes to prevent self-dispatch loops. — DISABLED in v21.100.0 (Stop hook entry removed; code retained dormant) |
 | `skill-tracker.js` | PostToolUse (Skill) | Set skill-active flag on Skill tool calls (TTL-based, 5min expiry) |
 | `regressing-state.js` | (library) | Phase tracker: getState, buildReminder, detectSkillCall, advancePhase |
 | `extract-delta.js` | (library) | L1 delta extraction, timestamp watermarks, temp file management |
@@ -497,6 +497,7 @@ The 5 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.100.0 | feat: disable behavior-verifier (감시자) — removed Stop hook entry from hooks.json so the verifier sub-agent is never dispatched (Opus 4.8 model-upgrade audit: recorded verdicts caught only format-marker absences, zero substantive failures; it ran an Opus background agent per turn). Consumer code/script/prompt retained dormant; SKELETON_7FIELD format injection + all other guards unchanged. |
 | 21.99.6 | fix: remove Edit→Grep cycle gate from verification-sequence — Gate 1 removed (incomplete detection, deadlock-prone); kept Gate 2 (commit without test); tests 30/30 PASS. |
 | 21.99.5 | fix: restore UNDERSTANDING-FIRST gap definition — UNDERSTANDING-FIRST section + SKELETON_7FIELD [이해] field + CLAUDE.md + verifier prompt content rule; `Understanding = gap closed` definition restored from v21.9.0. |
 | 21.99.4 | fix: I077/H018 behavior-verifier self-dispatch loop guard — narrow verifier-meta early-exit before pending state write; ordinary task notifications preserved; `_test-trigger-model.js` cases 8-10; full regression 52/52 + manifest 35/35 PASS. |
