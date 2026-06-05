@@ -191,6 +191,50 @@ test('Test execution detection: echo test = false (negative)', () => {
 });
 
 // ============================================================
+// Failed-test handling: a failing test must NOT clear the gate (C31/I078)
+// ============================================================
+
+test('Failing test (exitCode!=0) → state stays EDITED (gate stays armed)', () => {
+  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], lastTestTs: null });
+  runScript('record', { tool_name: 'Bash', tool_input: { command: 'npm test' }, tool_response: { stdout: '', stderr: '1 failed', exitCode: 1 } });
+  const state = readState();
+  assert(state.state === 'EDITED', `expected EDITED (unchanged), got ${state.state}`);
+  assert(state.editsSinceTest.length === 1, `expected editsSinceTest preserved, got ${state.editsSinceTest.length}`);
+});
+
+test('Failing test (is_error:true) → state stays EDITED', () => {
+  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], lastTestTs: null });
+  runScript('record', { tool_name: 'Bash', tool_input: { command: 'npm test' }, tool_response: { is_error: true, content: 'boom' } });
+  const state = readState();
+  assert(state.state === 'EDITED', `expected EDITED (unchanged), got ${state.state}`);
+});
+
+test('Failing test ("Exit code 1" string response) → state stays EDITED', () => {
+  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], lastTestTs: null });
+  runScript('record', { tool_name: 'Bash', tool_input: { command: 'node scripts/_test-foo.js' }, tool_response: 'Exit code 1\nTests: 1 failed' });
+  const state = readState();
+  assert(state.state === 'EDITED', `expected EDITED (unchanged), got ${state.state}`);
+});
+
+test('Passing test (exitCode:0) → state → TESTED', () => {
+  resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], lastTestTs: null });
+  runScript('record', { tool_name: 'Bash', tool_input: { command: 'npm test' }, tool_response: { stdout: '52 passed', stderr: '', exitCode: 0, interrupted: false } });
+  const state = readState();
+  assert(state.state === 'TESTED', `expected TESTED, got ${state.state}`);
+  assert(state.editsSinceTest.length === 0, `expected editsSinceTest cleared, got ${state.editsSinceTest.length}`);
+});
+
+test('Integration: Edit → FAILING test → commit BLOCKED (exit 2)', () => {
+  resetState(null);
+  runScript('record', { tool_name: 'Edit', tool_input: { file_path: 'src/main.js' } });
+  runScript('record', { tool_name: 'Bash', tool_input: { command: 'npm test' }, tool_response: { exitCode: 1, stderr: 'FAIL' } });
+  const state = readState();
+  assert(state.state === 'EDITED', `expected EDITED after failing test, got ${state.state}`);
+  const r = runScript('gate', { tool_name: 'Bash', tool_input: { command: 'git commit -m "feat: x"' } });
+  assert(r.exitCode === 2, `expected exit 2 (block), got ${r.exitCode}`);
+});
+
+// ============================================================
 // Gate behavior: git commit blocking
 // ============================================================
 

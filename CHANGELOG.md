@@ -1,5 +1,15 @@
 # Changelog
 
+## v21.101.0 - 2026-06-04
+
+### fix: I078 Tier-1 source cleanup (5 fixes)
+- `scripts/load-memory.js`: `getUnreflectedL1Content()` read `entry.content`, but refined L1 assistant entries are written by `refine-raw.js` as `{role,text}` with no `content` field — the "Unreflected from Last Session" SessionStart section was permanently empty. Changed to `entry.text`. Verified against the newest L1 file: surfaces 9 entries (was 0).
+- `scripts/verification-sequence.js`: the PostToolUse `record` path flipped `EDITED→TESTED` on test EXECUTION regardless of pass/fail, so a FAILED test cleared the git-commit gate. Added `isToolFailure(tool_response)` (checks `exitCode!=0` / `is_error` / `interrupted` / "Exit code N"); a failing test now keeps the gate armed. No new hook needed — a non-zero-exit Bash command fires `PostToolUse` (confirmed against the official hooks docs), not `PostToolUseFailure`. `_test-verification-sequence.js`: +5 cases, 35/35 PASS.
+- `skills/search-docs/SKILL.md`: scope advertised `D/P/T/I/W` but `search-docs.js` indexes 7 dirs incl. `knowledge`/`hotfix`. Updated to `D/P/T/I/H/W/K` + the directory list.
+- `skills/lint/SKILL.md`: removed the stale "implemented in T002 / cannot run until T002 complete" refusal branch (`lint-obsidian.js` exists and runs); defer to the generic Rule 4.
+- `commands/{load,save,search,clear}-memory.md`: converted to skill-delegating stubs (matching `status.md`), dropping the hardcoded non-existent `~/.claude/plugins/cache/...` path (source-first violation) and raw `rm -rf`.
+- Verification: full `_test-*.js` sweep 52/52 files PASS. Source of changes: local investigation I078 (census + latest-CC-features research).
+
 ## v21.100.0 - 2026-05-28
 
 ### feat: disable behavior-verifier (감시자) Stop hook dispatch

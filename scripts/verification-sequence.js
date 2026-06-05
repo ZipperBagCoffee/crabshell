@@ -134,6 +134,30 @@ function isGitCommit(command) {
 }
 
 /**
+ * Detect whether a PostToolUse tool_response indicates the command FAILED.
+ * A failing test must NOT clear the commit gate, so the record path only
+ * transitions to TESTED on a passing run. Conservative by design: returns
+ * true only on explicit failure signals (non-zero exit / is_error /
+ * interrupted / "Exit code N"). An absent tool_response (older platform
+ * payloads, or hooks that omit it) is treated as not-a-failure so behavior
+ * stays backward-compatible and fail-open.
+ */
+function isToolFailure(toolResponse) {
+  if (toolResponse === undefined || toolResponse === null) return false;
+  try {
+    if (typeof toolResponse === 'object') {
+      if (toolResponse.is_error === true) return true;
+      if (toolResponse.interrupted === true) return true;
+      if (typeof toolResponse.exitCode === 'number' && toolResponse.exitCode !== 0) return true;
+      if (typeof toolResponse.code === 'number' && toolResponse.code !== 0) return true;
+    }
+    const s = (typeof toolResponse === 'string') ? toolResponse : JSON.stringify(toolResponse);
+    if (/(^|[^A-Za-z])[Ee]xit code [1-9][0-9]*/.test(s)) return true;
+  } catch {}
+  return false;
+}
+
+/**
  * Handle session isolation: reset state if session changed and state is old.
  */
 function handleSessionIsolation(state, sessionId) {
@@ -173,10 +197,16 @@ async function handleRecord(hookData, projectDir) {
     }
   } else if (toolName === 'Bash' && input.command) {
     if (isTestExecution(input.command)) {
-      state.state = 'TESTED';
-      state.editsSinceTest = [];
-      state.lastTestTs = new Date().toISOString();
-      process.stderr.write(`[VERIFICATION_SEQ] Recorded test execution, state → TESTED\n`);
+      if (isToolFailure(hookData.tool_response)) {
+        // A FAILED test must NOT clear the commit gate — keep current state
+        // (stays EDITED if source was edited) so the gate still blocks commit.
+        process.stderr.write(`[VERIFICATION_SEQ] Test execution FAILED — commit gate stays armed (state unchanged)\n`);
+      } else {
+        state.state = 'TESTED';
+        state.editsSinceTest = [];
+        state.lastTestTs = new Date().toISOString();
+        process.stderr.write(`[VERIFICATION_SEQ] Recorded passing test execution, state → TESTED\n`);
+      }
     }
   }
 

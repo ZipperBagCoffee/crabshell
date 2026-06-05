@@ -263,8 +263,8 @@ function getUnreflectedL1Content(l1Path, memoryContent) {
     for (const line of lines) {
       try {
         const entry = JSON.parse(line);
-        if (entry.role === 'assistant' && entry.content) {
-          const text = typeof entry.content === 'string' ? entry.content : entry.content.map(c => c.text || '').join('');
+        if (entry.role === 'assistant' && entry.text) {
+          const text = typeof entry.text === 'string' ? entry.text : entry.text.map(c => c.text || '').join('');
           if (text.length > 50 && !memoryContent.includes(text.substring(0, 50))) {
             summary.push(text.substring(0, 200));
           }
