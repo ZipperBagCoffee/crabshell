@@ -26,7 +26,7 @@ When invoked without arguments:
 node scripts/lint-obsidian.js --project-dir="<project root>"
 ```
 
-If `scripts/lint-obsidian.js` does not exist, report: "lint-obsidian.js not found. This script is implemented in T002. Cannot run lint checks until T002 is complete."
+If `scripts/lint-obsidian.js` does not exist, report that it is missing and stop gracefully (see Rule 4 below).
 
 ### Step 2: Read the report
 

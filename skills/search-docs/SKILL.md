@@ -1,6 +1,6 @@
 ---
 name: search-docs
-description: "BM25 full-text search across all D/P/T/I/W documents in .crabshell/. Returns ranked results by relevance. Use when looking for specific discussions, plans, tickets, or investigations by topic keyword. Invoke with /search-docs <query>."
+description: "BM25 full-text search across all D/P/T/I/H/W/K documents in .crabshell/. Returns ranked results by relevance. Use when looking for specific discussions, plans, tickets, or investigations by topic keyword. Invoke with /search-docs <query>."
 ---
 
 ## Node.js Path
@@ -27,7 +27,7 @@ If not available in context, use your current working directory.
 
 # Search Documents
 
-Search all D/P/T/I/W documents using BM25 relevance ranking with field boosts.
+Search all D/P/T/I/H/W/K documents using BM25 relevance ranking with field boosts.
 
 ## Usage
 
@@ -56,6 +56,6 @@ Use full path from above:
 
 - Field boosts: title (3x) > tags (2x) > id (1.5x) > body (1x)
 - BM25 parameters: k1=1.5, b=0.75
-- Searches: discussion/, investigation/, plan/, ticket/, worklog/ under .crabshell/
+- Searches: discussion/, investigation/, plan/, ticket/, worklog/, knowledge/, hotfix/ under .crabshell/
 - Only documents with YAML frontmatter are indexed
 - If .crabshell/ does not exist, exits cleanly with a message
