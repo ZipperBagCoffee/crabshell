@@ -50,9 +50,9 @@
     },
     {
       "id": "AC-6",
-      "ia": "version 21.101.0 (current)",
+      "ia": "version 21.102.0 (current)",
       "type": "indirect",
-      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const v=JSON.parse(require('fs').readFileSync('C:/Users/chulg/Documents/memory-keeper-plugin/.claude-plugin/plugin.json','utf8')).version;console.log(v==='21.101.0'?'PASS:'+v:'FAIL:'+v)\"",
+      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const v=JSON.parse(require('fs').readFileSync('C:/Users/chulg/Documents/memory-keeper-plugin/.claude-plugin/plugin.json','utf8')).version;console.log(v==='21.102.0'?'PASS:'+v:'FAIL:'+v)\"",
       "expected": "PASS:",
       "timeout": 5000
     },
@@ -207,14 +207,14 @@
     },
     {
       "id": "V012",
-      "ia": "D103 cycle 2 — dispatch overdue field + verifier prompt §1 format-marker sub-clause (P135_T001)",
+      "ia": "D103 cycle 2 — dispatch overdue field + verifier prompt §1 format-marker sub-clause (P135_T001); updated I079 R1/W027 v21.102.0: 3-field markers [의도][이해][설명]",
       "level": "L3",
       "type": "indirect",
       "steps": [
         "Read scripts/behavior-verifier.js and confirm dispatchOverdue field is wired into both detection (read prior state, scan transcript) and write paths — minimum 2 occurrences",
-        "Read prompts/behavior-verifier-prompt.md and confirm §1.understanding sub-clause current 7 Korean markers and 'Format markers' directive are present"
+        "Read prompts/behavior-verifier-prompt.md and confirm §1.understanding sub-clause current 3 Korean markers ([의도][이해][설명]) and 'Format markers' directive are present"
       ],
-      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const fs=require('fs');const bv=fs.readFileSync('C:/Users/chulg/Documents/memory-keeper-plugin/scripts/behavior-verifier.js','utf8');const dispatchHits=(bv.match(/dispatchOverdue/g)||[]).length;const p=fs.readFileSync('C:/Users/chulg/Documents/memory-keeper-plugin/prompts/behavior-verifier-prompt.md','utf8');const sec=p.slice(p.indexOf('### 1. understanding'),p.indexOf('### 2. verification'));const markers=['[의도]','[이해]','[검증]','[논리]','[쉬운 설명]','[동조화 및 일관성]','[완결 충동]'];const missing=markers.filter(m=>!sec.includes(m));const ok=dispatchHits>=2&&/Format markers/i.test(sec)&&missing.length===0;console.log(ok?'PASS:cycle2-dispatch-format':'FAIL:dispatch='+dispatchHits+' missing='+missing.join('|'))\"",
+      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const fs=require('fs');const bv=fs.readFileSync('C:/Users/chulg/Documents/memory-keeper-plugin/scripts/behavior-verifier.js','utf8');const dispatchHits=(bv.match(/dispatchOverdue/g)||[]).length;const p=fs.readFileSync('C:/Users/chulg/Documents/memory-keeper-plugin/prompts/behavior-verifier-prompt.md','utf8');const sec=p.slice(p.indexOf('### 1. understanding'),p.indexOf('### 2. verification'));const markers=['[의도]','[이해]','[설명]'];const missing=markers.filter(m=>!sec.includes(m));const ok=dispatchHits>=2&&/Format markers/i.test(sec)&&missing.length===0;console.log(ok?'PASS:cycle2-dispatch-format':'FAIL:dispatch='+dispatchHits+' missing='+missing.join('|'))\"",
       "expected": "PASS:",
       "observation": null,
       "timeout": 5000

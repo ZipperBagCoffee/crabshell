@@ -1,5 +1,15 @@
 # Changelog
 
+## [21.102.0] - 2026-06-11
+
+### feat: I079 R1 — replace 7-field skeleton with 3-field caveman style (W027)
+- `scripts/inject-rules.js`: `SKELETON_7FIELD` constant replaced with `SKELETON_3FIELD`. Removed 4 self-check fields: `[검증]`, `[논리]`, `[동조화 및 일관성]`, `[완결 충동]` (I079: zero substantive catches in recorded ring buffer; Fable 5 reasoning-echo guidance — these fields echoed reasoning already present in the response body without adding signal; ~250-360 tok/turn + output cost recovered). Renamed `[쉬운 설명]` → `[설명]`. Caveman-terse one-line style per field. `COMPRESSED_CHECKLIST` and response-body rules unchanged.
+- `scripts/_test-d107-cycle1-inject-enhancement.js`: markers array updated to 3-field `['[의도]', '[이해]', '[설명]']`; case-1 name/comments updated from "5-field" to "3-field".
+- `scripts/_test-format-clause-detection.js`: `CURRENT_MARKERS` updated to 3 markers; fixture updated to 3-field; header comment and test names updated from "7-field" to "3-field"; test 4 updated from "7-marker" to "3-marker".
+- `prompts/behavior-verifier-prompt.md`: §0.5 description updated (`SKELETON_7FIELD`→`SKELETON_3FIELD`, 7-field→3-field); marker table reduced to 3 rows; per-field content rules table reduced to 3 rows (removed [검증][논리][동조화 및 일관성][완결 충동] rows); pseudocode `<7`/`==7` → `<3`/`==3`; §1 format-markers sub-clause updated to 3 markers `[의도]/[이해]/[설명]`. Component retained dormant for reversibility.
+- `.crabshell/verification/manifest.json`: V012 command updated to 3 markers `['[의도]','[이해]','[설명]']`; AC-6 version check updated `v==='21.101.0'` → `v==='21.102.0'`.
+- User-approved product decision. CLAUDE.md / COMPRESSED_CHECKLIST / other guards unchanged.
+
 ## v21.101.0 - 2026-06-04
 
 ### fix: I078 Tier-1 source cleanup (5 fixes)

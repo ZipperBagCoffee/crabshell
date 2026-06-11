@@ -305,28 +305,21 @@ const DEFAULT_NO_EXECUTION = `\n## Execution Default\nDefault: respond with expl
 // IA-3: Execution judgment prompt
 const EXECUTION_JUDGMENT = `\n## Execution Pattern Detected\nExecution pattern detected in user message. Before acting: verify this is truly an execution instruction, not a question containing action words (e.g., '설명해라' = explain, not execute). If uncertain, explain your intended action first.\n`;
 
-// D107 IA-1 (P143_T001) — 7-field response skeleton, top-prepended every turn.
-// v21.98.0 (W024): added 7th field [완결 충동] (completion-drive self-check).
-// Pure Korean canonical (P143 Intent Check Decision condition 1: drop bilingual slash form).
+// I079 R1/W027 (v21.102.0) — replaced 7-field skeleton with 3-field caveman-terse version.
+// Removed 4 self-check fields ([검증][논리][동조화 및 일관성][완결 충동]):
+//   zero substantive catches in recorded ring buffer + Fable 5 reasoning-echo guidance
+//   (these fields were echoing reasoning already present in the response body, not adding signal).
+// [쉬운 설명] renamed to [설명]. User-approved product decision.
 // Schema-only — no example outputs (form-game prevention per IA-7 / TRAP-1).
-const SKELETON_7FIELD = `
-## Response Skeleton — fill 7 fields at END of response
-Place this 7-field block AT THE BOTTOM of your response, after the main answer body. The main answer comes first; the skeleton self-check is the trailing summary, not the opening.
-Render with a blank line between each field, and keep each field body to 1-2 lines (compress aggressively; fragmented inline cites are fine).
+const SKELETON_3FIELD = `
+## Response Skeleton — 3 fields at END of response (caveman-terse)
+Place this 3-field block AT THE BOTTOM of your response, after the main answer body. One short line per field — no filler, fragments fine, stay readable in the user's words. Do not narrate internal reasoning here.
 
-[검증]: 주장마다 tool output 인용, 없으면 '미검증' 명시.
+[의도]: 사용자 요청 1줄 재진술 (사용자의 말로).
 
-[논리]: 추론 단계별 서술, 또는 '추론 불필요 — 사유:' 명시.
+[이해]: 본인 해석 + gap. gap 있으면 확인 요청, 없으면 'gap 없음'.
 
-[동조화 및 일관성]: 본인 응답이 증거 없이 사용자에게 동조하거나, 이전 발언과 모순되지 않는지 점검. 위반 시 명시.
-
-[완결 충동]: 모르는 부분을 그럴듯하게 메우거나 검증 없이 결론 내려서 응답을 끝낸 모양새로 만들었는지 점검. 위반 시 명시, 없으면 '완결 충동 없음'.
-
-[의도]: 사용자 요청을 사용자의 말로 1줄 재진술.
-
-[이해]: 본인 해석 + 사용자 의도와의 gap 식별. gap 있으면 확인 요청. 이해 = gap이 닫힌 상태.
-
-[쉬운 설명]: 사용자 말로 평문 요약 (200자 이하, 전문용어 금지, analogy 금지).
+[설명]: 평문 1줄 요약 (전문용어·analogy 금지).
 `;
 
 
@@ -800,14 +793,14 @@ async function main() {
       let context = '';
       // D107 cycle 1 (P143_T001 WA2) — top-prepend ringBuffer FAIL surface
       // (silent skip if no FAIL / stale > 30min / no priorState). Order:
-      // [ringBuffer FAIL] → [SKELETON_7FIELD (WA1, W024)]
+      // [ringBuffer FAIL] → [SKELETON_3FIELD (I079 R1/W027, v21.102.0)]
       // → [COMPRESSED_CHECKLIST] → [project concept] → ... → [Watcher Recent Verdicts]
       context += buildRingBufferFailSurface(priorState);
-      // D107 cycle 1 (P143_T001 WA1) — 7-field response skeleton (W024 added [완결 충동]).
+      // I079 R1/W027 (v21.102.0) — 3-field caveman-terse skeleton (replaced 7-field).
       // Top-prepend BEFORE existing COMPRESSED_CHECKLIST + Project Concept
       // blocks (Lost-in-the-Middle: rank 1+2 of always-present per-turn signals).
       // Pure Korean canonical (no bilingual slash form).
-      context += SKELETON_7FIELD;
+      context += SKELETON_3FIELD;
       context += COMPRESSED_CHECKLIST;
       if (projectConcept) {
         context += `\n## Project Concept\n${projectConcept}\n\n`;
@@ -1177,6 +1170,6 @@ module.exports = {
   PRESSURE_L3,
   DEFAULT_NO_EXECUTION,
   EXECUTION_JUDGMENT,
-  // D107 cycle 1 (P143_T001 WA1) — 7-field skeleton (W024)
-  SKELETON_7FIELD,
+  // I079 R1/W027 (v21.102.0) — 3-field caveman-terse skeleton (replaced 7-field)
+  SKELETON_3FIELD,
 };

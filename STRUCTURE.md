@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.101.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.102.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -358,6 +358,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.102.0 | feat: I079 R1 — replace 7-field response skeleton with 3-field caveman-terse version; removed 4 self-check fields; renamed [쉬운 설명]→[설명]; sync tests + verifier prompt + manifest. User-approved. Tests 52/52 PASS. |
 | 21.101.0 | fix: I078 Tier-1 source cleanup — restore dead "Unreflected from Last Session" SessionStart section (`load-memory.js` `entry.text`); `verification-sequence.js` now keeps a FAILED test from clearing the git-commit gate; fix `search-docs`/`lint`/`memory-autosave` SKILL doc drift; convert 5 redundant memory/status slash-commands to skill-delegating stubs (drop hardcoded cache path). Tests 52/52 files PASS. |
 | 21.100.0 | feat: disable behavior-verifier (감시자) — removed Stop hook entry from hooks.json so the verifier sub-agent is never dispatched (Opus 4.8 model-upgrade audit: recorded verdicts caught only format-marker absences, zero substantive failures; it ran an Opus background agent per turn). Consumer code/script/prompt retained dormant; SKELETON_7FIELD format injection + all other guards unchanged. |
 | 21.99.6 | fix: remove Edit→Grep cycle gate from verification-sequence — Gate 1 removed (incomplete detection, deadlock-prone); kept Gate 2 (commit without test); tests 30/30 PASS. |

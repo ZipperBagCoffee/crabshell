@@ -5,14 +5,15 @@
  *
  * The behavioral L1 (verifier sub-agent FAIL on missing markers) is cycle 3+
  * scope (P134 DA-2 analog). This test file is L3 — structural grep that the
- * sub-clause text matches the current 7-field Korean skeleton.
+ * sub-clause text matches the current 3-field Korean skeleton (I079 R1/W027,
+ * v21.102.0: replaced 7-field with 3-field caveman-terse style).
  *
  * 5 cases:
- *  1) Current 7 Korean markers all present in §1.understanding
+ *  1) Current 3 Korean markers all present in §1.understanding
  *  2) Stale bilingual marker set is absent from §1.understanding
  *  3) Length threshold "200" appears with sub-clause keyword
- *  4) "Format markers" / 7-marker / FAIL semantics present
- *  5) Mock current 7-field response fixture sanity check
+ *  4) "Format markers" / 3-marker / FAIL semantics present
+ *  5) Mock current 3-field response fixture sanity check
  */
 
 const fs = require('fs');
@@ -35,12 +36,12 @@ const start = text.indexOf('### 1. understanding');
 const end = text.indexOf('### 2. verification');
 const sec1 = (start >= 0 && end > start) ? text.slice(start, end) : '';
 
-const CURRENT_MARKERS = ['[의도]', '[이해]', '[검증]', '[논리]', '[쉬운 설명]', '[동조화 및 일관성]', '[완결 충동]'];
+const CURRENT_MARKERS = ['[의도]', '[이해]', '[설명]'];
 
 // ---------- Test 1 — current Korean markers all present ----------
 (function() {
   const missing = CURRENT_MARKERS.filter(m => !sec1.includes(m));
-  ok('1 §1.understanding contains current 7 Korean markers', missing.length === 0,
+  ok('1 §1.understanding contains current 3 Korean markers', missing.length === 0,
      'missing=' + missing.join(', ') + ' sec1 first 200 = ' + sec1.slice(0, 200));
 })();
 
@@ -61,18 +62,18 @@ const CURRENT_MARKERS = ['[의도]', '[이해]', '[검증]', '[논리]', '[쉬�
 // ---------- Test 4 — Format markers / current semantics present ----------
 (function() {
   const hasFormatMarkers = /Format markers/i.test(sec1);
-  const hasSeven = /7개\s*마커|7\s*markers?/i.test(sec1);
+  const hasThree = /3개\s*마커|3\s*markers?/i.test(sec1);
   const hasFail = /부재\s*시\s*FAIL|missing.*FAIL/i.test(sec1);
-  ok('4 sub-clause has Format markers + 7-marker + missing→FAIL semantics',
-     hasFormatMarkers && hasSeven && hasFail,
-     'fm=' + hasFormatMarkers + ' seven=' + hasSeven + ' fail=' + hasFail);
+  ok('4 sub-clause has Format markers + 3-marker + missing→FAIL semantics',
+     hasFormatMarkers && hasThree && hasFail,
+     'fm=' + hasFormatMarkers + ' three=' + hasThree + ' fail=' + hasFail);
 })();
 
-// ---------- Test 5 — Current 7-field fixture sanity ----------
+// ---------- Test 5 — Current 3-field fixture sanity ----------
 (function() {
-  const fixture = '[검증]: 미검증\n[논리]: 추론 불필요 — 사유: 단순 확인\n[동조화 및 일관성]: 위반 없음\n[완결 충동]: 완결 충동 없음\n[의도]: 요청 재진술\n[이해]: 불확실 항목 없음\n[쉬운 설명]: 요약';
+  const fixture = '[의도]: 요청 재진술\n[이해]: gap 없음\n[설명]: 요약';
   const missing = CURRENT_MARKERS.filter(m => !fixture.includes(m));
-  ok('5 current 7-field fixture contains every required marker',
+  ok('5 current 3-field fixture contains every required marker',
      missing.length === 0,
      'missing=' + missing.join(', '));
 })();
