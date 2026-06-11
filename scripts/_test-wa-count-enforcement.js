@@ -87,45 +87,48 @@ function removeIfExists(filePath) {
 
 console.log('\n=== classifyAgent() ===\n');
 
-// TC1: prompt with "Work Agent" → returns "WA"
-test('prompt with "Work Agent" → "WA"', () => {
+// TC1: description "WA: implement X" → returns "WA" (explicit prefix)
+// W028: classification is description-only; prompt body is never read.
+test('description "WA: implement X" → "WA" (explicit prefix)', () => {
   assert.ok(typeof classifyAgent === 'function', 'classifyAgent must be exported from counter.js');
-  const result = classifyAgent({ tool_name: 'Agent', tool_input: { prompt: 'You are Work Agent 1, implement the feature.' } });
+  const result = classifyAgent({ tool_name: 'Agent', tool_input: { description: 'WA: implement the feature', prompt: 'verify all changes in .crabshell/verification/manifest.json' } });
   assert.strictEqual(result, 'WA', `expected "WA", got "${result}"`);
 });
 
-// TC2: prompt with "Review Agent" → returns "RA"
-test('prompt with "Review Agent" → "RA"', () => {
+// TC2: description "RA: verify W027" → returns "RA" (explicit prefix)
+test('description "RA: verify W027" → "RA" (explicit prefix)', () => {
   assert.ok(typeof classifyAgent === 'function', 'classifyAgent must be exported from counter.js');
-  const result = classifyAgent({ tool_name: 'Agent', tool_input: { prompt: 'You are Review Agent 1, verify the implementation.' } });
+  const result = classifyAgent({ tool_name: 'Agent', tool_input: { description: 'RA: verify W027 implementation', prompt: 'implement the new counter logic' } });
   assert.strictEqual(result, 'RA', `expected "RA", got "${result}"`);
 });
 
-// TC3: prompt with "verify" → returns "RA"
-test('prompt with "verify" → "RA"', () => {
+// TC3: description "Review code changes" → returns "RA" (keyword in description)
+test('description "Review code changes" → "RA" (keyword in description)', () => {
   assert.ok(typeof classifyAgent === 'function', 'classifyAgent must be exported from counter.js');
-  const result = classifyAgent({ tool_name: 'Agent', tool_input: { prompt: 'Please verify all the changes are correct.' } });
+  const result = classifyAgent({ tool_name: 'Agent', tool_input: { description: 'Review code changes' } });
   assert.strictEqual(result, 'RA', `expected "RA", got "${result}"`);
 });
 
-// TC4: prompt with "verification" → returns "RA"
-test('prompt with "verification" → "RA"', () => {
+// TC4: description "Verification agent" → returns "RA" (keyword in description)
+test('description "Verification agent" → "RA" (keyword in description)', () => {
   assert.ok(typeof classifyAgent === 'function', 'classifyAgent must be exported from counter.js');
-  const result = classifyAgent({ tool_name: 'Agent', tool_input: { prompt: 'Perform verification of the output files.' } });
+  const result = classifyAgent({ tool_name: 'Agent', tool_input: { description: 'Verification agent for output files' } });
   assert.strictEqual(result, 'RA', `expected "RA", got "${result}"`);
 });
 
-// TC5: prompt with "implement" (no RA pattern) → returns "WA" (default)
-test('prompt with "implement" (no RA pattern) → "WA"', () => {
+// TC5: prompt contains "verify all changes" but neutral description → returns "WA" (prompt not read)
+// W028 root-cause fix: WA prompts routinely contain "verify your work with tests" instructions
+// required by workflow skills; these must NOT trigger RA classification.
+test('prompt contains "verify all changes" with neutral description → "WA" (prompt not read, W028)', () => {
   assert.ok(typeof classifyAgent === 'function', 'classifyAgent must be exported from counter.js');
-  const result = classifyAgent({ tool_name: 'Agent', tool_input: { prompt: 'Please implement the new counter logic.' } });
+  const result = classifyAgent({ tool_name: 'Agent', tool_input: { prompt: 'Please verify all changes are correct and check .crabshell/verification/manifest.json', description: 'Implement the new counter logic' } });
   assert.strictEqual(result, 'WA', `expected "WA" (default), got "${result}"`);
 });
 
-// TC6: empty prompt → returns "WA" (default, AC3)
-test('empty prompt → "WA" (default, AC3)', () => {
+// TC6: empty description → returns "WA" (default, AC3)
+test('empty description → "WA" (default, AC3)', () => {
   assert.ok(typeof classifyAgent === 'function', 'classifyAgent must be exported from counter.js');
-  const result = classifyAgent({ tool_name: 'Agent', tool_input: { prompt: '' } });
+  const result = classifyAgent({ tool_name: 'Agent', tool_input: { description: '' } });
   assert.strictEqual(result, 'WA', `expected "WA" (default), got "${result}"`);
 });
 
@@ -139,7 +142,7 @@ test('null tool_input → "WA" (fail-safe)', () => {
 // TC8: tool_name !== Agent → returns null
 test('tool_name !== "Agent" → null', () => {
   assert.ok(typeof classifyAgent === 'function', 'classifyAgent must be exported from counter.js');
-  const result = classifyAgent({ tool_name: 'Bash', tool_input: { prompt: 'Work Agent 1' } });
+  const result = classifyAgent({ tool_name: 'Bash', tool_input: { description: 'WA: implement' } });
   assert.strictEqual(result, null, `expected null for non-Agent, got "${result}"`);
 });
 
@@ -204,13 +207,14 @@ test('regressing active + waCount=1 → block condition true (AC5)', () => {
   removeIfExists(waCountPath());
 });
 
-// TC13: light-workflow active + waCount=1 → would block (AC6)
-test('light-workflow active + waCount=1 → block condition true (AC6)', () => {
+// TC13: light-workflow active + waCount=1 → NO block (W028 fix: removed lw single-WA block)
+// The light-workflow + waCount===1 Stop block was removed in v21.103.0 because the
+// "minimum 2 parallel WAs" rule does not exist in light-workflow SKILL.md (1:1 WA:RA pairing).
+test('light-workflow active + waCount=1 → NO block (W028: lw single-WA block removed)', () => {
   assert.ok(typeof isLightWorkflowActive === 'function', 'isLightWorkflowActive must be exported from regressing-loop-guard.js');
   assert.ok(typeof getWaCount === 'function', 'getWaCount must be exported');
 
   // Write skill-active for light-workflow — match real skill-tracker.js output shape
-  // (activatedAt + ttl; isLightWorkflowActive checks these fields, not `active`)
   fs.writeFileSync(skillActivePath(), JSON.stringify({
     skill: 'light-workflow',
     activatedAt: new Date().toISOString(),
@@ -221,8 +225,17 @@ test('light-workflow active + waCount=1 → block condition true (AC6)', () => {
   const lwActive = isLightWorkflowActive();
   const waCount = getWaCount();
 
+  // isLightWorkflowActive() still returns true (function intact, flag file works)
   assert.strictEqual(lwActive, true, `expected isLightWorkflowActive()=true, got ${lwActive}`);
   assert.strictEqual(waCount, 1, `expected waCount=1, got ${waCount}`);
+  // The block branch was removed — isLightWorkflowActive()+waCount===1 no longer triggers a Stop block.
+  // This test verifies that the condition that WOULD have blocked is no longer in regressing-loop-guard.js.
+  // Full stop-hook integration (exit code) is validated by the _test-regressing-loop-guard.js suite.
+  const guardSrc = require('fs').readFileSync(require('path').join(__dirname, 'regressing-loop-guard.js'), 'utf8');
+  assert.ok(
+    !guardSrc.includes('isLightWorkflowActive() && waCount === 1'),
+    'regressing-loop-guard.js must NOT contain the removed lw+waCount===1 block branch'
+  );
 
   removeIfExists(skillActivePath());
   removeIfExists(waCountPath());

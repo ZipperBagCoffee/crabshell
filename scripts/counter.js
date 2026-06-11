@@ -70,10 +70,17 @@ function classifyAgent(hookData) {
     const AGENT_TOOLS = ['Agent', 'Task', 'TaskCreate'];
     if (!AGENT_TOOLS.includes(hookData.tool_name)) return null;
     const input = hookData.tool_input || {};
-    const prompt = typeof input.prompt === 'string' ? input.prompt : '';
     const description = typeof input.description === 'string' ? input.description : '';
-    const text = (prompt + ' ' + description).toLowerCase();
-    const RA_PATTERNS = /\b(review agent|verification|verify|reviewer)\b/;
+    // W028: classify from description ONLY. Prompt bodies routinely contain
+    // verification-related words (paths like .crabshell/verification/,
+    // "verify your work with tests" instructions required by workflow skills),
+    // which misclassified nearly every WA as RA (observed waCount=1/raCount=9
+    // with 5 real WAs) and fired a false single-WA Stop block.
+    // Explicit role prefix wins (WA:/RA: description convention).
+    if (/^\s*wa\d*\b/i.test(description)) return 'WA';
+    if (/^\s*ra\d*\b/i.test(description)) return 'RA';
+    const text = description.toLowerCase();
+    const RA_PATTERNS = /\b(review agent|reviewer|review|verification|verify)\b|검증|리뷰/;
     if (RA_PATTERNS.test(text)) return 'RA';
     return 'WA'; // default = WA (conservative)
   } catch { return null; }

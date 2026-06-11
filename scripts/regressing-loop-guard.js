@@ -140,17 +140,6 @@ async function main() {
     process.exit(2);
   }
 
-  // Block if light-workflow is active and only 1 WA was launched
-  if (isLightWorkflowActive() && waCount === 1) {
-    const output = {
-      decision: 'block',
-      reason: 'Light-workflow active but only 1 Work Agent launched. You must launch at least 2 parallel WAs. Stop and re-plan with parallel WA execution.'
-    };
-    process.stderr.write('[REGRESSING_LOOP_GUARD] Blocked: light-workflow active + waCount=1 — forcing parallel WA re-plan\n');
-    console.log(JSON.stringify(output));
-    process.exit(2);
-  }
-
   process.exit(0);
 }
 

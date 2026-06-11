@@ -1,5 +1,13 @@
 # Changelog
 
+## [21.103.0] - 2026-06-11
+
+### fix: WA/RA classifier description-only + remove light-workflow single-WA Stop block (W028)
+- `scripts/counter.js` `classifyAgent`: rewritten to classify from `description` field ONLY. Prompt bodies routinely contain verification-related words (file paths like `.crabshell/verification/manifest.json`, "verify your work with tests" instructions required by workflow skills), which caused nearly every WA to be misclassified as RA (observed: real 5 WA / 5 RA session recorded as waCount=1 / raCount=9). Explicit role prefix convention (`WA:` / `RA:` description prefix) wins unconditionally; description-keyword fallback uses RA_PATTERNS (`review agent`, `reviewer`, `review`, `verification`, `verify`, `검증`, `리뷰`). The `prompt` field is NO LONGER read in `classifyAgent`. Introduced v21.52.0 (b4d3933).
+- `scripts/regressing-loop-guard.js`: deleted `if (isLightWorkflowActive() && waCount === 1)` block (~L143-152 incl. comment). The "minimum 2 parallel WAs" rule does not exist in light-workflow SKILL.md (which requires 1:1 WA:RA pairing). Introduced v21.52.0 (b4d3933). The regressing `waCount===1` block (≥2 parallel WAs, regressing-only) is retained unchanged.
+- `scripts/_test-wa-count-enforcement.js`: TC1-TC8 rewritten from prompt-based to description-based fixtures; TC13 updated from "block condition true" to "NO block (lw single-WA block removed)" + structural assertion that removed branch is absent from source.
+- Root cause: both defects introduced together in commit b4d3933 (v21.52.0).
+
 ## [21.102.0] - 2026-06-11
 
 ### feat: I079 R1 — replace 7-field skeleton with 3-field caveman style (W027)
