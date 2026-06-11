@@ -8,7 +8,7 @@
  * Decision condition 3).
  *
  * Cases:
- *  1) 5-field skeleton — all 5 Korean markers ([의도]/[이해]/[검증]/[논리]/[쉬운 설명])
+ *  1) 3-field skeleton — all 3 Korean markers ([의도]/[이해]/[설명])
  *     present (AND form, not OR — per P143 Cross-Review fix).
  *  2) anti-patterns inline — 9 PROHIBITED key Korean phrases + 4 AVOID Korean
  *     phrases all present.
@@ -79,14 +79,14 @@ function ok(name, cond, detail) {
   }
 }
 
-// ---------- Case 1 — 5-field skeleton Korean markers (AND form) ----------
+// ---------- Case 1 — 3-field skeleton Korean markers (AND form) ----------
 (function() {
   const sb = makeSandbox();
   // No state file — focus on always-present skeleton.
   const r = runInjectRules(sb);
-  const markers = ['[의도]', '[이해]', '[검증]', '[논리]', '[쉬운 설명]'];
+  const markers = ['[의도]', '[이해]', '[설명]'];
   const missing = markers.filter(m => !r.ctx.includes(m));
-  ok('1 5-field skeleton — all 5 Korean markers present (AND)',
+  ok('1 3-field skeleton — all 3 Korean markers present (AND)',
      r.exitCode === 0 && missing.length === 0,
      'exit=' + r.exitCode + ' missing=' + JSON.stringify(missing) + ' ctx_len=' + r.ctx.length);
 })();

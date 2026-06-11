@@ -12,9 +12,9 @@
  *
  * Cases:
  *  1) form-game positive (markers present + generic content) — algorithm
- *     yields formGameDetected=true. Fixture: 5 markers but no user-prompt
- *     quote, no tool output, no reasoning steps, analogy in [쉬운 설명].
- *  2) semantic alignment OK (markers + content satisfying all 5 rules) —
+ *     yields formGameDetected=true. Fixture: 3 markers but no user-prompt
+ *     quote, generic gap statement, analogy in [설명].
+ *  2) semantic alignment OK (markers + content satisfying all 3 rules) —
  *     algorithm yields formGameDetected=false AND semanticAlignment=true.
  *  3) legacy ringBuffer entry render fallback — spawnSync inject-rules.js
  *     with a status='pending' state file containing 6-field legacy entries
@@ -31,18 +31,18 @@
  *  ┌─────────────────────────────┬───────────────────────────────────────────┐
  *  │ Test assertion string       │ Source byte location (post-WA1+WA2)       │
  *  ├─────────────────────────────┼───────────────────────────────────────────┤
- *  │ '[의도]'                    │ inject-rules.js L313 SKELETON_5FIELD      │
- *  │                             │ + behavior-verifier-prompt.md L120 §0.5   │
- *  │ '[이해]'                    │ inject-rules.js L314 + prompt L121        │
- *  │ '[검증]'                    │ inject-rules.js L315 + prompt L122        │
- *  │ '[논리]'                    │ inject-rules.js L316 + prompt L123        │
- *  │ '[쉬운 설명]'               │ inject-rules.js L317 + prompt L124        │
+ *  │ '[의도]'                    │ inject-rules.js SKELETON_3FIELD           │
+ *  │                             │ + behavior-verifier-prompt.md §0.5        │
+ *  │ '[이해]'                    │ inject-rules.js SKELETON_3FIELD           │
+ *  │                             │ + behavior-verifier-prompt.md §0.5        │
+ *  │ '[설명]'                    │ inject-rules.js SKELETON_3FIELD           │
+ *  │                             │ + behavior-verifier-prompt.md §0.5        │
  *  │ legacy fallback char '?'    │ inject-rules.js L915-916                  │
  *  │ 'A'/'a' for sa true/false   │ inject-rules.js L915 ternary              │
  *  │ 'F'/'f' for fg true/false   │ inject-rules.js L916 ternary              │
  *  │ 'auditVerdict' key absent   │ inject-rules.js L1013 filter              │
  *  │   from Behavior Correction  │   `entry[1].pass === false`               │
- *  │ 'all 5 fields content-      │ behavior-verifier-prompt.md L155 evidence │
+ *  │ 'all 3 fields content-      │ behavior-verifier-prompt.md §0.5 evidence │
  *  │   aligned' evidence string  │   string (semanticAlignment=true branch)  │
  *  │ 36864 byte cap              │ ticket AC-3 / Scope #1 RA1 C5             │
  *  └─────────────────────────────┴───────────────────────────────────────────┘
@@ -137,9 +137,7 @@ function runInjectRules(sandbox) {
 const MARKER_REGEXES = {
   intent:        /^\s*\[의도\]\s*[:：]/m,
   understanding: /^\s*\[이해\]\s*[:：]/m,
-  verification:  /^\s*\[검증\]\s*[:：]/m,
-  logic:         /^\s*\[논리\]\s*[:：]/m,
-  simple:        /^\s*\[쉬운\s*설명\]\s*[:：]/m
+  description:   /^\s*\[설명\]\s*[:：]/m
 };
 
 function stripCodeBlocks(text) {
@@ -150,7 +148,7 @@ function extractFieldBody(text, fieldKey) {
   // Extract the body content of a field: the lines after the marker line up
   // until the next marker or end of text.
   const lines = text.split('\n');
-  const markerKeys = ['intent', 'understanding', 'verification', 'logic', 'simple'];
+  const markerKeys = ['intent', 'understanding', 'description'];
   const startIdx = lines.findIndex(l => MARKER_REGEXES[fieldKey].test(l));
   if (startIdx < 0) return '';
   let endIdx = lines.length;
@@ -186,31 +184,13 @@ function fieldContentPass(fieldKey, body, userPrompt) {
     return tokens.some(t => b.includes(t));
   }
   if (fieldKey === 'understanding') {
-    // PASS: ≥1 uncertainty marker (?, 불확실, 모름, 확인 필요) OR explicit "없음" disclaimer.
+    // PASS: ≥1 uncertainty marker (?, 불확실, 모름, 확인 필요) OR explicit "없음" / "gap 없음" disclaimer.
     if (/[?？]/.test(b)) return true;
     if (/(불확실|모름|확인\s*필요)/.test(b)) return true;
-    if (/(uncertain\s*없음|불확실\s*항목\s*없음|불확실\s*없음)/.test(b)) return true;
+    if (/(uncertain\s*없음|불확실\s*항목\s*없음|불확실\s*없음|gap\s*없음)/.test(b)) return true;
     return false;
   }
-  if (fieldKey === 'verification') {
-    // PASS: tool output citation (file path + line, P/O/G Observation) OR "미검증".
-    if (/미검증/.test(b)) return true;
-    // Concrete tool-output citation heuristics: file:line, /path, Bash output marker,
-    // or P/O/G "Observation".
-    if (/[A-Za-z0-9_./\\-]+\.(?:js|ts|json|md|py)(?::\d+)?/.test(b)) return true;
-    if (/Observation/i.test(b)) return true;
-    if (/\$\s+\S+|>\s+\S+/.test(b)) return true; // shell prompt marker
-    return false;
-  }
-  if (fieldKey === 'logic') {
-    // PASS: ≥1 cause-and-effect connector OR explicit "추론 불필요 — 사유:".
-    if (/추론\s*불필요\s*[—-]\s*사유/.test(b)) return true;
-    if (/(따라서|because|→|⇒)/.test(b)) return true;
-    // Numbered steps (1. / 2.).
-    if (/(?:^|\n)\s*\d+[.)]\s+/.test(b)) return true;
-    return false;
-  }
-  if (fieldKey === 'simple') {
+  if (fieldKey === 'description') {
     // PASS: ≤200자 평문, no analogy markers.
     if (b.length > 200) return false;
     if (/(마치|처럼|비유하면|as\s+if|like\s+a)/i.test(b)) return false;
@@ -225,11 +205,11 @@ function fieldContentPass(fieldKey, body, userPrompt) {
  */
 function evaluateAudit(assistantText, userPrompt) {
   const stripped = stripCodeBlocks(assistantText);
-  const fieldKeys = ['intent', 'understanding', 'verification', 'logic', 'simple'];
+  const fieldKeys = ['intent', 'understanding', 'description'];
   const markersPresent = fieldKeys.filter(k => MARKER_REGEXES[k].test(stripped));
   const markerCount = markersPresent.length;
 
-  if (markerCount < 5) {
+  if (markerCount < 3) {
     const missing = fieldKeys.filter(k => !MARKER_REGEXES[k].test(stripped));
     return {
       semanticAlignment: false,
@@ -245,15 +225,15 @@ function evaluateAudit(assistantText, userPrompt) {
       failures.push(k);
     }
   }
-  const contentPass = 5 - failures.length;
-  if (contentPass === 5) {
+  const contentPass = 3 - failures.length;
+  if (contentPass === 3) {
     return {
       semanticAlignment: true,
       formGameDetected: false,
-      evidence: 'all 5 fields content-aligned'
+      evidence: 'all 3 fields content-aligned'
     };
   }
-  // markers_present == 5 AND content_pass < 5 → form-game
+  // markers_present == 3 AND content_pass < 3 → form-game
   return {
     semanticAlignment: false,
     formGameDetected: true,
@@ -265,16 +245,14 @@ function evaluateAudit(assistantText, userPrompt) {
 // Case 1 — form-game positive (L1 audit-algorithm execution on fixture)
 // ============================================================================
 (function() {
-  const userPrompt = 'D107 cycle 2 verifier 역할 변경 진행해줘';
-  // Fixture: 5 markers present BUT content is generic stubs — no user-prompt
-  // quote (no "D107"/"verifier" reference), no uncertainty marker, no tool
-  // output citation, no reasoning connectors, analogy in [쉬운 설명].
+  const userPrompt = 'I079 R1 skeleton 3-field 교체 진행해줘';
+  // Fixture: 3 markers present BUT content is generic stubs — no user-prompt
+  // quote (no "I079"/"skeleton"/"3-field" reference), no uncertainty marker,
+  // analogy in [설명].
   const fixture = [
-    '[의도]: 사용자 요청 처리',                        // generic — no D107/verifier/cycle quote
-    '[이해]: 본인 해석 완료',                           // no uncertainty marker, no "없음"
-    '[검증]: 확인 완료',                                // no tool output citation, no "미검증"
-    '[논리]: 결론 도출',                                // no cause-effect connector, no "추론 불필요"
-    '[쉬운 설명]: 마치 시계처럼 동작합니다.'              // analogy marker
+    '[의도]: 사용자 요청 처리',                        // generic — no I079/skeleton/3-field quote
+    '[이해]: 본인 해석 완료',                           // no uncertainty marker, no "없음", no "gap 없음"
+    '[설명]: 마치 시계처럼 동작합니다.'                  // analogy marker
   ].join('\n');
 
   const verdict = evaluateAudit(fixture, userPrompt);
@@ -287,14 +265,12 @@ function evaluateAudit(assistantText, userPrompt) {
 // Case 2 — semantic alignment OK
 // ============================================================================
 (function() {
-  const userPrompt = 'inject-rules.js의 readBehaviorVerifierState 함수 callsite 수를 알려줘';
-  // Fixture: 5 markers + each satisfies its content rule.
+  const userPrompt = 'inject-rules.js의 SKELETON_3FIELD 상수 내용을 알려줘';
+  // Fixture: 3 markers + each satisfies its content rule.
   const fixture = [
-    '[의도]: readBehaviorVerifierState callsite 수 보고.',                   // user-prompt noun phrase quoted
-    '[이해]: 사용자가 callsite 수만 원하는지, 줄번호도 원하는지 확인 필요?',   // uncertainty + ?
-    '[검증]: scripts/inject-rules.js:623 def, scripts/inject-rules.js:812 hoisted, scripts/inject-rules.js:994 lock-internal — Observation: grep result 3 hits.', // file:line + Observation
-    '[논리]: grep 출력에 3개 hit → 따라서 callsite 총 3건.',                  // cause-effect connector "따라서"
-    '[쉬운 설명]: 함수 정의 1번 + 호출 2번 = 총 3번 등장합니다.'              // ≤200, no analogy
+    '[의도]: SKELETON_3FIELD 상수 내용 조회.',          // user-prompt noun phrase quoted
+    '[이해]: 상수 내용만 원하는지, 주석도 원하는지 확인 필요?',   // uncertainty + ?
+    '[설명]: inject-rules.js에 정의된 3-field 응답 스켈레톤 상수입니다.'  // ≤200, no analogy
   ].join('\n');
 
   const verdict = evaluateAudit(fixture, userPrompt);
