@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.102.0)
+# Crabshell Architecture (v21.103.0)
 
 ## Overview
 
@@ -238,8 +238,8 @@ Two meta-principles guide Claude's approach to obstacles:
    │   └─> Block session end when regressing active + ticket has no work log entry since last code edit
    ├─> scope-guard.js (v21.19.0)
    │   └─> Compare user-requested quantity vs response count; block scope reduction without approval
-   └─> regressing-loop-guard.js (v21.55.0)
-       └─> Block stop when regressing active + inject phase-specific context (force continuation); enforce ≥2 parallel WAs; light-workflow + single-WA enforcement
+   └─> regressing-loop-guard.js (v21.55.0, updated v21.103.0)
+       └─> Block stop when regressing active + inject phase-specific context (force continuation); enforce ≥2 parallel WAs (regressing only; light-workflow single-WA block removed v21.103.0)
 
 4. PostToolUse (all tools)
    ├─> counter.js check
@@ -353,7 +353,7 @@ Agent orchestration rules (11 rules covering pairing, cross-review, coherence, c
 | `path-guard.js` | PreToolUse (Read\|Grep\|Glob\|Bash\|Write\|Edit) | Block wrong .crabshell/ path; shell var resolution (fail-closed for .crabshell/ v21.8.0); block Edit on logbook.md; block Write shrink on logbook.md (v20.6.0) |
 | `sycophancy-guard.js` | Stop, PreToolUse (Write\|Edit) | Dual-layer sycophancy detection + verification claim detection (4-tier classification): Stop response + mid-turn transcript parsing; block with re-examination |
 | `scope-guard.js` | Stop | Compare user-requested quantity vs response count; block scope reduction without approval |
-| `regressing-loop-guard.js` | Stop | Block stop when regressing active + inject phase-specific context via buildRegressingReminder(); enforce ≥2 parallel WAs in regressing + light-workflow; WA count tracking via wa-count.json |
+| `regressing-loop-guard.js` | Stop | Block stop when regressing active + inject phase-specific context via buildRegressingReminder(); enforce ≥2 parallel WAs (regressing only; v21.103.0 removed light-workflow single-WA block — rule absent from SKILL.md); WA count tracking via wa-count.json |
 | `behavior-verifier.js` | Stop | 감시자 sub-agent dispatch (v21.80.0+): write `behavior-verifier-state.json` `status='pending'` + `[CRABSHELL_BEHAVIOR_VERIFY]` sentinel. v21.83.0 trigger 3-layer (periodic N=8 + workflow-active force + escalation L0/L1) + 5-class turn classification + ring buffer FIFO N=8 + state schema 14 fields. v21.96.0 skips workflow-active verifier/monitor idle echoes before pending-state write. v21.99.4 skips verifier-meta result/status/task-notification echoes to prevent self-dispatch loops. — DISABLED in v21.100.0 (Stop hook entry removed; code retained dormant) |
 | `skill-tracker.js` | PostToolUse (Skill) | Set skill-active flag on Skill tool calls (TTL-based, 5min expiry) |
 | `regressing-state.js` | (library) | Phase tracker: getState, buildReminder, detectSkillCall, advancePhase |
@@ -497,6 +497,7 @@ The 5 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.103.0 | fix: W028 — `classifyAgent` description-only (prompt keywords caused WA→RA misclassification; false single-WA Stop block); remove light-workflow single-WA Stop block (rule absent from SKILL.md). Both defects v21.52.0 b4d3933. |
 | 21.102.0 | feat: I079 R1 — replace 7-field response skeleton with 3-field caveman-terse version (`SKELETON_3FIELD`); removed 4 self-check fields; renamed [쉬운 설명]→[설명]; sync test files + behavior-verifier-prompt.md + manifest. User-approved. |
 | 21.101.0 | fix: I078 Tier-1 source cleanup — restore dead "Unreflected from Last Session" SessionStart section (`load-memory.js` `entry.text`); `verification-sequence.js` now keeps a FAILED test from clearing the git-commit gate; fix `search-docs`/`lint`/`memory-autosave` SKILL doc drift; convert 5 redundant memory/status slash-commands to skill-delegating stubs (drop hardcoded cache path). Tests 52/52 files PASS. |
 | 21.100.0 | feat: disable behavior-verifier (감시자) — removed Stop hook entry from hooks.json so the verifier sub-agent is never dispatched (Opus 4.8 model-upgrade audit: recorded verdicts caught only format-marker absences, zero substantive failures; it ran an Opus background agent per turn). Consumer code/script/prompt retained dormant; SKELETON_7FIELD format injection + all other guards unchanged. |

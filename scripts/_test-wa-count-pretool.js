@@ -139,11 +139,14 @@ test('TC3: TaskCreate dispatch → waCount +1', () => {
   } finally { proj.cleanup(); }
 });
 
-// TC4: RA classification (prompt contains "verify") → raCount +1
-test('TC4: Agent with "verify" prompt → raCount +1 (not waCount)', () => {
+// TC4: RA classification via description "Review Agent" → raCount +1
+// W028: classification is description-only; prompt bodies are NOT read.
+// prompt "verify the output" alone → WA (description empty → default WA).
+// description "Review Agent" → RA.
+test('TC4: Agent with description "Review Agent" → raCount +1 (not waCount)', () => {
   const proj = makeTmpProject({ waCount: 0, raCount: 0, totalTaskCalls: 0 });
   try {
-    const stdin = JSON.stringify({ tool_name: 'Agent', tool_input: { prompt: 'You are Review Agent — verify the output.' } });
+    const stdin = JSON.stringify({ tool_name: 'Agent', tool_input: { description: 'Review Agent for output', prompt: 'verify the output' } });
     const res = runScript(stdin, proj.projectDir);
     assertEq(res.code, 0, 'exit code');
     const wa = readWa(proj.waCountPath);
