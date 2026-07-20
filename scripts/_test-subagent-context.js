@@ -11,6 +11,7 @@ const { execSync } = require('child_process');
 
 const NODE = process.execPath;
 const SCRIPT = path.join(__dirname, 'subagent-context.js');
+const { MAX_CONTEXT_CHARS } = require('./core/subagent-context');
 
 let passed = 0;
 let failed = 0;
@@ -112,14 +113,14 @@ test('JSON has hookSpecificOutput.hookEventName = SubagentStart', function() {
 // ============================================================
 // Test 4: additionalContext under 2000 chars
 // ============================================================
-test('additionalContext is under 2000 chars', function() {
+test('additionalContext is under the native hook budget', function() {
   const tmpDir = makeTempDir('subagent-test');
   try {
     setupProject(tmpDir, { projectConcept: 'Test project with a very long description. '.repeat(50) });
     const { stdout } = runScript(tmpDir);
     const parsed = JSON.parse(stdout.trim());
     const ctx = parsed.hookSpecificOutput.additionalContext;
-    assert(ctx.length <= 2000, 'additionalContext should be <= 2000 chars, got ' + ctx.length);
+    assert(ctx.length <= MAX_CONTEXT_CHARS, 'additionalContext should be <= ' + MAX_CONTEXT_CHARS + ' chars, got ' + ctx.length);
   } finally {
     cleanupDir(tmpDir);
   }
@@ -246,7 +247,7 @@ test('additionalContext contains model routing', function() {
 // ============================================================
 // Test 11: model routing stays within 2000 char budget
 // ============================================================
-test('model routing stays within 2000 char budget', function() {
+test('model routing stays within the native hook budget', function() {
   const tmpDir = makeTempDir('subagent-test');
   try {
     const routingSection = '\n\n## Model Routing\n| Tier | Model | When |\n|------|-------|------|\n| T1 | Opus | Analysis, planning, judgment, cross-review |\n| T2 | Sonnet | Implementation, verification, mechanical tasks |\n| T3 | Haiku | Summarization (memory pipeline only) |';
@@ -265,7 +266,7 @@ test('model routing stays within 2000 char budget', function() {
     const { stdout } = runScript(tmpDir);
     const parsed = JSON.parse(stdout.trim());
     const ctx = parsed.hookSpecificOutput.additionalContext;
-    assert(ctx.length <= 2000, 'additionalContext should be <= 2000 chars with routing, got ' + ctx.length);
+    assert(ctx.length <= MAX_CONTEXT_CHARS, 'additionalContext should be <= ' + MAX_CONTEXT_CHARS + ' chars with routing, got ' + ctx.length);
   } finally {
     cleanupDir(tmpDir);
   }

@@ -93,11 +93,12 @@ test(
     && !hookText.includes('behavior-verifier.js')
 );
 
-const continuationOwners = (stopText.match(/regressing-loop-guard\.js/g) || []).length;
+const continuationOwners = (stopText.match(/completion-controller\.js/g) || []).length;
+const retiredOwners = (stopText.match(/regressing-loop-guard\.js/g) || []).length;
 test(
-  'regressing-loop-guard is the single workflow-continuation Stop owner',
-  continuationOwners === 1,
-  'owners=' + continuationOwners
+  'completion-controller is the single Stop owner and legacy regressing owner is absent',
+  continuationOwners === 1 && retiredOwners === 0,
+  'completionOwners=' + continuationOwners + ' legacyOwners=' + retiredOwners
 );
 
 const countZero = runRegressingGuard(0);

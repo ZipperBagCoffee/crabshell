@@ -889,16 +889,11 @@ test('LOCK: inject-rules.js uses acquireIndexLock', function() {
   assert(src.includes('releaseIndexLock'), 'inject-rules.js should use releaseIndexLock');
 });
 
-test('LOCK: load-memory.js uses writeJson for pressure decay', function() {
+test('SESSION_START: load-memory.js delegates to the read-only memory core', function() {
   const src = fs.readFileSync(path.join(__dirname, 'load-memory.js'), 'utf8');
-  const pressureStart = src.indexOf('pressure decay');
-  const pressureEnd = src.indexOf('stale regressing');
-  if (pressureStart !== -1 && pressureEnd !== -1) {
-    const section = src.slice(pressureStart, pressureEnd);
-    assert(section.includes('writeJson'), 'pressure decay should use writeJson');
-    assert(!section.includes('fs.writeFileSync'), 'should NOT use raw writeFileSync');
-  } else {
-    assert(src.includes('writeJson'), 'load-memory.js should use writeJson');
+  assert(src.includes('buildMemoryContext'), 'load-memory.js should use the shared memory core');
+  for (const forbidden of ['writeJson', 'writeFileSync', 'appendFileSync', 'ensureMemoryStructure', 'acquireIndexLock']) {
+    assert(!src.includes(forbidden), `automatic load must not call ${forbidden}`);
   }
 });
 

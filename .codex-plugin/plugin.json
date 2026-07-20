@@ -1,7 +1,7 @@
 {
   "name": "crabshell",
-  "version": "21.106.1",
-  "description": "Codex-compatible wrappers for Crabshell memory and document workflows.",
+  "version": "21.107.0",
+  "description": "Native Codex lifecycle hooks plus shared Crabshell memory, verification, diagnostics, and document workflows.",
   "author": {
     "name": "TaWa"
   },
@@ -19,8 +19,8 @@
   "hooks": "./hooks/codex-hooks.json",
   "interface": {
     "displayName": "Crabshell",
-    "shortDescription": "Project memory and workflow documents for Codex.",
-    "longDescription": "Adds Codex-friendly skills for loading, saving, and searching Crabshell memory, converting CLAUDE.md guidance to AGENTS.md, creating lightweight workflow documents, and recording investigations.",
+    "shortDescription": "Native project memory, verification, and workflows for Codex.",
+    "longDescription": "Adds native Codex lifecycle hooks for shared project memory, task context, compaction recovery, subagents, and parent-owned completion, plus skills for memory and D/P/T/I/H/W workflows.",
     "developerName": "TaWa",
     "category": "Productivity",
     "capabilities": [

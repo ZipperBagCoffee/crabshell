@@ -1,0 +1,9 @@
+{
+  "session_id": "codex-session-start-fixture",
+  "transcript_path": null,
+  "cwd": ".",
+  "hook_event_name": "SessionStart",
+  "source": "startup",
+  "model": "fixture-model",
+  "permission_mode": "default"
+}

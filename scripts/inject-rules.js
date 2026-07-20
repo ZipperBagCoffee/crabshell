@@ -13,8 +13,16 @@ const { readStdin } = require('./transcript-utils');
 const {
   ORCHESTRATION_DEFAULTS,
   COMPRESSED_CHECKLIST: COMPRESSED_CHECKLIST_SHARED,
-  readProjectConcept
 } = require('./shared-context');
+const {
+  FIRST_TURN_RULES,
+  buildFirstTurnContext,
+  createContextOutput,
+} = require('./core/first-turn-context');
+const { classifyUserIntent } = require('./core/turn-intent');
+const { runExecutionLifecycle } = require('./core/execution-lifecycle');
+const { buildWorkflowContext } = require('./core/workflow-context');
+const { noteExecutionAuthorization } = require('./core/completion-control');
 
 // Emergency stop keywords - when detected, replaces entire context with EMERGENCY STOP
 const EMERGENCY_KEYWORDS = ['아시발멈춰', 'BRAINMELT'];
@@ -292,22 +300,11 @@ const COMPRESSED_CHECKLIST = COMPRESSED_CHECKLIST_SHARED;
 // Risk-based delegation reminder. Agent/reviewer counts are not completion criteria.
 const DELEGATION_REMINDER = `\n## Delegation Check\nThe parent retains the task contract and completion decision. Delegate only bounded independent work or a distinct high-risk review concern. Each worker prompt must include the relevant original request, task and non-goal, authoritative references, read/write scope, expected observation, direct verification, and claim/evidence/gap return. Exploration and review default to read-only; workers do not fan out. The parent must reopen decisive references, inspect the final diff, and rerun decisive evidence.\n`;
 
-// Input classification patterns (IA-1)
-const KOREAN_EXECUTION_PATTERNS = /해라|진행해|수정해|만들어|구현해|실행해|시작해|고쳐|적용해/;
-const ENGLISH_EXECUTION_PATTERNS = /\b(do it|proceed|fix it|create|implement|build|execute|start|apply)\b/i;
-
 // IA-2: Default no-execution prompt
 const DEFAULT_NO_EXECUTION = `\n## Execution Default\nDefault: respond with explanation only. Do not call tools unless explicitly instructed to execute.\n`;
 
 // IA-3: Execution judgment prompt
 const EXECUTION_JUDGMENT = `\n## Execution Pattern Detected\nExecution pattern detected in user message. Before acting: verify this is truly an execution instruction, not a question containing action words (e.g., '설명해라' = explain, not execute). If uncertain, explain your intended action first.\n`;
-
-function classifyUserIntent(userPrompt) {
-  if (!userPrompt) return 'default';
-  if (KOREAN_EXECUTION_PATTERNS.test(userPrompt)) return 'execution';
-  if (ENGLISH_EXECUTION_PATTERNS.test(userPrompt)) return 'execution';
-  return 'default';
-}
 
 function shouldInjectDelegationReminder(userPrompt, isRegressingActive) {
   if (isRegressingActive) return true;
@@ -330,13 +327,7 @@ function checkRotationPending(projectDir) {
   const indexPath = path.join(getStorageRoot(projectDir), 'memory', 'memory-index.json');
   const index = readJsonOrDefault(indexPath, {});
   const rotatedFiles = index.rotatedFiles || [];
-  const pending = rotatedFiles.filter(f => !f.summaryGenerated);
-  // Debug log
-  const logPath = path.join(getStorageRoot(projectDir), 'memory', 'logs', 'inject-debug.log');
-  try {
-    fs.appendFileSync(logPath, `${new Date().toISOString()} | rotation pending=${pending.length}\n`);
-  } catch (e) {}
-  return pending;
+  return rotatedFiles.filter(f => !f.summaryGenerated);
 }
 
 const MARKER_START = '## CRITICAL RULES (Core Principles Alignment)';
@@ -361,7 +352,7 @@ function syncRulesToClaudeMd(projectDir) {
     // If CLAUDE.md doesn't exist, create with rules only
     if (!fs.existsSync(claudeMdPath)) {
       fs.writeFileSync(claudeMdPath, rulesBlock + '\n');
-      return;
+      return true;
     }
 
     let content = fs.readFileSync(claudeMdPath, 'utf8');
@@ -372,7 +363,8 @@ function syncRulesToClaudeMd(projectDir) {
       // Markers found → replace only between markers (inclusive)
       const before = content.slice(0, startIdx);
       const after = content.slice(endIdx + MARKER_END.length);
-      fs.writeFileSync(claudeMdPath, before + rulesBlock + after);
+      const next = before + rulesBlock + after;
+      if (next !== content) fs.writeFileSync(claudeMdPath, next);
     } else {
       // No markers → legacy migration: remove old sections, prepend rules at top
       content = removeLegacySection(content, '## Memory Keeper Plugin Rules');
@@ -384,8 +376,10 @@ function syncRulesToClaudeMd(projectDir) {
         fs.writeFileSync(claudeMdPath, rulesBlock + '\n');
       }
     }
+    return true;
   } catch (e) {
     // Silently fail - don't break main workflow
+    return false;
   }
 }
 
@@ -574,13 +568,14 @@ function checkTicketStatuses(projectDir) {
   }
 }
 
-async function main() {
+async function main(options = {}) {
   try {
-    const hookData = await readStdin(1000);
-    const projectDir = getProjectDir();
+    const hookData = options.hookData || await readStdin(1000);
+    const projectDir = options.projectDir || getProjectDir();
 
-    // Auto-sync RULES to CLAUDE.md
-    syncRulesToClaudeMd(projectDir);
+    // Extract and classify before any optional state mutation. Questions are read-only.
+    const userPrompt = (hookData && (hookData.prompt || hookData.input)) || '';
+    const intent = classifyUserIntent(userPrompt);
 
     // Emergency stop check — replaces entire context
     if (checkEmergencyStop(hookData)) {
@@ -588,15 +583,24 @@ async function main() {
       let context = EMERGENCY_STOP_CONTEXT;
       context += `\n## Node.js Path\n\`${nodePathFwd}\`\n`;
       context += `\n## CLAUDE.md Path\n\`${projectDir}/CLAUDE.md\`\n`;
-      const output = {
-        hookSpecificOutput: {
-          hookEventName: "UserPromptSubmit",
-          additionalContext: context
-        }
-      };
+      const output = createContextOutput('UserPromptSubmit', context);
       console.log(JSON.stringify(output));
       console.error('[EMERGENCY STOP TRIGGERED]');
       return;
+    }
+
+    if (intent === 'execution') {
+      const host = options.host || 'claude';
+      const lifecycle = runExecutionLifecycle(projectDir, hookData, {
+        host,
+        pluginDataDir: options.pluginDataDir,
+        claudeConfigDir: options.claudeConfigDir,
+        syncRules: host === 'claude' ? syncRulesToClaudeMd : null,
+      });
+      for (const diagnostic of lifecycle.diagnostics) {
+        console.error(`[CRABSHELL ${host} lifecycle] ${diagnostic}`);
+      }
+      noteExecutionAuthorization(projectDir, hookData, { host });
     }
 
     const configPath = path.join(getStorageRoot(projectDir), 'memory', 'config.json');
@@ -608,14 +612,12 @@ async function main() {
     const indexPath = path.join(getStorageRoot(projectDir), 'memory', 'memory-index.json');
     const memoryDir = path.join(getStorageRoot(projectDir), 'memory');
 
-    // Extract user prompt early (for feedback detection + memory snippets)
-    const userPrompt = (hookData && (hookData.prompt || hookData.input)) || '';
-
     // --- RMW (Read-Modify-Write) block — all index mutations inside lock for atomicity ---
     // Lock-fail fallback (fail-open): on lock acquisition failure, still perform the read
     // and compute in-memory state so context injection proceeds, but SKIP the write
     // (prevents lost-update race when another process is mid-write). Warn to stderr.
-    const idxLocked = acquireIndexLock(memoryDir);
+    const mayMutateState = intent === 'execution';
+    const idxLocked = mayMutateState ? acquireIndexLock(memoryDir) : false;
     let index;
     let isBailout;
     let isNegativeFeedback;
@@ -626,48 +628,38 @@ async function main() {
       // READ inside lock — snapshot is now consistent with the write below
       index = readIndexSafe(indexPath);
 
-      // Bailout: reset pressure regardless of current level (all 3 counters)
-      isBailout = BAILOUT_KEYWORDS.some(kw => userPrompt.includes(kw));
-      if (isBailout && index.feedbackPressure) {
-        index.feedbackPressure.level = 0;
-        index.feedbackPressure.consecutiveCount = 0;
-        index.feedbackPressure.decayCounter = 0;
-        index.feedbackPressure.oscillationCount = 0;
-        index.feedbackPressure.lastShownLevel = 0;
-        // Edge case: tooGoodSkepticism may be undefined on legacy / never-initialized
-        // index objects. Guard with existence check — must not throw.
-        if (index.tooGoodSkepticism) index.tooGoodSkepticism.retryCount = 0;
-        console.error('[PRESSURE BAILOUT: reset all 3 counters]');
-      }
-      isNegativeFeedback = isBailout ? false : detectNegativeFeedback(userPrompt);
-      pressureLevel = updateFeedbackPressure(index, isNegativeFeedback);
-      if (pressureLevel > 0) {
-        console.error(`[PRESSURE L${pressureLevel}]`);
-      }
-
-      // Determine if pressure level changed (for once-only full-text injection)
       const fp = index.feedbackPressure;
-      const lastShownLevel = (fp && typeof fp.lastShownLevel === 'number') ? fp.lastShownLevel : 0;
-      pressureLevelChanged = pressureLevel !== lastShownLevel;
-      if (pressureLevelChanged && fp) {
-        fp.lastShownLevel = pressureLevel;
-      }
-
-      count = (index.rulesInjectionCount || 0) + 1;
-
-      // Update counter if frequency > 1 (need to track)
-      if (frequency > 1) {
-        index.rulesInjectionCount = count;
-      }
-
-      // WRITE inside lock — only when we hold the lock (fail-open on lock miss)
-      if (idxLocked && (isNegativeFeedback || isBailout || index.feedbackPressure || frequency > 1)) {
-        // writeJson itself has Windows EPERM fallback (utils.js L79-84)
-        writeJson(indexPath, index);
-      } else if (!idxLocked) {
-        // Lock not acquired — skip write to avoid corrupting another process's RMW.
-        // In-memory state still used for context injection this turn.
-        console.error('[inject-rules: index lock busy, skipping write (fail-open)]');
+      if (mayMutateState) {
+        // Bailout: reset pressure regardless of current level (all 3 counters)
+        isBailout = BAILOUT_KEYWORDS.some(kw => userPrompt.includes(kw));
+        if (isBailout && fp) {
+          fp.level = 0;
+          fp.consecutiveCount = 0;
+          fp.decayCounter = 0;
+          fp.oscillationCount = 0;
+          fp.lastShownLevel = 0;
+          if (index.tooGoodSkepticism) index.tooGoodSkepticism.retryCount = 0;
+          console.error('[PRESSURE BAILOUT: reset all 3 counters]');
+        }
+        isNegativeFeedback = isBailout ? false : detectNegativeFeedback(userPrompt);
+        pressureLevel = updateFeedbackPressure(index, isNegativeFeedback);
+        if (pressureLevel > 0) console.error(`[PRESSURE L${pressureLevel}]`);
+        const lastShownLevel = (fp && typeof fp.lastShownLevel === 'number') ? fp.lastShownLevel : 0;
+        pressureLevelChanged = pressureLevel !== lastShownLevel;
+        if (pressureLevelChanged && fp) fp.lastShownLevel = pressureLevel;
+        count = (index.rulesInjectionCount || 0) + 1;
+        if (frequency > 1) index.rulesInjectionCount = count;
+        if (idxLocked && (isNegativeFeedback || isBailout || index.feedbackPressure || frequency > 1)) {
+          writeJson(indexPath, index);
+        } else if (!idxLocked) {
+          console.error('[inject-rules: index lock busy, skipping write (fail-open)]');
+        }
+      } else {
+        isBailout = false;
+        isNegativeFeedback = false;
+        pressureLevel = fp && typeof fp.level === 'number' ? fp.level : 0;
+        pressureLevelChanged = false;
+        count = frequency;
       }
     } finally {
       if (idxLocked) releaseIndexLock(memoryDir);
@@ -683,27 +675,7 @@ async function main() {
       // Check for pending rotation summaries
       const pendingRotations = checkRotationPending(projectDir);
 
-      // Build context: rules + node path + project root anchor + optional instructions
-      const nodePathFwd = process.execPath.replace(/\\/g, '/');
-
-      // Read project concept for per-prompt anchoring
-      const projectConcept = readProjectConcept(projectDir);
-
-      let context = '';
-      context += COMPRESSED_CHECKLIST;
-      if (projectConcept) {
-        context += `\n## Project Concept\n${projectConcept}\n\n`;
-      }
-      context += `\n## Node.js Path\nWhen running node commands in Bash, use this absolute path instead of bare \`node\`:\n\`${nodePathFwd}\`\n`;
-      context += `\n## Project Root Anchor\nProject root: \`${projectDir}\`\n`;
-      // Timezone offset for memory delta timestamp generation
-      const tzOffsetMinutes = new Date().getTimezoneOffset();
-      const tzSign = tzOffsetMinutes <= 0 ? '+' : '-';
-      const tzAbsMinutes = Math.abs(tzOffsetMinutes);
-      const tzHours = String(Math.floor(tzAbsMinutes / 60)).padStart(2, '0');
-      const tzMins = String(tzAbsMinutes % 60).padStart(2, '0');
-      const tzOffset = `${tzSign}${tzHours}${tzMins}`;
-      context += `\n## Timezone\nTZ_OFFSET: ${tzOffset}\n`;
+      let context = buildFirstTurnContext(projectDir);
 
       if (hasPendingDelta) {
         context += DELTA_INSTRUCTION;
@@ -714,9 +686,9 @@ async function main() {
       }
 
       // Check for active regressing session
-      const regressingReminder = buildRegressingReminder(projectDir);
-      if (regressingReminder) {
-        context += regressingReminder;
+      const workflowReminder = intent === 'execution' ? buildWorkflowContext(projectDir, { purpose: 'execution' }) : null;
+      if (workflowReminder) {
+        context += `\n${workflowReminder}\n`;
       }
 
       // Check ticket statuses for active regressing
@@ -726,7 +698,7 @@ async function main() {
       }
 
       // Risk-based delegation reminder (after regressing reminder, before memory snippets)
-      if (shouldInjectDelegationReminder(userPrompt, !!regressingReminder)) {
+      if (shouldInjectDelegationReminder(userPrompt, !!workflowReminder)) {
         context += DELEGATION_REMINDER;
       }
 
@@ -752,7 +724,7 @@ async function main() {
       }
 
       // Input classification and execution default (D085 IA-1 to IA-5)
-      if (!regressingReminder) {
+      if (!workflowReminder) {
         context += DEFAULT_NO_EXECUTION;
         const intent = classifyUserIntent(userPrompt);
         if (intent === 'execution') {
@@ -761,12 +733,7 @@ async function main() {
       }
 
       // Output rules via additionalContext (hidden from user, seen by Claude)
-      const output = {
-        hookSpecificOutput: {
-          hookEventName: "UserPromptSubmit",
-          additionalContext: context
-        }
-      };
+      const output = createContextOutput('UserPromptSubmit', context);
       console.log(JSON.stringify(output));
 
       // Explicit trigger patterns to stderr (visible to Claude)
@@ -776,7 +743,7 @@ async function main() {
       if (pendingRotations.length > 0) {
         console.error(`[CRABSHELL_ROTATE] pending=${pendingRotations.length}`);
       }
-      if (regressingReminder) {
+      if (workflowReminder) {
         console.error('[REGRESSING ACTIVE]');
       }
       if (!hasPendingDelta && pendingRotations.length === 0) {
@@ -788,12 +755,7 @@ async function main() {
     console.error('[rules injection error: ' + e.message + ']');
 
     // Output rules anyway to not break the workflow
-    const output = {
-      hookSpecificOutput: {
-        hookEventName: "UserPromptSubmit",
-        additionalContext: RULES
-      }
-    };
+    const output = createContextOutput('UserPromptSubmit', FIRST_TURN_RULES);
     console.log(JSON.stringify(output));
   }
 }
@@ -819,6 +781,7 @@ module.exports = {
   getRelevantMemorySnippets,
   shouldInjectDelegationReminder,
   classifyUserIntent,
+  main,
   // Re-export from regressing-state for convenience
   buildRegressingReminder,
   // Bailout

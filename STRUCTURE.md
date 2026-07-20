@@ -1,10 +1,10 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.106.1 | **Author**: TaWa | **License**: MIT
+**Version**: 21.107.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
-Crabshell is a dual-runtime Claude Code/Codex plugin. Claude provides automatic session memory and behavioral hooks; Codex provides native packaging, manual memory/document skills, a deterministic memory-path guard, and live installation diagnostics. Both runtimes share the D/P/T/I/W/K document system and `.crabshell/` storage.
+Crabshell is a dual-runtime Claude Code/Codex plugin. Both hosts use native lifecycle hooks backed by shared first-turn, memory, workflow, compaction, subagent, and parent-completion cores. Claude retains automatic SessionEnd capture and pressure/sycophancy behavior; Codex supplies nine synchronous native lifecycle events. Both share the D/P/T/I/W/K document system and `.crabshell/` storage.
 
 Codex compatibility is provided in the same repository through a separate `.codex-plugin/plugin.json`, `codex-skills/`, and explicit wrapper scripts. Claude Code and Codex ship from the same repo but activate different manifests; both can share the `.crabshell/` memory and document store.
 
@@ -62,7 +62,7 @@ crabshell/
 │
 ├── hooks/                            # Lifecycle hooks
 │   ├── hooks.json                    # Claude Code hook config
-│   └── codex-hooks.json              # Codex-only deterministic PreToolUse config
+│   └── codex-hooks.json              # Nine-event Codex-native lifecycle config
 │
 ├── scripts/                          # Core implementation (Node.js)
 │   ├── find-node.sh                  # Fallback Node.js locator utility (v18.0.0, hardened v21.99.3)
@@ -87,9 +87,22 @@ crabshell/
 │   ├── core/path-policy.js           # Host-neutral memory path policy (v21.104.0)
 │   ├── core/codex-app-server.js      # Codex JSON-RPC/CLI capability client (v21.104.0)
 │   ├── core/orchestration-policy.js  # 8-field task contract + parent completion policy (v21.105.0)
-│   ├── adapters/codex/               # Native Codex hook contract adapter (v21.104.0)
-│   ├── codex-doctor.js               # Source/cache/hook/skills/data/capability diagnostics
+│   ├── core/first-turn-context.js     # Shared question/execution turn contract
+│   ├── core/memory-context.js         # Shared read-only SessionStart memory selection
+│   ├── core/execution-lifecycle.js    # Shared execution-authorized cleanup/reset with host data isolation
+│   ├── core/workflow-context.js       # Restart-safe active D/P/T/W recovery
+│   ├── core/compaction-context.js     # Shared compact/restart recovery context
+│   ├── core/subagent-context.js       # Shared task-specific child context
+│   ├── core/command-observation.js    # Actual command/result normalization
+│   ├── core/completion-control.js     # Parent evidence + bounded Stop/SubagentStop state owner
+│   ├── core/support-state.js          # Seven-state live doctor model
+│   ├── adapters/codex/               # Native adapters for nine synchronous Codex events
+│   ├── completion-controller.js       # Single Claude Stop/SubagentStop owner retaining existing guards
+│   ├── codex-doctor.js               # Cross-runtime source/cache/hook/trust/behavior/drift diagnostics
 │   ├── codex-memory.js               # Manual Codex memory load/save/search/status
+│   ├── verify-cross-runtime.js        # Sequential lifecycle/mutation verifier; fail-open last
+│   ├── _test-cross-platform-native-hosts.js # Windows/Linux clean-profile CLI matrix
+│   ├── _test-linux-native-hosts.sh    # Disposable Linux Node/current-CLI provisioner
 │   ├── run-orchestration-corpus.js   # Live Codex A/B orchestration behavior runner (v21.105.0)
 │   ├── _test-orchestration-defaults.js # Deterministic orchestration policy tests (v21.105.0)
 │   ├── docs-guard.js                # PreToolUse D/P/T/I skill bypass prevention (v19.33.0)
@@ -123,7 +136,7 @@ crabshell/
 │   ├── _test-subagent-context.js    # subagent-context.js test suite (v21.21.0)
 │   ├── _test-regressing-guard.js    # regressing-guard.js 7-test suite — phase gates + IA-2 agent section validation (v21.41.0)
 │   ├── _test-regressing-guard-edge-cases.js # regressing-guard.js 14 edge-case tests — absent heading, fail-open paths (v21.41.0)
-│   ├── regressing-loop-guard.js     # Stop hook — active regressing continuation (count-independent)
+│   ├── regressing-loop-guard.js     # Retained compatibility helper/test source; not a direct manifest Stop owner
 │   ├── _test-regressing-loop-guard.js
 │   ├── _test-inject-rules-classification.js
 │   ├── _test-parallel-reminder.js
@@ -190,16 +203,17 @@ The repository intentionally keeps Claude and Codex runtime surfaces side by sid
 | `skills/` | Claude Code | Claude-oriented skill instructions |
 | `.agents/plugins/marketplace.json` | Codex | Repo-scoped native marketplace entry (`source.path: "./"`) |
 | `.codex-plugin/plugin.json` | Codex | Codex metadata plus explicit `codex-skills/` and `hooks/codex-hooks.json` paths |
-| `hooks/codex-hooks.json` | Codex | Synchronous command-only native `PreToolUse` path guard; prevents default Claude-hook discovery |
+| `hooks/codex-hooks.json` | Codex | Nine synchronous native lifecycle events; prevents default Claude-hook discovery |
 | `codex-skills/` | Codex | Bundled skills, including installed-cache memory and doctor wrappers |
-| `scripts/codex-memory.js` | Codex | Manual memory load/save/search/status wrapper |
+| `scripts/codex-memory.js` | Codex | Explicit memory load/save/search/status wrapper; automatic read-only load comes from SessionStart |
 | `scripts/codex-docs.js` | Codex | Manual W/H/D/P/T/I document creation wrapper |
-| `scripts/codex-doctor.js` | Codex | Live feature, plugin, cache, hook trust/hash, skill, and writable-data diagnostics |
+| `scripts/codex-doctor.js` | Shared status | Live Claude/Codex installed, activated, trusted, behavior-verified, degraded, drifted, and unsupported diagnosis |
 | `scripts/core/path-policy.js` | Shared | Host-neutral path policy used by Claude and Codex adapters |
+| `scripts/core/{first-turn-context,memory-context,workflow-context,compaction-context,subagent-context,completion-control}.js` | Shared | Host-neutral semantics consumed by both native hook manifests |
 | `scripts/claude-to-agents.js` | Codex | `CLAUDE.md` to `AGENTS.md` conversion |
 | `scripts/install-codex.js` | Claude Code -> Codex | Legacy/development manual bridge; native marketplace installation is the default |
 
-Installing one runtime does not activate the other runtime. Codex loads only its explicit deterministic PreToolUse path hook; Claude automatic memory, pressure, and Stop hooks remain Claude-only. Fixed-count, role-collapse, and behavior-verifier hooks are retired from both runtimes. Both runtimes can share `.crabshell/` storage when used in the same project.
+Installing one runtime does not activate the other runtime. Claude and Codex each load their own manifest and native adapters; neither launches or requires the other. Both automatically read the same memory/workflow state and apply shared parent-completion semantics. Claude retains its automatic SessionEnd capture and pressure/sycophancy hooks. Fixed-count, role-collapse, and behavior-verifier hooks are retired from both runtimes.
 
 ## Core Scripts
 
@@ -405,6 +419,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.107.0 | feat: native Claude/Codex lifecycle parity; shared first-turn, memory, workflow, compaction, subagent, command-observation, completion, and doctor-state cores; Windows/Linux clean-profile matrix; unified mutation verifier; Claude-specific behavior preserved. |
 | 21.106.1 | docs: correct current runtime descriptions after the v21.106.0 fixed-count/role/verifier retirement and remove stale Cycle 1/3 transition language. |
 | 21.106.0 | feat: D110 Cycle 3 — single-source portable schema-v2 verification runner, independent mutation corpus, structured behavioral guard contract, count-independent parent-owned orchestration, and confirmed retirement of 19 verifier/count/role legacy files. |
 | 21.105.0 | feat: D110 Cycle 2 — 8-field parent-owned task contract, five-stage light workflow, risk-based questions/delegation, natural response defaults, presentation-audit retirement, and live Codex A/B orchestration regressions. |

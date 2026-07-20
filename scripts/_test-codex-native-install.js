@@ -92,7 +92,7 @@ async function main() {
     });
 
     const first = runDoctor();
-    test('fresh app-server session resolves source, cache, skills, and Codex-only hooks', () => {
+    test('fresh app-server session resolves source, cache, skills, and Codex-native hooks', () => {
       assert.strictEqual(first.summary.error, 0);
       assert.strictEqual(getCheck(first, 'plugin-source').status, 'ok');
       assert.strictEqual(getCheck(first, 'plugin-cache').status, 'ok');
@@ -100,7 +100,17 @@ async function main() {
       assert.strictEqual(getCheck(first, 'hook-source').status, 'ok');
       assert.strictEqual(getCheck(first, 'hook-trust').status, 'warn');
       assert.ok(getCheck(first, 'hook-source').details.hooks.every(hook => path.basename(hook.sourcePath) === 'codex-hooks.json'));
+      assert.deepStrictEqual(
+        [...new Set(getCheck(first, 'hook-source').details.hooks.map(hook => hook.eventName))].sort(),
+        ['postCompact', 'postToolUse', 'preCompact', 'preToolUse', 'sessionStart', 'stop', 'subagentStart', 'subagentStop', 'userPromptSubmit']
+      );
       assert.ok(!fs.existsSync(sentinelPath), 'Claude-only hook sentinel unexpectedly ran');
+      assert.strictEqual(first.hosts.codexCli.states.installed, true);
+      assert.strictEqual(first.hosts.codexCli.states.activated, true);
+      assert.strictEqual(first.hosts.codexCli.states.trusted, false);
+      assert.strictEqual(first.hosts.codexCli.states['behavior-verified'], true);
+      assert.strictEqual(first.hosts.codexCli.status, 'degraded');
+      assert.strictEqual(first.hosts.codexApp.status, 'not-directly-exercised');
     });
 
     test('doctor reports portable paths with spaces and a writable plugin data directory', () => {
@@ -147,6 +157,8 @@ async function main() {
       const hookTrust = getCheck(trusted, 'hook-trust');
       assert.strictEqual(hookTrust.status, 'ok');
       assert.ok(hookTrust.details.hooks.every(hook => hook.trustStatus === 'trusted'));
+      assert.strictEqual(trusted.hosts.codexCli.status, 'behavior-verified');
+      assert.strictEqual(trusted.hosts.codexCli.states.trusted, true);
     });
 
     const cachedHooksPath = path.join(cachePath, 'hooks', 'codex-hooks.json');
@@ -157,7 +169,11 @@ async function main() {
     test('changing the isolated installed source changes the observed hash to modified', () => {
       const hookTrust = getCheck(drifted, 'hook-trust');
       assert.strictEqual(hookTrust.status, 'warn');
-      assert.ok(hookTrust.details.hooks.every(hook => hook.trustStatus === 'modified'));
+      const statuses = hookTrust.details.hooks.map(hook => hook.trustStatus);
+      assert.ok(statuses.includes('modified'));
+      assert.ok(statuses.every(status => status === 'modified' || status === 'trusted'));
+      assert.strictEqual(drifted.hosts.codexCli.status, 'drifted');
+      assert.strictEqual(drifted.hosts.codexCli.states.drifted, true);
     });
 
     console.log(`RESULT: ${passed} passed, 0 failed`);

@@ -13,6 +13,7 @@ const { extractDelta } = require('./extract-delta');
 const { MEMORY_DIR, MEMORY_FILE, SESSIONS_DIR, COUNTER_FILE } = require('./constants');
 const { detectRegressingSkillCall, advancePhase } = require('./regressing-state');
 const { readStdin, findTranscriptPath } = require('./transcript-utils');
+const { inspectSessionTranscript, resolveClaudeTranscript } = require('./core/session-intent');
 
 const GLOBAL_CONFIG_PATH = path.join(os.homedir(), '.crabshell', 'config.json');
 const DEFAULT_INTERVAL = 15;
@@ -182,6 +183,10 @@ async function check() {
 
 async function final() {
   const hookData = await readStdin(1000);
+  const transcriptSrc = resolveClaudeTranscript(hookData);
+  const sessionIntent = inspectSessionTranscript(transcriptSrc);
+  if (!sessionIntent.persist) return;
+
   // CLAUDE_PROJECT_DIR (set by Claude Code) is the authoritative project root.
   const sessionId = hookData.session_id || null;
   const sessionId8 = sessionId ? sessionId.substring(0, 8) : null;
@@ -201,34 +206,6 @@ async function final() {
     transcriptPath: hookData.transcript_path || null,
     sessionId: hookData.session_id || null
   });
-
-  // Find transcript: stdin transcript_path > session_id lookup > project-name fallback
-  let transcriptSrc = null;
-  if (hookData.transcript_path && hookData.transcript_path !== '') {
-    transcriptSrc = hookData.transcript_path;
-  } else if (hookData.session_id) {
-    // Try session_id lookup
-    const claudeProjectsDir = path.join(os.homedir(), '.claude', 'projects');
-    try {
-      if (fs.existsSync(claudeProjectsDir)) {
-        const projects = fs.readdirSync(claudeProjectsDir);
-        for (const proj of projects) {
-          const transcriptFile = path.join(claudeProjectsDir, proj, `${hookData.session_id}.jsonl`);
-          if (fs.existsSync(transcriptFile)) {
-            transcriptSrc = transcriptFile;
-            break;
-          }
-        }
-      }
-    } catch (e) {
-      fs.appendFileSync(path.join(getLogsDir(), 'error.log'),
-        `${timestamp}: Failed to find transcript by session_id: ${e.message}\n`);
-    }
-  }
-  // Final fallback: project-name search
-  if (!transcriptSrc) {
-    transcriptSrc = findTranscriptPath();
-  }
 
   // Copy raw transcript
   let rawSaved = '';

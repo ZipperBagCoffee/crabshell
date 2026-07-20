@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.106.1)
+# Crabshell User Manual (v21.107.0)
 
 ## Why Do You Need This?
 
@@ -14,7 +14,9 @@ Crabshell solves this problem.
 
 ## Installation
 
-```bash
+In Claude Code:
+
+```text
 /plugin marketplace add ZipperBagCoffee/crabshell
 /plugin install crabshell
 ```
@@ -23,22 +25,25 @@ Crabshell solves this problem.
 
 ### Codex Native Installation
 
-From a Crabshell source checkout, register its repo marketplace and install the plugin:
+On Windows or Linux, install from the GitHub marketplace:
 
 ```bash
-codex plugin marketplace add .
+codex plugin marketplace add ZipperBagCoffee/crabshell --ref master
 codex plugin add crabshell@crabshell-repo
+codex plugin list
 ```
 
-Start a new Codex session, review/trust the Crabshell hook definition, and invoke the bundled `crabshell:status` skill. It reports the source, installed cache, hook source/hash/trust, resolved skills, writable plugin-data path, and current Codex feature state. The old `/crabshell:install-codex` command remains a legacy/development bridge; native marketplace installation is the default.
+For local development, `codex plugin marketplace add .` works only when `.` is the Crabshell repository root containing `.agents/plugins/marketplace.json`; it does not work from an unrelated target project.
 
-Codex memory is intentionally manual: use the bundled load/save/search skills. Only the deterministic native `PreToolUse` memory-path guard runs automatically. Claude's automatic memory, pressure/sycophancy, and Stop hooks do not run in Codex; fixed-count, role-collapse, and behavior-verifier hooks are retired from both runtimes.
+Start a new Codex session, review/trust the Crabshell hook definition, and invoke `crabshell:status`. It reports live installed, activated, trusted, behavior-verified, degraded, drifted, and unsupported states for Claude Code CLI and Codex CLI. Codex desktop-app evidence is kept separate. The old `/crabshell:install-codex` command remains a legacy/development bridge.
+
+Codex automatically loads existing memory/workflow context at SessionStart and uses native prompt, compaction, subagent, command-observation, and completion hooks. Explicit load/save/search skills remain available. Claude retains its automatic SessionEnd capture and pressure/sycophancy system; neither host launches the other.
 
 ---
 
 ## Basic Usage (Automatic)
 
-### What Happens After Installation
+### What Happens in Claude Code
 
 **1. Session Start:**
 - Previous session summary (`logbook.md`) loaded into Claude's context
@@ -56,8 +61,16 @@ Codex memory is intentionally manual: use the bundled load/save/search skills. O
 - Prompt-aware memory snippets loaded into context based on relevance
 
 **3. Session End:**
-- Full conversation backed up (`.l1.jsonl`)
-- Final delta extraction and save
+- After an execution-authorized turn, the full conversation is backed up (`.l1.jsonl`) and the final delta is extracted.
+- A question-only session does not create Crabshell bookkeeping writes.
+
+### What Happens in Codex
+
+- SessionStart reads the same project memory and active D/P/T/W workflow context without modifying it.
+- UserPromptSubmit applies the same question/execution boundary and shared turn contract through Codex-native output.
+- PreCompact/PostCompact recover memory and workflow context; SubagentStart supplies the current task/non-goals/references/success contract.
+- PostToolUse records decisive parent command results. SubagentStop is only a child claim; Stop requires parent evidence and bounds identical retry failures.
+- Use `crabshell:save-memory` for an explicit Codex session note. Codex does not invoke Claude's SessionEnd capture or pressure counters.
 
 ### What Gets Saved
 
@@ -123,10 +136,10 @@ All available skills (slash commands):
 
 | Command | What It Does |
 |---------|-------------|
-| `/crabshell:regressing "topic" N` | Iterative optimization: N cycles of Plan-then-Ticket, wrapped in a Discussion |
+| `/crabshell:regressing "topic"` | Iterative current-gap Plan→Ticket→Verify cycles until convergence; an explicit count is only a maximum |
 | `/crabshell:light-workflow` | Five-stage parent-owned workflow for standalone tasks |
 | `/crabshell:verifying` | Create or run project-specific verification tools |
-| `/crabshell:status` | Healthcheck of plugin state (memory, regressing, verification, version) |
+| `/crabshell:status` | Live host/plugin state: installed, activated, trusted, behavior-verified, degraded, drifted, unsupported |
 | `/crabshell:lint` | Run Obsidian document lint checks (orphans, broken wikilinks, stale status, missing frontmatter, INDEX inconsistencies) |
 | `/crabshell:search-docs query` | BM25 full-text search across all D/P/T/I/W/K documents — ranked results with title/tags/id/body field boosts |
 | `/crabshell:knowledge "title"` | Create a K-page (verified fact or operational tip) in .crabshell/knowledge/; or `/crabshell:knowledge K001` to view |
@@ -143,7 +156,7 @@ All available skills (slash commands):
 
 ### Codex Bundled Skills
 
-Installed Codex skills are invoked by name, including `crabshell:load-memory`, `crabshell:save-memory`, `crabshell:search-memory`, and `crabshell:status`. Their scripts resolve from the installed plugin cache and target the active project, so the project does not need its own copy of `scripts/`. Codex also bundles the D/P/T/I/H/K and workflow skills listed by the native plugin manifest.
+Installed Codex skills are invoked by name, including `crabshell:load-memory`, `crabshell:save-memory`, `crabshell:search-memory`, and `crabshell:status`. Their scripts resolve from the installed plugin cache and target the active project, so the project does not need its own copy of `scripts/`. SessionStart already performs automatic read-only memory/workflow loading; the skills provide explicit reload/save/search and the full D/P/T/I/H/K/W workflow surface.
 
 ---
 
@@ -173,9 +186,9 @@ I (Investigation) — independent, not part of the D→P→T chain
 
 ### Regressing (Iterative Improvement)
 
-Use `/crabshell:regressing "topic" N` for tasks that need multiple rounds of refinement:
+Use `/crabshell:regressing "topic"` for tasks that need multiple rounds of refinement:
 - Creates a single Discussion (D) as wrapper
-- Runs N cycles, each consisting of Plan (P) then Ticket (T)
+- Runs one current-gap Plan (P) then Ticket (T) cycle at a time until the result converges
 - Each cycle's scope is determined by the previous cycle's verification results, not pre-allocated
 
 ### Light Workflow (One-Shot Tasks)
@@ -186,7 +199,7 @@ Use `/crabshell:light-workflow` for a standalone task that does not need the ful
 
 ## Core Philosophy
 
-Crabshell enforces several behavioral rules via CLAUDE.md injection. You do not need to configure these; they activate automatically.
+Crabshell supplies the same core task and evidence rules through each host's native hooks. Claude also synchronizes its managed CLAUDE.md section; Codex receives native hook context and uses project AGENTS.md guidance. You do not need to make one host launch the other.
 
 ### Internal Understanding
 Claude builds an internal eight-field task contract before implementation: the original request, required outcomes, non-goals, named references, allowed changes, forbidden side effects, observable success, and blocking unknowns. It continues through discoverable or non-blocking uncertainty and asks only when a destructive/irreversible action, outside-workspace change, external installation, or undiscoverable product choice requires user authority.
@@ -218,11 +231,10 @@ The plugin uses Claude Code hooks to run automatically:
 
 | Hook | Script | When It Runs | What It Does |
 |------|--------|-------------|-------------|
-| `UserPromptSubmit` | `inject-rules.js` | Every prompt | Syncs rules to CLAUDE.md; injects COMPRESSED_CHECKLIST + delta/rotation instructions into context |
-| `SessionStart` | `load-memory.js` | Session begins | Loads logbook.md, L3 summaries, project files into context |
+| `UserPromptSubmit` | `inject-rules.js` | Every prompt | Emits the shared turn contract; execution prompts also run once-per-session cleanup/reset and Claude rule/memory-warning synchronization |
+| `SessionStart` | `load-memory.js` | Session begins | Read-only load of logbook, summaries, project memory, and active workflow context |
 | `PostToolUse` | `counter.js check` | After each tool use | Increments counter; triggers auto-save + delta extraction at interval |
 | `PreToolUse` | `regressing-guard.js` | Before Write/Edit | Enforces phase-based restrictions during active regressing sessions |
-| `Stop` | `sycophancy-guard.js` | Before response finalized | Detects agreement-without-verification patterns in responses |
 | `PreToolUse` | `sycophancy-guard.js` | Before Write/Edit | Mid-turn sycophancy detection via transcript parsing |
 | `PreToolUse` | `docs-guard.js` | Before Write/Edit to docs/ | Blocks writes to docs/ directories without active skill flag |
 | `PreToolUse` | `log-guard.js` | Before Write/Edit | Blocks INDEX.md terminal status without log entries; blocks cycle docs without previous cycle logs |
@@ -231,26 +243,33 @@ The plugin uses Claude Code hooks to run automatically:
 | `PostToolUse` | `verification-sequence.js record` | After each tool use | Tracks source file edits and test runs |
 | `PreToolUse` | `verification-sequence.js gate` | Before Write/Edit/Bash | Blocks git commit without tests |
 | `PreToolUse` | `doc-watchdog.js gate` | Before Write/Edit | Soft warning (additionalContext) when 5+ code edits without D/P/T doc update (regressing only) |
-| `Stop` | `doc-watchdog.js stop` | Before session ends | Blocks session end when regressing active + ticket has no work log entry since last code edit |
 | `PostToolUse` | `doc-watchdog.js record` | After Write/Edit | Tracks code file edits (increment counter) and D/P/T doc edits (reset counter) in doc-watchdog.json |
+| `PostToolUse` | `completion-controller.js` | After Bash | Records conclusive parent command results only after a child completion claim |
 | `PostToolUse` | `skill-tracker.js` | After Skill tool call | Sets skill-active flag on Skill tool calls for guard scripts |
 | `PreToolUse` | `pressure-guard.js` | Before ANY tool (matcher: `.*`) | Graduated tool blocking based on consecutive negative feedback pressure level (L2: primary tools, L3: all tools) |
-| `Stop` | `scope-guard.js` | Before response finalized | Detects scope reduction in responses (delivering fewer items than user requested) |
-| `Stop` | `regressing-loop-guard.js` | Before session ends | Sole regressing continuation owner; blocks premature stop without reading worker counts or background-agent state |
+| `Stop`, `SubagentStop` | `completion-controller.js` | Child/parent completion boundary | One state owner: child claim is not proof; requires parent evidence, bounds identical failures, preserves workflow continuation, and runs retained Claude sycophancy/doc-watchdog/scope Stop validators |
 Hook launcher v21.99.3 note: `hooks/hooks.json` now invokes hook scripts through direct `node` commands. `scripts/find-node.sh` remains available as a hardened fallback utility, not the default launcher.
 
 | `PreCompact` | `pre-compact.js` | Before context compaction | Outputs memory state, active documents, and regressing state as context to preserve across compaction |
 | `PostCompact` | `post-compact.js` | After context compaction | Logs compaction event for debugging (side-effect only, no context output) |
 | `SubagentStart` | `subagent-context.js` | When subagent spawns | Injects project concept, COMPRESSED_CHECKLIST, regressing state, and project root anchor into subagent context |
-| `SessionEnd` | `counter.js final` | Session ends | Creates final L1 backup, extracts remaining delta |
+| `SessionEnd` | `counter.js final` | Execution-authorized session ends | Creates final L1 backup and extracts remaining delta; question-only sessions remain read-only |
 
 ### Codex Hook Surface
 
 | Hook | Script | When It Runs | What It Does |
 |------|--------|-------------|-------------|
+| `SessionStart` | `adapters/codex/session-start.js` | Session begins | Read-only shared memory and active workflow recovery |
+| `UserPromptSubmit` | `adapters/codex/user-prompt-submit.js` | Every prompt | Shared question/execution contract; execution lifecycle writes only to Codex plugin data/project state |
 | `PreToolUse` | `adapters/codex/pre-tool-use.js` | Matching local file/shell tools | Applies the shared `.crabshell/` path policy and returns native `hookSpecificOutput` deny JSON for wrong-project memory paths |
+| `PostToolUse` | `adapters/codex/post-tool-use.js` | After Bash | Records conclusive parent command evidence for a pending child claim |
+| `PreCompact` | `adapters/codex/pre-compact.js` | Before compaction | Emits shared memory/workflow recovery context without writes |
+| `PostCompact` | `adapters/codex/post-compact.js` | After compaction | Restores shared context while keeping Claude-specific compaction effects in Claude only |
+| `SubagentStart` | `adapters/codex/subagent-start.js` | Child starts | Supplies exact current intent, task, non-goals, references, allowed changes, and observable success |
+| `SubagentStop` | `adapters/codex/stop.js` | Child stops | Records the child result as a claim, never as completion proof |
+| `Stop` | `adapters/codex/stop.js` | Parent attempts completion | Applies the shared parent-evidence and bounded-continuation decision using Codex-native block JSON |
 
-Codex reads `hooks/codex-hooks.json` through the explicit `.codex-plugin/plugin.json` `hooks` field. That override prevents accidental discovery of Claude's `hooks/hooks.json`. The Codex file contains no Stop continuation, automatic memory, pressure/sycophancy, prompt/agent handler, or async hook. Retired fixed-count, role-collapse, and behavior-verifier hooks are absent from both host manifests.
+Codex reads `hooks/codex-hooks.json` through the explicit `.codex-plugin/plugin.json` `hooks` field. That prevents accidental discovery of Claude's `hooks/hooks.json`. The nine Codex events are synchronous and native; shared semantics live in host-neutral cores, while Claude-specific pressure/sycophancy and SessionEnd capture stay in Claude. Retired fixed-count, role-collapse, and behavior-verifier hooks are absent from both manifests.
 
 ### Internal Task Contract and Natural Reporting
 
@@ -278,16 +297,17 @@ Guard scripts are PreToolUse/Stop hooks that prevent common mistakes:
 | `verify-guard.js` | Writing "Final Verification" results to ticket files without actually running `/verifying` first. Hybrid: Edit always enforces; Write only enforces on existing files (new ticket creation is allowed) |
 | `path-guard.js` | File operations targeting a wrong `.crabshell/memory/` path (e.g., a different project's memory directory) |
 | `core/path-policy.js` + Codex adapter | The same wrong-project memory paths in Codex; the core decides policy while each host wrapper emits its own native response format |
+| `core/completion-control.js` + host adapters | Child false-done, ambiguous/missing parent command evidence, repeated identical failures, and premature active-workflow completion on both hosts |
 | `verification-sequence.js` | Source files edited without running tests before git commit |
 | `doc-watchdog.js` | Document update omissions during regressing: soft warning when 5+ code edits without D/P/T document update; blocks session end when ticket has no work log since last code edit |
 | `skill-tracker.js` | Supporting guard: sets the `skill-active` flag when a Skill tool call is detected, so `docs-guard` and `verify-guard` know when writes are authorized |
 | `pressure-guard.js` | Graduated tool blocking when consecutive negative feedback detected. L2: blocks 6 primary tools (Read/Grep/Glob/Bash/Write/Edit). L3: blocks ALL tools. Resets via positive feedback decay or user bailout keywords ("봉인해제" / "UNLEASH"). See [Pressure System](#pressure-system) |
 | `scope-guard.js` | Detects scope reduction in responses (delivering fewer items than user requested, using "too many" / "시간 관계상" as justification) |
 | `regressing-guard.js` | Phase-based write restrictions during active regressing sessions — blocks out-of-phase edits to plan/ticket documents |
-| `regressing-loop-guard.js` | Blocks session end during active regressing and preserves phase continuity. It has no fixed agent-count, WA:RA pairing, or parent-write delegation requirement. |
+| `regressing-loop-guard.js` | Retained compatibility/test helper for the old count-independent continuation path; `completion-controller.js` is now the sole manifest Stop owner. |
 
 Guards run automatically via hooks. No configuration needed.
-For Codex, only the shared path policy has a native adapter. Every other active guard in this table is Claude-only unless a later release explicitly adds a Codex adapter.
+For Codex, the shared path policy and shared completion control have native adapters. The remaining pressure, sycophancy, documentation, and edit/commit guards are Claude-only.
 
 ---
 
@@ -399,7 +419,7 @@ The eight-field task contract, risk boundary for user questions, bounded worker 
 - `.codex-plugin/plugin.json` explicitly points to `codex-skills/` and `hooks/codex-hooks.json`.
 - Codex stores installed plugin material under its plugin cache and writable runtime data under `plugins/data/<plugin>-<marketplace>` inside `CODEX_HOME`; plugin source files are not used as writable state.
 - Hook definitions are not runnable until Codex records trust for their current hash. Any definition change produces `modified` until reviewed again.
-- Run the Codex `crabshell:status` skill for live capability/config results. There is no Crabshell-maintained Codex version compatibility table.
+- Run `crabshell:status` for live Claude/Codex installed, activated, trusted, behavior-verified, degraded, drifted, and unsupported results. It uses current CLI/plugin/cache/hook observations, not a Crabshell-maintained version compatibility table; Codex app remains a separate row.
 
 ### lock-contention.json — F-4 Instrumentation State
 
@@ -531,8 +551,9 @@ This table is a historical documentation ledger. Current behavior is defined by 
 
 ## Version Compatibility
 
-| Version | Claude Code | Node.js |
-|---------|-------------|---------|
+| Version | Host CLI evidence | Node.js |
+|---------|-------------------|---------|
+| 21.107.0 | Claude Code 2.1.215 + Codex CLI 0.144.6 exercised on Windows/Linux; Codex app not directly exercised | 20/22 exercised |
 | 21.76.0 | 1.0+ | 18+ |
 | 21.75.1 | 1.0+ | 18+ |
 | 21.75.0 | 1.0+ | 18+ |

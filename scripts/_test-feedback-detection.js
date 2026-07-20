@@ -148,15 +148,15 @@ test('PRESSURE: fresh init', function() {
   assertEqual(i.feedbackPressure.level, 0, 'starts at 0');
 });
 
-// AC-5: SessionStart pressure decay
-test('AC-5: load-memory.js references feedbackPressure', function() {
+// AC-5: SessionStart is read-only and leaves persisted pressure untouched.
+test('AC-5: load-memory.js does not mutate feedbackPressure', function() {
   const src = fs2.readFileSync(path.join(__dirname, 'load-memory.js'), 'utf8');
-  assert(src.includes('feedbackPressure'), 'should reference feedbackPressure');
+  assert(!src.includes('feedbackPressure'), 'automatic load should not reference pressure state');
 });
-test('AC-5: load-memory.js carries feedbackPressure over verbatim', function() {
+test('AC-5: load-memory.js has no pressure write or reset path', function() {
   const src = fs2.readFileSync(path.join(__dirname, 'load-memory.js'), 'utf8');
-  assert(src.includes('feedbackPressure carries over verbatim'), 'should document carry-over');
-  assert(!src.includes('Session start: pressure'), 'should not log SessionStart pressure decay');
+  assert(!src.includes('writeJson'), 'automatic load should not write the memory index');
+  assert(!src.includes('acquireIndexLock'), 'automatic load should not acquire a write lock');
 });
 
 // BAILOUT keyword detection
