@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.107.0)
+# Crabshell Architecture (v21.108.0)
 
 ## Overview
 
@@ -372,7 +372,7 @@ Regressing retains document-cycle continuation but has no parallel-worker count 
 | `pressure-guard.js` | PreToolUse (Read\|Grep\|Glob\|Bash\|Write\|Edit) | Detect feedback pressure escalation; block all 6 tools at L3 with .crabshell/.claude exemption |
 | `path-guard.js` | PreToolUse (Read\|Grep\|Glob\|Bash\|Write\|Edit) | Block wrong .crabshell/ path; shell var resolution (fail-closed for .crabshell/ v21.8.0); block Edit on logbook.md; block Write shrink on logbook.md (v20.6.0) |
 | `core/path-policy.js` | shared library | Host-neutral memory path decisions used by Claude and Codex wrappers |
-| `core/first-turn-context.js`, `core/memory-context.js`, `core/workflow-context.js` | shared libraries | Host-neutral prompt, read-only memory, and restart-safe active workflow context |
+| `core/first-turn-context.js`, `core/memory-context.js`, `core/workflow-context.js` | shared libraries | Host-neutral prompt plus mandatory `[의도]`/`[이해]`/`[설명]` response ending, read-only memory, and restart-safe active workflow context |
 | `core/compaction-context.js`, `core/subagent-context.js` | shared libraries | Recovery context and bounded task-specific child context for both hosts |
 | `core/command-observation.js`, `core/completion-control.js` | shared libraries | Normalize actual command results and own parent-evidence/Stop state |
 | `core/support-state.js` | shared library | Derive the seven live doctor states without a version compatibility table |
@@ -526,6 +526,7 @@ The 5 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.108.0 | feat: restore one shared mandatory intent/understanding/explanation response ending through both native prompt hooks; preserve natural response bodies, the internal task contract, all nine Codex events, and all Claude-specific lifecycle behavior. |
 | 21.107.0 | feat: shared native Claude/Codex lifecycle semantics, nine-event Codex hooks, preserved Claude behavior, parent-evidence completion control, alternating-host memory/workflow recovery, portable mutation verifier, Windows/Linux clean-profile matrix, and seven-state live doctor. |
 | 21.106.1 | docs: remove stale pre-Cycle-3 fixed-WA/verifier/count descriptions from current architecture sections and align the Claude/Codex hook boundary with v21.106.0 runtime behavior. |
 | 21.106.0 | feat: D110 Cycle 3 — portable schema-v2 verification contracts and mutation failures; fixed-count/parent-write orchestration removal; 19-file verifier/count/role retirement after disabled baseline; memory and safety boundaries preserved. |

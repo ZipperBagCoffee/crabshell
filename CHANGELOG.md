@@ -1,5 +1,14 @@
 # Changelog
 
+## [21.108.0] - 2026-07-20
+
+### feat: restore the shared intent/understanding/explanation response ending
+- Restored one mandatory trailing `[의도]` -> `[이해]` -> `[설명]` block through `scripts/core/first-turn-context.js`, so Claude Code and Codex receive the exact same instruction from their own native `UserPromptSubmit` hooks.
+- Kept the response body natural and concise: each trailing field is one short summary line in the user's words, `[이해]` names any remaining gap, and `[설명]` is concrete and easy to understand without default analogy or caveman-style fragments.
+- Retained the v21.105.0 internal task contract and all v21.107.0 native lifecycle behavior. No Claude hook was removed or replaced; Claude-specific SessionEnd, pressure/sycophancy, and memory behavior remain intact, while Codex keeps its nine synchronous native events.
+- Added positive and mutation regressions for missing, renamed, reordered, misplaced, divergent, and hard-to-read response contracts. Isolated installed-plugin checks exercise both Claude and Codex prompt hooks without question-time project writes.
+- Exercised the connected cross-runtime suites and clean-profile Windows/Linux native host matrix before synchronizing manifests and current documentation to v21.108.0.
+
 ## [21.107.0] - 2026-07-20
 
 ### feat: native Claude Code and Codex harness parity

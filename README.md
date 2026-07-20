@@ -4,7 +4,7 @@
 
 Three pillars:
 1. **Session memory** — Both hosts automatically load the same project memory and workflow state. Claude Code retains automatic session capture/rotation; either host can use explicit load/save/search skills.
-2. **Behavioral correction** — Both hosts receive the same first-turn, workflow, subagent, compaction, and parent-completion semantics through native hooks. Claude Code also retains its pressure/sycophancy guard system.
+2. **Behavioral correction** — Both hosts receive the same first-turn, mandatory `[의도]`/`[이해]`/`[설명]` response ending, workflow, subagent, compaction, and parent-completion semantics through native hooks. Claude Code also retains its pressure/sycophancy guard system.
 3. **Structured workflows** — D/P/T/I/H/W document system with host-native skills for planning, investigating, iterative improvement (regressing), hotfix recording, and light-workflow tracing.
 
 All plugin output lives under `.crabshell/` — gitignored, clean project root.
@@ -59,6 +59,8 @@ node scripts/codex-docs.js worklog "task title"
 ```
 
 Codex activates nine synchronous native lifecycle events: SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, PreCompact, PostCompact, SubagentStart, SubagentStop, and Stop. They share host-neutral memory/workflow/verification cores with Claude while emitting each host's native hook response. Claude's pressure/sycophancy and automatic SessionEnd capture remain Claude-specific; the retired verifier and fixed agent-count hooks are absent from both runtimes.
+
+On every prompt, both native `UserPromptSubmit` paths inject one shared response contract. The answer body stays natural; its ending contains three short lines in order: `[의도]`, `[이해]`, and `[설명]`.
 
 `/crabshell:install-codex` and `scripts/install-codex.js` remain as legacy/development bridges for older installations. Native marketplace installation is the default Codex path.
 
@@ -233,6 +235,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.108.0 | feat: restore the shared mandatory `[의도]`/`[이해]`/`[설명]` response ending for Claude Code and Codex while retaining the internal task contract, natural answer body, and all native lifecycle behavior. |
 | 21.107.0 | feat: Claude Code + Codex native lifecycle parity, shared memory/workflow/compaction/subagent/completion cores, Windows/Linux clean-profile matrix, mutation-based cross-runtime verification, and seven-state live doctor; Claude-only features preserved. |
 | 21.106.1 | docs: remove stale Cycle 1/3 statements from current architecture/manual sections and state the post-retirement Claude/Codex hook boundary consistently. |
 | 21.106.0 | feat: D110 Cycle 3 — portable schema-v2 verification with structured behavioral assertions and mutation fixtures; retire 19 verifier/count/role files and fixed-count orchestration after disabled baselines; retain memory, safety, post-compact, and legacy Codex install bridges. |

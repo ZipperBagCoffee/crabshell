@@ -99,4 +99,4 @@ Report naturally in this order:
 3. decisive evidence;
 4. remaining limitation, only if one exists.
 
-Do not require `[의도]`, `[이해]`, `[설명]`, IA/WA/RA/UVLS, a phase transcript, or caveman-style fragments in user-facing output. A short task normally needs only a few natural sentences plus any verification table required by project rules.
+Do not expose IA/WA/RA/UVLS or phase narration, and do not use caveman-style fragments. After the natural report and any verification table required by project rules, end every user-facing response with the shared `[의도]`, `[이해]`, `[설명]` block required by the current turn contract.

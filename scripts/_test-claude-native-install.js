@@ -128,6 +128,10 @@ try {
   test('installed Claude plugin emits its native UserPromptSubmit hook event', () => {
     assert.match(serialized, /UserPromptSubmit/);
     assert.match(serialized, /Crabshell Turn Contract/);
+    assert.match(serialized, /Mandatory Response Ending/);
+    assert.match(serialized, /\[의도\]:[\s\S]*\[이해\]:[\s\S]*\[설명\]:/);
+    assert.match(serialized, /End every user-facing response, including a short answer/i);
+    assert.match(serialized, /easy-to-understand line using the user's words/i);
   });
 
   test('installed Claude question-only process leaves the consumer project unchanged', () => {

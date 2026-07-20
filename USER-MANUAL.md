@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.107.0)
+# Crabshell User Manual (v21.108.0)
 
 ## Why Do You Need This?
 
@@ -67,7 +67,7 @@ Codex automatically loads existing memory/workflow context at SessionStart and u
 ### What Happens in Codex
 
 - SessionStart reads the same project memory and active D/P/T/W workflow context without modifying it.
-- UserPromptSubmit applies the same question/execution boundary and shared turn contract through Codex-native output.
+- UserPromptSubmit applies the same question/execution boundary and shared turn contract, including the trailing `[의도]`/`[이해]`/`[설명]` block, through Codex-native output.
 - PreCompact/PostCompact recover memory and workflow context; SubagentStart supplies the current task/non-goals/references/success contract.
 - PostToolUse records decisive parent command results. SubagentStop is only a child claim; Stop requires parent evidence and bounds identical retry failures.
 - Use `crabshell:save-memory` for an explicit Codex session note. Codex does not invoke Claude's SessionEnd capture or pressure counters.
@@ -231,7 +231,7 @@ The plugin uses Claude Code hooks to run automatically:
 
 | Hook | Script | When It Runs | What It Does |
 |------|--------|-------------|-------------|
-| `UserPromptSubmit` | `inject-rules.js` | Every prompt | Emits the shared turn contract; execution prompts also run once-per-session cleanup/reset and Claude rule/memory-warning synchronization |
+| `UserPromptSubmit` | `inject-rules.js` | Every prompt | Emits the shared turn contract and mandatory three-field response ending; execution prompts also run once-per-session cleanup/reset and Claude rule/memory-warning synchronization |
 | `SessionStart` | `load-memory.js` | Session begins | Read-only load of logbook, summaries, project memory, and active workflow context |
 | `PostToolUse` | `counter.js check` | After each tool use | Increments counter; triggers auto-save + delta extraction at interval |
 | `PreToolUse` | `regressing-guard.js` | Before Write/Edit | Enforces phase-based restrictions during active regressing sessions |
@@ -260,7 +260,7 @@ Hook launcher v21.99.3 note: `hooks/hooks.json` now invokes hook scripts through
 | Hook | Script | When It Runs | What It Does |
 |------|--------|-------------|-------------|
 | `SessionStart` | `adapters/codex/session-start.js` | Session begins | Read-only shared memory and active workflow recovery |
-| `UserPromptSubmit` | `adapters/codex/user-prompt-submit.js` | Every prompt | Shared question/execution contract; execution lifecycle writes only to Codex plugin data/project state |
+| `UserPromptSubmit` | `adapters/codex/user-prompt-submit.js` | Every prompt | Shared question/execution contract and mandatory three-field response ending; execution lifecycle writes only to Codex plugin data/project state |
 | `PreToolUse` | `adapters/codex/pre-tool-use.js` | Matching local file/shell tools | Applies the shared `.crabshell/` path policy and returns native `hookSpecificOutput` deny JSON for wrong-project memory paths |
 | `PostToolUse` | `adapters/codex/post-tool-use.js` | After Bash | Records conclusive parent command evidence for a pending child claim |
 | `PreCompact` | `adapters/codex/pre-compact.js` | Before compaction | Emits shared memory/workflow recovery context without writes |
@@ -271,11 +271,19 @@ Hook launcher v21.99.3 note: `hooks/hooks.json` now invokes hook scripts through
 
 Codex reads `hooks/codex-hooks.json` through the explicit `.codex-plugin/plugin.json` `hooks` field. That prevents accidental discovery of Claude's `hooks/hooks.json`. The nine Codex events are synchronous and native; shared semantics live in host-neutral cores, while Claude-specific pressure/sycophancy and SessionEnd capture stay in Claude. Retired fixed-count, role-collapse, and behavior-verifier hooks are absent from both manifests.
 
-### Internal Task Contract and Natural Reporting
+### Internal Task Contract and Shared Response Ending
 
-As of v21.105.0, `scripts/inject-rules.js` no longer injects `SKELETON_3FIELD` or requires visible `[의도]`/`[이해]`/`[설명]` markers. Understanding remains mandatory, but it is represented by the internal task contract and by evidence-backed execution rather than an exposed response form.
+As of v21.108.0, both native `UserPromptSubmit` paths append one mandatory response-ending contract from `scripts/core/first-turn-context.js`. Every user-facing response keeps its natural answer body first and ends with exactly three short lines in this order:
 
-The default report is natural prose appropriate to the task. It leads with the outcome, includes decisive observations and remaining gaps, and uses P/O/G when verification results need to be audited. There is no fixed response field count or mandatory marker vocabulary.
+```text
+[의도]: the user's request, restated in the user's words
+[이해]: the assistant's interpretation and any remaining gap; `gap 없음` when none remains
+[설명]: one concrete, easy-to-understand explanation in the user's words
+```
+
+This is not a return to the v21.102.0 caveman-style `SKELETON_3FIELD`. The fields summarize the answer and do not expose private chain-of-thought; analogy is not the default. The v21.105.0 internal eight-field task contract and evidence-backed execution remain active behind the response.
+
+The main report remains natural prose appropriate to the task. It leads with the outcome, includes decisive observations and remaining gaps, and uses P/O/G when verification results need to be audited.
 
 As of v21.106.0, the dormant behavior-verifier script, prompt, state consumer, fixed WA-count hook, and role-collapse parent-write gate are removed. Existing `behavior-verifier-state.json`, `verifier.lock`, and `wa-count.json` files are not deleted; current code ignores them. The old designs remain documented in release history only.
 
@@ -540,7 +548,7 @@ The following cycle 5 (D107) features were shipped in v21.88.0 but their dedicat
 
 | # | Feature | Source | What it does | Section it belongs to | Status |
 |---|---------|--------|--------------|-----------------------|--------|
-| 1 | Response skeleton lineage | `scripts/inject-rules.js` / release history | Former 5-field, 7-field, and 3-field response-marker designs. | Release history; D110/I081 | Retired in v21.105.0 — replaced by internal task contract and natural reporting. |
+| 1 | Response skeleton lineage | `scripts/inject-rules.js` / `scripts/core/first-turn-context.js` / release history | Former 5-field, 7-field, and caveman-style 3-field designs remain retired; v21.108.0 restores a concise three-field response ending from the shared host-neutral core. | [Internal Task Contract and Shared Response Ending](#internal-task-contract-and-shared-response-ending) | Restored in v21.108.0 without restoring the retired verifier or caveman presentation. |
 | 2 | ~~`ANTI_PATTERNS_INLINE`~~ | ~~`scripts/inject-rules.js`~~ | **Removed in v21.91.0** (D108/I069). Per-turn inline injection of 9 PROHIBITED + 4 AVOID patterns (~1,701 B). Current coverage comes from the auto-managed rules, parent-owned verification, and active safety guards; the later verifier fallback was retired in v21.106.0. | N/A | Removed |
 | 3 | `.crabshell/memory/lock-contention.json` | F-4 instrumentation state file (NEW) | Per-lock metrics file: `acquireCount`, `releaseCount`, `contendedCount`, `totalWaitMs`, `totalHeldMs`, `maxWaitMs`, `maxHeldMs`, `lastAcquiredPid`, `lastUpdatedAt`, plus top-level `measurementWindowStart` ISO marker (cycle 6). Powers F-3 path-choice ratification analysis. | Configuration §Memory Files | Done — section: `### lock-contention.json` (under `## Configuration`) |
 | 4 | `_recordContention` (utils.js F-4 instrumentation) | `scripts/utils.js` (~47 lines, called from inside `acquireIndexLock` / `releaseIndexLock`) | Lock-contention measurement helper. Intentionally uses unprotected `writeJson` to avoid recursive lock acquisition (deadlock prevention) — accepts conservative undercount bias as a documented trade-off. | Hooks/Guards §Lock Contention Measurement | Done — section: `### _recordContention` (under `## Configuration`) |
@@ -553,6 +561,7 @@ This table is a historical documentation ledger. Current behavior is defined by 
 
 | Version | Host CLI evidence | Node.js |
 |---------|-------------------|---------|
+| 21.108.0 | Restored response contract exercised through isolated installed Claude Code and Codex CLI prompt hooks plus Windows/Linux clean-profile matrix; Codex app not directly exercised | 20/22 exercised |
 | 21.107.0 | Claude Code 2.1.215 + Codex CLI 0.144.6 exercised on Windows/Linux; Codex app not directly exercised | 20/22 exercised |
 | 21.76.0 | 1.0+ | 18+ |
 | 21.75.1 | 1.0+ | 18+ |
