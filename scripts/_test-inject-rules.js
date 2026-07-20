@@ -866,8 +866,12 @@ test('SUBPROCESS: output contains key context items', function() {
     assert(ctx.includes('Rules Quick-Check'), 'COMPRESSED_CHECKLIST present');
     assert(ctx.includes('Node.js Path'), 'Node.js Path present');
     assert(ctx.includes('Project Root Anchor'), 'Project Root Anchor present');
-    // D110 Cycle 2: visible response skeleton retired; natural quick-check remains.
-    assert(!ctx.includes('Response Skeleton'), 'response skeleton absent');
+    // D112: the shared three-field response ending is restored for both hosts.
+    assert(ctx.includes('Mandatory Response Ending'), 'mandatory response ending present');
+    assert(ctx.includes('[의도]:'), 'intent field present');
+    assert(ctx.includes('[이해]:'), 'understanding field present');
+    assert(ctx.includes('[설명]:'), 'explanation field present');
+    assert(ctx.includes('easy-to-understand'), 'easy-language requirement present');
     assert(ctx.includes('conclusion first'), 'natural conclusion-first guidance present');
     assert(ctx.includes('TZ_OFFSET'), 'TZ_OFFSET present');
   } finally {

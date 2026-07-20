@@ -8,7 +8,7 @@ const repoRoot = path.resolve(__dirname, '..');
 const suites = [
   {
     file: '_test-cross-runtime-first-turn.js',
-    observations: [/divergent-source mutation/, /forbidden-side-effect mutation/],
+    observations: [/response-contract mutations/, /divergent-source mutation/, /forbidden-side-effect mutation/],
   },
   {
     file: '_test-cross-runtime-session-memory.js',

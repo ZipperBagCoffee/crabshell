@@ -1,11 +1,13 @@
 'use strict';
 
 const assert = require('assert');
+const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { CodexAppServer, runCodex } = require('./core/codex-app-server');
+const { validateContextOutput } = require('./core/first-turn-context');
 
 const sourceRoot = path.resolve(__dirname, '..');
 const testRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'crabshell native install '));
@@ -22,6 +24,24 @@ function test(name, fn) {
 
 function copy(relativePath) {
   fs.cpSync(path.join(sourceRoot, relativePath), path.join(fixtureRoot, relativePath), { recursive: true });
+}
+
+function treeSnapshot(root) {
+  const snapshot = {};
+  function visit(current, relative = '') {
+    for (const entry of fs.readdirSync(current, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      const childRelative = path.join(relative, entry.name);
+      const child = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        snapshot[childRelative] = '<directory>';
+        visit(child, childRelative);
+      } else {
+        snapshot[childRelative] = crypto.createHash('sha256').update(fs.readFileSync(child)).digest('hex');
+      }
+    }
+  }
+  visit(root);
+  return snapshot;
 }
 
 function runCli(args, timeout = 30000) {
@@ -149,6 +169,35 @@ async function main() {
       assert.strictEqual(path.resolve(consumerStatus.pluginRoot), path.resolve(cachePath));
       assert.strictEqual(path.resolve(consumerStatus.projectRoot), path.resolve(consumerProject));
       assert.strictEqual(getCheck(consumerStatus, 'skills').status, 'ok');
+    });
+
+    const installedPromptAdapter = path.join(cachePath, 'scripts', 'adapters', 'codex', 'user-prompt-submit.js');
+    const beforePrompt = treeSnapshot(consumerProject);
+    const installedPrompt = spawnSync(process.execPath, [installedPromptAdapter], {
+      cwd: consumerProject,
+      env: {
+        ...env,
+        PLUGIN_ROOT: cachePath,
+        PLUGIN_DATA: path.join(codexHome, 'plugin data with spaces'),
+      },
+      input: JSON.stringify({
+        hook_event_name: 'UserPromptSubmit',
+        cwd: consumerProject,
+        prompt: 'What does restoring the shared response contract mean?',
+      }),
+      encoding: 'utf8',
+      timeout: 10000,
+      windowsHide: true,
+    });
+    test('installed Codex UserPromptSubmit emits the restored shared response contract without a project write', () => {
+      assert.strictEqual(installedPrompt.status, 0, installedPrompt.stderr || installedPrompt.stdout);
+      const installedPromptOutput = JSON.parse(installedPrompt.stdout.trim());
+      assert.strictEqual(validateContextOutput(installedPromptOutput), true);
+      const context = installedPromptOutput.hookSpecificOutput.additionalContext;
+      assert.match(context, /\[의도\]:[\s\S]*\[이해\]:[\s\S]*\[설명\]:/);
+      assert.match(context, /End every user-facing response, including a short answer/i);
+      assert.match(context, /easy-to-understand line using the user's words/i);
+      assert.deepStrictEqual(treeSnapshot(consumerProject), beforePrompt);
     });
 
     await trustInstalledHooks();

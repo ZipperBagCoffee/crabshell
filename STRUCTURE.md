@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.107.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.108.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -87,7 +87,7 @@ crabshell/
 │   ├── core/path-policy.js           # Host-neutral memory path policy (v21.104.0)
 │   ├── core/codex-app-server.js      # Codex JSON-RPC/CLI capability client (v21.104.0)
 │   ├── core/orchestration-policy.js  # 8-field task contract + parent completion policy (v21.105.0)
-│   ├── core/first-turn-context.js     # Shared question/execution turn contract
+│   ├── core/first-turn-context.js     # Shared turn contract + mandatory intent/understanding/explanation ending
 │   ├── core/memory-context.js         # Shared read-only SessionStart memory selection
 │   ├── core/execution-lifecycle.js    # Shared execution-authorized cleanup/reset with host data isolation
 │   ├── core/workflow-context.js       # Restart-safe active D/P/T/W recovery
@@ -209,7 +209,7 @@ The repository intentionally keeps Claude and Codex runtime surfaces side by sid
 | `scripts/codex-docs.js` | Codex | Manual W/H/D/P/T/I document creation wrapper |
 | `scripts/codex-doctor.js` | Shared status | Live Claude/Codex installed, activated, trusted, behavior-verified, degraded, drifted, and unsupported diagnosis |
 | `scripts/core/path-policy.js` | Shared | Host-neutral path policy used by Claude and Codex adapters |
-| `scripts/core/{first-turn-context,memory-context,workflow-context,compaction-context,subagent-context,completion-control}.js` | Shared | Host-neutral semantics consumed by both native hook manifests |
+| `scripts/core/{first-turn-context,memory-context,workflow-context,compaction-context,subagent-context,completion-control}.js` | Shared | Host-neutral turn semantics, mandatory three-field response ending, memory/workflow recovery, and completion behavior consumed by both native hook manifests |
 | `scripts/claude-to-agents.js` | Codex | `CLAUDE.md` to `AGENTS.md` conversion |
 | `scripts/install-codex.js` | Claude Code -> Codex | Legacy/development manual bridge; native marketplace installation is the default |
 
@@ -419,6 +419,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.108.0 | feat: restore the shared `[의도]`/`[이해]`/`[설명]` response ending in the host-neutral first-turn core, with installed-host and mutation regressions for both Claude Code and Codex. |
 | 21.107.0 | feat: native Claude/Codex lifecycle parity; shared first-turn, memory, workflow, compaction, subagent, command-observation, completion, and doctor-state cores; Windows/Linux clean-profile matrix; unified mutation verifier; Claude-specific behavior preserved. |
 | 21.106.1 | docs: correct current runtime descriptions after the v21.106.0 fixed-count/role/verifier retirement and remove stale Cycle 1/3 transition language. |
 | 21.106.0 | feat: D110 Cycle 3 — single-source portable schema-v2 verification runner, independent mutation corpus, structured behavioral guard contract, count-independent parent-owned orchestration, and confirmed retirement of 19 verifier/count/role legacy files. |

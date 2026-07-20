@@ -79,7 +79,7 @@
     },
     {
       "id": "V005",
-      "ia": "Native Codex clean install, cache, skill, hook trust/hash, and spaces-path behavior",
+      "ia": "Native Codex clean install, cache, skill, restored prompt response contract, hook trust/hash, and spaces-path behavior",
       "type": "structural",
       "command": {
         "file": "node",
@@ -154,7 +154,7 @@
     },
     {
       "id": "V009",
-      "ia": "Current cross-runtime native harness release version is 21.107.0 after D111 closure",
+      "ia": "Current cross-runtime response-contract restoration release version is 21.108.0 after D112 cycle 1",
       "type": "structural",
       "command": {
         "file": "node",
@@ -169,7 +169,7 @@
           {
             "kind": "stdoutJsonEquals",
             "pointer": "/version",
-            "equals": "21.107.0"
+            "equals": "21.108.0"
           }
         ],
         "forbiddenChanges": []
@@ -245,7 +245,7 @@
     },
     {
       "id": "V013",
-      "ia": "Unified Claude and Codex lifecycle behavior rejects stale memory, lost state, wrong order, false done, hardcoded path, host mismatch, and forbidden-side-effect mutations",
+      "ia": "Unified Claude and Codex lifecycle behavior rejects missing or malformed response contracts, stale memory, lost state, wrong order, false done, hardcoded path, host mismatch, and forbidden-side-effect mutations",
       "type": "behavioral",
       "command": {
         "file": "node",

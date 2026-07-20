@@ -5,7 +5,12 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const { FIRST_TURN_RULES, validateContextOutput } = require('./core/first-turn-context');
+const {
+  FIRST_TURN_RULES,
+  RESPONSE_CONTRACT,
+  RESPONSE_FIELDS,
+  validateContextOutput,
+} = require('./core/first-turn-context');
 const { classifyUserIntent } = require('./inject-rules');
 
 const repoRoot = path.resolve(__dirname, '..');
@@ -100,6 +105,15 @@ try {
     assert.strictEqual(codexOutput.hookSpecificOutput.additionalContext, claudeOutput.hookSpecificOutput.additionalContext);
   });
 
+  test('both hosts receive the exact mandatory intent understanding explanation ending', () => {
+    const context = claudeOutput.hookSpecificOutput.additionalContext;
+    assert.ok(context.includes(RESPONSE_CONTRACT));
+    assert.deepStrictEqual(RESPONSE_FIELDS, ['[의도]:', '[이해]:', '[설명]:']);
+    assert.match(context, /End every user-facing response, including a short answer/i);
+    assert.match(context, /easy-to-understand line using the user's words/i);
+    assert.match(context, /do not default to analogy or caveman-style fragments/i);
+  });
+
   test('question context forbids mutation and omits prior-work continuation', () => {
     const context = claudeOutput.hookSpecificOutput.additionalContext;
     assert.match(context, /question authorizes an answer/i);
@@ -120,6 +134,22 @@ try {
     mutated.hookSpecificOutput.additionalContext = mutated.hookSpecificOutput.additionalContext.replace('## Crabshell Turn Contract', '## Divergent Contract');
     assert.throws(() => assert.strictEqual(mutated.hookSpecificOutput.additionalContext, claudeOutput.hookSpecificOutput.additionalContext));
     assert.throws(() => validateContextOutput(mutated), /shared Crabshell turn contract/);
+  });
+
+  test('response-contract mutations are rejected', () => {
+    const outputWith = context => ({
+      hookSpecificOutput: { hookEventName: 'UserPromptSubmit', additionalContext: context },
+    });
+    const original = claudeOutput.hookSpecificOutput.additionalContext;
+    assert.throws(() => validateContextOutput(outputWith(original.replace('[이해]:', '[해석]:'))), /\[이해\]:/);
+    assert.throws(() => validateContextOutput(outputWith(original.replace('[설명]:', '[쉬운설명]:'))), /\[설명\]:/);
+    const reordered = original
+      .replace('[의도]:', '[임시]:')
+      .replace('[설명]:', '[의도]:')
+      .replace('[임시]:', '[설명]:');
+    assert.throws(() => validateContextOutput(outputWith(reordered)), /field order|missing \[(?:의도|이해|설명)\]:/);
+    assert.throws(() => validateContextOutput(outputWith(original.replace('End every user-facing response, including a short answer', 'For user-facing responses'))), /end-placement/);
+    assert.throws(() => validateContextOutput(outputWith(original.replace('easy-to-understand line using the user\'s words', 'technical line'))), /easy-language/);
   });
 
   test('forbidden-side-effect mutation is detected by the independent snapshot', () => {

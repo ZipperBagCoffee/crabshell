@@ -28,4 +28,4 @@ Record failed attempts and observed causes in the W experiment log. Repair the f
 
 ## Report
 
-Finish the W document before the conversation summary. Lead with the outcome, then actual changes/observations, decisive evidence, and any real remaining limitation. Keep workflow field names and role acronyms out of the user-facing response.
+Finish the W document before the conversation summary. Lead with the outcome, then actual changes/observations, decisive evidence, and any real remaining limitation. Keep workflow field names and role acronyms out of the user-facing response, then append the shared `[의도]`, `[이해]`, `[설명]` response-ending block.
