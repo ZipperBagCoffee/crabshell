@@ -154,7 +154,7 @@
     },
     {
       "id": "V009",
-      "ia": "Current plugin feature version is 21.106.0 after D110 Cycle 3 release closure",
+      "ia": "Current plugin documentation patch version is 21.106.1 after D110 Cycle 3 closure",
       "type": "structural",
       "command": {
         "file": "node",
@@ -169,7 +169,7 @@
           {
             "kind": "stdoutJsonEquals",
             "pointer": "/version",
-            "equals": "21.106.0"
+            "equals": "21.106.1"
           }
         ],
         "forbiddenChanges": []

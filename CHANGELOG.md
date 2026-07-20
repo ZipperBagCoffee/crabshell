@@ -1,5 +1,12 @@
 # Changelog
 
+## [21.106.1] - 2026-07-19
+
+### docs: remove stale pre-Cycle-3 architecture statements
+- Corrected current ARCHITECTURE/STRUCTURE/USER-MANUAL text that still described fixed parallel-WA enforcement and verifier/agent-count hooks as pending or Claude-only after their v21.106.0 retirement.
+- Replaced Cycle 1/3 transitional wording with the current host boundary: Codex has one deterministic native PreToolUse path guard; fixed-count, role-collapse, and behavior-verifier surfaces are absent from both runtimes.
+- Synchronized the documentation patch version through plugin metadata, public document headers/version tables, and verification manifest V009.
+
 ## [21.106.0] - 2026-07-19
 
 ### feat: D110 Cycle 3 — portable behavioral verification and legacy orchestration retirement

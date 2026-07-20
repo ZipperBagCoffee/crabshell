@@ -222,6 +222,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.106.1 | docs: remove stale Cycle 1/3 statements from current architecture/manual sections and state the post-retirement Claude/Codex hook boundary consistently. |
 | 21.106.0 | feat: D110 Cycle 3 — portable schema-v2 verification with structured behavioral assertions and mutation fixtures; retire 19 verifier/count/role files and fixed-count orchestration after disabled baselines; retain memory, safety, post-compact, and legacy Codex install bridges. |
 | 21.105.0 | feat: D110 Cycle 2 — internal 8-field task contract, five-stage parent-owned light workflow, risk-based user questions and delegation, natural reporting, presentation-audit retirement, and live Codex A/B orchestration corpus. |
 | 21.104.0 | feat: D110 Cycle 1 — native Codex repo marketplace, explicit Codex-only PreToolUse manifest/adapter, shared path policy, live capability-aware doctor/status, installed-cache memory skill wrappers, spaces-path and trust/hash-drift regressions; legacy installer retained. |
