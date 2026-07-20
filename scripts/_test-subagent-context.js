@@ -128,13 +128,16 @@ test('additionalContext is under 2000 chars', function() {
 // ============================================================
 // Test 5: Contains COMPRESSED_CHECKLIST content
 // ============================================================
-test('additionalContext contains COMPRESSED_CHECKLIST content', function() {
+test('additionalContext contains worker contract and COMPRESSED_CHECKLIST content', function() {
   const tmpDir = makeTempDir('subagent-test');
   try {
     const { stdout } = runScript(tmpDir);
     const parsed = JSON.parse(stdout.trim());
     const ctx = parsed.hookSpecificOutput.additionalContext;
-    assert(ctx.includes('Understanding-First') || ctx.includes('Rules Quick-Check'),
+    assert(ctx.includes('Worker Contract'), 'should contain worker contract, got: ' + ctx.substring(0, 600));
+    assert(ctx.includes('claim, evidence from direct observation, and remaining gap'),
+      'should contain evidence return contract, got: ' + ctx.substring(0, 900));
+    assert(ctx.includes('Rules Quick-Check'),
       'should contain checklist content, got: ' + ctx.substring(0, 300));
   } finally {
     cleanupDir(tmpDir);

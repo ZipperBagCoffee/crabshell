@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.103.0)
+# Crabshell User Manual (v21.106.0)
 
 ## Why Do You Need This?
 
@@ -20,6 +20,19 @@ Crabshell solves this problem.
 ```
 
 **That's it.** It works automatically after installation.
+
+### Codex Native Installation
+
+From a Crabshell source checkout, register its repo marketplace and install the plugin:
+
+```bash
+codex plugin marketplace add .
+codex plugin add crabshell@crabshell-repo
+```
+
+Start a new Codex session, review/trust the Crabshell hook definition, and invoke the bundled `crabshell:status` skill. It reports the source, installed cache, hook source/hash/trust, resolved skills, writable plugin-data path, and current Codex feature state. The old `/crabshell:install-codex` command remains a legacy/development bridge; native marketplace installation is the default.
+
+Codex memory is intentionally manual in Cycle 1: use the bundled load/save/search skills. Only the deterministic native `PreToolUse` memory-path guard runs automatically; Claude's automatic memory, pressure, verifier, and Stop hooks do not run in Codex.
 
 ---
 
@@ -111,7 +124,7 @@ All available skills (slash commands):
 | Command | What It Does |
 |---------|-------------|
 | `/crabshell:regressing "topic" N` | Iterative optimization: N cycles of Plan-then-Ticket, wrapped in a Discussion |
-| `/crabshell:light-workflow` | Lightweight one-shot agent orchestration for standalone tasks |
+| `/crabshell:light-workflow` | Five-stage parent-owned workflow for standalone tasks |
 | `/crabshell:verifying` | Create or run project-specific verification tools |
 | `/crabshell:status` | Healthcheck of plugin state (memory, regressing, verification, version) |
 | `/crabshell:lint` | Run Obsidian document lint checks (orphans, broken wikilinks, stale status, missing frontmatter, INDEX inconsistencies) |
@@ -123,10 +136,14 @@ All available skills (slash commands):
 | Command | What It Does |
 |---------|-------------|
 | `/crabshell:setup-project` | Initialize project configuration (project.md, config) |
-| `/crabshell:install-codex` | Link this Claude-installed Crabshell checkout into Codex plugin and skill locations |
+| `/crabshell:install-codex` | Legacy/development bridge into Codex locations; prefer native Codex marketplace installation |
 | `/crabshell:setup-rtk` | Install and configure RTK (Rust Token Killer) for token-optimized CLI output |
 
 > **Tip:** For basic memory operations, you can also just ask Claude directly (e.g., "save memory now", "search memory for auth").
+
+### Codex Bundled Skills
+
+Installed Codex skills are invoked by name, including `crabshell:load-memory`, `crabshell:save-memory`, `crabshell:search-memory`, and `crabshell:status`. Their scripts resolve from the installed plugin cache and target the active project, so the project does not need its own copy of `scripts/`. Codex also bundles the D/P/T/I/H/K and workflow skills listed by the native plugin manifest.
 
 ---
 
@@ -163,7 +180,7 @@ Use `/crabshell:regressing "topic" N` for tasks that need multiple rounds of ref
 
 ### Light Workflow (One-Shot Tasks)
 
-Use `/crabshell:light-workflow` for simple standalone tasks that do not need the full D/P/T document trail. It provides agent orchestration (Work Agent + Review Agent) without the overhead of tracked documents.
+Use `/crabshell:light-workflow` for a standalone task that does not need the full D/P/T trail. It creates a W worklog and runs five stages: understand internally, inspect, implement, verify behavior, and report. The parent may delegate bounded work when useful, but delegation and Work/Review pairing are not completion gates.
 
 ---
 
@@ -171,8 +188,8 @@ Use `/crabshell:light-workflow` for simple standalone tasks that do not need the
 
 Crabshell enforces several behavioral rules via CLAUDE.md injection. You do not need to configure these; they activate automatically.
 
-### Understanding-First
-Claude confirms its understanding of your intent before acting. This prevents wasted work on wrong assumptions. If intent is unclear, Claude asks first rather than guessing.
+### Internal Understanding
+Claude builds an internal eight-field task contract before implementation: the original request, required outcomes, non-goals, named references, allowed changes, forbidden side effects, observable success, and blocking unknowns. It continues through discoverable or non-blocking uncertainty and asks only when a destructive/irreversible action, outside-workspace change, external installation, or undiscoverable product choice requires user authority.
 
 ### Verification-First
 Before claiming any result is verified, Claude must:
@@ -182,13 +199,14 @@ Before claiming any result is verified, Claude must:
 
 Results are reported in a Prediction/Observation/Gap (P/O/G) table. Reading a file and declaring it correct is not verification.
 
-### Agent Pairing
-For non-trivial tasks, Claude uses a Work Agent + Review Agent pattern:
-- Every Work Agent has a paired Review Agent
-- They run as separate agents to maintain independence
-- The Orchestrator (Claude itself) synthesizes results but does not perform work or review directly
+### Parent-Owned Orchestration
+The parent agent may delegate independent inspection, implementation, or review tasks when that lowers risk or latency. Worker prompts must include the relevant original request, task and non-goal, authoritative references, read/write scope, expected observation, and verification method. Explore/review workers are read-only and workers do not fan out.
 
-**RA agent rate-limit fallback (v21.77.2+):** If Task-tool dispatch for the Review Agent fails due to API rate-limit (e.g., long sustained sessions), the Orchestrator may perform self-verification using the same P/O/G + Devil's Advocate template the Review Agent would have used. The fallback section in the ticket document is labelled `**Note: RA agent rate-limited, Orchestrator self-verification fallback applied.**` so the deviation is auditable. Standard mode remains RA dispatch retry; this fallback applies only when retry is impractical and convergence pressure is high.
+Completion remains with the parent. A worker's `done`/`PASS`, agent count, or spot-check is not decisive evidence; the parent resolves named references, inspects the resulting diff, runs the decisive command or behavior check, checks forbidden side effects, and reports the observed gap.
+
+### Portable Behavioral Verification
+
+The verifying skill installs one schema-v2 runner from `skills/verifying/scripts/run-verify.js`. Manifest commands use repo-relative `file` and `args` fields. Behavioral entries must assert independently observed JSON/file state and may protect paths with before/after snapshots. A zero exit or stdout containing `PASS` cannot satisfy the contract by itself.
 
 These rules are automatically injected into CLAUDE.md and reinforced every prompt.
 
@@ -217,12 +235,8 @@ The plugin uses Claude Code hooks to run automatically:
 | `PostToolUse` | `doc-watchdog.js record` | After Write/Edit | Tracks code file edits (increment counter) and D/P/T doc edits (reset counter) in doc-watchdog.json |
 | `PostToolUse` | `skill-tracker.js` | After Skill tool call | Sets skill-active flag on Skill tool calls for guard scripts |
 | `PreToolUse` | `pressure-guard.js` | Before ANY tool (matcher: `.*`) | Graduated tool blocking based on consecutive negative feedback pressure level (L2: primary tools, L3: all tools) |
-| `PreToolUse` | `role-collapse-guard.js` | Before Write/Edit | Blocks Orchestrator from directly writing source code files (should delegate to Work Agents) |
 | `Stop` | `scope-guard.js` | Before response finalized | Detects scope reduction in responses (delivering fewer items than user requested) |
-| `Stop` | `regressing-loop-guard.js` | Before session ends | Blocks session end during active regressing (and allows stop for light-workflow — single-WA block removed v21.103.0); enforces continuation |
-| `Stop` | `behavior-verifier.js` (감시자) | Before response finalized | Writes pending state + sentinel; next-turn UserPromptSubmit dispatches background sub-agent for 4-dimension verdict (understanding/verification/logic/simple — §3.logic body extended in v21.81.0 with 3 sub-clauses: Direction change / Session-length deferral / Trailing deferral; §1.understanding Format markers now require all current 3 Korean SKELETON_3FIELD markers (`[의도]`/`[이해]`/`[설명]`) when response > 200 chars; missing markers -> FAIL), result injected as `## Behavior Correction` on the following turn. **v21.82.0 (D103 cycle 2)**: Stop hook also reads prior state, scans transcript via `getRecentTaskCalls`, sets `state.dispatchOverdue=true` when prior `status='pending'` + zero Task tool_use since prior `launchedAt` (clarification + length<50 bypasses preserved); inject-rules consumer prepends `**[DISPATCH OVERDUE]** Previous turn did not invoke Task. Invoke NOW.` before the dispatch instruction. **v21.83.0 (D104 cycle 1, P136)**: trigger redesigned 3-layer (periodic N=8 skip when workflow inactive + workflow-active force layer overrides length<50/clarification bypass during regressing/light-workflow + escalation L0→L1 marker on `missedCount>=2`); 5-class turn classification (`user-facing`/`workflow-internal`/`notification`/`clarification`/`trivial`) gates which criteria apply; verdict ring buffer (FIFO N=8) injected as `## Watcher Recent Verdicts` cross-turn context (~50-100 tokens/turn, ≤800 chars cap); state schema 7→14 fields (`triggerReason`/`lastFiredAt`/`lastFiredTurn`/`missedCount`/`escalationLevel`/`ringBuffer`/`turnType`); hooks.json Stop section 순서 swap (behavior-verifier above regressing-loop-guard, RA8 MISS-1 mitigation) (D102 P132 v21.80.0; §3.logic absorption D103 P134 v21.81.0; dispatch overdue + format markers D103 P135 v21.82.0; trigger 3-layer + ring buffer + turn classification D104 P136 v21.83.0; v21.99.3 stale marker docs/manifest sync) — DISABLED in v21.100.0 (Stop hook entry removed from hooks.json; code retained dormant, re-enable by restoring the entry) |
-Behavior-verifier v21.96.0 note: workflow-active verifier/monitor idle echoes are skipped before pending-state write to prevent dispatch loops during long waits.
-Behavior-verifier v21.99.4 note: verifier-meta result/status/task-notification echoes such as `Verifier 결과 ... 4축 ALL PASS`, `Behavior verifier background completed`, or `semanticAlignment=true ... verifier dispatch agentId` are skipped before pending-state write. Ordinary non-verifier task notifications still remain eligible for verifier coverage.
+| `Stop` | `regressing-loop-guard.js` | Before session ends | Sole regressing continuation owner; blocks premature stop without reading worker counts or background-agent state |
 Hook launcher v21.99.3 note: `hooks/hooks.json` now invokes hook scripts through direct `node` commands. `scripts/find-node.sh` remains available as a hardened fallback utility, not the default launcher.
 
 | `PreCompact` | `pre-compact.js` | Before context compaction | Outputs memory state, active documents, and regressing state as context to preserve across compaction |
@@ -230,25 +244,25 @@ Hook launcher v21.99.3 note: `hooks/hooks.json` now invokes hook scripts through
 | `SubagentStart` | `subagent-context.js` | When subagent spawns | Injects project concept, COMPRESSED_CHECKLIST, regressing state, and project root anchor into subagent context |
 | `SessionEnd` | `counter.js final` | Session ends | Creates final L1 backup, extracts remaining delta |
 
-### SKELETON_3FIELD — 3-Field Response Skeleton
+### Codex Hook Surface
 
-**What it is (v21.102.0, I079 R1/W027):** A pure-Korean 3-field caveman-terse schema injected into Claude's prompt context on every `UserPromptSubmit`. The fields are `[의도]` (restate user intent in user's words, 1 line) / `[이해]` (own interpretation + gap; if gap exists ask for confirmation, otherwise state "gap 없음") / `[설명]` (plain-text 1-line summary, no jargon, no analogy). Each field is one short line — fragments fine. The 3-field block is placed AT THE BOTTOM of the response, after the main answer body.
+| Hook | Script | When It Runs | What It Does |
+|------|--------|-------------|-------------|
+| `PreToolUse` | `adapters/codex/pre-tool-use.js` | Matching local file/shell tools | Applies the shared `.crabshell/` path policy and returns native `hookSpecificOutput` deny JSON for wrong-project memory paths |
 
-**History note:** Previously a 7-field schema (`SKELETON_7FIELD`). The 4 self-check fields (`[검증]`, `[논리]`, `[동조화 및 일관성]`, `[완결 충동]`) were removed in v21.102.0 (I079: zero substantive catches in the recorded ring buffer; Fable 5 reasoning-echo guidance — these fields echoed reasoning already in the response body without adding signal; ~250-360 tok/turn + output cost recovered). `[쉬운 설명]` was renamed to `[설명]` for brevity. User-approved product decision.
+Codex reads `hooks/codex-hooks.json` through the explicit `.codex-plugin/plugin.json` `hooks` field. That override prevents accidental discovery of Claude's `hooks/hooks.json`. The Codex file contains no Stop continuation, automatic memory, pressure/sycophancy, behavior-verifier, agent-count, prompt/agent handler, or async hook.
 
-**Where it's injected:** `scripts/inject-rules.js` — declared as the `SKELETON_3FIELD` constant (template literal); appended to the per-turn `context` string inside the `UserPromptSubmit` handler. Injection ordering: ringBuffer FAIL surface → **SKELETON_3FIELD** → COMPRESSED_CHECKLIST → Project Concept → Node.js Path → Project Root Anchor → **Behavior Verifier** (dispatch/correction) → Delta/Rotation → Regressing.
+### Internal Task Contract and Natural Reporting
 
-**Why (D107 IA-1 + I079 R1/W027):** Default-behavior addition — every prompt carries the 3-field skeleton so user-facing transparency is enforced from the prompt itself. The caveman-terse style discourages filler and forces substantive one-line content per field.
+As of v21.105.0, `scripts/inject-rules.js` no longer injects `SKELETON_3FIELD` or requires visible `[의도]`/`[이해]`/`[설명]` markers. Understanding remains mandatory, but it is represented by the internal task contract and by evidence-backed execution rather than an exposed response form.
 
-**How it interacts with the verifier (감시자):** **Disabled as of v21.100.0:** the verifier Stop hook was removed from hooks.json, so no dispatch occurs; the mechanism below is retained dormant and documents how it works when re-enabled. The `behavior-verifier.js` sub-agent's `§0.5` audit checks all 3 markers via regex + content-presence rules. `§1.understanding` Format-markers sub-clause checks for the same 3 Korean markers (`[의도]`/`[이해]`/`[설명]`) when `response.length > 200`. Missing markers → understanding FAIL → ringBuffer entry → next-turn `## Behavior Correction` injection.
+The default report is natural prose appropriate to the task. It leads with the outcome, includes decisive observations and remaining gaps, and uses P/O/G when verification results need to be audited. There is no fixed response field count or mandatory marker vocabulary.
 
-**Byte cost:** ~350 B body (UTF-8) — approximately half the prior 7-field cost.
+As of v21.106.0, the dormant behavior-verifier script, prompt, state consumer, fixed WA-count hook, and role-collapse parent-write gate are removed. Existing `behavior-verifier-state.json`, `verifier.lock`, and `wa-count.json` files are not deleted; current code ignores them. The old designs remain documented in release history only.
 
-**Configuration knobs:** None. Always-on. Cannot be disabled; behavior is part of the default prompt envelope.
+These defaults are not user-facing configuration knobs. They are centralized in `scripts/shared-context.js`, while `scripts/core/orchestration-policy.js` exposes deterministic helpers for the task contract, question boundary, named-reference resolution, and completion evidence.
 
-**Form-game prevention:** The constant is schema-only — no example outputs are listed for any of the 3 fields. Per IA-7 / TRAP-1, listing example outputs would let Claude pattern-match the example shape instead of doing the underlying work; the schema-only form forces real per-turn instantiation.
-
-**Related:** [Hooks](#hooks) (UserPromptSubmit row covers the parent injection mechanism); [Pressure System](#pressure-system) (verifier ring-buffer + Behavior Correction surface).
+**Related:** [Hooks](#hooks), [Configuration](#configuration), and [Pressure System](#pressure-system).
 
 ---
 
@@ -258,29 +272,30 @@ Guard scripts are PreToolUse/Stop hooks that prevent common mistakes:
 
 | Guard | What It Protects Against |
 |-------|------------------------|
-| `sycophancy-guard.js` | Claude agreeing with user claims without independently verifying them first (dual-layer: Stop response + PreToolUse mid-turn transcript). v21.80.0 narrowed Stop-side verification-claim path to warn-only. **v21.81.0 (D103 cycle 1)**: the remaining 4 Stop branches (context-length deferral / too-good P/O/G all-None / oscillation reversal / bare agreement) also flipped to warn-only — Stop-time hard-block on these signals is gone. PreToolUse mid-tool block (Write/Edit guard) is preserved. Counter side-effects (`tooGoodSkepticism.retryCount`, `feedbackPressure.oscillationCount`) RMW preserved before warn emit (hybrid: hook tracks state, behavior-verifier sub-agent interprets). |
+| `sycophancy-guard.js` | Claude agreeing with user claims without independently verifying them first (dual-layer: Stop response + PreToolUse mid-turn transcript). Stop-side signals are warn-only; the PreToolUse mid-turn Write/Edit block remains. Counter side-effects (`tooGoodSkepticism.retryCount`, `feedbackPressure.oscillationCount`) remain, and the parent must re-check decisive evidence before completion. |
 | `docs-guard.js` | Direct writes to `docs/` directories outside of an active skill (discussing, planning, ticketing, etc.) |
 | `log-guard.js` | Marking documents as done/verified/concluded in INDEX.md without log entries in the document; creating new cycle documents without logging the previous cycle |
 | `verify-guard.js` | Writing "Final Verification" results to ticket files without actually running `/verifying` first. Hybrid: Edit always enforces; Write only enforces on existing files (new ticket creation is allowed) |
 | `path-guard.js` | File operations targeting a wrong `.crabshell/memory/` path (e.g., a different project's memory directory) |
+| `core/path-policy.js` + Codex adapter | The same wrong-project memory paths in Codex; the core decides policy while each host wrapper emits its own native response format |
 | `verification-sequence.js` | Source files edited without running tests before git commit |
 | `doc-watchdog.js` | Document update omissions during regressing: soft warning when 5+ code edits without D/P/T document update; blocks session end when ticket has no work log since last code edit |
 | `skill-tracker.js` | Supporting guard: sets the `skill-active` flag when a Skill tool call is detected, so `docs-guard` and `verify-guard` know when writes are authorized |
 | `pressure-guard.js` | Graduated tool blocking when consecutive negative feedback detected. L2: blocks 6 primary tools (Read/Grep/Glob/Bash/Write/Edit). L3: blocks ALL tools. Resets via positive feedback decay or user bailout keywords ("봉인해제" / "UNLEASH"). See [Pressure System](#pressure-system) |
-| `role-collapse-guard.js` | Blocks Orchestrator from directly writing source code files (.js/.json/.sh/.ts) — should delegate to Work Agents during regressing/light-workflow |
 | `scope-guard.js` | Detects scope reduction in responses (delivering fewer items than user requested, using "too many" / "시간 관계상" as justification) |
 | `regressing-guard.js` | Phase-based write restrictions during active regressing sessions — blocks out-of-phase edits to plan/ticket documents |
-| `regressing-loop-guard.js` | Blocks session end during active regressing; enforces Stop hook continuation until workflow completes. Enforces ≥2 parallel WAs for regressing only (v21.103.0: light-workflow single-WA block removed — rule absent from SKILL.md; light-workflow uses 1:1 WA:RA pairing) |
-| `behavior-verifier.js` (감시자) | **Disabled as of v21.100.0:** the verifier Stop hook was removed from hooks.json, so no dispatch occurs; the mechanism below is retained dormant and documents how it works when re-enabled. Sub-agent dispatch on Stop: writes pending state + sentinel; next-turn UserPromptSubmit instructs Claude to launch a background sub-agent that emits a 4-dimension verdict (understanding/verification/logic/simple); the following turn injects `## Behavior Correction` if any dimension failed. **v21.81.0**: §3.logic body extended with 3 sub-clauses (Direction change / Session-length deferral / Trailing deferral) — sub-agent now performs Stop-branch absorption semantically (D103 cycle 1). **v21.82.0 (D103 cycle 2)**: Stop hook now also detects when the *prior* turn left `status='pending'` but the next response did not invoke the Task tool (using `getRecentTaskCalls` against the current turn's transcript). When that happens, the new state record is written with `dispatchOverdue=true` and the next UserPromptSubmit prepends `**[DISPATCH OVERDUE]** Previous turn did not invoke Task. Invoke NOW.` before the existing dispatch instruction. Clarification-only and length<50 turns are bypassed upstream so they cannot produce false positives. Current Format markers rule: response > 200 chars must include all current 3 Korean SKELETON_3FIELD markers (`[의도]`/`[이해]`/`[설명]`); missing markers -> understanding FAIL. JSON 4-key verdict schema preserved. **v21.83.0 (D104 cycle 1, P136)**: trigger redesigned to 3-layer model — (a) periodic counter (`memory-index.json.verifierCounter` PostToolUse 누적, `VERIFIER_INTERVAL=8` 시 fire when workflow inactive), (b) workflow-active force layer (regressing-state.active OR skill-active TTL fresh → length<50/clarification bypass override), (c) escalation L0/L1 marker (`missedCount>=2` 시 `**[DISPATCH OVERDUE — escalation L1]**`). 5-class turn classification cascade gates which criteria apply (user-facing 4 all / workflow-internal simple skip + format markers ≥200자 시 적용 / notification verification light only / clarification+trivial all skip). Verdict ring buffer (FIFO N=8, ≤800 chars cap) injected as `## Watcher Recent Verdicts` cross-turn context. `## 감시자 (Behavior Verifier) Dispatch Required` 한글 bilingual dispatch header. State schema 7→14 fields (`triggerReason`/`lastFiredAt`/`lastFiredTurn`/`missedCount`/`escalationLevel`/`ringBuffer`/`turnType`). hooks.json Stop section 순서 swap (behavior-verifier above regressing-loop-guard, Q1=A applied → RA8 MISS-1 mitigation). `deferral-guard.js` 메시지 sycophancy 4 Stop branches와 prefix `[BEHAVIOR-WARN]` + 후행구 일치. 한글 facing alias docs/manual layer (UI/manual rename 감시자, 코드 식별자 byte-identical 보존; Phase 3 v22 carry-over). Fail-open at every step. (D102 P132 v21.80.0; D103 P134 v21.81.0; D103 P135 v21.82.0; D104 P136 v21.83.0; v21.99.3 stale marker docs/manifest sync) |
+| `regressing-loop-guard.js` | Blocks session end during active regressing and preserves phase continuity. It has no fixed agent-count, WA:RA pairing, or parent-write delegation requirement. |
 
 Guards run automatically via hooks. No configuration needed.
-Behavior-verifier self-loop guard (v21.99.4): the Stop hook treats verifier completion/status echoes as operational meta output and does not create a new `behavior-verifier-state.json` `pending` record for them. This prevents the verifier from dispatching itself repeatedly while preserving normal background-agent result verification.
+For Codex, only the shared path policy is active in Cycle 1. Every other guard in this table is Claude-only unless a later release explicitly adds a Codex adapter.
 
 ---
 
 ## Pressure System
 
 Crabshell tracks three pressure counters (feedbackPressure.level, feedbackPressure.oscillationCount, tooGoodSkepticism.retryCount) in `.crabshell/memory/memory-index.json`. Together they form a graduated response mechanism that restricts tool access when Claude drifts — either via consecutive negative user feedback or via the assistant's own output patterns (reversals, all-None P/O/G).
+
+This pressure system is Claude-only. Codex does not load `pressure-guard.js`, `sycophancy-guard.js`, or their automatic counter hooks; the shared memory index format is preserved so using the same project from both runtimes does not destroy these fields.
 
 ### Three Counters
 
@@ -338,7 +353,7 @@ The plugin automatically manages a rules section in your project's `CLAUDE.md`:
 
 - **Above the line**: Auto-managed by the plugin. Updated every prompt via `syncRulesToClaudeMd()`. Contains PRINCIPLES, SCOPE DEFINITIONS, UNDERSTANDING-FIRST, VERIFICATION-FIRST, PROBLEM-SOLVING PRINCIPLES, INTERFERENCE PATTERNS, REQUIREMENTS, VIOLATIONS, and ADDITIONAL RULES.
 - **Below the line**: Your project-specific content. The plugin never modifies anything below this marker.
-- **Agent rules**: `.claude/rules/agent-orchestration.md` contains 11 agent orchestration rules (pairing, perspective diversity, cross-review, coherence, etc.) and is always loaded by Claude Code automatically.
+- **Orchestration defaults**: the auto-managed rules and compressed checklist carry the same internal task contract, bounded delegation, and parent-owned verification defaults. There is no separate always-loaded agent-count rules file in this repository.
 
 ### Dual Injection
 
@@ -373,6 +388,18 @@ The plugin uses two injection mechanisms:
 | `quietStop` | true | Brief session-end message instead of verbose instructions |
 | `memoryRotation.thresholdTokens` | 25000 | Token threshold for logbook.md rotation (with 0.95 safety margin) |
 | `memoryRotation.carryoverTokens` | 2500 | Tokens to keep as carryover after rotation (with 0.95 safety margin) |
+
+### Orchestration Defaults
+
+The eight-field task contract, risk boundary for user questions, bounded worker prompt, and parent-owned completion rule are product defaults rather than per-project settings. They are centralized in `scripts/shared-context.js` and `scripts/core/orchestration-policy.js`; changing memory configuration does not weaken them. The live regression corpus can be run with `node scripts/run-orchestration-corpus.js --live --json` in a disposable fixture.
+
+### Codex Plugin Configuration
+
+- `.agents/plugins/marketplace.json` is the repo-scoped native marketplace source.
+- `.codex-plugin/plugin.json` explicitly points to `codex-skills/` and `hooks/codex-hooks.json`.
+- Codex stores installed plugin material under its plugin cache and writable runtime data under `plugins/data/<plugin>-<marketplace>` inside `CODEX_HOME`; plugin source files are not used as writable state.
+- Hook definitions are not runnable until Codex records trust for their current hash. Any definition change produces `modified` until reviewed again.
+- Run the Codex `crabshell:status` skill for live capability/config results. There is no Crabshell-maintained Codex version compatibility table.
 
 ### lock-contention.json — F-4 Instrumentation State
 
@@ -493,12 +520,12 @@ The following cycle 5 (D107) features were shipped in v21.88.0 but their dedicat
 
 | # | Feature | Source | What it does | Section it belongs to | Status |
 |---|---------|--------|--------------|-----------------------|--------|
-| 1 | `SKELETON_5FIELD` | `scripts/inject-rules.js` (~458 B injection) | Every-prompt 5-field response skeleton ([의도] / [이해] / [검증] / [논리] / [쉬운 설명]) injected into Claude's context to enforce structured response format. | Hooks (UserPromptSubmit) and/or Pressure System §Response Skeleton | Done — section: `### SKELETON_5FIELD — 5-Field Response Skeleton` (under `## Hooks`) |
-| 2 | ~~`ANTI_PATTERNS_INLINE`~~ | ~~`scripts/inject-rules.js`~~ | **Removed in v21.91.0** (D108/I069). Per-turn inline injection of 9 PROHIBITED + 4 AVOID patterns (~1,701 B). Removed because CLAUDE.md PROHIBITED PATTERNS section and behavior-verifier §3.logic provide equivalent coverage without the per-turn token cost. | N/A | Removed |
+| 1 | Response skeleton lineage | `scripts/inject-rules.js` / release history | Former 5-field, 7-field, and 3-field response-marker designs. | Release history; D110/I081 | Retired in v21.105.0 — replaced by internal task contract and natural reporting. |
+| 2 | ~~`ANTI_PATTERNS_INLINE`~~ | ~~`scripts/inject-rules.js`~~ | **Removed in v21.91.0** (D108/I069). Per-turn inline injection of 9 PROHIBITED + 4 AVOID patterns (~1,701 B). Current coverage comes from the auto-managed rules, parent-owned verification, and active safety guards; the later verifier fallback was retired in v21.106.0. | N/A | Removed |
 | 3 | `.crabshell/memory/lock-contention.json` | F-4 instrumentation state file (NEW) | Per-lock metrics file: `acquireCount`, `releaseCount`, `contendedCount`, `totalWaitMs`, `totalHeldMs`, `maxWaitMs`, `maxHeldMs`, `lastAcquiredPid`, `lastUpdatedAt`, plus top-level `measurementWindowStart` ISO marker (cycle 6). Powers F-3 path-choice ratification analysis. | Configuration §Memory Files | Done — section: `### lock-contention.json` (under `## Configuration`) |
 | 4 | `_recordContention` (utils.js F-4 instrumentation) | `scripts/utils.js` (~47 lines, called from inside `acquireIndexLock` / `releaseIndexLock`) | Lock-contention measurement helper. Intentionally uses unprotected `writeJson` to avoid recursive lock acquisition (deadlock prevention) — accepts conservative undercount bias as a documented trade-off. | Hooks/Guards §Lock Contention Measurement | Done — section: `### _recordContention` (under `## Configuration`) |
 
-Each item above will get its own USER-MANUAL.md section in cycle 8+ doc cycle. Until then, source files (`scripts/inject-rules.js`, `scripts/utils.js`, `prompts/f3-fsm-reconciliation-evaluation.md`) are the canonical reference.
+This table is a historical documentation ledger. Current behavior is defined by the active source and sections linked above; retired verifier proposals are not implementation specifications.
 
 ---
 

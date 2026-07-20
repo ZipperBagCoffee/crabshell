@@ -72,19 +72,20 @@ Excluded: {excluded}
 - [ ] Step 2: {step}
 ...
 
-## Agent Execution
+## Plan Execution
 
-This plan is executed using the following agent structure:
+The parent owns plan analysis, intent fidelity, and approval. Delegation is optional and bounded by independent value or material risk.
 
-### Step A: Work Agent — Analysis + Plan Writing
+### Step A: Parent — Analysis + Plan Writing
 - Analyze related code/system
 - **Scope Note (from project RULES):** Conciseness applies to communication style, not to verification steps. P/O/G tables and evidence citations are required work product, not verbose output. Evidence IS the answer — "verified" without tool output is not verification. Fill Prediction before looking; fill Observation only from tool output.
 - Identify dependencies and impact scope
 - Write concrete execution plan
 - **Document-first rule:** Write analysis results to `## Analysis Results` in the P document FIRST using Write/Edit tool. After the document is updated, provide a brief summary to the user. The document update is the primary output; the conversation summary is secondary.
 
-### Step B: Review Agent — Plan Quality Verification
-- **Independence Protocol (MANDATORY):** The Review Agent prompt MUST NOT include Work Agent's Analysis Results. Provide only: (1) Plan's Intent, Scope, and Verification Criteria sections, (2) the P/O/G template below. The Review Agent independently assesses the plan. After Review Agent completes, the Orchestrator cross-references RA findings against WA Analysis Results.
+### Step B: Optional Independent Review — Risk Based
+- Use independent review only when scope, shared contracts, security, data loss, or user-visible risk warrants it. Reviewer count never follows worker count.
+- **Independence Protocol:** When review is used, the prompt MUST NOT include prior conclusions as its observation source. Provide only: (1) Plan Intent, Scope, and Verification Criteria, (2) the P/O/G template below. The parent later cross-references findings against direct evidence.
 - Verify completeness and accuracy of the plan
 - **Scope Note (from project RULES):** Conciseness applies to communication style, not to verification steps. P/O/G tables and evidence citations are required work product, not verbose output. Evidence IS the answer — "verified" without tool output is not verification. Fill Prediction before looking; fill Observation only from tool output.
 - Review feasibility against codebase reality
@@ -101,10 +102,9 @@ This plan is executed using the following agent structure:
   - Gap: where Prediction ≠ Observation, this is a finding. If Gap is always "none", you are confirming, not reviewing.
   - Evidence MUST be cited (file path, function name, specific observation from reading the code)
   ```
-- **Devil's Advocate (single reviewer):** When only 1 Review Agent runs, it MUST include a Devil's Advocate section articulating the strongest counter-argument to its own conclusions.
 - **Document-first rule:** Write review results to `## Review Results` in the P document FIRST using Write/Edit tool. After the document is updated, provide a brief summary to the user. The document update is the primary output; the conversation summary is secondary.
 
-### Step C: Orchestrator — Intent Check (Critical Evaluation)
+### Step C: Parent — Intent Check (Critical Evaluation)
 - Compare against D document's Intent Anchor (IA)
 - Confirm plan has not deviated from original intent
 - Verify plan coherence: do the plan steps work together as a whole? Individual steps may each be sound, but combined they may have ordering issues, dependency conflicts, or scope gaps. The plan must be coherent as a system, not just individually valid steps.
@@ -114,13 +114,13 @@ This plan is executed using the following agent structure:
   - **Contradiction scan:** Check for conflicting plan steps or contradictory instructions between planned changes.
   - **Pipeline contradiction scan:** Check whether this change contradicts logic in related pipelines. Level 1: within the changed files. Level 2: in files that interact with the changed component (imports, callers, shared state). Level 3: against project rules/philosophy (CLAUDE.md, SKILL.md principles). A change that works locally but contradicts a related pipeline is not coherent.
   "Coherent" one-liner without method execution = INVALID.
-- **Evidence Gate (BLOCKING — check BEFORE evaluating content):**
-  Review Agents generate text that looks like analysis without actual investigation. Your gate exists to catch this.
+- **Evidence Gate (when delegation/review was used):**
+  Independent-looking text is not evidence by itself. The parent applies this gate before using delegated findings.
   □ Does each plan element review have Prediction, Observation, AND Gap fields?
   □ Does Observation contain evidence from independent analysis? (file paths, function names, specific code observations)
   □ Is Prediction ≠ Observation check performed? (rubber-stamp detection)
   □ For items where Gap = "none": is the justification substantive?
-  → If ANY check fails: REJECT Review Agent results and request re-review
+  → If ANY check fails: reject that evidence and perform or request a fresh observation. If no review was used, the parent performs the same reference and coherence checks directly.
 - Identify at least ONE risk, gap, or concern in the plan (even if approving). "No concerns" requires 3+ sentences of justification referencing specific aspects examined.
 - Decide to approve or reject with substantive reasoning
 - **Document-first rule:** Write intent check results to `## Intent Check` in the P document FIRST using Write/Edit tool. After the document is updated, provide a brief summary to the user. The document update is the primary output; the conversation summary is secondary.
@@ -128,14 +128,14 @@ This plan is executed using the following agent structure:
 ## Tickets
 (Automatically recorded when tickets are created)
 
-## Analysis Results (Work Agent)
-(placeholder — Orchestrator: if still placeholder after Step A, write WA results here)
+## Analysis Results
+(placeholder — parent writes inspected evidence and plan reasoning here)
 
-## Review Results (Review Agent)
-(placeholder — Orchestrator: if still placeholder after Step B, write RA results here)
+## Review Results (if used)
+(optional — record independent findings and the parent's disposition when review was warranted)
 
-## Intent Check (Orchestrator)
-(placeholder — Orchestrator: if still placeholder after Step C, write intent check here)
+## Intent Check
+(placeholder — parent writes final intent and scope check here)
 
 ## Verification Criteria
 {user's answer — must describe observable behavior}
@@ -209,7 +209,7 @@ Update status column and/or Tickets column in `.crabshell/plan/INDEX.md`.
 6. **No parent transition while children incomplete:** P can only transition to `done` when ALL related tickets are `verified`. If any ticket is incomplete, refuse `done` transition.
 7. **Auto-conclude parent on completion:** When P becomes `done` → automatically update D/I in Related column to `concluded` and append log to those documents. (Triggered by ticketing cascade)
 8. **Mandatory work log:** After performing any work related to this document, append a log entry to the Log section using the existing format (`### [{YYYY-MM-DD HH:MM}] {entry_type}`). This applies regardless of whether this skill was explicitly invoked — if the work touched or advanced this plan's purpose, log it.
-9. **Mandatory verification result append + Orchestrator fallback:** Work Agent, Review Agent, and Orchestrator MUST append their execution results to the corresponding sections of the P document (Analysis Results, Review Results, Intent Check). Verbal reporting alone is insufficient — verification not recorded in the document is equivalent to verification not performed. **Orchestrator document check:** After each agent step (A, B, C), the Orchestrator MUST Read the P document and verify the corresponding section no longer contains "placeholder". If it does, the Orchestrator MUST use Edit to write the agent's results into that section before proceeding to the next step.
+9. **Mandatory result append:** The parent MUST append analysis and final intent-check evidence to the P document. If delegation/review was used, its findings and the parent's disposition MUST also be recorded. Verbal reporting alone is insufficient. Before proceeding, the parent reads the P document and confirms the required parent sections no longer contain `placeholder`; the optional review section is not a completion gate when review was unnecessary.
 10. **Exhaustive verification standard:** Verification follows the VERIFICATION-FIRST principle in RULES (Predict → Execute → Compare). When no project verification tool exists, invoke the 'verifying' skill. Direct → indirect → explicitly "unverified".
-11. **Anti-partitioning (regressing context):** When this plan is part of a regressing cycle, it MUST plan work for the current cycle only. Plans that reference or pre-allocate work for future cycles (e.g., "Cycle 2 will handle X") are INVALID and must be rejected by the Review Agent and Orchestrator.
+11. **Anti-partitioning (regressing context):** When this plan is part of a regressing cycle, it MUST plan work for the current cycle only. Plans that reference or pre-allocate work for future cycles (e.g., "Cycle 2 will handle X") are INVALID and must be rejected by the parent; an optional reviewer may provide additional independent evidence.
 12. **Regressing state update:** If `.crabshell/memory/regressing-state.json` exists and is active, update it after plan creation using: `"{NODE_PATH}" -e "const f='{PROJECT_DIR}/.crabshell/memory/regressing-state.json';const s=JSON.parse(require('fs').readFileSync(f,'utf8'));s.planId='{P-ID}';s.lastUpdatedAt=new Date().toISOString();require('fs').writeFileSync(f,JSON.stringify(s,null,2))"`. Phase transition is handled automatically by the PostToolUse hook. Only applies when regressing-state.json exists — standalone planning usage is unaffected.

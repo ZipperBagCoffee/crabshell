@@ -39,7 +39,7 @@ test('COMPRESSED_CHECKLIST is a non-empty string', function() {
 });
 
 test('COMPRESSED_CHECKLIST contains key rules', function() {
-  assert(COMPRESSED_CHECKLIST.includes('Understanding-First'), 'should mention Understanding-First');
+  assert(COMPRESSED_CHECKLIST.includes('Internal task contract'), 'should mention Internal task contract');
   assert(COMPRESSED_CHECKLIST.includes('P/O/G'), 'should mention P/O/G table');
   assert(COMPRESSED_CHECKLIST.includes('ANALYZE'), 'should mention ANALYZE');
 });

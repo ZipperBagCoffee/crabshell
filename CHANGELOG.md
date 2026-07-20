@@ -1,5 +1,35 @@
 # Changelog
 
+## [21.106.0] - 2026-07-19
+
+### feat: D110 Cycle 3 — portable behavioral verification and legacy orchestration retirement
+- Replaced substring-based verification with one schema-v2 runner source shared by the verifying skill and local `.crabshell/verification/run-verify.js`. Commands are repo-relative objects; pass/fail depends on exit codes, structured assertions, and forbidden-path snapshots rather than stdout containing `PASS`.
+- Added direct mutation coverage for paths containing spaces, PASS-only wrong behavior, wrong execution order, hardcoded output after authoritative-source perturbation, forbidden side effects, absolute paths, and missing behavioral contracts. `verify-guard.js` now requires a structured behavioral contract.
+- Removed fixed WA/RA counting and parent-write delegation gates from active hooks and workflows. The parent owns implementation, reference fidelity, decisive execution, side-effect checks, and completion; delegation is optional and risk-based.
+- Retired 19 legacy verifier/count/role files, including `behavior-verifier.js`, its prompt/test cluster, `wa-count-pretool.js`, and `role-collapse-guard.js`, after disabled A/B and caller-zero evidence. Existing `behavior-verifier-state.json`, `verifier.lock`, and `wa-count.json` files are left untouched and ignored.
+- Retained `regressing-loop-guard.js` as the sole regressing continuation owner, plus `post-compact.js`, `install-codex.js`, shared memory formats, and path/document/destructive safety guards.
+- Updated Claude/Codex documentation, release metadata, and verification manifest for the v21.106.0 architecture. No external profile/cache migration is required.
+
+## [21.105.0] - 2026-07-19
+
+### feat: D110 Cycle 2 — parent-owned orchestration defaults and live behavioral corpus
+- Added a single eight-field internal task contract (`original_request`, `required_outcomes`, `non_goals`, `named_references`, `allowed_changes`, `forbidden_side_effects`, `observable_success`, `blocking_unknowns`) to shared prompt context and W worklogs. User questions are limited to destructive/irreversible actions, outside-workspace changes, external installation, and product decisions that project evidence cannot resolve.
+- Reworked Claude and Codex light-workflow instructions to five stages: understand internally, inspect, implement, verify behavior, and report. Delegation is optional and bounded; explore/review workers are read-only, workers do not fan out, and the parent owns named references, the final diff, direct execution evidence, forbidden-side-effect checks, and completion.
+- Removed the always-visible `SKELETON_3FIELD`, fixed response markers, file/agent-count workflow selection, and automatic light-workflow Work/Review pairing. `role-collapse-guard.js` now permits parent source writes during light-workflow while preserving the existing regressing boundary for Cycle 3.
+- Retained `behavior-verifier.js` and its state keys dormant for compatibility, but retired the prompt's presentation audit. `auditVerdict.formGameDetected` is fixed false and semantic alignment follows task/frame fidelity rather than marker presence.
+- Added `scripts/core/orchestration-policy.js`, deterministic policy tests, and a disposable live Codex A/B corpus. The corpus observes non-blocking action, destructive-action questions, named-reference perturbation, actual JSONL command exit for false-done rejection, and before/after workspace hashes; baseline legacy behavior is compared with current natural risk-based behavior.
+- Memory schemas, native Codex packaging/hooks/doctor/wrappers from Cycle 1, Claude automatic memory behavior, and the legacy installer remain compatible. Whole verification-runner replacement and legacy deletion remain D110 Cycle 3 work.
+
+## [21.104.0] - 2026-07-19
+
+### feat: D110 Cycle 1 — Codex-native packaging, hooks, doctor, and portable memory skills
+- Added repo-native `.agents/plugins/marketplace.json`; `.codex-plugin/plugin.json` now explicitly selects `hooks/codex-hooks.json`, preventing Codex from default-loading Claude's `hooks/hooks.json`.
+- Added a deterministic native `PreToolUse` adapter using Codex's `hookSpecificOutput.permissionDecision="deny"` contract. Shared path-policy logic now lives in `scripts/core/path-policy.js`; the existing Claude wrapper keeps its prior block JSON and exit behavior.
+- Added `scripts/codex-doctor.js` and the bundled Codex `status` skill. Doctor queries the live CLI/app-server for features, plugin source/cache, skills, hook source/hash/trust, and probes plugin-data writes plus native hook output without a hardcoded Codex version table.
+- Bundled load/save/search/status wrappers inside Codex skills so installed-cache skills work from a different consumer project. Fixed Codex memory load to read the authoritative `.crabshell/project.md` while preserving existing logbook/index/rotated-summary formats.
+- Added official host-contract fixtures and direct regressions for Codex hook output, clean marketplace install, paths containing spaces, fresh-session skill resolution, trust/hash drift, installed skill execution, and manual memory preservation.
+- `scripts/install-codex.js` and `/crabshell:install-codex` remain available as legacy/development bridges; no legacy files were removed in this cycle. Claude automatic hooks and memory behavior remain unchanged.
+
 ## [21.103.0] - 2026-06-11
 
 ### fix: WA/RA classifier description-only + remove light-workflow single-WA Stop block (W028)

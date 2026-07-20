@@ -126,15 +126,6 @@
         ]
       },
       {
-        "matcher": "Agent|Task|TaskCreate",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/wa-count-pretool.js\""
-          }
-        ]
-      },
-      {
         "matcher": ".*",
         "hooks": [
           {
@@ -149,15 +140,6 @@
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/sycophancy-guard.js\""
-          }
-        ]
-      },
-      {
-        "matcher": "Write|Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/role-collapse-guard.js\""
           }
         ]
       }

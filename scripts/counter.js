@@ -10,7 +10,7 @@ const { getProjectDir, getProjectName, getStorageRoot, readFileOrDefault, writeF
 const { refineRaw, refineRawSync } = require('./refine-raw');
 const { checkAndRotate } = require('./memory-rotation');
 const { extractDelta } = require('./extract-delta');
-const { MEMORY_DIR, MEMORY_FILE, SESSIONS_DIR, COUNTER_FILE, WA_COUNT_FILE } = require('./constants');
+const { MEMORY_DIR, MEMORY_FILE, SESSIONS_DIR, COUNTER_FILE } = require('./constants');
 const { detectRegressingSkillCall, advancePhase } = require('./regressing-state');
 const { readStdin, findTranscriptPath } = require('./transcript-utils');
 
@@ -44,46 +44,6 @@ function getCounter() {
 function setCounter(value) {
   const counterPath = path.join(getStorageRoot(), MEMORY_DIR, COUNTER_FILE);
   writeJson(counterPath, { counter: value });
-}
-
-/**
- * Reset the WA count file to zero. Called on ticketing skill invocation.
- * Fail-open: writes reset state, swallows errors.
- */
-function resetWaCount() {
-  try {
-    const projectDir = getProjectDir();
-    const waPath = path.join(getStorageRoot(projectDir), MEMORY_DIR, WA_COUNT_FILE);
-    fs.writeFileSync(waPath, JSON.stringify({ waCount: 0, raCount: 0, totalTaskCalls: 0, lastResetAt: new Date().toISOString(), resetReason: 'ticketing-skill' }, null, 2));
-  } catch (e) { /* fail-open */ }
-}
-
-/**
- * Classify an Agent/Task/TaskCreate hook invocation as WA or RA.
- * Conservative: anything that is not clearly an RA is classified as WA.
- * Returns 'WA', 'RA', or null (if not an agent-dispatch tool call).
- * Fail-open: any unexpected shape returns null.
- */
-function classifyAgent(hookData) {
-  try {
-    if (!hookData) return null;
-    const AGENT_TOOLS = ['Agent', 'Task', 'TaskCreate'];
-    if (!AGENT_TOOLS.includes(hookData.tool_name)) return null;
-    const input = hookData.tool_input || {};
-    const description = typeof input.description === 'string' ? input.description : '';
-    // W028: classify from description ONLY. Prompt bodies routinely contain
-    // verification-related words (paths like .crabshell/verification/,
-    // "verify your work with tests" instructions required by workflow skills),
-    // which misclassified nearly every WA as RA (observed waCount=1/raCount=9
-    // with 5 real WAs) and fired a false single-WA Stop block.
-    // Explicit role prefix wins (WA:/RA: description convention).
-    if (/^\s*wa\d*\b/i.test(description)) return 'WA';
-    if (/^\s*ra\d*\b/i.test(description)) return 'RA';
-    const text = description.toLowerCase();
-    const RA_PATTERNS = /\b(review agent|reviewer|review|verification|verify)\b|검증|리뷰/;
-    if (RA_PATTERNS.test(text)) return 'RA';
-    return 'WA'; // default = WA (conservative)
-  } catch { return null; }
 }
 
 async function check() {
@@ -123,18 +83,6 @@ async function check() {
     counter++;
     setCounter(counter);
 
-    // D104 IA-1 (a) — verifierCounter PostToolUse increment. Maintained as a
-    // separate field in memory-index.json (decoupled from counter.json
-    // saveInterval=15 vs verifier interval=8). Reset is the responsibility of
-    // behavior-verifier.js Stop hook (lastFiredTurn snapshot).
-    // Race safety: this RMW runs INSIDE the existing acquireIndexLock above.
-    try {
-      const vIdxPath = path.join(getStorageRoot(), MEMORY_DIR, 'memory-index.json');
-      const vIdx = readIndexSafe(vIdxPath);
-      vIdx.verifierCounter = (typeof vIdx.verifierCounter === 'number' ? vIdx.verifierCounter : 0) + 1;
-      writeJson(vIdxPath, vIdx);
-    } catch (e) { /* fail-open */ }
-
     // Pressure reset on Task delegation
     if (hookData.tool_name === 'TaskCreate') {
       try {
@@ -148,20 +96,6 @@ async function check() {
           console.error('[PRESSURE RESET] Task delegation detected — pressure reset to L0');
         }
       } catch (e) { /* fail-open */ }
-    }
-
-    // Post-side agent bookkeeping: NO increments.
-    // All wa-count.json mutations (waCount, raCount, totalTaskCalls,
-    // backgroundAgentPending) happen at PreToolUse-time in wa-count-pretool.js.
-    // Single-source-of-truth prevents double-counting. Ticket: P131_T001.
-
-    // Ticketing reset: when ticketing skill is invoked, reset wa-count.json
-    if (hookData.tool_name === 'Skill') {
-      const input = hookData.tool_input || {};
-      const skillName = (typeof input.skill === 'string') ? input.skill.split(':').pop() : '';
-      if (skillName === 'ticketing') {
-        resetWaCount();
-      }
     }
 
     // Check rotation before auto-save
@@ -906,5 +840,5 @@ Memory Rotation (v13.0.0):
 
 // Export for testing (only when required as a module, not when run directly)
 if (require.main !== module) {
-  module.exports = { getCounter, setCounter, getConfig, cleanupDuplicateL1, dedupeL1, parseArg, compress, pruneOldL1, classifyAgent, resetWaCount };
+  module.exports = { getCounter, setCounter, getConfig, cleanupDuplicateL1, dedupeL1, parseArg, compress, pruneOldL1 };
 }

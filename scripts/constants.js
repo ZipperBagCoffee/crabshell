@@ -33,16 +33,9 @@ module.exports = {
   REGRESSING_STATE_FILE: 'regressing-state.json',
   SKILL_ACTIVE_FILE: 'skill-active.json',
   DOC_WATCHDOG_FILE: 'doc-watchdog.json',
-  WA_COUNT_FILE: 'wa-count.json',
-  BEHAVIOR_VERIFIER_STATE_FILE: 'behavior-verifier-state.json',
-  BEHAVIOR_VERIFIER_LOCK_FILE: 'verifier.lock',
 
   // Doc-watchdog threshold
   DOC_WATCHDOG_THRESHOLD: 5,
-
-  // Behavior verifier (D104 IA-1 amended) — verdict ring buffer + periodic interval
-  RING_BUFFER_SIZE: 8,           // FIFO cap for state.ringBuffer (recent verdict summaries)
-  VERIFIER_INTERVAL: 8,          // Periodic skip threshold (memory-index.json.verifierCounter delta)
 
   // Lock file names
   INDEX_LOCK_FILE: '.memory-index.lock',

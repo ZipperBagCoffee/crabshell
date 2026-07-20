@@ -2,7 +2,7 @@
 
 const path = require('path');
 const fs = require('fs');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const { readStdin, normalizePath } = require('./transcript-utils');
 
 // Skip processing during background memory summarization
@@ -109,8 +109,7 @@ async function main() {
 
   // Execute run-verify.js and check results
   try {
-    const nodePath = process.execPath.replace(/\\/g, '/');
-    const stdout = execSync(`"${nodePath}" "${runVerifyPath}"`, {
+    const stdout = execFileSync(process.execPath, [runVerifyPath], {
       timeout: 60000,
       encoding: 'utf8',
       cwd: projectDir
@@ -148,18 +147,25 @@ async function main() {
       return;
     }
 
-    // --- Behavioral AC enforcement: at least 1 "direct" type required ---
+    // Behavioral AC enforcement: a label alone is not evidence. Require a
+    // schema-v2 behavioral entry with an independent assertion or protected
+    // before/after snapshot.
     const manifestPath = path.join(projectDir, STORAGE_ROOT, 'verification', 'manifest.json');
     try {
       const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
       const entries = manifest.entries || [];
-      const hasDirectType = entries.some(e => e.type === 'direct');
-      if (!hasDirectType) {
+      const hasBehavioralContract = manifest.schemaVersion === 2 && entries.some(entry => {
+        if (!entry || entry.type !== 'behavioral' || !entry.contract) return false;
+        const assertions = Array.isArray(entry.contract.assertions) ? entry.contract.assertions : [];
+        const forbidden = Array.isArray(entry.contract.forbiddenChanges) ? entry.contract.forbiddenChanges : [];
+        return Number.isInteger(entry.contract.exitCode) && (assertions.length > 0 || forbidden.length > 0);
+      });
+      if (!hasBehavioralContract) {
         const output = {
           decision: "block",
-          reason: `Final Verification blocked. Manifest has ${entries.length} entries but none with type "direct" (behavioral). At least 1 behavioral AC is required. Update manifest at ${manifestPath}.`
+          reason: `Final Verification blocked. Manifest has ${entries.length} entries but no schema-v2 behavioral entry with an independent assertion or forbidden-change snapshot. Update ${manifestPath}.`
         };
-        process.stderr.write(`[VERIFY_GUARD] Blocked: no behavioral (direct) AC in manifest\n`);
+        process.stderr.write('[VERIFY_GUARD] Blocked: no structured behavioral contract in manifest\n');
         console.log(JSON.stringify(output));
         process.exit(2);
         return;

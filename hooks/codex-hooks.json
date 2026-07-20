@@ -1,0 +1,19 @@
+{
+  "description": "Crabshell Codex-native deterministic path guard.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^(Bash|Read|Grep|Glob|Write|Edit)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/scripts/adapters/codex/pre-tool-use.js\"",
+            "commandWindows": "node \"%PLUGIN_ROOT%/scripts/adapters/codex/pre-tool-use.js\"",
+            "timeout": 10,
+            "statusMessage": "Checking Crabshell memory paths"
+          }
+        ]
+      }
+    ]
+  }
+}

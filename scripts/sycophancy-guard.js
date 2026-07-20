@@ -767,13 +767,11 @@ function handleStop(hookData) {
     // (This branch: all-None detected — increment FIRST so counter persists)
     // D103 cycle 1 (P134_T001): converted from decision:'block' + exit(2) to
     // warn-only [BEHAVIOR-WARN] + exit(0). retryCount RMW happens BEFORE the
-    // warn so the cumulative counter is preserved (hybrid: hook tracks state,
-    // verifier interprets meaning). The behavior-verifier sub-agent's
-    // §3.verification criterion catches all-None P/O/G as missing-observation
-    // evidence and retroactively corrects in the next turn.
+    // warn so the cumulative counter is preserved. The parent must treat this
+    // diagnostic as a reason to re-run the decisive observation before completion.
     const retryCount = incrementTooGoodRetryCount();
     if (retryCount <= 3) {
-      process.stderr.write(`[BEHAVIOR-WARN] Too-good P/O/G detected: all ${tooGoodResult.rowCount} Gap values are None/없음/N/A. retryCount=${retryCount}. (warn-only — sub-agent verifier will retroactively correct in next turn)\n`);
+      process.stderr.write(`[BEHAVIOR-WARN] Too-good P/O/G detected: all ${tooGoodResult.rowCount} Gap values are None/없음/N/A. retryCount=${retryCount}. (warn-only — parent must re-check decisive evidence before completion)\n`);
       process.exit(0);
     } else {
       // Over threshold: reset counter (avoid infinite loop) — same as before
@@ -797,12 +795,10 @@ function handleStop(hookData) {
 
   // Agreement pattern detected, no exemption.
   // D103 cycle 1 (P134_T001): converted from decision:'block' + exit(2) to
-  // warn-only [BEHAVIOR-WARN] + exit(0). The behavior-verifier sub-agent's
-  // §2.verification criterion catches the agreement-without-evidence pattern
-  // and retroactively corrects in the next turn. PreToolUse mid-tool blocking
+  // warn-only [BEHAVIOR-WARN] + exit(0). PreToolUse mid-tool blocking
   // (handlePreToolUse, L740-747) is preserved — agreement before Write/Edit
-  // still blocks immediately.
-  process.stderr.write(`[BEHAVIOR-WARN] Agreement pattern detected: '${result.pattern}'.${result.structuralNote} pressure=${pLevel}. (warn-only — sub-agent verifier will retroactively correct in next turn)\n`);
+  // still blocks immediately. The parent owns the final evidence check.
+  process.stderr.write(`[BEHAVIOR-WARN] Agreement pattern detected: '${result.pattern}'.${result.structuralNote} pressure=${pLevel}. (warn-only — parent must re-check decisive evidence before completion)\n`);
   process.exit(0);
 }
 

@@ -249,7 +249,9 @@ test('SYNC: creates CLAUDE.md with all key sections', function() {
     const content = fs.readFileSync(path.join(tmpDir, 'CLAUDE.md'), 'utf8');
     // All key sections from RULES constant must be present
     assert(content.includes('### VERIFICATION-FIRST'), 'missing VERIFICATION-FIRST');
-    assert(content.includes('### UNDERSTANDING-FIRST'), 'missing UNDERSTANDING-FIRST');
+    assert(content.includes('### INTERNAL TASK CONTRACT'), 'missing INTERNAL TASK CONTRACT');
+    assert(content.includes('blocking_unknowns'), 'missing blocking_unknowns');
+    assert(!content.includes('State **to the user** what you believe they intend'), 'stale visible intent ritual remains');
     assert(content.includes('### PRINCIPLES'), 'missing PRINCIPLES');
     assert(content.includes('### REQUIREMENTS'), 'missing REQUIREMENTS');
     assert(content.includes('### PROBLEM-SOLVING PRINCIPLES'), 'missing PROBLEM-SOLVING');
@@ -864,8 +866,9 @@ test('SUBPROCESS: output contains key context items', function() {
     assert(ctx.includes('Rules Quick-Check'), 'COMPRESSED_CHECKLIST present');
     assert(ctx.includes('Node.js Path'), 'Node.js Path present');
     assert(ctx.includes('Project Root Anchor'), 'Project Root Anchor present');
-    // D108 IA-3: "Verification reminder" text removed in v21.91.0; replaced with 6-field skeleton check.
-    assert(ctx.includes('Response Skeleton'), 'response skeleton present');
+    // D110 Cycle 2: visible response skeleton retired; natural quick-check remains.
+    assert(!ctx.includes('Response Skeleton'), 'response skeleton absent');
+    assert(ctx.includes('conclusion first'), 'natural conclusion-first guidance present');
     assert(ctx.includes('TZ_OFFSET'), 'TZ_OFFSET present');
   } finally {
     cleanupDir(tmpDir);

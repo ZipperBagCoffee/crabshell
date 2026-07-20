@@ -6,11 +6,15 @@ const path = require('path');
 // F1 mitigation: keep inline env check for fail-open invariant — D106 IA-10 RA2
 if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 
-const { getProjectDir, getStorageRoot, readJsonOrDefault, readIndexSafe, writeJson, acquireIndexLock, releaseIndexLock, _recordContention } = require('./utils');
+const { getProjectDir, getStorageRoot, readJsonOrDefault, readIndexSafe, writeJson, acquireIndexLock, releaseIndexLock } = require('./utils');
 const { buildRegressingReminder, getRegressingState } = require('./regressing-state');
-const { TICKET_DIR, REGRESSING_STATE_FILE, MEMORY_DIR, BEHAVIOR_VERIFIER_STATE_FILE, BEHAVIOR_VERIFIER_LOCK_FILE } = require('./constants');
+const { TICKET_DIR, REGRESSING_STATE_FILE, MEMORY_DIR } = require('./constants');
 const { readStdin } = require('./transcript-utils');
-const { COMPRESSED_CHECKLIST: COMPRESSED_CHECKLIST_SHARED, readProjectConcept } = require('./shared-context');
+const {
+  ORCHESTRATION_DEFAULTS,
+  COMPRESSED_CHECKLIST: COMPRESSED_CHECKLIST_SHARED,
+  readProjectConcept
+} = require('./shared-context');
 
 // Emergency stop keywords - when detected, replaces entire context with EMERGENCY STOP
 const EMERGENCY_KEYWORDS = ['아시발멈춰', 'BRAINMELT'];
@@ -160,30 +164,23 @@ const RULES = `
 ### PRINCIPLES
 - **Be Logical**: Every conclusion must follow logically from evidence — not from plausibility, pattern-match, or gut. Trace cause, check contradictions, derive step by step. Going deep is the means; landing on a logically sound conclusion is the goal. Lucky-correct reasoning is still a violation.
 - **Simple Communication**: User-facing explanations should be easy for the reader to understand: (a) use the reader's words, not internal jargon (b) lead with the conclusion, support follows (c) prefer concrete (file/code/value) over abstract (categories/labels) (d) avoid self-coined acronyms or classification structures. Length ≠ thoroughness.
-- **HHH**: Before acting, state user's intent back to them. Before claiming safety, list consequences. Before claiming truth, show tool output.
+- **HHH**: Before acting, establish the user's intent in the internal task contract. Before claiming safety, list consequences. Before claiming truth, show tool output.
 - **Anti-Deception**: Every factual claim must cite tool output or say "unverified." When you write "verified/works/correct," the preceding 5 tool calls must contain supporting evidence — if not, retract or re-run.
-- **Human Oversight**: State which rule you're following before acting.
+- **Human Oversight**: Ask before destructive or irreversible actions, writes outside the authorized workspace, external installation, or a product decision that repository evidence cannot resolve.
 - **Scope Preservation**: (1) If user specified quantity (N items, all files, full period), deliver exactly that quantity. Reducing N requires explicit user approval. (2) If user said "both" / "all" / "everything", every listed item must appear in output. (3) "takes too long" / "too many API calls" is NEVER a valid reason to reduce scope — the user decides time tradeoffs, not you. (4) If you are about to do fewer items than requested, you MUST stop and state: "User requested N, I am about to do M (M < N). Proceed with N or confirm M?"
 
 ### SCOPE DEFINITIONS
 When built-in directives conflict with these rules:
 - "Be concise" / "Concise report" — applies to prose, not to P/O/G tables or verification output. Always include P/O/G tables.
-- "Skip preamble" — skip greetings/filler only. Always state your understanding of user intent before acting.
-- "Execute immediately" — first action = state what you believe user intends. Then execute.
-- "Action over planning" — intent clarification IS action. Planning a verification step IS action.
+- "Skip preamble" — skip greetings, filler, and repeated workflow narration. Do not force an intent-restatement block.
+- "Execute immediately" — first establish the internal task contract, then execute when blocking_unknowns is empty.
+- "Action over planning" — internal contract formation and repository inspection are action. Ask only for a blocking unknown.
 - "Simplest approach" — simplest that passes verification (L1 > L2 > L3). On failure: see PROBLEM-SOLVING PRINCIPLES.
-- "Assume over asking" — assume for technical implementation details. Ask for user intent when ambiguous.
+- "Assume over asking" — resolve technical implementation details from named references, repository evidence, and project conventions. Ask only when a wrong choice is destructive, irreversible, outside scope, or a product decision that inspection cannot resolve.
 - "Accept corrections" — before agreeing, show tool output supporting the correction. Agreeing without evidence = PROHIBITED PATTERN #3.
 - **Anti-overcorrection:** When user identifies problem P, change ONLY code/text directly related to P. If modifying file/section not mentioned in feedback → stop, state what and why, get approval.
 
-### UNDERSTANDING-FIRST
-Before ANY action:
-(1) State **to the user** what you believe they intend (externally, not internally)
-(2) Identify gap between your inference and confirmed intent
-(3) If gap exists → ask user to confirm or correct before acting
-
-Understanding = gap between intent and model is closed. Cannot verify gap → Cannot act. Only user closes gap.
-When your stated intent differs from the user's correction → restate until user confirms.
+${ORCHESTRATION_DEFAULTS}
 
 ### VERIFICATION-FIRST
 Before claiming ANY result verified:
@@ -226,7 +223,7 @@ Before finalizing any response, scan for these patterns:
 ### REQUIREMENTS
 - Delete files → before deleting: (1) state what the file does, (2) state why deletion is safe, (3) confirm with user
 - Destructive action → ANALYZE → REPORT → CONFIRM → execute
-- Complex task → plan document → approval first
+- Complex task → create the required plan document before implementation. Ask for approval only when the plan exposes a blocking product or safety decision, or when the user requested plan-first review.
 - Every task ends with a P/O/G verification step. No P/O/G table = task incomplete.
 - When making a factual claim about code → show the tool output. When referencing a file → Read it first.
 - When criticized: STOP → explain understanding → state intended action → confirm before acting
@@ -239,13 +236,13 @@ On failure: (1) List what you tried, what constraint blocked each attempt, and w
 
 ### ADDITIONAL RULES
 - Search internet if unsure. Non-git files → backup (.bak) before modifying.
-- **Workflows:** light-workflow for standalone tasks (WA/RA → use Task tool). Regressing for iterative improvement: iterations improve results (not progress through queue). Anti-partitioning: each plan = current iteration only, N is cap not target.
+- **Workflows:** light-workflow for traceable standalone tasks; regressing for iterative improvement. Delegation and review depend on independent work and actual risk, not mandatory role pairs. Regressing iterations improve results rather than drain a queue; each plan covers only the current iteration.
 - **Session restart:** Invoke load-memory skill. Fallback: read latest logbook.md.
 - **Mandatory work log:** Append log entry to D/P/T/I documents after related work.
 - **Documents:** D(Discussion)→P(Plan)→T(Ticket). I(Investigation) independent. .crabshell/ is gitignored.
 - **Version bump:** CHANGELOG → grep old version → README/STRUCTURE tables → doc headers → stale content audit → commit.
-- **Workflow selection:** Before choosing light-workflow or regressing, state scope estimate: "Files: ~N. Components: X,Y,Z. Cross-cutting: yes/no." ≤5 files → light-workflow. 6-7 without cross-cutting → light-workflow. 6-7 with cross-cutting or 8+ → regressing. Shared convention change → regressing.
-- **Urgency signal handling:** When user message contains urgency signal (빨리, 급해, ASAP, urgent, quick) AND offers workflow choice → state scope estimate BEFORE selecting workflow. Urgency does not override selection criteria.
+- **Workflow selection:** Choose light-workflow when one bounded pass can close a stable request. Choose regressing when evidence is expected to change the plan or repeated improvement cycles are needed. File, token, agent, and reviewer counts are not selection criteria.
+- **Urgency signal handling:** Urgency does not weaken scope, safety, or behavioral verification.
 `;
 
 const EMERGENCY_STOP_CONTEXT = `
@@ -292,8 +289,8 @@ This is a SYSTEM MAINTENANCE TASK. You CANNOT skip this.
 
 const COMPRESSED_CHECKLIST = COMPRESSED_CHECKLIST_SHARED;
 
-// Parallel execution reminder
-const PARALLEL_REMINDER = `\n## Parallel Execution Check\nDecompose work into independent units, one worker per unit, execute all simultaneously.\nTool calls: no data dependency → all in one response.\nAgents: parallel and multiple WAs (same task, different lens) is default. WA→RA is always sequential. Single-WA only for single-file mechanical changes.\n`;
+// Risk-based delegation reminder. Agent/reviewer counts are not completion criteria.
+const DELEGATION_REMINDER = `\n## Delegation Check\nThe parent retains the task contract and completion decision. Delegate only bounded independent work or a distinct high-risk review concern. Each worker prompt must include the relevant original request, task and non-goal, authoritative references, read/write scope, expected observation, direct verification, and claim/evidence/gap return. Exploration and review default to read-only; workers do not fan out. The parent must reopen decisive references, inspect the final diff, and rerun decisive evidence.\n`;
 
 // Input classification patterns (IA-1)
 const KOREAN_EXECUTION_PATTERNS = /해라|진행해|수정해|만들어|구현해|실행해|시작해|고쳐|적용해/;
@@ -305,24 +302,6 @@ const DEFAULT_NO_EXECUTION = `\n## Execution Default\nDefault: respond with expl
 // IA-3: Execution judgment prompt
 const EXECUTION_JUDGMENT = `\n## Execution Pattern Detected\nExecution pattern detected in user message. Before acting: verify this is truly an execution instruction, not a question containing action words (e.g., '설명해라' = explain, not execute). If uncertain, explain your intended action first.\n`;
 
-// I079 R1/W027 (v21.102.0) — replaced 7-field skeleton with 3-field caveman-terse version.
-// Removed 4 self-check fields ([검증][논리][동조화 및 일관성][완결 충동]):
-//   zero substantive catches in recorded ring buffer + Fable 5 reasoning-echo guidance
-//   (these fields were echoing reasoning already present in the response body, not adding signal).
-// [쉬운 설명] renamed to [설명]. User-approved product decision.
-// Schema-only — no example outputs (form-game prevention per IA-7 / TRAP-1).
-const SKELETON_3FIELD = `
-## Response Skeleton — 3 fields at END of response (caveman-terse)
-Place this 3-field block AT THE BOTTOM of your response, after the main answer body. One short line per field — no filler, fragments fine, stay readable in the user's words. Do not narrate internal reasoning here.
-
-[의도]: 사용자 요청 1줄 재진술 (사용자의 말로).
-
-[이해]: 본인 해석 + gap. gap 있으면 확인 요청, 없으면 'gap 없음'.
-
-[설명]: 평문 1줄 요약 (전문용어·analogy 금지).
-`;
-
-
 function classifyUserIntent(userPrompt) {
   if (!userPrompt) return 'default';
   if (KOREAN_EXECUTION_PATTERNS.test(userPrompt)) return 'execution';
@@ -330,7 +309,7 @@ function classifyUserIntent(userPrompt) {
   return 'default';
 }
 
-function shouldInjectParallelReminder(userPrompt, isRegressingActive) {
+function shouldInjectDelegationReminder(userPrompt, isRegressingActive) {
   if (isRegressingActive) return true;
   if (!userPrompt) return false;
   const keywords = [/parallel/i, /병렬/, /sequential/i, /순차/, /\bagent/i, /에이전트/];
@@ -539,73 +518,6 @@ function getRelevantMemorySnippets(projectDir, userPrompt) {
   return result;
 }
 
-// D107 cycle 1 (P143_T001 WA2) — TTL gate for ringBuffer FAIL surface.
-// Last verifier entry older than this is considered stale and suppressed.
-const FAIL_SURFACE_FRESHNESS_TTL_MS = 30 * 60 * 1000; // 30 min
-
-/**
- * D107 cycle 1 (P143_T001 WA2) — Build prominent ringBuffer FAIL surface.
- *
- * Reads the LAST entry of priorState.ringBuffer and, if any of axes u/v/l/s
- * is false AND the entry is fresh (within FAIL_SURFACE_FRESHNESS_TTL_MS),
- * returns a 2-line markdown surface (header + 1 data line, ~120-180 chars).
- * Otherwise returns '' (silent skip).
- *
- * Format:
- *   ## Prior Verifier FAIL — apply correction this turn
- *   [HH:MM:SS] FAIL u/v/l/s — <reason ≤80 char>
- *
- * Edge cases (all silent skip → returns ''):
- *  - priorState null / not an object
- *  - ringBuffer missing / not an array / empty
- *  - last entry malformed (null / non-object)
- *  - last entry ts unparseable / older than TTL
- *  - all axes pass (no FAIL)
- *  - any thrown error inside body (fail-open invariant)
- */
-function buildRingBufferFailSurface(priorState) {
-  try {
-    if (!priorState || typeof priorState !== 'object') return '';
-    if (!Array.isArray(priorState.ringBuffer) || priorState.ringBuffer.length === 0) return '';
-    const last = priorState.ringBuffer[priorState.ringBuffer.length - 1];
-    if (!last || typeof last !== 'object') return '';
-    // 30-min TTL gate — drop stale entries
-    const lastTs = Date.parse(last.ts);
-    if (isNaN(lastTs)) return '';
-    if ((Date.now() - lastTs) > FAIL_SURFACE_FRESHNESS_TTL_MS) return '';
-    // FAIL detection — only false (not falsy) counts as FAIL
-    const failedAxes = [];
-    if (last.u === false) failedAxes.push('u');
-    if (last.v === false) failedAxes.push('v');
-    if (last.l === false) failedAxes.push('l');
-    if (last.s === false) failedAxes.push('s');
-    if (failedAxes.length === 0) return '';
-    // HH:MM:SS slice from ISO 8601 ts (matches existing block at L780)
-    const tsStr = String(last.ts || '');
-    const hhmmss = tsStr.length >= 19 ? tsStr.slice(11, 19) : '--:--:--';
-    const reason = String(last.reason || '').slice(0, 80);
-    return '## Prior Verifier FAIL — apply correction this turn\n['
-      + hhmmss + '] FAIL ' + failedAxes.join('/') + ' — ' + reason + '\n\n';
-  } catch (_) {
-    return '';
-  }
-}
-
-/**
- * Read behavior-verifier state file. Fail-open: returns null on any error
- * (file missing, malformed JSON, read failure).
- */
-function readBehaviorVerifierState(projectDir) {
-  try {
-    const stateFilePath = path.join(getStorageRoot(projectDir), MEMORY_DIR, BEHAVIOR_VERIFIER_STATE_FILE);
-    if (!fs.existsSync(stateFilePath)) return null;
-    const raw = fs.readFileSync(stateFilePath, 'utf8');
-    return JSON.parse(raw);
-  } catch (e) {
-    return null;
-  }
-}
-
 /**
  * Check ticket statuses for active regressing session.
  * If any ticketIds in regressing-state.json have status "todo" or "in-progress"
@@ -777,30 +689,7 @@ async function main() {
       // Read project concept for per-prompt anchoring
       const projectConcept = readProjectConcept(projectDir);
 
-      // D107 cycle 1 (P143_T001 WA2) — read priorState ONCE up front so
-      // ringBuffer FAIL surface can top-prepend BEFORE every other block.
-      // D107 cycle 2 (P144_T001 WA2) — hoisted single read shared with the
-      // behavior-verifier consumer block below (same projectDir, same turn).
-      // L977 lock-internal `fresh` re-read is INTENTIONALLY NOT consolidated
-      // here — it must run inside the bv lock for RMW correctness (see L975).
-      // readBehaviorVerifierState fail-opens to null on any error.
-      const priorState = readBehaviorVerifierState(projectDir);
-      // Alias used by the behavior-verifier consumer block (L862+). Single read
-      // covers both call sites (priorState ringBuffer surface + bvState
-      // dispatch/correction emit). Pre-hoist this was a duplicate read.
-      const bvState = priorState;
-
       let context = '';
-      // D107 cycle 1 (P143_T001 WA2) — top-prepend ringBuffer FAIL surface
-      // (silent skip if no FAIL / stale > 30min / no priorState). Order:
-      // [ringBuffer FAIL] → [SKELETON_3FIELD (I079 R1/W027, v21.102.0)]
-      // → [COMPRESSED_CHECKLIST] → [project concept] → ... → [Watcher Recent Verdicts]
-      context += buildRingBufferFailSurface(priorState);
-      // I079 R1/W027 (v21.102.0) — 3-field caveman-terse skeleton (replaced 7-field).
-      // Top-prepend BEFORE existing COMPRESSED_CHECKLIST + Project Concept
-      // blocks (Lost-in-the-Middle: rank 1+2 of always-present per-turn signals).
-      // Pure Korean canonical (no bilingual slash form).
-      context += SKELETON_3FIELD;
       context += COMPRESSED_CHECKLIST;
       if (projectConcept) {
         context += `\n## Project Concept\n${projectConcept}\n\n`;
@@ -815,221 +704,6 @@ async function main() {
       const tzMins = String(tzAbsMinutes % 60).padStart(2, '0');
       const tzOffset = `${tzSign}${tzHours}${tzMins}`;
       context += `\n## Timezone\nTZ_OFFSET: ${tzOffset}\n`;
-
-      // Behavior-verifier consumer (P132_T002): read state file, emit dispatch
-      // instruction (pending) or correction (completed with failures), apply byte
-      // caps, and transition status (consumed/stale). Fail-open on every path.
-      // D107 cycle 2 (P144_T001 WA2) — `bvState` hoisted up to L808 area; this
-      // block reuses the single read. L977 lock-internal `fresh` re-read is
-      // intentionally retained (RMW correctness inside bv lock).
-      // D108 IA-2: moved before delta/rotation/regressing blocks so dispatch
-      // instruction appears early in system-reminder (position 5 vs former 9).
-      try {
-        const stateFilePath = path.join(getStorageRoot(projectDir), MEMORY_DIR, BEHAVIOR_VERIFIER_STATE_FILE);
-        if (bvState) {
-          const TTL_MS = 10 * 60 * 1000;
-          const launchedMs = bvState.launchedAt ? Date.parse(bvState.launchedAt) : 0;
-          const ageMs = launchedMs ? (Date.now() - launchedMs) : 0;
-          const isStale = launchedMs && ageMs > TTL_MS;
-
-          if (bvState.status === 'pending' && !isStale) {
-            // D104 IA-1 (d) — Watcher Recent Verdicts ring buffer reader.
-            // Prepend BEFORE dispatch instruction so Claude sees recent verdict
-            // history → context-aware corrective behavior. Byte cap 800 chars
-            // (~200 tokens upper bound, target 50-100 tokens/turn).
-            if (Array.isArray(bvState.ringBuffer) && bvState.ringBuffer.length > 0) {
-              try {
-                const RING_BYTE_CAP = 800;
-                let rb = '\n\n## Watcher Recent Verdicts\n';
-                for (let i = 0; i < bvState.ringBuffer.length; i++) {
-                  const e = bvState.ringBuffer[i];
-                  if (!e || typeof e !== 'object') continue;
-                  // Time format HHMMSS from e.ts (ISO 8601). Fail-open on parse.
-                  let hhmmss = '------';
-                  try {
-                    const d = new Date(e.ts);
-                    if (!isNaN(d.getTime())) {
-                      const pad = n => String(n).padStart(2, '0');
-                      hhmmss = pad(d.getUTCHours()) + pad(d.getUTCMinutes()) + pad(d.getUTCSeconds());
-                    }
-                  } catch (_) {}
-                  // UVLS flags — uppercase = PASS, lowercase = FAIL.
-                  const u = e.u ? 'U' : 'u';
-                  const v = e.v ? 'V' : 'v';
-                  const l = e.l ? 'L' : 'l';
-                  const s = e.s ? 'S' : 's';
-                  // D107 cycle 2 (P144_T001 WA2) — orchestrator audit flags.
-                  // sa = semanticAlignment, fg = formGameDetected. Legacy
-                  // entries pre-cycle-2 lack these fields → render '?' (NOT
-                  // 'a'/'A'/'f'/'F') to distinguish missing from PASS/FAIL.
-                  // 8-turn migration window until ring buffer fully rotates.
-                  const sa = (e.sa === undefined) ? '?' : (e.sa ? 'A' : 'a');
-                  const fg = (e.fg === undefined) ? '?' : (e.fg ? 'F' : 'f');
-                  const reason = String(e.reason || '').slice(0, 80);
-                  const line = '- [' + hhmmss + '] ' + u + v + l + s + sa + fg + ' — ' + reason + '\n';
-                  if ((rb.length + line.length) > RING_BYTE_CAP) {
-                    rb += '...\n';
-                    break;
-                  }
-                  rb += line;
-                }
-                context += rb;
-              } catch (_) { /* fail-open: skip ring buffer on any error */ }
-            }
-            // P135_T001 AC-4 — D103 cycle 2 dispatch overdue marker.
-            // When the prior turn left status='pending' and the response that
-            // followed did NOT invoke the Task tool, behavior-verifier.js sets
-            // dispatchOverdue=true on the new state. Prepend a markdown-emphasized
-            // marker so Claude prioritizes the dispatch instruction this turn.
-            // D104 IA-1 (c) — escalation L1 strength (missedCount >= 2).
-            if (bvState.dispatchOverdue === true) {
-              if (typeof bvState.missedCount === 'number' && bvState.missedCount >= 2) {
-                context += '\n\n**[DISPATCH OVERDUE — escalation L1]** Previous turns did not invoke Task. Invoke NOW.\n';
-              } else {
-                context += '\n\n**[DISPATCH OVERDUE]** Previous turn did not invoke Task. Invoke NOW.\n';
-              }
-            }
-            // Emit dispatch instruction — Claude consumes this on next response
-            // and invokes the Task tool with run_in_background to launch the
-            // verifier sub-agent.
-            // D104 IA-4 — Korean bilingual framing (header only). Code identifiers
-            // (subagent_type / CRABSHELL_AGENT / prompt path / output filename)
-            // remain byte-identical for backward compat.
-            // P140_T001 AC-4 — resolve absolute MEMORY.md path for verifier §0
-            // Memory Feedback Cross-Check. Fail-open: any error → null fallback.
-            let memoryFeedbackPath = null;
-            try {
-              const memoryProjectDir = (process.env.CLAUDE_PROJECT_DIR || process.cwd())
-                .replace(/[\\/:]/g, '-').replace(/^-/, '');
-              const home = process.env.USERPROFILE || process.env.HOME || '';
-              if (home && memoryProjectDir) {
-                memoryFeedbackPath = home.replace(/\\/g, '/') + '/.claude/projects/' + memoryProjectDir + '/memory/MEMORY.md';
-              }
-            } catch (_) { memoryFeedbackPath = null; }
-            // H013 — emit absolute plugin install dir path for rubric file.
-            // Relative 'prompts/...' was resolved against CLAUDE_PROJECT_DIR by
-            // the consuming agent, so any project without a sibling prompts/
-            // folder (e.g. user's own repos) failed dispatch with file-not-found,
-            // leaving status='pending' forever and escalating missedCount each
-            // turn. __dirname here is plugin/scripts → ../prompts is the rubric
-            // shipped inside the plugin install dir.
-            let verifierPromptAbsPath = 'prompts/behavior-verifier-prompt.md';
-            try {
-              verifierPromptAbsPath = path.join(__dirname, '..', 'prompts', 'behavior-verifier-prompt.md').replace(/\\/g, '/');
-            } catch (_) { /* fail-open: keep relative fallback */ }
-            context += '\n\n## 감시자 (Behavior Verifier) Dispatch Required\n';
-            context += 'Next response: invoke Task tool to launch background verifier sub-agent.\n';
-            context += '- subagent_type: general-purpose\n';
-            context += '- model: opus\n';
-            context += '- run_in_background: true\n';
-            context += '- env: CRABSHELL_AGENT=behavior-verifier, CRABSHELL_BACKGROUND=1\n';
-            context += '- prompt: contents of ' + verifierPromptAbsPath + ' (plugin install dir absolute path — do NOT resolve against CLAUDE_PROJECT_DIR) plus the previous response transcript and recent user prompts (role=user) extracted from latest L1 session in .crabshell/memory/sessions/ for frame-fidelity sub-clause evaluation\n';
-            context += '- Memory feedback path (read for §0 Memory Feedback Cross-Check; fail-open if null/unreadable): ' + (memoryFeedbackPath || '(unavailable — skip cross-check)') + '\n';
-            context += '- output: write verdicts JSON to ' + BEHAVIOR_VERIFIER_STATE_FILE + ' with status=completed\n';
-          } else if (bvState.status === 'completed' && bvState.verdicts && typeof bvState.verdicts === 'object') {
-            // RMW "transition-then-emit" (P132_T003 AC-4 race fix):
-            // Acquire lock, re-read state inside the critical section, transition
-            // status='consumed' on disk FIRST, THEN emit the correction. Two
-            // concurrent invocations: the first acquires the lock and transitions
-            // to 'consumed'; the second's re-read sees status='consumed' and skips
-            // entirely (no duplicate correction emit).
-            const lockPath = path.join(memoryDir, BEHAVIOR_VERIFIER_LOCK_FILE);
-            let bvLocked = false;
-            let stateForEmit = null; // populated only when we win the transition
-            // D107 cycle 5 F-4 instrumentation — verifier.lock contention measurement.
-            // Inline raw fs.writeFileSync RMW (NOT routed through acquireIndexLock —
-            // verifier.lock is a separate file from .memory-index.lock), so the
-            // utils.js wrapper can't capture this site. Apply the same _recordContention
-            // pattern inline. Fail-open: instrumentation errors silently swallowed.
-            const _bvStart = Date.now();
-            let _bvAcquireTime = null;
-            try {
-              try {
-                fs.writeFileSync(lockPath, String(process.pid), { flag: 'wx' });
-                bvLocked = true;
-              } catch (lockErr) {
-                // Stale-lock cleanup (mirrors acquireIndexLock pattern in utils.js)
-                try {
-                  if (Date.now() - fs.statSync(lockPath).mtimeMs > 60000) {
-                    fs.unlinkSync(lockPath);
-                    fs.writeFileSync(lockPath, String(process.pid), { flag: 'wx' });
-                    bvLocked = true;
-                  }
-                } catch (_) {}
-              }
-              try {
-                const _bvWaitMs = Date.now() - _bvStart;
-                if (bvLocked) _bvAcquireTime = Date.now();
-                if (typeof _recordContention === 'function') {
-                  _recordContention(memoryDir, BEHAVIOR_VERIFIER_LOCK_FILE, 'acquire', _bvWaitMs);
-                }
-              } catch {}
-              if (bvLocked) {
-                try {
-                  // Re-read inside lock — may show 'consumed' if another invocation
-                  // raced ahead and already transitioned. If so, skip emit.
-                  const fresh = readBehaviorVerifierState(projectDir);
-                  if (fresh && fresh.status === 'completed' && fresh.verdicts) {
-                    fresh.status = 'consumed';
-                    fresh.lastUpdatedAt = new Date().toISOString();
-                    writeJson(stateFilePath, fresh);
-                    stateForEmit = fresh; // use the fresh snapshot for emit
-                  }
-                  // If fresh.status !== 'completed', the other invocation won the
-                  // race — silently skip emit to maintain at-most-once semantics.
-                } finally {
-                  try { fs.unlinkSync(lockPath); } catch (_) {}
-                  try {
-                    const _bvHeldMs = _bvAcquireTime ? (Date.now() - _bvAcquireTime) : 0;
-                    if (typeof _recordContention === 'function') {
-                      _recordContention(memoryDir, BEHAVIOR_VERIFIER_LOCK_FILE, 'release', _bvHeldMs);
-                    }
-                  } catch {}
-                }
-              }
-              // If lock not acquired, skip emit (another process is mid-RMW).
-              // The other process will emit on the user's next turn.
-            } catch (e) { /* fail-open */ }
-
-            // Emit correction ONLY when this invocation won the transition race.
-            if (stateForEmit && stateForEmit.verdicts) {
-              const failed = Object.entries(stateForEmit.verdicts).filter(function(entry) {
-                return entry && entry[1] && entry[1].pass === false;
-              });
-              if (failed.length > 0) {
-                const PER_ITEM_CAP = 600;
-                const TOTAL_CAP = 1500;
-                let correction = '\n\n## Behavior Correction (verifier feedback for previous response)\n';
-                let totalLen = 0;
-                for (let i = 0; i < failed.length; i++) {
-                  const key = failed[i][0];
-                  const v = failed[i][1];
-                  let reason = String((v && v.reason) || '');
-                  if (reason.length > PER_ITEM_CAP) {
-                    reason = reason.slice(0, PER_ITEM_CAP) + '...';
-                  }
-                  const line = '- ' + key + ': ' + reason + '\n';
-                  if (totalLen + line.length > TOTAL_CAP) {
-                    correction += '...(truncated)\n';
-                    break;
-                  }
-                  correction += line;
-                  totalLen += line.length;
-                }
-                context += correction;
-              }
-            }
-          } else if (isStale && bvState.status === 'pending') {
-            // TTL expired — mark stale silently. No correction or dispatch emitted.
-            try {
-              bvState.status = 'stale';
-              bvState.lastUpdatedAt = new Date().toISOString();
-              writeJson(stateFilePath, bvState);
-            } catch (e) { /* fail-open */ }
-          }
-          // status === 'consumed' / 'stale' / 'parse-error' / unknown: no-op.
-        }
-      } catch (e) { /* fail-open: never break the user's workflow */ }
 
       if (hasPendingDelta) {
         context += DELTA_INSTRUCTION;
@@ -1051,9 +725,9 @@ async function main() {
         context += ticketWarning;
       }
 
-      // Parallel processing reminder (injected after regressing reminder, before memory snippets)
-      if (shouldInjectParallelReminder(userPrompt, !!regressingReminder)) {
-        context += PARALLEL_REMINDER;
+      // Risk-based delegation reminder (after regressing reminder, before memory snippets)
+      if (shouldInjectDelegationReminder(userPrompt, !!regressingReminder)) {
+        context += DELEGATION_REMINDER;
       }
 
       // Prompt-aware memory loading
@@ -1143,11 +817,8 @@ module.exports = {
   parseMemorySections,
   extractKeywords,
   getRelevantMemorySnippets,
-  shouldInjectParallelReminder,
+  shouldInjectDelegationReminder,
   classifyUserIntent,
-  // D107 cycle 1 (P143_T001 WA2) — ringBuffer FAIL surface
-  buildRingBufferFailSurface,
-  FAIL_SURFACE_FRESHNESS_TTL_MS,
   // Re-export from regressing-state for convenience
   buildRegressingReminder,
   // Bailout
@@ -1164,12 +835,10 @@ module.exports = {
   DELTA_INSTRUCTION,
   ROTATION_INSTRUCTION,
   COMPRESSED_CHECKLIST,
-  PARALLEL_REMINDER,
+  DELEGATION_REMINDER,
   PRESSURE_L1,
   PRESSURE_L2,
   PRESSURE_L3,
   DEFAULT_NO_EXECUTION,
   EXECUTION_JUDGMENT,
-  // I079 R1/W027 (v21.102.0) — 3-field caveman-terse skeleton (replaced 7-field)
-  SKELETON_3FIELD,
 };

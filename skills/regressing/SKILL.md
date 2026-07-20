@@ -16,7 +16,7 @@ description: "Runs convergence-based iterative optimization cycles wrapped by a 
 | Philosophy | Source | Role in regressing |
 |------|------|----------------------|
 | **Iterative Optimization** | autoresearch | Each cycle: feedback → improvement. Output becomes input |
-| **Agent Structure + Verification** | workflow | Work/Review/Orchestrator pattern, runtime verification |
+| **Parent-Owned Orchestration + Verification** | workflow | Parent-owned decisions, bounded delegation, runtime verification |
 | **Document Tracing** | D/P/T | Every step is documented, enabling full traceability |
 
 ## Anti-Patterns (PROHIBITED)
@@ -28,9 +28,9 @@ The following patterns indicate regressing has degenerated into sequential batch
 | **Pre-partitioning** | P(1) divides total work into N equal parts, assigning each to a cycle | P(1) addresses highest-impact improvements. P(2+) respond to verification gaps. Cycle count is emergent, not planned |
 | **Sequential pipeline** | Cycle 1 = modify, Cycle 2 = sync, Cycle 3 = version bump | Sequential tasks (version bump, cache sync, deploy) belong in the SAME cycle as separate tickets — NOT as separate cycles. Each cycle is a complete implement-verify-improve loop |
 | **Copy-paste feedback** | Next Direction says "continue with remaining items" | Next Direction diagnoses specific problems with evidence |
-| **Role collapse** | Orchestrator performs Work Agent or Review Agent tasks directly | Each role is a separate Task tool invocation |
+| **Parent abdication** | Parent accepts a worker/reviewer claim as the final decision | Parent reopens decisive references, diffs, execution results, and side effects before completion |
 | **Rubber-stamp verification** | "ALL PASS — no improvement opportunities" | Orchestrator enumerates what was examined and why no improvements apply |
-| **Single WA without justification** | One Work Agent handles all execution without stating why parallel WA does not apply | Parallel WA is the default. Single-WA requires explicit justification: "Single-WA because {reason}" |
+| **Delegation ritual** | Agent count or role pairing is treated as progress or completion evidence | Delegate only bounded independent work when risk or latency justifies it; counts are never completion conditions |
 | **Operational steps as separate cycles** | Cycle 1 = code change, Cycle 2 = version bump + cache sync + commit | Version bump, cache sync, and commit are operational steps within a cycle's ticket(s), not independent cycles |
 | **Autonomous Write outside scope** | Agent writes/edits code files not covered by current ticket AC | Every code file write must trace to a ticket AC. If not covered → STOP and raise Open Question |
 
@@ -106,10 +106,10 @@ repeat until convergence or cap reached:
 - Invoke `/planning`, formulate plan based on D's IA
 - **Cycle 1**: Plan addresses the highest-impact improvements for the CURRENT state. MUST NOT pre-allocate or partition work across future cycles. Plan should be completable in this single cycle.
 - **Cycle 2+**: P(n) Context MUST include T(n-1)'s `## Final Verification > Next Direction`. Plan MUST directly respond to diagnosed problems from the previous cycle — not continue a pre-determined schedule.
-- Work Agent (separate Task tool call): analysis + planning → append to P document
-- Review Agent (separate Task tool call): plan verification + CHECK that plan does not pre-partition work across future cycles → append to P document
-- Orchestrator: intent check against D's IA. REJECT plans that pre-allocate future cycle work → append to P document
-- **Quality Gate (BLOCKING):** Plan agent sections (Analysis Results, Review Results, Intent Check) MUST ALL be populated before proceeding to Step 4b. Empty agent sections indicate the Plan quality gate was bypassed — the Orchestrator MUST halt and run the missing agents.
+- Parent: inspect the authoritative references, formulate the plan, and append analysis to the P document.
+- Optional delegation/review: use only for bounded independent work or a material risk. A reviewer, when used, checks the plan without receiving prior conclusions as its evidence source.
+- Parent: intent check against D's IA. REJECT plans that pre-allocate future-cycle work, reopen decisive references, and append the final intent check to the P document.
+- **Quality Gate (BLOCKING):** Parent analysis and Intent Check MUST be populated before Step 4b. If optional review was used, its evidence and the parent's disposition of each finding MUST also be recorded. An agent count or an empty optional-review section is not a quality gate.
 - After approval, proceed to ticket creation
 
 After /planning completes, update regressing state:
@@ -124,17 +124,15 @@ After each /ticketing invocation, update regressing state:
 - Append the new ticket's ID to `"ticketIds"` array, update `"lastUpdatedAt": "{ISO}"` using: `"{NODE_PATH}" -e "const f='{PROJECT_DIR}/.crabshell/memory/regressing-state.json';const s=JSON.parse(require('fs').readFileSync(f,'utf8'));s.ticketIds.push('{T-ID}');s.lastUpdatedAt=new Date().toISOString();require('fs').writeFileSync(f,JSON.stringify(s,null,2))"` (phase transition is automatic via PostToolUse hook)
 
 #### Step 4c: Ticket Execution
-- Execute each T(n,m) sequentially using ticketing's built-in agent structure (Work Agent → Review Agent → Orchestrator)
+- Execute each T(n,m) using ticketing's parent-owned execution and verification flow.
 - Each ticket is an independent execution cycle
 - **Ticket execution ordering:** Dependent tickets (e.g., T002 depends on T001's file changes) MUST execute sequentially — T001 completes before T002 starts. Independent tickets MAY execute in parallel. The Orchestrator determines dependency order before execution begins.
-- **Agent flow:** Planning phase (Step 4a) is serial — WA analysis then RA review. Execution phase uses parallel WAs by default (ticketing Step A). Single-WA requires explicit justification in the Orchestrator's ticket execution log.
-- Work Agent: execute tasks → append to T document
-  - **Framing:** Agent prompts follow the parent skill's (ticketing/planning) framing and verification standards. See CLAUDE.md SCOPE DEFINITIONS.
-- Review Agent (separate Task tool call): runtime verification (exhaustive level) → append to T document
-  - **RA Count Rule:** RA count MUST equal WA count. WA 2개 → RA 2개. Each WA's output is reviewed by its own dedicated RA. Single RA reviewing multiple WAs' outputs is a pairing violation.
-  - **Independence Protocol (MANDATORY):** The Review Agent prompt MUST NOT include Work Agent's Execution Results. Provide only: (1) Plan ID and acceptance criteria, (2) Verification criteria from ticket, (3) the P/O/G template below. The Review Agent performs independent verification first. After Review Agent completes, the Orchestrator cross-references RA findings against WA Execution Results — discrepancies are findings.
-  - **RA agent rate-limit fallback:** If the RA Task-tool dispatch fails with API rate-limit error mid-cycle, the Orchestrator MAY perform self-verification using the same P/O/G + Devil's Advocate template. Mark the section `**Note: RA agent rate-limited, Orchestrator self-verification fallback applied.**` for auditability. This is an exception path only when retry of RA dispatch is impractical and convergence pressure is high; standard mode is dispatch retry.
-  - **Review Agent prompt MUST include this philosophical context and verification output template:**
+- **Agent flow:** The parent owns each phase and delegates only bounded independent work when risk or latency justifies it. No worker count or WA:RA pairing is a completion condition.
+- Parent executes in-scope work and appends execution evidence to the T document. Delegation is optional and bounded by the ticket contract.
+  - **Framing:** Any delegated prompt follows ticketing/planning framing and verification standards, names exact scope and non-goals, and forbids fan-out.
+- Optional independent review: use when change risk, shared contracts, security, data loss, or user-visible behavior warrants it. Reviewer count never follows worker count.
+  - **Independence Protocol:** A reviewer MUST NOT use worker conclusions as its observation source. Provide the ticket acceptance/verification contract and the P/O/G template; the parent later cross-references findings against implementation evidence.
+  - **Reviewer prompt, when review is used, MUST include this verification context and output template:**
     ```
     Verification = closing the gap between belief and reality through observation.
     Fill Prediction BEFORE looking at the code. Fill Observation ONLY from tool output.
@@ -158,7 +156,7 @@ After each /ticketing invocation, update regressing state:
   2. If YES → `/verifying run` and include results in evaluation
   3. If NO → `/verifying` to create manifest, then `/verifying run`
   4. No executable runtime → skip with note
-- Orchestrator: final verification → append to T document. MUST critically evaluate both Work and Review Agent outputs. Default posture: skepticism — "ALL PASS" requires more justification than "FAIL". Must provide substantive evaluation, not rubber-stamp approval.
+- Parent: final verification → append to T document. MUST critically evaluate implementation evidence and any optional review. Default posture: skepticism — "ALL PASS" requires more justification than "FAIL". A worker/reviewer claim is never the completion condition.
   - Correctness: Was it done correctly? Cite specific evidence (command output, observed behavior).
   - Coherence: Do the changes from this cycle work together as a whole? Individual items may each pass, but combined output may have integration gaps. Verify that parts form a coherent whole, not just that each passes individually.
     **Coherence verification methods (minimum 2 of the following):**
@@ -170,18 +168,18 @@ After each /ticketing invocation, update regressing state:
     "Coherent" or "일관됨" as a one-line verdict without executing any of the above methods is INVALID.
   - Improvement Opportunities: What gaps remain? What was attempted but didn't work well? (Orchestrator MUST enumerate what was examined. "No improvements" requires detailed justification of what was checked and why no improvements apply — minimum 3 sentences referencing specific aspects.)
   - **Evidence Gate (BLOCKING — check BEFORE evaluating content):**
-    Agents generate text that looks like verification without actual observation. Your gate exists to catch this.
+    Agents can generate text that looks like verification without actual observation. Apply this gate to parent and delegated evidence alike.
     □ Does each verification item have Prediction, Observation, AND Gap fields?
     □ Does Observation contain tool output evidence? (for directly-executable items)
     □ Is Prediction ≠ Observation? (copy detection)
     □ For indirect verification: is the reason stated?
     □ Does at least 1 verification item have Type = behavioral? (structural-only = insufficient for runtime features)
-    → If ANY check fails: REJECT Review Agent results and request re-verification
-  - **RA/WA Cross-Reference (after Evidence Gate):**
-    Compare Review Agent's independent findings against Work Agent's Execution Results.
-    1. Read RA's P/O/G table findings
-    2. Read WA's Execution Results
-    3. Identify discrepancies — items where RA found problems WA didn't report, or where WA claimed success but RA found issues
+    → If ANY check fails: reject that evidence and re-run the observation.
+  - **Independent Evidence Cross-Reference (when delegation/review was used):**
+    Compare independent findings against implementation evidence.
+    1. Read the independent P/O/G findings
+    2. Read the execution results and direct tool output
+    3. Identify discrepancies — items where independent observation found problems implementation evidence did not report, or where implementation claimed success but direct observation found issues
     4. Discrepancies are the highest-priority findings and must be addressed in Correctness evaluation
   - Next Direction (while verification finds gaps and cycle < cap; final cycle uses Final Report instead):
     - **Problems Found**: Specific problems or shortcomings observed in THIS cycle's output, with evidence.
@@ -279,8 +277,8 @@ D (closed with final report)
 7. **Early termination on convergence.** If the Orchestrator's verification finds no improvement opportunities with substantive justification (minimum 3 sentences enumerating what was examined and why further cycles would not improve the result), the session terminates early. Generic "ALL PASS" without this justification is not valid convergence — it is rubber-stamping. **When the wrapping D document contains a `## Convergence Criteria` section, the Orchestrator MUST evaluate each criterion explicitly — convergence is only valid when all listed criteria are met or explicitly declared out-of-scope with rationale.**
 8. **Light-workflow is a lightweight reference.** Regressing is the primary mode; light-workflow is for standalone one-off tasks.
 9. **D's IA is the constant anchor.** All P and T documents reference D's IA as read-only evaluation criteria throughout all cycles.
-10. **Agent independence via Task tool.** Work Agent and Review Agent MUST each be launched as separate Task tool invocations. The Orchestrator (main conversation) MUST NOT perform Work or Review tasks itself. Collapsing roles violates agent pairing.
+10. **Parent-owned orchestration.** The parent owns intent, implementation decisions, decisive verification, and completion. Delegate only bounded independent work when risk or latency justifies it; do not require a worker/reviewer pair or use agent count as evidence. Delegates do not fan out.
 11. **Orchestrator anti-rubber-stamp.** The Orchestrator MUST provide substantive evaluation for each cycle. "No improvement opportunities" and "ALL PASS" without detailed justification are INVALID. When the Orchestrator genuinely finds no improvements, it must enumerate what was specifically examined and provide a reasoned argument (minimum 3 sentences) for why the output is optimal.
 12. **Cycles are for result improvement, not sequential work progression.** Each cycle produces a complete result and verifies it. The next cycle's purpose is to improve the previous cycle's output based on verified gaps — not to continue with remaining work. P(1) MUST NOT pre-allocate work across cycles. If P(n) divides total work into equal parts or references "what cycle N+1 will do," it is INVALID. The scope of cycle N+1 is unknown until cycle N's verification reveals what needs improvement. Cycle count is emergent — N is a safety cap, not a quota to fill. **Sequential tasks (version bump, cache sync, deploy) belong in the SAME cycle as the code change, as separate tickets — NOT as separate cycles.** A cycle is incomplete if it produces a code change without its operational follow-through.
-13. **Cross-review integration.** When ticket or plan execution involves 2+ parallel review agents, cross-review is MANDATORY before Orchestrator evaluation. The Orchestrator must verify whether cross-review conditions were met. When only 1 Review Agent runs, it MUST include a "Devil's Advocate" section articulating the strongest counter-argument to its own conclusions.
+13. **Distinct-risk review.** When multiple reviewers are useful, assign different risks rather than duplicating a checklist. The parent compares their independent evidence and resolves discrepancies; no reviewer count or cross-review ritual is a completion condition.
 14. **Question-save-continue protocol.** When a question arises during ticket execution that would normally pause for user input: (1) Do NOT emit the question to the user. (2) Append the question as an `## Open Questions` entry to the active T document using Edit tool (document-first). Include: question text, local timestamp, context (which AC triggered the question). (3) Make a reasonable assumption to unblock execution — state the assumption in the T document entry. (4) Continue execution without waiting. Open questions are addressed by the next cycle's planning phase. Exception: questions about destructive actions (delete, reset, overwrite) MAY be emitted to the user — state the specific risk first.

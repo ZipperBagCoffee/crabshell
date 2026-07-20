@@ -1,10 +1,10 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.103.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.106.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
-Crabshell is a Claude Code plugin with two pillars: (1) session memory — L1 delta extraction, Haiku summarization, logbook.md rotation, auto-restore on restart; (2) LLM behavioral correction — injects VERIFICATION-FIRST, UNDERSTANDING-FIRST, INTERFERENCE PATTERNS every prompt, twelve guard hooks block violations at runtime. D/P/T/I/W/K document system, 21 skills, Node.js hooks. All output under .crabshell/.
+Crabshell is a dual-runtime Claude Code/Codex plugin. Claude provides automatic session memory and behavioral hooks; Codex provides native packaging, manual memory/document skills, a deterministic memory-path guard, and live installation diagnostics. Both runtimes share the D/P/T/I/W/K document system and `.crabshell/` storage.
 
 Codex compatibility is provided in the same repository through a separate `.codex-plugin/plugin.json`, `codex-skills/`, and explicit wrapper scripts. Claude Code and Codex ship from the same repo but activate different manifests; both can share the `.crabshell/` memory and document store.
 
@@ -33,12 +33,21 @@ crabshell/
 │   │   └── INDEX.md
 │   ├── worklog/                      # Worklog documents (W001, W002...) — light-workflow tracing
 │   │   └── INDEX.md
-│   └── knowledge/                    # Knowledge pages (K001, K002...) — verified facts + operational tips
-│       └── INDEX.md
+│   ├── knowledge/                    # Knowledge pages (K001, K002...) — verified facts + operational tips
+│   │   └── INDEX.md
+│   └── verification/                 # Project-local schema-v2 verification artifacts
+│       ├── manifest.json             # Portable command/assertion contracts
+│       └── run-verify.js             # Generated from the tracked skill runner
 │
 ├── .claude-plugin/                   # Plugin configuration
 │   ├── plugin.json                   # Plugin metadata
 │   └── marketplace.json              # Marketplace registration
+│
+├── .agents/plugins/
+│   └── marketplace.json              # Codex repo marketplace (native install)
+│
+├── .codex-plugin/
+│   └── plugin.json                   # Codex metadata + explicit hook/skill paths
 │
 ├── agents/                           # Agent definitions
 │   ├── memory-summarizer.md          # L3 summary generator (claude-haiku-4-5-20251001)
@@ -52,13 +61,16 @@ crabshell/
 │   └── install-codex.md              # Manual Codex bridge command (v21.94.0)
 │
 ├── hooks/                            # Lifecycle hooks
-│   └── hooks.json                    # Hook config
+│   ├── hooks.json                    # Claude Code hook config
+│   └── codex-hooks.json              # Codex-only deterministic PreToolUse config
 │
 ├── scripts/                          # Core implementation (Node.js)
 │   ├── find-node.sh                  # Fallback Node.js locator utility (v18.0.0, hardened v21.99.3)
 │   ├── counter.js                    # Main engine
 │   ├── load-memory.js                # Load memory on session start
 │   ├── inject-rules.js               # UserPromptSubmit rules injection
+│   ├── shared-context.js              # Shared project context + orchestration defaults
+│   ├── subagent-context.js            # Bounded worker contract injection
 │   ├── extract-delta.js              # L1 delta extraction
 │   ├── constants.js                  # Centralized configuration
 │   ├── init.js                       # Project initialization
@@ -72,6 +84,14 @@ crabshell/
 │   ├── regressing-guard.js           # PreToolUse regressing skill enforcement (v19.23.0)
 │   ├── sycophancy-guard.js           # Stop + PreToolUse dual-layer sycophancy detection + verification claim detection (v19.29.0, v20.7.0, v21.1.0). Also writes feedbackPressure.oscillationCount (reversal phrases) and tooGoodSkepticism.retryCount (all-None P/O/G) at Stop hook — these are pressure-adjacent counters independent of feedbackPressure.level. See three pressure counters (feedbackPressure.level, feedbackPressure.oscillationCount, tooGoodSkepticism.retryCount) in USER-MANUAL.md §Pressure System.
 │   ├── path-guard.js                # PreToolUse path validation + shell var resolution + logbook.md Edit block + Write shrink guard (v19.31.0, v20.3.0, v20.6.0, v21.8.0)
+│   ├── core/path-policy.js           # Host-neutral memory path policy (v21.104.0)
+│   ├── core/codex-app-server.js      # Codex JSON-RPC/CLI capability client (v21.104.0)
+│   ├── core/orchestration-policy.js  # 8-field task contract + parent completion policy (v21.105.0)
+│   ├── adapters/codex/               # Native Codex hook contract adapter (v21.104.0)
+│   ├── codex-doctor.js               # Source/cache/hook/skills/data/capability diagnostics
+│   ├── codex-memory.js               # Manual Codex memory load/save/search/status
+│   ├── run-orchestration-corpus.js   # Live Codex A/B orchestration behavior runner (v21.105.0)
+│   ├── _test-orchestration-defaults.js # Deterministic orchestration policy tests (v21.105.0)
 │   ├── docs-guard.js                # PreToolUse D/P/T/I skill bypass prevention (v19.33.0)
 │   ├── verify-guard.js              # PreToolUse Final Verification + behavioral AC (v19.34.0, v20.3.0)
 │   ├── pressure-guard.js            # PreToolUse feedback pressure L3 blocking — all 6 tools (v19.47.0, v21.1.0)
@@ -103,16 +123,15 @@ crabshell/
 │   ├── _test-subagent-context.js    # subagent-context.js test suite (v21.21.0)
 │   ├── _test-regressing-guard.js    # regressing-guard.js 7-test suite — phase gates + IA-2 agent section validation (v21.41.0)
 │   ├── _test-regressing-guard-edge-cases.js # regressing-guard.js 14 edge-case tests — absent heading, fail-open paths (v21.41.0)
-│   ├── regressing-loop-guard.js     # Stop hook — regressing/light-workflow enforcement (v21.50.0)
+│   ├── regressing-loop-guard.js     # Stop hook — active regressing continuation (count-independent)
 │   ├── _test-regressing-loop-guard.js
 │   ├── _test-inject-rules-classification.js
-│   ├── _test-wa-count-enforcement.js
 │   ├── _test-parallel-reminder.js
 │   ├── _test-too-good-pog.js
 │   ├── utils.js                      # Shared utilities (getStorageRoot, getProjectDir)
 │   ├── lint-obsidian.js              # 5-check Obsidian document linter (orphans, wikilinks, stale, frontmatter, INDEX) (v21.70.0)
 │   ├── search-docs.js                # BM25 full-text search across D/P/T/I/H/W/K documents (v21.72.0, hotfix/ added v21.75.0)
-│   ├── install-codex.js              # Manual Claude-installed checkout -> Codex marketplace/skills bridge (v21.94.0)
+│   ├── install-codex.js              # Legacy/development Claude checkout -> Codex bridge (v21.94.0)
 │   └── migrate-obsidian.js           # Frontmatter + wikilink migration; --generate-digest; hotfix + knowledge sections (v21.75.0)
 │
 ├── skills/                           # Slash command skills (22 total)
@@ -131,12 +150,20 @@ crabshell/
 │   ├── investigating/SKILL.md        # /crabshell:investigating (I documents)
 │   ├── regressing/SKILL.md           # /crabshell:regressing (D→P→T cycles)
 │   ├── light-workflow/SKILL.md       # /crabshell:light-workflow (one-shot)
-│   ├── verifying/SKILL.md            # /crabshell:verifying (verification tools)
+│   ├── verifying/SKILL.md            # /crabshell:verifying (schema-v2 behavioral verification)
+│   │   └── scripts/run-verify.js      # Portable single-source verification runner (v21.106.0)
 │   ├── status/SKILL.md               # /crabshell:status (plugin healthcheck)
 │   ├── lint/SKILL.md                 # /crabshell:lint (Obsidian document lint checks) (v21.70.0)
 │   ├── search-docs/SKILL.md          # /crabshell:search-docs (BM25 document search) (v21.72.0)
 │   ├── knowledge/SKILL.md            # /crabshell:knowledge (K-page creation + view) (v21.74.0)
 │   └── hotfix/SKILL.md              # /crabshell:hotfix (H-page lightweight fix recording) (v21.75.0)
+│
+├── codex-skills/                     # Codex-native bundled skills (13 total)
+│   ├── load-memory/scripts/          # Installed-cache memory wrapper
+│   ├── save-memory/scripts/          # Installed-cache memory wrapper
+│   ├── search-memory/scripts/        # Installed-cache memory wrapper
+│   ├── status/                       # Live Codex doctor skill + wrapper
+│   └── {discussion,plan,ticket,...}/ # Codex document/workflow skills
 │
 ├── templates/                        # Auto-init templates (v13.9.20)
 │   └── workflow.md                   # Understanding-First workflow template
@@ -161,14 +188,18 @@ The repository intentionally keeps Claude and Codex runtime surfaces side by sid
 | `hooks/hooks.json` | Claude Code | Automatic lifecycle hooks |
 | `commands/` | Claude Code | Slash command definitions |
 | `skills/` | Claude Code | Claude-oriented skill instructions |
-| `.codex-plugin/plugin.json` | Codex | Codex plugin metadata and `codex-skills/` pointer |
-| `codex-skills/` | Codex | Explicit Codex skill wrappers |
+| `.agents/plugins/marketplace.json` | Codex | Repo-scoped native marketplace entry (`source.path: "./"`) |
+| `.codex-plugin/plugin.json` | Codex | Codex metadata plus explicit `codex-skills/` and `hooks/codex-hooks.json` paths |
+| `hooks/codex-hooks.json` | Codex | Synchronous command-only native `PreToolUse` path guard; prevents default Claude-hook discovery |
+| `codex-skills/` | Codex | Bundled skills, including installed-cache memory and doctor wrappers |
 | `scripts/codex-memory.js` | Codex | Manual memory load/save/search/status wrapper |
 | `scripts/codex-docs.js` | Codex | Manual W/H/D/P/T/I document creation wrapper |
+| `scripts/codex-doctor.js` | Codex | Live feature, plugin, cache, hook trust/hash, skill, and writable-data diagnostics |
+| `scripts/core/path-policy.js` | Shared | Host-neutral path policy used by Claude and Codex adapters |
 | `scripts/claude-to-agents.js` | Codex | `CLAUDE.md` to `AGENTS.md` conversion |
-| `scripts/install-codex.js` | Claude Code -> Codex | Manual bridge from Claude marketplace checkout to Codex home-local plugin and skills |
+| `scripts/install-codex.js` | Claude Code -> Codex | Legacy/development manual bridge; native marketplace installation is the default |
 
-Installing one runtime does not activate the other runtime. Both runtimes can share `.crabshell/` storage when used in the same project.
+Installing one runtime does not activate the other runtime. Codex Cycle 1 loads only its explicit deterministic PreToolUse hook; Claude automatic memory, pressure, verifier, and Stop hooks remain Claude-only. Both runtimes can share `.crabshell/` storage when used in the same project.
 
 ## Core Scripts
 
@@ -246,6 +277,22 @@ PreToolUse path validation (v19.31.0, v20.3.0 Edit block, v20.6.0 Write shrink g
 - Fail-open on parse errors (user experience protection)
 - Windows path normalization (backslash → forward slash)
 
+### scripts/core/path-policy.js and scripts/adapters/codex/
+- `path-policy.js` contains the host-neutral path decisions shared with the existing Claude wrapper
+- `adapters/codex/pre-tool-use.js` normalizes the native Codex `PreToolUse` payload and emits `hookSpecificOutput.permissionDecision="deny"`
+- Malformed/unsupported events fail open; the Codex hook config contains no Stop, async, automatic memory, pressure, or verifier handlers
+- `codex-app-server.js` provides the JSON-RPC client used by doctor to query Codex's own plugin/skill/hook interpretation
+
+### scripts/core/orchestration-policy.js and scripts/run-orchestration-corpus.js
+- `orchestration-policy.js` creates the eight-field internal task contract and centralizes the destructive/irreversible/outside-workspace/external-install/product-decision question boundary
+- Named references must resolve to inspected evidence; completion requires parent-owned observations, command outcomes, and forbidden-side-effect checks rather than worker status claims
+- `run-orchestration-corpus.js` launches disposable baseline/current Codex conversations, changes a named reference value, observes the actual JSONL command event for a false-done fixture, and hashes the fixture workspace before/after
+
+### scripts/codex-doctor.js
+- Uses `codex features list` plus app-server `plugin/list`, `skills/list`, and `hooks/list`; there is no hardcoded CLI version compatibility map
+- Reports plugin source, materialized cache, hook source/hash/trust, bundled skills, writable plugin-data path, and a native deny-contract probe
+- Separates the active consumer project from the installed plugin root so the bundled status skill works outside the plugin source checkout
+
 ### scripts/log-guard.js
 PreToolUse D/P/T log enforcement (v21.4.0, v21.11.0):
 - Dual-trigger guard on Write|Edit to `.crabshell/` paths
@@ -258,8 +305,8 @@ PreToolUse D/P/T log enforcement (v21.4.0, v21.11.0):
 PreToolUse Final Verification enforcement (v19.34.0, v19.39.0 deterministic, v20.3.0 behavioral AC, v21.16.0 hybrid):
 - Hybrid approach: Edit always enforces verification; Write enforces only for existing files (new file creation skips — fs.existsSync-based)
 - Block when ticket path (`.crabshell/ticket/P###_T###*`) contains `## Final Verification`
-- Directly executes `run-verify.js` via execSync (10s timeout) — blocks on FAIL entries
-- Require at least 1 behavioral (type: "direct") AC in verification manifest — structural-only is insufficient
+- Directly executes the generated `run-verify.js` — blocks on failed command exits, structured assertions, or forbidden-path mutations
+- Require at least 1 schema-v2 `behavioral` entry with a structured contract; a legacy self-label or positive stdout substring is insufficient
 - "Verification tool N/A:" exception for projects without verification tools
 - Fail-open on parse errors (user experience protection)
 
@@ -324,7 +371,7 @@ L1 generation:
    ├─> scope-guard.js (v21.19.0)
    │   └─> Compare user-requested quantity vs response count; block scope reduction without approval
    └─> regressing-loop-guard.js (v21.55.0)
-       └─> Block stop when regressing active + inject phase-specific context; enforce ≥2 parallel WAs; light-workflow + single-WA enforcement
+       └─> Block stop when regressing active + inject phase-specific context; no worker-count gate
 
 4. PostToolUse
    ├─> counter.js check (.*)
@@ -358,6 +405,9 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.106.0 | feat: D110 Cycle 3 — single-source portable schema-v2 verification runner, independent mutation corpus, structured behavioral guard contract, count-independent parent-owned orchestration, and confirmed retirement of 19 verifier/count/role legacy files. |
+| 21.105.0 | feat: D110 Cycle 2 — 8-field parent-owned task contract, five-stage light workflow, risk-based questions/delegation, natural response defaults, presentation-audit retirement, and live Codex A/B orchestration regressions. |
+| 21.104.0 | feat: D110 Cycle 1 — native Codex repo marketplace, explicit Codex-only PreToolUse hook, shared path policy, live doctor/status, installed-cache memory wrappers, and clean-profile/spaces/trust-drift regressions; legacy installer retained. |
 | 21.103.0 | fix: W028 — `classifyAgent` description-only (prompt keywords caused WA→RA misclassification; observed waCount=1/raCount=9 with 5 real WAs); remove light-workflow single-WA Stop block (absent from SKILL.md; lw is 1:1 WA:RA). Both defects v21.52.0 b4d3933. Tests 18/18 + 22/22 PASS. |
 | 21.102.0 | feat: I079 R1 — replace 7-field response skeleton with 3-field caveman-terse version; removed 4 self-check fields; renamed [쉬운 설명]→[설명]; sync tests + verifier prompt + manifest. User-approved. Tests 52/52 PASS. |
 | 21.101.0 | fix: I078 Tier-1 source cleanup — restore dead "Unreflected from Last Session" SessionStart section (`load-memory.js` `entry.text`); `verification-sequence.js` now keeps a FAILED test from clearing the git-commit gate; fix `search-docs`/`lint`/`memory-autosave` SKILL doc drift; convert 5 redundant memory/status slash-commands to skill-delegating stubs (drop hardcoded cache path). Tests 52/52 files PASS. |

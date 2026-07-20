@@ -1,5 +1,7 @@
 # F-3 Lifecycle FSM Reconciliation Evaluation (D107 cycle 4 IA-5 frontier F-3)
 
+> **Retirement note (v21.106.0)**: D110 Cycle 3 removed the verifier FSM, consumer, prompt, and dedicated lock constants. The analysis below records the former design and is not a current implementation plan.
+
 > **Status**: PROPOSAL ONLY — preliminary recommendation pending cycle 5 F-4 measurement. NOT pre-ratified for implementation. Cycle 5+ defer for actual lock surface change (architecture-critical, explicit user confirm prerequisite per P146 cycle 4 scope).
 > **Ratification gate**: cycle 5 F-4 standalone audit (lock contention measurement) MUST run before any path (a/b) ratification. Bundling F-4 measurement with a path-b minimal contract would corrupt measurement validity (decision-without-evidence). This document is preliminary; cycle 5 measurement may surprise (e.g., measured contention < threshold could enable path (a) lock-merge after all).
 > **Authority**: P146 Plan Step 1 (cycle 3 P-4 follow-up). cycle 2 RA2 frontier F-3 source (`P144` `## Analysis Results > WA2 §D`).

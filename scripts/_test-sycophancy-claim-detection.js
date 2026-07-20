@@ -86,7 +86,7 @@ function test(name, hookData, expectBlock) {
 
 // P132_T002: warn-only expectation for verification-claim path. Verification-claim
 // detection in sycophancy-guard.js Stop branch L799 was converted to warn-only —
-// the sub-agent verifier (D102) retroactively corrects in next turn. Tests that
+// the parent must re-check decisive evidence before completion. Tests that
 // previously expected exit 2 / decision:'block' now expect exit 0 + stderr
 // [BEHAVIOR-WARN] marker.
 function testWarn(name, hookData) {
@@ -190,7 +190,7 @@ test('13: stop_hook_active → ALLOW (infinite loop guard)',
 // --- D103 cycle 1 (P134_T001): sycophancy 4 Stop branches → warn-only ---
 // Case 15 was previously expectBlock=true. The agreement Stop branch is now
 // warn-only (decision:'block' + exit(2) → [BEHAVIOR-WARN] stderr + exit(0)).
-// The behavior-verifier sub-agent retroactively corrects in the next turn.
+// The parent owns the decisive re-check before any completion claim.
 testWarn('15: Sycophancy without claim → WARN (was BLOCK, agreement branch warn-only)',
   { stop_response: "You're right, I should have checked that earlier. Let me fix the implementation for you.", transcript_path: transcriptNoBash });
 

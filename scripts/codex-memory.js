@@ -72,7 +72,7 @@ function load(args) {
   const tail = Number(args['tail-lines'] || 80);
   const sections = [];
 
-  const projectText = readFileOrDefault(path.join(memoryDir, 'project.md'), '').trim();
+  const projectText = readFileOrDefault(path.join(getStorageRoot(projectDir), 'project.md'), '').trim();
   if (projectText) sections.push(`## Project Memory\n${projectText}`);
 
   const index = readJsonOrDefault(path.join(memoryDir, INDEX_FILE), { rotatedFiles: [] });
@@ -122,8 +122,7 @@ function search(args) {
   }
   const projectDir = projectDirFromArgs(args);
   ensure(projectDir);
-  process.env.PROJECT_DIR = projectDir;
-  const results = searchMemory(query, { deep: Boolean(args.deep), regex: Boolean(args.regex) });
+  const results = searchMemory(query, { projectDir, deep: Boolean(args.deep), regex: Boolean(args.regex) });
   if (!results.length) {
     console.log(`No matches for "${query}".`);
     return;
@@ -167,4 +166,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { load, save, search, status, parseArgs };
+module.exports = { load, main, save, search, status, parseArgs };
