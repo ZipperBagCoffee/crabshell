@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const PROJECT_DIR = 'C:/Users/chulg/Documents/memory-keeper-plugin';
+const PROJECT_DIR = path.resolve(__dirname, '..');
 
 function read(rel) {
   try {
@@ -15,24 +15,18 @@ function read(rel) {
 
 const ir = read('scripts/inject-rules.js') || '';
 const sc = read('scripts/shared-context.js') || '';
-const vp = read('prompts/behavior-verifier-prompt.md') || '';
 const ap = read('prompts/anti-patterns.md');
 
 const rulesStart = ir.indexOf('const RULES');
 const rulesEnd = ir.indexOf('const COMPRESSED_CHECKLIST');
 const rules = (rulesStart >= 0 && rulesEnd > rulesStart) ? ir.slice(rulesStart, rulesEnd) : '';
 
-const simpleStart = vp.indexOf('### 4. simple');
-const simpleEnd = vp.indexOf('## Output Format');
-const simple = (simpleStart >= 0 && simpleEnd > simpleStart) ? vp.slice(simpleStart, simpleEnd) : '';
-
 const tests = [];
 function add(n, p) { tests.push({ n, p: !!p }); }
 
-// analogy=0 in 3 spec sections
+// analogy=0 in the two active rule surfaces
 add('analogy=0 RULES', !/analogy/i.test(rules));
 add('analogy=0 shared-context', !/analogy/i.test(sc));
-add('analogy=0 §4.simple', !/analogy/i.test(simple));
 
 // 4 concept regex (loose patterns to handle file-specific phrasings)
 const concepts = [
@@ -42,7 +36,7 @@ const concepts = [
   ['self-coined', /self.?coined/i],
 ];
 
-[['RULES', rules], ['CHECKLIST', sc], ['§4.simple', simple]].forEach(([name, text]) => {
+[['RULES', rules], ['CHECKLIST', sc]].forEach(([name, text]) => {
   concepts.forEach(([cName, re]) => {
     add(cName + ' in ' + name, re.test(text));
   });

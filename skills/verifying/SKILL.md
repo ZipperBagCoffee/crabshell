@@ -7,7 +7,7 @@ description: "Creates project-specific verification tools when they don't exist,
 
 ## Purpose
 
-Bridge the gap between VERIFICATION-FIRST principles and project reality. Most projects lack executable verification tools. This skill analyzes the project's runtime environment and creates a verification manifest — a mapping of IA items to executable commands with expected results.
+Bridge the gap between VERIFICATION-FIRST principles and project reality. Most projects lack executable verification tools. This skill analyzes the runtime environment and creates a verification manifest that maps user-observable outcomes to portable commands and independent contracts.
 
 ## Modes
 
@@ -30,14 +30,14 @@ Check if `.crabshell/verification/manifest.json` exists in the project root.
 
 ### Step 2: Analyze project runtime environment
 
-Launch a Work Agent (Task tool) to determine:
+The parent inspects the project directly. Delegate a bounded read-only exploration only when it materially improves coverage; delegation is not a gate. Determine:
 
 1. **Runtime type:** Web app (browser), Node CLI, Python, compiled binary, shell scripts, etc.
 2. **Entry points:** Main files, test runners, build commands
 3. **Test infrastructure:** Existing test framework (jest, pytest, mocha, etc.), existing test files
 4. **Build/run commands:** How to build, how to run, how to test
 
-Work Agent appends results as:
+Record the parent-owned analysis as:
 ```
 ## Project Analysis
 - Runtime: {type}
@@ -50,16 +50,16 @@ Work Agent appends results as:
 
 ### Step 3: Review analysis
 
-- **Independence Protocol (MANDATORY):** The Review Agent prompt MUST NOT include Work Agent's Project Analysis results. Provide only: (1) the project directory path, (2) instruction to independently determine runtime type, entry points, test infrastructure, and build/run/test commands. After Review Agent completes, the Orchestrator cross-references RA findings against WA Project Analysis — discrepancies are findings.
-- Launch a Review Agent (Task tool, SEPARATE from Work Agent) to verify the analysis independently. Devil's Advocate required.
+The parent resolves entry points and decisive commands from inspected project evidence. For high-risk ambiguity, an optional read-only reviewer may independently inspect the project, but the parent must compare the finding with the actual files and remains responsible for the manifest.
 
 ### Step 4: Create verification manifest
 
 Create `.crabshell/verification/` directory if it doesn't exist.
 
-Create `.crabshell/verification/manifest.json`:
+Create `.crabshell/verification/manifest.json` using schema version 2:
 ```json
 {
+  "schemaVersion": 2,
   "projectType": "{runtime type}",
   "created": "{ISO timestamp}",
   "updated": "{ISO timestamp}",
@@ -74,14 +74,23 @@ Create `.crabshell/verification/manifest.json`:
 
 ### Step 5: Populate entries from current context
 
-For each IA item in the current session, create a verification entry:
+For each user-observable outcome in the current session, create a verification entry. Commands are object-form, repo-relative, and shell-free:
 ```json
 {
   "id": "V001",
   "ia": "IA-1: {description}",
-  "type": "direct|indirect|manual",
-  "command": "{executable command}",
-  "expected": "{expected output or behavior}",
+  "type": "behavioral|structural|manual",
+  "command": {
+    "file": "node",
+    "args": ["scripts/behavior-test.js"]
+  },
+  "contract": {
+    "exitCode": 0,
+    "assertions": [
+      { "kind": "jsonEquals", "path": "tmp/observed.json", "pointer": "/result", "equals": "expected" }
+    ],
+    "forbiddenChanges": ["user-owned.txt"]
+  },
   "timeout": 30000
 }
 ```
@@ -89,143 +98,17 @@ For each IA item in the current session, create a verification entry:
 **Type classification:**
 | Type | When | Example |
 |------|------|---------|
-| `direct` | Can run a command and observe output | `node scripts/inject-rules.js`, `npm test` |
-| `indirect` | Cannot execute directly; trace paths, read state | Check file content after hook runs |
+| `behavioral` | Executes the actual surface and has an independent assertion or forbidden-side-effect snapshot | Run a CLI, parse its JSON result, compare state and protected paths |
+| `structural` | Executes a static/schema/import check; never substitutes for a behavioral outcome | Parse a manifest or compile a module |
 | `manual` | Requires human interaction (browser, GUI) | "Open browser, click button, observe result" |
+
+Supported assertions are `jsonEquals`, `jsonMatches`, `stdoutJsonEquals`, `fileExists`, and `fileContains`. Prefer JSON/state comparisons over stdout. Positive text such as `PASS` and the legacy `expected` field never decide success. Every behavioral entry must contain at least one assertion or `forbiddenChanges` path.
 
 ### Step 6: Create verification runner script
 
-Create `.crabshell/verification/run-verify.js`:
+Copy `${CLAUDE_PLUGIN_ROOT}/skills/verifying/scripts/run-verify.js` to `.crabshell/verification/run-verify.js`. This tracked file is the single runner implementation. Do not retype or fork it in the skill document.
 
-```javascript
-// Auto-generated verification runner
-// Run: node .crabshell/verification/run-verify.js [entry-id]
-// Run all: node .crabshell/verification/run-verify.js
-
-const manifest = require('./manifest.json');
-const { execSync } = require('child_process');
-const path = require('path');
-const { classify, shouldWarn } = require('./verify-classify');
-
-const projectRoot = process.env.PROJECT_ROOT || path.resolve(__dirname, '../..');
-
-function parseArgs(argv) {
-  const parsed = {
-    targetId: null,
-    flat: process.env.CRABSHELL_VERIFY_FLAT === '1',
-    error: null
-  };
-
-  for (const arg of argv) {
-    if (arg === '--flat' || arg === '-f') {
-      parsed.flat = true;
-    } else if (arg.startsWith('-')) {
-      parsed.error = `Unknown flag: ${arg}`;
-      break;
-    } else if (!parsed.targetId) {
-      parsed.targetId = arg;
-    } else {
-      parsed.error = `Unexpected extra argument: ${arg}`;
-      break;
-    }
-  }
-
-  return parsed;
-}
-
-function runEntry(entry) {
-  if (entry.type === 'manual') {
-    console.log(`[MANUAL] ${entry.id}: ${entry.ia}`);
-    console.log(`  Action: ${entry.command}`);
-    console.log(`  Expected: ${entry.expected}`);
-    return { id: entry.id, status: 'manual', message: 'Requires human verification', failureClass: null };
-  }
-  try {
-    const output = execSync(entry.command, {
-      timeout: entry.timeout || 30000,
-      encoding: 'utf8',
-      cwd: projectRoot,
-      env: { ...process.env, CLAUDE_PROJECT_DIR: projectRoot, CRABSHELL_VERIFY_RUNNING: '1' }
-    }).trim();
-    const pass = output.includes(entry.expected) || entry.expected === 'exit-0';
-    const r = { id: entry.id, status: pass ? 'PASS' : 'FAIL', output, expected: entry.expected, failureClass: null };
-    if (r.status === 'FAIL') r.failureClass = classify(null, r.output);
-    return r;
-  } catch (e) {
-    const errMsg = e.stderr ? e.stderr.trim() : e.message;
-    const r = { id: entry.id, status: 'FAIL', error: errMsg, expected: entry.expected, failureClass: null };
-    r.failureClass = classify(r.error, e.stdout || '');
-    return r;
-  }
-}
-
-function selectEntries(targetId) {
-  return targetId
-    ? manifest.entries.filter(e => e.id === targetId)
-    : manifest.entries.filter(e => e.type !== 'manual');
-}
-
-function failRunner(id, error, expected) {
-  const result = { id, status: 'FAIL', error, expected, failureClass: classify(error, '') };
-  console.log(JSON.stringify([result], null, 2));
-  console.log('\nVerification Results: PASS: 0 / FAIL: 1 / Total: 1');
-  process.exit(1);
-}
-
-function main() {
-  const args = parseArgs(process.argv.slice(2));
-  if (args.error) {
-    failRunner('RUNNER_ARGS', args.error, 'valid run-verify arguments');
-    return;
-  }
-
-  if (process.env.CRABSHELL_VERIFY_RUNNING === '1' && !args.targetId) {
-    failRunner(
-      'RUNNER_RECURSION',
-      'Nested full-manifest verification is blocked. Pass an explicit entry id for nested runner checks.',
-      'explicit entry id'
-    );
-    return;
-  }
-
-  const entries = selectEntries(args.targetId);
-  const results = entries.map(runEntry);
-  const passCount = results.filter(r => r.status === 'PASS').length;
-  const failCount = results.filter(r => r.status === 'FAIL').length;
-
-  // JSON array output MUST come before any other lines (verify-guard regex /\[[\s\S]*\]/ must match)
-  console.log(JSON.stringify(results, null, 2));
-  console.log(`\nVerification Results: PASS: ${passCount} / FAIL: ${failCount} / Total: ${results.length}`);
-
-  // Category grouping (suppressed in flat mode)
-  if (!args.flat) {
-    const categories = ['env-incompatible', 'missing-file', 'data-drift', 'assertion-fail', 'unknown'];
-    const fails = results.filter(r => r.status === 'FAIL');
-    const counts = {};
-    for (const cat of categories) counts[cat] = 0;
-    for (const f of fails) { if (f.failureClass && counts[f.failureClass] !== undefined) counts[f.failureClass]++; }
-    const hasAnyCat = Object.values(counts).some(n => n > 0);
-    if (hasAnyCat) {
-      console.log('\nFailure Categories:');
-      for (const cat of categories) {
-        if (counts[cat] > 0) console.log(`  ${cat}: ${counts[cat]}`);
-      }
-    }
-  }
-
-  // Unknown-ratio warning to stderr (AC4)
-  const w = shouldWarn(results);
-  if (w.warn) console.error(`[VERIFY] WARN: ${w.unknownCount}/${w.failCount} (${w.ratio}%) failures unclassified; classifier rules may need update`);
-
-  process.exit(failCount > 0 ? 1 : 0);
-}
-
-if (require.main === module) {
-  main();
-}
-
-module.exports = { parseArgs, selectEntries, runEntry };
-```
+The runner resolves `node` from `process.execPath`, runs without a shell, rejects machine-specific absolute paths, evaluates assertions itself, snapshots `forbiddenChanges` before and after the command, and emits machine-readable results before its summary.
 
 ### Step 7: Confirm
 
@@ -250,7 +133,7 @@ node .crabshell/verification/run-verify.js
 
 ### Step 3: Parse and report as P/O/G
 
-| Item | Type | Prediction (from manifest expected) | Observation (from runner output) | Gap |
+| Item | Type | Prediction (from manifest contract) | Observation (from runner output/state/hash) | Gap |
 |------|------|-------------------------------------|----------------------------------|-----|
 
 Type: `behavioral` = runtime execution observed (ran command, triggered feature, checked output)
@@ -271,7 +154,7 @@ When invoked with `add "description"`:
 
 1. Read manifest. If not found: "Run `/verifying` first."
 2. Determine next entry ID (V001, V002, ...)
-3. Create entry with user input (IA, type, command, expected)
+3. Create an entry with IA, type, portable command object, structured contract, and timeout
 4. Append to manifest entries array
 5. Update `updated` timestamp
 
@@ -279,7 +162,7 @@ When invoked with `add "description"`:
 
 ## Rules
 
-1. **EXECUTABLE only.** Every entry must have a runnable command or be explicitly `manual`.
+1. **EXECUTABLE only.** Every non-manual entry has a portable command object and exit contract; behavioral entries also need an independent assertion or forbidden-change snapshot.
 2. **Manifest is source of truth.** All entries live in `manifest.json`.
 3. **P/O/G alignment.** Run mode produces P/O/G table rows.
 4. **No git commit.** `.crabshell/verification/` is local — do NOT commit.

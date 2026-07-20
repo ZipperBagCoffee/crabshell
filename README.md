@@ -23,17 +23,20 @@ After installation, **you don't need to do anything**. It works automatically.
 This repository is a dual-runtime plugin repo:
 
 - **Claude Code** uses `.claude-plugin/plugin.json`, `hooks/hooks.json`, `commands/`, and `skills/`.
-- **Codex** uses `.codex-plugin/plugin.json`, `codex-skills/`, and the `scripts/codex-*.js` wrappers.
+- **Codex** uses `.agents/plugins/marketplace.json`, `.codex-plugin/plugin.json`, `hooks/codex-hooks.json`, `codex-skills/`, and the `scripts/codex-*.js` wrappers.
 
 Installing the plugin in one runtime does not automatically activate the other runtime. The files can ship in the same GitHub repository, but each product only reads its own manifest and entrypoints.
 
-After installing through Claude, run the manual bridge command when you want the same checkout available in Codex:
+For Codex CLI development or a repo-local install, run from this repository and start a new Codex session after installation:
 
-```text
-/crabshell:install-codex
+```bash
+codex plugin marketplace add .
+codex plugin add crabshell@crabshell-repo
 ```
 
-The shared state is `.crabshell/`. Claude and Codex can both read and write the same memory/document store when they are used in the same project:
+Review and trust the discovered Crabshell hook definition in Codex before expecting it to run. Invoke the bundled `crabshell:status` skill to report the actual plugin source, installed cache, hook hash/trust, skill resolution, writable plugin-data path, and required Codex features.
+
+The shared project state is `.crabshell/`. Claude and Codex can both read and write the same memory/document store. Installed Codex load/save/search skills call scripts from the plugin cache while targeting the active project; direct source-checkout commands remain available for development:
 
 ```bash
 node scripts/codex-memory.js load
@@ -44,13 +47,17 @@ node scripts/codex-docs.js investigation "research topic"
 node scripts/codex-docs.js worklog "task title"
 ```
 
-Codex compatibility is explicit skill/script based. Claude-style automatic hooks such as `SessionStart`, `PostToolUse`, `PreToolUse`, and `Stop` are not activated by Codex.
+Codex activates only the deterministic native `PreToolUse` memory-path guard. Claude-only automatic memory, pressure/sycophancy, async, and `Stop` continuation hooks are not activated by Codex; Codex memory remains manual through load/save/search skills. The retired verifier and fixed agent-count hooks are absent from both runtimes.
+
+`/crabshell:install-codex` and `scripts/install-codex.js` remain as legacy/development bridges for older installations. Native marketplace installation is the default Codex path.
 
 ## How It Works
 
 1. **Session start** - Loads saved content from previous sessions into Claude's context
 2. **During work** - Auto-save triggers every 15 tool uses (configurable), Claude records decisions/patterns/issues directly
 3. **Session end** - Full conversation backup + final save
+
+Project verification uses a portable schema-v2 manifest. Commands are repo-relative, and behavioral entries pass only when command exits, structured observations, and forbidden-path snapshots match; printing `PASS` is never sufficient by itself.
 
 ## What Gets Saved
 
@@ -87,10 +94,10 @@ With this setup, **Claude starts every new session knowing this information**.
 | `/crabshell:ticketing P001 "topic"` | Create/update a ticket tied to a plan |
 | `/crabshell:investigating "topic"` | Multi-source multi-agent investigation |
 | `/crabshell:regressing "topic" N` | Run N cycles of P→T wrapped by a single Discussion, with verification-based optimization |
-| `/crabshell:light-workflow` | Run the 11-phase agent orchestration workflow (standalone tasks) |
+| `/crabshell:light-workflow` | Run the five-stage parent-owned workflow for a standalone task |
 | `/crabshell:verifying` | Create/run project-specific verification tools |
 | `/crabshell:status` | Healthcheck of plugin state (memory, regressing, verification, version) |
-| `/crabshell:install-codex` | Link the Claude-installed Crabshell checkout into Codex plugin and skill locations |
+| `/crabshell:install-codex` | Legacy/development bridge that links a Claude-installed checkout into Codex locations; prefer native Codex marketplace installation |
 | `/crabshell:lint` | Run Obsidian document lint checks (orphans, broken wikilinks, stale, missing frontmatter, INDEX inconsistencies) |
 | `/crabshell:search-docs query` | BM25 full-text search across all D/P/T/I/W documents |
 | `/crabshell:knowledge "title"` | Create a K-page (verified fact or operational tip) in .crabshell/knowledge/ |
@@ -111,19 +118,11 @@ Each document type has its own folder under `.crabshell/` with an `INDEX.md` for
 
 ## Agent Orchestration Workflow
 
-For complex tasks, the light-workflow skill runs an 11-phase process with 3-layer architecture:
+The light-workflow skill uses five stages: understand internally, inspect, implement, verify behavior, and report. The parent agent owns the task contract, named references, source changes, direct execution, and the final completion decision.
 
-```
-Work Agent     →  Analysis, planning, implementation
-Review Agent   →  Verify, cite evidence, PASS/FAIL
-Orchestrator   →  Intent guardian, meta-review, final authority
-```
+Delegation is optional and risk-based. When a worker is useful, its prompt carries the relevant original request, non-goals, authoritative references, read/write scope, expected observation, and verification method. Worker claims, counts, and spot-checks are supporting evidence only; the parent must inspect the resulting diff and decisive observations itself.
 
-Key features:
-- **Intent Anchor** - Non-negotiable requirements defined in Phase 1, enforced at every gate
-- **Cross-Review** - When 2+ reviewers run in parallel, adversarial cross-examination is mandatory
-- **Runtime Verification** - Mandatory runtime verification in Phase 8/9/10 (not just static checks)
-- **1 Ticket = 1 Workflow** - Each ticket gets its own independent workflow execution
+User questions are reserved for destructive or irreversible actions, changes outside the workspace, external installation, and product choices that cannot be discovered from project evidence. Non-blocking uncertainty does not stop local inspection or implementation.
 
 ## Regressing (Iterative Optimization)
 
@@ -223,6 +222,9 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.106.0 | feat: D110 Cycle 3 — portable schema-v2 verification with structured behavioral assertions and mutation fixtures; retire 19 verifier/count/role files and fixed-count orchestration after disabled baselines; retain memory, safety, post-compact, and legacy Codex install bridges. |
+| 21.105.0 | feat: D110 Cycle 2 — internal 8-field task contract, five-stage parent-owned light workflow, risk-based user questions and delegation, natural reporting, presentation-audit retirement, and live Codex A/B orchestration corpus. |
+| 21.104.0 | feat: D110 Cycle 1 — native Codex repo marketplace, explicit Codex-only PreToolUse manifest/adapter, shared path policy, live capability-aware doctor/status, installed-cache memory skill wrappers, spaces-path and trust/hash-drift regressions; legacy installer retained. |
 | 21.103.0 | fix: W028 — `classifyAgent` description-only (prompt bodies routinely contain verification keywords, causing WA→RA misclassification; observed waCount=1/raCount=9 with 5 real WAs); remove light-workflow single-WA Stop block (rule absent from SKILL.md; light-workflow is 1:1 WA:RA). Both defects introduced v21.52.0 b4d3933. Tests 18/18 + 22/22 PASS. |
 | 21.102.0 | feat: I079 R1 — replace 7-field response skeleton with 3-field caveman-terse version (`SKELETON_3FIELD`); removed [검증][논리][동조화 및 일관성][완결 충동] (zero substantive catches + Fable 5 reasoning-echo guidance; ~250-360 tok/turn recovered); renamed [쉬운 설명]→[설명]; sync test files + behavior-verifier-prompt.md + manifest. User-approved. Tests 52/52 PASS. |
 | 21.101.0 | fix: I078 Tier-1 source cleanup — restore dead "Unreflected from Last Session" SessionStart section (`load-memory.js` `entry.text`); `verification-sequence.js` now keeps a FAILED test from clearing the git-commit gate; fix `search-docs`/`lint`/`memory-autosave` SKILL doc drift; convert 5 redundant memory/status slash-commands to skill-delegating stubs (drop hardcoded cache path). Tests 52/52 files PASS. |

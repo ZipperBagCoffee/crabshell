@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const { readStdin } = require('./transcript-utils');
-const { STORAGE_ROOT, MEMORY_DIR, SKILL_ACTIVE_FILE, WA_COUNT_FILE } = require('./constants');
+const { STORAGE_ROOT, MEMORY_DIR, SKILL_ACTIVE_FILE } = require('./constants');
 
 // Skip processing during background memory summarization
 // F1 mitigation: keep inline env check for fail-open invariant — D106 IA-10 RA2
@@ -58,33 +58,6 @@ function isLightWorkflowActive() {
 }
 
 /**
- * Get the backgroundAgentPending entry from wa-count.json.
- * Returns null on any error (fail-open).
- */
-function getBackgroundAgentPending() {
-  try {
-    const waCountPath = path.join(getProjectDir(), STORAGE_ROOT, MEMORY_DIR, WA_COUNT_FILE);
-    if (!fs.existsSync(waCountPath)) return null;
-    const data = JSON.parse(fs.readFileSync(waCountPath, 'utf8'));
-    return data.backgroundAgentPending || null;
-  } catch { return null; }
-}
-
-/**
- * Get the current WA count from wa-count.json.
- * Returns 0 on any error (fail-open).
- */
-function getWaCount() {
-  try {
-    const waPath = path.join(getProjectDir(), STORAGE_ROOT, MEMORY_DIR, WA_COUNT_FILE);
-    const data = JSON.parse(fs.readFileSync(waPath, 'utf8'));
-    return typeof data.waCount === 'number' ? data.waCount : 0;
-  } catch {
-    return 0; // No file or parse error = 0
-  }
-}
-
-/**
  * Build phase-specific context for block reasons.
  * Fail-open: returns empty string on any error.
  */
@@ -104,32 +77,8 @@ async function main() {
   // Prevent infinite loop: exit if this is a continuation from a previous stop hook block
   if (hookData.stop_hook_active) process.exit(0);
 
-  const waCount = getWaCount();
-
-  // Allow stop when background agent is pending (legitimate wait)
-  const bgPending = getBackgroundAgentPending();
-  if (bgPending && bgPending.count > 0) {
-    const launchedAt = new Date(bgPending.launchedAt).getTime();
-    const TTL = 10 * 60 * 1000; // 10 minutes
-    if (Date.now() - launchedAt < TTL) {
-      process.stderr.write('[REGRESSING_LOOP_GUARD] Allowing stop: background agent pending (count=' + bgPending.count + ')\n');
-      process.exit(0); // allow stop — legitimate wait for background agent
-    }
-  }
-
   // Block if regressing workflow is active: force autonomous continuation
   if (isRegressingActive()) {
-    // Check if only 1 WA was launched — enforce parallel WA requirement
-    if (waCount === 1) {
-      const phaseContext = getPhaseContext();
-      const output = {
-        decision: 'block',
-        reason: 'Regressing active but only 1 Work Agent launched. You must launch at least 2 parallel WAs. Stop and re-plan with parallel WA execution.' + phaseContext
-      };
-      process.stderr.write('[REGRESSING_LOOP_GUARD] Blocked: regressing active + waCount=1 — forcing parallel WA re-plan\n');
-      console.log(JSON.stringify(output));
-      process.exit(2);
-    }
     const phaseContext = getPhaseContext();
     const output = {
       decision: 'block',
@@ -146,5 +95,5 @@ async function main() {
 if (require.main === module) {
   main().catch(() => process.exit(0)); // fail-open on any error
 } else {
-  module.exports = { isRegressingActive, isLightWorkflowActive, getWaCount, getPhaseContext, getBackgroundAgentPending };
+  module.exports = { isRegressingActive, isLightWorkflowActive, getPhaseContext };
 }

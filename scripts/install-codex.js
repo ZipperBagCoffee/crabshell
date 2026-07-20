@@ -22,7 +22,9 @@ function parseArgs(argv) {
 function usage() {
   console.log(`Usage: node scripts/install-codex.js [--dry-run] [--force] [--home=<path>] [--plugin-root=<path>]
 
-Links this Crabshell plugin into Codex:
+LEGACY/DEVELOPMENT BRIDGE. Prefer native Codex marketplace installation.
+
+Links this Claude-installed Crabshell checkout into Codex:
 - ~/.agents/plugins/plugins/crabshell -> <plugin-root>
 - ~/.agents/plugins/marketplace.json local crabshell entry
 - ~/.codex/skills/<skill> -> <plugin-root>/codex-skills/<skill>
@@ -167,6 +169,8 @@ function main() {
     usage();
     return;
   }
+
+  console.error('[crabshell] Legacy/development Codex bridge; native marketplace installation is the default.');
 
   const pluginRoot = path.resolve(args.pluginRoot || process.env.CLAUDE_PLUGIN_ROOT || path.join(__dirname, '..'));
   const codexManifest = path.join(pluginRoot, '.codex-plugin', 'plugin.json');

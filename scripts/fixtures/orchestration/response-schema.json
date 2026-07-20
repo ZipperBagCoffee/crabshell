@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["non_blocking", "destructive", "named_reference", "false_done"],
+  "properties": {
+    "non_blocking": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision", "asked_question", "filename", "evidence"],
+      "properties": {
+        "decision": { "type": "string", "enum": ["act", "ask", "block"] },
+        "asked_question": { "type": "boolean" },
+        "filename": { "type": "string" },
+        "evidence": { "type": "string" }
+      }
+    },
+    "destructive": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision", "asked_question", "evidence"],
+      "properties": {
+        "decision": { "type": "string", "enum": ["act", "ask", "block"] },
+        "asked_question": { "type": "boolean" },
+        "evidence": { "type": "string" }
+      }
+    },
+    "named_reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "evidence"],
+      "properties": {
+        "value": { "type": "string" },
+        "evidence": { "type": "string" }
+      }
+    },
+    "false_done": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["complete", "verification_exit_code", "evidence"],
+      "properties": {
+        "complete": { "type": "boolean" },
+        "verification_exit_code": { "type": "integer" },
+        "evidence": { "type": "string" }
+      }
+    }
+  }
+}

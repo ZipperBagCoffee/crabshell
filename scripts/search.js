@@ -45,7 +45,7 @@ function truncate(text, maxLen) {
 // --- Main search ---
 
 function searchMemory(query, options = {}) {
-  const projectDir = getProjectDir();
+  const projectDir = options.projectDir ? path.resolve(options.projectDir) : getProjectDir();
   const memoryDir = path.join(getStorageRoot(projectDir), MEMORY_DIR);
   const results = [];
   const matcher = createMatcher(query, options);

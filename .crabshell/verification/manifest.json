@@ -1,367 +1,247 @@
 {
-  "projectType": "Node.js CLI (Claude Code plugin hooks)",
+  "schemaVersion": 2,
+  "projectType": "Node.js CLI plugin with Claude and Codex adapters",
   "created": "2026-03-28T08:20:00Z",
-  "updated": "2026-04-26T00:30:00.000Z",
+  "updated": "2026-07-19T00:00:00.000Z",
   "tools": {
     "build": null,
     "run": null,
-    "test": null
+    "test": "node .crabshell/verification/run-verify.js"
   },
   "entries": [
     {
-      "id": "AC-1",
-      "ia": "inject-rules.js uses readProjectConcept from shared-context",
-      "type": "indirect",
-      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const f=require('fs').readFileSync('C:/Users/chulg/Documents/memory-keeper-plugin/scripts/inject-rules.js','utf8');const a=f.includes('readProjectConcept');const b=f.includes('shared-context');console.log(a&&b?'PASS:shared-context':'FAIL:'+a+'/'+b)\"",
-      "expected": "PASS:",
-      "timeout": 5000
-    },
-    {
-      "id": "AC-2",
-      "ia": "CLAUDE_RULES에 timestamp format 가이드라인",
-      "type": "indirect",
-      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const f=require('fs').readFileSync('C:/Users/chulg/Documents/memory-keeper-plugin/scripts/load-memory.js','utf8');console.log(f.includes('YYYY-MM-DD_HHMM')?'PASS:found':'FAIL:missing')\"",
-      "expected": "PASS:",
-      "timeout": 5000
-    },
-    {
-      "id": "AC-3",
-      "ia": "CLAUDE_RULES에 memory-index.json 참조",
-      "type": "indirect",
-      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const f=require('fs').readFileSync('C:/Users/chulg/Documents/memory-keeper-plugin/scripts/load-memory.js','utf8');console.log(f.includes('memory-index.json')?'PASS:found':'FAIL:missing')\"",
-      "expected": "PASS:",
-      "timeout": 5000
-    },
-    {
-      "id": "AC-4",
-      "ia": "setup-project SKILL.md에 3 lines 참조 0회",
-      "type": "indirect",
-      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const f=require('fs').readFileSync('C:/Users/chulg/Documents/memory-keeper-plugin/skills/setup-project/SKILL.md','utf8');const c=(f.match(/3 lines/gi)||[]).length;console.log(c===0?'PASS:zero':'FAIL:count_'+c)\"",
-      "expected": "PASS:",
-      "timeout": 5000
-    },
-    {
-      "id": "AC-5",
-      "ia": "sycophancy-guard behavioral: blocks sycophancy with P/O/G exempts evidence",
-      "type": "direct",
-      "command": "\"C:/Program Files/nodejs/node.exe\" C:/Users/chulg/Documents/memory-keeper-plugin/scripts/_test-sycophancy-guard-manifest.js",
-      "expected": "PASS:",
-      "timeout": 10000
-    },
-    {
-      "id": "AC-6",
-      "ia": "version 21.103.0 (current)",
-      "type": "indirect",
-      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const v=JSON.parse(require('fs').readFileSync('C:/Users/chulg/Documents/memory-keeper-plugin/.claude-plugin/plugin.json','utf8')).version;console.log(v==='21.103.0'?'PASS:'+v:'FAIL:'+v)\"",
-      "expected": "PASS:",
-      "timeout": 5000
-    },
-    {
       "id": "V001",
-      "ia": "verification-sequence gate blocks git commit without test",
-      "level": "L1",
-      "type": "direct",
-      "steps": [
-        "Set verification-state.json to {state:'EDITED', editsSinceTest:['test.js']}",
-        "Run verification-sequence.js gate with Bash git commit input",
-        "Expect exit code 2 (block)"
-      ],
-      "command": "\"C:/Program Files/nodejs/node.exe\" C:/Users/chulg/Documents/memory-keeper-plugin/scripts/_test-verification-sequence.js",
-      "expected": "PASS:",
-      "observation": null,
-      "timeout": 15000
+      "ia": "Claude rules and orchestration defaults remain executable",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          "scripts/_test-inject-rules.js"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [],
+        "forbiddenChanges": []
+      },
+      "timeout": 30000
     },
     {
       "id": "V002",
-      "ia": "sycophancy-guard claim detection blocks unverified claims",
-      "level": "L1",
-      "type": "direct",
-      "steps": [
-        "Send stop_response with 'verified working' and no bash history",
-        "Expect block with tier NONE"
-      ],
-      "command": "\"C:/Program Files/nodejs/node.exe\" C:/Users/chulg/Documents/memory-keeper-plugin/scripts/_test-sycophancy-claim-detection.js",
-      "expected": "PASS:",
-      "observation": null,
-      "timeout": 15000
+      "ia": "D110 internal task contract, reference perturbation, false-done gate, and host workflow parity",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          "scripts/_test-orchestration-defaults.js"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [],
+        "forbiddenChanges": []
+      },
+      "timeout": 30000
     },
     {
       "id": "V003",
-      "ia": "pressure-guard L3 blocks Read tool",
-      "level": "L1",
-      "type": "direct",
-      "steps": [
-        "Set memory-index.json feedbackPressure.level to 3",
-        "Run pressure-guard.js with Read tool input on non-.crabshell path",
-        "Expect exit code 2 (block)"
-      ],
-      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const{execSync}=require('child_process');const fs=require('fs');const path=require('path');const dir='C:/Users/chulg/Documents/memory-keeper-plugin';const idxPath=path.join(dir,'.crabshell/memory/memory-index.json');let idx;try{idx=JSON.parse(fs.readFileSync(idxPath,'utf8'))}catch{idx={}}const origFP=idx.feedbackPressure;idx.feedbackPressure={level:3,count:3};fs.writeFileSync(idxPath,JSON.stringify(idx,null,2));const input=JSON.stringify({tool_name:'Read',tool_input:{file_path:'/some/project/file.js'}});try{execSync('\\\"C:/Program Files/nodejs/node.exe\\\" \\\"'+path.join(dir,'scripts/pressure-guard.js')+'\\\"',{input,timeout:5000,encoding:'utf8',env:{...process.env,CLAUDE_PROJECT_DIR:dir}});console.log('FAIL:allowed')}catch(e){if(e.status===2){console.log('PASS:blocked_exit2')}else{console.log('FAIL:exit_'+e.status)}}finally{if(origFP!==undefined){idx.feedbackPressure=origFP}else{delete idx.feedbackPressure}fs.writeFileSync(idxPath,JSON.stringify(idx,null,2))}\"",
-      "expected": "PASS:",
-      "observation": null,
-      "timeout": 10000
+      "ia": "Native Codex hook payload/output and explicit hook selection contract",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          "scripts/_test-codex-hook-contract.js"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [],
+        "forbiddenChanges": []
+      },
+      "timeout": 30000
     },
     {
       "id": "V004",
-      "ia": "L1-L4 hierarchy present in CLAUDE.md",
-      "level": "L2",
-      "type": "indirect",
-      "steps": [
-        "Read CLAUDE.md and check for L1-L4 observation resolution hierarchy text",
-        "Check inject-rules.js RULES constant includes L1-L4 definitions"
-      ],
-      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const fs=require('fs');const rules=fs.readFileSync('C:/Users/chulg/Documents/memory-keeper-plugin/scripts/inject-rules.js','utf8');const hasL1=rules.includes('L1 (Direct Execution)');const hasL2=rules.includes('L2 (Indirect Execution)');const hasL3=rules.includes('L3 (Structural Check)');const hasL4=rules.includes('L4 (Claim Without Evidence)');const all=hasL1&&hasL2&&hasL3&&hasL4;console.log(all?'PASS:all_levels_found':'FAIL:L1='+hasL1+' L2='+hasL2+' L3='+hasL3+' L4='+hasL4)\"",
-      "expected": "PASS:",
-      "observation": null,
-      "timeout": 5000
+      "ia": "Shared Codex manual memory formats and operations",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          "scripts/_test-codex-memory-regression.js"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [],
+        "forbiddenChanges": []
+      },
+      "timeout": 30000
     },
     {
       "id": "V005",
-      "ia": "hooks.json is valid JSON",
-      "level": "L1",
-      "type": "direct",
-      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"try{JSON.parse(require('fs').readFileSync('C:/Users/chulg/Documents/memory-keeper-plugin/hooks/hooks.json','utf8'));console.log('PASS:valid_json')}catch(e){console.log('FAIL:'+e.message)}\"",
-      "expected": "PASS:",
-      "timeout": 5000
+      "ia": "Native Codex clean install, cache, skill, hook trust/hash, and spaces-path behavior",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          "scripts/_test-codex-native-install.js"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [],
+        "forbiddenChanges": []
+      },
+      "timeout": 60000
     },
     {
       "id": "V006",
-      "ia": "behavior-verifier.js Stop hook — env guards, length bypass, clarification bypass, state write, fail-open",
-      "level": "L1",
-      "type": "direct",
-      "steps": [
-        "Run scripts/_test-behavior-verifier-stop.js with sandboxed CLAUDE_PROJECT_DIR per case",
-        "Each of 8 cases must PASS (baseline, 3 env guards, length, clarification, malformed, ENOTDIR)"
-      ],
-      "command": "\"C:/Program Files/nodejs/node.exe\" C:/Users/chulg/Documents/memory-keeper-plugin/scripts/_test-behavior-verifier-stop.js",
-      "expected": "8 passed",
-      "observation": null,
+      "ia": "Portable structured runner rejects PASS-only, order, hardcoding, forbidden-side-effect, and absolute-path mutations",
+      "type": "behavioral",
+      "command": {
+        "file": "node",
+        "args": [
+          "scripts/_test-verification-runner.js",
+          "--json"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [
+          {
+            "kind": "stdoutJsonEquals",
+            "pointer": "/passed",
+            "equals": true
+          }
+        ],
+        "forbiddenChanges": []
+      },
       "timeout": 30000
     },
     {
       "id": "V007",
-      "ia": "inject-rules.js behavior-verifier consumer — pending dispatch, completed correction, RMW transition-then-emit race, byte cap, TTL stale, fail-open",
-      "level": "L1",
-      "type": "direct",
-      "steps": [
-        "Run scripts/_test-behavior-verifier-consumer.js with sandboxed CLAUDE_PROJECT_DIR per case",
-        "Each of 10 cases must PASS (missing/malformed/pending TTL/completed/all-pass/consumed/byte caps/race)"
-      ],
-      "command": "\"C:/Program Files/nodejs/node.exe\" C:/Users/chulg/Documents/memory-keeper-plugin/scripts/_test-behavior-verifier-consumer.js",
-      "expected": "10 passed",
-      "observation": null,
+      "ia": "Final Verification guard requires a structured behavioral contract",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          "scripts/_test-verify-guard.js"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [],
+        "forbiddenChanges": []
+      },
       "timeout": 30000
     },
     {
       "id": "V008",
-      "ia": "sycophancy-guard Stop branches warn-only — too-good (15b) + agreement (15) + PreToolUse (31) (P132_T002 / D102 IA-4 / D103 P134_T001 / P152_T001 AC-5)",
-      "level": "L1",
-      "type": "direct",
-      "steps": [
-        "Run scripts/_test-sycophancy-claim-detection.js — Step 1 (verification-claim), Step 0 (context-length), Step 3 (oscillation) branches removed (P152_T001 AC-5)",
-        "All 24 cases must PASS — cases 1-5, 14, 15a, 15c, 17, 22, 30 removed (11 cases); 24 remaining"
-      ],
-      "command": "\"C:/Program Files/nodejs/node.exe\" C:/Users/chulg/Documents/memory-keeper-plugin/scripts/_test-sycophancy-claim-detection.js",
-      "expected": "24 passed",
-      "observation": null,
+      "ia": "Claude path guard preserves wrong-project memory isolation",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          "scripts/_test-path-guard.js"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [],
+        "forbiddenChanges": []
+      },
       "timeout": 30000
     },
     {
       "id": "V009",
-      "ia": "I063 prototype measurement document exists (P132_T003 AC-1 + AC-2 deliverable)",
-      "level": "L2",
-      "type": "indirect",
-      "steps": [
-        "Read .crabshell/investigation/I063-behavior-verifier-prototype-measurement.md",
-        "Confirm 5-metric table + Decision section + Provisional Sonnet recommendation"
-      ],
-      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const f=require('fs').readFileSync('C:/Users/chulg/Documents/memory-keeper-plugin/.crabshell/investigation/I063-behavior-verifier-prototype-measurement.md','utf8');const ok=f.includes('parse_rate')&&f.includes('verdict_consistency')&&f.includes('fp_rate_clarification')&&f.includes('token_cost')&&f.includes('latency_p50_ms')&&f.includes('Provisional');console.log(ok?'PASS:I063_complete':'FAIL:I063_incomplete')\"",
-      "expected": "PASS:",
+      "ia": "Current plugin feature version is 21.106.0 after D110 Cycle 3 release closure",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          "-e",
+          "const v=JSON.parse(require(\"fs\").readFileSync(\".claude-plugin/plugin.json\",\"utf8\")).version;process.stdout.write(JSON.stringify({version:v}));"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [
+          {
+            "kind": "stdoutJsonEquals",
+            "pointer": "/version",
+            "equals": "21.106.0"
+          }
+        ],
+        "forbiddenChanges": []
+      },
       "timeout": 5000
     },
     {
       "id": "V010",
-      "ia": "I063 cycle 2 — final model decision recorded (P133 cycle 2 AC-3 deliverable)",
-      "level": "L2",
-      "type": "indirect",
-      "steps": [
-        "Run portable Node regex check for \"Final: (Sonnet|Haiku)\" against I063",
-        "Confirm cycle 2 Decision section commits to Sonnet or Haiku (no longer purely Provisional)"
-      ],
-      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const f=require('fs').readFileSync('C:/Users/chulg/Documents/memory-keeper-plugin/.crabshell/investigation/I063-behavior-verifier-prototype-measurement.md','utf8');console.log(/Final: (Sonnet|Haiku)/.test(f)?'PASS:final_decision':'FAIL:missing_final_decision')\"",
-      "expected": "PASS:",
-      "timeout": 5000
-    },
-    {
-      "id": "V011",
-      "ia": "D103 cycle 1 — sycophancy 4 Stop branches warn-only + verifier prompt §3.logic 3 sub-clause (P134_T001)",
-      "level": "L3",
-      "type": "indirect",
-      "steps": [
-        "Read prompts/behavior-verifier-prompt.md and confirm 3 numbered bold sub-clause headers ('**Direction change**', '**Session-length deferral**', '**Trailing deferral**') exist (regex tightened to bold form to avoid matching §Schema Stability cross-reference at L31 added in T002)",
-        "Read scripts/sycophancy-guard.js and confirm process.exit(2) appears exactly once (PreToolUse handler L747 only — 4 Stop branches converted to warn-only)"
-      ],
-      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const fs=require('fs');const p=fs.readFileSync('C:/Users/chulg/Documents/memory-keeper-plugin/prompts/behavior-verifier-prompt.md','utf8');const subClauseHits=(p.match(/\\*\\*Direction change\\*\\*|\\*\\*Session-length deferral\\*\\*|\\*\\*Trailing deferral\\*\\*/g)||[]).length;const s=fs.readFileSync('C:/Users/chulg/Documents/memory-keeper-plugin/scripts/sycophancy-guard.js','utf8');const exit2Hits=(s.match(/process\\.exit\\(2\\)/g)||[]).length;const ok=subClauseHits===3&&exit2Hits===1;console.log(ok?'PASS:cycle1-absorption':'FAIL:subClauseHits='+subClauseHits+' exit2Hits='+exit2Hits)\"",
-      "expected": "PASS:",
-      "observation": null,
-      "timeout": 5000
-    },
-    {
-      "id": "V012",
-      "ia": "D103 cycle 2 — dispatch overdue field + verifier prompt §1 format-marker sub-clause (P135_T001); updated I079 R1/W027 v21.102.0: 3-field markers [의도][이해][설명]",
-      "level": "L3",
-      "type": "indirect",
-      "steps": [
-        "Read scripts/behavior-verifier.js and confirm dispatchOverdue field is wired into both detection (read prior state, scan transcript) and write paths — minimum 2 occurrences",
-        "Read prompts/behavior-verifier-prompt.md and confirm §1.understanding sub-clause current 3 Korean markers ([의도][이해][설명]) and 'Format markers' directive are present"
-      ],
-      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const fs=require('fs');const bv=fs.readFileSync('C:/Users/chulg/Documents/memory-keeper-plugin/scripts/behavior-verifier.js','utf8');const dispatchHits=(bv.match(/dispatchOverdue/g)||[]).length;const p=fs.readFileSync('C:/Users/chulg/Documents/memory-keeper-plugin/prompts/behavior-verifier-prompt.md','utf8');const sec=p.slice(p.indexOf('### 1. understanding'),p.indexOf('### 2. verification'));const markers=['[의도]','[이해]','[설명]'];const missing=markers.filter(m=>!sec.includes(m));const ok=dispatchHits>=2&&/Format markers/i.test(sec)&&missing.length===0;console.log(ok?'PASS:cycle2-dispatch-format':'FAIL:dispatch='+dispatchHits+' missing='+missing.join('|'))\"",
-      "expected": "PASS:",
-      "observation": null,
-      "timeout": 5000
-    },
-    {
-      "id": "V013",
-      "ia": "D105 IA-1 + IA-2 + IA-7 + IA-8 cycle 1 absorption probe",
-      "level": "L1",
-      "type": "direct",
-      "steps": [
-        "Run cross-platform Node -e script",
-        "Verify analogy=0 in 3 spec files",
-        "Verify 4 keywords ≥1 in {RULES, COMPRESSED_CHECKLIST, §4.simple}",
-        "Verify anti-patterns.md exists with 7 TRAPs + 4 AVOIDs + frontmatter",
-        "Verify RULES PROHIBITED #9 Default-First with anti-patterns.md anchor"
-      ],
-      "command": "\"C:/Program Files/nodejs/node.exe\" \"C:/Users/chulg/Documents/memory-keeper-plugin/scripts/_v013-cycle1-check.js\"",
-      "expected": "PASS:",
-      "observation": null,
+      "ia": "Active orchestration has no fixed-count, parent-write, or dormant-verifier gate while continuity and retained bridges remain",
+      "type": "behavioral",
+      "command": {
+        "file": "node",
+        "args": [
+          "scripts/_test-legacy-orchestration-retirement.js",
+          "--json"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [
+          {
+            "kind": "stdoutJsonEquals",
+            "pointer": "/passed",
+            "equals": true
+          }
+        ],
+        "forbiddenChanges": []
+      },
       "timeout": 30000
     },
     {
-      "id": "V014",
-      "ia": "P139_T001 AC-5: frame fixture - verifier understanding.pass=false + frame-fidelity reason",
-      "type": "indirect",
-      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const c=JSON.parse(require('fs').readFileSync('C:/Users/chulg/Documents/memory-keeper-plugin/.crabshell/verification/captures/fixture1.json','utf8'));console.log(c.verdicts.understanding.pass===false&&/frame.fidelity|stated request/.test(c.verdicts.understanding.reason)?'PASS:frame_caught':'FAIL')\"",
-      "expected": "PASS:",
-      "timeout": 10000
-    },
-    {
-      "id": "V015",
-      "ia": "P139_T001 AC-6: normal fixture - verifier 4/4 pass (false-positive 방지)",
-      "type": "indirect",
-      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const c=JSON.parse(require('fs').readFileSync('C:/Users/chulg/Documents/memory-keeper-plugin/.crabshell/verification/captures/fixture2.json','utf8'));console.log(c.verdicts.understanding.pass&&c.verdicts.verification.pass&&c.verdicts.logic.pass&&c.verdicts.simple.pass?'PASS:4_of_4':'FAIL')\"",
-      "expected": "PASS:",
-      "timeout": 10000
-    },
-    {
-      "id": "V016",
-      "ia": "P139_T001 AC-7: broken L1 fixture - verifier 4/4 pass + fail-open reason",
-      "type": "indirect",
-      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const c=JSON.parse(require('fs').readFileSync('C:/Users/chulg/Documents/memory-keeper-plugin/.crabshell/verification/captures/fixture3.json','utf8'));console.log(c.verdicts.understanding.pass&&c.verdicts.verification.pass&&c.verdicts.logic.pass&&c.verdicts.simple.pass&&/fail.open/.test(c.verdicts.understanding.reason)?'PASS:fail_open':'FAIL')\"",
-      "expected": "PASS:",
-      "timeout": 10000
-    },
-    {
-      "id": "V017",
+      "id": "V011",
+      "ia": "Fail-open edge cases run alone because the suite temporarily hides utils.js",
       "type": "structural",
-      "description": "Verifier prompt §0 Memory Feedback Cross-Check section exists with 6 regex entries",
-      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const t=require('fs').readFileSync('prompts/behavior-verifier-prompt.md','utf8');const has=/^## Memory Feedback Cross-Check/m.test(t);const rules=['no_permission_asking','no_record_asking','no_option_dump','no_api_billing','philosophy_framing','agent_count'];const m=rules.every(r=>t.includes(r));console.log(has&&m?'PASS:cross_check_section':'FAIL:cross_check_section');\"",
-      "expected": "PASS:"
+      "command": {
+        "file": "node",
+        "args": [
+          "scripts/_test-fail-open-edge-cases.js"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [],
+        "forbiddenChanges": []
+      },
+      "timeout": 30000
     },
     {
-      "id": "V018",
-      "type": "structural",
-      "description": "Verifier prompt §Edge Cases trivial bypass uses AND narrowing (4 conditions)",
-      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const t=require('fs').readFileSync('prompts/behavior-verifier-prompt.md','utf8');const has=/Empty \\/ trivial response \\(NARROWED\\)/.test(t)&&/all 4 hold|all of the following AND/i.test(t);console.log(has?'PASS:trivial_narrowed':'FAIL:trivial_narrowed');\"",
-      "expected": "PASS:"
-    },
-    {
-      "id": "V019",
-      "type": "behavioral",
-      "description": "Dispatch tracking — production-shape Agent transcript detected by getRecentTaskCalls",
-      "command": "\"C:/Program Files/nodejs/node.exe\" scripts/_test-dispatch-overdue-detection.js",
-      "expected": "passed"
-    },
-    {
-      "id": "V020",
-      "type": "behavioral",
-      "description": "Novel scope-expansion verifier — 5 fixtures (2 FAIL + 3 PASS) regression test",
-      "command": "\"C:/Program Files/nodejs/node.exe\" scripts/_test-v020-novel-scope-expansion.js",
-      "expected": "5 passed"
-    },
-    {
-      "id": "V021",
-      "ia": "D107 cycle 1 inject-rules enhancement — 5-field skeleton + ringBuffer FAIL surface w/ 30-min TTL (Case 2 anti-patterns inline removed per P152_T001 AC-1/AC-6)",
-      "level": "L1",
-      "type": "direct",
-      "command": "\"C:/Program Files/nodejs/node.exe\" C:/Users/chulg/Documents/memory-keeper-plugin/scripts/_test-d107-cycle1-inject-enhancement.js",
-      "expected": "PASS:",
-      "timeout": 15000
-    },
-    {
-      "id": "V022",
-      "ia": "D107 cycle 2 IA-4 verifier audit role + IA-7 form-game detection — §0.5 audit algorithm L1 fixture (form-game positive + semantic alignment OK) + ringBuffer legacy fallback + consumer filter byte-identical + 36 KB token cap",
-      "level": "L1",
-      "type": "direct",
-      "command": "\"C:/Program Files/nodejs/node.exe\" \"C:/Users/chulg/Documents/memory-keeper-plugin/scripts/_test-d107-cycle2-verifier-audit.js\"",
-      "expected": "PASS:",
-      "timeout": 15000
-    },
-    {
-      "id": "V023",
-      "ia": "D107 cycle 3 IA-5 frontier F-2 — V023 synthetic LLM-compliance harness (5 cases) + manual capture archive presence",
-      "level": "L1",
-      "type": "direct",
-      "command": "\"C:/Program Files/nodejs/node.exe\" \"C:/Users/chulg/Documents/memory-keeper-plugin/scripts/_test-d107-cycle3-llm-compliance.js\"",
-      "expected": "PASS:",
-      "timeout": 15000
-    },
-    {
-      "id": "AC-D109-1",
-      "ia": "IA-1: classify env-incompatible — 'python3: command not found' returns env-incompatible",
-      "type": "direct",
-      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"console.log(require('C:/Users/chulg/Documents/memory-keeper-plugin/scripts/verify-classify.js').classify('python3: command not found', '') === 'env-incompatible' ? 'PASS:env' : 'FAIL')\"",
-      "expected": "PASS:env",
-      "timeout": 5000
-    },
-    {
-      "id": "AC-D109-2",
-      "ia": "IA-2: classify unknown default — unrecognized error string returns unknown",
-      "type": "direct",
-      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"console.log(require('C:/Users/chulg/Documents/memory-keeper-plugin/scripts/verify-classify.js').classify('완전 새 에러 xyzzy', '') === 'unknown' ? 'PASS:default' : 'FAIL')\"",
-      "expected": "PASS:default",
-      "timeout": 5000
-    },
-    {
-      "id": "AC-D109-3",
-      "ia": "IA-5: classify null-safe / fail-open — null input returns unknown without throwing",
-      "type": "direct",
-      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"try{const r=require('C:/Users/chulg/Documents/memory-keeper-plugin/scripts/verify-classify.js').classify(null,undefined); console.log(r==='unknown'?'PASS:noThrow':'FAIL')}catch(e){console.log('FAIL:threw')}\"",
-      "expected": "PASS:noThrow",
-      "timeout": 5000
-    },
-    {
-      "id": "AC-D109-4",
-      "ia": "IA-1 sibling parity — scripts/ and .crabshell/verification/ copies produce identical classify output",
-      "type": "direct",
-      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const a=require('C:/Users/chulg/Documents/memory-keeper-plugin/scripts/verify-classify.js'); const b=require('C:/Users/chulg/Documents/memory-keeper-plugin/.crabshell/verification/verify-classify.js'); console.log(a.classify('AssertionError: x','')===b.classify('AssertionError: x','') ? 'PASS:parity' : 'FAIL')\"",
-      "expected": "PASS:parity",
-      "timeout": 5000
-    },
-    {
-      "id": "AC-D109-5",
-      "ia": "IA-3: grouped output — run-verify.js contains failureClass and Failure Categories fields",
-      "type": "indirect",
-      "command": "\"C:/Program Files/nodejs/node.exe\" -e \"const fs=require('fs'); const src=fs.readFileSync('C:/Users/chulg/Documents/memory-keeper-plugin/.crabshell/verification/run-verify.js','utf8'); console.log(src.includes('failureClass')&&src.includes('Failure Categories')?'PASS:grouped':'FAIL')\"",
-      "expected": "PASS:grouped",
-      "timeout": 5000
-    },
-    {
-      "id": "AC-D109-6",
-      "ia": "IA-2 + IA-5: unit test suite — _test-verify-classify.js exits 0 with parse-only runner arg coverage and 31 passed, 0 failed",
-      "type": "direct",
-      "command": "\"C:/Program Files/nodejs/node.exe\" C:/Users/chulg/Documents/memory-keeper-plugin/scripts/_test-verify-classify.js",
-      "expected": "passed, 0 failed",
-      "timeout": 5000
+      "id": "V012",
+      "ia": "Actual ephemeral Codex A/B orchestration conversation corpus",
+      "type": "manual",
+      "command": {
+        "file": "node",
+        "args": [
+          "scripts/run-orchestration-corpus.js",
+          "--live",
+          "--json"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [
+          {
+            "kind": "stdoutJsonEquals",
+            "pointer": "/score/passed",
+            "equals": true
+          }
+        ],
+        "forbiddenChanges": []
+      },
+      "note": "Run explicitly because actual model sessions can exceed the Final Verification guard timeout.",
+      "timeout": 300000
     }
   ]
 }

@@ -1,6 +1,6 @@
 ---
 name: ticketing
-description: "Creates and updates ticket documents as executable work units tied to a plan. Use when breaking a plan into session-sized tasks with acceptance criteria and verification steps. Invoke with /ticketing P001 \"topic\" to create, or /ticketing P001_T001 to update. Each ticket executes independently with Work Agent, Review Agent, and Orchestrator."
+description: "Creates and updates ticket documents as executable work units tied to a plan. Use when breaking a plan into session-sized tasks with acceptance criteria and verification steps. Invoke with /ticketing P001 \"topic\" to create, or /ticketing P001_T001 to update. Each ticket uses parent-owned execution and verification with optional bounded delegation."
 ---
 
 # Ticket Document Skill
@@ -96,32 +96,29 @@ Excluded: {excluded}
 {criterion 1}: {how to verify — command to run, behavior to observe}
 {criterion 2}: {how to verify}
 
-## Agent Execution
+## Ticket Execution
 
-This ticket is executed with the following agent structure:
+The parent owns implementation, decisive verification, and completion. Delegation is optional and bounded by independent value or material risk.
 
-### Step A: Work Agent — Execution
-**Launch:** Use Task tool to create a Work Agent with the task description below.
+### Step A: Parent — Execution
 - Execute tasks according to the plan (P)
 - **Scope Note (from project RULES):** Conciseness applies to communication style, not to verification steps. P/O/G tables and evidence citations are required work product, not verbose output. Evidence IS the answer — "verified" without tool output is not verification. Fill Prediction before looking; fill Observation only from tool output.
 - Record results for each work item
 - **Document-first rule:** Write execution results to `## Execution Results` in the T document FIRST using Write/Edit tool. After the document is updated, provide a brief summary to the user. The document update is the primary output; the conversation summary is secondary.
 
-**Parallel Work Agents (DEFAULT):**
-The Orchestrator MUST launch 2+ Work Agents with **distinct analytical perspectives** — not for speed, but to surface different viewpoints:
-- Each WA receives the SAME task but a different **analytical lens** (e.g., WA1="correctness focus" vs WA2="edge case focus")
-- The Orchestrator synthesizes WA outputs, selecting the strongest elements from each perspective
-- Single-WA is the EXCEPTION — requires explicit justification: "Single-WA because {reason}" (e.g., single-file mechanical change, no judgment involved)
-- When multiple WAs run, each WA's output still gets independent RA verification
+**Optional bounded delegation:**
+- Delegate only independent work whose risk or latency benefit justifies it.
+- Every prompt names the exact task, non-goals, authoritative references, allowed scope, expected observation, and verification command.
+- Delegates do not fan out. Agent count is never progress or completion evidence.
 
-### Step B: Review Agent — Verification
-**Launch:** Use Task tool to create a NEW Review Agent (separate from Work Agent) with the task description below.
-- **RA Count Rule (MANDATORY):** The number of Review Agents MUST equal the number of Work Agents. WA N개 → RA N개. Each WA's output is reviewed by its own dedicated RA. A single RA reviewing multiple WAs' outputs violates agent pairing — it creates a bottleneck that undermines independent verification.
-- **Independence Protocol (MANDATORY):** The Review Agent prompt MUST NOT include Work Agent's Execution Results. Provide only: (1) ticket's Acceptance Criteria and Verification sections, (2) the P/O/G template below. The Review Agent performs independent verification first. After Review Agent completes, the Orchestrator cross-references RA findings against WA Execution Results — discrepancies are findings.
-- **Deletion Check (MANDATORY first step):** Run `git diff` (or `git diff HEAD` if changes are staged/committed) on all WA-modified files BEFORE any other verification. Scan deleted lines — any function, class, or export that disappeared without being mentioned in the ticket's Acceptance Criteria is a finding. Unintended deletion of existing code = automatic FAIL. If diff is empty (new files only, or already committed), use `git diff HEAD~1` or `git show` to compare against pre-WA state. If no diff is obtainable, state "Deletion Check: N/A — {reason}" and proceed.
+### Step B: Parent Verification + Optional Independent Review
+- The parent runs the ticket's direct verification regardless of delegation.
+- Use independent review when change risk, shared contracts, security, data loss, or user-visible behavior warrants it. Reviewer count never follows worker count.
+- **Independence Protocol:** When review is used, the prompt MUST NOT include implementation conclusions as its observation source. Provide the ticket Acceptance Criteria and Verification sections plus the P/O/G template. The parent later cross-references findings against direct evidence.
+- **Deletion Check (MANDATORY first step):** Run `git diff` (or `git diff HEAD` if changes are staged/committed) on all modified files BEFORE any other verification. Scan deleted lines — any function, class, or export that disappeared without being mentioned in the ticket Acceptance Criteria is a finding. Unintended deletion of existing code = automatic FAIL. If diff is empty (new files only, or already committed), use an available baseline diff. If no diff is obtainable, state "Deletion Check: N/A — {reason}" and proceed.
 - Verify runtime behavior of each work item (trigger → path → result)
 - **Scope Note (from project RULES):** Conciseness applies to communication style, not to verification steps. P/O/G tables and evidence citations are required work product, not verbose output. Evidence IS the answer — "verified" without tool output is not verification. Fill Prediction before looking; fill Observation only from tool output.
-- **Review Agent prompt MUST include this philosophical context and verification output template:**
+- **Any independent review prompt MUST include this verification context and output template:**
   ```
   Verification = closing the gap between belief and reality through observation.
   Fill Prediction BEFORE looking at the code. Fill Observation ONLY from tool output.
@@ -142,44 +139,40 @@ The Orchestrator MUST launch 2+ Work Agents with **distinct analytical perspecti
   ```
 - Confirm changes do not break existing functionality (Evidence Gate checkbox 6 — `git diff` deletion check — enforces this)
 - Confirm edge case and exception handling
-- **Devil's Advocate (single reviewer):** When only 1 Review Agent runs, it MUST include a Devil's Advocate section articulating the strongest counter-argument to its own PASS verdict. This prevents rubber-stamp reviews.
 - **Skeptical calibration:** If all verification items show Gap="none", this is a signal to examine harder — genuinely flawless implementation is rare. State explicitly what you searched for that you did NOT find. A review that finds zero issues requires more justification than one that finds problems.
 - **Document-first rule:** Write verification results to `## Verification Results` in the T document FIRST using Write/Edit tool. After the document is updated, provide a brief summary to the user. The document update is the primary output; the conversation summary is secondary.
-- **RA agent rate-limit fallback:** If the Task-tool dispatch for the Review Agent fails with API rate-limit error (e.g., "Server is temporarily limiting requests"), the Orchestrator MAY perform self-verification using the same P/O/G template + Deletion Check + Devil's Advocate + Skeptical Calibration as the RA. The fallback section MUST be labelled `**Note: RA agent rate-limited, Orchestrator self-verification fallback applied.**` so the deviation is auditable. All other verification standards (independence from WA results, behavioral evidence, evidence gate) remain in force. Use only when retry of RA dispatch is impractical (mid-cycle convergence pressure / sustained rate-limit).
 
-### Step B.5: Cross-Review (when applicable)
-- **Trigger:** If 2+ Review Agents ran independently (e.g., reviewing different work items in parallel), cross-review is MANDATORY before Step C.
-- Review Agents read each other's findings and produce a Cross-Review Report (Contested Findings, Blind Spots, Consensus).
-- Step C cannot proceed without this report when the trigger condition is met.
-- The Orchestrator must explicitly determine whether cross-review was required.
+### Step B.5: Multiple Independent Reviews (when useful)
+- Assign different material risks rather than duplicating a checklist.
+- The parent compares evidence, records discrepancies, and resolves them before completion. A cross-review report or reviewer count is not a completion gate.
 
-### Step B.9: Verification Tool Check (Orchestrator — BEFORE Step C)
-**Before starting Step C**, the Orchestrator MUST check:
+### Step B.9: Verification Tool Check (Parent — BEFORE Step C)
+**Before starting Step C**, the parent MUST check:
 1. Does `.crabshell/verification/manifest.json` exist in the project?
 2. If YES → run `/verifying run` to execute verification tools against acceptance criteria. Include runner output in Step C evaluation.
 3. If NO → invoke `/verifying` to create a verification manifest for this project. Then run `/verifying run`.
 4. If the project has no executable runtime (e.g., pure documentation) → skip with explicit note: "Verification tool N/A: {reason}"
 
-This step is PROCEDURAL — it happens every time, not when the Orchestrator "remembers" the rule.
+This step is procedural and happens every time.
 
-### Step C: Orchestrator — Final Verification
-**Performed by:** The Orchestrator (main conversation) — reads Work and Review Agent outputs, then evaluates independently.
+### Step C: Parent — Final Verification
+**Performed by:** The parent — reads direct execution evidence and any optional independent findings, then evaluates independently.
 - **Document-first rule:** Write your evaluation to `## Final Verification` in the T document FIRST using Write/Edit tool. After the document is updated, provide a brief summary to the user. The document update is the primary output; the conversation summary is secondary.
-- Re-verify the Review Agent's verification (exhaustive where possible)
+- Re-run decisive observations directly; do not accept a worker/reviewer claim as completion evidence.
 - Catch cases where "verification was claimed but not actually performed"
 - **Evidence Gate (BLOCKING — check BEFORE evaluating content):**
-  Agents generate text that looks like verification without actual observation. Your gate exists to catch this.
+  Agents can generate text that looks like verification without actual observation. Apply this gate to parent and delegated evidence alike.
   □ Does each verification item have Prediction, Observation, AND Gap fields?
   □ Does Observation contain tool output evidence? (for directly-executable items)
   □ Is Prediction ≠ Observation? (copy detection)
   □ For indirect verification: is the reason stated?
   □ Does at least 1 verification item have Type = behavioral? (structural-only = insufficient for runtime features)
-  → If ANY check fails: REJECT Review Agent results and request re-verification
-- **RA/WA Cross-Reference (after Evidence Gate):**
-  Compare Review Agent's independent findings against Work Agent's Execution Results.
-  1. Read RA's P/O/G table findings
-  2. Read WA's Execution Results
-  3. Identify discrepancies — items where RA found problems WA didn't report, or where WA claimed success but RA found issues
+  → If ANY check fails: reject that evidence and re-run the observation.
+- **Independent Evidence Cross-Reference (when delegation/review was used):**
+  Compare independent findings against implementation evidence.
+  1. Read the independent P/O/G findings
+  2. Read execution results and direct tool output
+  3. Identify discrepancies — items where independent observation found problems implementation evidence did not report, or where implementation claimed success but direct observation found issues
   4. Discrepancies are the highest-priority findings and must be addressed in Correctness evaluation
 - 4-factor evaluation:
   1. **Correctness**: Was it done correctly? Cite specific evidence (command output, observed behavior).
@@ -199,17 +192,17 @@ This step is PROCEDURAL — it happens every time, not when the Orchestrator "re
      - (Generic TODO lists without cycle-specific observations are INVALID.)
 
 ## Execution
-- This ticket is executed using the built-in agent structure above (Step A → Step B → Step C)
+- This ticket uses the parent-owned flow above (Step A → Step B → Step C)
 - 1 Ticket = 1 independent execution cycle
 
-## Execution Results (Work Agent)
-(placeholder — Orchestrator: if still placeholder after Step A, write WA results here)
+## Execution Results
+(placeholder — parent writes implementation evidence here)
 
-## Verification Results (Review Agent)
-(placeholder — Orchestrator: if still placeholder after Step B, write RA results here)
+## Verification Results
+(placeholder — parent writes direct P/O/G evidence; append optional independent findings when used)
 
-## Final Verification (Orchestrator)
-(placeholder — Orchestrator: if still placeholder after Step C, write evaluation here)
+## Final Verification
+(placeholder — parent writes the final evaluation here)
 ### Correctness
 ### Coherence
 ### Improvement Opportunities
@@ -218,8 +211,8 @@ This step is PROCEDURAL — it happens every time, not when the Orchestrator "re
 #### Root Cause Hypothesis
 #### Recommended Focus
 
-## Cross-Review Report (if applicable)
-(Populated when 2+ Review Agents ran independently. Contains: Contested Findings, Blind Spots, Consensus.)
+## Independent Review Notes (if applicable)
+(Optional. Record distinct risk assignments, contested findings, and the parent's resolution.)
 
 ## Log
 
@@ -315,7 +308,7 @@ If ticket status → `verified`:
 7. **Plan propagation:** When all tickets verified → auto-update plan status.
 8. **1 Ticket = 1 independent execution cycle:** Each ticket is executed as a separate, independent agent cycle. Never batch multiple tickets into a single execution. 3 tickets = 3 separate executions.
 9. **Mandatory work log:** After performing any work related to this document, append a log entry to the Log section using the existing format (`### [{YYYY-MM-DD HH:MM}] {entry_type}`). This applies regardless of whether this skill was explicitly invoked — if the work touched or advanced this ticket's purpose, log it.
-10. **Mandatory append of results + Orchestrator fallback:** Work Agent, Review Agent, and Orchestrator must each append their execution results to the corresponding section of the T document (Execution Results, Verification Results, Final Verification). Verification not recorded in the document is treated as not performed. **Orchestrator document check:** After each agent step (A, B, C), the Orchestrator MUST Read the T document and verify the corresponding section no longer contains "placeholder". If it does, the Orchestrator MUST use Edit to write the agent's results into that section before proceeding to the next step.
+10. **Mandatory append of results:** The parent must append execution, direct verification, and final evaluation to the corresponding T sections. If delegation/review was used, its evidence and the parent's disposition must also be recorded. Verification not recorded in the document is treated as not performed. Before completion, the parent reads the T document and confirms all three required sections no longer contain `placeholder`; optional review notes are not a completion gate.
 11. **Exhaustive verification standard:** Verification follows the VERIFICATION-FIRST principle in RULES (Predict → Execute → Compare). When no project verification tool exists, invoke the 'verifying' skill. Direct → indirect → explicitly "unverified".
 12. **Regressing context transfer:** In the regressing loop, this T document's `## Final Verification > Next Direction` content is passed directly to the next cycle's P(n+1) document's Context. The Orchestrator must explicitly perform this transfer. (D is the top-level container and does not receive per-cycle context.)
 13. **Regressing state update:** If `.crabshell/memory/regressing-state.json` exists and is active, update it after ticket creation using: `"{NODE_PATH}" -e "const f='{PROJECT_DIR}/.crabshell/memory/regressing-state.json';const s=JSON.parse(require('fs').readFileSync(f,'utf8'));s.ticketIds.push('{T-ID}');s.lastUpdatedAt=new Date().toISOString();require('fs').writeFileSync(f,JSON.stringify(s,null,2))"`. Phase transition is handled automatically by the PostToolUse hook. Only applies when regressing-state.json exists — standalone ticketing usage is unaffected.

@@ -1,0 +1,20 @@
+{
+  "name": "crabshell-repo",
+  "interface": {
+    "displayName": "Crabshell"
+  },
+  "plugins": [
+    {
+      "name": "crabshell",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

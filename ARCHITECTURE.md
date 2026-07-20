@@ -1,8 +1,8 @@
-# Crabshell Architecture (v21.103.0)
+# Crabshell Architecture (v21.106.0)
 
 ## Overview
 
-Crabshell is a Claude Code plugin that automatically saves session context using hooks, structured fact extraction, and tiered storage with automatic rotation. It also enforces behavioral rules (Understanding-First, Verification-First) and provides a skills-based workflow system for document management, iterative improvement (regressing), and verification.
+Crabshell is a dual-runtime Claude Code/Codex plugin. Claude Code automatically saves session context and enforces behavioral rules through its full hook set. Codex uses native plugin packaging, manual memory/document skills, and a deliberately smaller deterministic hook surface. Both runtimes share `.crabshell/` storage and the skills-based document workflow.
 
 ## Core Philosophy
 
@@ -154,6 +154,32 @@ Two meta-principles guide Claude's approach to obstacles:
 +--------------------------------------------------------------------------+
 ```
 
+## Codex Native Runtime
+
+```
+.agents/plugins/marketplace.json
+        |
+        v
+Codex marketplace -> installed cache -> .codex-plugin/plugin.json
+                                      |-- skills: codex-skills/
+                                      `-- hooks: hooks/codex-hooks.json
+                                                     |
+                                                     v
+                                      PreToolUse native payload
+                                                     |
+                                      adapters/codex/pre-tool-use.js
+                                                     |
+                                      core/path-policy.js
+                                                     |
+                                      native allow / hookSpecificOutput deny
+```
+
+- The explicit manifest hook path is a runtime boundary: Codex does not default-discover Claude's `hooks/hooks.json`.
+- Cycle 1 exposes one synchronous command-only `PreToolUse` policy. Automatic memory, Stop continuation, pressure/sycophancy, behavior verification, agent-count, and async hooks remain Claude-only.
+- Installed load/save/search/status skills execute wrappers from the plugin cache and pass the active project separately, preserving `.crabshell/project.md`, logbook, rotated summaries, and index formats.
+- `codex-doctor.js` asks the current Codex CLI/app-server for feature, marketplace, cache, skills, hook source, current hash, and trust state. The writable plugin-data convention is probed with a create/read/unlink operation.
+- `scripts/install-codex.js` remains a legacy/development bridge and is not part of the native default path.
+
 ## Memory Hierarchy (v13.0.0+)
 
 ```
@@ -239,7 +265,7 @@ Two meta-principles guide Claude's approach to obstacles:
    ├─> scope-guard.js (v21.19.0)
    │   └─> Compare user-requested quantity vs response count; block scope reduction without approval
    └─> regressing-loop-guard.js (v21.55.0, updated v21.103.0)
-       └─> Block stop when regressing active + inject phase-specific context (force continuation); enforce ≥2 parallel WAs (regressing only; light-workflow single-WA block removed v21.103.0)
+       └─> Block stop when regressing active + inject phase-specific context (force continuation); no worker-count gate
 
 4. PostToolUse (all tools)
    ├─> counter.js check
@@ -296,7 +322,7 @@ Each document type has an INDEX.md for tracking. Status cascades upward on compl
 
 | Skill | Purpose |
 |-------|---------|
-| light-workflow | Standalone 1-shot tasks without document trail. Agent classification: Light (spot-check) vs Full (1:1 review). |
+| light-workflow | Standalone one-shot tasks recorded in W documents. Five parent-owned stages; delegation is optional and risk-based. |
 | lint | Obsidian document linter — 5 checks (orphans, broken wikilinks, stale status, missing frontmatter, INDEX inconsistencies). |
 | search-docs | BM25 full-text search across D/P/T/I/W documents with field boosting (title 3x, tags 2x, id 1.5x). |
 | regressing | Iterative D->P->T loop. `/regressing "topic" N` runs N cycles wrapped by a single Discussion. Anti-partitioning enforced. |
@@ -315,27 +341,21 @@ Each document type has an INDEX.md for tracking. Status cascades upward on compl
 | memory-rotate | Auto-trigger L3 summary generation after rotation |
 
 ### Agent Structure
-For complex work, the plugin enforces a 3-layer agent architecture:
+The parent agent owns the end-to-end decision path:
 
 ```
-+------------------+
-|   Orchestrator   |  — Intent Guardian: preserves user's original intent
-+--------+---------+  — Synthesizes/critiques reviewer feedback
-         |            — Does NOT perform Work or Review itself
-    +----+----+
-    |         |
-+---+---+ +---+---+
-| Work  | |Review |   — Every Work Agent MUST have a paired Review Agent
-| Agent | | Agent |   — Launched as SEPARATE Task tool invocations
-+-------+ +---+---+   — Review Agent includes Devil's Advocate section
-              |
-    +---------+---------+
-    | Cross-Review       |  — MANDATORY when 2+ review agents (BLOCKING)
-    | (if 2+ reviewers)  |  — Produces contested findings, blind spots, consensus
-    +--------------------+
+internal task contract
+        |
+        v
+inspect -> implement -> direct behavioral verification -> report
+        |                         ^
+        +-- optional workers -----+
+            (bounded evidence; no completion authority)
 ```
 
-Agent orchestration rules (11 rules covering pairing, cross-review, coherence, critical stance, overcorrection, etc.) are extracted to `.claude/rules/agent-orchestration.md` — an always-loaded rules file that provides structural separation from CLAUDE.md (v19.49.0).
+The internal contract has eight fields: `original_request`, `required_outcomes`, `non_goals`, `named_references`, `allowed_changes`, `forbidden_side_effects`, `observable_success`, and `blocking_unknowns`. The parent may delegate bounded work when it helps, but it retains named-reference resolution, diff inspection, decisive execution, side-effect checks, and completion authority. Explore/review workers are read-only and workers do not fan out.
+
+Regressing retains its cycle-specific parallel-worker guard until D110 Cycle 3 addresses the remaining runner and legacy enforcement. Light-workflow itself does not require fixed agent counts or Work/Review pairing.
 
 ## Scripts Reference
 
@@ -351,10 +371,17 @@ Agent orchestration rules (11 rules covering pairing, cross-review, coherence, c
 | `verify-guard.js` | PreToolUse (Write\|Edit) | Hybrid: Edit always enforces verification; Write enforces only for existing files (new file creation skips). Block Final Verification without /verifying run; require behavioral AC in manifest |
 | `pressure-guard.js` | PreToolUse (Read\|Grep\|Glob\|Bash\|Write\|Edit) | Detect feedback pressure escalation; block all 6 tools at L3 with .crabshell/.claude exemption |
 | `path-guard.js` | PreToolUse (Read\|Grep\|Glob\|Bash\|Write\|Edit) | Block wrong .crabshell/ path; shell var resolution (fail-closed for .crabshell/ v21.8.0); block Edit on logbook.md; block Write shrink on logbook.md (v20.6.0) |
+| `core/path-policy.js` | shared library | Host-neutral memory path decisions used by Claude and Codex wrappers |
+| `adapters/codex/pre-tool-use.js` | Codex PreToolUse | Normalize native host payload and emit native deny output without Claude exit-code semantics |
+| `codex-doctor.js` | Codex status skill | Query live CLI/app-server capability, source/cache, skill, hook hash/trust, data-path, and hook-probe state |
+| `codex-memory.js` | Codex skills | Manual load/save/search/status against the active project's shared `.crabshell/` store |
+| `core/orchestration-policy.js` | shared library | Build the 8-field task contract, apply question boundaries, resolve named references, and evaluate parent-owned completion evidence |
+| `run-orchestration-corpus.js` | regression CLI | Run baseline/current Codex conversation fixtures, reference perturbation, false-done rejection, and workspace side-effect checks |
+| `skills/verifying/scripts/run-verify.js` | verification source | Canonical portable schema-v2 runner: repo-relative commands, structured assertions, and forbidden-path snapshots |
+| `.crabshell/verification/run-verify.js` | generated project runner | Byte-equivalent generated runner consumed by `verify-guard.js`; stdout text is diagnostic, not a pass oracle |
 | `sycophancy-guard.js` | Stop, PreToolUse (Write\|Edit) | Dual-layer sycophancy detection + verification claim detection (4-tier classification): Stop response + mid-turn transcript parsing; block with re-examination |
 | `scope-guard.js` | Stop | Compare user-requested quantity vs response count; block scope reduction without approval |
-| `regressing-loop-guard.js` | Stop | Block stop when regressing active + inject phase-specific context via buildRegressingReminder(); enforce ≥2 parallel WAs (regressing only; v21.103.0 removed light-workflow single-WA block — rule absent from SKILL.md); WA count tracking via wa-count.json |
-| `behavior-verifier.js` | Stop | 감시자 sub-agent dispatch (v21.80.0+): write `behavior-verifier-state.json` `status='pending'` + `[CRABSHELL_BEHAVIOR_VERIFY]` sentinel. v21.83.0 trigger 3-layer (periodic N=8 + workflow-active force + escalation L0/L1) + 5-class turn classification + ring buffer FIFO N=8 + state schema 14 fields. v21.96.0 skips workflow-active verifier/monitor idle echoes before pending-state write. v21.99.4 skips verifier-meta result/status/task-notification echoes to prevent self-dispatch loops. — DISABLED in v21.100.0 (Stop hook entry removed; code retained dormant) |
+| `regressing-loop-guard.js` | Stop | Sole workflow-continuation owner: block stop while regressing is active and inject phase-specific context via `buildRegressingReminder()`; no worker-count or background-agent gate |
 | `skill-tracker.js` | PostToolUse (Skill) | Set skill-active flag on Skill tool calls (TTL-based, 5min expiry) |
 | `regressing-state.js` | (library) | Phase tracker: getState, buildReminder, detectSkillCall, advancePhase |
 | `extract-delta.js` | (library) | L1 delta extraction, timestamp watermarks, temp file management |
@@ -380,10 +407,6 @@ Agent orchestration rules (11 rules covering pairing, cross-review, coherence, c
 | MEMORY_FILE | logbook.md | Active memory file |
 | REGRESSING_STATE_FILE | regressing-state.json | Regressing cycle tracker |
 | SKILL_ACTIVE_FILE | skill-active.json | TTL-based skill flag for docs-guard/verify-guard |
-| BEHAVIOR_VERIFIER_STATE_FILE | behavior-verifier-state.json | 감시자 sub-agent state: pending/completed lifecycle, 14 fields including ringBuffer/turnType/escalationLevel (v21.80.0+) |
-| BEHAVIOR_VERIFIER_LOCK_FILE | verifier.lock | RMW lock for `completed→consumed` transition (at-most-once correction emit) |
-| RING_BUFFER_SIZE | 8 | FIFO cap for `state.ringBuffer` (recent verdict UVLS lines, v21.83.0) |
-| VERIFIER_INTERVAL | 8 | Periodic skip threshold: verifier fires when `verifierCounter ≥ lastFiredTurn + 8` (workflow-inactive only, v21.83.0) |
 
 ## Memory Rotation Flow
 
@@ -445,7 +468,6 @@ Save to *.summary.json
 | pendingLastProcessedTs | Temp: max L1 entry ts from last extractDelta(), used by markMemoryUpdated() |
 | lastL1TranscriptMtime | Transcript file mtime at last L1 creation (skip redundant L1 creation) |
 | lastL1TranscriptOffset | Byte offset into transcript file after last L1 creation (incremental reads, v21.10.0) |
-| verifierCounter | PostToolUse counter for behavior-verifier periodic skip (v21.83.0) — separate from `counter` to avoid saveInterval=15 reset conflict; snapshot to `state.lastFiredTurn` on Stop fire |
 | feedbackPressure | Pressure system state: `level` (0-3), `consecutiveCount`, `oscillationCount`, `decayCounter`, `lastShownLevel`, `lastDetectedAt` — RMW under index lock |
 | tooGoodSkepticism | Sycophancy guard "too good" P/O/G all-None retry counter: `retryCount` |
 
@@ -497,6 +519,9 @@ The 5 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.106.0 | feat: D110 Cycle 3 — portable schema-v2 verification contracts and mutation failures; fixed-count/parent-write orchestration removal; 19-file verifier/count/role retirement after disabled baseline; memory and safety boundaries preserved. |
+| 21.105.0 | feat: D110 Cycle 2 — parent-owned orchestration contract/defaults, five-stage light workflow, natural reporting, retired presentation audit, and live Codex A/B corpus with reference perturbation and false-done rejection. |
+| 21.104.0 | feat: D110 Cycle 1 — Codex-native marketplace/install cache, explicit Codex-only PreToolUse adapter, shared path-policy core, live doctor/status, installed memory wrappers, and portable clean-profile behavioral regressions. |
 | 21.103.0 | fix: W028 — `classifyAgent` description-only (prompt keywords caused WA→RA misclassification; false single-WA Stop block); remove light-workflow single-WA Stop block (rule absent from SKILL.md). Both defects v21.52.0 b4d3933. |
 | 21.102.0 | feat: I079 R1 — replace 7-field response skeleton with 3-field caveman-terse version (`SKELETON_3FIELD`); removed 4 self-check fields; renamed [쉬운 설명]→[설명]; sync test files + behavior-verifier-prompt.md + manifest. User-approved. |
 | 21.101.0 | fix: I078 Tier-1 source cleanup — restore dead "Unreflected from Last Session" SessionStart section (`load-memory.js` `entry.text`); `verification-sequence.js` now keeps a FAILED test from clearing the git-commit gate; fix `search-docs`/`lint`/`memory-autosave` SKILL doc drift; convert 5 redundant memory/status slash-commands to skill-delegating stubs (drop hardcoded cache path). Tests 52/52 files PASS. |

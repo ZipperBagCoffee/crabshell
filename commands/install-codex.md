@@ -1,9 +1,13 @@
 ---
-description: Link this Crabshell plugin into Codex
+description: Legacy/development bridge that links a Claude-installed Crabshell checkout into Codex
 allowed-tools: Bash
 ---
 
-Run the Crabshell Codex installer from the plugin root:
+Prefer Codex's native repo marketplace (`codex plugin marketplace add .`, then
+`codex plugin add crabshell@crabshell-repo`). Use this retained legacy/development
+bridge only when you specifically need to link the Claude-installed checkout.
+
+Run the bridge from the plugin root:
 
 ```bash
 bash "${CLAUDE_PLUGIN_ROOT}/scripts/find-node.sh" "${CLAUDE_PLUGIN_ROOT}/scripts/install-codex.js"

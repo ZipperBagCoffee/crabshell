@@ -5,6 +5,36 @@ const path = require('path');
 const { getStorageRoot } = require('./utils');
 
 /**
+ * ORCHESTRATION_DEFAULTS — host-neutral working contract for the parent agent.
+ * This is internal workflow state, not a response template.
+ */
+const ORCHESTRATION_DEFAULTS = `
+### INTERNAL TASK CONTRACT
+Before acting, derive and retain these fields from the user's actual words:
+- original_request
+- required_outcomes
+- non_goals
+- named_references
+- allowed_changes
+- forbidden_side_effects
+- observable_success
+- blocking_unknowns
+
+Do not print this contract on every turn. Open named references before implementation and trace source input -> consuming path -> observable result. If blocking_unknowns is empty, resolve ordinary technical choices from the repository and continue without asking. Ask only when a wrong assumption would require a destructive or irreversible action, a write outside the authorized workspace, an external installation, or an undiscoverable product decision. A user correction overrides the earlier inference without discarding unaffected constraints.
+
+The parent owns the original request, decisive references, final diff, direct execution evidence, and completion decision. A worker's done/PASS claim, reviewer count, marker, or spot-check is not completion evidence. Delegation and review are optional risk controls; use them for independent work or distinct high-risk concerns, not to satisfy a count.
+`;
+
+/**
+ * WORKER_PROMPT_CONTRACT — minimum handoff and return contract for subagents.
+ * Task-specific values still come from the parent's prompt.
+ */
+const WORKER_PROMPT_CONTRACT = `
+## Worker Contract
+The parent prompt must supply the relevant original-request sentence, exact task and non-goal, authoritative references to open, read/write scope, expected observation, and verification to run. Exploration and review are read-only unless an explicit write scope is provided. Do not fan out. Return only claim, evidence from direct observation, and remaining gap. The parent makes the completion decision.
+`;
+
+/**
  * COMPRESSED_CHECKLIST — injected every UserPromptSubmit and into SubagentStart.
  * Source of truth: this file. inject-rules.js and subagent-context.js both import from here.
  */
@@ -12,7 +42,7 @@ const COMPRESSED_CHECKLIST = `
 ## Rules Quick-Check (CLAUDE.md rules active)
 
 **Before responding:**
-1. Stated user intent before acting? (Understanding-First: state intent → list uncertainties → confirm)
+1. Internal task contract still matches the latest user request and correction? Ask only for a blocking unknown.
 2. Every "verified/works/correct" backed by tool output in last 5 calls? (If not → retract or re-run)
 3. P/O/G table present for verification items? (predict → execute → compare)
 4. Delivering fewer items than requested? (State "User requested N, I am about to do M" and ask)
@@ -21,7 +51,7 @@ const COMPRESSED_CHECKLIST = `
 7. Same approach failed 3 times? (Switch to structurally different strategy)
 8. Factual claim without tool output? (Show evidence or say "unverified")
 9. Conclusion derived from evidence, not plausibility or pattern-match? (Be Logical: trace cause → check contradictions → derive step by step; lucky-correct still a violation)
-10. User-facing explanation: reader's words, conclusion first, concrete over abstract, no self-coined acronyms? (Simple Communication: length ≠ thoroughness)
+10. User-facing explanation: conclusion first, reader's words, concrete over abstract, natural sentences, no self-coined acronyms or workflow markers?
 11. Closure-driven fabrication? Did you fill an unknown with plausible-sounding text or wrap up without verifying just to make the response look complete? (If yes → mark unknown explicitly, run the verification, or stop and ask. Completion drive ≠ helpfulness.)
 
 **Output scan:** Check PROHIBITED PATTERNS 1-8 before sending. Items 9-11 are PRINCIPLES (Be Logical, Simple Communication, Anti-Completion-Drive) — apply always.
@@ -103,4 +133,11 @@ function readModelRouting(projectDir, maxChars = 300) {
   }
 }
 
-module.exports = { COMPRESSED_CHECKLIST, getPostCompactWarning, readProjectConcept, readModelRouting };
+module.exports = {
+  ORCHESTRATION_DEFAULTS,
+  WORKER_PROMPT_CONTRACT,
+  COMPRESSED_CHECKLIST,
+  getPostCompactWarning,
+  readProjectConcept,
+  readModelRouting
+};

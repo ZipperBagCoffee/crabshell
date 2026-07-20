@@ -1,6 +1,6 @@
 {
   "name": "crabshell",
-  "version": "21.103.0",
+  "version": "21.106.0",
   "description": "Codex-compatible wrappers for Crabshell memory and document workflows.",
   "author": {
     "name": "TaWa"
@@ -16,6 +16,7 @@
     "codex"
   ],
   "skills": "./codex-skills/",
+  "hooks": "./hooks/codex-hooks.json",
   "interface": {
     "displayName": "Crabshell",
     "shortDescription": "Project memory and workflow documents for Codex.",
@@ -31,8 +32,7 @@
     "defaultPrompt": [
       "Load Crabshell memory for this project.",
       "Save this session to Crabshell memory.",
-      "Convert CLAUDE.md guidance to AGENTS.md.",
-      "Create an investigation document for this question."
+      "Convert CLAUDE.md guidance to AGENTS.md."
     ]
   }
 }

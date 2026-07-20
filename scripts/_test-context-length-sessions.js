@@ -1,15 +1,15 @@
 'use strict';
 
 /**
- * Regression for D108 cleanup: context-length Stop branch was removed from
- * sycophancy-guard.js and absorbed by behavior-verifier §3.logic.
+ * Regression for D108/D110 cleanup: context-length handling remains in the
+ * parent-owned rules after the behavior-verifier consumer is retired.
  */
 
 const fs = require('fs');
 const path = require('path');
 const guard = require('./sycophancy-guard');
 const guardSrc = fs.readFileSync(path.join(__dirname, 'sycophancy-guard.js'), 'utf8');
-const promptSrc = fs.readFileSync(path.join(__dirname, '..', 'prompts', 'behavior-verifier-prompt.md'), 'utf8');
+const injectSrc = fs.readFileSync(path.join(__dirname, 'inject-rules.js'), 'utf8');
 
 let passed = 0;
 let failed = 0;
@@ -29,8 +29,8 @@ console.log('--- Context-length deferral cleanup regression ---');
 test('TC1: checkContextLength is not exported', typeof guard.checkContextLength === 'undefined');
 test('TC2: removal note remains in sycophancy-guard.js', /checkContextLength removed/.test(guardSrc));
 test('TC3: sycophancy exports still expose active checks', typeof guard.checkSycophancy === 'function' && typeof guard.checkVerificationClaims === 'function');
-test('TC4: behavior-verifier prompt covers Session-length deferral', /\*\*Session-length deferral\*\*/.test(promptSrc));
-test('TC5: behavior-verifier prompt covers Trailing deferral', /\*\*Trailing deferral\*\*/.test(promptSrc));
+test('TC4: injected rules prohibit unsupported stop/defer suggestions', /Suggesting to stop\/defer/.test(injectSrc));
+test('TC5: active guard assigns decisive re-checking to the parent', /parent must re-check decisive evidence/.test(guardSrc) && !/sub-agent verifier|retroactively correct/.test(guardSrc));
 
 console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed`);
 if (failed > 0) {

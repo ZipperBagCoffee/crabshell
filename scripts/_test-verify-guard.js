@@ -6,8 +6,8 @@ const path = require('path');
 const fs = require('fs');
 
 const scriptPath = path.join(__dirname, 'verify-guard.js');
-const nodePath = 'C:/Program Files/nodejs/node.exe';
-const projectDir = 'C:\\Users\\chulg\\Documents\\memory-keeper-plugin';
+const nodePath = process.execPath;
+const projectDir = path.resolve(__dirname, '..');
 
 let passed = 0;
 let failed = 0;
@@ -40,7 +40,7 @@ function runScript(hookData, env) {
       `"${nodePath}" "${scriptPath}"`,
       {
         input: json,
-        env: { ...process.env, CLAUDE_PROJECT_DIR: projectDir, ...(env || {}) },
+        env: { ...process.env, CLAUDE_PROJECT_DIR: projectDir, CRABSHELL_VERIFY_RUNNING: '', ...(env || {}) },
         timeout: 5000,
         encoding: 'utf8'
       }
@@ -63,6 +63,37 @@ function createTempTicketFile(content) {
 
 function cleanupTempTicketFile() {
   try { fs.unlinkSync(tmpTestFile); } catch {}
+}
+
+function createGuardProject(manifest) {
+  const root = fs.mkdtempSync(path.join(require('os').tmpdir(), 'verify guard spaces-'));
+  const verificationDir = path.join(root, '.crabshell', 'verification');
+  const ticketDir = path.join(root, '.crabshell', 'ticket');
+  fs.mkdirSync(verificationDir, { recursive: true });
+  fs.mkdirSync(ticketDir, { recursive: true });
+  fs.copyFileSync(path.join(projectDir, 'skills', 'verifying', 'scripts', 'run-verify.js'), path.join(verificationDir, 'run-verify.js'));
+  fs.writeFileSync(path.join(verificationDir, 'manifest.json'), JSON.stringify(manifest, null, 2), 'utf8');
+  fs.writeFileSync(path.join(ticketDir, 'P900_T001-contract.md'), '# ticket\n', 'utf8');
+  return root;
+}
+
+function cleanupGuardProject(root) {
+  const tempRoot = path.resolve(require('os').tmpdir());
+  const resolved = path.resolve(root);
+  if (resolved.startsWith(tempRoot + path.sep) && path.basename(resolved).startsWith('verify guard spaces-')) {
+    fs.rmSync(resolved, { recursive: true, force: true });
+  }
+}
+
+function finalVerificationEdit() {
+  return {
+    tool_name: 'Edit',
+    tool_input: {
+      file_path: '.crabshell/ticket/P900_T001-contract.md',
+      old_string: '# ticket',
+      new_string: '## Final Verification\n\nObserved results.'
+    }
+  };
 }
 
 // ============================================================
@@ -219,6 +250,75 @@ test('Write to existing ticket file with FV → proceeds to verification (blocke
 
   // Cleanup
   try { fs.rmSync(tmpDir, { recursive: true }); } catch {}
+});
+
+// ============================================================
+// TEST 8: Structural-only manifest cannot authorize Final Verification
+// ============================================================
+
+test('Schema-v2 structural-only manifest → BLOCK (no behavioral contract)', () => {
+  const root = createGuardProject({
+    schemaVersion: 2,
+    entries: [{
+      id: 'STRUCT', ia: 'structural only', type: 'structural',
+      command: { file: 'node', args: ['-e', 'process.exit(0)'] },
+      contract: { exitCode: 0, assertions: [], forbiddenChanges: [] }
+    }]
+  });
+  try {
+    const result = runScript(finalVerificationEdit(), { CLAUDE_PROJECT_DIR: root });
+    assertEqual(result.exitCode, 2, 'exit code should be 2');
+    assert(result.stdout.includes('no schema-v2 behavioral entry'), 'block reason should require structured behavioral contract');
+  } finally {
+    cleanupGuardProject(root);
+  }
+});
+
+// ============================================================
+// TEST 9: Behavioral label without observations cannot pass runner/guard
+// ============================================================
+
+test('Behavioral label with empty observations → BLOCK', () => {
+  const root = createGuardProject({
+    schemaVersion: 2,
+    entries: [{
+      id: 'EMPTY', ia: 'empty behavioral label', type: 'behavioral',
+      command: { file: 'node', args: ['-e', 'console.log("PASS")'] },
+      contract: { exitCode: 0, assertions: [], forbiddenChanges: [] }
+    }]
+  });
+  try {
+    const result = runScript(finalVerificationEdit(), { CLAUDE_PROJECT_DIR: root });
+    assertEqual(result.exitCode, 2, 'exit code should be 2');
+    assert(result.stdout.includes('requires an assertion'), 'runner failure should expose missing observation');
+  } finally {
+    cleanupGuardProject(root);
+  }
+});
+
+// ============================================================
+// TEST 10: Passing independent behavioral assertion authorizes write
+// ============================================================
+
+test('Passing schema-v2 behavioral assertion → ALLOW', () => {
+  const root = createGuardProject({
+    schemaVersion: 2,
+    entries: [{
+      id: 'BEHAVIOR', ia: 'observed behavior', type: 'behavioral',
+      command: { file: 'node', args: ['-e', 'process.stdout.write(JSON.stringify({ok:true}))'] },
+      contract: {
+        exitCode: 0,
+        assertions: [{ kind: 'stdoutJsonEquals', pointer: '/ok', equals: true }],
+        forbiddenChanges: []
+      }
+    }]
+  });
+  try {
+    const result = runScript(finalVerificationEdit(), { CLAUDE_PROJECT_DIR: root });
+    assertEqual(result.exitCode, 0, 'exit code should be 0');
+  } finally {
+    cleanupGuardProject(root);
+  }
 });
 
 // ============================================================

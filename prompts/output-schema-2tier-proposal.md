@@ -1,5 +1,6 @@
 # Output Schema 2-Tier Proposal (D107 cycle 3 IA-5 frontier F-2)
 
+> **Retirement note (v21.106.0)**: D110 Cycle 3 removed the verifier producer, prompt, consumer, and state constants. This file is retained only as historical design evidence and is not an active roadmap or implementation authority.
 > **Status**: Proposal-only. NOT implementation. Tier 2 ship deferred to cycle 4+ with F-3 (lifecycle FSM reconciliation) as a HARD prerequisite.
 > **Authority**: P145 cycle 3 ticket P145_T001 AC-9 (RA2 condition C2 enforcement). 7 sections required.
 > **Cross-references**: cycle 2 plan P144 RA2 frontier evaluation; cycle 3 plan P145 Intent Check L650-727.

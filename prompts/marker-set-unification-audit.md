@@ -1,8 +1,8 @@
 # §1 + §0.5 Marker Set Unification Audit (D107 cycle 4 cycle 3 P-3)
 
-**Status**: AUDIT ONLY — enumeration + risk analysis. Implementation deferred to cycle 5+ explicit decision.
+**Status**: HISTORICAL AUDIT — superseded by D110 Cycle 2 (v21.105.0). The presentation-marker audit and response skeleton are retired; this document preserves the earlier D107 evidence and is not an active implementation specification.
 
-**Source of truth**: `prompts/behavior-verifier-prompt.md` (cycle 4 baseline, ~36707-36825 B post-Step 3+4).
+**Historical source**: `prompts/behavior-verifier-prompt.md` at the cycle 4 baseline. That file was removed in D110 Cycle 3 (v21.106.0); the references below are preserved evidence, not current instructions.
 
 ## §1 Marker Set Enumerate
 

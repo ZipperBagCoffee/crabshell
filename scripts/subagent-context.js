@@ -3,7 +3,7 @@
 /**
  * subagent-context.js — SubagentStart hook
  * Outputs JSON with hookSpecificOutput.additionalContext for SubagentStart.
- * Injects: project concept, COMPRESSED_CHECKLIST, regressing state, node path, project root anchor.
+ * Injects: project concept, worker contract, COMPRESSED_CHECKLIST, regressing state, node path, project root anchor.
  * Total additionalContext kept under 2000 chars.
  *
  * Fail-open: process.exit(0) on any error.
@@ -19,7 +19,7 @@ if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 const { readStdin } = require('./transcript-utils');
 const { getProjectDir, getStorageRoot, readJsonOrDefault } = require('./utils');
 const { REGRESSING_STATE_FILE } = require('./constants');
-const { COMPRESSED_CHECKLIST, readProjectConcept, readModelRouting } = require('./shared-context');
+const { WORKER_PROMPT_CONTRACT, COMPRESSED_CHECKLIST, readProjectConcept, readModelRouting } = require('./shared-context');
 
 const MAX_CONTEXT_CHARS = 2000;
 
@@ -78,7 +78,10 @@ async function main() {
     }
   } catch (e) { /* ignore */ }
 
-  // 5. Compressed checklist (last — trim if needed)
+  // 5. Parent-owned task/evidence boundary
+  parts.push(WORKER_PROMPT_CONTRACT.trim());
+
+  // 6. Compressed checklist (last — trim if needed)
   parts.push(COMPRESSED_CHECKLIST.trim());
 
   // Assemble and enforce 2000 char limit
