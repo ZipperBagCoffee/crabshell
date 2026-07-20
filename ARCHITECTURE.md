@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.106.0)
+# Crabshell Architecture (v21.106.1)
 
 ## Overview
 
@@ -175,7 +175,7 @@ Codex marketplace -> installed cache -> .codex-plugin/plugin.json
 ```
 
 - The explicit manifest hook path is a runtime boundary: Codex does not default-discover Claude's `hooks/hooks.json`.
-- Cycle 1 exposes one synchronous command-only `PreToolUse` policy. Automatic memory, Stop continuation, pressure/sycophancy, behavior verification, agent-count, and async hooks remain Claude-only.
+- Codex exposes one synchronous command-only `PreToolUse` path policy. Automatic memory, Stop continuation, pressure/sycophancy, and async hooks remain Claude-only; the fixed-count, role-collapse, and behavior-verifier surfaces are retired from both runtimes.
 - Installed load/save/search/status skills execute wrappers from the plugin cache and pass the active project separately, preserving `.crabshell/project.md`, logbook, rotated summaries, and index formats.
 - `codex-doctor.js` asks the current Codex CLI/app-server for feature, marketplace, cache, skills, hook source, current hash, and trust state. The writable plugin-data convention is probed with a create/read/unlink operation.
 - `scripts/install-codex.js` remains a legacy/development bridge and is not part of the native default path.
@@ -355,7 +355,7 @@ inspect -> implement -> direct behavioral verification -> report
 
 The internal contract has eight fields: `original_request`, `required_outcomes`, `non_goals`, `named_references`, `allowed_changes`, `forbidden_side_effects`, `observable_success`, and `blocking_unknowns`. The parent may delegate bounded work when it helps, but it retains named-reference resolution, diff inspection, decisive execution, side-effect checks, and completion authority. Explore/review workers are read-only and workers do not fan out.
 
-Regressing retains its cycle-specific parallel-worker guard until D110 Cycle 3 addresses the remaining runner and legacy enforcement. Light-workflow itself does not require fixed agent counts or Work/Review pairing.
+Regressing retains document-cycle continuation but has no parallel-worker count or parent-write delegation gate. Light-workflow also uses risk-based optional delegation without fixed agent counts or Work/Review pairing.
 
 ## Scripts Reference
 
@@ -519,6 +519,7 @@ The 5 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.106.1 | docs: remove stale pre-Cycle-3 fixed-WA/verifier/count descriptions from current architecture sections and align the Claude/Codex hook boundary with v21.106.0 runtime behavior. |
 | 21.106.0 | feat: D110 Cycle 3 — portable schema-v2 verification contracts and mutation failures; fixed-count/parent-write orchestration removal; 19-file verifier/count/role retirement after disabled baseline; memory and safety boundaries preserved. |
 | 21.105.0 | feat: D110 Cycle 2 — parent-owned orchestration contract/defaults, five-stage light workflow, natural reporting, retired presentation audit, and live Codex A/B corpus with reference perturbation and false-done rejection. |
 | 21.104.0 | feat: D110 Cycle 1 — Codex-native marketplace/install cache, explicit Codex-only PreToolUse adapter, shared path-policy core, live doctor/status, installed memory wrappers, and portable clean-profile behavioral regressions. |

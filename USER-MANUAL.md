@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.106.0)
+# Crabshell User Manual (v21.106.1)
 
 ## Why Do You Need This?
 
@@ -32,7 +32,7 @@ codex plugin add crabshell@crabshell-repo
 
 Start a new Codex session, review/trust the Crabshell hook definition, and invoke the bundled `crabshell:status` skill. It reports the source, installed cache, hook source/hash/trust, resolved skills, writable plugin-data path, and current Codex feature state. The old `/crabshell:install-codex` command remains a legacy/development bridge; native marketplace installation is the default.
 
-Codex memory is intentionally manual in Cycle 1: use the bundled load/save/search skills. Only the deterministic native `PreToolUse` memory-path guard runs automatically; Claude's automatic memory, pressure, verifier, and Stop hooks do not run in Codex.
+Codex memory is intentionally manual: use the bundled load/save/search skills. Only the deterministic native `PreToolUse` memory-path guard runs automatically. Claude's automatic memory, pressure/sycophancy, and Stop hooks do not run in Codex; fixed-count, role-collapse, and behavior-verifier hooks are retired from both runtimes.
 
 ---
 
@@ -250,7 +250,7 @@ Hook launcher v21.99.3 note: `hooks/hooks.json` now invokes hook scripts through
 |------|--------|-------------|-------------|
 | `PreToolUse` | `adapters/codex/pre-tool-use.js` | Matching local file/shell tools | Applies the shared `.crabshell/` path policy and returns native `hookSpecificOutput` deny JSON for wrong-project memory paths |
 
-Codex reads `hooks/codex-hooks.json` through the explicit `.codex-plugin/plugin.json` `hooks` field. That override prevents accidental discovery of Claude's `hooks/hooks.json`. The Codex file contains no Stop continuation, automatic memory, pressure/sycophancy, behavior-verifier, agent-count, prompt/agent handler, or async hook.
+Codex reads `hooks/codex-hooks.json` through the explicit `.codex-plugin/plugin.json` `hooks` field. That override prevents accidental discovery of Claude's `hooks/hooks.json`. The Codex file contains no Stop continuation, automatic memory, pressure/sycophancy, prompt/agent handler, or async hook. Retired fixed-count, role-collapse, and behavior-verifier hooks are absent from both host manifests.
 
 ### Internal Task Contract and Natural Reporting
 
@@ -287,7 +287,7 @@ Guard scripts are PreToolUse/Stop hooks that prevent common mistakes:
 | `regressing-loop-guard.js` | Blocks session end during active regressing and preserves phase continuity. It has no fixed agent-count, WA:RA pairing, or parent-write delegation requirement. |
 
 Guards run automatically via hooks. No configuration needed.
-For Codex, only the shared path policy is active in Cycle 1. Every other guard in this table is Claude-only unless a later release explicitly adds a Codex adapter.
+For Codex, only the shared path policy has a native adapter. Every other active guard in this table is Claude-only unless a later release explicitly adds a Codex adapter.
 
 ---
 

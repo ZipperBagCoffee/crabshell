@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.106.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.106.1 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -199,7 +199,7 @@ The repository intentionally keeps Claude and Codex runtime surfaces side by sid
 | `scripts/claude-to-agents.js` | Codex | `CLAUDE.md` to `AGENTS.md` conversion |
 | `scripts/install-codex.js` | Claude Code -> Codex | Legacy/development manual bridge; native marketplace installation is the default |
 
-Installing one runtime does not activate the other runtime. Codex Cycle 1 loads only its explicit deterministic PreToolUse hook; Claude automatic memory, pressure, verifier, and Stop hooks remain Claude-only. Both runtimes can share `.crabshell/` storage when used in the same project.
+Installing one runtime does not activate the other runtime. Codex loads only its explicit deterministic PreToolUse path hook; Claude automatic memory, pressure, and Stop hooks remain Claude-only. Fixed-count, role-collapse, and behavior-verifier hooks are retired from both runtimes. Both runtimes can share `.crabshell/` storage when used in the same project.
 
 ## Core Scripts
 
@@ -405,6 +405,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.106.1 | docs: correct current runtime descriptions after the v21.106.0 fixed-count/role/verifier retirement and remove stale Cycle 1/3 transition language. |
 | 21.106.0 | feat: D110 Cycle 3 — single-source portable schema-v2 verification runner, independent mutation corpus, structured behavioral guard contract, count-independent parent-owned orchestration, and confirmed retirement of 19 verifier/count/role legacy files. |
 | 21.105.0 | feat: D110 Cycle 2 — 8-field parent-owned task contract, five-stage light workflow, risk-based questions/delegation, natural response defaults, presentation-audit retirement, and live Codex A/B orchestration regressions. |
 | 21.104.0 | feat: D110 Cycle 1 — native Codex repo marketplace, explicit Codex-only PreToolUse hook, shared path policy, live doctor/status, installed-cache memory wrappers, and clean-profile/spaces/trust-drift regressions; legacy installer retained. |
