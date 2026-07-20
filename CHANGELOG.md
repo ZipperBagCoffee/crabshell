@@ -1,5 +1,17 @@
 # Changelog
 
+## [21.107.0] - 2026-07-20
+
+### feat: native Claude Code and Codex harness parity
+- Added one shared first-turn contract and native Codex `UserPromptSubmit`; questions stay read-only while execution prompts authorize lifecycle work.
+- Added shared read-only SessionStart memory/workflow recovery, PreCompact/PostCompact recovery, task-specific SubagentStart context, PostToolUse parent evidence, and bounded Stop/SubagentStop completion control through host-native adapters.
+- Preserved Claude Code's existing execution lifecycle, pressure/sycophancy guards, SessionEnd saving, compaction effects, and rule synchronization; Codex never launches or requires Claude Code.
+- Added alternating Claude→Codex→Claude memory continuity, restart-safe D/P/T/W workflow recovery, independent false-done rejection, and one sequential mutation-based cross-runtime verifier.
+- Added clean-profile Windows/Linux Claude Code CLI and Codex CLI smoke coverage. Codex desktop app remains separately `not-directly-exercised` until a direct app run is available.
+- Expanded `crabshell:status` into a live cross-runtime doctor with installed, activated, trusted, behavior-verified, degraded, drifted, and unsupported states derived from CLI/plugin/cache/hook probes rather than a version table.
+- Replaced four direct Claude Stop owners with `completion-controller.js`, which retains the existing Claude sycophancy/doc-watchdog/scope checks behind one state owner; removed no Claude feature.
+- Fixed Codex Windows hook commands by resolving plugin paths inside Node instead of using PowerShell-incompatible `%PLUGIN_ROOT%` expansion.
+
 ## [21.106.1] - 2026-07-19
 
 ### docs: remove stale pre-Cycle-3 architecture statements

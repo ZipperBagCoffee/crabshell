@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "projectType": "Node.js CLI plugin with Claude and Codex adapters",
   "created": "2026-03-28T08:20:00Z",
-  "updated": "2026-07-19T00:00:00.000Z",
+  "updated": "2026-07-20T01:31:00.000Z",
   "tools": {
     "build": null,
     "run": null,
@@ -154,7 +154,7 @@
     },
     {
       "id": "V009",
-      "ia": "Current plugin documentation patch version is 21.106.1 after D110 Cycle 3 closure",
+      "ia": "Current cross-runtime native harness release version is 21.107.0 after D111 closure",
       "type": "structural",
       "command": {
         "file": "node",
@@ -169,7 +169,7 @@
           {
             "kind": "stdoutJsonEquals",
             "pointer": "/version",
-            "equals": "21.106.1"
+            "equals": "21.107.0"
           }
         ],
         "forbiddenChanges": []
@@ -242,6 +242,83 @@
       },
       "note": "Run explicitly because actual model sessions can exceed the Final Verification guard timeout.",
       "timeout": 300000
+    },
+    {
+      "id": "V013",
+      "ia": "Unified Claude and Codex lifecycle behavior rejects stale memory, lost state, wrong order, false done, hardcoded path, host mismatch, and forbidden-side-effect mutations",
+      "type": "behavioral",
+      "command": {
+        "file": "node",
+        "args": [
+          "scripts/verify-cross-runtime.js",
+          "--json"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [
+          {
+            "kind": "stdoutJsonEquals",
+            "pointer": "/passed",
+            "equals": true
+          }
+        ],
+        "forbiddenChanges": []
+      },
+      "timeout": 180000
+    },
+    {
+      "id": "V014",
+      "ia": "Live doctor distinguishes installed, activated, trusted, behavior-verified, degraded, drifted, and unsupported states without a hardcoded compatibility table",
+      "type": "behavioral",
+      "command": {
+        "file": "node",
+        "args": [
+          "scripts/_test-doctor-support-states.js",
+          "--json"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [
+          {
+            "kind": "stdoutJsonEquals",
+            "pointer": "/passed",
+            "equals": true
+          }
+        ],
+        "forbiddenChanges": []
+      },
+      "timeout": 30000
+    },
+    {
+      "id": "V015",
+      "ia": "Clean-profile Claude Code CLI and Codex CLI native plugin smoke runs on Windows and Linux while Codex app remains separately unverified",
+      "type": "behavioral",
+      "command": {
+        "file": "node",
+        "args": [
+          "scripts/_test-cross-platform-native-hosts.js",
+          "--json"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [
+          {
+            "kind": "stdoutJsonEquals",
+            "pointer": "/passed",
+            "equals": true
+          },
+          {
+            "kind": "stdoutJsonEquals",
+            "pointer": "/codexApp",
+            "equals": "not-directly-exercised"
+          }
+        ],
+        "forbiddenChanges": []
+      },
+      "timeout": 660000
     }
   ]
 }

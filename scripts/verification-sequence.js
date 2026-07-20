@@ -9,6 +9,7 @@ if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 const { readStdin, normalizePath } = require('./transcript-utils');
 const { getProjectDir, readJsonOrDefault, writeJson } = require('./utils');
 const { STORAGE_ROOT } = require('./constants');
+const { isGitCommit, isTestExecution, isToolFailure } = require('./core/command-observation');
 
 // --- Constants ---
 const STATE_FILE = 'verification-state.json';
@@ -73,88 +74,6 @@ function isSourceFile(filePath) {
 
   // Unknown extension → conservative: treat as source
   return true;
-}
-
-/**
- * Detect if a Bash command is a test execution.
- */
-function isTestExecution(command) {
-  if (!command || typeof command !== 'string') return false;
-  const cmd = command.trim();
-
-  // Reject trivial fake tests
-  if (isTrivialTest(cmd)) return false;
-
-  // Match common test runners
-  const testPatterns = [
-    /\bnpm\s+test\b/,
-    /\bnpm\s+run\s+(test|check|verify|lint|build)\b/,
-    /\bnpx\s+(jest|mocha|vitest)\b/,
-    /\bpytest\b/,
-    /\bcargo\s+test\b/,
-    /\bgo\s+test\b/,
-    /\bmake\s+test\b/,
-    /\bnode(?:\.exe)?["']?\s+\S*\.test\.\S+/,
-    /\bnode(?:\.exe)?["']?\s+\S*_test[_-]\S+/,
-    /\btsc\b/,
-    /\beslint\b/,
-    /\bjest\b/,
-    /\bmocha\b/,
-    /\bvitest\b/,
-  ];
-
-  for (const pattern of testPatterns) {
-    if (pattern.test(cmd)) return true;
-  }
-
-  return false;
-}
-
-/**
- * Reject trivial "tests" that are just echo/printf statements.
- */
-function isTrivialTest(cmd) {
-  // Very short commands without a test runner
-  if (cmd.length < 15 && !/\b(test|jest|mocha|vitest|pytest|tsc|eslint|lint|build|check|verify)\b/i.test(cmd)) {
-    return true;
-  }
-  // echo + pass/ok/success patterns
-  if (/^\s*(echo|printf)\s+/i.test(cmd) && /\b(pass|ok|success|true)\b/i.test(cmd)) {
-    return true;
-  }
-  return false;
-}
-
-/**
- * Check if a Bash command is a git commit.
- */
-function isGitCommit(command) {
-  if (!command || typeof command !== 'string') return false;
-  return /\bgit\s+commit\b/.test(command.trim());
-}
-
-/**
- * Detect whether a PostToolUse tool_response indicates the command FAILED.
- * A failing test must NOT clear the commit gate, so the record path only
- * transitions to TESTED on a passing run. Conservative by design: returns
- * true only on explicit failure signals (non-zero exit / is_error /
- * interrupted / "Exit code N"). An absent tool_response (older platform
- * payloads, or hooks that omit it) is treated as not-a-failure so behavior
- * stays backward-compatible and fail-open.
- */
-function isToolFailure(toolResponse) {
-  if (toolResponse === undefined || toolResponse === null) return false;
-  try {
-    if (typeof toolResponse === 'object') {
-      if (toolResponse.is_error === true) return true;
-      if (toolResponse.interrupted === true) return true;
-      if (typeof toolResponse.exitCode === 'number' && toolResponse.exitCode !== 0) return true;
-      if (typeof toolResponse.code === 'number' && toolResponse.code !== 0) return true;
-    }
-    const s = (typeof toolResponse === 'string') ? toolResponse : JSON.stringify(toolResponse);
-    if (/(^|[^A-Za-z])[Ee]xit code [1-9][0-9]*/.test(s)) return true;
-  } catch {}
-  return false;
 }
 
 /**

@@ -1,109 +1,28 @@
 'use strict';
 
-/**
- * subagent-context.js — SubagentStart hook
- * Outputs JSON with hookSpecificOutput.additionalContext for SubagentStart.
- * Injects: project concept, worker contract, COMPRESSED_CHECKLIST, regressing state, node path, project root anchor.
- * Total additionalContext kept under 2000 chars.
- *
- * Fail-open: process.exit(0) on any error.
- */
-
-const fs = require('fs');
-const path = require('path');
-
-// Skip processing during background memory summarization
-// F1 mitigation: keep inline env check for fail-open invariant — D106 IA-10 RA2
-if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
+// Keep the background fail-open guard before imports.
+if (process.env.CRABSHELL_BACKGROUND === '1') process.exit(0);
 
 const { readStdin } = require('./transcript-utils');
-const { getProjectDir, getStorageRoot, readJsonOrDefault } = require('./utils');
-const { REGRESSING_STATE_FILE } = require('./constants');
-const { WORKER_PROMPT_CONTRACT, COMPRESSED_CHECKLIST, readProjectConcept, readModelRouting } = require('./shared-context');
+const { getProjectDir } = require('./utils');
+const { buildSubagentContext, createSubagentOutput } = require('./core/subagent-context');
 
-const MAX_CONTEXT_CHARS = 2000;
-
-async function main() {
-  let stdinData = {};
-  try {
-    stdinData = await readStdin(2000);
-  } catch (e) { /* fail-open */ }
-
-  let projectDir;
-  try {
-    projectDir = getProjectDir();
-  } catch (e) {
-    process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'SubagentStart', additionalContext: '' } }));
-    process.exit(0);
+async function main(options = {}) {
+  if (!options.hookData) {
+    try { await readStdin(2000); } catch {}
   }
-
-  const parts = [];
-
-  // 1. Project root anchor (always first — most critical)
-  const nodePathFwd = process.execPath.replace(/\\/g, '/');
-  parts.push(
-    `## Project Root Anchor\nProject root: \`${projectDir}\`\n` +
-    `Node.js path: \`${nodePathFwd}\`\n` +
-    `All file paths are relative to project root.`
-  );
-
-  // 2. Project concept
-  try {
-    const concept = readProjectConcept(projectDir, 20, 500);
-    if (concept) {
-      parts.push(`## Project Concept\n${concept}`);
-    }
-  } catch (e) { /* ignore */ }
-
-  // 3. Model routing (from project.md)
-  try {
-    const routing = readModelRouting(projectDir, 300);
-    if (routing) {
-      parts.push(routing);
-    }
-  } catch (e) { /* ignore */ }
-
-  // 4. Active regressing state
-  try {
-    const regressingStatePath = path.join(getStorageRoot(projectDir), 'memory', REGRESSING_STATE_FILE);
-    const state = readJsonOrDefault(regressingStatePath, null);
-    if (state && state.active === true) {
-      let regressingText = `## Regressing State\nPhase: ${state.phase}, Cycle: ${state.cycle}/${state.totalCycles}`;
-      if (state.discussion) regressingText += `\nDiscussion: ${state.discussion}`;
-      if (state.planId) regressingText += `\nPlan: ${state.planId}`;
-      if (state.ticketIds && state.ticketIds.length > 0) {
-        regressingText += `\nTickets: ${state.ticketIds.join(', ')}`;
-      }
-      parts.push(regressingText);
-    }
-  } catch (e) { /* ignore */ }
-
-  // 5. Parent-owned task/evidence boundary
-  parts.push(WORKER_PROMPT_CONTRACT.trim());
-
-  // 6. Compressed checklist (last — trim if needed)
-  parts.push(COMPRESSED_CHECKLIST.trim());
-
-  // Assemble and enforce 2000 char limit
-  let context = parts.join('\n\n');
-  if (context.length > MAX_CONTEXT_CHARS) {
-    context = context.substring(0, MAX_CONTEXT_CHARS - 3) + '...';
-  }
-
-  const output = {
-    hookSpecificOutput: {
-      hookEventName: 'SubagentStart',
-      additionalContext: context
-    }
-  };
-
-  process.stdout.write(JSON.stringify(output));
+  const projectDir = options.projectDir || getProjectDir();
+  const context = buildSubagentContext(projectDir);
+  process.stdout.write(JSON.stringify(createSubagentOutput(context)));
   process.stderr.write(`[CRABSHELL] SubagentStart: additionalContext ${context.length} chars\n`);
-  process.exit(0);
+  return context;
 }
 
-main().catch(e => {
-  process.stderr.write('[CRABSHELL] SubagentStart error: ' + (e.message || e) + '\n');
-  process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'SubagentStart', additionalContext: '' } }));
-  process.exit(0); // fail-open
-});
+if (require.main === module) {
+  main().catch(error => {
+    process.stderr.write(`[CRABSHELL] SubagentStart error: ${error.message}\n`);
+    process.stdout.write(JSON.stringify(createSubagentOutput('')));
+  });
+}
+
+module.exports = { main };

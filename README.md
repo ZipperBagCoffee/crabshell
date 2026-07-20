@@ -1,22 +1,32 @@
 # Crabshell
 
-**Claude Code plugin that makes Claude remember, verify, and self-correct.**
+**One Crabshell plugin for Claude Code and Codex: shared project memory, native lifecycle guidance, verification, and structured workflows.**
 
 Three pillars:
-1. **Session memory** — Auto-saves context across sessions. Delta extraction, Haiku summarization, token-based rotation. No manual setup.
-2. **Behavioral correction** — Injects verification-first rules and interference pattern detection every prompt. Twelve guard hooks block sycophancy, scope reduction, overcorrection, and shortcuts at runtime. **Pressure System:** three pressure counters (feedbackPressure.level, feedbackPressure.oscillationCount, tooGoodSkepticism.retryCount) with user-prompt-driven level (W021: profanity-only NEG patterns) plus assistant-side oscillation and too-good skepticism counters. UNLEASH keyword (renamed from BAILOUT in v21.79.0 / W021) resets all three.
-3. **Structured workflows** — D/P/T/I/H/W document system with 21 skills for planning, investigating, iterative improvement (regressing), hotfix recording, and light-workflow tracing.
+1. **Session memory** — Both hosts automatically load the same project memory and workflow state. Claude Code retains automatic session capture/rotation; either host can use explicit load/save/search skills.
+2. **Behavioral correction** — Both hosts receive the same first-turn, workflow, subagent, compaction, and parent-completion semantics through native hooks. Claude Code also retains its pressure/sycophancy guard system.
+3. **Structured workflows** — D/P/T/I/H/W document system with host-native skills for planning, investigating, iterative improvement (regressing), hotfix recording, and light-workflow tracing.
 
 All plugin output lives under `.crabshell/` — gitignored, clean project root.
 
 ## Installation
 
-```bash
+In Claude Code:
+
+```text
 /plugin marketplace add ZipperBagCoffee/crabshell
 /plugin install crabshell
 ```
 
-After installation, **you don't need to do anything**. It works automatically.
+In Windows or Linux Codex CLI:
+
+```bash
+codex plugin marketplace add ZipperBagCoffee/crabshell --ref master
+codex plugin add crabshell@crabshell-repo
+codex plugin list
+```
+
+Start a new host session after installation. Codex will ask you to trust the current hook hash before hooks run.
 
 ## Codex Compatibility
 
@@ -27,14 +37,15 @@ This repository is a dual-runtime plugin repo:
 
 Installing the plugin in one runtime does not automatically activate the other runtime. The files can ship in the same GitHub repository, but each product only reads its own manifest and entrypoints.
 
-For Codex CLI development or a repo-local install, run from this repository and start a new Codex session after installation:
+For Codex CLI development, `.` must be the Crabshell source checkout itself—not the project where you want to use Crabshell:
 
 ```bash
+cd path/to/crabshell
 codex plugin marketplace add .
 codex plugin add crabshell@crabshell-repo
 ```
 
-Review and trust the discovered Crabshell hook definition in Codex before expecting it to run. Invoke the bundled `crabshell:status` skill to report the actual plugin source, installed cache, hook hash/trust, skill resolution, writable plugin-data path, and required Codex features.
+Review and trust the discovered Crabshell hook definition in Codex before expecting it to run. Invoke `crabshell:status` to report the live Claude/Codex installed, activated, trusted, behavior-verified, degraded, drifted, and unsupported states. Codex desktop-app status is reported separately from CLI evidence.
 
 The shared project state is `.crabshell/`. Claude and Codex can both read and write the same memory/document store. Installed Codex load/save/search skills call scripts from the plugin cache while targeting the active project; direct source-checkout commands remain available for development:
 
@@ -47,15 +58,15 @@ node scripts/codex-docs.js investigation "research topic"
 node scripts/codex-docs.js worklog "task title"
 ```
 
-Codex activates only the deterministic native `PreToolUse` memory-path guard. Claude-only automatic memory, pressure/sycophancy, async, and `Stop` continuation hooks are not activated by Codex; Codex memory remains manual through load/save/search skills. The retired verifier and fixed agent-count hooks are absent from both runtimes.
+Codex activates nine synchronous native lifecycle events: SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, PreCompact, PostCompact, SubagentStart, SubagentStop, and Stop. They share host-neutral memory/workflow/verification cores with Claude while emitting each host's native hook response. Claude's pressure/sycophancy and automatic SessionEnd capture remain Claude-specific; the retired verifier and fixed agent-count hooks are absent from both runtimes.
 
 `/crabshell:install-codex` and `scripts/install-codex.js` remain as legacy/development bridges for older installations. Native marketplace installation is the default Codex path.
 
 ## How It Works
 
-1. **Session start** - Loads saved content from previous sessions into Claude's context
-2. **During work** - Auto-save triggers every 15 tool uses (configurable), Claude records decisions/patterns/issues directly
-3. **Session end** - Full conversation backup + final save
+1. **Session start** - Claude and Codex load the same saved memory and active workflow context without writing.
+2. **During work** - Both receive shared task/subagent/completion semantics; Claude additionally runs its automatic capture, pressure, and guard lifecycle.
+3. **Session end** - Claude performs its existing full conversation backup/final save. Codex uses explicit save skills and never needs to launch Claude.
 
 Project verification uses a portable schema-v2 manifest. Commands are repo-relative, and behavioral entries pass only when command exits, structured observations, and forbidden-path snapshots match; printing `PASS` is never sufficient by itself.
 
@@ -93,7 +104,7 @@ With this setup, **Claude starts every new session knowing this information**.
 | `/crabshell:planning "topic"` | Create/update a plan document |
 | `/crabshell:ticketing P001 "topic"` | Create/update a ticket tied to a plan |
 | `/crabshell:investigating "topic"` | Multi-source multi-agent investigation |
-| `/crabshell:regressing "topic" N` | Run N cycles of P→T wrapped by a single Discussion, with verification-based optimization |
+| `/crabshell:regressing "topic"` | Iterate current P→T improvement cycles until the Discussion converges; an explicit user cap is a maximum, not a target |
 | `/crabshell:light-workflow` | Run the five-stage parent-owned workflow for a standalone task |
 | `/crabshell:verifying` | Create/run project-specific verification tools |
 | `/crabshell:status` | Healthcheck of plugin state (memory, regressing, verification, version) |
@@ -126,12 +137,12 @@ User questions are reserved for destructive or irreversible actions, changes out
 
 ## Regressing (Iterative Optimization)
 
-For tasks requiring multiple improvement cycles, `/regressing "topic" N` runs N cycles of Plan→Ticket→Verify:
+For tasks requiring multiple improvement cycles, `/regressing "topic"` runs Plan→Ticket→Verify iterations until the Discussion converges:
 
 - Each cycle's verification results determine the next cycle's direction
 - **Phase Tracker** (v19.23.0): Hook-based auto-enforcement of Skill tool usage — UserPromptSubmit injects phase-specific reminders, PostToolUse auto-advances phase on Skill tool detection
 - Anti-partitioning: each cycle plans current work only (no pre-dividing across cycles)
-- Single Discussion wraps all cycles, auto-concludes when all plans complete
+- A single Discussion wraps the iterations and concludes only after the requested outcome is verified
 
 ## CLAUDE.md Integration
 
@@ -222,6 +233,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.107.0 | feat: Claude Code + Codex native lifecycle parity, shared memory/workflow/compaction/subagent/completion cores, Windows/Linux clean-profile matrix, mutation-based cross-runtime verification, and seven-state live doctor; Claude-only features preserved. |
 | 21.106.1 | docs: remove stale Cycle 1/3 statements from current architecture/manual sections and state the post-retirement Claude/Codex hook boundary consistently. |
 | 21.106.0 | feat: D110 Cycle 3 — portable schema-v2 verification with structured behavioral assertions and mutation fixtures; retire 19 verifier/count/role files and fixed-count orchestration after disabled baselines; retain memory, safety, post-compact, and legacy Codex install bridges. |
 | 21.105.0 | feat: D110 Cycle 2 — internal 8-field task contract, five-stage parent-owned light workflow, risk-based user questions and delegation, natural reporting, presentation-audit retirement, and live Codex A/B orchestration corpus. |

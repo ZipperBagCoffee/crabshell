@@ -1,0 +1,10 @@
+{
+  "session_id": "codex-fixture-session",
+  "transcript_path": null,
+  "cwd": ".",
+  "hook_event_name": "UserPromptSubmit",
+  "model": "fixture-model",
+  "turn_id": "fixture-turn",
+  "permission_mode": "default",
+  "prompt": "What does applying this change mean?"
+}

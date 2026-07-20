@@ -1,11 +1,13 @@
 'use strict';
 
 const fs = require('fs');
+const crypto = require('crypto');
 const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { CodexAppServer, runCodex } = require('./core/codex-app-server');
 const { validateCodexHookConfig } = require('./adapters/codex/hook-contract');
+const { codexAppState, deriveSupportState } = require('./core/support-state');
 
 function parseArgs(argv) {
   const options = {
@@ -15,6 +17,8 @@ function parseArgs(argv) {
     pluginRoot: path.resolve(__dirname, '..'),
     codexHome: process.env.CODEX_HOME || path.join(os.homedir(), '.codex'),
     codexBin: process.env.CODEX_BIN || null,
+    claudeConfigDir: process.env.CLAUDE_CONFIG_DIR || null,
+    claudeBin: process.env.CLAUDE_BIN || null,
   };
   for (const arg of argv) {
     if (arg === '--json') options.json = true;
@@ -23,11 +27,14 @@ function parseArgs(argv) {
     else if (arg.startsWith('--plugin-root=')) options.pluginRoot = arg.slice('--plugin-root='.length);
     else if (arg.startsWith('--codex-home=')) options.codexHome = arg.slice('--codex-home='.length);
     else if (arg.startsWith('--codex-bin=')) options.codexBin = arg.slice('--codex-bin='.length);
+    else if (arg.startsWith('--claude-config-dir=')) options.claudeConfigDir = arg.slice('--claude-config-dir='.length);
+    else if (arg.startsWith('--claude-bin=')) options.claudeBin = arg.slice('--claude-bin='.length);
     else throw new Error(`Unknown option: ${arg}`);
   }
   options.projectDir = path.resolve(options.projectDir);
   options.pluginRoot = path.resolve(options.pluginRoot);
   options.codexHome = path.resolve(options.codexHome);
+  if (options.claudeConfigDir) options.claudeConfigDir = path.resolve(options.claudeConfigDir);
   return options;
 }
 
@@ -66,9 +73,11 @@ function flattenPlugins(response) {
 function selectPlugin(response, projectDir) {
   const normalizedProject = path.resolve(projectDir).toLowerCase();
   const candidates = flattenPlugins(response).filter(row => row.plugin.name === 'crabshell');
-  return candidates.find(row => row.plugin.source && row.plugin.source.type === 'local' &&
-    path.resolve(row.plugin.source.path).toLowerCase() === normalizedProject) ||
-    candidates.find(row => row.marketplace.name === 'crabshell-repo') || candidates[0] || null;
+  const exactLocal = row => row.plugin.source && row.plugin.source.type === 'local' &&
+    path.resolve(row.plugin.source.path).toLowerCase() === normalizedProject;
+  return candidates.find(row => row.plugin.installed && exactLocal(row)) ||
+    candidates.find(row => row.plugin.installed && row.marketplace.name === 'crabshell-repo') ||
+    candidates.find(row => row.plugin.installed) || candidates.find(exactLocal) || candidates[0] || null;
 }
 
 function findInstalledCache(codexHome, pluginRow) {
@@ -134,14 +143,127 @@ function probeHook(pluginRoot, projectDir = pluginRoot) {
   return output.hookSpecificOutput.permissionDecisionReason;
 }
 
+function sha256(filePath) {
+  return crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
+}
+
+function installationDrift(sourceRoot, installedRoot, host) {
+  if (!sourceRoot || !installedRoot || path.resolve(sourceRoot) === path.resolve(installedRoot)) return [];
+  const manifestName = host === 'codex' ? '.codex-plugin' : '.claude-plugin';
+  const hookName = host === 'codex' ? 'codex-hooks.json' : 'hooks.json';
+  const pairs = [
+    [path.join(sourceRoot, manifestName, 'plugin.json'), path.join(installedRoot, manifestName, 'plugin.json'), 'manifest'],
+    [path.join(sourceRoot, 'hooks', hookName), path.join(installedRoot, 'hooks', hookName), 'hook-source'],
+  ];
+  const reasons = [];
+  for (const [source, installed, label] of pairs) {
+    if (!fs.existsSync(source) || !fs.existsSync(installed)) {
+      reasons.push(`${label}-missing`);
+    } else if (sha256(source) !== sha256(installed)) {
+      reasons.push(`${label}-differs`);
+    }
+  }
+  return reasons;
+}
+
+function runClaude(args, options) {
+  const command = options.claudeBin || (process.platform === 'win32' ? 'claude.exe' : 'claude');
+  const env = { ...process.env };
+  if (options.claudeConfigDir) env.CLAUDE_CONFIG_DIR = options.claudeConfigDir;
+  return spawnSync(command, args, {
+    cwd: options.projectDir,
+    env,
+    encoding: 'utf8',
+    timeout: 10000,
+    windowsHide: true,
+  });
+}
+
+function probeClaudeHooks(installedRoot, projectDir) {
+  const env = { ...process.env, CLAUDE_PROJECT_DIR: projectDir };
+  const probes = [
+    {
+      script: path.join(installedRoot, 'scripts', 'load-memory.js'),
+      payload: { hook_event_name: 'SessionStart', source: 'startup', cwd: projectDir, session_id: 'doctor-claude' },
+      validate: output => output.hookSpecificOutput?.hookEventName === 'SessionStart',
+    },
+    {
+      script: path.join(installedRoot, 'scripts', 'inject-rules.js'),
+      payload: { hook_event_name: 'UserPromptSubmit', prompt: 'What does Crabshell do?', cwd: projectDir, session_id: 'doctor-claude' },
+      validate: output => output.hookSpecificOutput?.hookEventName === 'UserPromptSubmit' &&
+        /Crabshell Turn Contract/.test(output.hookSpecificOutput.additionalContext || ''),
+    },
+  ];
+  for (const probe of probes) {
+    const result = spawnSync(process.execPath, [probe.script], {
+      cwd: projectDir,
+      env,
+      input: JSON.stringify(probe.payload),
+      encoding: 'utf8',
+      timeout: 5000,
+      windowsHide: true,
+    });
+    if (result.status !== 0) throw new Error(`${path.basename(probe.script)} exited ${result.status}: ${result.stderr}`);
+    const output = JSON.parse(result.stdout.trim());
+    if (!probe.validate(output)) throw new Error(`${path.basename(probe.script)} returned an invalid native hook contract.`);
+  }
+  return ['SessionStart', 'UserPromptSubmit'];
+}
+
+function probeClaudeSupport(options) {
+  const version = runClaude(['--version'], options);
+  const supported = version.status === 0;
+  let plugins = [];
+  let listError = null;
+  if (supported) {
+    const listed = runClaude(['plugin', 'list', '--json'], options);
+    if (listed.status === 0) {
+      try { plugins = JSON.parse(listed.stdout); } catch (error) { listError = error.message; }
+    } else {
+      listError = listed.stderr || listed.error?.message || 'plugin list failed';
+    }
+  }
+  const plugin = plugins.find(item => String(item.id || '').startsWith('crabshell@')) || null;
+  const installedRoot = plugin?.installPath && fs.existsSync(plugin.installPath) ? plugin.installPath : null;
+  const activated = Boolean(plugin?.enabled && installedRoot && fs.existsSync(path.join(installedRoot, 'hooks', 'hooks.json')));
+  let observedEvents = [];
+  let probeError = null;
+  if (activated) {
+    try { observedEvents = probeClaudeHooks(installedRoot, options.projectDir); }
+    catch (error) { probeError = error.message; }
+  }
+  const driftReasons = installedRoot ? installationDrift(options.pluginRoot, installedRoot, 'claude') : [];
+  return deriveSupportState({
+    supported,
+    installed: Boolean(plugin && installedRoot),
+    activated,
+    trusted: activated,
+    trustRequired: false,
+    behaviorVerified: observedEvents.length === 2,
+    degradedReasons: [listError && `plugin-list:${listError}`, probeError && `hook-probe:${probeError}`],
+    driftReasons,
+    unsupportedReasons: [supported ? null : String(version.error?.message || version.stderr || 'Claude Code CLI unavailable').trim()],
+    evidence: {
+      cliVersion: supported ? version.stdout.trim() : null,
+      pluginId: plugin?.id || null,
+      pluginVersion: plugin?.version || null,
+      installPath: installedRoot,
+      enabled: plugin?.enabled === true,
+      trustModel: activated ? 'host-managed-no-separate-hook-hash' : null,
+      observedEvents,
+    },
+  });
+}
+
 async function runDoctor(options) {
   const report = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     generatedAt: new Date().toISOString(),
     projectRoot: options.projectDir,
     pluginRoot: options.pluginRoot,
     codexHome: options.codexHome,
     checks: [],
+    hosts: {},
   };
   let manifest;
   try {
@@ -176,6 +298,7 @@ async function runDoctor(options) {
 
   let pluginRow = null;
   let cachePath = null;
+  let codexHooks = [];
   let server;
   try {
     server = await new CodexAppServer({ cwd: options.projectDir, env, codexBin: options.codexBin }).start();
@@ -212,7 +335,7 @@ async function runDoctor(options) {
     const hookEntry = (hooks.data || []).find(entry => path.resolve(entry.cwd) === options.projectDir) || hooks.data?.[0];
     const pluginHooks = (hookEntry?.hooks || []).filter(hook => hook.pluginId === pluginRow?.plugin.id);
     const legacyHooks = pluginHooks.filter(hook => path.basename(hook.sourcePath).toLowerCase() === 'hooks.json');
-    const codexHooks = pluginHooks.filter(hook => path.basename(hook.sourcePath).toLowerCase() === 'codex-hooks.json');
+    codexHooks = pluginHooks.filter(hook => path.basename(hook.sourcePath).toLowerCase() === 'codex-hooks.json');
     const hookStatus = legacyHooks.length > 0 ? 'error' : codexHooks.length > 0 ? 'ok' : pluginRow?.plugin.installed ? 'error' : 'warn';
     report.checks.push(check(
       'hook-source', hookStatus,
@@ -276,6 +399,43 @@ async function runDoctor(options) {
     report.checks.push(check('hook-probe', 'error', `Codex hook probe failed: ${error.message}`));
   }
 
+  const findCheck = id => report.checks.find(item => item.id === id);
+  const unsupportedReasons = [];
+  if (versionResult.status !== 0) unsupportedReasons.push('codex-cli-unavailable');
+  if (featureResult.status !== 0) unsupportedReasons.push('feature-probe-failed');
+  for (const feature of missingFeatures) unsupportedReasons.push(`capability-disabled:${feature}`);
+  const codexDrift = cachePath ? installationDrift(options.pluginRoot, cachePath, 'codex') : [];
+  if (codexHooks.some(hook => hook.trustStatus === 'modified')) codexDrift.push('trusted-hook-hash-modified');
+  const codexInstalled = Boolean(pluginRow?.plugin.installed && cachePath);
+  const codexActivated = Boolean(codexInstalled && pluginRow.plugin.enabled &&
+    findCheck('hook-source')?.status === 'ok' && findCheck('skills')?.status === 'ok');
+  const codexTrusted = Boolean(codexActivated && codexHooks.length > 0 &&
+    codexHooks.every(hook => hook.trustStatus === 'trusted' || hook.trustStatus === 'managed'));
+  report.hosts.codexCli = deriveSupportState({
+    supported: unsupportedReasons.length === 0,
+    installed: codexInstalled,
+    activated: codexActivated,
+    trusted: codexTrusted,
+    behaviorVerified: codexActivated && findCheck('hook-probe')?.status === 'ok',
+    driftReasons: codexDrift,
+    degradedReasons: [
+      pluginRow?.plugin.installed && !cachePath ? 'installed-cache-unresolved' : null,
+      pluginRow?.plugin.installed && pluginRow.plugin.enabled === false ? 'plugin-disabled' : null,
+    ],
+    unsupportedReasons,
+    evidence: {
+      cliVersion: report.codexVersion || null,
+      pluginId: pluginRow?.plugin.id || null,
+      pluginVersion: pluginRow?.plugin.localVersion || pluginRow?.plugin.version || null,
+      installPath: cachePath,
+      enabled: pluginRow?.plugin.enabled === true,
+      hookEvents: [...new Set(codexHooks.map(hook => hook.eventName))].sort(),
+      hookTrust: [...new Set(codexHooks.map(hook => hook.trustStatus))].sort(),
+    },
+  });
+  report.hosts.claudeCodeCli = probeClaudeSupport(options);
+  report.hosts.codexApp = codexAppState();
+
   const counts = { ok: 0, warn: 0, error: 0 };
   for (const item of report.checks) counts[item.status] += 1;
   report.summary = counts;
@@ -285,6 +445,7 @@ async function runDoctor(options) {
 function printHuman(report) {
   console.log(`Crabshell Codex doctor (${report.codexVersion || 'Codex unavailable'})`);
   for (const item of report.checks) console.log(`[${item.status.toUpperCase()}] ${item.id}: ${item.summary}`);
+  console.log(`Host state: Codex CLI=${report.hosts.codexCli.status}, Claude Code CLI=${report.hosts.claudeCodeCli.status}, Codex app=${report.hosts.codexApp.status}`);
   console.log(`Summary: ${report.summary.ok} ok, ${report.summary.warn} warnings, ${report.summary.error} errors`);
 }
 
@@ -309,6 +470,9 @@ module.exports = {
   main,
   parseArgs,
   parseFeatures,
+  installationDrift,
+  probeClaudeHooks,
+  probeClaudeSupport,
   probeHook,
   probePluginData,
   readManifest,
