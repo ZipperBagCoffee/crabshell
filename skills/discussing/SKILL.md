@@ -65,7 +65,7 @@ Ask the user:
 3. **Intent Anchor:** What are the specific, measurable outcomes? (IA items)
 **Convergence Criteria (auto-detect):**
 Before asking, check if `.crabshell/memory/regressing-state.json` exists AND has `active === true`:
-- **If regressing active:** DO NOT ask the user. Auto-fill with: "Orchestrator's final verification (devil's advocate) finds no new issues → converged." Inform user: "Convergence criteria auto-applied (regressing context detected)."
+- **If regressing active:** DO NOT ask the user. Auto-fill measurable items derived from the IA: one criterion per IA item stating how it is verified (recorded evidence in a cycle ticket, command exit code, or numeric threshold), plus "Final Report written and D status: concluded". The host goal evaluator reads these during regressing (regressing SKILL.md Step 2.6) — every item must be checkable by reading documents or running a command; subjective wording ("no new issues found") is INVALID. Inform user: "Convergence criteria auto-applied (regressing context detected)."
 - **If NOT regressing:** Ask: "Convergence Criteria: What observable conditions would indicate the goal is fully achieved? (For non-regressing, write 'Not applicable.')"
 
 Then create the document:
@@ -106,7 +106,7 @@ tags: []
 Mapping Type: `direct` (user explicitly stated) or `inferred` (derived from context, requires user confirmation)
 
 ## Convergence Criteria
-{If regressing active (regressing-state.json active===true): auto-filled as "Orchestrator's final verification (devil's advocate) finds no new issues → converged."
+{If regressing active (regressing-state.json active===true): auto-filled measurable items — one per IA item with its verification method (documented evidence, command exit, numeric threshold) + "Final Report written and D status: concluded". Must be checkable by the host goal evaluator by reading documents or running a command.
 If NOT regressing: user's answer — observable conditions for "done", or "Not applicable — non-regressing discussion."}
 
 ## Discussion Log

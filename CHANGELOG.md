@@ -1,5 +1,14 @@
 # Changelog
 
+## [21.110.0] - 2026-07-24
+
+### feat: goal-driven regressing continuation + v21.107.0 Stop-consolidation audit
+- Audit result: compared pre/post-v21.107.0 `hooks/hooks.json` wiring — the Stop consolidation preserved every other hook; the only change was retiring the direct `regressing-loop-guard.js` Stop owner (codified in `_test-legacy-orchestration-retirement.js`). A live sandbox probe confirmed `completion-controller.js` still blocks stop on execution-authorized turns while `regressing-state.json` is active and allows question turns, so bounded continuation survived the consolidation.
+- Regressing continuation is now goal-driven: `skills/regressing/SKILL.md` Step 2.6 prints a ready-to-paste `/goal` handoff (host goal mode: Claude Code 2.1.139+, Codex CLI 0.128.0+) so the host's evaluator keeps the session running until the D's `## Convergence Criteria` are met or the cycle cap is reached. Step 2 now requires measurable, document-verifiable convergence criteria; starting goal mode remains the user's choice and cycles continue autonomously without it.
+- `skills/discussing/SKILL.md`: the regressing auto-fill for Convergence Criteria no longer uses the subjective "devil's advocate finds no new issues" wording — criteria derive from IA items with explicit verification methods plus "Final Report written and D status: concluded", so the goal evaluator can judge them by reading the D document.
+- `codex-skills/regressing/SKILL.md`: same goal-mode handoff (step 1b) and measurable-criteria requirement for Codex.
+- Docs sync: STRUCTURE.md Hook Flow 3.5 rewritten to the completion-controller single-owner Stop path; ARCHITECTURE.md, USER-MANUAL.md, and the CLAUDE.md guard baseline updated to the goal-driven continuation wording. `regressing-loop-guard.js` stays unwired as a compatibility/test source.
+
 ## [21.109.0] - 2026-07-23
 
 ### feat: single-overwrite .bak backup rule

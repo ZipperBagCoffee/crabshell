@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.109.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.110.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -378,14 +378,10 @@ L1 generation:
    └─> sycophancy-guard.js (Write|Edit) — mid-turn transcript parsing for sycophancy + verification claim detection (v20.7.0, v21.1.0)
 
 3.5. Stop
-   ├─> sycophancy-guard.js (v19.29.0, v20.7.0 dual-layer)
-   │   └─> Detect agreement-without-verification patterns → block with re-examination
-   ├─> doc-watchdog.js stop (v21.18.0)
-   │   └─> Block session end when regressing active + ticket has no work log entry since last code edit
-   ├─> scope-guard.js (v21.19.0)
-   │   └─> Compare user-requested quantity vs response count; block scope reduction without approval
-   └─> regressing-loop-guard.js (v21.55.0)
-       └─> Block stop when regressing active + inject phase-specific context; no worker-count gate
+   └─> completion-controller.js (single Stop owner, v21.107.0)
+       ├─> decideStop — blocks stop on execution-authorized turns while a D/P/T or W workflow (incl. regressing-state.json) is active; parent-evidence gate; bounded identical-failure reporting
+       └─> spawned legacy validators: sycophancy-guard.js (agreement-without-verification), doc-watchdog.js stop (missing work log), scope-guard.js (scope reduction)
+   Note: regressing continuation is goal-driven from v21.110.0 — the regressing skill emits a `/goal` handoff (host goal mode: Claude Code 2.1.139+, Codex CLI 0.128.0+); regressing-loop-guard.js is retired from wiring and kept as a compatibility/test source.
 
 4. PostToolUse
    ├─> counter.js check (.*)
@@ -419,6 +415,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.110.0 | feat: goal-driven regressing continuation — regressing/discussing skills print a `/goal` handoff and require measurable Convergence Criteria (Claude Code 2.1.139+, Codex CLI 0.128.0+); v21.107.0 Stop-consolidation audit (all other wiring preserved, bounded continuation verified live); Hook Flow 3.5 sync. |
 | 21.109.0 | feat: non-git file backup rule — overwrite a single `<file>.bak` right before modifying; one backup per file, never accumulate (injected RULES + CLAUDE.md + AGENTS.md regeneration). |
 | 21.108.0 | feat: restore the shared `[의도]`/`[이해]`/`[설명]` response ending in the host-neutral first-turn core, with installed-host and mutation regressions for both Claude Code and Codex. |
 | 21.107.0 | feat: native Claude/Codex lifecycle parity; shared first-turn, memory, workflow, compaction, subagent, command-observation, completion, and doctor-state cores; Windows/Linux clean-profile matrix; unified mutation verifier; Claude-specific behavior preserved. |
