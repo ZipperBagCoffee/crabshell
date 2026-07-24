@@ -235,6 +235,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.109.0 | feat: non-git file backup rule — overwrite a single `<file>.bak` right before modifying; one backup per file, never accumulate (injected RULES + CLAUDE.md + AGENTS.md regeneration). |
 | 21.108.0 | feat: restore the shared mandatory `[의도]`/`[이해]`/`[설명]` response ending for Claude Code and Codex while retaining the internal task contract, natural answer body, and all native lifecycle behavior. |
 | 21.107.0 | feat: Claude Code + Codex native lifecycle parity, shared memory/workflow/compaction/subagent/completion cores, Windows/Linux clean-profile matrix, mutation-based cross-runtime verification, and seven-state live doctor; Claude-only features preserved. |
 | 21.106.1 | docs: remove stale Cycle 1/3 statements from current architecture/manual sections and state the post-retirement Claude/Codex hook boundary consistently. |

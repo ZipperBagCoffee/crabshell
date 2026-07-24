@@ -243,7 +243,7 @@ Before finalizing any response, scan for these patterns:
 On failure: (1) List what you tried, what constraint blocked each attempt, and what alternatives remain — never recommend stopping. "Impossible" = logically proven only. (2) After 3 failed attempts with same approach type: switch to a structurally different strategy before retrying the same approach.
 
 ### ADDITIONAL RULES
-- Search internet if unsure. Non-git files → backup (.bak) before modifying.
+- Search internet if unsure. Non-git files → overwrite single backup (\`<file>.bak\`) right before modifying — one .bak per file, never accumulate old backups.
 - **Workflows:** light-workflow for traceable standalone tasks; regressing for iterative improvement. Delegation and review depend on independent work and actual risk, not mandatory role pairs. Regressing iterations improve results rather than drain a queue; each plan covers only the current iteration.
 - **Session restart:** Invoke load-memory skill. Fallback: read latest logbook.md.
 - **Mandatory work log:** Append log entry to D/P/T/I documents after related work.
