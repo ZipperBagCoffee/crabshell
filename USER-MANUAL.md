@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.109.0)
+# Crabshell User Manual (v21.110.0)
 
 ## Why Do You Need This?
 
@@ -187,9 +187,10 @@ I (Investigation) — independent, not part of the D→P→T chain
 ### Regressing (Iterative Improvement)
 
 Use `/crabshell:regressing "topic"` for tasks that need multiple rounds of refinement:
-- Creates a single Discussion (D) as wrapper
+- Creates a single Discussion (D) as wrapper with measurable `## Convergence Criteria`
 - Runs one current-gap Plan (P) then Ticket (T) cycle at a time until the result converges
 - Each cycle's scope is determined by the previous cycle's verification results, not pre-allocated
+- Prints a ready-to-paste `/goal` line — start host goal mode (Claude Code 2.1.139+ or Codex CLI 0.128.0+) and the host keeps the session running until the D's Convergence Criteria are met or the cycle cap is reached
 
 ### Light Workflow (One-Shot Tasks)
 
@@ -312,7 +313,7 @@ Guard scripts are PreToolUse/Stop hooks that prevent common mistakes:
 | `pressure-guard.js` | Graduated tool blocking when consecutive negative feedback detected. L2: blocks 6 primary tools (Read/Grep/Glob/Bash/Write/Edit). L3: blocks ALL tools. Resets via positive feedback decay or user bailout keywords ("봉인해제" / "UNLEASH"). See [Pressure System](#pressure-system) |
 | `scope-guard.js` | Detects scope reduction in responses (delivering fewer items than user requested, using "too many" / "시간 관계상" as justification) |
 | `regressing-guard.js` | Phase-based write restrictions during active regressing sessions — blocks out-of-phase edits to plan/ticket documents |
-| `regressing-loop-guard.js` | Retained compatibility/test helper for the old count-independent continuation path; `completion-controller.js` is now the sole manifest Stop owner. |
+| `regressing-loop-guard.js` | Retained compatibility/test helper for the old count-independent continuation path; `completion-controller.js` is now the sole manifest Stop owner. Regressing continuation is goal-driven (v21.110.0): the regressing skill prints a `/goal` handoff line for host goal mode. |
 
 Guards run automatically via hooks. No configuration needed.
 For Codex, the shared path policy and shared completion control have native adapters. The remaining pressure, sycophancy, documentation, and edit/commit guards are Claude-only.

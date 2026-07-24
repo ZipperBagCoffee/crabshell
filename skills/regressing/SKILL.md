@@ -51,6 +51,7 @@ Create ONE Discussion document that wraps the entire regressing session:
 
 - Invoke `/discussing "topic"`
 - D contains: Intent, Context, Intent Anchor (IA), goals, expected results
+- D MUST contain a `## Convergence Criteria` section whose items are objectively checkable by reading project documents or running a command (document status, command exit code, numeric threshold). These criteria drive Rule 7 AND the host goal evaluator (Step 2.6) — vague criteria cause wrong termination.
 - This D stays open throughout all cycles and closes at the end
 - Metadata: `[regressing: cap {N}]`
 
@@ -85,6 +86,19 @@ Silence = proceed. Adjust any parameter by responding.
 **Inline parameter detection:** If the user's invocation includes a bare number after the topic, it is the cycle cap (not agent count). Numbers with "명" or "agents" suffix indicate agent count. Example: `/regressing "topic" 5` → cap=5. `/regressing "topic" 3명` → agents=3, cap=10.
 
 **User interaction:** Silence = proceed with recommended parameters. User may adjust any parameter before execution begins.
+
+### Step 2.6: Goal-Mode Handoff (host continuation)
+
+Session continuation is goal-driven, not hook-forced. The host's goal mode (Claude Code 2.1.139+ `/goal`, Codex CLI 0.128.0+ `/goal`) keeps the session working until the host's evaluator confirms the Discussion is concluded. The old unconditional Stop-hook block (`regressing-loop-guard.js`) is retired; `completion-controller.js` still enforces bounded continuation on execution-authorized turns.
+
+Immediately after Step 2.5, print this ready-to-paste line for the user (fill in the real D-ID, file name, and cap):
+
+```
+/goal Crabshell regressing {D-ID}: every item under "## Convergence Criteria" in .crabshell/discussion/{D-file}.md is met and its frontmatter status is "concluded", or the D Final Report records the cycle cap {N} as reached. Judge only by reading that document.
+```
+
+- Starting goal mode is the user's choice; the skill cannot start it. If the user does not start it, cycles still continue autonomously per Rule 5.
+- The goal condition MUST point at the D document only — the evaluator judges by reading it, so cycle results must land in the D/P/T documents (document-first) for the evaluator to see progress.
 
 ### Step 3: Pre-check (optional)
 
@@ -262,7 +276,7 @@ D (closed with final report)
 
 ## User Interaction
 
-- **At start**: Confirm topic. Cap is 10 unless user explicitly wrote a number. Do not infer cap from context, memory, or past sessions.
+- **At start**: Confirm topic. Cap is 10 unless user explicitly wrote a number. Do not infer cap from context, memory, or past sessions. Print the goal-mode handoff line (Step 2.6) so the user can run the session under host goal mode.
 - **During**: Fully autonomous. Terminates on convergence (Rule 7) or when cap is reached. At every 10-cycle boundary (when cap was defaulted), present progress report — user approves raising cap by 10 or stops.
 - **At end**: Present final report in D → user requests raising cap or terminates
 

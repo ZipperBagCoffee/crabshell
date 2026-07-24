@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.109.0)
+# Crabshell Architecture (v21.110.0)
 
 ## Overview
 
@@ -388,7 +388,7 @@ Regressing retains document-cycle continuation but has no parallel-worker count 
 | `.crabshell/verification/run-verify.js` | generated project runner | Byte-equivalent generated runner consumed by `verify-guard.js`; stdout text is diagnostic, not a pass oracle |
 | `sycophancy-guard.js` | Stop, PreToolUse (Write\|Edit) | Dual-layer sycophancy detection + verification claim detection (4-tier classification): Stop response + mid-turn transcript parsing; block with re-examination |
 | `scope-guard.js` | Stop | Compare user-requested quantity vs response count; block scope reduction without approval |
-| `regressing-loop-guard.js` | retained compatibility source | Legacy count-independent continuation helper retained for regression coverage; no longer a direct manifest Stop owner |
+| `regressing-loop-guard.js` | retained compatibility source | Legacy count-independent continuation helper retained for regression coverage; no longer a direct manifest Stop owner. Regressing continuation is goal-driven (v21.110.0): the regressing skill emits a `/goal` handoff for host goal mode, and `completion-controller.js` keeps bounded continuation on execution-authorized turns |
 | `skill-tracker.js` | PostToolUse (Skill) | Set skill-active flag on Skill tool calls (TTL-based, 5min expiry) |
 | `regressing-state.js` | (library) | Phase tracker: getState, buildReminder, detectSkillCall, advancePhase |
 | `extract-delta.js` | (library) | L1 delta extraction, timestamp watermarks, temp file management |
@@ -526,6 +526,7 @@ The 5 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.110.0 | feat: goal-driven regressing continuation — regressing/discussing skills print a `/goal` handoff and require measurable Convergence Criteria (Claude Code 2.1.139+, Codex CLI 0.128.0+); v21.107.0 Stop-consolidation audit (all other wiring preserved, bounded continuation verified live); Hook Flow docs sync. |
 | 21.109.0 | feat: non-git file backup rule — overwrite a single `<file>.bak` right before modifying; one backup per file, never accumulate (injected RULES + CLAUDE.md + AGENTS.md regeneration). |
 | 21.108.0 | feat: restore one shared mandatory intent/understanding/explanation response ending through both native prompt hooks; preserve natural response bodies, the internal task contract, all nine Codex events, and all Claude-specific lifecycle behavior. |
 | 21.107.0 | feat: shared native Claude/Codex lifecycle semantics, nine-event Codex hooks, preserved Claude behavior, parent-evidence completion control, alternating-host memory/workflow recovery, portable mutation verifier, Windows/Linux clean-profile matrix, and seven-state live doctor. |
