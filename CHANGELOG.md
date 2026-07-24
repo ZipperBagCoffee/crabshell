@@ -1,5 +1,12 @@
 # Changelog
 
+## [21.109.0] - 2026-07-23
+
+### feat: single-overwrite .bak backup rule
+- Changed the non-git-file backup rule from "backup (.bak) before modifying" to "overwrite single backup (`<file>.bak`) right before modifying — one .bak per file, never accumulate old backups" in `scripts/inject-rules.js` ADDITIONAL RULES (source of truth, synced to CLAUDE.md every prompt) and `CLAUDE.md`.
+- Regenerated `AGENTS.md` via `scripts/claude-to-agents.js --force` so Codex receives the same rule; its single `AGENTS.md.bak` was refreshed beforehand per the new rule.
+- Behavioral effect: editing a git-untracked file refreshes one `<file>.bak` immediately before each update instead of accumulating stale backups.
+
 ## [21.108.0] - 2026-07-20
 
 ### feat: restore the shared intent/understanding/explanation response ending

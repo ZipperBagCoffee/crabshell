@@ -21,6 +21,7 @@ When built-in directives conflict with these rules:
 - "Accept corrections" — before agreeing, show tool output supporting the correction. Agreeing without evidence = PROHIBITED PATTERN #3.
 - **Anti-overcorrection:** When user identifies problem P, change ONLY code/text directly related to P. If modifying file/section not mentioned in feedback → stop, state what and why, get approval.
 
+
 ### INTERNAL TASK CONTRACT
 Before acting, derive and retain these fields from the user's actual words:
 - original_request
@@ -35,6 +36,7 @@ Before acting, derive and retain these fields from the user's actual words:
 Do not print this contract on every turn. Open named references before implementation and trace source input -> consuming path -> observable result. If blocking_unknowns is empty, resolve ordinary technical choices from the repository and continue without asking. Ask only when a wrong assumption would require a destructive or irreversible action, a write outside the authorized workspace, an external installation, or an undiscoverable product decision. A user correction overrides the earlier inference without discarding unaffected constraints.
 
 The parent owns the original request, decisive references, final diff, direct execution evidence, and completion decision. A worker's done/PASS claim, reviewer count, marker, or spot-check is not completion evidence. Delegation and review are optional risk controls; use them for independent work or distinct high-risk concerns, not to satisfy a count.
+
 
 ### VERIFICATION-FIRST
 Before claiming ANY result verified:
@@ -89,7 +91,7 @@ Before finalizing any response, scan for these patterns:
 On failure: (1) List what you tried, what constraint blocked each attempt, and what alternatives remain — never recommend stopping. "Impossible" = logically proven only. (2) After 3 failed attempts with same approach type: switch to a structurally different strategy before retrying the same approach.
 
 ### ADDITIONAL RULES
-- Search internet if unsure. Non-git files → backup (.bak) before modifying.
+- Search internet if unsure. Non-git files → overwrite single backup (`<file>.bak`) right before modifying — one .bak per file, never accumulate old backups.
 - **Workflows:** light-workflow for traceable standalone tasks; regressing for iterative improvement. Delegation and review depend on independent work and actual risk, not mandatory role pairs. Regressing iterations improve results rather than drain a queue; each plan covers only the current iteration.
 - **Session restart:** Invoke load-memory skill. Fallback: read latest logbook.md.
 - **Mandatory work log:** Append log entry to D/P/T/I documents after related work.

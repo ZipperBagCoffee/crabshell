@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.108.0)
+# Crabshell Architecture (v21.109.0)
 
 ## Overview
 
@@ -526,6 +526,7 @@ The 5 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.109.0 | feat: non-git file backup rule — overwrite a single `<file>.bak` right before modifying; one backup per file, never accumulate (injected RULES + CLAUDE.md + AGENTS.md regeneration). |
 | 21.108.0 | feat: restore one shared mandatory intent/understanding/explanation response ending through both native prompt hooks; preserve natural response bodies, the internal task contract, all nine Codex events, and all Claude-specific lifecycle behavior. |
 | 21.107.0 | feat: shared native Claude/Codex lifecycle semantics, nine-event Codex hooks, preserved Claude behavior, parent-evidence completion control, alternating-host memory/workflow recovery, portable mutation verifier, Windows/Linux clean-profile matrix, and seven-state live doctor. |
 | 21.106.1 | docs: remove stale pre-Cycle-3 fixed-WA/verifier/count descriptions from current architecture sections and align the Claude/Codex hook boundary with v21.106.0 runtime behavior. |

@@ -1,6 +1,6 @@
 # Crabshell Plugin Structure
 
-**Version**: 21.108.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.109.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -419,6 +419,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.109.0 | feat: non-git file backup rule — overwrite a single `<file>.bak` right before modifying; one backup per file, never accumulate (injected RULES + CLAUDE.md + AGENTS.md regeneration). |
 | 21.108.0 | feat: restore the shared `[의도]`/`[이해]`/`[설명]` response ending in the host-neutral first-turn core, with installed-host and mutation regressions for both Claude Code and Codex. |
 | 21.107.0 | feat: native Claude/Codex lifecycle parity; shared first-turn, memory, workflow, compaction, subagent, command-observation, completion, and doctor-state cores; Windows/Linux clean-profile matrix; unified mutation verifier; Claude-specific behavior preserved. |
 | 21.106.1 | docs: correct current runtime descriptions after the v21.106.0 fixed-count/role/verifier retirement and remove stale Cycle 1/3 transition language. |
