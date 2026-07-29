@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure
+# Crabshell Plugin Structure (v21.110.1)
 
-**Version**: 21.110.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.110.1 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -68,7 +68,8 @@ crabshell/
 │   ├── find-node.sh                  # Fallback Node.js locator utility (v18.0.0, hardened v21.99.3)
 │   ├── counter.js                    # Main engine
 │   ├── load-memory.js                # Load memory on session start
-│   ├── inject-rules.js               # UserPromptSubmit rules injection
+│   ├── inject-rules.js               # Rules injection + intent-independent pressure bailout
+│   ├── _test-bailout-main.js         # Real-main bailout reset/read-only regression
 │   ├── shared-context.js              # Shared project context + orchestration defaults
 │   ├── subagent-context.js            # Bounded worker contract injection
 │   ├── extract-delta.js              # L1 delta extraction
@@ -276,6 +277,7 @@ UserPromptSubmit hook:
 - Inject critical rules every prompt via `additionalContext`
 - Configurable frequency via `rulesInjectionFrequency`
 - Auto-sync rules to CLAUDE.md via `syncRulesToClaudeMd()` (marker-based)
+- Reset and persist all pressure counters when `봉인해제` / `UNLEASH` appears, regardless of question/execution classification (v21.110.1)
 - Detect pending delta → inject DELTA_INSTRUCTION (non-blocking background, v21.34.0)
 - Detect pending rotation → inject ROTATION_INSTRUCTION
 - Detect active regressing session → inject phase-specific reminder (v19.23.0)
@@ -353,6 +355,7 @@ L1 generation:
 
 2. UserPromptSubmit (every prompt)
    └─> inject-rules.js
+       ├─> Explicit 봉인해제 / UNLEASH: lock, reset, and persist pressure state before intent gating
        ├─> Inject critical rules via additionalContext
        ├─> Check for pending delta (delta_temp.txt exists)
        │   └─> If yes (and !deltaProcessing): Inject DELTA_INSTRUCTION → Claude launches background memory-delta agent
@@ -415,6 +418,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.110.1 | fix: restore intent-independent `봉인해제` / `UNLEASH` handling in shared `inject-rules.js`; persist all pressure counters at zero, preserve read-only ordinary questions, and add `_test-bailout-main.js` behavioral coverage. |
 | 21.110.0 | feat: goal-driven regressing continuation — regressing/discussing skills print a `/goal` handoff and require measurable Convergence Criteria (Claude Code 2.1.139+, Codex CLI 0.128.0+); v21.107.0 Stop-consolidation audit (all other wiring preserved, bounded continuation verified live); Hook Flow 3.5 sync. |
 | 21.109.0 | feat: non-git file backup rule — overwrite a single `<file>.bak` right before modifying; one backup per file, never accumulate (injected RULES + CLAUDE.md + AGENTS.md regeneration). |
 | 21.108.0 | feat: restore the shared `[의도]`/`[이해]`/`[설명]` response ending in the host-neutral first-turn core, with installed-host and mutation regressions for both Claude Code and Codex. |

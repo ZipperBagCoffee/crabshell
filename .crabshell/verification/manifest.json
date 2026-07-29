@@ -154,7 +154,7 @@
     },
     {
       "id": "V009",
-      "ia": "Current release version is 21.110.0 after the goal-driven regressing continuation change",
+      "ia": "Current release version is 21.110.1 after the intent-independent pressure bailout hotfix",
       "type": "structural",
       "command": {
         "file": "node",
@@ -169,7 +169,7 @@
           {
             "kind": "stdoutJsonEquals",
             "pointer": "/version",
-            "equals": "21.110.0"
+            "equals": "21.110.1"
           }
         ],
         "forbiddenChanges": []
@@ -319,6 +319,40 @@
         "forbiddenChanges": []
       },
       "timeout": 660000
+    },
+    {
+      "id": "V016",
+      "ia": "Both bailout keywords reset and persist the real shared UserPromptSubmit main path while ordinary questions remain read-only",
+      "type": "behavioral",
+      "command": {
+        "file": "node",
+        "args": [
+          "scripts/_test-bailout-main.js",
+          "--json"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [
+          {
+            "kind": "stdoutJsonEquals",
+            "pointer": "/passed",
+            "equals": true
+          },
+          {
+            "kind": "stdoutJsonEquals",
+            "pointer": "/passedCount",
+            "equals": 25
+          },
+          {
+            "kind": "stdoutJsonEquals",
+            "pointer": "/failedCount",
+            "equals": 0
+          }
+        ],
+        "forbiddenChanges": []
+      },
+      "timeout": 30000
     }
   ]
 }

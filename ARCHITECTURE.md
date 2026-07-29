@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.110.0)
+# Crabshell Architecture (v21.110.1)
 
 ## Overview
 
@@ -210,7 +210,8 @@ Codex marketplace -> installed cache -> .codex-plugin/plugin.json
 2. UserPromptSubmit (every prompt)
    └─> inject-rules.js
        ├─> Classify question vs execution through core/turn-intent.js
-       ├─> Question: inject read-only shared contract, perform no lifecycle writes
+       ├─> Explicit 봉인해제 / UNLEASH: reset and persist pressure before the intent gate
+       ├─> Other questions: inject read-only shared contract, perform no lifecycle writes
        ├─> First execution prompt: cleanup/reset + syncRulesToClaudeMd() + MEMORY.md warning
        ├─> Inject COMPRESSED_CHECKLIST (~300 tokens) via additionalContext
        │   (Full RULES ~5000 tokens only on error fallback)
@@ -363,7 +364,7 @@ Regressing retains document-cycle continuation but has no parallel-worker count 
 |--------|------|---------|
 | `find-node.sh` | (fallback utility) | Cross-platform Node.js locator retained for fallback use; direct hooks run `node` from `hooks.json` in v21.99.3 |
 | `load-memory.js` | SessionStart | Load memory hierarchy, MEMORY.md warning |
-| `inject-rules.js` | UserPromptSubmit | Dual injection (CLAUDE.md + additionalContext), delta/rotation/regressing detection |
+| `inject-rules.js` | UserPromptSubmit | Dual injection (CLAUDE.md + additionalContext), intent-independent pressure bailout, delta/rotation/regressing detection |
 | `counter.js` | PostToolUse, SessionEnd | Main engine: counter, L1 creation, rotation, regressing phase detection |
 | `regressing-guard.js` | PreToolUse (Write\|Edit) | Block direct plan/ticket writes during active regressing; force Skill tool; validate P doc agent sections before ticketing (v21.41.0) |
 | `docs-guard.js` | PreToolUse (Write\|Edit) | Block writes to .crabshell/ D/P/T/I/H subdirectories without active skill flag |
@@ -526,6 +527,7 @@ The 5 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.110.1 | fix: restore `봉인해제` / `UNLEASH` before the v21.107.0 intent mutation gate; lock and persist a complete zeroed pressure reset without weakening read-only ordinary questions; add real shared-`main()` regression coverage. |
 | 21.110.0 | feat: goal-driven regressing continuation — regressing/discussing skills print a `/goal` handoff and require measurable Convergence Criteria (Claude Code 2.1.139+, Codex CLI 0.128.0+); v21.107.0 Stop-consolidation audit (all other wiring preserved, bounded continuation verified live); Hook Flow docs sync. |
 | 21.109.0 | feat: non-git file backup rule — overwrite a single `<file>.bak` right before modifying; one backup per file, never accumulate (injected RULES + CLAUDE.md + AGENTS.md regeneration). |
 | 21.108.0 | feat: restore one shared mandatory intent/understanding/explanation response ending through both native prompt hooks; preserve natural response bodies, the internal task contract, all nine Codex events, and all Claude-specific lifecycle behavior. |

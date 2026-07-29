@@ -573,9 +573,12 @@ async function main(options = {}) {
     const hookData = options.hookData || await readStdin(1000);
     const projectDir = options.projectDir || getProjectDir();
 
-    // Extract and classify before any optional state mutation. Questions are read-only.
+    // Extract and classify before any optional state mutation.
+    // Explicit bailout keywords are user-authorized state resets even when the
+    // surrounding prompt is classified as a question/default turn.
     const userPrompt = (hookData && (hookData.prompt || hookData.input)) || '';
     const intent = classifyUserIntent(userPrompt);
+    const isBailout = detectBailout(hookData);
 
     // Emergency stop check — replaces entire context
     if (checkEmergencyStop(hookData)) {
@@ -616,10 +619,9 @@ async function main(options = {}) {
     // Lock-fail fallback (fail-open): on lock acquisition failure, still perform the read
     // and compute in-memory state so context injection proceeds, but SKIP the write
     // (prevents lost-update race when another process is mid-write). Warn to stderr.
-    const mayMutateState = intent === 'execution';
+    const mayMutateState = intent === 'execution' || isBailout;
     const idxLocked = mayMutateState ? acquireIndexLock(memoryDir) : false;
     let index;
-    let isBailout;
     let isNegativeFeedback;
     let pressureLevel;
     let pressureLevelChanged;
@@ -631,18 +633,19 @@ async function main(options = {}) {
       const fp = index.feedbackPressure;
       if (mayMutateState) {
         // Bailout: reset pressure regardless of current level (all 3 counters)
-        isBailout = BAILOUT_KEYWORDS.some(kw => userPrompt.includes(kw));
-        if (isBailout && fp) {
-          fp.level = 0;
-          fp.consecutiveCount = 0;
-          fp.decayCounter = 0;
-          fp.oscillationCount = 0;
-          fp.lastShownLevel = 0;
+        if (isBailout) {
+          if (fp) {
+            fp.level = 0;
+            fp.consecutiveCount = 0;
+            fp.decayCounter = 0;
+            fp.oscillationCount = 0;
+            fp.lastShownLevel = 0;
+          }
           if (index.tooGoodSkepticism) index.tooGoodSkepticism.retryCount = 0;
           console.error('[PRESSURE BAILOUT: reset all 3 counters]');
         }
         isNegativeFeedback = isBailout ? false : detectNegativeFeedback(userPrompt);
-        pressureLevel = updateFeedbackPressure(index, isNegativeFeedback);
+        pressureLevel = isBailout ? 0 : updateFeedbackPressure(index, isNegativeFeedback);
         if (pressureLevel > 0) console.error(`[PRESSURE L${pressureLevel}]`);
         const lastShownLevel = (fp && typeof fp.lastShownLevel === 'number') ? fp.lastShownLevel : 0;
         pressureLevelChanged = pressureLevel !== lastShownLevel;
@@ -655,7 +658,6 @@ async function main(options = {}) {
           console.error('[inject-rules: index lock busy, skipping write (fail-open)]');
         }
       } else {
-        isBailout = false;
         isNegativeFeedback = false;
         pressureLevel = fp && typeof fp.level === 'number' ? fp.level : 0;
         pressureLevelChanged = false;
