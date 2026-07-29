@@ -1,5 +1,13 @@
 # Changelog
 
+## [21.110.2] - 2026-07-28
+
+### fix: make every Codex hook launcher fail open
+- Wrapped all nine Codex lifecycle launchers, for both `command` and `commandWindows`, in a Promise rejection boundary so adapter load failures and rejected `main()` calls exit 0 instead of surfacing `PreToolUse` / `PostToolUse hook failed`.
+- Strengthened `validateCodexHookConfig()` to reject hook commands that omit the fail-open boundary.
+- Added direct Windows regression coverage for a missing adapter and a rejecting adapter while preserving every existing native hook output contract.
+- Synced Claude/Codex plugin manifests, release documentation, and the verification manifest to v21.110.2.
+
 ## [21.110.1] - 2026-07-28
 
 ### fix: restore intent-independent pressure bailout

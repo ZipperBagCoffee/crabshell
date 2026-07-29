@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.110.1)
+# Crabshell Architecture (v21.110.2)
 
 ## Overview
 
@@ -175,6 +175,7 @@ Codex marketplace -> installed cache -> .codex-plugin/plugin.json
 
 - The explicit manifest hook path is a runtime boundary: Codex does not default-discover Claude's `hooks/hooks.json`.
 - Codex exposes nine synchronous events: `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PreCompact`, `PostCompact`, `SubagentStart`, `SubagentStop`, and `Stop`.
+- Every Codex hook command resolves its adapter inside a Promise fail-open boundary; synchronous module-load errors and rejected adapter `main()` calls are absorbed with exit 0.
 - Automatic SessionStart memory/workflow recovery is read-only. Explicit load/save/search skills execute from the installed cache against the active project. Claude's automatic SessionEnd transcript/delta save remains Claude-only.
 - One shared completion state owner requires parent-executed command evidence after a child claim, rejects ambiguous/false-done evidence, and bounds identical automatic failures. Claude routes its existing sycophancy/doc-watchdog/scope Stop checks behind `completion-controller.js`; Codex emits the native block decision through its adapter.
 - Pressure/sycophancy enforcement remains Claude-only. Fixed-count, role-collapse, and behavior-verifier surfaces remain retired from both runtimes.
@@ -527,6 +528,7 @@ The 5 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.110.2 | fix: add a Promise fail-open boundary to every Codex hook launcher; enforce it in the native hook contract and directly regress missing-module and rejected-adapter failures on Windows. |
 | 21.110.1 | fix: restore `봉인해제` / `UNLEASH` before the v21.107.0 intent mutation gate; lock and persist a complete zeroed pressure reset without weakening read-only ordinary questions; add real shared-`main()` regression coverage. |
 | 21.110.0 | feat: goal-driven regressing continuation — regressing/discussing skills print a `/goal` handoff and require measurable Convergence Criteria (Claude Code 2.1.139+, Codex CLI 0.128.0+); v21.107.0 Stop-consolidation audit (all other wiring preserved, bounded continuation verified live); Hook Flow docs sync. |
 | 21.109.0 | feat: non-git file backup rule — overwrite a single `<file>.bak` right before modifying; one backup per file, never accumulate (injected RULES + CLAUDE.md + AGENTS.md regeneration). |

@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.110.1)
+# Crabshell User Manual (v21.110.2)
 
 ## Why Do You Need This?
 
@@ -270,7 +270,7 @@ Hook launcher v21.99.3 note: `hooks/hooks.json` now invokes hook scripts through
 | `SubagentStop` | `adapters/codex/stop.js` | Child stops | Records the child result as a claim, never as completion proof |
 | `Stop` | `adapters/codex/stop.js` | Parent attempts completion | Applies the shared parent-evidence and bounded-continuation decision using Codex-native block JSON |
 
-Codex reads `hooks/codex-hooks.json` through the explicit `.codex-plugin/plugin.json` `hooks` field. That prevents accidental discovery of Claude's `hooks/hooks.json`. The nine Codex events are synchronous and native; shared semantics live in host-neutral cores, while Claude-specific pressure/sycophancy and SessionEnd capture stay in Claude. Retired fixed-count, role-collapse, and behavior-verifier hooks are absent from both manifests.
+Codex reads `hooks/codex-hooks.json` through the explicit `.codex-plugin/plugin.json` `hooks` field. That prevents accidental discovery of Claude's `hooks/hooks.json`. The nine Codex events are synchronous and native; every launcher catches adapter-load and rejected-`main()` failures so infrastructure errors exit 0 without interrupting the triggering tool call. Shared semantics live in host-neutral cores, while Claude-specific pressure/sycophancy and SessionEnd capture stay in Claude. Retired fixed-count, role-collapse, and behavior-verifier hooks are absent from both manifests.
 
 ### Internal Task Contract and Shared Response Ending
 
@@ -426,6 +426,7 @@ The eight-field task contract, risk boundary for user questions, bounded worker 
 
 - `.agents/plugins/marketplace.json` is the repo-scoped native marketplace source.
 - `.codex-plugin/plugin.json` explicitly points to `codex-skills/` and `hooks/codex-hooks.json`.
+- Both `command` and `commandWindows` entries use the same Node Promise fail-open boundary; shell-independent `PLUGIN_ROOT` lookup, missing-module failure, and rejected adapters are covered by the Windows hook regression.
 - Codex stores installed plugin material under its plugin cache and writable runtime data under `plugins/data/<plugin>-<marketplace>` inside `CODEX_HOME`; plugin source files are not used as writable state.
 - Hook definitions are not runnable until Codex records trust for their current hash. Any definition change produces `modified` until reviewed again.
 - Run `crabshell:status` for live Claude/Codex installed, activated, trusted, behavior-verified, degraded, drifted, and unsupported results. It uses current CLI/plugin/cache/hook observations, not a Crabshell-maintained version compatibility table; Codex app remains a separate row.

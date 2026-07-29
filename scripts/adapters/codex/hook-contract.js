@@ -102,6 +102,11 @@ function validateCodexHookConfig(config) {
       if (handler.async === true) throw new Error('Async Codex hooks are not supported.');
       if (!String(handler.command || '').includes('process.env.PLUGIN_ROOT')) throw new Error('Codex hook command must resolve PLUGIN_ROOT inside Node.');
       if (!String(handler.commandWindows || '').includes('process.env.PLUGIN_ROOT')) throw new Error('Codex Windows hook command must resolve PLUGIN_ROOT inside Node.');
+      for (const command of [handler.command, handler.commandWindows]) {
+        if (!String(command || '').includes('Promise.resolve().then(') || !String(command || '').includes('.catch(')) {
+          throw new Error('Codex hook commands must catch loader and adapter failures so hooks fail open.');
+        }
+      }
       if (/%PLUGIN_ROOT%|\$\{PLUGIN_ROOT\}|\$env:PLUGIN_ROOT/i.test(String(handler.commandWindows || ''))) {
         throw new Error('Codex Windows hook command must not depend on shell-specific PLUGIN_ROOT expansion.');
       }

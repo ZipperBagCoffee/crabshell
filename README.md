@@ -58,7 +58,7 @@ node scripts/codex-docs.js investigation "research topic"
 node scripts/codex-docs.js worklog "task title"
 ```
 
-Codex activates nine synchronous native lifecycle events: SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, PreCompact, PostCompact, SubagentStart, SubagentStop, and Stop. They share host-neutral memory/workflow/verification cores with Claude while emitting each host's native hook response. Claude's pressure/sycophancy and automatic SessionEnd capture remain Claude-specific; the retired verifier and fixed agent-count hooks are absent from both runtimes.
+Codex activates nine synchronous native lifecycle events: SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, PreCompact, PostCompact, SubagentStart, SubagentStop, and Stop. They share host-neutral memory/workflow/verification cores with Claude while emitting each host's native hook response. Every Codex launcher catches adapter-load and rejected-`main()` failures so hook infrastructure errors fail open instead of interrupting the user's tool call. Claude's pressure/sycophancy and automatic SessionEnd capture remain Claude-specific; the retired verifier and fixed agent-count hooks are absent from both runtimes.
 
 On every prompt, both native `UserPromptSubmit` paths inject one shared response contract. The answer body stays natural; its ending contains three short lines in order: `[의도]`, `[이해]`, and `[설명]`.
 
@@ -235,6 +235,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.110.2 | fix: wrap all nine Codex hook launchers in a Promise fail-open boundary; missing adapters and rejected `main()` calls now exit 0, with Windows execution and hook-contract regression coverage. |
 | 21.110.1 | fix: restore `봉인해제` / `UNLEASH` as intent-independent pressure resets in the shared UserPromptSubmit path; persist all counters at zero while keeping ordinary questions read-only; add a 25-assertion real-`main()` regression test. |
 | 21.110.0 | feat: goal-driven regressing continuation — regressing/discussing skills print a `/goal` handoff and require measurable Convergence Criteria (Claude Code 2.1.139+, Codex CLI 0.128.0+); v21.107.0 Stop-consolidation audit (all other wiring preserved, bounded continuation verified live); Hook Flow docs sync. |
 | 21.109.0 | feat: non-git file backup rule — overwrite a single `<file>.bak` right before modifying; one backup per file, never accumulate (injected RULES + CLAUDE.md + AGENTS.md regeneration). |
