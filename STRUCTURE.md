@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.110.1)
+# Crabshell Plugin Structure (v21.110.2)
 
-**Version**: 21.110.1 | **Author**: TaWa | **License**: MIT
+**Version**: 21.110.2 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -62,7 +62,7 @@ crabshell/
 │
 ├── hooks/                            # Lifecycle hooks
 │   ├── hooks.json                    # Claude Code hook config
-│   └── codex-hooks.json              # Nine-event Codex-native lifecycle config
+│   └── codex-hooks.json              # Nine-event Codex-native lifecycle config + fail-open launchers
 │
 ├── scripts/                          # Core implementation (Node.js)
 │   ├── find-node.sh                  # Fallback Node.js locator utility (v18.0.0, hardened v21.99.3)
@@ -103,6 +103,7 @@ crabshell/
 │   ├── codex-memory.js               # Manual Codex memory load/save/search/status
 │   ├── verify-cross-runtime.js        # Sequential lifecycle/mutation verifier; fail-open last
 │   ├── _test-cross-platform-native-hosts.js # Windows/Linux clean-profile CLI matrix
+│   ├── _test-codex-windows-hook-command.js # Windows hook output + loader/rejection fail-open regression
 │   ├── _test-linux-native-hosts.sh    # Disposable Linux Node/current-CLI provisioner
 │   ├── run-orchestration-corpus.js   # Live Codex A/B orchestration behavior runner (v21.105.0)
 │   ├── _test-orchestration-defaults.js # Deterministic orchestration policy tests (v21.105.0)
@@ -204,7 +205,7 @@ The repository intentionally keeps Claude and Codex runtime surfaces side by sid
 | `skills/` | Claude Code | Claude-oriented skill instructions |
 | `.agents/plugins/marketplace.json` | Codex | Repo-scoped native marketplace entry (`source.path: "./"`) |
 | `.codex-plugin/plugin.json` | Codex | Codex metadata plus explicit `codex-skills/` and `hooks/codex-hooks.json` paths |
-| `hooks/codex-hooks.json` | Codex | Nine synchronous native lifecycle events; prevents default Claude-hook discovery |
+| `hooks/codex-hooks.json` | Codex | Nine synchronous native lifecycle events with loader/rejection fail-open launchers; prevents default Claude-hook discovery |
 | `codex-skills/` | Codex | Bundled skills, including installed-cache memory and doctor wrappers |
 | `scripts/codex-memory.js` | Codex | Explicit memory load/save/search/status wrapper; automatic read-only load comes from SessionStart |
 | `scripts/codex-docs.js` | Codex | Manual W/H/D/P/T/I document creation wrapper |
@@ -296,7 +297,7 @@ PreToolUse path validation (v19.31.0, v20.3.0 Edit block, v20.6.0 Write shrink g
 ### scripts/core/path-policy.js and scripts/adapters/codex/
 - `path-policy.js` contains the host-neutral path decisions shared with the existing Claude wrapper
 - `adapters/codex/pre-tool-use.js` normalizes the native Codex `PreToolUse` payload and emits `hookSpecificOutput.permissionDecision="deny"`
-- Malformed/unsupported events fail open; the Codex hook config contains no Stop, async, automatic memory, pressure, or verifier handlers
+- Malformed/unsupported events fail open, and each launcher catches adapter-load or rejected-`main()` failures; the Codex hook config contains synchronous Stop handling but no async, automatic SessionEnd memory, pressure, or verifier handlers
 - `codex-app-server.js` provides the JSON-RPC client used by doctor to query Codex's own plugin/skill/hook interpretation
 
 ### scripts/core/orchestration-policy.js and scripts/run-orchestration-corpus.js
@@ -418,6 +419,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.110.2 | fix: all nine Codex hook commands now catch adapter-load and rejected-`main()` failures; the hook contract enforces the fail-open wrapper and Windows regressions exercise both failure paths. |
 | 21.110.1 | fix: restore intent-independent `봉인해제` / `UNLEASH` handling in shared `inject-rules.js`; persist all pressure counters at zero, preserve read-only ordinary questions, and add `_test-bailout-main.js` behavioral coverage. |
 | 21.110.0 | feat: goal-driven regressing continuation — regressing/discussing skills print a `/goal` handoff and require measurable Convergence Criteria (Claude Code 2.1.139+, Codex CLI 0.128.0+); v21.107.0 Stop-consolidation audit (all other wiring preserved, bounded continuation verified live); Hook Flow 3.5 sync. |
 | 21.109.0 | feat: non-git file backup rule — overwrite a single `<file>.bak` right before modifying; one backup per file, never accumulate (injected RULES + CLAUDE.md + AGENTS.md regeneration). |

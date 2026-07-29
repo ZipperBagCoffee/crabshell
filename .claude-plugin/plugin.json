@@ -1,6 +1,6 @@
 {
   "name": "crabshell",
-  "version": "21.110.1",
+  "version": "21.110.2",
   "description": "Dual-runtime Claude Code and Codex project memory, native lifecycle hooks, parent-owned verification, and structured D/P/T/I/H/W workflows.",
   "author": {
     "name": "TaWa"

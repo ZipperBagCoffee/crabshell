@@ -150,6 +150,7 @@ try {
 
   test('missing/extra event, divergent adapter, async, handler-type, and hardcoded-command mutations fail', () => {
     const original = JSON.parse(fs.readFileSync(path.join(repoRoot, 'hooks', 'codex-hooks.json'), 'utf8'));
+    const divergentCommand = 'node -e "Promise.resolve().then(() => require(process.env.PLUGIN_ROOT + \'/scripts/divergent.js\').main()).catch(() => {})"';
     const mutate = fn => {
       const copy = JSON.parse(JSON.stringify(original));
       fn(copy);
@@ -163,20 +164,21 @@ try {
     assert.throws(() => validateCodexHookConfig(mutate(config => { delete config.hooks.PostToolUse; })), /exactly/);
     assert.throws(() => validateCodexHookConfig(mutate(config => { delete config.hooks.Stop; })), /exactly/);
     assert.throws(() => validateCodexHookConfig(mutate(config => { delete config.hooks.SubagentStop; })), /exactly/);
-    assert.throws(() => validateCodexHookConfig(mutate(config => { config.hooks.UserPromptSubmit[0].hooks[0].command = 'node -e "require(process.env.PLUGIN_ROOT + \'/scripts/divergent.js\').main()"'; })), /shared Codex user-prompt adapter/);
-    assert.throws(() => validateCodexHookConfig(mutate(config => { config.hooks.SessionStart[0].hooks[0].command = 'node -e "require(process.env.PLUGIN_ROOT + \'/scripts/divergent.js\').main()"'; })), /shared Codex memory adapter/);
-    assert.throws(() => validateCodexHookConfig(mutate(config => { config.hooks.PreCompact[0].hooks[0].command = 'node -e "require(process.env.PLUGIN_ROOT + \'/scripts/divergent.js\').main()"'; })), /pre-compact/);
-    assert.throws(() => validateCodexHookConfig(mutate(config => { config.hooks.PostCompact[0].hooks[0].command = 'node -e "require(process.env.PLUGIN_ROOT + \'/scripts/divergent.js\').main()"'; })), /post-compact/);
-    assert.throws(() => validateCodexHookConfig(mutate(config => { config.hooks.SubagentStart[0].hooks[0].command = 'node -e "require(process.env.PLUGIN_ROOT + \'/scripts/divergent.js\').main()"'; })), /subagent adapter/);
-    assert.throws(() => validateCodexHookConfig(mutate(config => { config.hooks.PostToolUse[0].hooks[0].command = 'node -e "require(process.env.PLUGIN_ROOT + \'/scripts/divergent.js\').main()"'; })), /parent-evidence adapter/);
-    assert.throws(() => validateCodexHookConfig(mutate(config => { config.hooks.Stop[0].hooks[0].command = 'node -e "require(process.env.PLUGIN_ROOT + \'/scripts/divergent.js\').main()"'; })), /completion adapter/);
+    assert.throws(() => validateCodexHookConfig(mutate(config => { config.hooks.UserPromptSubmit[0].hooks[0].command = divergentCommand; })), /shared Codex user-prompt adapter/);
+    assert.throws(() => validateCodexHookConfig(mutate(config => { config.hooks.SessionStart[0].hooks[0].command = divergentCommand; })), /shared Codex memory adapter/);
+    assert.throws(() => validateCodexHookConfig(mutate(config => { config.hooks.PreCompact[0].hooks[0].command = divergentCommand; })), /pre-compact/);
+    assert.throws(() => validateCodexHookConfig(mutate(config => { config.hooks.PostCompact[0].hooks[0].command = divergentCommand; })), /post-compact/);
+    assert.throws(() => validateCodexHookConfig(mutate(config => { config.hooks.SubagentStart[0].hooks[0].command = divergentCommand; })), /subagent adapter/);
+    assert.throws(() => validateCodexHookConfig(mutate(config => { config.hooks.PostToolUse[0].hooks[0].command = divergentCommand; })), /parent-evidence adapter/);
+    assert.throws(() => validateCodexHookConfig(mutate(config => { config.hooks.Stop[0].hooks[0].command = divergentCommand; })), /completion adapter/);
     assert.throws(() => validateCodexHookConfig(mutate(config => { config.hooks.SubagentStop[0].hooks.push({ ...config.hooks.SubagentStop[0].hooks[0] }); })), /one shared Codex completion adapter/);
     assert.throws(() => validateCodexHookConfig(mutate(config => { config.hooks.PreCompact[0].matcher = 'manual'; })), /manual\|auto/);
     assert.throws(() => validateCodexHookConfig(mutate(config => { config.hooks.PreToolUse[0].hooks[0].async = true; })), /Async/);
     assert.throws(() => validateCodexHookConfig(mutate(config => { config.hooks.PreToolUse[0].hooks[0].type = 'prompt'; })), /handler type/);
     assert.throws(() => validateCodexHookConfig(mutate(config => { config.hooks.PreToolUse[0].hooks[0].command = 'node /absolute/plugin/hook.js'; })), /PLUGIN_ROOT/);
+    assert.throws(() => validateCodexHookConfig(mutate(config => { config.hooks.PreToolUse[0].hooks[0].command = 'node -e "require(process.env.PLUGIN_ROOT + \'/scripts/adapters/codex/pre-tool-use.js\').main()"'; })), /fail open/);
     assert.throws(() => validateCodexHookConfig(mutate(config => { config.hooks.PreToolUse[0].hooks[0].commandWindows = 'node "%PLUGIN_ROOT%/scripts/adapters/codex/pre-tool-use.js"'; })), /resolve PLUGIN_ROOT/);
-    assert.throws(() => validateCodexHookConfig(mutate(config => { config.hooks.PreToolUse[0].hooks[0].commandWindows = 'node -e "require(process.env.PLUGIN_ROOT + \'/%PLUGIN_ROOT%/pre-tool-use.js\').main()"'; })), /shell-specific/);
+    assert.throws(() => validateCodexHookConfig(mutate(config => { config.hooks.PreToolUse[0].hooks[0].commandWindows = 'node -e "Promise.resolve().then(() => require(process.env.PLUGIN_ROOT + \'/%PLUGIN_ROOT%/pre-tool-use.js\').main()).catch(() => {})"'; })), /shell-specific/);
   });
 
   test('a PASS-only stdout fixture cannot satisfy the native deny contract', () => {

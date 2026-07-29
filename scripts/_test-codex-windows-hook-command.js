@@ -50,10 +50,10 @@ function payload(eventName) {
   return { ...common, prompt: 'What does applying this change mean?' };
 }
 
-function run(eventName, command = handler(eventName).commandWindows) {
+function run(eventName, command = handler(eventName).commandWindows, pluginRoot = repoRoot) {
   return spawnSync('powershell.exe', ['-NoProfile', '-Command', command], {
     cwd: projectRoot,
-    env: { ...process.env, PLUGIN_ROOT: repoRoot },
+    env: { ...process.env, PLUGIN_ROOT: pluginRoot },
     input: JSON.stringify(payload(eventName)),
     encoding: 'utf8',
     timeout: 10000,
@@ -122,6 +122,25 @@ try {
     const result = run('PreToolUse', oldCommand);
     assert.strictEqual(result.status, 1);
     assert.match(result.stderr, /Cannot find module|MODULE_NOT_FOUND/);
+  });
+
+  test('the configured wrapper fails open when the adapter cannot be loaded', () => {
+    const result = run('PreToolUse', undefined, path.join(tempRoot, 'missing plugin root'));
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    assert.strictEqual(result.stdout, '');
+  });
+
+  test('the configured wrapper fails open when adapter main rejects', () => {
+    const rejectingRoot = path.join(tempRoot, 'rejecting plugin');
+    const rejectingAdapterDir = path.join(rejectingRoot, 'scripts', 'adapters', 'codex');
+    fs.mkdirSync(rejectingAdapterDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(rejectingAdapterDir, 'pre-tool-use.js'),
+      "'use strict';\nmodule.exports = { main: async () => { throw new Error('fixture rejection'); } };\n",
+    );
+    const result = run('PreToolUse', undefined, rejectingRoot);
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    assert.strictEqual(result.stdout, '');
   });
 
   console.log(`RESULT: ${passed} passed, 0 failed`);
