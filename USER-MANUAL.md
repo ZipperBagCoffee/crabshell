@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.110.0)
+# Crabshell User Manual (v21.110.1)
 
 ## Why Do You Need This?
 
@@ -232,7 +232,7 @@ The plugin uses Claude Code hooks to run automatically:
 
 | Hook | Script | When It Runs | What It Does |
 |------|--------|-------------|-------------|
-| `UserPromptSubmit` | `inject-rules.js` | Every prompt | Emits the shared turn contract and mandatory three-field response ending; execution prompts also run once-per-session cleanup/reset and Claude rule/memory-warning synchronization |
+| `UserPromptSubmit` | `inject-rules.js` | Every prompt | Emits the shared turn contract and mandatory three-field response ending; `봉인해제` / `UNLEASH` immediately resets pressure regardless of intent classification; other execution prompts run once-per-session cleanup/reset and Claude rule/memory-warning synchronization |
 | `SessionStart` | `load-memory.js` | Session begins | Read-only load of logbook, summaries, project memory, and active workflow context |
 | `PostToolUse` | `counter.js check` | After each tool use | Increments counter; triggers auto-save + delta extraction at interval |
 | `PreToolUse` | `regressing-guard.js` | Before Write/Edit | Enforces phase-based restrictions during active regressing sessions |
@@ -310,7 +310,7 @@ Guard scripts are PreToolUse/Stop hooks that prevent common mistakes:
 | `verification-sequence.js` | Source files edited without running tests before git commit |
 | `doc-watchdog.js` | Document update omissions during regressing: soft warning when 5+ code edits without D/P/T document update; blocks session end when ticket has no work log since last code edit |
 | `skill-tracker.js` | Supporting guard: sets the `skill-active` flag when a Skill tool call is detected, so `docs-guard` and `verify-guard` know when writes are authorized |
-| `pressure-guard.js` | Graduated tool blocking when consecutive negative feedback detected. L2: blocks 6 primary tools (Read/Grep/Glob/Bash/Write/Edit). L3: blocks ALL tools. Resets via positive feedback decay or user bailout keywords ("봉인해제" / "UNLEASH"). See [Pressure System](#pressure-system) |
+| `pressure-guard.js` | Graduated tool blocking when consecutive negative feedback detected. L2: blocks 6 primary tools (Read/Grep/Glob/Bash/Write/Edit). L3: blocks ALL tools. Resets via positive feedback decay or intent-independent user bailout keywords ("봉인해제" / "UNLEASH"). See [Pressure System](#pressure-system) |
 | `scope-guard.js` | Detects scope reduction in responses (delivering fewer items than user requested, using "too many" / "시간 관계상" as justification) |
 | `regressing-guard.js` | Phase-based write restrictions during active regressing sessions — blocks out-of-phase edits to plan/ticket documents |
 | `regressing-loop-guard.js` | Retained compatibility/test helper for the old count-independent continuation path; `completion-controller.js` is now the sole manifest Stop owner. Regressing continuation is goal-driven (v21.110.0): the regressing skill prints a `/goal` handoff line for host goal mode. |
@@ -324,15 +324,15 @@ For Codex, the shared path policy and shared completion control have native adap
 
 Crabshell tracks three pressure counters (feedbackPressure.level, feedbackPressure.oscillationCount, tooGoodSkepticism.retryCount) in `.crabshell/memory/memory-index.json`. Together they form a graduated response mechanism that restricts tool access when Claude drifts — either via consecutive negative user feedback or via the assistant's own output patterns (reversals, all-None P/O/G).
 
-This pressure system is Claude-only. Codex does not load `pressure-guard.js`, `sycophancy-guard.js`, or their automatic counter hooks; the shared memory index format is preserved so using the same project from both runtimes does not destroy these fields.
+Pressure enforcement is Claude-only. Codex does not load `pressure-guard.js` or `sycophancy-guard.js`; however, both hosts use the shared UserPromptSubmit path, so `봉인해제` / `UNLEASH` clears the shared pressure state from either host.
 
 ### Three Counters
 
 | Counter | Raised By | Trigger | Reset By |
 |---------|-----------|---------|----------|
-| feedbackPressure.level (0-3) | inject-rules.js @ UserPromptSubmit | User message matches NEGATIVE_PATTERNS (W021: profanity-only) | Positive-feedback decay (3 clean prompts) · UNLEASH keyword · TaskCreate tool (L1-L2 only) · SessionStart (L2+ → 1) |
-| feedbackPressure.oscillationCount | sycophancy-guard.js @ Stop | Assistant response contains REVERSAL_PATTERNS (e.g., "actually, let me", "다시 생각해보니") — **no user input required** | UNLEASH keyword · SessionStart |
-| tooGoodSkepticism.retryCount | sycophancy-guard.js @ Stop | Assistant response contains a P/O/G table where all Gap cells are None/없음/N/A — **no user input required** | Clean P/O/G (Gap ≠ None) in a later Stop · retryCount > 3 overflow · SessionStart · UNLEASH keyword (originally BAILOUT, renamed v21.79.0) |
+| feedbackPressure.level (0-3) | inject-rules.js @ UserPromptSubmit | User message matches NEGATIVE_PATTERNS (W021: profanity-only) | Positive-feedback decay (3 clean prompts) · `봉인해제` / `UNLEASH` · TaskCreate tool (L1-L2 only) |
+| feedbackPressure.oscillationCount | sycophancy-guard.js @ Stop | Assistant response contains REVERSAL_PATTERNS (e.g., "actually, let me", "다시 생각해보니") — **no user input required** | `봉인해제` / `UNLEASH` |
+| tooGoodSkepticism.retryCount | sycophancy-guard.js @ Stop | Assistant response contains a P/O/G table where all Gap cells are None/없음/N/A — **no user input required** | Clean P/O/G (Gap ≠ None) in a later Stop · retryCount > 3 overflow · `봉인해제` / `UNLEASH` (originally BAILOUT, renamed v21.79.0) |
 
 **Note:** Two of the three counters (oscillationCount, tooGoodSkepticism.retryCount) rise from the assistant's own output independent of the user. Use `/crabshell:status` to inspect current values.
 
@@ -359,7 +359,7 @@ If tool access is locked at L2 or L3, the user can type one of these keywords to
 - **`봉인해제`** (Korean)
 - **`UNLEASH`** (English; renamed from `BAILOUT` in v21.79.0 / W021)
 
-The UNLEASH keyword resets three pressure counters (feedbackPressure.level, feedbackPressure.oscillationCount, tooGoodSkepticism.retryCount) to zero. On reset, stderr logs `[PRESSURE BAILOUT: reset all 3 counters]` (internal label retained for backward log-compatibility).
+Either keyword resets the pressure counters (feedbackPressure.level, consecutiveCount, decayCounter, oscillationCount, lastShownLevel, and tooGoodSkepticism.retryCount) to zero. The reset runs before question/execution intent gating, so the bare keyword and a keyword embedded in a question both work. On reset, stderr logs `[PRESSURE BAILOUT: reset all 3 counters]` (internal label retained for backward log-compatibility).
 
 This is the **only** way to immediately escape L2/L3 without waiting for natural decay. When you're stuck at L2/L3, Claude will inform you about these keywords.
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## [21.110.1] - 2026-07-28
+
+### fix: restore intent-independent pressure bailout
+- Fixed the v21.107.0 regression that detected `봉인해제` / `UNLEASH` but skipped the reset because bare bailout prompts were classified as `default` rather than `execution`.
+- `scripts/inject-rules.js` now treats an explicit bailout keyword as an authorized state mutation before the question/execution gate, acquires the index lock, resets and persists all pressure counters at zero, and does not immediately increment `decayCounter`.
+- Ordinary questions remain read-only. New `_test-bailout-main.js` executes the real shared `main()` path for both bailout keywords plus a non-bailout question (25 assertions).
+- Synced Claude/Codex plugin manifests, release documentation, and the verification manifest to v21.110.1.
+
 ## [21.110.0] - 2026-07-24
 
 ### feat: goal-driven regressing continuation + v21.107.0 Stop-consolidation audit

@@ -235,6 +235,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.110.1 | fix: restore `봉인해제` / `UNLEASH` as intent-independent pressure resets in the shared UserPromptSubmit path; persist all counters at zero while keeping ordinary questions read-only; add a 25-assertion real-`main()` regression test. |
 | 21.110.0 | feat: goal-driven regressing continuation — regressing/discussing skills print a `/goal` handoff and require measurable Convergence Criteria (Claude Code 2.1.139+, Codex CLI 0.128.0+); v21.107.0 Stop-consolidation audit (all other wiring preserved, bounded continuation verified live); Hook Flow docs sync. |
 | 21.109.0 | feat: non-git file backup rule — overwrite a single `<file>.bak` right before modifying; one backup per file, never accumulate (injected RULES + CLAUDE.md + AGENTS.md regeneration). |
 | 21.108.0 | feat: restore the shared mandatory `[의도]`/`[이해]`/`[설명]` response ending for Claude Code and Codex while retaining the internal task contract, natural answer body, and all native lifecycle behavior. |
