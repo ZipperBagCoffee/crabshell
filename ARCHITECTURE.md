@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.110.2)
+# Crabshell Architecture (v21.111.0)
 
 ## Overview
 
@@ -365,7 +365,7 @@ Regressing retains document-cycle continuation but has no parallel-worker count 
 |--------|------|---------|
 | `find-node.sh` | (fallback utility) | Cross-platform Node.js locator retained for fallback use; direct hooks run `node` from `hooks.json` in v21.99.3 |
 | `load-memory.js` | SessionStart | Load memory hierarchy, MEMORY.md warning |
-| `inject-rules.js` | UserPromptSubmit | Dual injection (CLAUDE.md + additionalContext), intent-independent pressure bailout, delta/rotation/regressing detection |
+| `inject-rules.js` | UserPromptSubmit | Dual injection (CLAUDE.md + additionalContext), Claude-host-only Codex delegation guidance, intent-independent pressure bailout, delta/rotation/regressing detection |
 | `counter.js` | PostToolUse, SessionEnd | Main engine: counter, L1 creation, rotation, regressing phase detection |
 | `regressing-guard.js` | PreToolUse (Write\|Edit) | Block direct plan/ticket writes during active regressing; force Skill tool; validate P doc agent sections before ticketing (v21.41.0) |
 | `docs-guard.js` | PreToolUse (Write\|Edit) | Block writes to .crabshell/ D/P/T/I/H subdirectories without active skill flag |
@@ -528,6 +528,7 @@ The 5 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.111.0 | feat: Claude-host-only `## Codex Delegation` guidance block (`CODEX_DELEGATION`) appended after the shared first-turn context in `inject-rules.js`; Codex adapter path excluded by host gate; parity test updated. |
 | 21.110.2 | fix: add a Promise fail-open boundary to every Codex hook launcher; enforce it in the native hook contract and directly regress missing-module and rejected-adapter failures on Windows. |
 | 21.110.1 | fix: restore `봉인해제` / `UNLEASH` before the v21.107.0 intent mutation gate; lock and persist a complete zeroed pressure reset without weakening read-only ordinary questions; add real shared-`main()` regression coverage. |
 | 21.110.0 | feat: goal-driven regressing continuation — regressing/discussing skills print a `/goal` handoff and require measurable Convergence Criteria (Claude Code 2.1.139+, Codex CLI 0.128.0+); v21.107.0 Stop-consolidation audit (all other wiring preserved, bounded continuation verified live); Hook Flow docs sync. |

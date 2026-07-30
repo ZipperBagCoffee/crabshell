@@ -11,7 +11,7 @@ const {
   RESPONSE_FIELDS,
   validateContextOutput,
 } = require('./core/first-turn-context');
-const { classifyUserIntent } = require('./inject-rules');
+const { classifyUserIntent, CODEX_DELEGATION } = require('./inject-rules');
 
 const repoRoot = path.resolve(__dirname, '..');
 const claudeEntry = path.join(__dirname, 'inject-rules.js');
@@ -102,7 +102,13 @@ try {
 
   test('both hosts consume the exact same shared first-turn semantics', () => {
     assert.ok(claudeOutput.hookSpecificOutput.additionalContext.includes(FIRST_TURN_RULES));
-    assert.strictEqual(codexOutput.hookSpecificOutput.additionalContext, claudeOutput.hookSpecificOutput.additionalContext);
+    // Codex delegation guidance is Claude-host-only; outside that block the contexts are identical.
+    assert.ok(claudeOutput.hookSpecificOutput.additionalContext.includes(CODEX_DELEGATION));
+    assert.ok(!codexOutput.hookSpecificOutput.additionalContext.includes('## Codex Delegation'));
+    assert.strictEqual(
+      codexOutput.hookSpecificOutput.additionalContext,
+      claudeOutput.hookSpecificOutput.additionalContext.replace(CODEX_DELEGATION, '')
+    );
   });
 
   test('both hosts receive the exact mandatory intent understanding explanation ending', () => {

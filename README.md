@@ -235,6 +235,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.111.0 | feat: Claude-host-only `## Codex Delegation` guidance injected every prompt (`CODEX_DELEGATION` in `inject-rules.js`) — /codex:rescue usage, latest-model example, project-root launch, prompt-carried constraints, completion re-verification, Windows `safe.directory` / Linux bwrap quirks; content grounded in live Windows tests (codex-cli 0.146.0). |
 | 21.110.2 | fix: wrap all nine Codex hook launchers in a Promise fail-open boundary; missing adapters and rejected `main()` calls now exit 0, with Windows execution and hook-contract regression coverage. |
 | 21.110.1 | fix: restore `봉인해제` / `UNLEASH` as intent-independent pressure resets in the shared UserPromptSubmit path; persist all counters at zero while keeping ordinary questions read-only; add a 25-assertion real-`main()` regression test. |
 | 21.110.0 | feat: goal-driven regressing continuation — regressing/discussing skills print a `/goal` handoff and require measurable Convergence Criteria (Claude Code 2.1.139+, Codex CLI 0.128.0+); v21.107.0 Stop-consolidation audit (all other wiring preserved, bounded continuation verified live); Hook Flow docs sync. |

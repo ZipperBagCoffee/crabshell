@@ -300,6 +300,10 @@ const COMPRESSED_CHECKLIST = COMPRESSED_CHECKLIST_SHARED;
 // Risk-based delegation reminder. Agent/reviewer counts are not completion criteria.
 const DELEGATION_REMINDER = `\n## Delegation Check\nThe parent retains the task contract and completion decision. Delegate only bounded independent work or a distinct high-risk review concern. Each worker prompt must include the relevant original request, task and non-goal, authoritative references, read/write scope, expected observation, direct verification, and claim/evidence/gap return. Exploration and review default to read-only; workers do not fan out. The parent must reopen decisive references, inspect the final diff, and rerun decisive evidence.\n`;
 
+// Codex delegation guidance — Claude host only (/codex:rescue is a Claude Code plugin surface;
+// on the Codex host the guidance would be circular).
+const CODEX_DELEGATION = `\n## Codex Delegation\n- /codex:rescue: stuck, second opinion, or large handoff. status·result·cancel for background jobs.\n- Model: use the latest (e.g. --model gpt-5.6-sol).\n- Launch from the project root — cwd keys the job registry, resume, and sandbox scope.\n- Codex inherits no CLAUDE.md/hooks — put constraints (no commit/push/installs, file scope) in the prompt.\n- "Task started" ≠ done — status --wait, then result; re-verify the diff yourself.\n- Windows: sandbox git fails ("dubious ownership") until \`git config --global --add safe.directory <repo>\`. Linux: bwrap error = AppArmor userns blocks sandbox.\n`;
+
 // IA-2: Default no-execution prompt
 const DEFAULT_NO_EXECUTION = `\n## Execution Default\nDefault: respond with explanation only. Do not call tools unless explicitly instructed to execute.\n`;
 
@@ -679,6 +683,11 @@ async function main(options = {}) {
 
       let context = buildFirstTurnContext(projectDir);
 
+      // Codex delegation guidance — Claude host only
+      if ((options.host || 'claude') === 'claude') {
+        context += CODEX_DELEGATION;
+      }
+
       if (hasPendingDelta) {
         context += DELTA_INSTRUCTION;
       }
@@ -801,6 +810,7 @@ module.exports = {
   ROTATION_INSTRUCTION,
   COMPRESSED_CHECKLIST,
   DELEGATION_REMINDER,
+  CODEX_DELEGATION,
   PRESSURE_L1,
   PRESSURE_L2,
   PRESSURE_L3,
