@@ -1,5 +1,13 @@
 # Changelog
 
+## [21.111.0] - 2026-07-29
+
+### feat: Claude-host Codex delegation guidance injection
+- New `CODEX_DELEGATION` constant in `scripts/inject-rules.js` — a compact `## Codex Delegation` block appended to every Claude-host `UserPromptSubmit` context: when to use `/codex:rescue` (stuck, second opinion, large handoff), latest-model example (`--model gpt-5.6-sol`), project-root launch rule (cwd keys job registry/resume/sandbox scope), prompt-carried constraints (Codex inherits no CLAUDE.md/hooks), completion re-verification ("Task started" ≠ done), and OS quirks (Windows sandbox git `dubious ownership` → one-time `git config --global --add safe.directory <repo>`; Linux AppArmor userns restriction blocks the bwrap sandbox).
+- Host-gated injection: the Codex adapter (`options.host === 'codex'`) does not receive the block — delegating to Codex from the Codex host would be circular.
+- `scripts/_test-cross-runtime-first-turn.js` parity test updated: Claude context must equal Codex context plus exactly the `CODEX_DELEGATION` block.
+- Guidance content grounded in live Windows verification (codex-cli 0.146.0): companion task end-to-end run, restricted-token sandbox exec/write-deny/workspace-write tests, and the `safe.directory` fix reproduced via `GIT_CONFIG_GLOBAL`.
+
 ## [21.110.2] - 2026-07-28
 
 ### fix: make every Codex hook launcher fail open

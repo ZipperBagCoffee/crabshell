@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.110.2)
+# Crabshell User Manual (v21.111.0)
 
 ## Why Do You Need This?
 
@@ -232,7 +232,7 @@ The plugin uses Claude Code hooks to run automatically:
 
 | Hook | Script | When It Runs | What It Does |
 |------|--------|-------------|-------------|
-| `UserPromptSubmit` | `inject-rules.js` | Every prompt | Emits the shared turn contract and mandatory three-field response ending; `봉인해제` / `UNLEASH` immediately resets pressure regardless of intent classification; other execution prompts run once-per-session cleanup/reset and Claude rule/memory-warning synchronization |
+| `UserPromptSubmit` | `inject-rules.js` | Every prompt | Emits the shared turn contract, the Claude-host-only `## Codex Delegation` guidance block, and the mandatory three-field response ending; `봉인해제` / `UNLEASH` immediately resets pressure regardless of intent classification; other execution prompts run once-per-session cleanup/reset and Claude rule/memory-warning synchronization |
 | `SessionStart` | `load-memory.js` | Session begins | Read-only load of logbook, summaries, project memory, and active workflow context |
 | `PostToolUse` | `counter.js check` | After each tool use | Increments counter; triggers auto-save + delta extraction at interval |
 | `PreToolUse` | `regressing-guard.js` | Before Write/Edit | Enforces phase-based restrictions during active regressing sessions |
@@ -261,7 +261,7 @@ Hook launcher v21.99.3 note: `hooks/hooks.json` now invokes hook scripts through
 | Hook | Script | When It Runs | What It Does |
 |------|--------|-------------|-------------|
 | `SessionStart` | `adapters/codex/session-start.js` | Session begins | Read-only shared memory and active workflow recovery |
-| `UserPromptSubmit` | `adapters/codex/user-prompt-submit.js` | Every prompt | Shared question/execution contract and mandatory three-field response ending; execution lifecycle writes only to Codex plugin data/project state |
+| `UserPromptSubmit` | `adapters/codex/user-prompt-submit.js` | Every prompt | Shared question/execution contract and mandatory three-field response ending (without the Claude-only Codex delegation block); execution lifecycle writes only to Codex plugin data/project state |
 | `PreToolUse` | `adapters/codex/pre-tool-use.js` | Matching local file/shell tools | Applies the shared `.crabshell/` path policy and returns native `hookSpecificOutput` deny JSON for wrong-project memory paths |
 | `PostToolUse` | `adapters/codex/post-tool-use.js` | After Bash | Records conclusive parent command evidence for a pending child claim |
 | `PreCompact` | `adapters/codex/pre-compact.js` | Before compaction | Emits shared memory/workflow recovery context without writes |

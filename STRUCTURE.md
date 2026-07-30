@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.110.2)
+# Crabshell Plugin Structure (v21.111.0)
 
-**Version**: 21.110.2 | **Author**: TaWa | **License**: MIT
+**Version**: 21.111.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -276,6 +276,7 @@ Session start loader:
 ### scripts/inject-rules.js
 UserPromptSubmit hook:
 - Inject critical rules every prompt via `additionalContext`
+- Append the `## Codex Delegation` guidance block (`CODEX_DELEGATION`) on the Claude host only — /codex:rescue usage, latest-model example, project-root launch, prompt-carried constraints, completion re-verification, Windows/Linux sandbox quirks (v21.111.0)
 - Configurable frequency via `rulesInjectionFrequency`
 - Auto-sync rules to CLAUDE.md via `syncRulesToClaudeMd()` (marker-based)
 - Reset and persist all pressure counters when `봉인해제` / `UNLEASH` appears, regardless of question/execution classification (v21.110.1)
@@ -419,6 +420,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.111.0 | feat: `CODEX_DELEGATION` block in `inject-rules.js` — Codex delegation guidance appended to every Claude-host UserPromptSubmit context; host-gated (Codex adapter excluded); cross-runtime parity test asserts Claude = Codex + block. |
 | 21.110.2 | fix: all nine Codex hook commands now catch adapter-load and rejected-`main()` failures; the hook contract enforces the fail-open wrapper and Windows regressions exercise both failure paths. |
 | 21.110.1 | fix: restore intent-independent `봉인해제` / `UNLEASH` handling in shared `inject-rules.js`; persist all pressure counters at zero, preserve read-only ordinary questions, and add `_test-bailout-main.js` behavioral coverage. |
 | 21.110.0 | feat: goal-driven regressing continuation — regressing/discussing skills print a `/goal` handoff and require measurable Convergence Criteria (Claude Code 2.1.139+, Codex CLI 0.128.0+); v21.107.0 Stop-consolidation audit (all other wiring preserved, bounded continuation verified live); Hook Flow 3.5 sync. |
