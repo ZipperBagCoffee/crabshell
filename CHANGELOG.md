@@ -1,5 +1,11 @@
 # Changelog
 
+## [21.111.1] - 2026-08-02
+
+### feat: humor clause in the Simple Communication principle
+- `scripts/inject-rules.js` — the `RULES` **Simple Communication** principle gains a fifth property: `(e) write with a sense of humor`. Injected into every `UserPromptSubmit` context on both hosts, so user-facing explanations stay plain-spoken without reading like a compliance memo.
+- Existing keyword-anchor tests (`_test-inject-rules.js` tests 23) still pass — the four original property keywords (`reader's words`, `lead with the conclusion`, `concrete`/`abstract`, `self-coined`) are unchanged.
+
 ## [21.111.0] - 2026-07-29
 
 ### feat: Claude-host Codex delegation guidance injection
