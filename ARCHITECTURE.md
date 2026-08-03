@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.111.0)
+# Crabshell Architecture (v21.111.1)
 
 ## Overview
 
@@ -528,6 +528,7 @@ The 5 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.111.1 | feat: humor clause `(e) write with a sense of humor` added to the `RULES` Simple Communication principle in `inject-rules.js`; injected on both hosts. |
 | 21.111.0 | feat: Claude-host-only `## Codex Delegation` guidance block (`CODEX_DELEGATION`) appended after the shared first-turn context in `inject-rules.js`; Codex adapter path excluded by host gate; parity test updated. |
 | 21.110.2 | fix: add a Promise fail-open boundary to every Codex hook launcher; enforce it in the native hook contract and directly regress missing-module and rejected-adapter failures on Windows. |
 | 21.110.1 | fix: restore `봉인해제` / `UNLEASH` before the v21.107.0 intent mutation gate; lock and persist a complete zeroed pressure reset without weakening read-only ordinary questions; add real shared-`main()` regression coverage. |

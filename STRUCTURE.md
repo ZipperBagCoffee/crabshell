@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.111.0)
+# Crabshell Plugin Structure (v21.111.1)
 
-**Version**: 21.111.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.111.1 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -277,6 +277,7 @@ Session start loader:
 UserPromptSubmit hook:
 - Inject critical rules every prompt via `additionalContext`
 - Append the `## Codex Delegation` guidance block (`CODEX_DELEGATION`) on the Claude host only — /codex:rescue usage, latest-model example, project-root launch, prompt-carried constraints, completion re-verification, Windows/Linux sandbox quirks (v21.111.0)
+- `RULES` Simple Communication carries five properties: reader's words, conclusion first, concrete over abstract, no self-coined acronyms, and `(e) write with a sense of humor` (v21.111.1)
 - Configurable frequency via `rulesInjectionFrequency`
 - Auto-sync rules to CLAUDE.md via `syncRulesToClaudeMd()` (marker-based)
 - Reset and persist all pressure counters when `봉인해제` / `UNLEASH` appears, regardless of question/execution classification (v21.110.1)
@@ -420,6 +421,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.111.1 | feat: `RULES` Simple Communication principle extended with a fifth property — `(e) write with a sense of humor`; existing keyword-anchor tests unchanged. |
 | 21.111.0 | feat: `CODEX_DELEGATION` block in `inject-rules.js` — Codex delegation guidance appended to every Claude-host UserPromptSubmit context; host-gated (Codex adapter excluded); cross-runtime parity test asserts Claude = Codex + block. |
 | 21.110.2 | fix: all nine Codex hook commands now catch adapter-load and rejected-`main()` failures; the hook contract enforces the fail-open wrapper and Windows regressions exercise both failure paths. |
 | 21.110.1 | fix: restore intent-independent `봉인해제` / `UNLEASH` handling in shared `inject-rules.js`; persist all pressure counters at zero, preserve read-only ordinary questions, and add `_test-bailout-main.js` behavioral coverage. |
