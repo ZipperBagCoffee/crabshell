@@ -89,9 +89,9 @@ test('5 passing evidence closes the same contract', () => {
   assert.strictEqual(result.complete, true);
 });
 
-test('6 installed Codex wrapper creates a W contract in consumer project', () => {
+test('6 legacy worklog command still creates a W contract in consumer project', () => {
   const consumer = tempDir('consumer project');
-  const wrapper = path.join(__dirname, '..', 'codex-skills', 'light-workflow', 'scripts', 'codex-docs.js');
+  const wrapper = path.join(__dirname, 'codex-docs.js');
   const result = spawnSync(process.execPath, [wrapper, 'worklog', 'Parser behavior',
     '--project-dir=' + consumer,
     '--required-outcomes=parser test executes',
@@ -106,14 +106,15 @@ test('6 installed Codex wrapper creates a W contract in consumer project', () =>
   assert.ok(worklog.includes('direct test exits zero'));
 });
 
-test('7 Claude and Codex light-workflow share five stages and no count policy', () => {
-  const claude = fs.readFileSync(path.join(__dirname, '..', 'skills', 'light-workflow', 'SKILL.md'), 'utf8');
-  const codex = fs.readFileSync(path.join(__dirname, '..', 'codex-skills', 'light-workflow', 'SKILL.md'), 'utf8');
-  const stages = ['Understand internally', 'Inspect', 'Implement', 'Verify behavior', 'Report'];
-  for (const stage of stages) {
-    assert.ok(claude.includes(stage), 'Claude missing ' + stage);
-    assert.ok(codex.includes(stage), 'Codex missing ' + stage);
+test('7 Claude and Codex hotfix share direct-work scope and no count policy', () => {
+  const claude = fs.readFileSync(path.join(__dirname, '..', 'skills', 'hotfix', 'SKILL.md'), 'utf8');
+  const codex = fs.readFileSync(path.join(__dirname, '..', 'codex-skills', 'hotfix', 'SKILL.md'), 'utf8');
+  for (const section of ['problem', 'fix', 'verification']) {
+    assert.ok(new RegExp(section, 'i').test(claude), 'Claude missing ' + section);
+    assert.ok(new RegExp(section, 'i').test(codex), 'Codex missing ' + section);
   }
+  assert.ok(!fs.existsSync(path.join(__dirname, '..', 'skills', 'light-workflow')), 'light-workflow skill not retired');
+  assert.ok(!fs.existsSync(path.join(__dirname, '..', 'codex-skills', 'light-workflow')), 'codex light-workflow skill not retired');
   const active = claude + '\n' + codex + '\n' + WORKER_PROMPT_CONTRACT;
   assert.ok(!/1:1|10-20|3-5|80-100K|7-file|multiple WAs/i.test(active), 'fixed-count policy remains');
   assert.ok(active.includes('claim / evidence / gap') || active.includes('claim, evidence from direct observation, and remaining gap'));

@@ -1,6 +1,6 @@
 {
   "name": "crabshell",
-  "version": "21.111.1",
+  "version": "21.112.0",
   "description": "Native Codex lifecycle hooks plus shared Crabshell memory, verification, diagnostics, and document workflows.",
   "author": {
     "name": "TaWa"

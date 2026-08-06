@@ -13,7 +13,7 @@ const FIXTURE_ROOT = path.join(__dirname, 'fixtures', 'orchestration');
 const CORPUS = JSON.parse(fs.readFileSync(path.join(FIXTURE_ROOT, 'corpus.json'), 'utf8'));
 const SCHEMA = path.join(FIXTURE_ROOT, 'response-schema.json');
 const BASELINE = fs.readFileSync(path.join(FIXTURE_ROOT, 'baseline-policy.md'), 'utf8');
-const CURRENT = ORCHESTRATION_DEFAULTS + '\n' + fs.readFileSync(path.join(ROOT, 'codex-skills', 'light-workflow', 'SKILL.md'), 'utf8');
+const CURRENT = ORCHESTRATION_DEFAULTS + '\n' + fs.readFileSync(path.join(ROOT, 'codex-skills', 'hotfix', 'SKILL.md'), 'utf8');
 
 function findCodexLaunch() {
   if (process.env.CRABSHELL_CODEX_JS) return { command: process.execPath, prefix: [process.env.CRABSHELL_CODEX_JS] };

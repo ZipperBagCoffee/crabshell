@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.111.1)
+# Crabshell Architecture (v21.112.0)
 
 ## Overview
 
@@ -32,8 +32,8 @@ Two meta-principles guide Claude's approach to obstacles:
 - **Cross-Domain Translation**: Before substituting a same-domain tool, characterize the problem's abstract structure first. This enables finding solutions from adjacent domains that may fit better.
 
 ### Dual Injection Optimization
-- **CLAUDE.md** (session start): Full RULES text (~1400 tokens, 5.4KB) synced via `syncRulesToClaudeMd()` with marker-based replacement
-- **additionalContext** (every prompt): COMPRESSED_CHECKLIST (~200 tokens, 703B) — a lightweight reminder of key rules and quick-check questions
+- **CLAUDE.md** (session start): Full RULES text (~2,530 tokens, 10.2KB measured v21.112.0) synced via `syncRulesToClaudeMd()` with marker-based replacement
+- **additionalContext** (every prompt): COMPRESSED_CHECKLIST (~380 tokens, 1.5KB measured) — a lightweight reminder of key rules and quick-check questions
 - **Error fallback**: Full RULES injected via additionalContext only when the normal path throws an exception
 
 ## System Architecture
@@ -142,7 +142,7 @@ Two meta-principles guide Claude's approach to obstacles:
 |  | - ticketing     (T documents)   |  | - search-memory                | |
 |  | - investigating (I documents)   |  | - clear-memory                 | |
 |  | - hotfix        (H documents)   |  | - memory-autosave              | |
-|  | - light-workflow (standalone)   |  | - memory-delta                 | |
+|  | - hotfix (one-pass record)      |  | - memory-delta                 | |
 |  | - regressing    (D→P→T loop)    |  | - memory-rotate                | |
 |  | - verifying     (verification)  |  |                                | |
 |  | - knowledge     (K pages)       |  |                                | |
@@ -214,9 +214,9 @@ Codex marketplace -> installed cache -> .codex-plugin/plugin.json
        ├─> Explicit 봉인해제 / UNLEASH: reset and persist pressure before the intent gate
        ├─> Other questions: inject read-only shared contract, perform no lifecycle writes
        ├─> First execution prompt: cleanup/reset + syncRulesToClaudeMd() + MEMORY.md warning
-       ├─> Inject COMPRESSED_CHECKLIST (~300 tokens) via additionalContext
-       │   (Full RULES ~5000 tokens only on error fallback)
-       ├─> Inject Project Concept (first 10 lines of project.md, max 500 chars) via additionalContext
+       ├─> Inject COMPRESSED_CHECKLIST (~380 tokens measured) via additionalContext
+       │   (Full RULES ~2,530 tokens only on error fallback)
+       ├─> Inject Project Concept (first 20 lines of project.md, max 1000 chars) via additionalContext
        ├─> Inject prompt-aware memory snippets (keyword-match top 3 sections)
        ├─> Check for pending rotation (summaryGenerated: false)
        │   └─> If yes: Inject ROTATION_INSTRUCTION → Claude executes memory-rotate skill
@@ -314,7 +314,7 @@ Five skills manage append-only documents stored in `.crabshell/` (gitignored):
 | planning | Plan | P001, P002... | Detailed execution plans |
 | ticketing | Ticket | P001_T001... | Atomic work units (child of Plan) |
 | investigating | Investigation | I001, I002... | Independent research/analysis |
-| light-workflow | Worklog | W001, W002... | Light-workflow tracing (standalone tasks) |
+| (retired: light-workflow, v21.112.0) | Worklog | W001, W002... | Legacy worklog history — read-only; restart context still honors in-flight W docs |
 
 Document hierarchy: D -> P -> T (Discussion spawns Plans, Plans spawn Tickets). Investigations and Worklogs are independent.
 
@@ -324,11 +324,11 @@ Each document type has an INDEX.md for tracking. Status cascades upward on compl
 
 | Skill | Purpose |
 |-------|---------|
-| light-workflow | Standalone one-shot tasks recorded in W documents. Five parent-owned stages; delegation is optional and risk-based. |
+| hotfix | Directly-performed one-pass work recorded in H documents (Problem/Fix/Verification). Replaced light-workflow in v21.112.0 (D113). |
 | lint | Obsidian document linter — 5 checks (orphans, broken wikilinks, stale status, missing frontmatter, INDEX inconsistencies). |
 | search-docs | BM25 full-text search across D/P/T/I/W documents with field boosting (title 3x, tags 2x, id 1.5x). |
 | regressing | Iterative D->P->T loop. Each cycle targets the current verified gap; an explicit user count is a cap, not a partition target. |
-| verifying | Create/run project-specific verification tools. Invoked as procedural step in ticketing/light-workflow/regressing. |
+| verifying | Create/run project-specific verification tools. Invoked as procedural step in ticketing/regressing. |
 
 ### Memory Skills
 
@@ -528,6 +528,7 @@ The 5 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.112.0 | feat: D113 harness diet phase 1 — PreCompact bounded (I083 defect fix), doc token figures corrected to measured values, light-workflow retired (hotfix = single one-pass record; worklog read-side kept for in-flight W docs). |
 | 21.111.1 | feat: humor clause `(e) write with a sense of humor` added to the `RULES` Simple Communication principle in `inject-rules.js`; injected on both hosts. |
 | 21.111.0 | feat: Claude-host-only `## Codex Delegation` guidance block (`CODEX_DELEGATION`) appended after the shared first-turn context in `inject-rules.js`; Codex adapter path excluded by host gate; parity test updated. |
 | 21.110.2 | fix: add a Promise fail-open boundary to every Codex hook launcher; enforce it in the native hook contract and directly regress missing-module and rejected-adapter failures on Windows. |

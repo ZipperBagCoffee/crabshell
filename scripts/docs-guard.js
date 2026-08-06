@@ -17,7 +17,7 @@ const PROTECTED_DOCS_PATTERN = /\.crabshell\/(discussion|plan|ticket|investigati
 // Skills that legitimately create/modify .crabshell/ D/P/T/I files
 const LEGITIMATE_SKILLS = [
   'discussing', 'planning', 'ticketing', 'investigating',
-  'regressing', 'light-workflow', 'verifying', 'hotfix'
+  'regressing', 'verifying', 'hotfix'
 ];
 
 // TTL for skill-active flag (15 minutes)

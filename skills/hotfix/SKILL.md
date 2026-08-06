@@ -1,13 +1,15 @@
 ---
 name: hotfix
-description: Record lightweight hotfixes. Use for one-line fixes that don't warrant light-workflow. Invoke with /hotfix "description" to create, or /hotfix H001 to update.
+description: Record directly-performed work in an H document. Use for any task done in one pass — from one-line fixes to small multi-file changes — that doesn't need a D/P/T workflow. Invoke with /hotfix "description" to create, or /hotfix H001 to update.
 ---
 
 # Hotfix Skill
 
 ## Purpose
 
-Record lightweight one-line fixes that don't warrant full light-workflow or regressing treatment. Hotfixes are already applied when recorded — this skill captures what was broken, what was changed, and how it was verified.
+Record work performed directly by the parent — one-line fixes up to small multi-file changes — that doesn't warrant D/P/T regressing treatment. Hotfixes are already applied when recorded — this skill captures what was broken (or requested), what was changed, and how it was verified.
+
+This is the single lightweight work-record channel: the former light-workflow skill was retired in v21.112.0 (D113). Existing W documents under `.crabshell/worklog/` remain as read-only history. For iterative multi-cycle work, use regressing.
 
 ---
 
@@ -56,7 +58,7 @@ tags: []
 {what was changed and where — file:line reference}
 
 ## Verification
-{how it was verified — command output or observation}
+{how it was verified — prediction vs observed command output, at least one line}
 
 ## Log
 ### [{YYYY-MM-DD HH:MM}] Created
@@ -103,6 +105,7 @@ Append a new log entry under the `## Log` section:
 ## Design Principles
 
 - **Status defaults to `done`** — hotfixes are already applied when recorded.
-- **No agents, no review cycle** — just record what happened.
+- **No agents, no review cycle** — just record what happened. The parent still owns direct verification (run the check, record prediction vs observation).
 - **Minimal template** — 4 sections only (Problem, Fix, Verification, Log).
 - **Document-first** — write to file before reporting in conversation.
+- **Scope** — anything done in one direct pass qualifies; if evidence is expected to change the plan across iterations, use regressing instead.

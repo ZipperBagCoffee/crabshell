@@ -14,7 +14,7 @@ const { getProjectDir } = require('./utils');
 // Skills that legitimately create/modify .crabshell/ D/P/T/I/H files
 const DOCS_SKILLS = [
   'discussing', 'planning', 'ticketing', 'investigating',
-  'regressing', 'light-workflow', 'verifying', 'hotfix'
+  'regressing', 'verifying', 'hotfix'
 ];
 
 // Default TTL: 15 minutes
