@@ -1,6 +1,6 @@
 ---
 name: regressing
-description: "Runs convergence-based iterative optimization cycles wrapped by a single Discussion. Use when a topic needs repeated improvement through plan-execute-verify-feedback loops. Invoke with /regressing \"topic\" N (N = cycle cap, not target). Cycles continue until convergence or cap. Not for one-shot tasks — use light-workflow instead."
+description: "Runs convergence-based iterative optimization cycles wrapped by a single Discussion. Use when a topic needs repeated improvement through plan-execute-verify-feedback loops. Invoke with /regressing \"topic\" N (N = cycle cap, not target). Cycles continue until convergence or cap. Not for one-shot tasks — do the work directly and record it with hotfix instead."
 ---
 
 # Regressing Skill
@@ -289,7 +289,7 @@ D (closed with final report)
 5. **User intervention only at the end.** Do not ask for user confirmation during intermediate cycles.
 6. **Use existing skill invocations.** Invoke discussing (once at start), planning, and ticketing skills internally.
 7. **Early termination on convergence.** If the Orchestrator's verification finds no improvement opportunities with substantive justification (minimum 3 sentences enumerating what was examined and why further cycles would not improve the result), the session terminates early. Generic "ALL PASS" without this justification is not valid convergence — it is rubber-stamping. **When the wrapping D document contains a `## Convergence Criteria` section, the Orchestrator MUST evaluate each criterion explicitly — convergence is only valid when all listed criteria are met or explicitly declared out-of-scope with rationale.**
-8. **Light-workflow is a lightweight reference.** Regressing is the primary mode; light-workflow is for standalone one-off tasks.
+8. **Hotfix is the lightweight alternative.** Regressing is the primary mode; standalone one-off tasks are done directly and recorded with hotfix.
 9. **D's IA is the constant anchor.** All P and T documents reference D's IA as read-only evaluation criteria throughout all cycles.
 10. **Parent-owned orchestration.** The parent owns intent, implementation decisions, decisive verification, and completion. Delegate only bounded independent work when risk or latency justifies it; do not require a worker/reviewer pair or use agent count as evidence. Delegates do not fan out.
 11. **Orchestrator anti-rubber-stamp.** The Orchestrator MUST provide substantive evaluation for each cycle. "No improvement opportunities" and "ALL PASS" without detailed justification are INVALID. When the Orchestrator genuinely finds no improvements, it must enumerate what was specifically examined and provide a reasoned argument (minimum 3 sentences) for why the output is optimal.

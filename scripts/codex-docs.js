@@ -206,7 +206,7 @@ function main() {
     console.error('Usage: node scripts/codex-docs.js <worklog|hotfix|discussion|plan|ticket|investigation|knowledge> <title>');
     process.exit(1);
   }
-  if (command === 'worklog' || command === 'light-workflow') return createWorklog(root, title, args);
+  if (command === 'worklog') return createWorklog(root, title, args);
   if (command === 'hotfix') return createHotfix(root, title, args);
   if (command === 'investigation' || command === 'investigating') return createInvestigation(root, title, args);
   if (command === 'knowledge') return createKnowledge(root, title, args);

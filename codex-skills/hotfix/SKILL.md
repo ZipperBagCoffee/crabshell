@@ -1,11 +1,11 @@
 ---
 name: hotfix
-description: Record a small completed fix in a Crabshell H hotfix document. Use for narrow fixes that do not need a full W or D/P/T workflow.
+description: Record directly-performed work in a Crabshell H hotfix document. Use for any task done in one pass that does not need a D/P/T workflow.
 ---
 
 # Hotfix
 
-After applying and verifying a small fix, create the hotfix record:
+After applying and verifying a direct fix or small task, create the hotfix record:
 
 ```bash
 node scripts/codex-docs.js hotfix "title" --problem="..." --fix="..." --verification="..."

@@ -244,12 +244,12 @@ On failure: (1) List what you tried, what constraint blocked each attempt, and w
 
 ### ADDITIONAL RULES
 - Search internet if unsure. Non-git files → overwrite single backup (\`<file>.bak\`) right before modifying — one .bak per file, never accumulate old backups.
-- **Workflows:** light-workflow for traceable standalone tasks; regressing for iterative improvement. Delegation and review depend on independent work and actual risk, not mandatory role pairs. Regressing iterations improve results rather than drain a queue; each plan covers only the current iteration.
+- **Workflows:** hotfix for direct one-pass work (record after doing); regressing for iterative improvement. Delegation and review depend on independent work and actual risk, not mandatory role pairs. Regressing iterations improve results rather than drain a queue; each plan covers only the current iteration.
 - **Session restart:** Invoke load-memory skill. Fallback: read latest logbook.md.
 - **Mandatory work log:** Append log entry to D/P/T/I documents after related work.
 - **Documents:** D(Discussion)→P(Plan)→T(Ticket). I(Investigation) independent. .crabshell/ is gitignored.
 - **Version bump:** CHANGELOG → grep old version → README/STRUCTURE tables → doc headers → stale content audit → commit.
-- **Workflow selection:** Choose light-workflow when one bounded pass can close a stable request. Choose regressing when evidence is expected to change the plan or repeated improvement cycles are needed. File, token, agent, and reviewer counts are not selection criteria.
+- **Workflow selection:** Do direct work and record it with hotfix when one bounded pass can close a stable request. Choose regressing when evidence is expected to change the plan or repeated improvement cycles are needed. File, token, agent, and reviewer counts are not selection criteria.
 - **Urgency signal handling:** Urgency does not weaken scope, safety, or behavioral verification.
 `;
 

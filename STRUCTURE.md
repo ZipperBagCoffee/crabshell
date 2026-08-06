@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.111.1)
+# Crabshell Plugin Structure (v21.112.0)
 
-**Version**: 21.111.1 | **Author**: TaWa | **License**: MIT
+**Version**: 21.112.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -31,7 +31,7 @@ crabshell/
 │   │   └── INDEX.md
 │   ├── investigation/                # Investigation documents (I001, I002...)
 │   │   └── INDEX.md
-│   ├── worklog/                      # Worklog documents (W001, W002...) — light-workflow tracing
+│   ├── worklog/                      # Worklog documents (W001, W002...) — legacy history (light-workflow retired v21.112.0)
 │   │   └── INDEX.md
 │   ├── knowledge/                    # Knowledge pages (K001, K002...) — verified facts + operational tips
 │   │   └── INDEX.md
@@ -164,7 +164,7 @@ crabshell/
 │   ├── ticketing/SKILL.md            # /crabshell:ticketing (T documents)
 │   ├── investigating/SKILL.md        # /crabshell:investigating (I documents)
 │   ├── regressing/SKILL.md           # /crabshell:regressing (D→P→T cycles)
-│   ├── light-workflow/SKILL.md       # /crabshell:light-workflow (one-shot)
+│   ├── (light-workflow retired v21.112.0 — one-pass work records via hotfix)
 │   ├── verifying/SKILL.md            # /crabshell:verifying (schema-v2 behavioral verification)
 │   │   └── scripts/run-verify.js      # Portable single-source verification runner (v21.106.0)
 │   ├── status/SKILL.md               # /crabshell:status (plugin healthcheck)
@@ -421,6 +421,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.112.0 | feat: D113 harness diet phase 1 — `pre-compact.js` active-docs cap (newest 5/type, 4,000-char cap, wikilink-aware status parsing) + project.md/ARCHITECTURE drift fixes + light-workflow retired into hotfix (skills/, codex-skills/, RULES, docs-guard/skill-tracker lists, codex-docs alias, tests 6/7 repointed); W017 stale state closed. |
 | 21.111.1 | feat: `RULES` Simple Communication principle extended with a fifth property — `(e) write with a sense of humor`; existing keyword-anchor tests unchanged. |
 | 21.111.0 | feat: `CODEX_DELEGATION` block in `inject-rules.js` — Codex delegation guidance appended to every Claude-host UserPromptSubmit context; host-gated (Codex adapter excluded); cross-runtime parity test asserts Claude = Codex + block. |
 | 21.110.2 | fix: all nine Codex hook commands now catch adapter-load and rejected-`main()` failures; the hook contract enforces the fail-open wrapper and Windows regressions exercise both failure paths. |

@@ -20,6 +20,12 @@ const { readStdin } = require('./transcript-utils');
 const { getProjectDir, getStorageRoot, readJsonOrDefault } = require('./utils');
 const { REGRESSING_STATE_FILE } = require('./constants');
 
+// Caps for the active-docs listing (I083 R1 / D113): compaction happens when
+// context is scarcest, so this injection must stay bounded no matter how many
+// non-terminal docs have accumulated in the indexes.
+const MAX_ACTIVE_DOCS_PER_TYPE = 5;
+const MAX_ACTIVE_DOCS_CHARS = 4000;
+
 function getActiveDocs(projectDir) {
   const storageRoot = getStorageRoot(projectDir);
   const docTypes = [
@@ -29,6 +35,7 @@ function getActiveDocs(projectDir) {
     { dir: 'investigation', label: 'Investigation' },
   ];
   const active = [];
+  let omitted = 0;
 
   for (const { dir, label } of docTypes) {
     const indexPath = path.join(storageRoot, dir, 'INDEX.md');
@@ -36,21 +43,54 @@ function getActiveDocs(projectDir) {
     try {
       const content = fs.readFileSync(indexPath, 'utf8');
       const lines = content.split(/\r?\n/);
+      let typeRows = [];
       for (const line of lines) {
         // Table rows: | ID | Title | Status | ...
-        // Match rows where status is NOT done/concluded/verified/abandoned
-        const match = line.match(/^\|\s*([^\|]+?)\s*\|\s*([^\|]+?)\s*\|\s*([^\|]+?)\s*\|/);
-        if (!match) continue;
-        const id = match[1].trim();
-        const title = match[2].trim();
-        const status = match[3].trim().toLowerCase();
-        if (id === 'ID' || id.startsWith('-')) continue; // header/separator rows
+        // Cells may contain wikilinks with escaped pipes ([[slug\|ID]]), so
+        // split on unescaped pipes only, then unescape.
+        if (!line.startsWith('|')) continue;
+        const rawCells = line.split(/(?<!\\)\|/).slice(1, -1);
+        // Re-join cells that were split inside an unescaped wikilink [[slug|ID]]
+        const cells = [];
+        for (let i = 0; i < rawCells.length; i++) {
+          let cell = rawCells[i];
+          while (cell.includes('[[') && !cell.includes(']]') && i + 1 < rawCells.length) {
+            i += 1;
+            cell = cell + '|' + rawCells[i];
+          }
+          cells.push(cell.replace(/\\\|/g, '|').trim());
+        }
+        if (cells.length < 3) continue;
+        const id = cells[0];
+        const title = cells[1];
+        const status = cells[2].toLowerCase();
+        if (id === 'ID' || /^-+$/.test(id)) continue; // header/separator rows
         if (['done', 'concluded', 'verified', 'abandoned'].includes(status)) continue;
-        active.push(`  - [${label}] ${id}: ${title} (${status})`);
+        typeRows.push(`  - [${label}] ${id}: ${title} (${status})`);
       }
+      // INDEX rows are appended chronologically — keep the newest per type
+      if (typeRows.length > MAX_ACTIVE_DOCS_PER_TYPE) {
+        omitted += typeRows.length - MAX_ACTIVE_DOCS_PER_TYPE;
+        typeRows = typeRows.slice(-MAX_ACTIVE_DOCS_PER_TYPE);
+      }
+      active.push(...typeRows);
     } catch (e) { /* ignore */ }
   }
-  return active;
+
+  let total = 0;
+  const capped = [];
+  for (const line of active) {
+    if (total + line.length + 1 > MAX_ACTIVE_DOCS_CHARS) {
+      omitted += active.length - capped.length;
+      break;
+    }
+    capped.push(line);
+    total += line.length + 1;
+  }
+  if (omitted > 0) {
+    capped.push(`  - ...and ${omitted} more non-terminal docs (see .crabshell/*/INDEX.md)`);
+  }
+  return capped;
 }
 
 async function main() {

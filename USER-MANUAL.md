@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.111.1)
+# Crabshell User Manual (v21.112.0)
 
 ## Why Do You Need This?
 
@@ -130,14 +130,13 @@ All available skills (slash commands):
 | `/crabshell:planning "topic"` | Create or update a Plan document (P) |
 | `/crabshell:ticketing P001 "title"` | Create or update a Ticket document (T) linked to a plan |
 | `/crabshell:investigating "topic"` | Run a multi-agent Investigation (I) |
-| `/crabshell:hotfix "description"` | Record a lightweight hotfix (H) — one-line fixes with Problem/Fix/Verification; or `/crabshell:hotfix H001` to update |
+| `/crabshell:hotfix "description"` | Record directly-performed one-pass work (H) — one-line fixes up to small multi-file changes, with Problem/Fix/Verification; or `/crabshell:hotfix H001` to update |
 
 ### Workflows
 
 | Command | What It Does |
 |---------|-------------|
 | `/crabshell:regressing "topic"` | Iterative current-gap Plan→Ticket→Verify cycles until convergence; an explicit count is only a maximum |
-| `/crabshell:light-workflow` | Five-stage parent-owned workflow for standalone tasks |
 | `/crabshell:verifying` | Create or run project-specific verification tools |
 | `/crabshell:status` | Live host/plugin state: installed, activated, trusted, behavior-verified, degraded, drifted, unsupported |
 | `/crabshell:lint` | Run Obsidian document lint checks (orphans, broken wikilinks, stale status, missing frontmatter, INDEX inconsistencies) |
@@ -192,9 +191,9 @@ Use `/crabshell:regressing "topic"` for tasks that need multiple rounds of refin
 - Each cycle's scope is determined by the previous cycle's verification results, not pre-allocated
 - Prints a ready-to-paste `/goal` line — start host goal mode (Claude Code 2.1.139+ or Codex CLI 0.128.0+) and the host keeps the session running until the D's Convergence Criteria are met or the cycle cap is reached
 
-### Light Workflow (One-Shot Tasks)
+### Hotfix (One-Shot Tasks)
 
-Use `/crabshell:light-workflow` for a standalone task that does not need the full D/P/T trail. It creates a W worklog and runs five stages: understand internally, inspect, implement, verify behavior, and report. The parent may delegate bounded work when useful, but delegation and Work/Review pairing are not completion gates.
+For a standalone task that does not need the full D/P/T trail, do the work directly and record it with `/crabshell:hotfix` (Problem/Fix/Verification). The former `/crabshell:light-workflow` skill was retired in v21.112.0 — existing W worklogs under `.crabshell/worklog/` remain readable history, and in-flight W documents from earlier versions are still honored by workflow restart context.
 
 ---
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## [21.112.0] - 2026-08-05
+
+### feat: D113 harness diet phase 1 (I083) — PreCompact cap, drift fixes, light-workflow → hotfix unification
+- **PreCompact bounded (I083 defect fix)**: `scripts/pre-compact.js` active-docs listing capped — newest 5 per doc type + 4,000-char total cap + `...and N more` overflow line. Measured on this repo: 65,820 chars (~16,455 tok) → ~3,200 chars (~800 tok). Also fixed table-row parsing to handle wikilink cells (`[[slug|ID]]`, escaped and unescaped) — status columns were previously misread as titles, so concluded docs were counted as active (583 "active" → real 55).
+- **Doc drift fixes (I083 R9)**: `.crabshell/project.md` "Six guard hooks"→"Eleven", "16 skills"→"20" (this text is injected every prompt and every subagent spawn); `ARCHITECTURE.md` token figures unified to measured values (RULES ~2,530 tok / COMPRESSED_CHECKLIST ~380 tok; the two sections previously contradicted each other at ~1,400 vs ~5,000); Project Concept injection documented as 20 lines/1,000 chars matching actual code.
+- **light-workflow retired, hotfix unified (user decision, D113)**: `skills/light-workflow/` and `codex-skills/light-workflow/` deleted; hotfix SKILL.md scope broadened to any directly-performed one-pass work (both hosts); `RULES` workflow lines rewritten to hotfix/regressing two-mode selection (synced to CLAUDE.md); `docs-guard.js`/`skill-tracker.js` skill lists updated; `codex-docs.js` `light-workflow` alias removed (`worklog` command kept for backward compatibility); `_test-orchestration-defaults.js` tests 6/7 repointed (legacy worklog engine + hotfix host parity + retirement check); `run-orchestration-corpus.js` CURRENT policy reads hotfix SKILL.md. Read-side worklog support in `core/workflow-context.js` intentionally kept so in-flight W docs from older installs still restore.
+- **Stale-state closure**: `W017` (in-progress since v21.73.0) closed — it was re-injected as an "Active Crabshell Workflow" this session; observed live and recorded in I083 as evidence for the workflow-TTL follow-up (Phase 2 A2).
+
 ## [21.111.1] - 2026-08-02
 
 ### feat: humor clause in the Simple Communication principle

@@ -122,7 +122,7 @@ Claude Code plugin with three pillars:
 - \`/crabshell:ticketing\` — Create/update ticket documents
 - \`/crabshell:investigating\` — Multi-agent investigation
 - \`/crabshell:regressing\` — Iterative optimization cycles
-- \`/crabshell:light-workflow\` — One-shot agent orchestration
+- \`/crabshell:hotfix\` — Record directly-performed one-pass work
 - \`/crabshell:verifying\` — Verification tool management
 ## Folder Structure
 \`\`\`

@@ -5,7 +5,7 @@
 Three pillars:
 1. **Session memory** — Both hosts automatically load the same project memory and workflow state. Claude Code retains automatic session capture/rotation; either host can use explicit load/save/search skills.
 2. **Behavioral correction** — Both hosts receive the same first-turn, mandatory `[의도]`/`[이해]`/`[설명]` response ending, workflow, subagent, compaction, and parent-completion semantics through native hooks. Claude Code also retains its pressure/sycophancy guard system.
-3. **Structured workflows** — D/P/T/I/H/W document system with host-native skills for planning, investigating, iterative improvement (regressing), hotfix recording, and light-workflow tracing.
+3. **Structured workflows** — D/P/T/I/H document system with host-native skills for planning, investigating, iterative improvement (regressing), and hotfix recording of direct one-pass work (W worklogs are legacy history).
 
 All plugin output lives under `.crabshell/` — gitignored, clean project root.
 
@@ -107,7 +107,7 @@ With this setup, **Claude starts every new session knowing this information**.
 | `/crabshell:ticketing P001 "topic"` | Create/update a ticket tied to a plan |
 | `/crabshell:investigating "topic"` | Multi-source multi-agent investigation |
 | `/crabshell:regressing "topic"` | Iterate current P→T improvement cycles until the Discussion converges; an explicit user cap is a maximum, not a target |
-| `/crabshell:light-workflow` | Run the five-stage parent-owned workflow for a standalone task |
+| `/crabshell:hotfix "description"` | Record directly-performed one-pass work (Problem/Fix/Verification) |
 | `/crabshell:verifying` | Create/run project-specific verification tools |
 | `/crabshell:status` | Healthcheck of plugin state (memory, regressing, verification, version) |
 | `/crabshell:install-codex` | Legacy/development bridge that links a Claude-installed checkout into Codex locations; prefer native Codex marketplace installation |
@@ -115,7 +115,7 @@ With this setup, **Claude starts every new session knowing this information**.
 | `/crabshell:search-docs query` | BM25 full-text search across all D/P/T/I/W documents |
 | `/crabshell:knowledge "title"` | Create a K-page (verified fact or operational tip) in .crabshell/knowledge/ |
 
-## Document Management (5-Document System: D/P/T/I/W)
+## Document Management (D/P/T/I/H System)
 
 Track project work through structured, append-only documents:
 
@@ -125,13 +125,15 @@ Track project work through structured, append-only documents:
 | `/planning` | P001 | draft, approved, in-progress, done | Implementation plans with steps |
 | `/ticketing` | P001_T001 | todo, in-progress, done, verified | Session-sized work units tied to plans |
 | `/investigating` | I001 | open, concluded | Multi-source investigations with cross-review |
-| `/light-workflow` | W001 | open, concluded | Light-workflow tracing (standalone tasks) |
+| `/hotfix` | H001 | done | Directly-performed one-pass work (Problem/Fix/Verification) |
+
+W worklogs (W001...) are legacy history from the retired light-workflow skill (v21.112.0, D113) — still readable and searchable, no new ones are created.
 
 Each document type has its own folder under `.crabshell/` with an `INDEX.md` for status tracking. Tickets inherit from plans and require verification-at-creation (TDD principle).
 
 ## Agent Orchestration Workflow
 
-The light-workflow skill uses five stages: understand internally, inspect, implement, verify behavior, and report. The parent agent owns the task contract, named references, source changes, direct execution, and the final completion decision.
+For one-pass work the parent does the task directly and records it with the hotfix skill. The parent agent owns the task contract, named references, source changes, direct execution, and the final completion decision.
 
 Delegation is optional and risk-based. When a worker is useful, its prompt carries the relevant original request, non-goals, authoritative references, read/write scope, expected observation, and verification method. Worker claims, counts, and spot-checks are supporting evidence only; the parent must inspect the resulting diff and decisive observations itself.
 
@@ -188,7 +190,7 @@ Coding conventions: ...
 │   └── INDEX.md
 ├── investigation/         # Investigation documents (I001, I002...)
 │   └── INDEX.md
-└── worklog/               # Worklog documents (W001, W002...) — light-workflow tracing
+└── worklog/               # Worklog documents (W001, W002...) — legacy history (light-workflow retired v21.112.0)
     └── INDEX.md
 ```
 
@@ -235,6 +237,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.112.0 | feat: D113 harness diet phase 1 (I083) — PreCompact active-docs cap: 65,820 → ~3,200 chars measured, newest-5-per-type + 4,000-char cap + wikilink-aware status parsing (concluded docs were miscounted as active); doc drift fixes (project.md 11 guards/20 skills, ARCHITECTURE token figures to measured values); light-workflow retired — hotfix is the single one-pass work record on both hosts (W worklogs remain readable legacy history, restart context still honors in-flight W docs); stale W017 closed. |
 | 21.111.1 | feat: Simple Communication principle gains `(e) write with a sense of humor` in the injected `RULES` block (`inject-rules.js`), so user-facing explanations stay plain-spoken instead of reading like a compliance memo. |
 | 21.111.0 | feat: Claude-host-only `## Codex Delegation` guidance injected every prompt (`CODEX_DELEGATION` in `inject-rules.js`) — /codex:rescue usage, latest-model example, project-root launch, prompt-carried constraints, completion re-verification, Windows `safe.directory` / Linux bwrap quirks; content grounded in live Windows tests (codex-cli 0.146.0). |
 | 21.110.2 | fix: wrap all nine Codex hook launchers in a Promise fail-open boundary; missing adapters and rejected `main()` calls now exit 0, with Windows execution and hook-contract regression coverage. |
