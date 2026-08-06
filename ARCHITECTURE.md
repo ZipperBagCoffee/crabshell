@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.112.0)
+# Crabshell Architecture (v21.113.0)
 
 ## Overview
 
@@ -32,9 +32,9 @@ Two meta-principles guide Claude's approach to obstacles:
 - **Cross-Domain Translation**: Before substituting a same-domain tool, characterize the problem's abstract structure first. This enables finding solutions from adjacent domains that may fit better.
 
 ### Dual Injection Optimization
-- **CLAUDE.md** (session start): Full RULES text (~2,530 tokens, 10.2KB measured v21.112.0) synced via `syncRulesToClaudeMd()` with marker-based replacement
-- **additionalContext** (every prompt): COMPRESSED_CHECKLIST (~380 tokens, 1.5KB measured) — a lightweight reminder of key rules and quick-check questions
-- **Error fallback**: Full RULES injected via additionalContext only when the normal path throws an exception
+- **CLAUDE.md** (session start): Full RULES text (~940 tokens, 3.8KB measured v21.113.0 — compressed from ~2,530 tokens in I083 R3) synced via `syncRulesToClaudeMd()` with marker-based replacement
+- **additionalContext** (every prompt): compact turn contract + 4-line Rules Quick-Check (~550 tokens total including Project Concept, measured v21.113.0 — down from ~1,220) — per-response 3-field ending and pressure texts retired
+- **Error fallback**: FIRST_TURN_RULES injected via additionalContext only when the normal path throws an exception
 
 ## System Architecture
 
@@ -252,12 +252,9 @@ Codex marketplace -> installed cache -> .codex-plugin/plugin.json
    │   └─> Require at least 1 behavioral (type: "direct") AC in manifest (v20.3.0)
    ├─> verification-sequence.js gate (Write|Edit|Bash) — v21.0.0+
    │   └─> Block git commit if source files edited but no test run
-   ├─> doc-watchdog.js gate (Write|Edit) — v21.18.0+
-   │   └─> Soft warning (additionalContext) when code edits >= 5 without D/P/T doc update (regressing only)
-   ├─> pressure-guard.js (Read|Grep|Glob|Bash|Write|Edit) — v19.47.0+, v21.1.0 L3, v21.71.0 short msgs
-   │   └─> Block all 6 tools at L2/L3 with short message (full text via inject-rules once-only)
-   └─> sycophancy-guard.js (Write|Edit) — v20.7.0+, v21.1.0 claim detection
-       └─> Mid-turn transcript parsing for sycophancy patterns + verification claim detection (4-tier) before tool writes
+   └─> doc-watchdog.js gate (Write|Edit) — v21.18.0+
+       └─> Soft warning (additionalContext) when code edits >= 5 without D/P/T doc update (regressing only)
+   (pressure-guard and sycophancy-guard unwired from PreToolUse in v21.113.0 — I083 R4/R5)
 
 3.5. Stop / SubagentStop — v21.107.0 single owner
    └─> completion-controller.js
@@ -265,7 +262,7 @@ Codex marketplace -> installed cache -> .codex-plugin/plugin.json
        ├─> Require decisive parent command evidence recorded by PostToolUse
        ├─> Bound identical actual failures, then require a concrete report instead of looping
        ├─> Preserve active D/P/T/W workflow continuation
-       └─> Run retained Claude Stop checks sequentially: sycophancy-guard, doc-watchdog stop, scope-guard
+       └─> Run retained Claude Stop checks sequentially: doc-watchdog stop (sycophancy/scope retired v21.113.0)
 
 4. PostToolUse (all tools)
    ├─> counter.js check
@@ -371,7 +368,7 @@ Regressing retains document-cycle continuation but has no parallel-worker count 
 | `docs-guard.js` | PreToolUse (Write\|Edit) | Block writes to .crabshell/ D/P/T/I/H subdirectories without active skill flag |
 | `log-guard.js` | PreToolUse (Write\|Edit) | Block INDEX.md terminal status without document log entries; block tickets with "(pending)" result sections; block cycle docs without previous cycle logs |
 | `verify-guard.js` | PreToolUse (Write\|Edit) | Hybrid: Edit always enforces verification; Write enforces only for existing files (new file creation skips). Block Final Verification without /verifying run; require behavioral AC in manifest |
-| `pressure-guard.js` | PreToolUse (Read\|Grep\|Glob\|Bash\|Write\|Edit) | Detect feedback pressure escalation; block all 6 tools at L3 with .crabshell/.claude exemption |
+| `pressure-guard.js` | (unwired v21.113.0 — I083 R4) | Retired from PreToolUse; pressure counters remain telemetry-only. Script kept on disk for re-wiring if regression observed |
 | `path-guard.js` | PreToolUse (Read\|Grep\|Glob\|Bash\|Write\|Edit) | Block wrong .crabshell/ path; shell var resolution (fail-closed for .crabshell/ v21.8.0); block Edit on logbook.md; block Write shrink on logbook.md (v20.6.0) |
 | `core/path-policy.js` | shared library | Host-neutral memory path decisions used by Claude and Codex wrappers |
 | `core/first-turn-context.js`, `core/memory-context.js`, `core/workflow-context.js` | shared libraries | Host-neutral prompt plus mandatory `[의도]`/`[이해]`/`[설명]` response ending, read-only memory, and restart-safe active workflow context |
@@ -388,8 +385,8 @@ Regressing retains document-cycle continuation but has no parallel-worker count 
 | `_test-cross-platform-native-hosts.js` | release smoke | Isolated Windows/Linux Claude Code CLI and Codex CLI install/activation matrix; app reported separately |
 | `skills/verifying/scripts/run-verify.js` | verification source | Canonical portable schema-v2 runner: repo-relative commands, structured assertions, and forbidden-path snapshots |
 | `.crabshell/verification/run-verify.js` | generated project runner | Byte-equivalent generated runner consumed by `verify-guard.js`; stdout text is diagnostic, not a pass oracle |
-| `sycophancy-guard.js` | Stop, PreToolUse (Write\|Edit) | Dual-layer sycophancy detection + verification claim detection (4-tier classification): Stop response + mid-turn transcript parsing; block with re-examination |
-| `scope-guard.js` | Stop | Compare user-requested quantity vs response count; block scope reduction without approval |
+| `sycophancy-guard.js` | (unwired v21.113.0 — I083 R5) | Retired from PreToolUse and Stop dispatch; anti-sycophancy training in Sonnet 4.5+ models replaced the prompt/hook layer. Script kept on disk |
+| `scope-guard.js` | (unwired v21.113.0 — I083 R5) | Retired from Stop dispatch; scope preservation lives as a short principle in RULES. Script kept on disk |
 | `regressing-loop-guard.js` | retained compatibility source | Legacy count-independent continuation helper retained for regression coverage; no longer a direct manifest Stop owner. Regressing continuation is goal-driven (v21.110.0): the regressing skill emits a `/goal` handoff for host goal mode, and `completion-controller.js` keeps bounded continuation on execution-authorized turns |
 | `skill-tracker.js` | PostToolUse (Skill) | Set skill-active flag on Skill tool calls (TTL-based, 5min expiry) |
 | `regressing-state.js` | (library) | Phase tracker: getState, buildReminder, detectSkillCall, advancePhase |
@@ -518,7 +515,7 @@ Separated from memory-index.json to eliminate Write race condition during delta 
 - **Remaining gap**: If Claude agrees without evidence and then uses Read/Grep/Glob/Bash (but not Write/Edit), neither the Stop hook nor the PreToolUse guard catches the sycophancy. Expanding PreToolUse to check transcript text for all tool types is a potential future mitigation.
 
 ### Guard Consolidation (IA-6 Analysis)
-The 5 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, verify-guard, sycophancy-guard) remain separate. Consolidation was analyzed and rejected for safety:
+The 4 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, verify-guard) remain separate. Consolidation was analyzed and rejected for safety:
 - **Independent fail-open isolation**: Each guard catches errors and exits 0 independently. A merged script's crash in one guard's logic would silently disable all guards.
 - **Different dependencies**: regressing-state.json, skill-active.json, run-verify.js + manifest.json, and transcript files respectively. A dependency failure in one should not affect others.
 - **Different complexity profiles**: 60 lines (regressing) vs 497 lines (sycophancy). Merging makes simple guards harder to reason about.
@@ -528,6 +525,7 @@ The 5 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.113.0 | feat: D113 harness diet phase 2 — injection compression (~55% per turn, ~63% RULES), pressure model-exposure + behavioral guards (pressure/sycophancy/scope) retired from wiring, 3-field response ending removed, Codex delegation execution-turn-only, investigating fan-out risk-based. |
 | 21.112.0 | feat: D113 harness diet phase 1 — PreCompact bounded (I083 defect fix), doc token figures corrected to measured values, light-workflow retired (hotfix = single one-pass record; worklog read-side kept for in-flight W docs). |
 | 21.111.1 | feat: humor clause `(e) write with a sense of humor` added to the `RULES` Simple Communication principle in `inject-rules.js`; injected on both hosts. |
 | 21.111.0 | feat: Claude-host-only `## Codex Delegation` guidance block (`CODEX_DELEGATION`) appended after the shared first-turn context in `inject-rules.js`; Codex adapter path excluded by host gate; parity test updated. |

@@ -1,5 +1,16 @@
 # Changelog
 
+## [21.113.0] - 2026-08-05
+
+### feat: D113 harness diet phase 2 (I083) — injection compression, behavioral guard retirement, 3-field ending removal
+- **Per-turn injection ~55% cut (I083 R2)**: `COMPRESSED_CHECKLIST` 11-item checklist → 4 bullets; Turn Contract 6 bullets → 3; typical question-turn injection measured 4,878 → 2,308 chars (~1,220 → ~577 tok). `CODEX_DELEGATION` now injected on Claude-host execution turns only.
+- **RULES/CLAUDE.md ~63% cut (I083 R3)**: `RULES` constant 10,121 → 3,753 chars (~2,530 → ~940 tok). Enumerated sections retired (SCOPE DEFINITIONS, PROHIBITED PATTERNS 1–9, L1–L4 taxonomy, REQUIREMENTS list) in favor of short principles + the Anthropic-validated grounding instruction ("audit each claim against a tool result from this session"). CLAUDE.md synced; AGENTS.md regenerated.
+- **Pressure model-exposure removed (I083 R4)**: `PRESSURE_L1/L2/L3` texts and the still-active reminder no longer injected; `pressure-guard.js` unwired from PreToolUse. Counters remain as user-facing telemetry; `봉인해제`/`UNLEASH` still resets them.
+- **Behavioral guards retired (I083 R5)**: `sycophancy-guard.js` (PreToolUse + Stop dispatch) and `scope-guard.js` (Stop dispatch) unwired — anti-sycophancy is trained into Sonnet 4.5+ models and Anthropic removed its own anti-sycophancy prompt text; scope preservation stays as a RULES principle. Scripts remain on disk for re-wiring if regression is observed. Deterministic guards (path, docs, log, verify, commit-gate, doc-watchdog, completion-controller) are untouched — 8 blocking guards remain.
+- **Per-response 3-field ending removed (I083 R8, user-approved)**: `RESPONSE_CONTRACT`/`[의도][이해][설명]` block and its validator deleted from `first-turn-context.js`.
+- **investigating skill fan-out relaxed (I083 R7)**: multi-agent and cross-review are now risk-based options instead of mandatory minimums.
+- Tests updated to the new contracts: inject-rules 113/113, feedback-detection 38/38, shared-context 15/15, cross-runtime-first-turn 11/11 (+ execution-turn delegation gating test), parent-completion 7/7, native-hosts matrix OK×3, verification manifest 15/15. Known pre-existing failures (also failing at v21.112.0 HEAD): `_test-inject-rules-classification.js`, `_test-inject-rules-race.js` — recorded in D113 for separate follow-up.
+
 ## [21.112.0] - 2026-08-05
 
 ### feat: D113 harness diet phase 1 (I083) — PreCompact cap, drift fixes, light-workflow → hotfix unification

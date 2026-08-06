@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.112.0)
+# Crabshell Plugin Structure (v21.113.0)
 
-**Version**: 21.112.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.113.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -83,7 +83,7 @@ crabshell/
 │   ├── regressing-state.js            # Regressing phase tracker (v19.23.0)
 │   ├── append-memory.js              # Atomic logbook.md append (v19.53.0)
 │   ├── regressing-guard.js           # PreToolUse regressing skill enforcement (v19.23.0)
-│   ├── sycophancy-guard.js           # Stop + PreToolUse dual-layer sycophancy detection + verification claim detection (v19.29.0, v20.7.0, v21.1.0). Also writes feedbackPressure.oscillationCount (reversal phrases) and tooGoodSkepticism.retryCount (all-None P/O/G) at Stop hook — these are pressure-adjacent counters independent of feedbackPressure.level. See three pressure counters (feedbackPressure.level, feedbackPressure.oscillationCount, tooGoodSkepticism.retryCount) in USER-MANUAL.md §Pressure System.
+│   ├── sycophancy-guard.js           # RETIRED v21.113.0 (unwired, I083 R5) — was Stop + PreToolUse dual-layer sycophancy detection + verification claim detection (v19.29.0, v20.7.0, v21.1.0). Also writes feedbackPressure.oscillationCount (reversal phrases) and tooGoodSkepticism.retryCount (all-None P/O/G) at Stop hook — these are pressure-adjacent counters independent of feedbackPressure.level. See three pressure counters (feedbackPressure.level, feedbackPressure.oscillationCount, tooGoodSkepticism.retryCount) in USER-MANUAL.md §Pressure System.
 │   ├── path-guard.js                # PreToolUse path validation + shell var resolution + logbook.md Edit block + Write shrink guard (v19.31.0, v20.3.0, v20.6.0, v21.8.0)
 │   ├── core/path-policy.js           # Host-neutral memory path policy (v21.104.0)
 │   ├── core/codex-app-server.js      # Codex JSON-RPC/CLI capability client (v21.104.0)
@@ -109,7 +109,7 @@ crabshell/
 │   ├── _test-orchestration-defaults.js # Deterministic orchestration policy tests (v21.105.0)
 │   ├── docs-guard.js                # PreToolUse D/P/T/I skill bypass prevention (v19.33.0)
 │   ├── verify-guard.js              # PreToolUse Final Verification + behavioral AC (v19.34.0, v20.3.0)
-│   ├── pressure-guard.js            # PreToolUse feedback pressure L3 blocking — all 6 tools (v19.47.0, v21.1.0)
+│   ├── pressure-guard.js            # RETIRED v21.113.0 (unwired, I083 R4) — was PreToolUse pressure blocking — all 6 tools (v19.47.0, v21.1.0)
 │   ├── log-guard.js                # PreToolUse D/P/T log enforcement — terminal status + cycle log guard (v21.4.0)
 │   ├── verification-sequence.js     # PostToolUse state tracker + PreToolUse commit/edit gate (v21.0.0)
 │   ├── skill-tracker.js             # PostToolUse skill-active flag setter (v19.33.0)
@@ -126,7 +126,7 @@ crabshell/
 │   ├── _test-verify-guard.js        # verify-guard.js integration tests — Write/Edit new/existing distinction (v21.16.0)
 │   ├── doc-watchdog.js              # PostToolUse/PreToolUse/Stop doc-update omission FSM (v21.18.0)
 │   ├── _test-doc-watchdog.js        # doc-watchdog.js 12-test integration suite (v21.18.0)
-│   ├── scope-guard.js               # Stop hook — scope reduction detection (user qty vs response qty) (v21.19.0)
+│   ├── scope-guard.js               # RETIRED v21.113.0 (unwired, I083 R5) — was Stop scope reduction detection (user qty vs response qty) (v21.19.0)
 │   ├── _test-scope-guard.js         # scope-guard.js 20-test integration suite (v21.19.0)
 │   ├── shared-context.js            # Shared constants/functions for cross-hook reuse (v21.21.0)
 │   ├── pre-compact.js               # PreCompact hook — memory preservation instructions into compaction prompt (v21.21.0)
@@ -380,8 +380,7 @@ L1 generation:
    ├─> verification-sequence.js gate (Write|Edit|Bash) — source edit→test→commit enforcement (v21.0.0)
    │   └─> Block git commit if source files edited but no test run
    ├─> doc-watchdog.js gate (Write|Edit) — soft warning when code edits >= 5 without D/P/T doc update during regressing (v21.18.0)
-   ├─> pressure-guard.js (Read|Grep|Glob|Bash|Write|Edit) — detect feedback pressure escalation
-   └─> sycophancy-guard.js (Write|Edit) — mid-turn transcript parsing for sycophancy + verification claim detection (v20.7.0, v21.1.0)
+   (pressure-guard/sycophancy-guard unwired v21.113.0 — I083 R4/R5)
 
 3.5. Stop
    └─> completion-controller.js (single Stop owner, v21.107.0)
@@ -421,6 +420,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.113.0 | feat: D113 harness diet phase 2 — COMPRESSED_CHECKLIST 4-bullet rewrite, RULES compression (3,753 chars), RESPONSE_CONTRACT/3-field removal, PRESSURE_L1-L3 removal, pressure/sycophancy guard unwiring from hooks.json, scope/sycophancy removal from completion-controller Stop dispatch, CODEX_DELEGATION execution-turn gating, investigating SKILL.md risk-based delegation; test re-anchoring across 9 suites. |
 | 21.112.0 | feat: D113 harness diet phase 1 — `pre-compact.js` active-docs cap (newest 5/type, 4,000-char cap, wikilink-aware status parsing) + project.md/ARCHITECTURE drift fixes + light-workflow retired into hotfix (skills/, codex-skills/, RULES, docs-guard/skill-tracker lists, codex-docs alias, tests 6/7 repointed); W017 stale state closed. |
 | 21.111.1 | feat: `RULES` Simple Communication principle extended with a fifth property — `(e) write with a sense of humor`; existing keyword-anchor tests unchanged. |
 | 21.111.0 | feat: `CODEX_DELEGATION` block in `inject-rules.js` — Codex delegation guidance appended to every Claude-host UserPromptSubmit context; host-gated (Codex adapter excluded); cross-runtime parity test asserts Claude = Codex + block. |

@@ -59,7 +59,7 @@ test('EXPORT: all constants present', function() {
   const consts = [
     'RULES', 'MARKER_START', 'MARKER_END', 'COMPRESSED_CHECKLIST',
     'EMERGENCY_STOP_CONTEXT', 'ROTATION_INSTRUCTION',
-    'PRESSURE_L1', 'PRESSURE_L2', 'PRESSURE_L3', 'EMERGENCY_KEYWORDS',
+    'EMERGENCY_KEYWORDS',
     'NEGATIVE_PATTERNS', 'NEGATIVE_EXCLUSIONS', 'BAILOUT_KEYWORDS',
   ];
   for (const c of consts) {
@@ -248,19 +248,17 @@ test('SYNC: creates CLAUDE.md with all key sections', function() {
     mod.syncRulesToClaudeMd(tmpDir);
     const content = fs.readFileSync(path.join(tmpDir, 'CLAUDE.md'), 'utf8');
     // All key sections from RULES constant must be present
-    assert(content.includes('### VERIFICATION-FIRST'), 'missing VERIFICATION-FIRST');
+    assert(content.includes('### VERIFICATION'), 'missing VERIFICATION');
     assert(content.includes('### INTERNAL TASK CONTRACT'), 'missing INTERNAL TASK CONTRACT');
     assert(content.includes('blocking_unknowns'), 'missing blocking_unknowns');
     assert(!content.includes('State **to the user** what you believe they intend'), 'stale visible intent ritual remains');
     assert(content.includes('### PRINCIPLES'), 'missing PRINCIPLES');
-    assert(content.includes('### REQUIREMENTS'), 'missing REQUIREMENTS');
-    assert(content.includes('### PROBLEM-SOLVING PRINCIPLES'), 'missing PROBLEM-SOLVING');
-    assert(content.includes('### SCOPE DEFINITIONS'), 'missing SCOPE DEFINITIONS');
+    assert(content.includes('### WORKING RULES'), 'missing WORKING RULES');
     assert(content.includes('### ADDITIONAL RULES'), 'missing ADDITIONAL RULES');
-    assert(content.includes('### PROHIBITED PATTERNS'), 'missing PROHIBITED PATTERNS');
-    // L1-L4 observation levels
-    assert(content.includes('L1 (Direct Execution)'), 'missing L1');
-    assert(content.includes('L4 (Claim Without Evidence)'), 'missing L4');
+    // v21.113.0 (I083 R2/R3): enumerated sections retired from RULES
+    assert(!content.includes('### PROHIBITED PATTERNS'), 'PROHIBITED PATTERNS should be retired');
+    assert(!content.includes('### SCOPE DEFINITIONS'), 'SCOPE DEFINITIONS should be retired');
+    assert(!content.includes('L4 (Claim Without Evidence)'), 'L1-L4 taxonomy should be retired');
     // Markers
     assert(content.includes(mod.MARKER_START), 'missing start marker');
     assert(content.includes(mod.MARKER_END), 'missing end marker');
@@ -282,7 +280,7 @@ test('SYNC: preserves user content below end marker', function() {
     const updated = fs.readFileSync(claudeMdPath, 'utf8');
     assert(updated.includes('My project uses React'), 'user content lost');
     assert(updated.includes('npm'), 'user content lost');
-    assert(updated.includes('### VERIFICATION-FIRST'), 'rules missing');
+    assert(updated.includes('### VERIFICATION'), 'rules missing');
   } finally {
     cleanupDir(tmpDir);
   }
@@ -295,7 +293,7 @@ test('SYNC: handles legacy CLAUDE.md without markers', function() {
     fs.writeFileSync(claudeMdPath, '## My Custom Rules\n\nDo things correctly.\n');
     mod.syncRulesToClaudeMd(tmpDir);
     const content = fs.readFileSync(claudeMdPath, 'utf8');
-    assert(content.includes('### VERIFICATION-FIRST'), 'rules injected');
+    assert(content.includes('### VERIFICATION'), 'rules injected');
     assert(content.includes('My Custom Rules'), 'existing content preserved');
     assert(content.includes(mod.MARKER_END), 'end marker present');
   } finally {
@@ -310,12 +308,12 @@ test('SYNC: replaces rules between markers on re-sync', function() {
     const claudeMdPath = path.join(tmpDir, 'CLAUDE.md');
     // Tamper with rules between markers
     let content = fs.readFileSync(claudeMdPath, 'utf8');
-    content = content.replace('### VERIFICATION-FIRST', '### FAKE-SECTION');
+    content = content.replace('### VERIFICATION', '### FAKE-SECTION');
     fs.writeFileSync(claudeMdPath, content);
     // Re-sync should restore
     mod.syncRulesToClaudeMd(tmpDir);
     const restored = fs.readFileSync(claudeMdPath, 'utf8');
-    assert(restored.includes('### VERIFICATION-FIRST'), 'rules restored after tamper');
+    assert(restored.includes('### VERIFICATION'), 'rules restored after tamper');
     assert(!restored.includes('### FAKE-SECTION'), 'tampered content removed');
   } finally {
     cleanupDir(tmpDir);
@@ -791,8 +789,8 @@ test('INTEGRATION: syncRulesToClaudeMd output includes RULES principles', functi
     const content = fs.readFileSync(path.join(tmpDir, 'CLAUDE.md'), 'utf8');
     assert(content.includes('Anti-Deception'), 'Anti-Deception in output');
     assert(content.includes('Human Oversight'), 'Human Oversight in output');
-    assert(content.includes('Anti-overcorrection'), 'Anti-overcorrection in output');
-    assert(content.includes('Observation Resolution Levels'), 'L1-L4 in output');
+    assert(content.includes('Scope Preservation'), 'Scope Preservation in output');
+    assert(content.includes('audit each claim against a tool result'), 'grounding instruction in output');
   } finally {
     cleanupDir(tmpDir);
   }
@@ -866,13 +864,10 @@ test('SUBPROCESS: output contains key context items', function() {
     assert(ctx.includes('Rules Quick-Check'), 'COMPRESSED_CHECKLIST present');
     assert(ctx.includes('Node.js Path'), 'Node.js Path present');
     assert(ctx.includes('Project Root Anchor'), 'Project Root Anchor present');
-    // D112: the shared three-field response ending is restored for both hosts.
-    assert(ctx.includes('Mandatory Response Ending'), 'mandatory response ending present');
-    assert(ctx.includes('[의도]:'), 'intent field present');
-    assert(ctx.includes('[이해]:'), 'understanding field present');
-    assert(ctx.includes('[설명]:'), 'explanation field present');
-    assert(ctx.includes('easy-to-understand'), 'easy-language requirement present');
-    assert(ctx.includes('conclusion first'), 'natural conclusion-first guidance present');
+    // v21.113.0 (I083 R2/R8): the per-response three-field ending is retired.
+    assert(!ctx.includes('Mandatory Response Ending'), 'response-ending block retired (v21.113.0)');
+    assert(!ctx.includes('[의도]:'), 'intent field retired');
+    assert(ctx.includes('conclusion in the reader'), 'conclusion-first guidance present');
     assert(ctx.includes('TZ_OFFSET'), 'TZ_OFFSET present');
   } finally {
     cleanupDir(tmpDir);
@@ -1147,10 +1142,10 @@ test('CONSTANTS: COMPRESSED_CHECKLIST contains Rules Quick-Check', function() {
   assert(mod.COMPRESSED_CHECKLIST.includes('Rules Quick-Check'));
 });
 
-test('CONSTANTS: PRESSURE strings non-empty', function() {
-  assert(mod.PRESSURE_L1.length > 10);
-  assert(mod.PRESSURE_L2.length > 10);
-  assert(mod.PRESSURE_L3.length > 10);
+test('CONSTANTS: PRESSURE injection constants retired (v21.113.0, I083 R4)', function() {
+  assert(mod.PRESSURE_L1 === undefined);
+  assert(mod.PRESSURE_L2 === undefined);
+  assert(mod.PRESSURE_L3 === undefined);
 });
 
 // DELTA_INSTRUCTION constant test removed (AC-4: constant deleted from inject-rules.js)
@@ -1263,7 +1258,7 @@ test('RULES: Simple Communication keyword "reader\'s words" present', function()
 });
 
 test('RULES: Simple Communication keyword "lead with the conclusion" present', function() {
-  assert(mod.RULES.includes('lead with the conclusion'), 'RULES missing "lead with the conclusion" keyword');
+  assert(mod.RULES.includes('conclusion first'), 'RULES missing "conclusion first" keyword');
 });
 
 test('RULES: Simple Communication keyword "concrete" + "abstract" present', function() {
@@ -1276,14 +1271,11 @@ test('RULES: Simple Communication keyword "self-coined" present', function() {
   assert(mod.RULES.includes('self-coined'), 'RULES missing "self-coined" keyword');
 });
 
-test('RULES: PROHIBITED PATTERNS contains "Default-First (Externalization Avoidance)"', function() {
-  assert(mod.RULES.includes('Default-First (Externalization Avoidance)'),
-    'RULES missing PROHIBITED #9 Default-First label');
-});
-
-test('RULES: PROHIBITED #9 references prompts/anti-patterns.md anchor', function() {
-  assert(mod.RULES.includes('prompts/anti-patterns.md'),
-    'RULES PROHIBITED #9 missing anti-patterns.md anchor reference');
+test('RULES: enumerated PROHIBITED PATTERNS list retired (v21.113.0, I083 R2)', function() {
+  assert(!mod.RULES.includes('PROHIBITED PATTERNS'),
+    'laundry-list PROHIBITED PATTERNS should be retired from RULES');
+  assert(mod.RULES.includes('Scope Preservation'),
+    'scope principle must survive the compression');
 });
 
 test('RULES: zero "analogy" wording (regression lock against analogy default)', function() {

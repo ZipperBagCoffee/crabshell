@@ -21,7 +21,7 @@ function assertEqual(actual, expected, label) {
   if (actual !== expected) throw new Error((label || '') + ' expected ' + JSON.stringify(expected) + ', got ' + JSON.stringify(actual));
 }
 // AC-7: Export check
-let detectNegativeFeedback, updateFeedbackPressure, PRESSURE_L1, PRESSURE_L2, PRESSURE_L3;
+let detectNegativeFeedback, updateFeedbackPressure;
 test('AC-7: detectNegativeFeedback exported', function() {
   const mod = require(injectRulesPath);
   assert(typeof mod.detectNegativeFeedback === 'function', 'not exported');
@@ -32,12 +32,6 @@ test('AC-7: updateFeedbackPressure exported', function() {
   const mod = require(injectRulesPath);
   assert(typeof mod.updateFeedbackPressure === 'function', 'not exported');
   updateFeedbackPressure = mod.updateFeedbackPressure;
-});
-
-test('AC-7: PRESSURE_L1/L2/L3 exported', function() {
-  const mod = require(injectRulesPath);
-  PRESSURE_L1 = mod.PRESSURE_L1; PRESSURE_L2 = mod.PRESSURE_L2; PRESSURE_L3 = mod.PRESSURE_L3;
-  assert(typeof PRESSURE_L1 === 'string'); assert(typeof PRESSURE_L2 === 'string'); assert(typeof PRESSURE_L3 === 'string');
 });
 
 if (!detectNegativeFeedback || !updateFeedbackPressure) {
@@ -89,19 +83,12 @@ test('AC-8: 6 non-neg from L3 -> L1', function() {
   assertEqual(index.feedbackPressure.level, 1, 'decay 3->1');
 });
 
-// AC-6: Self-directed pressure messages
-test('AC-6: PRESSURE_L2 no ask the user', function() {
-  assert(!(/ask the user/i.test(PRESSURE_L2)), 'should not ask user');
-});
-test('AC-6: PRESSURE_L2 has problem analysis requirement', function() {
-  // v21.71.0: L2 requires problem analysis + corrective plan
-  assert(/Analyze|corrective plan/i.test(PRESSURE_L2), 'should include problem analysis requirement');
-});
-test('AC-6: PRESSURE_L1 no ask user', function() {
-  assert(!(/ask the user/i.test(PRESSURE_L1)), 'should not ask user');
-});
-test('AC-6: PRESSURE_L3 no ask user', function() {
-  assert(!(/ask the user/i.test(PRESSURE_L3)), 'should not ask user');
+// v21.113.0 (I083 R4): model-visible pressure messages retired — counters remain
+// for telemetry, so only the tracking functions are contract-tested below.
+test('AC-6: PRESSURE injection constants retired', function() {
+  const mod = require('./inject-rules');
+  assert(mod.PRESSURE_L1 === undefined && mod.PRESSURE_L2 === undefined && mod.PRESSURE_L3 === undefined,
+    'pressure injection constants should be gone');
 });
 
 // W021: Additional AC-3/AC-4/AC-1 sections REMOVED — depended on patterns no longer in NEGATIVE_PATTERNS.
@@ -122,18 +109,7 @@ test('CODE: inline code strips profanity -> false', function() {
   assertEqual(detectNegativeFeedback('The `fuck` variable needs renaming'), false);
 });
 
-// AC-6: self-directed content checks
-test('AC-6: L1 has self-check', function() {
-  assert(/self.check|root.cause|reasoning/i.test(PRESSURE_L1), 'L1 should be self-directed');
-});
-test('AC-6: L2 has problem analysis content', function() {
-  // v21.71.0: L2 requires analyze + corrective plan
-  assert(/Analyze what went wrong|corrective plan/i.test(PRESSURE_L2), 'L2 should require problem analysis');
-});
-test('AC-6: L3 has self-diagnosis sections', function() {
-  // v21.71.0: L3 requires structured self-diagnosis sections
-  assert(/What I did wrong|corrective plan/i.test(PRESSURE_L3), 'L3 should have self-diagnosis sections');
-});
+// AC-6 content checks removed in v21.113.0 — the injected pressure texts no longer exist.
 
 // Pressure: cap and init
 test('PRESSURE: caps at L3', function() {

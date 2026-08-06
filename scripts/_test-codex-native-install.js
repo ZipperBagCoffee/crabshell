@@ -189,14 +189,16 @@ async function main() {
       timeout: 10000,
       windowsHide: true,
     });
-    test('installed Codex UserPromptSubmit emits the restored shared response contract without a project write', () => {
+    test('installed Codex UserPromptSubmit emits the shared compact turn contract without a project write', () => {
       assert.strictEqual(installedPrompt.status, 0, installedPrompt.stderr || installedPrompt.stdout);
       const installedPromptOutput = JSON.parse(installedPrompt.stdout.trim());
       assert.strictEqual(validateContextOutput(installedPromptOutput), true);
       const context = installedPromptOutput.hookSpecificOutput.additionalContext;
-      assert.match(context, /\[의도\]:[\s\S]*\[이해\]:[\s\S]*\[설명\]:/);
-      assert.match(context, /End every user-facing response, including a short answer/i);
-      assert.match(context, /easy-to-understand line using the user's words/i);
+      assert.match(context, /Crabshell Turn Contract/);
+      assert.match(context, /Rules Quick-Check/);
+      // Retired in v21.113.0 (I083 R2/R8): per-response 3-field block
+      assert.doesNotMatch(context, /Mandatory Response Ending/);
+      assert.doesNotMatch(context, /\[의도\]:/);
       assert.deepStrictEqual(treeSnapshot(consumerProject), beforePrompt);
     });
 

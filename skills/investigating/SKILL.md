@@ -69,7 +69,7 @@ Before creating the investigation document and launching agents, recommend execu
 
 | Parameter | Recommendation | Rationale |
 |-----------|---------------|-----------|
-| Agent count | 3–5 | Based on topic scope; more perspectives = better coverage |
+| Agent count | Risk-based: 0 (parent-led) for narrow topics, 2–5 for broad or contested topics | Delegation is a risk control, not a completion requirement (v21.113.0, I083 R7) |
 | Specialist roles | _{distinct roles relevant to topic}_ | e.g., "Forensic Auditor", "Cognitive Scientist", "Systems Engineer" — each agent must have a unique expert perspective |
 | Model tier | See project.md `## Model Routing` | T1 for analysis/judgment, T2 for mechanical searches. Project-level routing applies. |
 
@@ -231,8 +231,8 @@ Update status column in `.crabshell/investigation/INDEX.md`.
 2. **Conclusion section** must answer each Question from the Questions section individually, with evidence and confidence assessment.
 3. **INDEX.md** is the only file where existing content may be modified (status updates).
 4. When investigation leads to a discussion or plan, note in log: "→ See [[D{NNN}-{slug}|D{NNN}]]" or "→ See [[P{NNN}-{slug}|P{NNN}]]" and update INDEX.md Related column with the same wikilink format. Obtain `{slug}` by globbing `.crabshell/{discussion|plan}/{ID}-*.md` and extracting the basename without `.md`. If the target document does not exist yet, use the bare ID temporarily: "→ See D{NNN}" or "→ See P{NNN}".
-5. **Multi-agent is mandatory for Create mode.** At minimum 2 Work Agents with different focus areas. Single-agent investigation defeats the purpose.
-6. **Cross-review is mandatory.** Review Agents must challenge findings before Orchestrator synthesis. No synthesis without cross-review.
+5. **Delegation is risk-based, not mandatory.** Use independent Work Agents when source breadth, contested claims, or context volume warrant them; a parent-led investigation is valid for narrow topics. Agent count is never completion evidence.
+6. **Cross-review is risk-based.** Use independent Review Agents (without showing them Work Agent findings) when conclusions are contested or high-impact; otherwise the Orchestrator's own source-check suffices. State in the document which level was applied and why.
 7. **Source diversity.** Investigation must use at least 2 different source types (internet + local, internet + user-specified, etc.) unless the topic explicitly restricts sources.
 8. **Mandatory work log:** After performing any work related to this document, append a log entry to the Log section using the existing format (`### [{YYYY-MM-DD HH:MM}] {entry_type}`). This applies regardless of whether this skill was explicitly invoked — if the work touched or advanced this investigation's purpose, log it.
 9. **I documents are independent.** They do not participate in D → P → T hierarchy or status cascades. They may be referenced by other documents but have no parent/child relationships.
