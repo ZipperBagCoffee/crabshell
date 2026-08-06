@@ -1,5 +1,11 @@
 # Changelog
 
+## [21.113.1] - 2026-08-05
+
+### feat: pin the Simple Communication style (user-specified)
+- `RULES` **Simple Communication** principle now spells out the wanted style instead of a vague humor clause: keep it short, unpack every technical term in plain language, 비유 금지 (explain the thing itself, not through comparisons), and mix in light internet-community banter (깐족 유머) — never at the user's expense, never as padding. User's own spec: "용어를 풀어서 간단명료하게, 인터넷 유머 감성의 말투로".
+- Synced to CLAUDE.md; AGENTS.md regenerated. Keyword-anchor tests unchanged (113/113, shared-context 15/15) — the analogy-zero-count lock survives because the ban is written in Korean.
+
 ## [21.113.0] - 2026-08-05
 
 ### feat: D113 harness diet phase 2 (I083) — injection compression, behavioral guard retirement, 3-field ending removal

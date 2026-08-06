@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.113.0)
+# Crabshell Architecture (v21.113.1)
 
 ## Overview
 
@@ -525,6 +525,7 @@ The 4 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.113.1 | feat: Simple Communication style pinned in RULES (plain unpacking, 비유 금지, community banter). |
 | 21.113.0 | feat: D113 harness diet phase 2 — injection compression (~55% per turn, ~63% RULES), pressure model-exposure + behavioral guards (pressure/sycophancy/scope) retired from wiring, 3-field response ending removed, Codex delegation execution-turn-only, investigating fan-out risk-based. |
 | 21.112.0 | feat: D113 harness diet phase 1 — PreCompact bounded (I083 defect fix), doc token figures corrected to measured values, light-workflow retired (hotfix = single one-pass record; worklog read-side kept for in-flight W docs). |
 | 21.111.1 | feat: humor clause `(e) write with a sense of humor` added to the `RULES` Simple Communication principle in `inject-rules.js`; injected on both hosts. |
