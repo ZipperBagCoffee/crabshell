@@ -49,18 +49,30 @@ function cleanupDir(dirPath) {
 }
 
 // Spawn one inject-rules.js subprocess with CLAUDE_PROJECT_DIR=tmpDir and stdin payload.
-function spawnInject(tmpDir, payload) {
+// stderr goes to a FILE, not a pipe: on Windows, piped stderr is asynchronous and
+// can silently drop trailing lines when the child exits quickly — which made the
+// winner accounting (based on '[inject-rules: index lock busy' lines) flaky.
+// File-backed stdio is written synchronously, so no lines are lost.
+function spawnInject(tmpDir, payload, procIndex) {
   return new Promise(function(resolve) {
+    const stderrPath = path.join(tmpDir, 'stderr-' + procIndex + '.log');
+    const stderrFd = fs.openSync(stderrPath, 'w');
     const child = spawn(process.execPath, [injectRulesPath], {
       env: Object.assign({}, process.env, { CLAUDE_PROJECT_DIR: tmpDir }),
-      stdio: ['pipe', 'pipe', 'pipe'],
+      stdio: ['pipe', 'pipe', stderrFd],
     });
     let stdout = '';
-    let stderr = '';
     child.stdout.on('data', function(d) { stdout += d.toString(); });
-    child.stderr.on('data', function(d) { stderr += d.toString(); });
-    child.on('close', function(code) { resolve({ code: code, stdout: stdout, stderr: stderr }); });
-    child.on('error', function() { resolve({ code: -1, stdout: stdout, stderr: stderr }); });
+    child.on('close', function(code) {
+      fs.closeSync(stderrFd);
+      let stderr = '';
+      try { stderr = fs.readFileSync(stderrPath, 'utf8'); } catch (e) {}
+      resolve({ code: code, stdout: stdout, stderr: stderr });
+    });
+    child.on('error', function() {
+      try { fs.closeSync(stderrFd); } catch (e) {}
+      resolve({ code: -1, stdout: stdout, stderr: '' });
+    });
     child.stdin.write(payload);
     child.stdin.end();
   });
@@ -101,10 +113,14 @@ function countOccurrences(text, needle) {
 async function runTrial(trialNum, N) {
   const tmpDir = seedTmpDir();
   try {
-    const payload = JSON.stringify({ prompt: '시발 짜증나' });  // W021: profanity (틀렸/다시 해 removed from NEGATIVE_PATTERNS)
+    // Negative feedback + execution keyword: since D111, non-execution turns are
+    // read-only (mayMutateState gate), so the RMW write path only runs on
+    // execution intent. The old payload ('시발 짜증나') classified as default and
+    // never wrote — the test was asserting a write the design forbids.
+    const payload = JSON.stringify({ prompt: '시발 짜증나 고쳐' });
     const promises = [];
     for (let i = 0; i < N; i++) {
-      promises.push(spawnInject(tmpDir, payload));
+      promises.push(spawnInject(tmpDir, payload, i));
     }
     const results = await Promise.all(promises);
 
@@ -116,12 +132,17 @@ async function runTrial(trialNum, N) {
       }
     }
 
-    // Count lock-busy skip events across all subprocess stderrs.
+    // Count lock-busy skips and fail-open write errors across subprocess stderrs.
+    // A process whose write failed after retries falls to the fail-open path
+    // ('[rules injection error') — it acquired the lock but acknowledged the
+    // failure, so it is not a silent lost update and not counted as a winner.
     let lockBusy = 0;
+    let writeErrors = 0;
     for (let i = 0; i < results.length; i++) {
       lockBusy += countOccurrences(results[i].stderr, '[inject-rules: index lock busy');
+      writeErrors += countOccurrences(results[i].stderr, '[rules injection error');
     }
-    const winners = N - lockBusy;
+    const winners = N - lockBusy - writeErrors;
 
     const index = readIndex(tmpDir);
     const fp = index.feedbackPressure || {};

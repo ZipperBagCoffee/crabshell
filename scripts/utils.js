@@ -80,16 +80,29 @@ function writeFile(filePath, content) {
 function writeJson(filePath, data) {
   ensureDir(path.dirname(filePath));
   const content = JSON.stringify(data, null, 2);
-  const tempPath = filePath + '.tmp';
-  try {
-    fs.writeFileSync(tempPath, content, 'utf8');
-    fs.renameSync(tempPath, filePath);
-  } catch (e) {
-    // Windows: renameSync fails with EPERM/ENOENT when target is locked
-    // (antivirus, concurrent hook instances). Fallback to direct write.
-    try { fs.unlinkSync(tempPath); } catch {}
-    fs.writeFileSync(filePath, content, 'utf8');
+  // Per-process temp name: a shared "<file>.tmp" let concurrent hook instances
+  // overwrite each other's half-written temp, so a rename could publish another
+  // process's partial JSON (observed as "Unexpected end of JSON input" readers
+  // in _test-inject-rules-race). rename stays the only publish operation —
+  // readers never see a torn file.
+  const tempPath = `${filePath}.${process.pid}.tmp`;
+  // Windows: renameSync can fail with EPERM while a concurrent hook instance
+  // or antivirus briefly holds the target open. Retry with a short backoff;
+  // fall back to a direct (non-atomic) write only as the final attempt.
+  let lastError = null;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      fs.writeFileSync(tempPath, content, 'utf8');
+      fs.renameSync(tempPath, filePath);
+      return;
+    } catch (e) {
+      lastError = e;
+      try { fs.unlinkSync(tempPath); } catch {}
+      // Synchronous backoff (hooks are short-lived sync CLIs): 5/10/15ms.
+      try { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 5 * (attempt + 1)); } catch {}
+    }
   }
+  fs.writeFileSync(filePath, content, 'utf8');
 }
 
 function getTimestamp() {
