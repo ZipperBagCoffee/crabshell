@@ -1,5 +1,13 @@
 # Changelog
 
+## [21.113.2] - 2026-08-05
+
+### fix: H022 — "do it" classification + memory-index lost-update race (unlocked writers)
+- `core/turn-intent.js`: question pattern `do` → `do(?!\s+it\b)` — the imperative "do it" was misclassified as a question ("do you…" interrogatives still match).
+- **Real production race fixed**: `init.js` memory-index setup rewrote the whole file unconditionally WITHOUT the index lock on every run — a late-starting hook instance clobbered concurrent RMW counter updates with its stale snapshot. Now writes only when a default field is actually missing, under the index lock (busy → next run). The memory→logbook migration index write is likewise lock-guarded.
+- `utils.writeJson`: per-process temp filename (`.{pid}.tmp`) — the shared `.tmp` path let one process rename another's half-written JSON into place (torn reads: "Unexpected end of JSON input"); rename retried 4× with backoff before a last-resort direct write.
+- Tests: classification updated to the post-D111 question class (30/30 + new "do you think it works" case); race test uses an execution-intent prompt (non-execution turns are read-only by design), counts fail-open write errors, and captures child stderr to files (Windows pipes drop trailing lines on fast exit). Race suite: ~40% flaky → 12 consecutive clean runs. Full battery 46 files + manifest 15/15 green.
+
 ## [21.113.1] - 2026-08-05
 
 ### feat: pin the Simple Communication style (user-specified)

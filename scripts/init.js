@@ -24,7 +24,7 @@
 const fs = require('fs');
 const path = require('path');
 const { STORAGE_ROOT, MEMORY_DIR, SESSIONS_DIR, LOGS_DIR, WORKFLOW_DIR, DISCUSSION_DIR, PLAN_DIR, TICKET_DIR, INVESTIGATION_DIR, HOTFIX_DIR, INDEX_FILE, COUNTER_FILE, MEMORY_FILE } = require('./constants');
-const { writeJson } = require('./utils');
+const { writeJson, acquireIndexLock, releaseIndexLock } = require('./utils');
 
 
 /**
@@ -193,34 +193,45 @@ function migrateMemoryToLogbook(projectDir) {
       }
     }
 
-    // Update memory-index.json: "current" field + rotatedFiles entries
+    // Update memory-index.json: "current" field + rotatedFiles entries.
+    // Must hold the index lock: this used to write unlocked and clobbered
+    // concurrent RMW updates from inject-rules (observed lost updates in
+    // _test-inject-rules-race). Lock busy → skip; the next prompt migrates.
     const indexPath = path.join(memoryDir, INDEX_FILE);
     if (fs.existsSync(indexPath)) {
+      let migrateLocked = false;
       try {
-        const index = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
-        let changed = false;
-        if (index.current === 'memory.md') {
-          index.current = MEMORY_FILE;
-          changed = true;
-        }
-        if (Array.isArray(index.rotatedFiles)) {
-          for (const entry of index.rotatedFiles) {
-            if (entry.file && entry.file.startsWith('memory_')) {
-              entry.file = 'logbook_' + entry.file.slice('memory_'.length);
-              changed = true;
-            }
-            if (entry.summary && entry.summary.startsWith('memory_')) {
-              entry.summary = 'logbook_' + entry.summary.slice('memory_'.length);
-              changed = true;
+        migrateLocked = acquireIndexLock(memoryDir);
+        if (!migrateLocked) {
+          console.error(`[CRABSHELL] index lock busy, deferring memory->logbook index migration`);
+        } else {
+          const index = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
+          let changed = false;
+          if (index.current === 'memory.md') {
+            index.current = MEMORY_FILE;
+            changed = true;
+          }
+          if (Array.isArray(index.rotatedFiles)) {
+            for (const entry of index.rotatedFiles) {
+              if (entry.file && entry.file.startsWith('memory_')) {
+                entry.file = 'logbook_' + entry.file.slice('memory_'.length);
+                changed = true;
+              }
+              if (entry.summary && entry.summary.startsWith('memory_')) {
+                entry.summary = 'logbook_' + entry.summary.slice('memory_'.length);
+                changed = true;
+              }
             }
           }
-        }
-        if (changed) {
-          fs.writeFileSync(indexPath, JSON.stringify(index, null, 2));
-          console.error(`[CRABSHELL] Updated memory-index.json (current + rotatedFiles)`);
+          if (changed) {
+            writeJson(indexPath, index);
+            console.error(`[CRABSHELL] Updated memory-index.json (current + rotatedFiles)`);
+          }
         }
       } catch (e) {
         console.error(`[CRABSHELL] Failed to update memory-index.json: ${e.message}`);
+      } finally {
+        if (migrateLocked) releaseIndexLock(memoryDir);
       }
     }
   } catch (e) {
@@ -280,15 +291,35 @@ function ensureMemoryStructure(projectDir) {
   if (fs.existsSync(indexPath)) {
     try {
       const existing = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
-      // Preserve ALL existing fields, only add missing defaults
-      const index = {
-        ...defaults,
-        ...existing,
-        // Ensure critical fields have correct types
-        rotatedFiles: Array.isArray(existing.rotatedFiles) ? existing.rotatedFiles : [],
-        stats: existing.stats || defaults.stats,
-      };
-      writeJson(indexPath, index);
+      // Only write when a default is actually missing or a critical field has
+      // the wrong type. This used to rewrite the whole file unconditionally
+      // WITHOUT the index lock on every run — a late-starting hook instance
+      // would clobber a concurrent RMW update with its stale snapshot
+      // (observed as lost pressure counts in _test-inject-rules-race).
+      const needsWrite = Object.keys(defaults).some(key => !(key in existing))
+        || !Array.isArray(existing.rotatedFiles)
+        || !existing.stats;
+      if (needsWrite) {
+        const setupMemoryDir = path.join(storageRoot, MEMORY_DIR);
+        let setupLocked = false;
+        try {
+          setupLocked = acquireIndexLock(setupMemoryDir);
+          if (setupLocked) {
+            // Re-read inside the lock so we merge onto the freshest state.
+            const fresh = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
+            const index = {
+              ...defaults,
+              ...fresh,
+              rotatedFiles: Array.isArray(fresh.rotatedFiles) ? fresh.rotatedFiles : [],
+              stats: fresh.stats || defaults.stats,
+            };
+            writeJson(indexPath, index);
+          }
+          // Lock busy → skip; the next run completes the setup.
+        } finally {
+          if (setupLocked) releaseIndexLock(setupMemoryDir);
+        }
+      }
     } catch (e) {
       // Parse error - do NOT overwrite with defaults (file may be temporarily corrupted by race condition)
       // Leave existing file intact; readIndexSafe() will handle parse errors gracefully

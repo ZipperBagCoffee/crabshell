@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.113.1)
+# Crabshell Plugin Structure (v21.113.2)
 
-**Version**: 21.113.1 | **Author**: TaWa | **License**: MIT
+**Version**: 21.113.2 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -420,6 +420,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.113.2 | fix: H022 — turn-intent "do it" fix; init.js index setup/migration writes lock-guarded + conditional (lost-update race); utils.writeJson per-pid temp + retry; race/classification tests re-anchored and de-flaked. |
 | 21.113.1 | feat: RULES Simple Communication style pinned (plain-language unpacking, 비유 금지, 깐족 유머); CLAUDE.md/AGENTS.md synced. |
 | 21.113.0 | feat: D113 harness diet phase 2 — COMPRESSED_CHECKLIST 4-bullet rewrite, RULES compression (3,753 chars), RESPONSE_CONTRACT/3-field removal, PRESSURE_L1-L3 removal, pressure/sycophancy guard unwiring from hooks.json, scope/sycophancy removal from completion-controller Stop dispatch, CODEX_DELEGATION execution-turn gating, investigating SKILL.md risk-based delegation; test re-anchoring across 9 suites. |
 | 21.112.0 | feat: D113 harness diet phase 1 — `pre-compact.js` active-docs cap (newest 5/type, 4,000-char cap, wikilink-aware status parsing) + project.md/ARCHITECTURE drift fixes + light-workflow retired into hotfix (skills/, codex-skills/, RULES, docs-guard/skill-tracker lists, codex-docs alias, tests 6/7 repointed); W017 stale state closed. |

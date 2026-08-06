@@ -42,12 +42,13 @@ test('"execute the script" → execution', classifyUserIntent('execute the scrip
 test('"start the server" → execution', classifyUserIntent('start the server'), 'execution');
 test('"apply the patch" → execution', classifyUserIntent('apply the patch'), 'execution');
 
-// Default (non-execution) patterns
+// Question patterns (read-only turns since D111; the old 3-way test predated the question class)
 test('"설명해줘" → default', classifyUserIntent('설명해줘'), 'default');
-test('"뭐야?" → default', classifyUserIntent('뭐야?'), 'default');
-test('"what is this" → default', classifyUserIntent('what is this'), 'default');
-test('"explain the code" → default', classifyUserIntent('explain the code'), 'default');
-test('"how does this work" → default', classifyUserIntent('how does this work'), 'default');
+test('"뭐야?" → question', classifyUserIntent('뭐야?'), 'question');
+test('"what is this" → question', classifyUserIntent('what is this'), 'question');
+test('"explain the code" → question', classifyUserIntent('explain the code'), 'question');
+test('"how does this work" → question', classifyUserIntent('how does this work'), 'question');
+test('"do you think it works" → question', classifyUserIntent('do you think it works'), 'question');
 
 // Edge cases (AC13)
 test('"" → default', classifyUserIntent(''), 'default');
