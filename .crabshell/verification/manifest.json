@@ -154,7 +154,7 @@
     },
     {
       "id": "V009",
-      "ia": "Current release version is 21.113.0 after the D113 harness-diet phase 2 (injection compression, pressure/behavioral guard retirement, 3-field ending removal)",
+      "ia": "Current release version is 21.113.1 after pinning the Simple Communication style (plain-language term unpacking, no analogies, community-banter humor)",
       "type": "structural",
       "command": {
         "file": "node",
@@ -169,7 +169,7 @@
           {
             "kind": "stdoutJsonEquals",
             "pointer": "/version",
-            "equals": "21.113.0"
+            "equals": "21.113.1"
           }
         ],
         "forbiddenChanges": []
