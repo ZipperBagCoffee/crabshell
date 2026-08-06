@@ -116,7 +116,8 @@ async function testQuestionRemainsReadOnly() {
   assertEqual(releaseCount, 0, 'ordinary question: does not release an unheld lock');
   assertEqual(writeCount, 0, 'ordinary question: does not persist state');
   assertEqual(currentState.feedbackPressure.level, 3, 'ordinary question: leaves pressure unchanged');
-  assertEqual(/PRESSURE L3|Pressure L3/.test(output), true, 'ordinary question: reports the existing L3 pressure');
+  // v21.113.0 (I083 R4): pressure is telemetry-only — never reinjected into model context
+  assertEqual(/PRESSURE L3|Pressure L3/.test(output), false, 'ordinary question: does not surface pressure to the model');
 }
 
 (async () => {

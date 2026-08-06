@@ -4,7 +4,7 @@
 
 Three pillars:
 1. **Session memory** — Both hosts automatically load the same project memory and workflow state. Claude Code retains automatic session capture/rotation; either host can use explicit load/save/search skills.
-2. **Behavioral correction** — Both hosts receive the same first-turn, mandatory `[의도]`/`[이해]`/`[설명]` response ending, workflow, subagent, compaction, and parent-completion semantics through native hooks. Claude Code also retains its pressure/sycophancy guard system.
+2. **Behavioral correction** — Both hosts receive the same compact first-turn contract, workflow, subagent, compaction, and parent-completion semantics through native hooks. v21.113.0 (I083): per-response 3-field ending, model-visible pressure texts, and the pressure/sycophancy/scope behavioral guards are retired; deterministic guards (path, docs, log, verify, commit-gate, doc-watchdog) remain.
 3. **Structured workflows** — D/P/T/I/H document system with host-native skills for planning, investigating, iterative improvement (regressing), and hotfix recording of direct one-pass work (W worklogs are legacy history).
 
 All plugin output lives under `.crabshell/` — gitignored, clean project root.
@@ -58,16 +58,16 @@ node scripts/codex-docs.js investigation "research topic"
 node scripts/codex-docs.js worklog "task title"
 ```
 
-Codex activates nine synchronous native lifecycle events: SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, PreCompact, PostCompact, SubagentStart, SubagentStop, and Stop. They share host-neutral memory/workflow/verification cores with Claude while emitting each host's native hook response. Every Codex launcher catches adapter-load and rejected-`main()` failures so hook infrastructure errors fail open instead of interrupting the user's tool call. Claude's pressure/sycophancy and automatic SessionEnd capture remain Claude-specific; the retired verifier and fixed agent-count hooks are absent from both runtimes.
+Codex activates nine synchronous native lifecycle events: SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, PreCompact, PostCompact, SubagentStart, SubagentStop, and Stop. They share host-neutral memory/workflow/verification cores with Claude while emitting each host's native hook response. Every Codex launcher catches adapter-load and rejected-`main()` failures so hook infrastructure errors fail open instead of interrupting the user's tool call. Claude's automatic SessionEnd capture remains Claude-specific; the retired verifier, pressure/sycophancy/scope guards, and fixed agent-count hooks are absent from both runtimes.
 
-On every prompt, both native `UserPromptSubmit` paths inject one shared response contract. The answer body stays natural; its ending contains three short lines in order: `[의도]`, `[이해]`, and `[설명]`.
+On every prompt, both native `UserPromptSubmit` paths inject one shared compact turn contract (three contract bullets + a 4-line Rules Quick-Check). The per-response `[의도]`/`[이해]`/`[설명]` ending was retired in v21.113.0 (I083 R8, user-approved).
 
 `/crabshell:install-codex` and `scripts/install-codex.js` remain as legacy/development bridges for older installations. Native marketplace installation is the default Codex path.
 
 ## How It Works
 
 1. **Session start** - Claude and Codex load the same saved memory and active workflow context without writing.
-2. **During work** - Both receive shared task/subagent/completion semantics; Claude additionally runs its automatic capture, pressure, and guard lifecycle.
+2. **During work** - Both receive shared task/subagent/completion semantics; Claude additionally runs its automatic capture and deterministic guard lifecycle.
 3. **Session end** - Claude performs its existing full conversation backup/final save. Codex uses explicit save skills and never needs to launch Claude.
 
 Project verification uses a portable schema-v2 manifest. Commands are repo-relative, and behavioral entries pass only when command exits, structured observations, and forbidden-path snapshots match; printing `PASS` is never sufficient by itself.
@@ -237,6 +237,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.113.0 | feat: D113 harness diet phase 2 (I083) — per-turn injection ~55% cut (checklist 11→4 bullets, Codex delegation execution-turns-only), RULES ~63% cut (enumerated PROHIBITED/SCOPE/L1-L4 lists → short principles + grounding instruction), pressure model-exposure and pressure/sycophancy/scope guards retired (8 deterministic guards remain, scripts kept on disk), per-response 3-field ending removed (user-approved), investigating fan-out risk-based. Tests re-anchored; 2 pre-existing failures recorded in D113. |
 | 21.112.0 | feat: D113 harness diet phase 1 (I083) — PreCompact active-docs cap: 65,820 → ~3,200 chars measured, newest-5-per-type + 4,000-char cap + wikilink-aware status parsing (concluded docs were miscounted as active); doc drift fixes (project.md 11 guards/20 skills, ARCHITECTURE token figures to measured values); light-workflow retired — hotfix is the single one-pass work record on both hosts (W worklogs remain readable legacy history, restart context still honors in-flight W docs); stale W017 closed. |
 | 21.111.1 | feat: Simple Communication principle gains `(e) write with a sense of humor` in the injected `RULES` block (`inject-rules.js`), so user-facing explanations stay plain-spoken instead of reading like a compliance memo. |
 | 21.111.0 | feat: Claude-host-only `## Codex Delegation` guidance injected every prompt (`CODEX_DELEGATION` in `inject-rules.js`) — /codex:rescue usage, latest-model example, project-root launch, prompt-carried constraints, completion re-verification, Windows `safe.directory` / Linux bwrap quirks; content grounded in live Windows tests (codex-cli 0.146.0). |

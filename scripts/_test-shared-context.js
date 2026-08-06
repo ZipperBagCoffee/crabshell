@@ -39,9 +39,9 @@ test('COMPRESSED_CHECKLIST is a non-empty string', function() {
 });
 
 test('COMPRESSED_CHECKLIST contains key rules', function() {
-  assert(COMPRESSED_CHECKLIST.includes('Internal task contract'), 'should mention Internal task contract');
-  assert(COMPRESSED_CHECKLIST.includes('P/O/G'), 'should mention P/O/G table');
-  assert(COMPRESSED_CHECKLIST.includes('ANALYZE'), 'should mention ANALYZE');
+  assert(COMPRESSED_CHECKLIST.includes('audit each claim against a tool result'), 'should carry the grounding instruction');
+  assert(COMPRESSED_CHECKLIST.includes('P/O/G'), 'should mention P/O/G');
+  assert(COMPRESSED_CHECKLIST.includes('user approval'), 'should carry the scope/destructive approval rule');
 });
 
 // ============================================================
@@ -154,9 +154,9 @@ test('COMPRESSED_CHECKLIST item #10 contains "reader\'s words" keyword', functio
     'item #10 missing "reader\'s words" keyword');
 });
 
-test('COMPRESSED_CHECKLIST item #10 contains "conclusion first" keyword', function() {
-  assert(COMPRESSED_CHECKLIST.includes('conclusion first'),
-    'item #10 missing "conclusion first" keyword');
+test('COMPRESSED_CHECKLIST contains conclusion-first keyword', function() {
+  assert(COMPRESSED_CHECKLIST.includes('Lead with the conclusion'),
+    'missing conclusion-first keyword');
 });
 
 test('COMPRESSED_CHECKLIST item #10 contains "concrete over abstract" keyword', function() {

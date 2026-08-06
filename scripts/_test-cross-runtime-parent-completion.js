@@ -202,7 +202,7 @@ try {
     assert.strictEqual(validateCodexHookConfig(codexConfig), true);
   });
 
-  test('Claude single Stop owner still enforces the existing scope validator', () => {
+  test('Claude Stop owner no longer blocks on behavioral scope patterns (I083 R5)', () => {
     const root = path.join(tempRoot, 'claude-scope-preservation');
     fs.mkdirSync(path.join(root, '.git'), { recursive: true });
     const transcript = path.join(root, 'scope.jsonl');
@@ -214,10 +214,13 @@ try {
       hook_event_name: 'Stop', session_id: 'scope-session', cwd: root,
       transcript_path: transcript, stop_response: response, stop_hook_active: false,
     });
-    const decision = parseDecision(result, 2);
-    assert.match(decision.reason, /Scope reduction detected/);
+    assert.strictEqual(result.status, 0, result.stderr);
+    assert.doesNotMatch(String(result.stdout || ''), /"decision":"block"/);
     const controllerSource = fs.readFileSync(claudeController, 'utf8');
-    for (const retained of ['sycophancy-guard.js', 'doc-watchdog.js', 'scope-guard.js']) assert.ok(controllerSource.includes(retained));
+    assert.ok(controllerSource.includes('doc-watchdog.js'), 'ritual validator retained');
+    for (const retired of ["'sycophancy-guard.js'", "'scope-guard.js'"]) {
+      assert.ok(!controllerSource.includes(retired), retired + ' should be retired from Stop dispatch');
+    }
   });
 
   test('owner and authority mutations are rejected', () => {

@@ -7,8 +7,6 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const {
   FIRST_TURN_RULES,
-  RESPONSE_CONTRACT,
-  RESPONSE_FIELDS,
   validateContextOutput,
 } = require('./core/first-turn-context');
 const { classifyUserIntent, CODEX_DELEGATION } = require('./inject-rules');
@@ -102,22 +100,21 @@ try {
 
   test('both hosts consume the exact same shared first-turn semantics', () => {
     assert.ok(claudeOutput.hookSpecificOutput.additionalContext.includes(FIRST_TURN_RULES));
-    // Codex delegation guidance is Claude-host-only; outside that block the contexts are identical.
-    assert.ok(claudeOutput.hookSpecificOutput.additionalContext.includes(CODEX_DELEGATION));
+    // v21.113.0: Codex delegation guidance is Claude-host + execution-turn only,
+    // so on question turns the two host contexts are byte-identical.
+    assert.ok(!claudeOutput.hookSpecificOutput.additionalContext.includes('## Codex Delegation'));
     assert.ok(!codexOutput.hookSpecificOutput.additionalContext.includes('## Codex Delegation'));
     assert.strictEqual(
       codexOutput.hookSpecificOutput.additionalContext,
-      claudeOutput.hookSpecificOutput.additionalContext.replace(CODEX_DELEGATION, '')
+      claudeOutput.hookSpecificOutput.additionalContext
     );
   });
 
-  test('both hosts receive the exact mandatory intent understanding explanation ending', () => {
+  test('per-response three-field ending is retired from injected context (v21.113.0)', () => {
     const context = claudeOutput.hookSpecificOutput.additionalContext;
-    assert.ok(context.includes(RESPONSE_CONTRACT));
-    assert.deepStrictEqual(RESPONSE_FIELDS, ['[의도]:', '[이해]:', '[설명]:']);
-    assert.match(context, /End every user-facing response, including a short answer/i);
-    assert.match(context, /easy-to-understand line using the user's words/i);
-    assert.match(context, /do not default to analogy or caveman-style fragments/i);
+    assert.ok(!context.includes('Mandatory Response Ending'));
+    assert.ok(!context.includes('[의도]:'));
+    assert.match(context, /Lead with the conclusion/i);
   });
 
   test('question context forbids mutation and omits prior-work continuation', () => {
@@ -142,20 +139,12 @@ try {
     assert.throws(() => validateContextOutput(mutated), /shared Crabshell turn contract/);
   });
 
-  test('response-contract mutations are rejected', () => {
-    const outputWith = context => ({
-      hookSpecificOutput: { hookEventName: 'UserPromptSubmit', additionalContext: context },
-    });
-    const original = claudeOutput.hookSpecificOutput.additionalContext;
-    assert.throws(() => validateContextOutput(outputWith(original.replace('[이해]:', '[해석]:'))), /\[이해\]:/);
-    assert.throws(() => validateContextOutput(outputWith(original.replace('[설명]:', '[쉬운설명]:'))), /\[설명\]:/);
-    const reordered = original
-      .replace('[의도]:', '[임시]:')
-      .replace('[설명]:', '[의도]:')
-      .replace('[임시]:', '[설명]:');
-    assert.throws(() => validateContextOutput(outputWith(reordered)), /field order|missing \[(?:의도|이해|설명)\]:/);
-    assert.throws(() => validateContextOutput(outputWith(original.replace('End every user-facing response, including a short answer', 'For user-facing responses'))), /end-placement/);
-    assert.throws(() => validateContextOutput(outputWith(original.replace('easy-to-understand line using the user\'s words', 'technical line'))), /easy-language/);
+  test('execution turn injects Codex delegation for Claude host only', () => {
+    const executionPayload = { ...payload, prompt: '이 변경 적용해서 수정해줘 apply and fix it now', session_id: 'exec-fixture' };
+    const claudeExec = run(claudeEntry, executionPayload, { CLAUDE_PROJECT_DIR: projectRoot });
+    const codexExec = run(codexEntry, executionPayload);
+    assert.ok(claudeExec.hookSpecificOutput.additionalContext.includes(CODEX_DELEGATION));
+    assert.ok(!codexExec.hookSpecificOutput.additionalContext.includes('## Codex Delegation'));
   });
 
   test('forbidden-side-effect mutation is detected by the independent snapshot', () => {

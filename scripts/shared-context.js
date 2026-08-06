@@ -40,21 +40,10 @@ The parent prompt must supply the relevant original-request sentence, exact task
  */
 const COMPRESSED_CHECKLIST = `
 ## Rules Quick-Check (CLAUDE.md rules active)
-
-**Before responding:**
-1. Internal task contract still matches the latest user request and correction? Ask only for a blocking unknown.
-2. Every "verified/works/correct" backed by tool output in last 5 calls? (If not → retract or re-run)
-3. P/O/G table present for verification items? (predict → execute → compare)
-4. Delivering fewer items than requested? (State "User requested N, I am about to do M" and ask)
-5. Deleting/destroying without confirming? (ANALYZE → REPORT → CONFIRM)
-6. Modifying files not mentioned in user's feedback? (Anti-overcorrection: stop, state, ask)
-7. Same approach failed 3 times? (Switch to structurally different strategy)
-8. Factual claim without tool output? (Show evidence or say "unverified")
-9. Conclusion derived from evidence, not plausibility or pattern-match? (Be Logical: trace cause → check contradictions → derive step by step; lucky-correct still a violation)
-10. User-facing explanation: conclusion first, reader's words, concrete over abstract, natural sentences, no self-coined acronyms or workflow markers?
-11. Closure-driven fabrication? Did you fill an unknown with plausible-sounding text or wrap up without verifying just to make the response look complete? (If yes → mark unknown explicitly, run the verification, or stop and ask. Completion drive ≠ helpfulness.)
-
-**Output scan:** Check PROHIBITED PATTERNS 1-8 before sending. Items 9-11 are PRINCIPLES (Be Logical, Simple Communication, Anti-Completion-Drive) — apply always.
+- Before reporting progress or writing "verified", audit each claim against a tool result from this session; otherwise say "unverified".
+- Verification = predict → execute → compare (P/O/G) on the most direct practical surface.
+- Deliver the full requested quantity; reducing scope, deleting files, or destructive actions need explicit user approval first.
+- Lead with the conclusion in the reader's words — concrete over abstract, no self-coined jargon.
 `;
 
 /**

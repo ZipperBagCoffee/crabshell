@@ -128,10 +128,11 @@ try {
   test('installed Claude plugin emits its native UserPromptSubmit hook event', () => {
     assert.match(serialized, /UserPromptSubmit/);
     assert.match(serialized, /Crabshell Turn Contract/);
-    assert.match(serialized, /Mandatory Response Ending/);
-    assert.match(serialized, /\[의도\]:[\s\S]*\[이해\]:[\s\S]*\[설명\]:/);
-    assert.match(serialized, /End every user-facing response, including a short answer/i);
-    assert.match(serialized, /easy-to-understand line using the user's words/i);
+    assert.match(serialized, /Rules Quick-Check/);
+    assert.match(serialized, /audit each claim against a tool result/i);
+    // Retired in v21.113.0 (I083 R2/R8): per-response 3-field block and its contract text
+    assert.doesNotMatch(serialized, /Mandatory Response Ending/);
+    assert.doesNotMatch(serialized, /\[의도\]:/);
   });
 
   test('installed Claude question-only process leaves the consumer project unchanged', () => {

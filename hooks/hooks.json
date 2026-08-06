@@ -133,24 +133,6 @@
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/doc-watchdog.js\" gate"
           }
         ]
-      },
-      {
-        "matcher": ".*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/pressure-guard.js\""
-          }
-        ]
-      },
-      {
-        "matcher": "Write|Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/sycophancy-guard.js\""
-          }
-        ]
       }
     ],
     "Stop": [

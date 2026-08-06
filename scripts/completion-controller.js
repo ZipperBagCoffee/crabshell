@@ -10,10 +10,10 @@ if (process.env.CRABSHELL_BACKGROUND === '1') process.exit(0);
 
 function legacyClaudeStopReasons(payload) {
   if (payload.stop_hook_active === true) return [];
+  // sycophancy-guard and scope-guard retired from Stop dispatch in v21.113.0
+  // (I083 R5: behavioral policing moved out of hooks; scripts remain on disk).
   const validators = [
-    ['sycophancy-guard.js'],
     ['doc-watchdog.js', 'stop'],
-    ['scope-guard.js'],
   ];
   const reasons = [];
   for (const args of validators) {

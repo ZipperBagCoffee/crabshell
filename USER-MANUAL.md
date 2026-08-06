@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.112.0)
+# Crabshell User Manual (v21.113.0)
 
 ## Why Do You Need This?
 
@@ -231,11 +231,10 @@ The plugin uses Claude Code hooks to run automatically:
 
 | Hook | Script | When It Runs | What It Does |
 |------|--------|-------------|-------------|
-| `UserPromptSubmit` | `inject-rules.js` | Every prompt | Emits the shared turn contract, the Claude-host-only `## Codex Delegation` guidance block, and the mandatory three-field response ending; `봉인해제` / `UNLEASH` immediately resets pressure regardless of intent classification; other execution prompts run once-per-session cleanup/reset and Claude rule/memory-warning synchronization |
+| `UserPromptSubmit` | `inject-rules.js` | Every prompt | Emits the compact shared turn contract (4-line Rules Quick-Check); Claude-host `## Codex Delegation` guidance on execution turns only; `봉인해제` / `UNLEASH` immediately resets pressure counters; execution prompts run once-per-session cleanup/reset and Claude rule/memory-warning synchronization. Three-field response ending and pressure texts retired v21.113.0 (I083) |
 | `SessionStart` | `load-memory.js` | Session begins | Read-only load of logbook, summaries, project memory, and active workflow context |
 | `PostToolUse` | `counter.js check` | After each tool use | Increments counter; triggers auto-save + delta extraction at interval |
 | `PreToolUse` | `regressing-guard.js` | Before Write/Edit | Enforces phase-based restrictions during active regressing sessions |
-| `PreToolUse` | `sycophancy-guard.js` | Before Write/Edit | Mid-turn sycophancy detection via transcript parsing |
 | `PreToolUse` | `docs-guard.js` | Before Write/Edit to docs/ | Blocks writes to docs/ directories without active skill flag |
 | `PreToolUse` | `log-guard.js` | Before Write/Edit | Blocks INDEX.md terminal status without log entries; blocks cycle docs without previous cycle logs |
 | `PreToolUse` | `verify-guard.js` | Before Write/Edit to tickets | Hybrid: Edit always enforces; Write enforces only for existing files (new file creation skips). Blocks Final Verification without prior `/verifying` run |
@@ -246,8 +245,7 @@ The plugin uses Claude Code hooks to run automatically:
 | `PostToolUse` | `doc-watchdog.js record` | After Write/Edit | Tracks code file edits (increment counter) and D/P/T doc edits (reset counter) in doc-watchdog.json |
 | `PostToolUse` | `completion-controller.js` | After Bash | Records conclusive parent command results only after a child completion claim |
 | `PostToolUse` | `skill-tracker.js` | After Skill tool call | Sets skill-active flag on Skill tool calls for guard scripts |
-| `PreToolUse` | `pressure-guard.js` | Before ANY tool (matcher: `.*`) | Graduated tool blocking based on consecutive negative feedback pressure level (L2: primary tools, L3: all tools) |
-| `Stop`, `SubagentStop` | `completion-controller.js` | Child/parent completion boundary | One state owner: child claim is not proof; requires parent evidence, bounds identical failures, preserves workflow continuation, and runs retained Claude sycophancy/doc-watchdog/scope Stop validators |
+| `Stop`, `SubagentStop` | `completion-controller.js` | Child/parent completion boundary | One state owner: child claim is not proof; requires parent evidence, bounds identical failures, preserves workflow continuation, and runs the retained doc-watchdog Stop validator (sycophancy/scope/pressure guards unwired v21.113.0) |
 Hook launcher v21.99.3 note: `hooks/hooks.json` now invokes hook scripts through direct `node` commands. `scripts/find-node.sh` remains available as a hardened fallback utility, not the default launcher.
 
 | `PreCompact` | `pre-compact.js` | Before context compaction | Outputs memory state, active documents, and regressing state as context to preserve across compaction |
@@ -299,7 +297,7 @@ Guard scripts are PreToolUse/Stop hooks that prevent common mistakes:
 
 | Guard | What It Protects Against |
 |-------|------------------------|
-| `sycophancy-guard.js` | Claude agreeing with user claims without independently verifying them first (dual-layer: Stop response + PreToolUse mid-turn transcript). Stop-side signals are warn-only; the PreToolUse mid-turn Write/Edit block remains. Counter side-effects (`tooGoodSkepticism.retryCount`, `feedbackPressure.oscillationCount`) remain, and the parent must re-check decisive evidence before completion. |
+| `sycophancy-guard.js` | **Retired v21.113.0 (I083 R5)** — anti-sycophancy training in Sonnet 4.5+ replaced the hook layer; script remains on disk, unwired from PreToolUse and Stop |
 | `docs-guard.js` | Direct writes to `docs/` directories outside of an active skill (discussing, planning, ticketing, etc.) |
 | `log-guard.js` | Marking documents as done/verified/concluded in INDEX.md without log entries in the document; creating new cycle documents without logging the previous cycle |
 | `verify-guard.js` | Writing "Final Verification" results to ticket files without actually running `/verifying` first. Hybrid: Edit always enforces; Write only enforces on existing files (new ticket creation is allowed) |
@@ -309,17 +307,19 @@ Guard scripts are PreToolUse/Stop hooks that prevent common mistakes:
 | `verification-sequence.js` | Source files edited without running tests before git commit |
 | `doc-watchdog.js` | Document update omissions during regressing: soft warning when 5+ code edits without D/P/T document update; blocks session end when ticket has no work log since last code edit |
 | `skill-tracker.js` | Supporting guard: sets the `skill-active` flag when a Skill tool call is detected, so `docs-guard` and `verify-guard` know when writes are authorized |
-| `pressure-guard.js` | Graduated tool blocking when consecutive negative feedback detected. L2: blocks 6 primary tools (Read/Grep/Glob/Bash/Write/Edit). L3: blocks ALL tools. Resets via positive feedback decay or intent-independent user bailout keywords ("봉인해제" / "UNLEASH"). See [Pressure System](#pressure-system) |
-| `scope-guard.js` | Detects scope reduction in responses (delivering fewer items than user requested, using "too many" / "시간 관계상" as justification) |
+| `pressure-guard.js` | **Retired v21.113.0 (I083 R4)** — tool blocking removed; pressure counters remain as user-facing telemetry only (see [Pressure System](#pressure-system)) |
+| `scope-guard.js` | **Retired v21.113.0 (I083 R5)** — Stop-time scope regex removed; scope preservation lives as a short RULES principle |
 | `regressing-guard.js` | Phase-based write restrictions during active regressing sessions — blocks out-of-phase edits to plan/ticket documents |
 | `regressing-loop-guard.js` | Retained compatibility/test helper for the old count-independent continuation path; `completion-controller.js` is now the sole manifest Stop owner. Regressing continuation is goal-driven (v21.110.0): the regressing skill prints a `/goal` handoff line for host goal mode. |
 
 Guards run automatically via hooks. No configuration needed.
-For Codex, the shared path policy and shared completion control have native adapters. The remaining pressure, sycophancy, documentation, and edit/commit guards are Claude-only.
+For Codex, the shared path policy and shared completion control have native adapters. The remaining documentation and edit/commit guards are Claude-only.
 
 ---
 
 ## Pressure System
+
+> **Status v21.113.0 (I083 R4): telemetry-only.** Model-visible pressure messages (L1/L2/L3 texts) and tool blocking (`pressure-guard.js`) are retired — surfacing pressure gauges to the model causes context-anxiety-type degradation per current model guidance. The counters below are still tracked in `memory-index.json` for the user's own diagnosis (`/status`), and `봉인해제` / `UNLEASH` still resets them. The description below documents the counters; enforcement paragraphs are historical.
 
 Crabshell tracks three pressure counters (feedbackPressure.level, feedbackPressure.oscillationCount, tooGoodSkepticism.retryCount) in `.crabshell/memory/memory-index.json`. Together they form a graduated response mechanism that restricts tool access when Claude drifts — either via consecutive negative user feedback or via the assistant's own output patterns (reversals, all-None P/O/G).
 
