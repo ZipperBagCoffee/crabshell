@@ -1,5 +1,18 @@
 # Changelog
 
+## [21.114.0] - 2026-08-09
+
+### feat: I084 web-guard — raw-source enforcement for WebFetch/WebSearch
+- Background (I084): Anthropic's own tools reference documents that built-in WebFetch converts the page and runs a "small, fast model" over it — the main model usually receives that model's answer, not the page ("lossy by design"); community reports show hallucinated citations in research. WebSearch returns summarized results with weak source attribution.
+- New `scripts/web-guard.js` (PreToolUse, `WebFetch|WebSearch`):
+  - **WebFetch → always blocked** (exit 2) with a URL-substituted, ready-to-run fallback ladder: `trafilatura -u "<url>" --markdown --links` → `curl -fsSL "https://r.jina.ai/<url>"` (keyless, JS pages) → plain `curl`. Blocking is safe because every fallback works with zero setup.
+  - **WebSearch → conditionally blocked**: blocked with a redirect only when a configured search MCP (tavily/brave/exa/serper/…) is found in `~/.claude.json` (incl. per-project entries) or project `.mcp.json`. Without one, the call is **allowed** with an injected warning ("snippets are pointers — fetch each source before citing") so a machine with no search alternative never loses search entirely.
+  - Modes via `webGuard` in `.crabshell/memory/config.json`: `block` (default) / `warn` (never blocks, warnings only — also the escape hatch for Bash-less subagents that only have WebFetch) / `off`.
+  - URL sanitization before embedding in suggested commands; `CRABSHELL_BACKGROUND` bypass; fail-open (exit 0) on every internal error.
+- `skills/investigating/SKILL.md` Step 5 Work Agent 1: replaced the literal "(WebSearch/WebFetch)" tool prescription with the raw-source ladder (search MCP first, snippets as pointers only, trafilatura → r.jina.ai → curl for reading; never cite a snippet or WebFetch summary as evidence).
+- `hooks/hooks.json`: new PreToolUse entry `WebFetch|WebSearch` → `web-guard.js`.
+- Tests: `scripts/_test-web-guard.js` — 14 subprocess/unit tests (default block, URL-substituted message, conditional WebSearch block vs warn-through, warn/off modes, unrelated-tool passthrough, fail-open on garbage stdin and missing user config, background bypass, sanitizeUrl, findSearchMcp, evaluateWebGuard). 14/14 green.
+
 ## [21.113.2] - 2026-08-05
 
 ### fix: H022 — "do it" classification + memory-index lost-update race (unlocked writers)

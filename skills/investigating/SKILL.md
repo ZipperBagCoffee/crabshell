@@ -141,7 +141,7 @@ tags: []
 
 Launch parallel Work Agents, each assigned a different focus area or source type:
 
-- **Work Agent 1:** Internet research (WebSearch/WebFetch) — search for relevant information online
+- **Work Agent 1:** Internet research — search for relevant information online. Instruct the agent to follow the raw-source ladder: discover URLs via a configured search MCP (tavily/brave/exa etc.) if available, else built-in WebSearch treating snippets as pointers only; then read every cited source in full via `trafilatura -u "<url>" --markdown --links` (if installed) → `curl -fsSL "https://r.jina.ai/<url>"` (JS pages, keyless) → plain `curl` (raw fallback). Never let an agent cite a search snippet or a WebFetch summary as evidence — built-in WebFetch pipes pages through a small summarizer model and is lossy by design.
 - **Work Agent 2:** Local investigation — examine local files, code, configurations
 - **Work Agent N:** Additional agents as needed for user-specified sources or distinct angles
 

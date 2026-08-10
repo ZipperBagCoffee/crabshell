@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.113.2)
+# Crabshell Plugin Structure (v21.114.0)
 
-**Version**: 21.113.2 | **Author**: TaWa | **License**: MIT
+**Version**: 21.114.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -85,6 +85,7 @@ crabshell/
 │   ├── regressing-guard.js           # PreToolUse regressing skill enforcement (v19.23.0)
 │   ├── sycophancy-guard.js           # RETIRED v21.113.0 (unwired, I083 R5) — was Stop + PreToolUse dual-layer sycophancy detection + verification claim detection (v19.29.0, v20.7.0, v21.1.0). Also writes feedbackPressure.oscillationCount (reversal phrases) and tooGoodSkepticism.retryCount (all-None P/O/G) at Stop hook — these are pressure-adjacent counters independent of feedbackPressure.level. See three pressure counters (feedbackPressure.level, feedbackPressure.oscillationCount, tooGoodSkepticism.retryCount) in USER-MANUAL.md §Pressure System.
 │   ├── path-guard.js                # PreToolUse path validation + shell var resolution + logbook.md Edit block + Write shrink guard (v19.31.0, v20.3.0, v20.6.0, v21.8.0)
+│   ├── web-guard.js                 # PreToolUse WebFetch/WebSearch guard — raw-fetch redirect, conditional WebSearch block, block/warn/off modes (v21.114.0, I084)
 │   ├── core/path-policy.js           # Host-neutral memory path policy (v21.104.0)
 │   ├── core/codex-app-server.js      # Codex JSON-RPC/CLI capability client (v21.104.0)
 │   ├── core/orchestration-policy.js  # 8-field task contract + parent completion policy (v21.105.0)
@@ -114,6 +115,7 @@ crabshell/
 │   ├── verification-sequence.js     # PostToolUse state tracker + PreToolUse commit/edit gate (v21.0.0)
 │   ├── skill-tracker.js             # PostToolUse skill-active flag setter (v19.33.0)
 │   ├── _test-path-guard.js           # Path-guard unit tests + shell var resolution tests (v20.0.0, v21.8.0)
+│   ├── _test-web-guard.js            # Web-guard subprocess + unit tests — block/warn/off, MCP detection, fail-open (v21.114.0)
 │   ├── _test-sycophancy-guard.js     # Sycophancy-guard unit tests (v20.4.0)
 │   ├── _test-sycophancy-pretooluse.js # Sycophancy-guard PreToolUse integration tests (v20.7.0)
 │   ├── _test-sycophancy-guard-manifest.js # Sycophancy-guard manifest behavioral test (v20.7.0)
@@ -296,6 +298,14 @@ PreToolUse path validation (v19.31.0, v20.3.0 Edit block, v20.6.0 Write shrink g
 - Fail-open on parse errors (user experience protection)
 - Windows path normalization (backslash → forward slash)
 
+### scripts/web-guard.js
+PreToolUse WebFetch/WebSearch guard (v21.114.0, I084 — built-in tools summarize pages via a small model, "lossy by design" per Anthropic docs):
+- WebFetch: block (exit 2) with a URL-substituted raw-fetch ladder — `trafilatura -u <url> --markdown --links` → `curl -fsSL https://r.jina.ai/<url>` (keyless, JS pages) → plain `curl` (raw). Fallbacks require no API key, so blocking is always safe
+- WebSearch: block only when a configured search MCP exists (scans `~/.claude.json` mcpServers incl. per-project entries + project `.mcp.json` for tavily/brave/exa/serper/etc.); without one, allow with an additionalContext warning ("snippets are pointers — fetch before citing") so machines with no search alternative keep working
+- Modes via `webGuard` in `.crabshell/memory/config.json`: `block` (default) / `warn` / `off`
+- URL sanitization before embedding in suggested commands (strips quotes/backticks/whitespace)
+- CRABSHELL_BACKGROUND bypass + fail-open on all errors (exit 0)
+
 ### scripts/core/path-policy.js and scripts/adapters/codex/
 - `path-policy.js` contains the host-neutral path decisions shared with the existing Claude wrapper
 - `adapters/codex/pre-tool-use.js` normalizes the native Codex `PreToolUse` payload and emits `hookSpecificOutput.permissionDecision="deny"`
@@ -372,6 +382,9 @@ L1 generation:
    ├─> path-guard.js (Read|Grep|Glob|Bash|Write|Edit) — block wrong project root
    │   ├─> Block Edit on memory/logbook.md — append-only enforcement (v20.3.0)
    │   └─> Block Write shrink on logbook.md — line count decrease detection (v20.6.0)
+   ├─> web-guard.js (WebFetch|WebSearch) — raw-source enforcement (v21.114.0)
+   │   ├─> WebFetch: block with URL-substituted trafilatura/r.jina.ai/curl redirect
+   │   └─> WebSearch: block only if a search MCP is configured; else allow + snippet-verification warning
    ├─> regressing-guard.js (Write|Edit) — block direct plan/ticket writes during active regressing
    ├─> docs-guard.js (Write|Edit) — block writes to .crabshell/ D/P/T/I without active skill flag
    ├─> log-guard.js (Write|Edit) — block INDEX.md terminal status without log + block tickets with pending result sections + block cycle docs without previous cycle logs (v21.4.0, v21.11.0)
@@ -420,6 +433,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.114.0 | feat: I084 web-guard — `web-guard.js` PreToolUse guard on WebFetch/WebSearch (WebFetch always blocked with URL-substituted trafilatura/r.jina.ai/curl redirect; WebSearch blocked only when a search MCP is configured, else warn-through so search never disappears); `webGuard` config modes block/warn/off; `_test-web-guard.js` 14-test suite; investigating SKILL.md Work Agent 1 raw-source ladder. |
 | 21.113.2 | fix: H022 — turn-intent "do it" fix; init.js index setup/migration writes lock-guarded + conditional (lost-update race); utils.writeJson per-pid temp + retry; race/classification tests re-anchored and de-flaked. |
 | 21.113.1 | feat: RULES Simple Communication style pinned (plain-language unpacking, 비유 금지, 깐족 유머); CLAUDE.md/AGENTS.md synced. |
 | 21.113.0 | feat: D113 harness diet phase 2 — COMPRESSED_CHECKLIST 4-bullet rewrite, RULES compression (3,753 chars), RESPONSE_CONTRACT/3-field removal, PRESSURE_L1-L3 removal, pressure/sycophancy guard unwiring from hooks.json, scope/sycophancy removal from completion-controller Stop dispatch, CODEX_DELEGATION execution-turn gating, investigating SKILL.md risk-based delegation; test re-anchoring across 9 suites. |
