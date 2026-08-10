@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.113.2)
+# Crabshell Architecture (v21.114.0)
 
 ## Overview
 
@@ -59,6 +59,9 @@ Two meta-principles guide Claude's approach to obstacles:
 |  |  | (Read|Grep|  |                |              |              |      |
 |  |  |  Glob|Bash)  |                |              |              |      |
 |  |  | path-guard.js|                |              |              |      |
+|  |  | (WebFetch|   |                |              |              |      |
+|  |  |  WebSearch)  |                |              |              |      |
+|  |  | web-guard.js |                |              |              |      |
 |  |  +------+-------+                |              |              |      |
 +----------+-+------------------------+----------------+--------------+-----+
              |                        |                |              |
@@ -370,6 +373,7 @@ Regressing retains document-cycle continuation but has no parallel-worker count 
 | `verify-guard.js` | PreToolUse (Write\|Edit) | Hybrid: Edit always enforces verification; Write enforces only for existing files (new file creation skips). Block Final Verification without /verifying run; require behavioral AC in manifest |
 | `pressure-guard.js` | (unwired v21.113.0 — I083 R4) | Retired from PreToolUse; pressure counters remain telemetry-only. Script kept on disk for re-wiring if regression observed |
 | `path-guard.js` | PreToolUse (Read\|Grep\|Glob\|Bash\|Write\|Edit) | Block wrong .crabshell/ path; shell var resolution (fail-closed for .crabshell/ v21.8.0); block Edit on logbook.md; block Write shrink on logbook.md (v20.6.0) |
+| `web-guard.js` | PreToolUse (WebFetch\|WebSearch) | Block WebFetch (small-model summarization, lossy by design) with URL-substituted raw-fetch redirect (trafilatura → r.jina.ai → curl); block WebSearch only when a search MCP is configured in ~/.claude.json or .mcp.json, else allow with snippet-verification warning; modes block/warn/off via `webGuard` config (v21.114.0, I084) |
 | `core/path-policy.js` | shared library | Host-neutral memory path decisions used by Claude and Codex wrappers |
 | `core/first-turn-context.js`, `core/memory-context.js`, `core/workflow-context.js` | shared libraries | Host-neutral prompt plus mandatory `[의도]`/`[이해]`/`[설명]` response ending, read-only memory, and restart-safe active workflow context |
 | `core/compaction-context.js`, `core/subagent-context.js` | shared libraries | Recovery context and bounded task-specific child context for both hosts |
@@ -525,6 +529,7 @@ The 4 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.114.0 | feat: I084 web-guard — PreToolUse guard on WebFetch/WebSearch (WebFetch blocked with raw-fetch redirect; WebSearch conditionally blocked only when a search MCP exists, else warn-through); investigating skill Work Agent 1 re-anchored to raw-source ladder (search MCP → snippets-as-pointers, trafilatura → r.jina.ai → curl). |
 | 21.113.2 | fix: H022 — "do it" classification; memory-index unlocked-writer race (init setup/migration now lock-guarded); writeJson per-pid temp + rename retry. |
 | 21.113.1 | feat: Simple Communication style pinned in RULES (plain unpacking, 비유 금지, community banter). |
 | 21.113.0 | feat: D113 harness diet phase 2 — injection compression (~55% per turn, ~63% RULES), pressure model-exposure + behavioral guards (pressure/sycophancy/scope) retired from wiring, 3-field response ending removed, Codex delegation execution-turn-only, investigating fan-out risk-based. |

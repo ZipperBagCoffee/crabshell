@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.113.2)
+# Crabshell User Manual (v21.114.0)
 
 ## Why Do You Need This?
 
@@ -239,6 +239,7 @@ The plugin uses Claude Code hooks to run automatically:
 | `PreToolUse` | `log-guard.js` | Before Write/Edit | Blocks INDEX.md terminal status without log entries; blocks cycle docs without previous cycle logs |
 | `PreToolUse` | `verify-guard.js` | Before Write/Edit to tickets | Hybrid: Edit always enforces; Write enforces only for existing files (new file creation skips). Blocks Final Verification without prior `/verifying` run |
 | `PreToolUse` | `path-guard.js` | Before Read/Grep/Glob/Bash/Write/Edit | Blocks wrong path, Edit on logbook.md, Write shrink on logbook.md |
+| `PreToolUse` | `web-guard.js` | Before WebFetch/WebSearch | Blocks WebFetch with a URL-substituted raw-fetch redirect (trafilatura → r.jina.ai → curl); blocks WebSearch only when a search MCP is configured, otherwise allows with a snippet-verification warning (v21.114.0) |
 | `PostToolUse` | `verification-sequence.js record` | After each tool use | Tracks source file edits and test runs |
 | `PreToolUse` | `verification-sequence.js gate` | Before Write/Edit/Bash | Blocks git commit without tests |
 | `PreToolUse` | `doc-watchdog.js gate` | Before Write/Edit | Soft warning (additionalContext) when 5+ code edits without D/P/T doc update (regressing only) |
@@ -302,6 +303,7 @@ Guard scripts are PreToolUse/Stop hooks that prevent common mistakes:
 | `log-guard.js` | Marking documents as done/verified/concluded in INDEX.md without log entries in the document; creating new cycle documents without logging the previous cycle |
 | `verify-guard.js` | Writing "Final Verification" results to ticket files without actually running `/verifying` first. Hybrid: Edit always enforces; Write only enforces on existing files (new ticket creation is allowed) |
 | `path-guard.js` | File operations targeting a wrong `.crabshell/memory/` path (e.g., a different project's memory directory) |
+| `web-guard.js` | Built-in WebFetch/WebSearch small-model summarization (Anthropic docs: "lossy by design"; hallucinated citations in research). WebFetch is blocked with ready-to-run raw-fetch commands for the same URL; WebSearch is redirected to a configured search MCP (tavily/brave/exa/...) or, when none exists, allowed with a "snippets are pointers, fetch before citing" warning so machines without a search MCP never lose search entirely. Modes: `block` (default) / `warn` / `off` via `webGuard` in config.json (v21.114.0) |
 | `core/path-policy.js` + Codex adapter | The same wrong-project memory paths in Codex; the core decides policy while each host wrapper emits its own native response format |
 | `core/completion-control.js` + host adapters | Child false-done, ambiguous/missing parent command evidence, repeated identical failures, and premature active-workflow completion on both hosts |
 | `verification-sequence.js` | Source files edited without running tests before git commit |
@@ -416,6 +418,7 @@ The plugin uses two injection mechanisms:
 | `quietStop` | true | Brief session-end message instead of verbose instructions |
 | `memoryRotation.thresholdTokens` | 25000 | Token threshold for logbook.md rotation (with 0.95 safety margin) |
 | `memoryRotation.carryoverTokens` | 2500 | Tokens to keep as carryover after rotation (with 0.95 safety margin) |
+| `webGuard` | "block" | Web guard mode: `block` (WebFetch blocked, WebSearch blocked only when a search MCP is configured), `warn` (never blocks, injects verification warnings), `off` (guard disabled) (v21.114.0) |
 
 ### Orchestration Defaults
 
