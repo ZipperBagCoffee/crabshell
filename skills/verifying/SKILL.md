@@ -74,12 +74,39 @@ Create `.crabshell/verification/manifest.json` using schema version 2:
 
 ### Step 5: Populate entries from current context
 
-For each user-observable outcome in the current session, create a verification entry. Commands are object-form, repo-relative, and shell-free:
+For each user-observable outcome in the current session, create a verification entry. Commands are object-form, repo-relative, and shell-free.
+
+**Before writing any entry, answer two questions. They decide the whole entry.**
+
+**Q1 — What kind of claim is this?** Match the method to the claim.
+
+| The claim is | Use | Why |
+|---|---|---|
+| "Running this produces that output / state change" | `behavioral` — execute the real surface, observe what comes back | A static read is not evidence that code runs. Software that has only been statically analysed has no proof of functional correctness |
+| "This artifact has this structure, wiring, or policy" | `structural` — read and parse the artifact | There is nothing to execute; and running one script does not prove the host wired it to the right event |
+| "A human must look at it" | `manual` | Browser, GUI, visual judgment |
+
+A `structural` entry that stands in for a behavioral claim is the most common defect. `grep 'process.exit(0)' script.js` does not verify fail-open — injecting a malformed input and observing the exit code does.
+
+**Q2 — Will this expected value change on the next release?** If yes, do not write the value down.
+
+| Instead of | Assert |
+|---|---|
+| the current version string | every file that carries a version agrees with the single authoritative source (`jsonMatches`) |
+| the current count of passing tests | discovered count > 0 **and** failure count == 0 |
+| the full text a command prints | the shape it must always have: required fields, types, non-empty, expected sections present |
+| one input/output pair | a relation across two runs: same input twice → same output; unrelated input field changed → that part of the output unchanged; a broken input still exits fail-open |
+
+Writing an expected value that the next release will change turns the verifier into a change detector: it fails whenever the code changes rather than whenever the behavior is wrong, so it reports churn instead of regressions.
+
+**Exact literal values are correct in one case only — when the spelling itself is the contract.** Protocol event names, JSON property names, CLI flag spellings, command keywords: these are promises to a consumer, so assert them exactly. Prose that merely describes something is not a contract; do not lock it.
+
+Entry shape:
 ```json
 {
   "id": "V001",
-  "ia": "IA-1: {description}",
-  "type": "behavioral|structural|manual",
+  "ia": "IA-1: {what user-observable outcome this proves}",
+  "type": "behavioral",
   "command": {
     "file": "node",
     "args": ["scripts/behavior-test.js"]
@@ -87,7 +114,10 @@ For each user-observable outcome in the current session, create a verification e
   "contract": {
     "exitCode": 0,
     "assertions": [
-      { "kind": "jsonEquals", "path": "tmp/observed.json", "pointer": "/result", "equals": "expected" }
+      { "kind": "stdoutJsonEquals", "pointer": "/passed", "equals": true },
+      { "kind": "jsonMatches",
+        "actual":   { "path": "consumer.json", "pointer": "/version" },
+        "expected": { "path": "source-of-truth.json", "pointer": "/version" } }
     ],
     "forbiddenChanges": ["user-owned.txt"]
   },
@@ -95,14 +125,13 @@ For each user-observable outcome in the current session, create a verification e
 }
 ```
 
-**Type classification:**
-| Type | When | Example |
-|------|------|---------|
-| `behavioral` | Executes the actual surface and has an independent assertion or forbidden-side-effect snapshot | Run a CLI, parse its JSON result, compare state and protected paths |
-| `structural` | Executes a static/schema/import check; never substitutes for a behavioral outcome | Parse a manifest or compile a module |
-| `manual` | Requires human interaction (browser, GUI) | "Open browser, click button, observe result" |
+The first assertion is an invariant — the probe script decides pass/fail and reports it as a boolean, so the manifest holds no expected value at all. The second compares two files against each other, so it keeps working whatever the version becomes. Put the detailed checks inside the probe script, and keep the manifest holding only invariants.
 
 Supported assertions are `jsonEquals`, `jsonMatches`, `stdoutJsonEquals`, `fileExists`, and `fileContains`. Prefer JSON/state comparisons over stdout. Positive text such as `PASS` and the legacy `expected` field never decide success. Every behavioral entry must contain at least one assertion or `forbiddenChanges` path.
+
+**Write the `ia` field as the outcome being proven, not as a release note.** Version numbers, ticket IDs, and "after feature X" phrasing go stale and force an edit that proves nothing.
+
+**Collect verification targets by convention, not by list.** When several scripts of the same kind must all run, have the probe discover them from the filesystem — a test file that exists but appears in no list is silently never executed. Assert that the discovered count is above zero so an empty glob fails loudly, and never hardcode how many were found.
 
 ### Step 6: Create verification runner script
 
@@ -130,6 +159,20 @@ Read `.crabshell/verification/manifest.json`. If not found: "No manifest. Run `/
 ```bash
 node .crabshell/verification/run-verify.js
 ```
+
+### Step 2b: When an entry fails, decide what is wrong before touching anything
+
+A failing verifier means one of two things, and they have opposite fixes. Ask:
+
+**Is this expected value an approved contract, or is it just what the implementation happened to produce?**
+
+| Answer | Meaning | Fix |
+|---|---|---|
+| An approved contract, and it is unchanged | The code broke it | Fix the code. Changing the verifier here hides a regression |
+| The contract was deliberately changed this release | The old expectation is obsolete | Update the verifier, and say so explicitly in the report with what the new contract is and who approved it |
+| Neither — it was incidental output the verifier copied | The verifier was overspecified | Rewrite that assertion as structure, invariant, or relation so it stops breaking on unrelated changes |
+
+Code is the more likely culprit — in one industrial study of regression failures, roughly four out of five traced to a code defect rather than an obsolete test. Treat "fix the verifier" as the exception that must be named, never the reflex. Silently re-recording whatever the code now outputs is not verification.
 
 ### Step 3: Parse and report as P/O/G
 
@@ -163,8 +206,12 @@ When invoked with `add "description"`:
 ## Rules
 
 1. **EXECUTABLE only.** Every non-manual entry has a portable command object and exit contract; behavioral entries also need an independent assertion or forbidden-change snapshot.
-2. **Manifest is source of truth.** All entries live in `manifest.json`.
-3. **P/O/G alignment.** Run mode produces P/O/G table rows.
-4. **No git commit.** `.crabshell/verification/` is local — do NOT commit.
-5. **Timeout safety.** Default 30s. Destructive commands (rm, drop) PROHIBITED.
-6. **Idempotent create.** Existing manifest is NOT overwritten.
+2. **Match the method to the claim.** "It works" requires execution. "The artifact has this structure" is checked statically. Neither substitutes for the other.
+3. **Never write down a value the next release will change.** Derive it from the authoritative source, or assert a relation, structure, or invariant instead. Exact literals are for spellings that are themselves the contract — protocol names, field names, command keywords.
+4. **A failing entry means the code is wrong until shown otherwise.** Editing the verifier to make it pass is allowed only when the contract deliberately changed, and that must be stated in the report.
+5. **Discover targets, do not list them.** Assert `discovered > 0` and `failures == 0`; never hardcode a count.
+6. **Manifest is source of truth.** All entries live in `manifest.json`.
+7. **P/O/G alignment.** Run mode produces P/O/G table rows.
+8. **No git commit.** `.crabshell/verification/` is local — do NOT commit.
+9. **Timeout safety.** Default 30s. Destructive commands (rm, drop) PROHIBITED.
+10. **Idempotent create.** Existing manifest is NOT overwritten.

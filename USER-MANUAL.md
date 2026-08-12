@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.115.1)
+# Crabshell User Manual (v21.116.0)
 
 ## Why Do You Need This?
 
@@ -220,6 +220,12 @@ Completion remains with the parent. A worker's `done`/`PASS`, agent count, or sp
 ### Portable Behavioral Verification
 
 The verifying skill installs one schema-v2 runner from `skills/verifying/scripts/run-verify.js`. Manifest commands use repo-relative `file` and `args` fields. Behavioral entries must assert independently observed JSON/file state and may protect paths with before/after snapshots. A zero exit or stdout containing `PASS` cannot satisfy the contract by itself.
+
+As of v21.116.0 the skill also decides *what* to assert, so verifiers survive releases instead of needing an edit each time (D114/I086):
+
+- **Match the method to the claim.** "Running this produces that" must be executed and observed. "This artifact has this structure or wiring" is read and parsed. A static check standing in for a behavioral claim is the common defect — grepping for `process.exit(0)` does not verify fail-open, injecting a malformed input and watching the exit code does.
+- **Never write down a value the next release will change.** Compare a version against the authoritative source rather than a literal; assert `discovered > 0` and `failures == 0` instead of a test count; assert required shape instead of full printed text; assert a relation across two runs instead of one input/output pair. Exact literals stay correct where the spelling itself is the contract — protocol event names, JSON property names, CLI flags.
+- **A failing entry means the code is wrong until shown otherwise.** Run mode classifies first: unchanged contract → fix the code; deliberately changed contract → edit the verifier and state that in the report; incidental copied output → rewrite the assertion as structure or relation. Silently re-recording current output is not verification.
 
 These rules are automatically injected into CLAUDE.md and reinforced every prompt.
 
