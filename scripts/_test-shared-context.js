@@ -154,9 +154,26 @@ test('COMPRESSED_CHECKLIST item #10 contains "reader\'s words" keyword', functio
     'item #10 missing "reader\'s words" keyword');
 });
 
-test('COMPRESSED_CHECKLIST contains conclusion-first keyword', function() {
-  assert(COMPRESSED_CHECKLIST.includes('Lead with the conclusion'),
-    'missing conclusion-first keyword');
+test('COMPRESSED_CHECKLIST contains conclusion-first slot order', function() {
+  assert(COMPRESSED_CHECKLIST.includes('Answer in slot order'),
+    'missing conclusion-first slot order');
+  assert(COMPRESSED_CHECKLIST.includes('conclusion → evidence'),
+    'slot order must start with conclusion');
+});
+
+// v21.115.0 (I085): the chat report format is a fixed short slot, not the P/O/G table.
+// Research finding — format-specified rules are followed, unspecified ones ("keep it
+// short") are not; so the long format was replaced, not deleted.
+test('COMPRESSED_CHECKLIST routes the P/O/G table to the document, not chat', function() {
+  assert(COMPRESSED_CHECKLIST.includes('table goes in the D/P/T/I/H document'),
+    'missing table-to-document routing');
+  assert(COMPRESSED_CHECKLIST.includes('M of N passed'),
+    'missing short chat report format');
+});
+
+test('COMPRESSED_CHECKLIST forbids work-process narration', function() {
+  assert(COMPRESSED_CHECKLIST.includes('work-process narration'),
+    'missing work-process narration cut');
 });
 
 test('COMPRESSED_CHECKLIST item #10 contains "concrete over abstract" keyword', function() {

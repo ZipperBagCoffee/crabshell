@@ -114,7 +114,7 @@ try {
     const context = claudeOutput.hookSpecificOutput.additionalContext;
     assert.ok(!context.includes('Mandatory Response Ending'));
     assert.ok(!context.includes('[의도]:'));
-    assert.match(context, /Lead with the conclusion/i);
+    assert.match(context, /Answer in slot order/i);
   });
 
   test('question context forbids mutation and omits prior-work continuation', () => {

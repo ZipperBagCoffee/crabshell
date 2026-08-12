@@ -1,5 +1,20 @@
 # Changelog
 
+## [21.115.0] - 2026-08-11
+
+### feat: I085 response-format replacement — P/O/G table to documents, slot-order chat contract
+- Background (I085): the user reported persistent verbosity. Root cause was inside Crabshell's own injected rules — `RULES` carried four format-specified rules that expand output (P/O/G table with an exact column layout, evidence citation, failure reporting, approach-change narration) against one format-free rule that compresses it ("keep it short"). The specified format wins.
+- Two independent research passes (Opus+tavily on plain-language/readability/cognitive-load/Korean standards; Codex GPT on IFEval verifiable instructions and LLM output-length control) converged on five findings. The decisive one: **format-specified rules are followed, abstract adjectives are not.** OpenAI's model guide warns that `Be concise`/`Keep it short` can over-shorten and says to specify what to *preserve*; Anthropic's guide notes Opus 5 does not reliably shorten visible output from `effort` alone. Exact-count instructions score poorly (ChatGPT exact word count 0.41, sentence count 0.38 — EMNLP 2023), and few-shot makes counting *worse* (0.41 → 0.37).
+- Conclusion: the long format was **replaced, not deleted**. Deleting a format-specified rule leaves a format vacuum and the model reverts to its verbose default.
+- `scripts/inject-rules.js` `RULES`:
+  - **Simple Communication** — replaced "conclusion first … keep it short" with a slot contract: `[conclusion] → [evidence] → [critical exception] → [next action]`, first sentence is the direct answer (no greeting/background/restatement), keep-vs-cut list on shortening (keep conclusion, required facts, critical exceptions, next action; cut intro, work-process narration, repeated conclusions, ceremonial closings), bullets only for 3+ parallel items with max 4 per group (Cowan 2001 focus of attention ≈4, not Miller's 7±2), one term unpacked per sentence, and an explicit **accuracy outranks brevity** clause (EMNLP 2025: prompt length limits can degrade reasoning accuracy).
+  - **VERIFICATION** — the `| Item | Prediction | Observation | Gap |` table now goes in the D/P/T/I/H document, not in chat. Chat report is `"M of N passed"` plus failed items only; listing passing items or raw observations is out.
+  - **WORKING RULES** — failure reporting limited to blocked tasks; mistakes already recovered from are no longer narrated (they do not change the user's next action).
+- `scripts/shared-context.js` `COMPRESSED_CHECKLIST` (injected every UserPromptSubmit + SubagentStart) synced to the same two changes, so the per-turn summary stops re-injecting the retired format.
+- Tests: `_test-inject-rules.js` 115/115 (3 keyword anchors retargeted to the slot order, 2 new locks for table routing and blocked-only failure reporting), `_test-shared-context.js` 17/17 (2 new locks), `_test-cross-runtime-first-turn.js` 1/1.
+- `CLAUDE.md` re-synced via `syncRulesToClaudeMd`; `AGENTS.md` regenerated via `claude-to-agents.js --force`.
+- Not done deliberately: no new output-length guard hook. v21.113.0 retired the behavioral guards (sycophancy/pressure/scope) on I083 R4/R5 grounds; a length-policing hook repeats that pattern. Counting belongs in a post-hoc checker, not a runtime block.
+
 ## [21.114.0] - 2026-08-09
 
 ### feat: I084 web-guard — raw-source enforcement for WebFetch/WebSearch
