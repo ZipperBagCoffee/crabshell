@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.116.0)
+# Crabshell Plugin Structure (v21.117.0)
 
-**Version**: 21.116.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.117.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -434,6 +434,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.117.0 | feat: D115 — `RULES` `### VERIFICATION` (4 sentences, 818 chars) and `COMPRESSED_CHECKLIST` (276 chars) now carry the verification method, not just the P/O/G ritual: match method to claim, assert what survives the next release, classify a failure before editing either side. Reaches turns that never invoke the `verifying` skill. Merged from I086's two drafts; mutation-sensitivity excluded from per-turn, pure-directive form chosen (I085 over I086's older-generation mixed-form finding). New assertions run against the hook's emitted `additionalContext`. |
 | 21.116.0 | feat: D114/I086 — `skills/verifying/SKILL.md` gains claim-type and value-stability gates before entry authoring, a contract-based worked example replacing the value-copying one, Run-mode Step 2b (classify a failing entry: code defect vs deliberate contract change vs overspecified assertion), and Rules 6 → 10 (match method to claim / never write down a value that changes next release / failing entry means the code is wrong until shown otherwise / discover targets instead of listing them). Skill-only change; no hook, script, or manifest-entry behavior change. Example validated end-to-end against the real runner. |
 | 21.115.1 | fix: `RULES` VERIFICATION + `COMPRESSED_CHECKLIST` drop the document routing added in 21.115.0 — chat report is `"M of N passed"` + failures with no table, no passing-item list, no raw observations; nothing about where a table is filed. Two negative test locks added. |
 | 21.115.0 | feat: I085 response-format replacement — `RULES` Simple Communication rewritten as a slot contract (`[conclusion] → [evidence] → [critical exception] → [next action]`, keep-vs-cut list, bullets only for 3+ items / max 4 per group, accuracy outranks brevity); VERIFICATION routes the `\| Item \| Prediction \| Observation \| Gap \|` table to the D/P/T/I/H document with `"M of N passed"` + failures in chat; failure reporting limited to blocked tasks. `shared-context.js` COMPRESSED_CHECKLIST synced. Long format replaced rather than deleted — format-specified rules are followed, format-free ones are not. `_test-inject-rules.js` 115/115, `_test-shared-context.js` 17/17. |

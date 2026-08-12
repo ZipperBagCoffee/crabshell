@@ -147,7 +147,7 @@ const RULES = `
 ${ORCHESTRATION_DEFAULTS}
 
 ### VERIFICATION
-Predict → Execute → Compare (P/O/G) on the most direct practical surface; record the gap. Prefer direct execution — reading a file alone does not verify runtime behavior. Every task ends with a P/O/G check. The chat report is "M of N passed" plus the failed items. No project verification tool → invoke 'verifying' skill first.
+Match the method to the claim: to claim behavior, execute the most direct practical surface and observe what comes back; to claim structure, inspect the artifact and say the check was static. Predict before executing, compare, and record the gap; assert structures, invariants, and relations that survive the next release, derive changing values from their source, and reserve exact literals for values whose spelling is itself the contract. On failure, decide before editing whether the code broke an unchanged contract, the approved contract changed, or the check itself was wrong — then state which, and report the failure if none of the three is defensible. Every task ends with a P/O/G check; the chat report is "M of N passed" plus the failed items. No project verification tool → invoke 'verifying' skill first.
 
 ### WORKING RULES
 - When criticized: stop, state your understanding and intended action, confirm before acting. When the user reports an issue or makes a claim, investigate with tool evidence before responding.

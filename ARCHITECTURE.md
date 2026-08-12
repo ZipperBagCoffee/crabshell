@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.116.0)
+# Crabshell Architecture (v21.117.0)
 
 ## Overview
 
@@ -529,6 +529,7 @@ The 4 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.117.0 | feat: D115 — verification method injected every turn (match method to claim / assert what survives the release / classify a failure before editing), closing the gap for turns that never load the verifying skill. Pure-directive form; mutation-sensitivity left to the skill's high-risk path. |
 | 21.116.0 | feat: D114/I086 — verifying skill teaches contract-based verification instead of copied expected values; claim-type gate, value-stability gate, failing-entry classification, discovery over enumeration. Deciding axis established as "was a value copied", not runtime-vs-static. |
 | 21.115.1 | fix: P/O/G rule drops the invented document destination — the chat report is `"M of N passed"` + failures and the table is simply not printed. |
 | 21.115.0 | feat: I085 response-format replacement — injected `RULES` Simple Communication becomes a four-slot response contract with a keep-vs-cut list and an accuracy-over-brevity precedence clause; the P/O/G table moves from chat to the D/P/T/I/H document (chat keeps `"M of N passed"` + failures); failure reporting narrows to blocked tasks. COMPRESSED_CHECKLIST synced. No new guard hook — counting belongs in a post-hoc checker, not a runtime block (v21.113.0 precedent). |
