@@ -29,7 +29,9 @@ console.log('--- Context-length deferral cleanup regression ---');
 test('TC1: checkContextLength is not exported', typeof guard.checkContextLength === 'undefined');
 test('TC2: removal note remains in sycophancy-guard.js', /checkContextLength removed/.test(guardSrc));
 test('TC3: sycophancy exports still expose active checks', typeof guard.checkSycophancy === 'function' && typeof guard.checkVerificationClaims === 'function');
-test('TC4: injected rules prohibit unsupported give-up recommendations', /never recommend giving up/.test(injectSrc));
+// Case-insensitive since v21.115.0 (I085): the failure rule was rewritten and the
+// clause now starts a sentence ("Never recommend giving up.").
+test('TC4: injected rules prohibit unsupported give-up recommendations', /never recommend giving up/i.test(injectSrc));
 test('TC5: active guard assigns decisive re-checking to the parent', /parent must re-check decisive evidence/.test(guardSrc) && !/sub-agent verifier|retroactively correct/.test(guardSrc));
 
 console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed`);

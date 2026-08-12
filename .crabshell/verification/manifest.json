@@ -154,7 +154,7 @@
     },
     {
       "id": "V009",
-      "ia": "Current release version is 21.114.0 after I084 web-guard (WebFetch/WebSearch raw-source enforcement guard + investigating raw-source ladder)",
+      "ia": "Current release version is 21.115.0 after I085 response-format replacement (P/O/G table routed to documents, slot-order chat contract)",
       "type": "structural",
       "command": {
         "file": "node",
@@ -169,7 +169,7 @@
           {
             "kind": "stdoutJsonEquals",
             "pointer": "/version",
-            "equals": "21.114.0"
+            "equals": "21.115.0"
           }
         ],
         "forbiddenChanges": []

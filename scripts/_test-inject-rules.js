@@ -867,7 +867,7 @@ test('SUBPROCESS: output contains key context items', function() {
     // v21.113.0 (I083 R2/R8): the per-response three-field ending is retired.
     assert(!ctx.includes('Mandatory Response Ending'), 'response-ending block retired (v21.113.0)');
     assert(!ctx.includes('[의도]:'), 'intent field retired');
-    assert(ctx.includes('conclusion in the reader'), 'conclusion-first guidance present');
+    assert(ctx.includes('Answer in slot order'), 'conclusion-first guidance present');
     assert(ctx.includes('TZ_OFFSET'), 'TZ_OFFSET present');
   } finally {
     cleanupDir(tmpDir);
@@ -1257,8 +1257,26 @@ test('RULES: Simple Communication keyword "reader\'s words" present', function()
   assert(mod.RULES.includes("reader's words"), 'RULES missing "reader\'s words" keyword');
 });
 
-test('RULES: Simple Communication keyword "lead with the conclusion" present', function() {
-  assert(mod.RULES.includes('conclusion first'), 'RULES missing "conclusion first" keyword');
+test('RULES: Simple Communication conclusion-first slot order present', function() {
+  assert(mod.RULES.includes('answer in slot order'), 'RULES missing slot-order anchor');
+  assert(/\[conclusion\][^]*\[evidence\][^]*\[critical exception\][^]*\[next action\]/.test(mod.RULES),
+    'RULES missing the four response slots in order');
+});
+
+// v21.115.0 (I085): the P/O/G table is routed to the D/P/T/I/H document and the chat
+// report is a short fixed slot. Research finding — format-specified rules are followed,
+// format-free ones ("keep it short") are not, so the long format was replaced, not deleted.
+test('RULES: P/O/G table routed to document, chat gets short report', function() {
+  assert(mod.RULES.includes('table in the D/P/T/I/H document, not in chat'),
+    'RULES missing table-to-document routing');
+  assert(mod.RULES.includes('"M of N passed"'), 'RULES missing short chat report format');
+});
+
+test('RULES: failure reporting limited to blocked tasks', function() {
+  assert(mod.RULES.includes('report only when the task is blocked'),
+    'RULES missing blocked-only failure reporting');
+  assert(mod.RULES.includes('Do not narrate mistakes you already recovered from'),
+    'RULES missing recovered-mistake exclusion');
 });
 
 test('RULES: Simple Communication keyword "concrete" + "abstract" present', function() {

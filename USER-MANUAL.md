@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.114.0)
+# Crabshell User Manual (v21.115.0)
 
 ## Why Do You Need This?
 
@@ -210,7 +210,7 @@ Before claiming any result is verified, Claude must:
 2. **Execute** (run code, use tools) to get actual results
 3. **Compare** prediction vs. observation
 
-Results are reported in a Prediction/Observation/Gap (P/O/G) table. Reading a file and declaring it correct is not verification.
+Results are recorded in a Prediction/Observation/Gap (P/O/G) table. As of v21.115.0 (I085) that table goes in the D/P/T/I/H document, not in the chat window — the chat gets `"M of N passed"` plus the failed items only. Verification depth is unchanged; only the reporting surface moved. Reading a file and declaring it correct is still not verification.
 
 ### Parent-Owned Orchestration
 The parent agent may delegate independent inspection, implementation, or review tasks when that lowers risk or latency. Worker prompts must include the relevant original request, task and non-goal, authoritative references, read/write scope, expected observation, and verification method. Explore/review workers are read-only and workers do not fan out.
@@ -282,7 +282,7 @@ As of v21.108.0, both native `UserPromptSubmit` paths append one mandatory respo
 
 This is not a return to the v21.102.0 caveman-style `SKELETON_3FIELD`. The fields summarize the answer and do not expose private chain-of-thought; analogy is not the default. The v21.105.0 internal eight-field task contract and evidence-backed execution remain active behind the response.
 
-The main report remains natural prose appropriate to the task. It leads with the outcome, includes decisive observations and remaining gaps, and uses P/O/G when verification results need to be audited.
+The main report follows the v21.115.0 slot contract: `[conclusion] → [evidence] → [critical exception] → [next action]`, first sentence being the direct answer. Decisive observations and remaining gaps stay; the intro, work-process narration, repeated conclusions, and ceremonial closings go. The full P/O/G table lives in the D/P/T/I/H document and the chat carries `"M of N passed"` plus failures.
 
 As of v21.106.0, the dormant behavior-verifier script, prompt, state consumer, fixed WA-count hook, and role-collapse parent-write gate are removed. Existing `behavior-verifier-state.json`, `verifier.lock`, and `wa-count.json` files are not deleted; current code ignores them. The old designs remain documented in release history only.
 
