@@ -154,7 +154,7 @@
     },
     {
       "id": "V009",
-      "ia": "Current release version is 21.116.0 after the D114 verifying-skill contract rewrite",
+      "ia": "Current release version is 21.117.0 after the D115 per-turn verification-method injection",
       "type": "structural",
       "command": {
         "file": "node",
@@ -169,7 +169,7 @@
           {
             "kind": "stdoutJsonEquals",
             "pointer": "/version",
-            "equals": "21.116.0"
+            "equals": "21.117.0"
           }
         ],
         "forbiddenChanges": []

@@ -869,6 +869,12 @@ test('SUBPROCESS: output contains key context items', function() {
     assert(!ctx.includes('[의도]:'), 'intent field retired');
     assert(ctx.includes('Answer in slot order'), 'conclusion-first guidance present');
     assert(ctx.includes('TZ_OFFSET'), 'TZ_OFFSET present');
+    // v21.117.0 (D115): the verification-method guidance must reach a turn that never
+    // invokes the verifying skill. Asserted on the hook's actual emitted context, not on
+    // the module constant — the constant existing does not prove the hook emits it.
+    assert(/match method to claim/i.test(ctx), 'method-to-claim guidance reaches the turn');
+    assert(/survives the next release/i.test(ctx), 'release-stable assertion guidance reaches the turn');
+    assert(/classify a failure before editing/i.test(ctx), 'failure-classification guidance reaches the turn');
   } finally {
     cleanupDir(tmpDir);
   }

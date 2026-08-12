@@ -1,5 +1,23 @@
 # Changelog
 
+## [21.117.0] - 2026-08-12
+
+### feat: D115 — verification *method* now reaches every turn, not just verifying-skill turns
+- v21.116.0 fixed `skills/verifying/SKILL.md`, but that document is only read when a verification tool is being built or run. Ordinary implementation and test-editing turns never load it — and those are exactly the turns where a value-copying check gets written. The injected rules still said only "verify", never "how".
+- Merged the two instruction drafts produced by I086 (Opus+tavily K-1, Codex GPT G-1) rather than concatenating them; Codex did the sentence-level merge and the three judgment calls, recorded in `.crabshell/discussion/D115-gpt-merge-draft.md`.
+- `scripts/inject-rules.js` `RULES` → `### VERIFICATION` rewritten (4 sentences, 818 chars, up from 5 sentences / 327 chars):
+  - Match the method to the claim — execute the most direct practical surface to claim behavior; inspect the artifact and say the check was static to claim structure.
+  - Predict → execute → compare, and assert structures, invariants, and relations that survive the next release; derive changing values from their source; reserve exact literals for values whose spelling is itself the contract.
+  - On failure, decide *before editing* whether the code broke an unchanged contract, the approved contract changed, or the check itself was wrong — then state which, and report the failure if none of the three is defensible.
+  - `"M of N passed"` chat report and the `verifying`-skill fallback are preserved unchanged.
+- `scripts/shared-context.js` `COMPRESSED_CHECKLIST` synced with the same four ideas in one 276-char line, so the per-turn summary no longer carries only the P/O/G ritual.
+- **Judgment calls (Codex, with reasons in D115):**
+  - *Mutation / fault-injection sensitivity check* — **excluded** from per-turn rules. High value for new verifiers and high-risk paths, but designing and safely injecting a representative fault on every task would cost more than the work being verified. Belongs in the skill's optional high-risk procedure.
+  - *I085 (specify the wanted form, no prohibition lists) vs I086 Agent 1 (positive+hard-prohibition mix scored best)* — **I085 wins.** The mixed-prompt observation is an ImpossibleBench measurement on the GPT-5 / Claude Opus 4.1 generation about cheating on impossible tasks; I086's own cross-review already rejected it for generation, topic, and remedy mismatch. Final text is pure directive: `execute and observe`, `derive`, `decide before editing`, `state which` — and `reserve literals for exact contracts` instead of "don't use literals".
+  - *Division of labor* — manifest authoring, assertion kinds, portable command shape, runner install, timeouts, the detailed P/O/G table, and the 4:1 statistic stay skill-only. Four ideas are per-turn because a turn that edits an ordinary test never invokes the skill.
+- Tests: the new guidance is asserted **on the hook's actual emitted `additionalContext`** via the existing subprocess test, not on the module constant — a constant existing does not prove the hook emits it. Plus three checklist assertions. `_test-inject-rules.js` 115/115, `_test-shared-context.js` 18/18, 58/58 test files, verification manifest 15/15.
+- **Limitation, recorded deliberately:** no current-generation measurement of this instruction's effect exists. The 5–12%p figures in the literature come from an older model generation and a different task, and cannot be extrapolated here. Real effect requires before/after comparison on the same task set with independent grading.
+
 ## [21.116.0] - 2026-08-12
 
 ### feat: D114/I086 verifying skill — stop copying answers into the verifier

@@ -178,6 +178,18 @@ test('COMPRESSED_CHECKLIST forbids work-process narration', function() {
     'missing work-process narration cut');
 });
 
+// v21.117.0 (D115): the per-turn checklist carries the verification *method*, not just
+// the P/O/G ritual — most turns never invoke the verifying skill, and those are exactly
+// the turns where a value-copying check gets written.
+test('COMPRESSED_CHECKLIST carries the verification method', function() {
+  assert(/match method to claim/i.test(COMPRESSED_CHECKLIST),
+    'missing method-to-claim guidance');
+  assert(/survives the next release/i.test(COMPRESSED_CHECKLIST),
+    'missing release-stable assertion guidance');
+  assert(/classify a failure before editing/i.test(COMPRESSED_CHECKLIST),
+    'missing failure-classification guidance');
+});
+
 test('COMPRESSED_CHECKLIST item #10 contains "concrete over abstract" keyword', function() {
   assert(COMPRESSED_CHECKLIST.includes('concrete over abstract'),
     'item #10 missing "concrete over abstract" keyword');
