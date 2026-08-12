@@ -1,5 +1,22 @@
 # Changelog
 
+## [21.116.0] - 2026-08-12
+
+### feat: D114/I086 verifying skill — stop copying answers into the verifier
+- Problem (user's own framing): build a verifier, `123 → abc`, hand-write `1-a, 2-b, 3-c`; bump the version so `123 → bcd`; hand-edit the verifier to `1-b, 2-c, 3-d`. The expected answer was copied into the verifier, so every release forces a verifier edit. Measured here: the version literal in the manifest was hand-edited three times in one day, and a release that changed three rule sentences required editing five test assertions.
+- **Scope is the skill, not this repo's manifest.** `skills/verifying/SKILL.md` is what tells the model how to build verification tools in *any* project; the local manifest is just one thing it produced. Fixing the manifest would fix one project, fixing the skill fixes the behavior.
+- Investigation [[I086]] (Opus+tavily / Codex GPT / local census, independent convergence on 5 points, 0 conflicts) established that the deciding axis is **not** runtime-vs-static but **whether a value was copied**. A static check that derives its expectation from an authoritative source survives releases; a runtime check that locks a full stdout snapshot does not.
+- `skills/verifying/SKILL.md` Step 5 now opens with two mandatory questions before any entry is written:
+  - **Q1 — what kind of claim is this?** Table mapping claim type → `behavioral` / `structural` / `manual`, with the failure mode named: a structural check standing in for a behavioral claim. `grep 'process.exit(0)'` does not verify fail-open; injecting a malformed input and observing the exit code does.
+  - **Q2 — will this expected value change next release?** Four-row substitution table: version literal → cross-file agreement via `jsonMatches`; passing-test count → discovered > 0 and failures == 0; full printed text → required shape; one input/output pair → a relation across two runs.
+- The worked example entry was rewritten from `{"kind":"jsonEquals","pointer":"/result","equals":"expected"}` — which demonstrated value-copying — to an invariant (`stdoutJsonEquals /passed = true`) plus a cross-file `jsonMatches`. **The example is the instruction**: per I085, format-specified guidance is what actually gets followed.
+- Exact literals are explicitly kept legitimate where the spelling itself is the contract — protocol event names, JSON property names, CLI flags, command keywords (Pact's request-exact / response-loose distinction). Descriptive prose is not a contract and must not be locked.
+- New Run-mode **Step 2b**: when an entry fails, classify before touching anything — approved-and-unchanged contract (fix the code), deliberately changed contract (edit the verifier and say so in the report), or incidental copied output (rewrite the assertion). Notes the ~4:1 code-defect-to-obsolete-test ratio so "fix the verifier" stays the named exception rather than the reflex.
+- Rules list extended 6 → 10: match method to claim; never write down a value the next release will change; a failing entry means the code is wrong until shown otherwise; discover targets instead of listing them (assert `discovered > 0`, never a hardcoded count — xUnit "Lost Tests").
+- Also guides against release-note prose in the `ia` field, which goes stale and forces edits that prove nothing.
+- Verified by execution, not by reading: the skill's example entry was extracted from the markdown, dropped into a throwaway project with a stub probe script, and run through the real `run-verify.js` — `PASS: 1 / FAIL: 0`. This caught two defects in the draft (a `jsonMatches` shape that did not match the runner's `actual`/`expected` signature, and a `"behavioral|structural|manual"` placeholder the validator rejects).
+- No behavior change to hooks, scripts, or the local manifest's entries.
+
 ## [21.115.1] - 2026-08-12
 
 ### fix: drop the document routing from the P/O/G rule — it was never part of the problem
