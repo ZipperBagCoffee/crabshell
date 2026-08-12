@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.115.0)
+# Crabshell User Manual (v21.115.1)
 
 ## Why Do You Need This?
 
@@ -210,7 +210,7 @@ Before claiming any result is verified, Claude must:
 2. **Execute** (run code, use tools) to get actual results
 3. **Compare** prediction vs. observation
 
-Results are recorded in a Prediction/Observation/Gap (P/O/G) table. As of v21.115.0 (I085) that table goes in the D/P/T/I/H document, not in the chat window — the chat gets `"M of N passed"` plus the failed items only. Verification depth is unchanged; only the reporting surface moved. Reading a file and declaring it correct is still not verification.
+The chat report is `"M of N passed"` plus the failed items — never the Prediction/Observation/Gap (P/O/G) table itself, never a list of passing items, never raw observations (v21.115.0/.1, I085). Verification depth is unchanged; only what reaches the screen changed. Reading a file and declaring it correct is still not verification.
 
 ### Parent-Owned Orchestration
 The parent agent may delegate independent inspection, implementation, or review tasks when that lowers risk or latency. Worker prompts must include the relevant original request, task and non-goal, authoritative references, read/write scope, expected observation, and verification method. Explore/review workers are read-only and workers do not fan out.
