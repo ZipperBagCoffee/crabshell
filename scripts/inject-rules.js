@@ -147,7 +147,7 @@ const RULES = `
 ${ORCHESTRATION_DEFAULTS}
 
 ### VERIFICATION
-Predict → Execute → Compare (P/O/G) on the most direct practical surface; record the gap. Prefer direct execution — reading a file alone does not verify runtime behavior. Every task ends with a P/O/G check. Write the | Item | Prediction | Observation | Gap | table in the D/P/T/I/H document, not in chat. The chat report is "M of N passed" plus the failed items — do not list passing items or raw observations. No project verification tool → invoke 'verifying' skill first.
+Predict → Execute → Compare (P/O/G) on the most direct practical surface; record the gap. Prefer direct execution — reading a file alone does not verify runtime behavior. Every task ends with a P/O/G check. The chat report is "M of N passed" plus the failed items. No project verification tool → invoke 'verifying' skill first.
 
 ### WORKING RULES
 - When criticized: stop, state your understanding and intended action, confirm before acting. When the user reports an issue or makes a claim, investigate with tool evidence before responding.

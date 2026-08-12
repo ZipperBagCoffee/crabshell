@@ -165,8 +165,10 @@ test('COMPRESSED_CHECKLIST contains conclusion-first slot order', function() {
 // Research finding — format-specified rules are followed, unspecified ones ("keep it
 // short") are not; so the long format was replaced, not deleted.
 test('COMPRESSED_CHECKLIST routes the P/O/G table to the document, not chat', function() {
-  assert(COMPRESSED_CHECKLIST.includes('table goes in the D/P/T/I/H document'),
-    'missing table-to-document routing');
+  assert(!COMPRESSED_CHECKLIST.includes('D/P/T/I/H'),
+    'checklist must not mention documents — unrelated to report length');
+  assert(!/no table, no/.test(COMPRESSED_CHECKLIST),
+    'checklist must not carry a prohibition list next to the report format');
   assert(COMPRESSED_CHECKLIST.includes('M of N passed'),
     'missing short chat report format');
 });

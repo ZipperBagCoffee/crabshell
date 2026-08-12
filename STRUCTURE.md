@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.115.0)
+# Crabshell Plugin Structure (v21.115.1)
 
-**Version**: 21.115.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.115.1 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -280,7 +280,7 @@ UserPromptSubmit hook:
 - Inject critical rules every prompt via `additionalContext`
 - Append the `## Codex Delegation` guidance block (`CODEX_DELEGATION`) on the Claude host only — /codex:rescue usage, latest-model example, project-root launch, prompt-carried constraints, completion re-verification, Windows/Linux sandbox quirks (v21.111.0)
 - `RULES` Simple Communication is a four-slot response contract (v21.115.0, I085): `[conclusion] → [evidence] → [critical exception] → [next action]` in the reader's words, first sentence is the direct answer, keep-vs-cut list on shortening, bullets only for 3+ parallel items with max 4 per group, one term unpacked per sentence (비유 금지), concrete over abstract, no self-coined acronyms, accuracy outranks brevity, banter never as padding
-- `RULES` VERIFICATION routes the `| Item | Prediction | Observation | Gap |` table to the D/P/T/I/H document; the chat report is `"M of N passed"` plus failed items (v21.115.0, I085)
+- `RULES` VERIFICATION: chat report is `"M of N passed"` plus failed items — no table, no passing-item list, no raw observations (v21.115.0/.1, I085)
 - Configurable frequency via `rulesInjectionFrequency`
 - Auto-sync rules to CLAUDE.md via `syncRulesToClaudeMd()` (marker-based)
 - Reset and persist all pressure counters when `봉인해제` / `UNLEASH` appears, regardless of question/execution classification (v21.110.1)
@@ -434,6 +434,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.115.1 | fix: `RULES` VERIFICATION + `COMPRESSED_CHECKLIST` drop the document routing added in 21.115.0 — chat report is `"M of N passed"` + failures with no table, no passing-item list, no raw observations; nothing about where a table is filed. Two negative test locks added. |
 | 21.115.0 | feat: I085 response-format replacement — `RULES` Simple Communication rewritten as a slot contract (`[conclusion] → [evidence] → [critical exception] → [next action]`, keep-vs-cut list, bullets only for 3+ items / max 4 per group, accuracy outranks brevity); VERIFICATION routes the `\| Item \| Prediction \| Observation \| Gap \|` table to the D/P/T/I/H document with `"M of N passed"` + failures in chat; failure reporting limited to blocked tasks. `shared-context.js` COMPRESSED_CHECKLIST synced. Long format replaced rather than deleted — format-specified rules are followed, format-free ones are not. `_test-inject-rules.js` 115/115, `_test-shared-context.js` 17/17. |
 | 21.114.0 | feat: I084 web-guard — `web-guard.js` PreToolUse guard on WebFetch/WebSearch (WebFetch always blocked with URL-substituted trafilatura/r.jina.ai/curl redirect; WebSearch blocked only when a search MCP is configured, else warn-through so search never disappears); `webGuard` config modes block/warn/off; `_test-web-guard.js` 14-test suite; investigating SKILL.md Work Agent 1 raw-source ladder. |
 | 21.113.2 | fix: H022 — turn-intent "do it" fix; init.js index setup/migration writes lock-guarded + conditional (lost-update race); utils.writeJson per-pid temp + retry; race/classification tests re-anchored and de-flaked. |

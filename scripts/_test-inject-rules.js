@@ -1267,8 +1267,13 @@ test('RULES: Simple Communication conclusion-first slot order present', function
 // report is a short fixed slot. Research finding — format-specified rules are followed,
 // format-free ones ("keep it short") are not, so the long format was replaced, not deleted.
 test('RULES: P/O/G table routed to document, chat gets short report', function() {
-  assert(mod.RULES.includes('table in the D/P/T/I/H document, not in chat'),
-    'RULES missing table-to-document routing');
+  // v21.115.1: state the wanted format only. No table destination (the goal was to keep
+  // it off the screen, so it needs no home) and no prohibition list (specifying the
+  // format already excludes everything else).
+  assert(!mod.RULES.includes('D/P/T/I/H document, not in chat'),
+    'RULES must not route the table to a document');
+  assert(!/no table, no/.test(mod.RULES),
+    'RULES must not carry a prohibition list next to the report format');
   assert(mod.RULES.includes('"M of N passed"'), 'RULES missing short chat report format');
 });
 

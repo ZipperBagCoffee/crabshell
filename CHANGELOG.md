@@ -1,5 +1,14 @@
 # Changelog
 
+## [21.115.1] - 2026-08-12
+
+### fix: drop the document routing from the P/O/G rule — it was never part of the problem
+- v21.115.0 moved the P/O/G table "to the D/P/T/I/H document". That destination was invented, not derived: the I085 research says to specify a fixed output slot, and says nothing about where a table should be filed. The actual complaint was that the table takes up the screen, so the table simply should not be printed — it needs no new home. Pulling the document system into a rule about report length also dragged an acronym most work never touches into every injected turn.
+- `scripts/inject-rules.js` `RULES` VERIFICATION → `The chat report is "M of N passed" plus the failed items — no table, no list of passing items, no raw observations.` Nothing about documents.
+- `scripts/shared-context.js` `COMPRESSED_CHECKLIST` matched to the same sentence.
+- Verification depth is unchanged; only what reaches the screen changed.
+- Tests: assertions retargeted to the no-table wording, plus two negative locks — RULES must not route the table anywhere, and the checklist must not mention `D/P/T/I/H` at all. `_test-inject-rules.js` 115/115, `_test-shared-context.js` 17/17. CLAUDE.md re-synced, AGENTS.md regenerated.
+
 ## [21.115.0] - 2026-08-11
 
 ### feat: I085 response-format replacement — P/O/G table to documents, slot-order chat contract

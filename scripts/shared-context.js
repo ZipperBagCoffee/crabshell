@@ -41,7 +41,7 @@ The parent prompt must supply the relevant original-request sentence, exact task
 const COMPRESSED_CHECKLIST = `
 ## Rules Quick-Check (CLAUDE.md rules active)
 - Before reporting progress or writing "verified", audit each claim against a tool result from this session; otherwise say "unverified".
-- Verification = predict → execute → compare (P/O/G); the table goes in the D/P/T/I/H document, chat gets "M of N passed" + failed items only.
+- Verification = predict → execute → compare (P/O/G); the chat report is "M of N passed" plus the failed items.
 - Deliver the full requested quantity; reducing scope, deleting files, or destructive actions need explicit user approval first.
 - Answer in slot order — conclusion → evidence → critical exception → next action — in the reader's words: concrete over abstract, no self-coined jargon. Cut intros, work-process narration, and repeated conclusions.
 `;

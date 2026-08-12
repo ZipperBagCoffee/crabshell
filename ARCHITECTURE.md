@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.115.0)
+# Crabshell Architecture (v21.115.1)
 
 ## Overview
 
@@ -15,7 +15,7 @@ Before claiming any result verified, Claude must:
 2. **Execute** — run code, trigger behavior, use tools
 3. **Compare** — prediction vs observation; the gap is where findings live
 
-Every verification item requires a P/O/G (Prediction/Observation/Gap) table. The table is written to the D/P/T/I/H document; the chat report is `"M of N passed"` plus failed items (v21.115.0, I085 — reporting surface only, verification depth unchanged). "File contains X" is never verification. "Can verify but didn't" is a violation.
+Every verification item requires a P/O/G (Prediction/Observation/Gap) check. The chat report is `"M of N passed"` plus failed items — no table, no passing-item list, no raw observations (v21.115.0/.1, I085 — screen output only, verification depth unchanged). "File contains X" is never verification. "Can verify but didn't" is a violation.
 
 Observation resolution levels (v21.2.0): L1 (direct execution) > L2 (indirect execution) > L3 (structural check) > L4 (claim without evidence, prohibited). L3 alone is insufficient when L1 is possible.
 
@@ -529,6 +529,7 @@ The 4 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.115.1 | fix: P/O/G rule drops the invented document destination — the chat report is `"M of N passed"` + failures and the table is simply not printed. |
 | 21.115.0 | feat: I085 response-format replacement — injected `RULES` Simple Communication becomes a four-slot response contract with a keep-vs-cut list and an accuracy-over-brevity precedence clause; the P/O/G table moves from chat to the D/P/T/I/H document (chat keeps `"M of N passed"` + failures); failure reporting narrows to blocked tasks. COMPRESSED_CHECKLIST synced. No new guard hook — counting belongs in a post-hoc checker, not a runtime block (v21.113.0 precedent). |
 | 21.114.0 | feat: I084 web-guard — PreToolUse guard on WebFetch/WebSearch (WebFetch blocked with raw-fetch redirect; WebSearch conditionally blocked only when a search MCP exists, else warn-through); investigating skill Work Agent 1 re-anchored to raw-source ladder (search MCP → snippets-as-pointers, trafilatura → r.jina.ai → curl). |
 | 21.113.2 | fix: H022 — "do it" classification; memory-index unlocked-writer race (init setup/migration now lock-guarded); writeJson per-pid temp + rename retry. |
