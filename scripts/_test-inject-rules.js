@@ -1296,6 +1296,13 @@ test('RULES: Simple Communication keyword "concrete" + "abstract" present', func
   assert(/concrete[^]*abstract/.test(mod.RULES), 'RULES missing concrete/abstract pairing');
 });
 
+// v21.118.0: slot order alone still produced report prose, so the register itself
+// is part of the rule — spoken, as said aloud, not written-report style.
+test('RULES: Simple Communication spoken-register clause present', function() {
+  assert(mod.RULES.includes('spoken register, not report prose'),
+    'RULES missing spoken-register clause');
+});
+
 test('RULES: Simple Communication keyword "self-coined" present', function() {
   assert(mod.RULES.includes('self-coined'), 'RULES missing "self-coined" keyword');
 });

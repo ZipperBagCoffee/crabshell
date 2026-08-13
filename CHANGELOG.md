@@ -1,5 +1,14 @@
 # Changelog
 
+## [21.118.0] - 2026-08-12
+
+### feat: spoken-register clause — the style itself lives in the plugin, not in a session promise
+- User's point: "I'll speak plainly from now on" dies with the session. The only thing that persists is what the plugin injects, so the register has to be in the injected rule. The existing Simple Communication rule fixed structure (slot order, keep/cut lists, bullet caps, term unpacking) but said nothing about the register — so slot-compliant answers still came out as report prose ("결정적 검사", noun-stacked sentences).
+- `scripts/inject-rules.js` `RULES` Simple Communication: added `Write it the way you would say it aloud to the user — spoken register, not report prose.`
+- `scripts/shared-context.js` `COMPRESSED_CHECKLIST`: the slot-order line now carries `spoken register rather than report prose`.
+- One keyword lock added on each surface. CLAUDE.md re-synced, AGENTS.md regenerated.
+- Not added: any checker. Style is not a thing to verify mechanically — the user called that out as over-engineering. The rule states the wanted register; that is the whole change.
+
 ## [21.117.0] - 2026-08-12
 
 ### feat: D115 — verification *method* now reaches every turn, not just verifying-skill turns
