@@ -178,6 +178,11 @@ test('COMPRESSED_CHECKLIST forbids work-process narration', function() {
     'missing work-process narration cut');
 });
 
+test('COMPRESSED_CHECKLIST carries the spoken-register clause', function() {
+  assert(COMPRESSED_CHECKLIST.includes('spoken register rather than report prose'),
+    'missing spoken-register clause');
+});
+
 // v21.117.0 (D115): the per-turn checklist carries the verification *method*, not just
 // the P/O/G ritual — most turns never invoke the verifying skill, and those are exactly
 // the turns where a value-copying check gets written.
