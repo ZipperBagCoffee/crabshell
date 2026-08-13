@@ -1,5 +1,14 @@
 # Changelog
 
+## [21.119.0] - 2026-08-12
+
+### feat: term discipline + banter restored to a directive
+- User showed a status report from another Crabshell project: twenty-odd technical terms and internal experiment IDs dumped with zero explanation. The existing clause ("unpack each technical term once") did not survive contact with that density — when unpacking everything is impossible, the model skips unpacking instead of cutting terms.
+- `RULES` Simple Communication term clause rewritten as a decision rule: use only the terms the reader needs and state each one's plain meaning at first appearance; **if unpacking every term you used would bloat the answer, you are using too many terms**; internal codenames and IDs mean nothing to the reader — say what they refer to. (비유 금지 unchanged — the user wants the thing explained, not compared.)
+- `COMPRESSED_CHECKLIST` slot-order line now carries "each technical term unpacked at first use".
+- **Banter regression found and fixed.** The user asked whether the joke instruction still works. Audit: the original rule said "**mix in** light internet-community banter (깐족 유머) so the work is fun to read" — a directive. The v21.115.0 rewrite demoted it to "is welcome" — a permission. Permissions get ignored while directives get followed (I085's own finding), and banter output died accordingly. Restored to the directive form, with a negative lock so the permission form cannot come back.
+- Locks: too-many-terms rule + codename clause + banter directive (and not-permission) in `_test-inject-rules.js`; unpacked-at-first-use in `_test-shared-context.js`. CLAUDE.md re-synced, AGENTS.md regenerated.
+
 ## [21.118.0] - 2026-08-12
 
 ### feat: spoken-register clause — the style itself lives in the plugin, not in a session promise
