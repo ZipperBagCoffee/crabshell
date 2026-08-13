@@ -1305,6 +1305,15 @@ test('RULES: Simple Communication spoken-register clause present', function() {
     'RULES missing spoken-register clause');
 });
 
+// v21.120.0: the CLI shows the reader the END of long output first, so the verdict
+// (per-item state + next action) must close the message, not open it only.
+test('RULES: closing verdict with work-item states present', function() {
+  assert(mod.RULES.includes('done, in progress, or not started'),
+    'RULES missing the done/in-progress/not-started verdict states');
+  assert(mod.RULES.includes('lands on the end of long output first'),
+    'RULES missing the CLI end-first rationale');
+});
+
 // v21.119.0: "unpack each term" alone let answers dump twenty unexplained terms —
 // the executable form is a decision rule on term COUNT, plus codename restating.
 test('RULES: Simple Communication term-discipline decision rule present', function() {

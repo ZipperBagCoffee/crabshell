@@ -154,7 +154,7 @@
     },
     {
       "id": "V009",
-      "ia": "Current release version is 21.119.0 after term discipline and the banter directive restore",
+      "ia": "Current release version is 21.120.0 after the closing-verdict rule",
       "type": "structural",
       "command": {
         "file": "node",
@@ -169,7 +169,7 @@
           {
             "kind": "stdoutJsonEquals",
             "pointer": "/version",
-            "equals": "21.119.0"
+            "equals": "21.120.0"
           }
         ],
         "forbiddenChanges": []

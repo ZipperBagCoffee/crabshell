@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.119.0)
+# Crabshell Architecture (v21.120.0)
 
 ## Overview
 
@@ -529,6 +529,7 @@ The 4 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.120.0 | feat: closing-verdict rule — per-item done/in-progress/not-started state closes long output, matching CLI end-first reading. |
 | 21.119.0 | feat: term-discipline decision rule and banter-directive restore in the injected Simple Communication rule and per-turn checklist. |
 | 21.118.0 | feat: spoken-register clause in the injected Simple Communication rule and per-turn checklist — style persists via injection, not session promises. |
 | 21.117.0 | feat: D115 — verification method injected every turn (match method to claim / assert what survives the release / classify a failure before editing), closing the gap for turns that never load the verifying skill. Pure-directive form; mutation-sensitivity left to the skill's high-risk path. |

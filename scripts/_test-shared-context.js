@@ -188,6 +188,11 @@ test('COMPRESSED_CHECKLIST carries the term-unpacking clause', function() {
     'missing term-unpacking clause');
 });
 
+test('COMPRESSED_CHECKLIST carries the closing-verdict clause', function() {
+  assert(COMPRESSED_CHECKLIST.includes('done, in progress, or not started'),
+    'missing closing-verdict states');
+});
+
 // v21.117.0 (D115): the per-turn checklist carries the verification *method*, not just
 // the P/O/G ritual — most turns never invoke the verifying skill, and those are exactly
 // the turns where a value-copying check gets written.

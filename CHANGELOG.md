@@ -1,5 +1,14 @@
 # Changelog
 
+## [21.120.0] - 2026-08-13
+
+### feat: closing verdict — long output must end with per-item state, because the CLI shows the end first
+- User's observation: in the CLI they read the **last** paragraph first, especially when output is long — the terminal lands at the bottom. A message whose conclusion sits only at the top, trailing off into detail, reads as "so did it happen or not?".
+- User's format request: reports must land as 했습니다 / 하고 있습니다 / 할 겁니다 — an explicit state per item, never implied.
+- `RULES` Simple Communication: the last paragraph is now the **verdict** — each work item's state (done, in progress, or not started) plus the user's next action. This closing verdict is the one permitted restatement (the mid-body repeated-conclusions cut stays).
+- `COMPRESSED_CHECKLIST`: new line "End with the verdict …" so the requirement reaches every turn.
+- Locks: verdict states + CLI end-first rationale in `_test-inject-rules.js`; verdict states in `_test-shared-context.js`. CLAUDE.md re-synced, AGENTS.md regenerated.
+
 ## [21.119.0] - 2026-08-12
 
 ### feat: term discipline + banter restored to a directive
