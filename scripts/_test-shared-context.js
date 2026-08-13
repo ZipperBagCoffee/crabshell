@@ -183,6 +183,11 @@ test('COMPRESSED_CHECKLIST carries the spoken-register clause', function() {
     'missing spoken-register clause');
 });
 
+test('COMPRESSED_CHECKLIST carries the term-unpacking clause', function() {
+  assert(COMPRESSED_CHECKLIST.includes('unpacked at first use'),
+    'missing term-unpacking clause');
+});
+
 // v21.117.0 (D115): the per-turn checklist carries the verification *method*, not just
 // the P/O/G ritual — most turns never invoke the verifying skill, and those are exactly
 // the turns where a value-copying check gets written.

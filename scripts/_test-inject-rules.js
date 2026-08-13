@@ -1293,7 +1293,9 @@ test('RULES: failure reporting limited to blocked tasks', function() {
 test('RULES: Simple Communication keyword "concrete" + "abstract" present', function() {
   // The spec phrase "concrete (file/code/value) over abstract (categories/labels)"
   // — we lock the keyword pair, which is the structural anchor.
-  assert(/concrete[^]*abstract/.test(mod.RULES), 'RULES missing concrete/abstract pairing');
+  // Case-insensitive: the contract is the pairing's presence, not its sentence position
+  // (v21.119.0 moved it to sentence-initial "Concrete", which broke the lowercase lock).
+  assert(/concrete[^]*abstract/i.test(mod.RULES), 'RULES missing concrete/abstract pairing');
 });
 
 // v21.118.0: slot order alone still produced report prose, so the register itself
@@ -1301,6 +1303,25 @@ test('RULES: Simple Communication keyword "concrete" + "abstract" present', func
 test('RULES: Simple Communication spoken-register clause present', function() {
   assert(mod.RULES.includes('spoken register, not report prose'),
     'RULES missing spoken-register clause');
+});
+
+// v21.119.0: "unpack each term" alone let answers dump twenty unexplained terms —
+// the executable form is a decision rule on term COUNT, plus codename restating.
+test('RULES: Simple Communication term-discipline decision rule present', function() {
+  assert(mod.RULES.includes('you are using too many terms'),
+    'RULES missing the too-many-terms decision rule');
+  assert(mod.RULES.includes('internal codenames and IDs mean nothing to the reader'),
+    'RULES missing the codename-restating clause');
+});
+
+// v21.119.0: banter was a directive ("mix in") until the v21.115.0 rewrite demoted it
+// to a permission ("is welcome") — and permissions are ignored while directives are
+// followed (I085). Restored as a directive; the permission form must not come back.
+test('RULES: banter is a directive, not a permission', function() {
+  assert(mod.RULES.includes('Mix in light internet-community banter'),
+    'RULES missing the banter directive');
+  assert(!mod.RULES.includes('banter (깐족 유머) is welcome'),
+    'banter must not regress to permission form');
 });
 
 test('RULES: Simple Communication keyword "self-coined" present', function() {

@@ -43,7 +43,7 @@ const COMPRESSED_CHECKLIST = `
 - Before reporting progress or writing "verified", audit each claim against a tool result from this session; otherwise say "unverified".
 - Verification = match method to claim (execute to claim behavior, inspect to claim structure); predict → execute → compare (P/O/G); assert what survives the next release; classify a failure before editing either side; the chat report is "M of N passed" plus the failed items.
 - Deliver the full requested quantity; reducing scope, deleting files, or destructive actions need explicit user approval first.
-- Answer in slot order — conclusion → evidence → critical exception → next action — in the reader's words: concrete over abstract, no self-coined jargon, spoken register rather than report prose. Cut intros, work-process narration, and repeated conclusions.
+- Answer in slot order — conclusion → evidence → critical exception → next action — in the reader's words: concrete over abstract, no self-coined jargon, each technical term unpacked at first use, spoken register rather than report prose. Cut intros, work-process narration, and repeated conclusions.
 `;
 
 /**
