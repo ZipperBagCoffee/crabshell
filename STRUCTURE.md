@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.119.0)
+# Crabshell Plugin Structure (v21.120.0)
 
-**Version**: 21.119.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.120.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -434,6 +434,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.120.0 | feat: closing-verdict rule in `RULES` + checklist — last paragraph states each item done / in progress / not started + next action (CLI shows the end of long output first). |
 | 21.119.0 | feat: `RULES` term clause → decision rule (needed terms only, plain meaning at first use, codenames restated, too-many-terms cutoff); checklist carries "unpacked at first use"; banter restored to directive form with a permission-form negative lock. |
 | 21.118.0 | feat: spoken-register clause added to `RULES` Simple Communication and `COMPRESSED_CHECKLIST` — the register (spoken, not report prose) is now injected every turn instead of living as a session promise. One keyword lock per surface; no checker. |
 | 21.117.0 | feat: D115 — `RULES` `### VERIFICATION` (4 sentences, 818 chars) and `COMPRESSED_CHECKLIST` (276 chars) now carry the verification method, not just the P/O/G ritual: match method to claim, assert what survives the next release, classify a failure before editing either side. Reaches turns that never invoke the `verifying` skill. Merged from I086's two drafts; mutation-sensitivity excluded from per-turn, pure-directive form chosen (I085 over I086's older-generation mixed-form finding). New assertions run against the hook's emitted `additionalContext`. |

@@ -44,6 +44,7 @@ const COMPRESSED_CHECKLIST = `
 - Verification = match method to claim (execute to claim behavior, inspect to claim structure); predict → execute → compare (P/O/G); assert what survives the next release; classify a failure before editing either side; the chat report is "M of N passed" plus the failed items.
 - Deliver the full requested quantity; reducing scope, deleting files, or destructive actions need explicit user approval first.
 - Answer in slot order — conclusion → evidence → critical exception → next action — in the reader's words: concrete over abstract, no self-coined jargon, each technical term unpacked at first use, spoken register rather than report prose. Cut intros, work-process narration, and repeated conclusions.
+- End with the verdict: the last paragraph states each work item — done, in progress, or not started — plus the user's next action; a CLI reader lands on the end of long output first.
 `;
 
 /**
