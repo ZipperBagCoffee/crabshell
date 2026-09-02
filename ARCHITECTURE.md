@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.120.0)
+# Crabshell Architecture (v21.121.0)
 
 ## Overview
 
@@ -529,6 +529,7 @@ The 4 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.121.0 | feat: D116 — pipeline wiring probe (`check-pipeline-wiring.js`) validates a parent-approved hook/trigger/agent contract against the source and fails on unclassified hops; optional `arch-explorer` map is documentation only. |
 | 21.120.0 | feat: closing-verdict rule — per-item done/in-progress/not-started state closes long output, matching CLI end-first reading. |
 | 21.119.0 | feat: term-discipline decision rule and banter-directive restore in the injected Simple Communication rule and per-turn checklist. |
 | 21.118.0 | feat: spoken-register clause in the injected Simple Communication rule and per-turn checklist — style persists via injection, not session promises. |

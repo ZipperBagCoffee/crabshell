@@ -14,6 +14,7 @@ Bridge the gap between VERIFICATION-FIRST principles and project reality. Most p
 - **Create mode:** `/verifying` — analyze project, create verification manifest + scripts
 - **Run mode:** `/verifying run` — execute existing verification tools against current IA items
 - **Update mode:** `/verifying add "IA item description"` — add a new verification entry to manifest
+- **Wiring update mode:** `/verifying wiring` — refresh and review the project connection inventory
 
 ---
 
@@ -25,7 +26,7 @@ When invoked without arguments:
 
 Check if `.crabshell/verification/manifest.json` exists in the project root.
 
-- **Exists:** Report current manifest contents and ask: "Manifest exists with N entries. Update or run?"
+- **Exists:** Report current manifest contents and ask: "Manifest exists with N entries. Update, refresh wiring, or run?" If the user chooses "refresh wiring", jump to Step 2a.
 - **Does not exist:** Proceed to Step 2.
 
 ### Step 2: Analyze project runtime environment
@@ -47,6 +48,101 @@ Record the parent-owned analysis as:
 - Run command: {command}
 - Test command: {command or "none"}
 ```
+
+### Step 2a: Architecture map and connection inventory
+
+Use these project-local paths:
+
+```text
+VERIFICATION_ARCHITECTURE_INDEX = {PROJECT_ROOT}/.crabshell/verification/architecture/index.html
+VERIFICATION_PROBE             = {PROJECT_ROOT}/.crabshell/verification/check-pipeline-wiring.js
+VERIFICATION_CANDIDATE         = {PROJECT_ROOT}/.crabshell/verification/wiring-contract.candidate.json
+VERIFICATION_CONTRACT          = {PROJECT_ROOT}/.crabshell/verification/wiring-contract.json
+```
+
+#### (i) Architecture map (optional, documentation only)
+
+If a skill named `arch-explorer:build` appears in the available skills, invoke it with scope set to the whole repository and output path set to `VERIFICATION_ARCHITECTURE_INDEX`. Its README goes next to the HTML file. Record exactly one state in the P/O/G report:
+
+- `generated` — the skill was invoked and `VERIFICATION_ARCHITECTURE_INDEX` exists
+- `unavailable` — the skill is not installed, or the current runtime such as Codex has no such skill
+- `generation-failed` — the skill was invoked but the HTML file was not produced
+
+The map is a coverage hint for the parent when approving hops and a document for humans. Never parse it, and never let it decide verification pass/fail. Verification continues in every state.
+
+#### (ii) Connection inventory
+
+For a Claude Code plugin project where `hooks/hooks.json` exists:
+
+1. Copy `${CLAUDE_PLUGIN_ROOT}/skills/verifying/scripts/check-pipeline-wiring.js` to `VERIFICATION_PROBE`. Copy it; never retype or fork it.
+2. Run `node .crabshell/verification/check-pipeline-wiring.js discover` and save its stdout as `VERIFICATION_CANDIDATE`.
+3. The parent reviews every candidate hop against the architecture map when available, the source, and the user's IA. Remove candidates that are not part of an approved pipeline, or list them under `ignore` and record the reason in the P/O/G notes.
+4. Save the parent-approved list as `VERIFICATION_CONTRACT`.
+
+The contract is approved by the parent, not copied from discovery. Discovery reflects the current source, so a deleted hop vanishes from discovery too; only an approved contract can catch a deletion.
+
+For other project types, derive hops by hand from the map's edges or directly from the code, create one manifest entry per approved hop with a project-specific deterministic probe, and do not fake a `hooks.json` file.
+
+#### (iii) Manifest entries
+
+Create one `structural` entry per approved hop. Every hop entry calls the same probe with `--hop <id>`, expects exit code 0, and asserts `stdoutJsonEquals` at `/passed`. Use an outcome in `ia`, with no version or ticket number:
+
+```json
+{
+  "id": "V017",
+  "ia": "hook PostToolUse to scripts/counter.js check is wired and loadable",
+  "type": "structural",
+  "command": {
+    "file": "node",
+    "args": [
+      ".crabshell/verification/check-pipeline-wiring.js",
+      "check",
+      "--contract",
+      ".crabshell/verification/wiring-contract.json",
+      "--hop",
+      "posttooluse:counter:check"
+    ]
+  },
+  "contract": {
+    "exitCode": 0,
+    "assertions": [
+      { "kind": "stdoutJsonEquals", "pointer": "/passed", "equals": true }
+    ],
+    "forbiddenChanges": []
+  },
+  "timeout": 30000
+}
+```
+
+Add one completeness entry that classifies every discovered hook command, agent file, and trigger token:
+
+```json
+{
+  "id": "V018",
+  "ia": "every discovered pipeline hook, trigger, and agent is approved or ignored with a reason",
+  "type": "structural",
+  "command": {
+    "file": "node",
+    "args": [
+      ".crabshell/verification/check-pipeline-wiring.js",
+      "check",
+      "--contract",
+      ".crabshell/verification/wiring-contract.json",
+      "--completeness"
+    ]
+  },
+  "contract": {
+    "exitCode": 0,
+    "assertions": [
+      { "kind": "stdoutJsonEquals", "pointer": "/passed", "equals": true }
+    ],
+    "forbiddenChanges": []
+  },
+  "timeout": 30000
+}
+```
+
+These command objects run from the project root because `run-verify.js` resolves `command.file: "node"` to `process.execPath`, uses the project root as the default `cwd`, and supplies `PROJECT_ROOT` and `CLAUDE_PROJECT_DIR` to the child process.
 
 ### Step 3: Review analysis
 
@@ -137,6 +233,8 @@ Supported assertions are `jsonEquals`, `jsonMatches`, `stdoutJsonEquals`, `fileE
 
 Copy `${CLAUDE_PLUGIN_ROOT}/skills/verifying/scripts/run-verify.js` to `.crabshell/verification/run-verify.js`. This tracked file is the single runner implementation. Do not retype or fork it in the skill document.
 
+Also copy `${CLAUDE_PLUGIN_ROOT}/skills/verifying/scripts/check-pipeline-wiring.js` to `.crabshell/verification/check-pipeline-wiring.js`. Keep both files next to the manifest; never retype either implementation.
+
 The runner resolves `node` from `process.execPath`, runs without a shell, rejects machine-specific absolute paths, evaluates assertions itself, snapshots `forbiddenChanges` before and after the command, and emits machine-readable results before its summary.
 
 ### Step 7: Confirm
@@ -174,6 +272,8 @@ A failing verifier means one of two things, and they have opposite fixes. Ask:
 
 Code is the more likely culprit — in one industrial study of regression failures, roughly four out of five traced to a code defect rather than an obsolete test. Treat "fix the verifier" as the exception that must be named, never the reflex. Silently re-recording whatever the code now outputs is not verification.
 
+For a wiring entry, a FAIL means either the source broke a parent-approved hop, in which case fix the source, or the hop was deliberately removed or renamed in this release, in which case update `wiring-contract.json` and state the approved change in the report by naming the hop. Map staleness is never a wiring FAIL; it is only the documentation state recorded by Create Mode Step 2a(i).
+
 ### Step 3: Parse and report as P/O/G
 
 | Item | Type | Prediction (from manifest contract) | Observation (from runner output/state/hash) | Gap |
@@ -201,6 +301,16 @@ When invoked with `add "description"`:
 4. Append to manifest entries array
 5. Update `updated` timestamp
 
+When invoked with `wiring`:
+
+1. Read the existing approved `wiring-contract.json`. If it does not exist, run Create Mode Step 2a.
+2. Re-run `check-pipeline-wiring.js discover` and save the new candidate output.
+3. Diff the candidate against the approved contract and present every new and removed hop to the parent for approval. Do not copy the candidate over the contract.
+4. After approval, update the contract, hop entries, completeness entry, and manifest `updated` timestamp together.
+5. Optionally regenerate the architecture map when `arch-explorer:build` is available. The map remains documentation only.
+
+`/verifying add` is unchanged and continues to add one IA entry as described above.
+
 ---
 
 ## Rules
@@ -215,3 +325,5 @@ When invoked with `add "description"`:
 8. **No git commit.** `.crabshell/verification/` is local — do NOT commit.
 9. **Timeout safety.** Default 30s. Destructive commands (rm, drop) PROHIBITED.
 10. **Idempotent create.** Existing manifest is NOT overwritten.
+11. **External skills are optional:** Verification never depends on `arch-explorer` or any third-party plugin being installed; their absence is recorded, never fatal.
+12. **The wiring contract is approved by the parent, never copied from discovery:** Every `hooks.json` command, agent file, and trigger token must be classified as approved or ignored with a reason, and the completeness entry fails otherwise.
