@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.120.0)
+# Crabshell Plugin Structure (v21.121.0)
 
-**Version**: 21.120.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.121.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -37,7 +37,10 @@ crabshell/
 │   │   └── INDEX.md
 │   └── verification/                 # Project-local schema-v2 verification artifacts
 │       ├── manifest.json             # Portable command/assertion contracts
-│       └── run-verify.js             # Generated from the tracked skill runner
+│       ├── run-verify.js             # Generated from the tracked skill runner
+│       ├── check-pipeline-wiring.js  # Copied from the tracked skill probe (v21.121.0)
+│       ├── wiring-contract.json      # Parent-approved hook/trigger/agent hops (v21.121.0)
+│       └── architecture/index.html   # Optional arch-explorer map — documentation only (v21.121.0)
 │
 ├── .claude-plugin/                   # Plugin configuration
 │   ├── plugin.json                   # Plugin metadata
@@ -70,6 +73,7 @@ crabshell/
 │   ├── load-memory.js                # Load memory on session start
 │   ├── inject-rules.js               # Rules injection + intent-independent pressure bailout
 │   ├── _test-bailout-main.js         # Real-main bailout reset/read-only regression
+│   ├── _test-check-pipeline-wiring.js # Wiring probe: discover/check/mutation sensitivity on a tmpdir fixture (v21.121.0)
 │   ├── shared-context.js              # Shared project context + orchestration defaults
 │   ├── subagent-context.js            # Bounded worker contract injection
 │   ├── extract-delta.js              # L1 delta extraction
@@ -167,8 +171,9 @@ crabshell/
 │   ├── investigating/SKILL.md        # /crabshell:investigating (I documents)
 │   ├── regressing/SKILL.md           # /crabshell:regressing (D→P→T cycles)
 │   ├── (light-workflow retired v21.112.0 — one-pass work records via hotfix)
-│   ├── verifying/SKILL.md            # /crabshell:verifying (schema-v2 behavioral verification)
-│   │   └── scripts/run-verify.js      # Portable single-source verification runner (v21.106.0)
+│   ├── verifying/SKILL.md            # /crabshell:verifying (schema-v2 behavioral verification; Step 2a wiring inventory v21.121.0)
+│   │   ├── scripts/run-verify.js      # Portable single-source verification runner (v21.106.0)
+│   │   └── scripts/check-pipeline-wiring.js # Pipeline wiring probe: discover / check --contract (v21.121.0)
 │   ├── status/SKILL.md               # /crabshell:status (plugin healthcheck)
 │   ├── lint/SKILL.md                 # /crabshell:lint (Obsidian document lint checks) (v21.70.0)
 │   ├── search-docs/SKILL.md          # /crabshell:search-docs (BM25 document search) (v21.72.0)
@@ -434,6 +439,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.121.0 | feat: D116 — `skills/verifying/scripts/check-pipeline-wiring.js` (discover candidate hops from hooks.json / `[CRABSHELL_*]` tokens / agent frontmatter; check a parent-approved `wiring-contract.json`; `--completeness` fails unclassified hops; `--hooks` fixture for mutation tests) + `_test-check-pipeline-wiring.js` (9 cases). `verifying` SKILL.md: Step 2a optional `arch-explorer:build` map (documentation only) + connection inventory + per-hop structural entries; `/verifying wiring`; Rules 11–12. |
 | 21.120.0 | feat: closing-verdict rule in `RULES` + checklist — last paragraph states each item done / in progress / not started + next action (CLI shows the end of long output first). |
 | 21.119.0 | feat: `RULES` term clause → decision rule (needed terms only, plain meaning at first use, codenames restated, too-many-terms cutoff); checklist carries "unpacked at first use"; banter restored to directive form with a permission-form negative lock. |
 | 21.118.0 | feat: spoken-register clause added to `RULES` Simple Communication and `COMPRESSED_CHECKLIST` — the register (spoken, not report prose) is now injected every turn instead of living as a session promise. One keyword lock per surface; no checker. |

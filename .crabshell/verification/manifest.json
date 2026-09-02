@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "projectType": "Node.js CLI plugin with Claude and Codex adapters",
   "created": "2026-03-28T08:20:00Z",
-  "updated": "2026-07-28T00:00:00.000Z",
+  "updated": "2026-09-02T18:40:50.096Z",
   "tools": {
     "build": null,
     "run": null,
@@ -154,7 +154,7 @@
     },
     {
       "id": "V009",
-      "ia": "Current release version is 21.120.0 after the closing-verdict rule",
+      "ia": "Current release version is 21.121.0 after the wiring probe",
       "type": "structural",
       "command": {
         "file": "node",
@@ -169,7 +169,7 @@
           {
             "kind": "stdoutJsonEquals",
             "pointer": "/version",
-            "equals": "21.120.0"
+            "equals": "21.121.0"
           }
         ],
         "forbiddenChanges": []
@@ -348,6 +348,761 @@
             "kind": "stdoutJsonEquals",
             "pointer": "/failedCount",
             "equals": 0
+          }
+        ],
+        "forbiddenChanges": []
+      },
+      "timeout": 30000
+    },
+    {
+      "id": "V017",
+      "ia": "hook UserPromptSubmit to scripts/inject-rules.js is wired and loadable",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          ".crabshell/verification/check-pipeline-wiring.js",
+          "check",
+          "--contract",
+          ".crabshell/verification/wiring-contract.json",
+          "--hop",
+          "userpromptsubmit:inject-rules"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [
+          {
+            "kind": "stdoutJsonEquals",
+            "pointer": "/passed",
+            "equals": true
+          }
+        ],
+        "forbiddenChanges": []
+      },
+      "timeout": 30000
+    },
+    {
+      "id": "V018",
+      "ia": "hook SessionStart to scripts/load-memory.js is wired and loadable",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          ".crabshell/verification/check-pipeline-wiring.js",
+          "check",
+          "--contract",
+          ".crabshell/verification/wiring-contract.json",
+          "--hop",
+          "sessionstart:load-memory"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [
+          {
+            "kind": "stdoutJsonEquals",
+            "pointer": "/passed",
+            "equals": true
+          }
+        ],
+        "forbiddenChanges": []
+      },
+      "timeout": 30000
+    },
+    {
+      "id": "V019",
+      "ia": "hook PostToolUse to scripts/counter.js check is wired and loadable",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          ".crabshell/verification/check-pipeline-wiring.js",
+          "check",
+          "--contract",
+          ".crabshell/verification/wiring-contract.json",
+          "--hop",
+          "posttooluse:counter:check"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [
+          {
+            "kind": "stdoutJsonEquals",
+            "pointer": "/passed",
+            "equals": true
+          }
+        ],
+        "forbiddenChanges": []
+      },
+      "timeout": 30000
+    },
+    {
+      "id": "V020",
+      "ia": "hook PostToolUse to scripts/verification-sequence.js record is wired and loadable",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          ".crabshell/verification/check-pipeline-wiring.js",
+          "check",
+          "--contract",
+          ".crabshell/verification/wiring-contract.json",
+          "--hop",
+          "posttooluse:verification-sequence:record"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [
+          {
+            "kind": "stdoutJsonEquals",
+            "pointer": "/passed",
+            "equals": true
+          }
+        ],
+        "forbiddenChanges": []
+      },
+      "timeout": 30000
+    },
+    {
+      "id": "V021",
+      "ia": "hook PostToolUse to scripts/completion-controller.js is wired and loadable",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          ".crabshell/verification/check-pipeline-wiring.js",
+          "check",
+          "--contract",
+          ".crabshell/verification/wiring-contract.json",
+          "--hop",
+          "posttooluse:completion-controller"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [
+          {
+            "kind": "stdoutJsonEquals",
+            "pointer": "/passed",
+            "equals": true
+          }
+        ],
+        "forbiddenChanges": []
+      },
+      "timeout": 30000
+    },
+    {
+      "id": "V022",
+      "ia": "hook PostToolUse to scripts/skill-tracker.js is wired and loadable",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          ".crabshell/verification/check-pipeline-wiring.js",
+          "check",
+          "--contract",
+          ".crabshell/verification/wiring-contract.json",
+          "--hop",
+          "posttooluse:skill-tracker"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [
+          {
+            "kind": "stdoutJsonEquals",
+            "pointer": "/passed",
+            "equals": true
+          }
+        ],
+        "forbiddenChanges": []
+      },
+      "timeout": 30000
+    },
+    {
+      "id": "V023",
+      "ia": "hook PostToolUse to scripts/doc-watchdog.js record is wired and loadable",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          ".crabshell/verification/check-pipeline-wiring.js",
+          "check",
+          "--contract",
+          ".crabshell/verification/wiring-contract.json",
+          "--hop",
+          "posttooluse:doc-watchdog:record"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [
+          {
+            "kind": "stdoutJsonEquals",
+            "pointer": "/passed",
+            "equals": true
+          }
+        ],
+        "forbiddenChanges": []
+      },
+      "timeout": 30000
+    },
+    {
+      "id": "V024",
+      "ia": "hook PreToolUse to scripts/path-guard.js is wired and loadable",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          ".crabshell/verification/check-pipeline-wiring.js",
+          "check",
+          "--contract",
+          ".crabshell/verification/wiring-contract.json",
+          "--hop",
+          "pretooluse:path-guard"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [
+          {
+            "kind": "stdoutJsonEquals",
+            "pointer": "/passed",
+            "equals": true
+          }
+        ],
+        "forbiddenChanges": []
+      },
+      "timeout": 30000
+    },
+    {
+      "id": "V025",
+      "ia": "hook PreToolUse to scripts/web-guard.js is wired and loadable",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          ".crabshell/verification/check-pipeline-wiring.js",
+          "check",
+          "--contract",
+          ".crabshell/verification/wiring-contract.json",
+          "--hop",
+          "pretooluse:web-guard"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [
+          {
+            "kind": "stdoutJsonEquals",
+            "pointer": "/passed",
+            "equals": true
+          }
+        ],
+        "forbiddenChanges": []
+      },
+      "timeout": 30000
+    },
+    {
+      "id": "V026",
+      "ia": "hook PreToolUse to scripts/regressing-guard.js is wired and loadable",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          ".crabshell/verification/check-pipeline-wiring.js",
+          "check",
+          "--contract",
+          ".crabshell/verification/wiring-contract.json",
+          "--hop",
+          "pretooluse:regressing-guard"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [
+          {
+            "kind": "stdoutJsonEquals",
+            "pointer": "/passed",
+            "equals": true
+          }
+        ],
+        "forbiddenChanges": []
+      },
+      "timeout": 30000
+    },
+    {
+      "id": "V027",
+      "ia": "hook PreToolUse to scripts/docs-guard.js is wired and loadable",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          ".crabshell/verification/check-pipeline-wiring.js",
+          "check",
+          "--contract",
+          ".crabshell/verification/wiring-contract.json",
+          "--hop",
+          "pretooluse:docs-guard"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [
+          {
+            "kind": "stdoutJsonEquals",
+            "pointer": "/passed",
+            "equals": true
+          }
+        ],
+        "forbiddenChanges": []
+      },
+      "timeout": 30000
+    },
+    {
+      "id": "V028",
+      "ia": "hook PreToolUse to scripts/log-guard.js is wired and loadable",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          ".crabshell/verification/check-pipeline-wiring.js",
+          "check",
+          "--contract",
+          ".crabshell/verification/wiring-contract.json",
+          "--hop",
+          "pretooluse:log-guard"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [
+          {
+            "kind": "stdoutJsonEquals",
+            "pointer": "/passed",
+            "equals": true
+          }
+        ],
+        "forbiddenChanges": []
+      },
+      "timeout": 30000
+    },
+    {
+      "id": "V029",
+      "ia": "hook PreToolUse to scripts/verify-guard.js is wired and loadable",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          ".crabshell/verification/check-pipeline-wiring.js",
+          "check",
+          "--contract",
+          ".crabshell/verification/wiring-contract.json",
+          "--hop",
+          "pretooluse:verify-guard"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [
+          {
+            "kind": "stdoutJsonEquals",
+            "pointer": "/passed",
+            "equals": true
+          }
+        ],
+        "forbiddenChanges": []
+      },
+      "timeout": 30000
+    },
+    {
+      "id": "V030",
+      "ia": "hook PreToolUse to scripts/verification-sequence.js gate is wired and loadable",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          ".crabshell/verification/check-pipeline-wiring.js",
+          "check",
+          "--contract",
+          ".crabshell/verification/wiring-contract.json",
+          "--hop",
+          "pretooluse:verification-sequence:gate"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [
+          {
+            "kind": "stdoutJsonEquals",
+            "pointer": "/passed",
+            "equals": true
+          }
+        ],
+        "forbiddenChanges": []
+      },
+      "timeout": 30000
+    },
+    {
+      "id": "V031",
+      "ia": "hook PreToolUse to scripts/doc-watchdog.js gate is wired and loadable",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          ".crabshell/verification/check-pipeline-wiring.js",
+          "check",
+          "--contract",
+          ".crabshell/verification/wiring-contract.json",
+          "--hop",
+          "pretooluse:doc-watchdog:gate"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [
+          {
+            "kind": "stdoutJsonEquals",
+            "pointer": "/passed",
+            "equals": true
+          }
+        ],
+        "forbiddenChanges": []
+      },
+      "timeout": 30000
+    },
+    {
+      "id": "V032",
+      "ia": "hook Stop to scripts/completion-controller.js is wired and loadable",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          ".crabshell/verification/check-pipeline-wiring.js",
+          "check",
+          "--contract",
+          ".crabshell/verification/wiring-contract.json",
+          "--hop",
+          "stop:completion-controller"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [
+          {
+            "kind": "stdoutJsonEquals",
+            "pointer": "/passed",
+            "equals": true
+          }
+        ],
+        "forbiddenChanges": []
+      },
+      "timeout": 30000
+    },
+    {
+      "id": "V033",
+      "ia": "hook SessionEnd to scripts/counter.js final is wired and loadable",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          ".crabshell/verification/check-pipeline-wiring.js",
+          "check",
+          "--contract",
+          ".crabshell/verification/wiring-contract.json",
+          "--hop",
+          "sessionend:counter:final"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [
+          {
+            "kind": "stdoutJsonEquals",
+            "pointer": "/passed",
+            "equals": true
+          }
+        ],
+        "forbiddenChanges": []
+      },
+      "timeout": 30000
+    },
+    {
+      "id": "V034",
+      "ia": "hook PreCompact to scripts/pre-compact.js is wired and loadable",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          ".crabshell/verification/check-pipeline-wiring.js",
+          "check",
+          "--contract",
+          ".crabshell/verification/wiring-contract.json",
+          "--hop",
+          "precompact:pre-compact"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [
+          {
+            "kind": "stdoutJsonEquals",
+            "pointer": "/passed",
+            "equals": true
+          }
+        ],
+        "forbiddenChanges": []
+      },
+      "timeout": 30000
+    },
+    {
+      "id": "V035",
+      "ia": "hook PostCompact to scripts/post-compact.js is wired and loadable",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          ".crabshell/verification/check-pipeline-wiring.js",
+          "check",
+          "--contract",
+          ".crabshell/verification/wiring-contract.json",
+          "--hop",
+          "postcompact:post-compact"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [
+          {
+            "kind": "stdoutJsonEquals",
+            "pointer": "/passed",
+            "equals": true
+          }
+        ],
+        "forbiddenChanges": []
+      },
+      "timeout": 30000
+    },
+    {
+      "id": "V036",
+      "ia": "hook SubagentStart to scripts/subagent-context.js is wired and loadable",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          ".crabshell/verification/check-pipeline-wiring.js",
+          "check",
+          "--contract",
+          ".crabshell/verification/wiring-contract.json",
+          "--hop",
+          "subagentstart:subagent-context"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [
+          {
+            "kind": "stdoutJsonEquals",
+            "pointer": "/passed",
+            "equals": true
+          }
+        ],
+        "forbiddenChanges": []
+      },
+      "timeout": 30000
+    },
+    {
+      "id": "V037",
+      "ia": "hook SubagentStop to scripts/completion-controller.js is wired and loadable",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          ".crabshell/verification/check-pipeline-wiring.js",
+          "check",
+          "--contract",
+          ".crabshell/verification/wiring-contract.json",
+          "--hop",
+          "subagentstop:completion-controller"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [
+          {
+            "kind": "stdoutJsonEquals",
+            "pointer": "/passed",
+            "equals": true
+          }
+        ],
+        "forbiddenChanges": []
+      },
+      "timeout": 30000
+    },
+    {
+      "id": "V038",
+      "ia": "trigger [CRABSHELL_DELTA] has live producers and consumers",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          ".crabshell/verification/check-pipeline-wiring.js",
+          "check",
+          "--contract",
+          ".crabshell/verification/wiring-contract.json",
+          "--hop",
+          "trigger:crabshell_delta"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [
+          {
+            "kind": "stdoutJsonEquals",
+            "pointer": "/passed",
+            "equals": true
+          }
+        ],
+        "forbiddenChanges": []
+      },
+      "timeout": 30000
+    },
+    {
+      "id": "V039",
+      "ia": "trigger [CRABSHELL_ROTATE] has live producers and consumers",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          ".crabshell/verification/check-pipeline-wiring.js",
+          "check",
+          "--contract",
+          ".crabshell/verification/wiring-contract.json",
+          "--hop",
+          "trigger:crabshell_rotate"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [
+          {
+            "kind": "stdoutJsonEquals",
+            "pointer": "/passed",
+            "equals": true
+          }
+        ],
+        "forbiddenChanges": []
+      },
+      "timeout": 30000
+    },
+    {
+      "id": "V040",
+      "ia": "trigger [CRABSHELL_SAVE] has live producers and consumers",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          ".crabshell/verification/check-pipeline-wiring.js",
+          "check",
+          "--contract",
+          ".crabshell/verification/wiring-contract.json",
+          "--hop",
+          "trigger:crabshell_save"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [
+          {
+            "kind": "stdoutJsonEquals",
+            "pointer": "/passed",
+            "equals": true
+          }
+        ],
+        "forbiddenChanges": []
+      },
+      "timeout": 30000
+    },
+    {
+      "id": "V041",
+      "ia": "skill memory-delta resolves the delta-summarizer agent",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          ".crabshell/verification/check-pipeline-wiring.js",
+          "check",
+          "--contract",
+          ".crabshell/verification/wiring-contract.json",
+          "--hop",
+          "agent:delta-summarizer"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [
+          {
+            "kind": "stdoutJsonEquals",
+            "pointer": "/passed",
+            "equals": true
+          }
+        ],
+        "forbiddenChanges": []
+      },
+      "timeout": 30000
+    },
+    {
+      "id": "V042",
+      "ia": "skill memory-rotate resolves the memory-summarizer agent",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          ".crabshell/verification/check-pipeline-wiring.js",
+          "check",
+          "--contract",
+          ".crabshell/verification/wiring-contract.json",
+          "--hop",
+          "agent:memory-summarizer"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [
+          {
+            "kind": "stdoutJsonEquals",
+            "pointer": "/passed",
+            "equals": true
+          }
+        ],
+        "forbiddenChanges": []
+      },
+      "timeout": 30000
+    },
+    {
+      "id": "V043",
+      "ia": "every discovered pipeline hook, trigger, and agent is approved or ignored with a reason",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          ".crabshell/verification/check-pipeline-wiring.js",
+          "check",
+          "--contract",
+          ".crabshell/verification/wiring-contract.json",
+          "--completeness"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [
+          {
+            "kind": "stdoutJsonEquals",
+            "pointer": "/passed",
+            "equals": true
           }
         ],
         "forbiddenChanges": []

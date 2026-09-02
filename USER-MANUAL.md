@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.120.0)
+# Crabshell User Manual (v21.121.0)
 
 ## Why Do You Need This?
 
@@ -138,6 +138,7 @@ All available skills (slash commands):
 |---------|-------------|
 | `/crabshell:regressing "topic"` | Iterative current-gap Plan→Ticket→Verify cycles until convergence; an explicit count is only a maximum |
 | `/crabshell:verifying` | Create or run project-specific verification tools |
+| `/crabshell:verifying wiring` | Refresh the pipeline connection inventory: re-discover hooks, trigger tokens, and agents, approve new or removed hops into `wiring-contract.json`, and regenerate the optional architecture map when `arch-explorer:build` is installed (v21.121.0) |
 | `/crabshell:status` | Live host/plugin state: installed, activated, trusted, behavior-verified, degraded, drifted, unsupported |
 | `/crabshell:lint` | Run Obsidian document lint checks (orphans, broken wikilinks, stale status, missing frontmatter, INDEX inconsistencies) |
 | `/crabshell:search-docs query` | BM25 full-text search across all D/P/T/I/W/K documents — ranked results with title/tags/id/body field boosts |
@@ -220,6 +221,8 @@ Completion remains with the parent. A worker's `done`/`PASS`, agent count, or sp
 ### Portable Behavioral Verification
 
 The verifying skill installs one schema-v2 runner from `skills/verifying/scripts/run-verify.js`. Manifest commands use repo-relative `file` and `args` fields. Behavioral entries must assert independently observed JSON/file state and may protect paths with before/after snapshots. A zero exit or stdout containing `PASS` cannot satisfy the contract by itself.
+
+As of v21.121.0 (D116) the skill also checks that a project's **pipeline is still wired**. For a Claude Code plugin project it copies `skills/verifying/scripts/check-pipeline-wiring.js` next to the runner, runs `discover` to list candidate hops — every `hooks/hooks.json` command (event, matcher, script, args), every `[CRABSHELL_*]` trigger token with the scripts that emit it and the skills that consume it, and every `agents/*.md` name referenced by a skill — and the parent approves that list into `.crabshell/verification/wiring-contract.json`. Each approved hop becomes one `structural` manifest entry (`check --contract … --hop <id>`), plus one completeness entry (`--completeness`) that fails whenever a hook, token, or agent file exists in the source but is neither approved nor listed under `ignore`. The contract is approved, never copied from discovery: discovery only sees the current source, so a deleted hop disappears from discovery too, and only the approved list can catch the deletion. To prove the probe bites, run it with `--hooks <fixture copy>` where one entry has been removed and watch `passed:false` / `hook-entry-missing` — the live hooks.json is never edited. If the `arch-explorer:build` skill is installed, Step 2a also generates a clickable architecture map at `.crabshell/verification/architecture/index.html`; it is documentation and a coverage hint for approving hops, never parsed and never a pass/fail input, and its state (`generated`, `unavailable`, `generation-failed`) is only recorded.
 
 As of v21.116.0 the skill also decides *what* to assert, so verifiers survive releases instead of needing an edit each time (D114/I086):
 
