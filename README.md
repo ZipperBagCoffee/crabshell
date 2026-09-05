@@ -47,7 +47,7 @@ codex plugin add crabshell@crabshell-repo
 
 Review and trust the discovered Crabshell hook definition in Codex before expecting it to run. Invoke `crabshell:status` to report the live Claude/Codex installed, activated, trusted, behavior-verified, degraded, drifted, and unsupported states. Codex desktop-app status is reported separately from CLI evidence.
 
-The shared project state is `.crabshell/`. Claude and Codex can both read and write the same memory/document store. Installed Codex load/save/search skills call scripts from the plugin cache while targeting the active project; direct source-checkout commands remain available for development:
+The shared project state is `.crabshell/`. Claude and Codex can both read and write the same memory/document store. Installed Codex memory skills and seven document skills call bundled launchers from the plugin cache while targeting the active project. Document launchers require an absolute `--project-dir`; consumer projects do not need their own `scripts/codex-docs.js`. Direct source-checkout commands remain available for development:
 
 ```bash
 node scripts/codex-memory.js load
@@ -60,17 +60,19 @@ node scripts/codex-docs.js worklog "task title"
 
 Codex activates nine synchronous native lifecycle events: SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, PreCompact, PostCompact, SubagentStart, SubagentStop, and Stop. They share host-neutral memory/workflow/verification cores with Claude while emitting each host's native hook response. Every Codex launcher catches adapter-load and rejected-`main()` failures so hook infrastructure errors fail open instead of interrupting the user's tool call. Claude's automatic SessionEnd capture remains Claude-specific; the retired verifier, pressure/sycophancy/scope guards, and fixed agent-count hooks are absent from both runtimes.
 
-On every prompt, both native `UserPromptSubmit` paths inject one shared compact turn contract (three contract bullets + a 4-line Rules Quick-Check). The per-response `[의도]`/`[이해]`/`[설명]` ending was retired in v21.113.0 (I083 R8, user-approved).
+On every prompt, both native `UserPromptSubmit` paths inject one shared compact turn contract and Rules Quick-Check. The per-response `[의도]`/`[이해]`/`[설명]` ending was retired in v21.113.0 (I083 R8, user-approved).
 
 `/crabshell:install-codex` and `scripts/install-codex.js` remain as legacy/development bridges for older installations. Native marketplace installation is the default Codex path.
 
 ## How It Works
 
-1. **Session start** - Claude and Codex load the same saved memory and active workflow context without writing.
+1. **Session start** - Claude and Codex load the same saved memory and active workflow context. A legacy-only project description is copied once to `.crabshell/project.md`; the legacy file is preserved.
 2. **During work** - Both receive shared task/subagent/completion semantics; Claude additionally runs its automatic capture and deterministic guard lifecycle.
 3. **Session end** - Claude performs its existing full conversation backup/final save. Codex uses explicit save skills and never needs to launch Claude.
 
 Project verification uses a portable schema-v2 manifest. Commands are repo-relative, and behavioral entries pass only when command exits, structured observations, and forbidden-path snapshots match; printing `PASS` is never sufficient by itself.
+
+Parent completion evidence recognizes checks declared in the project manifest or package test configuration. Claude's successful `PostToolUse` output may omit an exit code; Codex evidence requires an explicit code. Both completion adapters observe commands and edits, compare current project content with the checked content, and reuse one fingerprint within a result event. Claude failure-event wiring and live Codex result-field capture remain follow-up work.
 
 ## What Gets Saved
 
@@ -84,13 +86,15 @@ Project verification uses a portable schema-v2 manifest. Commands are repo-relat
 If there's information you want Claude to know every session, **directly edit the files**:
 
 ```bash
-# Create/edit files in your project's .crabshell/memory/ folder
+# Create/edit the project description at the .crabshell root
 echo "React + TypeScript web app." > .crabshell/project.md
 ```
 
 Or just ask Claude: "Save the project info to project.md"
 
 With this setup, **Claude starts every new session knowing this information**.
+
+The supported `counter.js memory-set/get/list` commands use the same `.crabshell/project.md` path as both hosts' context readers. If only the old `.crabshell/memory/project.md` exists, it is copied without deleting the old file. If both exist, the root file takes precedence; an explicit setter saves its prior contents to `project.md.bak`.
 
 ## Slash Commands
 
@@ -176,12 +180,12 @@ Coding conventions: ...
 ├── *.summary.json         # L3 summaries (Haiku-generated)
 ├── memory-index.json      # Rotation tracking & delta state
 ├── counter.json           # PostToolUse counter
-├── project.md             # Project overview (optional)
 ├── logs/                  # Refine logs
 └── sessions/
     └── *.l1.jsonl         # L1 session transcripts (deduplicated)
 
 [project]/.crabshell/
+├── project.md             # Shared project overview (optional)
 ├── discussion/            # Discussion documents (D001, D002...)
 │   └── INDEX.md
 ├── plan/                  # Plan documents (P001, P002...)
@@ -237,6 +241,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.122.0 | Declared-check evidence with host-specific captured result handling; command/edit content invalidation with one scan per result; shared project.md path and preserving migration; seven portable Codex document launchers. |
 | 21.121.0 | feat: D116 — pipeline wiring probe. `skills/verifying/scripts/check-pipeline-wiring.js` (`discover` / `check --contract … --hop … --completeness`) validates a parent-approved connection contract against the source — hooks.json event/matcher/script/args + `node --check`, `[CRABSHELL_*]` trigger producers/consumers, agent frontmatter — and fails on any unclassified hop; a mutation test runs against a fixture copy via `--hooks`. `verifying` SKILL.md Step 2a adds an optional `arch-explorer:build` map (documentation only, `generated`/`unavailable`/`generation-failed`), `/verifying wiring`, Rules 11–12. 9-case test; this repo's manifest V017–V043, runner 42/42. code-wiki deferred. |
 | 21.120.0 | feat: closing-verdict rule — a CLI reader lands on the end of long output first, so the last paragraph must state each work item as done / in progress / not started plus the user's next action; this closing verdict is the one permitted restatement. Injected via RULES and the per-turn checklist, with keyword locks. |
 | 21.119.0 | feat: term discipline in Simple Communication — "unpack each term" becomes a decision rule (use only the terms the reader needs, plain meaning at first use, restate what internal codenames refer to; if unpacking everything would bloat the answer, you are using too many terms). Banter restored from permission ("is welcome", a v21.115.0 regression) to directive ("mix in") with a negative lock — permissions get ignored, directives get followed. |

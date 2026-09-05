@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+'use strict';
+
 const fs = require('fs');
 const path = require('path');
 
@@ -197,8 +199,13 @@ function createSimple(root, type, title, args) {
   console.log(path.relative(root, filePath));
 }
 
-function main() {
-  const args = parseArgs(process.argv.slice(2));
+function main(argv = process.argv.slice(2), options = {}) {
+  const args = parseArgs(argv);
+  if (options.requireProjectDir && (typeof args['project-dir'] !== 'string' || !path.isAbsolute(args['project-dir']))) {
+    console.error('ERROR: the bundled document tool requires --project-dir with the absolute active project path.');
+    process.exitCode = 1;
+    return;
+  }
   const command = args._.shift();
   const title = args._.join(' ').trim() || args.title;
   const root = path.resolve(args['project-dir'] || process.cwd());

@@ -1,0 +1,23 @@
+{
+  "_captured": {
+    "host": "Claude Code CLI (Windows 11)",
+    "capturedAt": "2026-09-05",
+    "source": "toolUseResult record of a live session transcript (~/.claude/projects/<project>/<session_id>.jsonl); tool_input and tool_response are verbatim",
+    "note": "PostToolUse fires only for tool calls that completed successfully. The Bash Output object carries no exit-code field of any name; exit 0 is implied by the event. Failures are routed to PostToolUseFailure with a string result (see claude-posttoolusefailure-bash.json)."
+  },
+  "session_id": "78811ea8-82da-445a-8f52-25266f33f976",
+  "cwd": "C:\\Users\\chulg\\Documents\\memory-keeper-plugin",
+  "hook_event_name": "PostToolUse",
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "cd \"C:/Users/chulg/Documents/memory-keeper-plugin\" && ls .crabshell/discussion/ | grep -i \"D117\" ; grep -n \"D117\" .crabshell/discussion/INDEX.md",
+    "description": "Locate the D117 discussion document"
+  },
+  "tool_response": {
+    "stdout": "D117-crabshell-reliability-and-dual-host-improvement-scope.md\nD117-crabshell-reliability-and-dual-host-improvement-scope.md.bak\n120:| [[D117-crabshell-reliability-and-dual-host-improvement-scope|D117]] | Crabshell에서 무엇을 고칠 것인가 — 신뢰성·두 호스트 지원·효율 | open | 2026-09-04 |",
+    "stderr": "",
+    "interrupted": false,
+    "isImage": false,
+    "noOutputExpected": false
+  }
+}

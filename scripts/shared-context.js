@@ -77,17 +77,28 @@ Completion drive after compaction = the #1 cause of rule violations.
 }
 
 /**
- * Reads the first maxLines/maxChars of .crabshell/project.md.
- * Returns empty string if file does not exist or is empty.
+ * Resolves the shared project description, preserving legacy data on migration.
  * @param {string} projectDir
- * @param {number} maxLines
- * @param {number} maxChars
  * @returns {string}
  */
+function getProjectMemoryPath(projectDir) {
+  const storageRoot = getStorageRoot(projectDir);
+  const canonical = path.join(storageRoot, 'project.md');
+  const legacy = path.join(storageRoot, 'memory', 'project.md');
+  if (!fs.existsSync(canonical) && fs.existsSync(legacy)) {
+    // Copy exclusively: concurrent readers cannot overwrite a setter or each
+    // other. Keep the legacy bytes, including when both paths already exist.
+    try { fs.copyFileSync(legacy, canonical, fs.constants.COPYFILE_EXCL); }
+    catch (error) { if (error.code !== 'EEXIST') throw error; }
+  }
+  return canonical;
+}
+
+/** Read the first maxLines/maxChars, or return an empty string when unavailable. */
 function readProjectConcept(projectDir, maxLines = 20, maxChars = 1000) {
-  const projectMdPath = path.join(getStorageRoot(projectDir), 'project.md');
-  if (!fs.existsSync(projectMdPath)) return '';
   try {
+    const projectMdPath = getProjectMemoryPath(projectDir);
+    if (!fs.existsSync(projectMdPath)) return '';
     const content = fs.readFileSync(projectMdPath, 'utf8').trim();
     if (!content) return '';
     const lines = content.split(/\r?\n/).slice(0, maxLines).join('\n');
@@ -106,9 +117,9 @@ function readProjectConcept(projectDir, maxLines = 20, maxChars = 1000) {
  * @returns {string}
  */
 function readModelRouting(projectDir, maxChars = 300) {
-  const projectMdPath = path.join(getStorageRoot(projectDir), 'project.md');
-  if (!fs.existsSync(projectMdPath)) return '';
   try {
+    const projectMdPath = getProjectMemoryPath(projectDir);
+    if (!fs.existsSync(projectMdPath)) return '';
     const content = fs.readFileSync(projectMdPath, 'utf8');
     const headerIndex = content.indexOf('## Model Routing');
     if (headerIndex === -1) return '';
@@ -128,6 +139,7 @@ module.exports = {
   WORKER_PROMPT_CONTRACT,
   COMPRESSED_CHECKLIST,
   getPostCompactWarning,
+  getProjectMemoryPath,
   readProjectConcept,
   readModelRouting
 };

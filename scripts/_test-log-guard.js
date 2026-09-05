@@ -7,7 +7,10 @@ const fs = require('fs');
 
 const scriptPath = path.join(__dirname, 'log-guard.js');
 const nodePath = process.execPath;
-const projectDir = 'C:\\Users\\chulg\\Documents\\memory-keeper-plugin';
+const projectDir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'crabshell-log-guard-'));
+for (const dir of ['ticket', 'discussion', 'plan', 'memory']) {
+  fs.mkdirSync(path.join(projectDir, '.crabshell', dir), { recursive: true });
+}
 
 // --- Unit test imports (direct function testing) ---
 const {
@@ -626,7 +629,7 @@ test('Integration: absolute path to INDEX.md', () => {
   const r = runScript({
     tool_name: 'Edit',
     tool_input: {
-      file_path: 'C:/Users/chulg/Documents/memory-keeper-plugin/.crabshell/ticket/INDEX.md',
+      file_path: path.join(projectDir, '.crabshell', 'ticket', 'INDEX.md'),
       old_string: '| P075_T002 | Title | todo | 2026-03-29 | P075 |',
       new_string: '| P075_T002 | Title | in-progress | 2026-03-29 | P075 |'
     }

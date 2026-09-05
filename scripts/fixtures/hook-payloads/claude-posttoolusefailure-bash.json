@@ -1,0 +1,18 @@
+{
+  "_captured": {
+    "host": "Claude Code CLI (Windows 11)",
+    "capturedAt": "2026-09-05",
+    "source": "toolUseResult record of a live session transcript (~/.claude/projects/<project>/<session_id>.jsonl); the tool_result block on the same record has is_error: true",
+    "note": "This is what a failing Bash call produces. It is a string, not the Output object, and Claude Code routes it to PostToolUseFailure. A PostToolUse hook matching Bash never receives this payload. The command was a node script that exited 1; the command text is shortened here because it is not part of the shape."
+  },
+  "session_id": "78811ea8-82da-445a-8f52-25266f33f976",
+  "cwd": "C:\\Users\\chulg\\Documents\\memory-keeper-plugin",
+  "hook_event_name": "PostToolUseFailure",
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "cd \"<scratchpad>/arch\" && \"C:/Program Files/nodejs/node.exe\" build.js \"<project>/.crabshell/verification/architecture/index.html\"",
+    "description": "Build index.html and run integrity and geometry checks"
+  },
+  "tool_response": "Error: Exit code 1\nviews: 9; nodes: 75; edges: 92; cards: 92; items: 210\nERROR trackers: edge dw_mem segment 1 passes through box completion\n1 errors",
+  "tool_result_is_error": true
+}

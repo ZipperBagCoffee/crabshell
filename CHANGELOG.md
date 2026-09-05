@@ -1,5 +1,17 @@
 # Changelog
 
+## [21.122.0] - 2026-09-05
+
+### feat: reliable verification evidence, shared project descriptions, and portable Codex document skills
+
+- Verification commands now come from the project's manifest and package test configuration. Quoted test names and compound shell commands cannot masquerade as a declared check; explicit failures, interrupted/running results, and applicable entry assertions are respected.
+- Claude's captured successful `PostToolUse` Bash output is accepted without an artificial exit-code field. Explicit codes take priority; Codex retains its separate explicit-code requirement. Captured success/failure fixtures and regression tests preserve this distinction, and Claude's Codex handoff guidance requests captured hook payloads.
+- Both completion adapters observe `Bash|Write|Edit`; Codex shell `cmd` arguments are normalized. Parent evidence is tied to current project contents. Later edits invalidate it, unchanged content preserves it, and one result reuses a single content fingerprint instead of scanning twice.
+- Project description setter/getter/list and both hosts' context readers use `.crabshell/project.md`. Legacy-only `.crabshell/memory/project.md` is copied exclusively to the canonical path; both existing files are preserved on conflict, and explicit replacement backs up the canonical file.
+- Seven Codex document skills ship launchers that resolve the shared source CLI from the installed skill directory and require an absolute `--project-dir`. Consumer projects no longer need Crabshell's source scripts.
+- Added command-observation, captured-payload, project-memory, and consumer-document regression suites; extended both-host completion coverage, including actual content changes and duplicate-read prevention.
+- Remaining limits: Claude `PostToolUseFailure` is not wired; actual Codex result-field capture and the earlier intermittent concurrent fixture failure remain follow-up work. Content scans still cover the configured project traversal on subsequent events; this release does not claim an overall latency reduction or complete host parity.
+
 ## [21.121.0] - 2026-09-02
 
 ### feat: D116 — pipeline wiring probe in the verifying skill; arch-explorer as optional documentation

@@ -9,7 +9,7 @@ const {
   INDEX_FILE,
   MEMORY_FILE,
 } = require('../constants');
-const { getPostCompactWarning } = require('../shared-context');
+const { getPostCompactWarning, getProjectMemoryPath } = require('../shared-context');
 const { buildWorkflowContext } = require('./workflow-context');
 
 const DEFAULT_TAIL_LINES = 50;
@@ -53,7 +53,7 @@ function collectMemorySections(projectDir, options = {}) {
   const sections = [];
   const pendingSummaries = [];
 
-  const projectText = readFileOrDefault(path.join(storageRoot, 'project.md'), '').trim();
+  const projectText = readFileOrDefault(getProjectMemoryPath(projectDir), '').trim();
   if (projectText) sections.push(`## Project Overview\n${projectText}`);
 
   const index = readJsonOrDefault(path.join(memoryDir, INDEX_FILE), null);

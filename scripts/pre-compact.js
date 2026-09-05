@@ -19,6 +19,7 @@ if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 const { readStdin } = require('./transcript-utils');
 const { getProjectDir, getStorageRoot, readJsonOrDefault } = require('./utils');
 const { REGRESSING_STATE_FILE } = require('./constants');
+const { getProjectMemoryPath } = require('./shared-context');
 
 // Caps for the active-docs listing (I083 R1 / D113): compaction happens when
 // context is scarcest, so this injection must stay bounded no matter how many
@@ -112,7 +113,7 @@ async function main() {
 
   // 1. Project concept (first line of project.md)
   try {
-    const projectMdPath = path.join(getStorageRoot(projectDir), 'project.md');
+    const projectMdPath = getProjectMemoryPath(projectDir);
     if (fs.existsSync(projectMdPath)) {
       const content = fs.readFileSync(projectMdPath, 'utf8').trim();
       const firstLine = content.split(/\r?\n/)[0] || '';

@@ -1,8 +1,8 @@
-# Crabshell Architecture (v21.121.0)
+# Crabshell Architecture (v21.122.0)
 
 ## Overview
 
-Crabshell is a dual-runtime Claude Code/Codex plugin. Both hosts use native hook manifests backed by shared first-turn, memory, workflow, compaction, subagent, command-observation, and parent-completion cores. Claude Code retains its automatic SessionEnd capture, pressure/sycophancy system, and other established guards. Codex uses nine synchronous native lifecycle events and explicit memory/document skills. Both runtimes share `.crabshell/` storage without launching or requiring each other.
+Crabshell is a dual-runtime Claude Code/Codex plugin. Both hosts use native hook manifests backed by shared first-turn, memory, workflow, compaction, subagent, command-observation, and parent-completion cores. Claude Code retains automatic SessionEnd capture, pressure telemetry, and deterministic guards; behavioral pressure/sycophancy/scope hooks are unwired. Codex uses nine synchronous native lifecycle events and explicit memory/document skills. Both runtimes share `.crabshell/` storage without launching or requiring each other.
 
 ## Core Philosophy
 
@@ -76,7 +76,7 @@ Two meta-principles guide Claude's approach to obstacles:
 |  | - Load project.md  |  |   (~300 tokens via additionalContext)      |  |
 |  | - Load moc-digest  |  | - Inject Project Concept (10 lines/500ch) |  |
 |  | - Active workflow  |  | - Inject prompt-aware memory snippets     |  |
-|  | - Read-only        |  | - Execution-only cleanup/rule sync        |  |
+|  | - Legacy copy only |  | - Execution-only cleanup/rule sync        |  |
 |  +--------------------+  | - Pressure lastShownLevel tracking        |  |
 |                          | - Detect pending delta → INSTRUCTION      |  |
 |                          | - Detect pending rotation → INSTRUCTION   |  |
@@ -131,7 +131,7 @@ Two meta-principles guide Claude's approach to obstacles:
 |  | - regressing-state.json (cycle tracker)    |  | - refine.log      |    |
 |  |                                            |  | - inject-debug.log|    |
 |  | Optional (create with /setup-project):     |  +-------------------+    |
-|  | - project.md (per-prompt injected)         |                           |
+|  | - ../project.md (per-prompt injected)      |                           |
 |  +-------------------------------------------+                           |
 +--------------------------------------------------------------------------+
           |
@@ -179,11 +179,19 @@ Codex marketplace -> installed cache -> .codex-plugin/plugin.json
 - The explicit manifest hook path is a runtime boundary: Codex does not default-discover Claude's `hooks/hooks.json`.
 - Codex exposes nine synchronous events: `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PreCompact`, `PostCompact`, `SubagentStart`, `SubagentStop`, and `Stop`.
 - Every Codex hook command resolves its adapter inside a Promise fail-open boundary; synchronous module-load errors and rejected adapter `main()` calls are absorbed with exit 0.
-- Automatic SessionStart memory/workflow recovery is read-only. Explicit load/save/search skills execute from the installed cache against the active project. Claude's automatic SessionEnd transcript/delta save remains Claude-only.
-- One shared completion state owner requires parent-executed command evidence after a child claim, rejects ambiguous/false-done evidence, and bounds identical automatic failures. Claude routes its existing sycophancy/doc-watchdog/scope Stop checks behind `completion-controller.js`; Codex emits the native block decision through its adapter.
-- Pressure/sycophancy enforcement remains Claude-only. Fixed-count, role-collapse, and behavior-verifier surfaces remain retired from both runtimes.
+- SessionStart reads shared memory/workflow context; `getProjectMemoryPath()` may copy a legacy-only description into `.crabshell/project.md` without deleting or overwriting existing files. Explicit memory and document skills execute from installed launchers against the active project. Document launchers require absolute `--project-dir`. Claude's automatic SessionEnd transcript/delta save remains Claude-only.
+- One shared completion state owner requires parent-executed command evidence after a child claim, rejects ambiguous/false-done evidence, and bounds identical automatic failures. Claude retains the doc-watchdog Stop check behind `completion-controller.js`; the behavioral sycophancy/scope checks are unwired. Codex emits the native block decision through its adapter.
+- Pressure telemetry remains; behavioral pressure/sycophancy/scope hooks, fixed-count, role-collapse, and behavior-verifier surfaces remain retired from both runtimes.
 - `codex-doctor.js` probes both CLIs and derives installed, activated, trusted, behavior-verified, degraded, drifted, and unsupported states. Codex desktop app remains a separate unexercised row.
 - `scripts/install-codex.js` remains a legacy/development bridge and is not part of the native default path.
+
+### Verification evidence and content identity (v21.122.0)
+
+`command-observation.js` matches a single parsed invocation against project manifest declarations or package test configuration. It rejects command-name lookalikes and compound shell invocations, interprets explicit failure/running/interruption signals, and checks applicable entry assertions. Claude's captured successful PostToolUse object can imply exit zero when no explicit code exists; Codex requires explicit result codes. Fixture provenance is kept under `scripts/fixtures/hook-payloads/`.
+
+Both completion adapters receive `Bash|Write|Edit`; the Codex adapter normalizes `cmd` to `command`. Content changes invalidate parent evidence. A result event reuses one source fingerprint for invalidation and replacement; future events and Stop rescan. The fingerprint excludes `.git`, `.crabshell`, `node_modules`, `dist`, `build`, and symlinks, then includes the verification manifest and runner separately. It does not follow `.gitignore` or provide an atomic snapshot of concurrent external writes.
+
+Claude PostToolUseFailure remains unwired, and live Codex result-field capture is still required before claiming complete host result coverage. These limits are separate from the tested source adapters.
 
 ## Memory Hierarchy (v13.0.0+)
 
@@ -275,7 +283,7 @@ Codex marketplace -> installed cache -> .codex-plugin/plugin.json
    │   └─> At threshold: create/update L1 (session-aware reuse + incremental offset read) → extractDelta() → creates delta_temp.txt
    ├─> verification-sequence.js record (.*) — v21.0.0+
    │   └─> Track source file edits and test executions in verification-state.json
-   ├─> completion-controller.js (Bash) — v21.107.0+
+   ├─> completion-controller.js (Bash|Write|Edit) — declared evidence and content invalidation
    │   └─> Normalize the actual parent command/result into shared completion evidence
    ├─> doc-watchdog.js record (Write|Edit) — v21.18.0+
    │   └─> Track code edits (increment) and D/P/T doc edits (reset) in doc-watchdog.json
@@ -375,9 +383,9 @@ Regressing retains document-cycle continuation but has no parallel-worker count 
 | `path-guard.js` | PreToolUse (Read\|Grep\|Glob\|Bash\|Write\|Edit) | Block wrong .crabshell/ path; shell var resolution (fail-closed for .crabshell/ v21.8.0); block Edit on logbook.md; block Write shrink on logbook.md (v20.6.0) |
 | `web-guard.js` | PreToolUse (WebFetch\|WebSearch) | Block WebFetch (small-model summarization, lossy by design) with URL-substituted raw-fetch redirect (trafilatura → r.jina.ai → curl); block WebSearch only when a search MCP is configured in ~/.claude.json or .mcp.json, else allow with snippet-verification warning; modes block/warn/off via `webGuard` config (v21.114.0, I084) |
 | `core/path-policy.js` | shared library | Host-neutral memory path decisions used by Claude and Codex wrappers |
-| `core/first-turn-context.js`, `core/memory-context.js`, `core/workflow-context.js` | shared libraries | Host-neutral prompt plus mandatory `[의도]`/`[이해]`/`[설명]` response ending, read-only memory, and restart-safe active workflow context |
+| `core/first-turn-context.js`, `core/memory-context.js`, `core/workflow-context.js` | shared libraries | Shared compact turn contract, memory with preserving legacy-description copy, and restart-safe workflow context |
 | `core/compaction-context.js`, `core/subagent-context.js` | shared libraries | Recovery context and bounded task-specific child context for both hosts |
-| `core/command-observation.js`, `core/completion-control.js` | shared libraries | Normalize actual command results and own parent-evidence/Stop state |
+| `core/command-observation.js`, `core/completion-control.js` | shared libraries | Declared checks and host-specific results; current-content parent evidence with one fingerprint per result event |
 | `core/support-state.js` | shared library | Derive the seven live doctor states without a version compatibility table |
 | `adapters/codex/*` | Codex native lifecycle | Normalize nine native event payloads and emit Codex-native results without Claude exit-code semantics |
 | `completion-controller.js` | Claude Stop/SubagentStop/PostToolUse | Single completion owner that retains existing Claude Stop validators |
@@ -529,6 +537,7 @@ The 4 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.122.0 | Declared-check evidence, captured host result handling, edit invalidation with one scan per result, shared project-description resolution, and portable Codex document launchers. |
 | 21.121.0 | feat: D116 — pipeline wiring probe (`check-pipeline-wiring.js`) validates a parent-approved hook/trigger/agent contract against the source and fails on unclassified hops; optional `arch-explorer` map is documentation only. |
 | 21.120.0 | feat: closing-verdict rule — per-item done/in-progress/not-started state closes long output, matching CLI end-first reading. |
 | 21.119.0 | feat: term-discipline decision rule and banter-directive restore in the injected Simple Communication rule and per-turn checklist. |

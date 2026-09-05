@@ -1,3 +1,5 @@
+'use strict';
+
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -14,6 +16,7 @@ const { MEMORY_DIR, MEMORY_FILE, SESSIONS_DIR, COUNTER_FILE } = require('./const
 const { detectRegressingSkillCall, advancePhase } = require('./regressing-state');
 const { readStdin, findTranscriptPath } = require('./transcript-utils');
 const { inspectSessionTranscript, resolveClaudeTranscript } = require('./core/session-intent');
+const { getProjectMemoryPath } = require('./shared-context');
 
 const GLOBAL_CONFIG_PATH = path.join(os.homedir(), '.crabshell', 'config.json');
 const DEFAULT_INTERVAL = 15;
@@ -548,7 +551,7 @@ function compress() {
 
 // Memory file management (v7.0.0)
 const MEMORY_FILES = {
-  project: { file: 'project.md', title: 'Project Overview' }
+  project: { title: 'Project Overview', resolvePath: getProjectMemoryPath }
 };
 
 function memorySet(name, content) {
@@ -574,12 +577,12 @@ function memorySet(name, content) {
   }
 
   const projectDir = getProjectDir();
-  const memDir = path.join(getStorageRoot(projectDir), 'memory');
-  ensureDir(memDir);
-  const filePath = path.join(memDir, memConfig.file);
+  const filePath = memConfig.resolvePath(projectDir);
+  ensureDir(path.dirname(filePath));
+  if (fs.existsSync(filePath)) fs.copyFileSync(filePath, `${filePath}.bak`);
 
   writeFile(filePath, content);
-  console.log(`[CRABSHELL] Saved ${memConfig.title} to .crabshell/memory/${memConfig.file}`);
+  console.log(`[CRABSHELL] Saved ${memConfig.title} to ${path.relative(projectDir, filePath).replace(/\\/g, '/')}`);
 }
 
 function memoryGet(name) {
@@ -588,9 +591,8 @@ function memoryGet(name) {
   if (!name) {
     // Show all memory files
     console.log('[CRABSHELL] Memory Files:');
-    const memDir = path.join(getStorageRoot(projectDir), 'memory');
     Object.entries(MEMORY_FILES).forEach(([key, config]) => {
-      const filePath = path.join(memDir, config.file);
+      const filePath = config.resolvePath(projectDir);
       if (fs.existsSync(filePath)) {
         const content = readFileOrDefault(filePath, '').trim();
         const lines = content.split(/\r?\n/).length;
@@ -613,8 +615,7 @@ function memoryGet(name) {
     return;
   }
 
-  const memDir = path.join(getStorageRoot(projectDir), 'memory');
-  const filePath = path.join(memDir, memConfig.file);
+  const filePath = memConfig.resolvePath(projectDir);
   if (!fs.existsSync(filePath)) {
     console.log(`[CRABSHELL] ${memConfig.title} not created yet.`);
     console.log(`  Create with: memory-set ${key} "content"`);
@@ -630,20 +631,19 @@ function memoryGet(name) {
 
 function memoryList() {
   const projectDir = getProjectDir();
-  const memDir = path.join(getStorageRoot(projectDir), 'memory');
   console.log('[CRABSHELL] Memory Structure:');
 
   let total = 0;
   Object.entries(MEMORY_FILES).forEach(([key, config]) => {
-    const filePath = path.join(memDir, config.file);
+    const filePath = config.resolvePath(projectDir);
     if (fs.existsSync(filePath)) {
       const stats = fs.statSync(filePath);
       const content = readFileOrDefault(filePath, '');
       const lines = content.trim().split(/\r?\n/).length;
-      console.log(`  ✓ ${config.file} (${lines} lines, ${stats.size} bytes)`);
+      console.log(`  ✓ ${path.relative(projectDir, filePath).replace(/\\/g, '/')} (${lines} lines, ${stats.size} bytes)`);
       total++;
     } else {
-      console.log(`  ○ ${config.file} - not created`);
+      console.log(`  ○ ${path.relative(projectDir, filePath).replace(/\\/g, '/')} - not created`);
     }
   });
 

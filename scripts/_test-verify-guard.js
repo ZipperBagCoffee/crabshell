@@ -7,7 +7,7 @@ const fs = require('fs');
 
 const scriptPath = path.join(__dirname, 'verify-guard.js');
 const nodePath = process.execPath;
-const projectDir = path.resolve(__dirname, '..');
+const projectDir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'crabshell-verify-guard-'));
 
 let passed = 0;
 let failed = 0;
@@ -71,7 +71,7 @@ function createGuardProject(manifest) {
   const ticketDir = path.join(root, '.crabshell', 'ticket');
   fs.mkdirSync(verificationDir, { recursive: true });
   fs.mkdirSync(ticketDir, { recursive: true });
-  fs.copyFileSync(path.join(projectDir, 'skills', 'verifying', 'scripts', 'run-verify.js'), path.join(verificationDir, 'run-verify.js'));
+  fs.copyFileSync(path.join(__dirname, '..', 'skills', 'verifying', 'scripts', 'run-verify.js'), path.join(verificationDir, 'run-verify.js'));
   fs.writeFileSync(path.join(verificationDir, 'manifest.json'), JSON.stringify(manifest, null, 2), 'utf8');
   fs.writeFileSync(path.join(ticketDir, 'P900_T001-contract.md'), '# ticket\n', 'utf8');
   return root;

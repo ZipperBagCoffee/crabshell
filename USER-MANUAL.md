@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.121.0)
+# Crabshell User Manual (v21.122.0)
 
 ## Why Do You Need This?
 
@@ -82,7 +82,7 @@ Codex automatically loads existing memory/workflow context at SessionStart and u
 ├── memory-index.json    # Rotation tracking & delta state
 ├── counter.json         # PostToolUse counter
 ├── config.json          # Per-project configuration
-├── project.md           # Project overview (optional)
+├── project.md           # Legacy description if present; canonical file is ../project.md
 ├── logs/                # Debug and refine logs
 └── sessions/            # Per-session records (auto)
     └── *.l1.jsonl       # L1 session transcripts (deduplicated)
@@ -156,7 +156,7 @@ All available skills (slash commands):
 
 ### Codex Bundled Skills
 
-Installed Codex skills are invoked by name, including `crabshell:load-memory`, `crabshell:save-memory`, `crabshell:search-memory`, and `crabshell:status`. Their scripts resolve from the installed plugin cache and target the active project, so the project does not need its own copy of `scripts/`. SessionStart already performs automatic read-only memory/workflow loading; the skills provide explicit reload/save/search and the full D/P/T/I/H/K/W workflow surface.
+Installed Codex skills are invoked by name, including `crabshell:load-memory`, `crabshell:save-memory`, `crabshell:search-memory`, and `crabshell:status`. Memory and document launchers resolve from the installed plugin and target the active project, so the project does not need its own `scripts/`. The seven document skills require an absolute `--project-dir` and invoke the shared document engine from their own skill directory. SessionStart loads shared memory/workflow state; when only a legacy project description exists, it copies that file to the canonical path without deleting the original.
 
 ---
 
@@ -241,7 +241,7 @@ The plugin uses Claude Code hooks to run automatically:
 | Hook | Script | When It Runs | What It Does |
 |------|--------|-------------|-------------|
 | `UserPromptSubmit` | `inject-rules.js` | Every prompt | Emits the compact shared turn contract (4-line Rules Quick-Check); Claude-host `## Codex Delegation` guidance on execution turns only; `봉인해제` / `UNLEASH` immediately resets pressure counters; execution prompts run once-per-session cleanup/reset and Claude rule/memory-warning synchronization. Three-field response ending and pressure texts retired v21.113.0 (I083) |
-| `SessionStart` | `load-memory.js` | Session begins | Read-only load of logbook, summaries, project memory, and active workflow context |
+| `SessionStart` | `load-memory.js` | Session begins | Loads logbook, summaries, canonical project memory, and active workflow; legacy-only descriptions are copied without overwriting existing data |
 | `PostToolUse` | `counter.js check` | After each tool use | Increments counter; triggers auto-save + delta extraction at interval |
 | `PreToolUse` | `regressing-guard.js` | Before Write/Edit | Enforces phase-based restrictions during active regressing sessions |
 | `PreToolUse` | `docs-guard.js` | Before Write/Edit to docs/ | Blocks writes to docs/ directories without active skill flag |
@@ -249,28 +249,28 @@ The plugin uses Claude Code hooks to run automatically:
 | `PreToolUse` | `verify-guard.js` | Before Write/Edit to tickets | Hybrid: Edit always enforces; Write enforces only for existing files (new file creation skips). Blocks Final Verification without prior `/verifying` run |
 | `PreToolUse` | `path-guard.js` | Before Read/Grep/Glob/Bash/Write/Edit | Blocks wrong path, Edit on logbook.md, Write shrink on logbook.md |
 | `PreToolUse` | `web-guard.js` | Before WebFetch/WebSearch | Blocks WebFetch with a URL-substituted raw-fetch redirect (trafilatura → r.jina.ai → curl); blocks WebSearch only when a search MCP is configured, otherwise allows with a snippet-verification warning (v21.114.0) |
-| `PostToolUse` | `verification-sequence.js record` | After each tool use | Tracks source file edits and test runs |
+| `PostToolUse` | `verification-sequence.js record` | After each successful tool use | Tracks source edits and passing declared checks using Claude-specific result handling |
 | `PreToolUse` | `verification-sequence.js gate` | Before Write/Edit/Bash | Blocks git commit without tests |
 | `PreToolUse` | `doc-watchdog.js gate` | Before Write/Edit | Soft warning (additionalContext) when 5+ code edits without D/P/T doc update (regressing only) |
 | `PostToolUse` | `doc-watchdog.js record` | After Write/Edit | Tracks code file edits (increment counter) and D/P/T doc edits (reset counter) in doc-watchdog.json |
-| `PostToolUse` | `completion-controller.js` | After Bash | Records conclusive parent command results only after a child completion claim |
+| `PostToolUse` | `completion-controller.js` | After Bash, Write, or Edit | Records declared parent check results after a child claim and invalidates evidence when project content changes |
 | `PostToolUse` | `skill-tracker.js` | After Skill tool call | Sets skill-active flag on Skill tool calls for guard scripts |
 | `Stop`, `SubagentStop` | `completion-controller.js` | Child/parent completion boundary | One state owner: child claim is not proof; requires parent evidence, bounds identical failures, preserves workflow continuation, and runs the retained doc-watchdog Stop validator (sycophancy/scope/pressure guards unwired v21.113.0) |
-Hook launcher v21.99.3 note: `hooks/hooks.json` now invokes hook scripts through direct `node` commands. `scripts/find-node.sh` remains available as a hardened fallback utility, not the default launcher.
-
 | `PreCompact` | `pre-compact.js` | Before context compaction | Outputs memory state, active documents, and regressing state as context to preserve across compaction |
 | `PostCompact` | `post-compact.js` | After context compaction | Logs compaction event for debugging (side-effect only, no context output) |
 | `SubagentStart` | `subagent-context.js` | When subagent spawns | Injects project concept, COMPRESSED_CHECKLIST, regressing state, and project root anchor into subagent context |
 | `SessionEnd` | `counter.js final` | Execution-authorized session ends | Creates final L1 backup and extracts remaining delta; question-only sessions remain read-only |
 
+Hook launchers invoke Node directly; `scripts/find-node.sh` is a fallback utility. Claude `PostToolUseFailure` is not wired in this release, so successful-event handling does not imply complete failure-event coverage.
+
 ### Codex Hook Surface
 
 | Hook | Script | When It Runs | What It Does |
 |------|--------|-------------|-------------|
-| `SessionStart` | `adapters/codex/session-start.js` | Session begins | Read-only shared memory and active workflow recovery |
-| `UserPromptSubmit` | `adapters/codex/user-prompt-submit.js` | Every prompt | Shared question/execution contract and mandatory three-field response ending (without the Claude-only Codex delegation block); execution lifecycle writes only to Codex plugin data/project state |
+| `SessionStart` | `adapters/codex/session-start.js` | Session begins | Shared memory and workflow recovery, including preserving legacy-description copy when needed |
+| `UserPromptSubmit` | `adapters/codex/user-prompt-submit.js` | Every prompt | Shared compact turn contract without the Claude-only Codex delegation block; execution lifecycle writes to Codex plugin data/project state |
 | `PreToolUse` | `adapters/codex/pre-tool-use.js` | Matching local file/shell tools | Applies the shared `.crabshell/` path policy and returns native `hookSpecificOutput` deny JSON for wrong-project memory paths |
-| `PostToolUse` | `adapters/codex/post-tool-use.js` | After Bash | Records conclusive parent command evidence for a pending child claim |
+| `PostToolUse` | `adapters/codex/post-tool-use.js` | After Bash, Write, or Edit | Normalizes cmd arguments, records declared parent checks with explicit result codes, and invalidates content-stale evidence |
 | `PreCompact` | `adapters/codex/pre-compact.js` | Before compaction | Emits shared memory/workflow recovery context without writes |
 | `PostCompact` | `adapters/codex/post-compact.js` | After compaction | Restores shared context while keeping Claude-specific compaction effects in Claude only |
 | `SubagentStart` | `adapters/codex/subagent-start.js` | Child starts | Supplies exact current intent, task, non-goals, references, allowed changes, and observable success |
@@ -281,15 +281,7 @@ Codex reads `hooks/codex-hooks.json` through the explicit `.codex-plugin/plugin.
 
 ### Internal Task Contract and Shared Response Ending
 
-As of v21.108.0, both native `UserPromptSubmit` paths append one mandatory response-ending contract from `scripts/core/first-turn-context.js`. Every user-facing response keeps its natural answer body first and ends with exactly three short lines in this order:
-
-```text
-[의도]: the user's request, restated in the user's words
-[이해]: the assistant's interpretation and any remaining gap; `gap 없음` when none remains
-[설명]: one concrete, easy-to-understand explanation in the user's words
-```
-
-This is not a return to the v21.102.0 caveman-style `SKELETON_3FIELD`. The fields summarize the answer and do not expose private chain-of-thought; analogy is not the default. The v21.105.0 internal eight-field task contract and evidence-backed execution remain active behind the response.
+Both native `UserPromptSubmit` paths use the shared compact contract from `scripts/core/first-turn-context.js` and the Rules Quick-Check from `scripts/shared-context.js`. The mandatory three-field ending introduced in v21.108.0 was retired in v21.113.0. The internal eight-field task contract and evidence-backed execution remain active; the response closes with clear per-item work state and next action rather than fixed labels.
 
 The main report follows the v21.115.0 slot contract: `[conclusion] → [evidence] → [critical exception] → [next action]`, first sentence being the direct answer. Decisive observations and remaining gaps stay; the intro, work-process narration, repeated conclusions, and ceremonial closings go. The full P/O/G table lives in the D/P/T/I/H document and the chat carries `"M of N passed"` plus failures.
 
@@ -314,8 +306,8 @@ Guard scripts are PreToolUse/Stop hooks that prevent common mistakes:
 | `path-guard.js` | File operations targeting a wrong `.crabshell/memory/` path (e.g., a different project's memory directory) |
 | `web-guard.js` | Built-in WebFetch/WebSearch small-model summarization (Anthropic docs: "lossy by design"; hallucinated citations in research). WebFetch is blocked with ready-to-run raw-fetch commands for the same URL; WebSearch is redirected to a configured search MCP (tavily/brave/exa/...) or, when none exists, allowed with a "snippets are pointers, fetch before citing" warning so machines without a search MCP never lose search entirely. Modes: `block` (default) / `warn` / `off` via `webGuard` in config.json (v21.114.0) |
 | `core/path-policy.js` + Codex adapter | The same wrong-project memory paths in Codex; the core decides policy while each host wrapper emits its own native response format |
-| `core/completion-control.js` + host adapters | Child false-done, ambiguous/missing parent command evidence, repeated identical failures, and premature active-workflow completion on both hosts |
-| `verification-sequence.js` | Source files edited without running tests before git commit |
+| `core/completion-control.js` + host adapters | Child false-done, undeclared/inconclusive checks, repeated identical failures, stale content evidence, and premature active-workflow completion. One result event reuses one content fingerprint |
+| `verification-sequence.js` | Source edits before git commit without a passing declared check; unchanged content preserves existing verification |
 | `doc-watchdog.js` | Document update omissions during regressing: soft warning when 5+ code edits without D/P/T document update; blocks session end when ticket has no work log since last code edit |
 | `skill-tracker.js` | Supporting guard: sets the `skill-active` flag when a Skill tool call is detected, so `docs-guard` and `verify-guard` know when writes are authorized |
 | `pressure-guard.js` | **Retired v21.113.0 (I083 R4)** — tool blocking removed; pressure counters remain as user-facing telemetry only (see [Pressure System](#pressure-system)) |
@@ -433,6 +425,14 @@ The plugin uses two injection mechanisms:
 
 The eight-field task contract, risk boundary for user questions, bounded worker prompt, and parent-owned completion rule are product defaults rather than per-project settings. They are centralized in `scripts/shared-context.js` and `scripts/core/orchestration-policy.js`; changing memory configuration does not weaken them. The live regression corpus can be run with `node scripts/run-orchestration-corpus.js --live --json` in a disposable fixture.
 
+### Declaring verification commands
+
+Parent evidence recognizes commands declared in `.crabshell/verification/manifest.json` (`tools` or non-manual `entries`) and the package's `scripts.test` command chain. Declare custom check names there instead of relying on a filename containing `test`. A single invocation must match; compound shell commands and printed command names are not accepted as check identity. Entry assertions also apply; forbidden-change assertions require the declared runner because a post-tool event cannot reconstruct their before-state.
+
+Claude's captured successful `PostToolUse` Bash object has no exit-code field. An explicit code overrides the event-based success inference; failure, interruption, and running indicators prevent it. Codex keeps an explicit-code requirement. Captured fixtures are under `scripts/fixtures/hook-payloads/`; actual Codex result-field capture remains pending.
+
+Project content identity excludes `.git`, `.crabshell`, `node_modules`, `dist`, `build`, and symlinks, then includes the verification manifest and runner separately. It does not use `.gitignore`. The same result reuses its computed value, but later events and Stop check contents again; large-project latency remains an evaluation item.
+
 ### Codex Plugin Configuration
 
 - `.agents/plugins/marketplace.json` is the repo-scoped native marketplace source.
@@ -455,6 +455,8 @@ The eight-field task contract, risk boundary for user questions, bounded worker 
 ## Setting Project Information
 
 Set information you want Claude to know at the start of every session.
+
+Both hosts use `.crabshell/project.md`. The supported `counter.js memory-set/get/list` commands use that same path. When only `.crabshell/memory/project.md` exists, the reader copies it to the root path while preserving the old file. If both exist, the root file wins; explicit replacement writes a `project.md.bak` backup first.
 
 **Option 1: Ask Claude (Recommended)**
 > "Save this to project.md: This is a Next.js 14 app with TypeScript and Prisma."

@@ -7,10 +7,14 @@ description: Run a Codex-compatible D/P/T iterative improvement workflow. Use wh
 
 Codex does not have Claude's automatic regressing hooks, so run this as an explicit document workflow:
 
+Resolve `{SKILL_DIR}` to the directory containing this `SKILL.md` and
+`{PROJECT_ROOT}` to the absolute active project root. Run each bundled command
+by its absolute path with that project as the explicit target.
+
 1. Create one D document for the overall intent:
 
 ```bash
-node scripts/codex-docs.js discussion "topic" --intent="..." --context="Regressing session"
+node "{SKILL_DIR}/scripts/codex-docs.js" discussion "topic" --intent="..." --context="Regressing session" --project-dir="{PROJECT_ROOT}"
 ```
 
 Then add a `## Convergence Criteria` section to the D document. Every item must be objectively checkable by reading project documents or running a command (document status, command exit code, numeric threshold) — subjective wording ("no new issues found") is invalid.
@@ -26,13 +30,13 @@ Goal mode keeps Codex looping plan-execute-verify cycles until its evaluator con
 2. For each cycle, create a P document for the current improvement target:
 
 ```bash
-node scripts/codex-docs.js plan "cycle 1 plan" --related="[[D001-topic|D001]]"
+node "{SKILL_DIR}/scripts/codex-docs.js" plan "cycle 1 plan" --related="[[D001-topic|D001]]" --project-dir="{PROJECT_ROOT}"
 ```
 
 3. Create one or more T documents for executable work:
 
 ```bash
-node scripts/codex-docs.js ticket "ticket title" --plan="[[P001-topic|P001]]"
+node "{SKILL_DIR}/scripts/codex-docs.js" ticket "ticket title" --plan="[[P001-topic|P001]]" --project-dir="{PROJECT_ROOT}"
 ```
 
 4. Execute, verify, then write the verification gaps and next direction back into the ticket or plan before starting another cycle.

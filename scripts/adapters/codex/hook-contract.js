@@ -126,9 +126,9 @@ function validateCodexHookConfig(config) {
     throw new Error('SubagentStart must use the shared Codex subagent adapter.');
   }
   const postToolHandlers = config.hooks.PostToolUse.flatMap(group => group.hooks);
-  if (!config.hooks.PostToolUse.every(group => group.matcher === 'Bash')
+  if (!config.hooks.PostToolUse.every(group => group.matcher === 'Bash|Write|Edit')
       || !postToolHandlers.every(handler => /adapters[\/]codex[\/]post-tool-use\.js/.test(String(handler.command)))) {
-    throw new Error('PostToolUse must use the shared Codex parent-evidence adapter for Bash.');
+    throw new Error('PostToolUse must use the shared Codex parent-evidence adapter for commands and edits.');
   }
   for (const eventName of ['Stop', 'SubagentStop']) {
     const handlers = config.hooks[eventName].flatMap(group => group.hooks);

@@ -4,15 +4,24 @@
 const { execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 
 const scriptPath = path.join(__dirname, 'verification-sequence.js');
 const nodePath = process.execPath;
-const projectDir = 'C:\\Users\\chulg\\Documents\\memory-keeper-plugin';
+const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'crabshell-sequence-'));
 const stateDir = path.join(projectDir, '.crabshell', 'memory');
 const stateFile = path.join(stateDir, 'verification-state.json');
 
 // Ensure state dir exists
 if (!fs.existsSync(stateDir)) fs.mkdirSync(stateDir, { recursive: true });
+fs.mkdirSync(path.join(projectDir, '.crabshell', 'verification'), { recursive: true });
+fs.writeFileSync(path.join(projectDir, 'package.json'), JSON.stringify({ scripts: {
+  test: 'node scripts/_test-verification-sequence.js', lint: 'tsc --noEmit',
+} }));
+fs.writeFileSync(path.join(projectDir, '.crabshell', 'verification', 'manifest.json'), JSON.stringify({ tools: {
+  coverage: 'npx jest --coverage', inject: 'node scripts/_test-inject-rules.js', app: 'node src/app.test.js',
+  lint: 'npm run lint',
+} }));
 
 let passed = 0;
 let failed = 0;
@@ -112,24 +121,24 @@ test('Source file detection: node_modules/ path = NOT source file', () => {
 // Unit tests: isTestExecution (via record behavior)
 // ============================================================
 
-test('Test execution detection: npm test = true', () => {
+test('npm test without a result stays EDITED: real exit and success evidence are required', () => {
   resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], lastTestTs: null });
   runScript('record', { tool_name: 'Bash', tool_input: { command: 'npm test' } });
   const state = readState();
-  assert(state.state === 'TESTED', `expected TESTED, got ${state.state}`);
-  assert(state.editsSinceTest.length === 0, `expected empty editsSinceTest`);
+  assert(state.state === 'EDITED', `expected EDITED, got ${state.state}`);
+  assert(state.editsSinceTest.length === 1, `expected edits preserved`);
 });
 
 test('Test execution detection: npx jest = true', () => {
   resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], lastTestTs: null });
-  runScript('record', { tool_name: 'Bash', tool_input: { command: 'npx jest --coverage' } });
+  runScript('record', { tool_name: 'Bash', tool_input: { command: 'npx jest --coverage' }, tool_response: { exitCode: 0, stdout: '1 passed' } });
   const state = readState();
   assert(state.state === 'TESTED', `expected TESTED, got ${state.state}`);
 });
 
 test('Test execution detection: node _test-file.js = true', () => {
   resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], lastTestTs: null });
-  runScript('record', { tool_name: 'Bash', tool_input: { command: 'node scripts/_test-verification-sequence.js' } });
+  runScript('record', { tool_name: 'Bash', tool_input: { command: 'node scripts/_test-verification-sequence.js' }, tool_response: { exitCode: 0, stdout: '1 passed' } });
   const state = readState();
   assert(state.state === 'TESTED', `expected TESTED, got ${state.state}`);
 });
@@ -150,35 +159,35 @@ test('Test execution detection: echo PASS = false (trivial)', () => {
 
 test('Test execution detection: tsc = true', () => {
   resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.ts'], lastTestTs: null });
-  runScript('record', { tool_name: 'Bash', tool_input: { command: 'tsc --noEmit' } });
+  runScript('record', { tool_name: 'Bash', tool_input: { command: 'tsc --noEmit' }, tool_response: { exitCode: 0, stdout: '' } });
   const state = readState();
   assert(state.state === 'TESTED', `expected TESTED, got ${state.state}`);
 });
 
 test('Test execution detection: npm run lint = true', () => {
   resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], lastTestTs: null });
-  runScript('record', { tool_name: 'Bash', tool_input: { command: 'npm run lint' } });
+  runScript('record', { tool_name: 'Bash', tool_input: { command: 'npm run lint' }, tool_response: { exitCode: 0, stdout: '' } });
   const state = readState();
   assert(state.state === 'TESTED', `expected TESTED, got ${state.state}`);
 });
 
 test('Test execution detection: node.exe _test-file.js = true', () => {
   resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], lastTestTs: null });
-  runScript('record', { tool_name: 'Bash', tool_input: { command: 'node.exe scripts/_test-verification-sequence.js' } });
+  runScript('record', { tool_name: 'Bash', tool_input: { command: 'node.exe scripts/_test-verification-sequence.js' }, tool_response: { exitCode: 0, stdout: '1 passed' } });
   const state = readState();
   assert(state.state === 'TESTED', `expected TESTED, got ${state.state}`);
 });
 
 test('Test execution detection: quoted node.exe path with space = true', () => {
   resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], lastTestTs: null });
-  runScript('record', { tool_name: 'Bash', tool_input: { command: '"C:/Program Files/nodejs/node.exe" scripts/_test-inject-rules.js' } });
+  runScript('record', { tool_name: 'Bash', tool_input: { command: '"C:/Program Files/nodejs/node.exe" scripts/_test-inject-rules.js' }, tool_response: { exitCode: 0, stdout: '1 passed' } });
   const state = readState();
   assert(state.state === 'TESTED', `expected TESTED, got ${state.state}`);
 });
 
 test('Test execution detection: node.exe .test. pattern = true', () => {
   resetState({ sessionId: null, lastUpdated: null, state: 'EDITED', editsSinceTest: ['src/app.js'], lastTestTs: null });
-  runScript('record', { tool_name: 'Bash', tool_input: { command: 'node.exe src/app.test.js' } });
+  runScript('record', { tool_name: 'Bash', tool_input: { command: 'node.exe src/app.test.js' }, tool_response: { exitCode: 0, stdout: '1 passed' } });
   const state = readState();
   assert(state.state === 'TESTED', `expected TESTED, got ${state.state}`);
 });
@@ -329,7 +338,7 @@ test('Integration: Edit → test → commit (allowed)', () => {
   let state = readState();
   assert(state.state === 'EDITED', `step 1: expected EDITED, got ${state.state}`);
 
-  runScript('record', { tool_name: 'Bash', tool_input: { command: 'npm test' } });
+  runScript('record', { tool_name: 'Bash', tool_input: { command: 'npm test' }, tool_response: { exitCode: 0, stdout: '1 passed' } });
   state = readState();
   assert(state.state === 'TESTED', `step 2: expected TESTED, got ${state.state}`);
 
