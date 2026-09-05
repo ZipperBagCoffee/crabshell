@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+'use strict';
+
+const { getProjectMemoryPath } = require('./shared-context');
 const fs = require('fs');
 const path = require('path');
 
@@ -72,7 +75,7 @@ function load(args) {
   const tail = Number(args['tail-lines'] || 80);
   const sections = [];
 
-  const projectText = readFileOrDefault(path.join(getStorageRoot(projectDir), 'project.md'), '').trim();
+  const projectText = readFileOrDefault(getProjectMemoryPath(projectDir), '').trim();
   if (projectText) sections.push(`## Project Memory\n${projectText}`);
 
   const index = readJsonOrDefault(path.join(memoryDir, INDEX_FILE), { rotatedFiles: [] });

@@ -9,7 +9,7 @@ if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 const { readStdin, normalizePath } = require('./transcript-utils');
 const { getProjectDir, readJsonOrDefault, writeJson } = require('./utils');
 const { STORAGE_ROOT } = require('./constants');
-const { isGitCommit, isTestExecution, isToolFailure } = require('./core/command-observation');
+const { isGitCommit, commandObservation, projectFingerprint } = require('./core/command-observation');
 
 // --- Constants ---
 const STATE_FILE = 'verification-state.json';
@@ -107,6 +107,10 @@ async function handleRecord(hookData, projectDir) {
 
   if ((toolName === 'Edit' || toolName === 'Write') && input.file_path) {
     if (isSourceFile(input.file_path)) {
+      if (state.state === 'TESTED' && state.lastTestFingerprint === projectFingerprint(projectDir)) {
+        process.exit(0);
+        return;
+      }
       state.state = 'EDITED';
       const normalized = normalizePath(input.file_path);
       if (!state.editsSinceTest.includes(normalized)) {
@@ -115,15 +119,15 @@ async function handleRecord(hookData, projectDir) {
       process.stderr.write(`[VERIFICATION_SEQ] Recorded source edit: ${normalized}\n`);
     }
   } else if (toolName === 'Bash' && input.command) {
-    if (isTestExecution(input.command)) {
-      if (isToolFailure(hookData.tool_response)) {
-        // A FAILED test must NOT clear the commit gate — keep current state
-        // (stays EDITED if source was edited) so the gate still blocks commit.
-        process.stderr.write(`[VERIFICATION_SEQ] Test execution FAILED — commit gate stays armed (state unchanged)\n`);
+    const observation = commandObservation(hookData, projectDir);
+    if (observation) {
+      if (!observation.passed) {
+        process.stderr.write(`[VERIFICATION_SEQ] Verification failed or is undetermined; state unchanged\n`);
       } else {
         state.state = 'TESTED';
         state.editsSinceTest = [];
         state.lastTestTs = new Date().toISOString();
+        state.lastTestFingerprint = projectFingerprint(projectDir);
         process.stderr.write(`[VERIFICATION_SEQ] Recorded passing test execution, state → TESTED\n`);
       }
     }

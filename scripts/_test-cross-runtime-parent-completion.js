@@ -45,6 +45,7 @@ function setup(root) {
     lastUpdatedAt: new Date().toISOString(),
   }, null, 2));
   fs.writeFileSync(path.join(root, '_test-parent-observation.js'), "process.stderr.write('INDEPENDENT_FAILURE_MARKER\\n'); process.exit(7);\n");
+  fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ scripts: { test: 'node _test-parent-observation.js' } }));
 }
 
 function run(script, cwd, payload, env = {}) {
@@ -52,7 +53,7 @@ function run(script, cwd, payload, env = {}) {
     cwd,
     input: JSON.stringify(payload),
     encoding: 'utf8',
-    env: { ...process.env, CRABSHELL_PROJECT_DIR: cwd, ...env },
+    env: { ...process.env, CRABSHELL_PROJECT_DIR: cwd, CLAUDE_PROJECT_DIR: cwd, ...env },
     timeout: 30000,
     windowsHide: true,
   });
@@ -228,10 +229,156 @@ try {
     const config = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'hooks', 'codex-hooks.json'), 'utf8'));
     config.hooks.Stop[0].hooks.push({ ...config.hooks.Stop[0].hooks[0] });
     assert.throws(() => validateCodexHookConfig(config), /one shared Codex completion adapter/);
+    const root = path.join(tempRoot, 'ambiguous');
+    setup(root);
     const ambiguous = commandObservation({
       tool_name: 'Bash', tool_input: { command: 'node _test-parent-observation.js' }, tool_response: { stdout: 'looks fine' },
-    });
+    }, root);
     assert.strictEqual(ambiguous.conclusive, false);
+  });
+
+  for (const host of ['claude', 'codex']) test(`${host}: real success, unchanged edit, changed edit and Stop use current content`, () => {
+    const root = path.join(tempRoot, `${host}-edit`);
+    setup(root);
+    const common = { session_id: 'parent-session', turn_id: 'parent-turn', cwd: root };
+    const core = require('./core/completion-control');
+    core.noteExecutionAuthorization(root, { ...common, prompt: 'Implement the active ticket.' });
+    core.noteSubagentStop(root, { ...common, last_assistant_message: 'Done' });
+    const file = path.join(root, 'app.js');
+    fs.writeFileSync(file, 'module.exports = 42;\n');
+    fs.writeFileSync(path.join(root, '_test-parent-observation.js'), "require('assert').strictEqual(require('./app'), 42); console.log('Current source assertion passed');\n");
+    const executed = spawnSync(process.execPath, ['_test-parent-observation.js'], { cwd: root, encoding: 'utf8', windowsHide: true });
+    assert.strictEqual(executed.status, 0, executed.stderr);
+    assert.match(executed.stdout, /Current source assertion passed/);
+    const nested = path.join(root, 'nested');
+    fs.mkdirSync(nested);
+    const script = host === 'claude' ? claudeController : codexPostTool;
+    const tool = { ...common, hook_event_name: 'PostToolUse', cwd: nested,
+      tool_name: host === 'codex' ? 'exec_command' : 'Bash',
+      tool_input: host === 'codex' ? { cmd: 'node _test-parent-observation.js', workdir: root } : { command: 'node _test-parent-observation.js', workdir: root },
+      tool_response: { exit_code: executed.status, stdout: executed.stdout },
+    };
+    assert.strictEqual(run(script, nested, tool, { CLAUDE_PROJECT_DIR: root }).status, 0);
+    assert.strictEqual(loadState(root).observation.passed, true);
+    const before = loadState(root).observation;
+    const edit = { ...common, hook_event_name: 'PostToolUse', cwd: nested,
+      tool_name: 'Write', tool_input: { file_path: file, content: 'module.exports = 42;\n' } };
+    fs.writeFileSync(file, edit.tool_input.content);
+    assert.strictEqual(run(script, nested, edit, { CLAUDE_PROJECT_DIR: root }).status, 0);
+    assert.deepStrictEqual(loadState(root).observation, before, 'unchanged content retains evidence');
+    // Remove the independent workflow blocker so Stop's evidence decision is
+    // observable, unlike the original investigation's active-workflow probe.
+    fs.writeFileSync(path.join(root, '.crabshell', 'memory', 'regressing-state.json'), JSON.stringify({ active: false }));
+    const stopScript = host === 'claude' ? claudeController : codexStop;
+    const stopPayload = { ...common, cwd: nested, hook_event_name: 'Stop' };
+    const allowed = run(stopScript, nested, stopPayload, { CLAUDE_PROJECT_DIR: root });
+    assert.strictEqual(allowed.status, 0, allowed.stderr);
+    assert.doesNotMatch(allowed.stdout, /"decision":"block"/);
+    fs.writeFileSync(file, 'module.exports = 99;\n');
+    assert.strictEqual(run(script, nested, edit, { CLAUDE_PROJECT_DIR: root }).status, 0);
+    assert.strictEqual(loadState(root).observation, null, 'actual content overrides stale tool content');
+    const stop = core.decideStop(root, { ...common, hook_event_name: 'Stop' });
+    assert.strictEqual(stop.action, 'block');
+    assert.match(stop.reason, /must run the most direct acceptance check/);
+    const blocked = parseDecision(run(stopScript, nested, stopPayload, { CLAUDE_PROJECT_DIR: root }), host === 'claude' ? 2 : 0);
+    assert.strictEqual(blocked.decision, 'block');
+    assert.match(blocked.reason, /must run the most direct acceptance check/);
+    const config = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'hooks', host === 'claude' ? 'hooks.json' : 'codex-hooks.json'), 'utf8'));
+    assert.ok(config.hooks.PostToolUse.some(group => new RegExp(`^(?:${group.matcher})$`).test('Write')
+      && group.hooks.some(hook => /completion-controller|post-tool-use/.test(hook.command))));
+  });
+
+  test('printed names and incomplete results cannot supply passing parent evidence', () => {
+    const root = path.join(tempRoot, 'unverified-parent');
+    setup(root);
+    const common = { session_id: 'parent-session', turn_id: 'parent-turn' };
+    const core = require('./core/completion-control');
+    core.noteExecutionAuthorization(root, { ...common, prompt: 'Implement the active ticket.' });
+    core.noteSubagentStop(root, common);
+    const printed = spawnSync(process.execPath, ['-e', "console.log('npm test')"], { encoding: 'utf8', windowsHide: true });
+    assert.strictEqual(printed.status, 0);
+    const examples = [
+      { command: `node -e "console.log('npm test')"`, response: { exitCode: printed.status, stdout: printed.stdout } },
+      ...[undefined, { exitCode: 0, status: 'running' }, { exitCode: 0, interrupted: true }, { exitCode: 7 }]
+        .map(response => ({ command: 'node _test-parent-observation.js', response })),
+    ];
+    for (const example of examples) {
+      core.recordParentObservation(root, { ...common, tool_name: 'Bash', tool_input: { command: example.command }, tool_response: example.response });
+      assert.ok(!loadState(root).observation?.passed);
+      assert.strictEqual(core.decideStop(root, common).action, 'block');
+    }
+  });
+
+  function recordWithReadCount(root, payload, file) {
+    const originalRead = fs.readFileSync;
+    let reads = 0;
+    fs.readFileSync = function(target, ...args) {
+      if (typeof target === 'string' && path.resolve(target) === file) reads++;
+      return originalRead.call(this, target, ...args);
+    };
+    try {
+      const result = recordParentObservation(root, payload, { host: 'claude' });
+      return { result, reads };
+    } finally {
+      fs.readFileSync = originalRead;
+    }
+  }
+
+  function capturedResultSetup(name, fixtureName) {
+    const root = path.join(tempRoot, name);
+    setup(root);
+    const file = path.join(root, 'app.js');
+    fs.writeFileSync(file, 'module.exports = 42;\n');
+    const captured = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'hook-payloads', fixtureName), 'utf8'));
+    const common = { session_id: captured.session_id, turn_id: 'read-count-turn', cwd: root };
+    const core = require('./core/completion-control');
+    core.noteExecutionAuthorization(root, { ...common, prompt: 'Implement and verify the active ticket.' });
+    core.noteSubagentStop(root, { ...common, last_assistant_message: 'Ready for verification.' });
+    // Replay the captured response verbatim, changing only project context and
+    // the declared command. This measures core I/O, not live host delivery.
+    const payload = { ...captured, ...common, tool_input: { command: 'node _test-parent-observation.js' } };
+    return { root, file, common, core, payload };
+  }
+
+  test('a repeated result reads source once and the next event still detects real edits', () => {
+    const { root, file, common, core, payload } = capturedResultSetup('single-scan', 'claude-posttooluse-bash-success.json');
+    fs.writeFileSync(path.join(root, '_test-parent-observation.js'), "require('assert').strictEqual(require('./app'), 42);\n");
+    const executed = spawnSync(process.execPath, ['_test-parent-observation.js'], { cwd: root, encoding: 'utf8', windowsHide: true });
+    assert.strictEqual(executed.status, 0, executed.stderr);
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const recorded = recordWithReadCount(root, payload, file);
+      assert.strictEqual(recorded.result.observation.passed, true);
+      assert.strictEqual(recorded.reads, 1, 'one result must not read the same source twice');
+    }
+    const previous = loadState(root).observation;
+    const edit = { ...payload, tool_name: 'Write', tool_input: { file_path: file } };
+    fs.writeFileSync(file, 'module.exports = 42;\n');
+    assert.strictEqual(recordWithReadCount(root, edit, file).reads, 1);
+    assert.deepStrictEqual(loadState(root).observation, previous);
+    fs.writeFileSync(file, 'module.exports = 99;\n');
+    assert.strictEqual(recordWithReadCount(root, edit, file).reads, 1);
+    assert.strictEqual(loadState(root).observation, null);
+    assert.strictEqual(core.decideStop(root, common).action, 'block');
+  });
+
+  test('single-scan failure records keep retry counts until actual source content changes', () => {
+    const { root, file, common, core, payload } = capturedResultSetup('single-scan-failure', 'claude-posttoolusefailure-bash.json');
+    for (const count of [1, 2]) {
+      const recorded = recordWithReadCount(root, payload, file);
+      assert.strictEqual(recorded.reads, 1);
+      assert.strictEqual(recorded.result.observation.passed, false);
+      assert.strictEqual(loadState(root).repeatedFailure.count, count);
+    }
+    assert.strictEqual(core.decideStop(root, common).reportOnly, true);
+    assert.strictEqual(loadState(root).reportIssued, true);
+    // Keep the captured command/result identical. Only real source content
+    // changes, so a reset cannot be explained by different failure output.
+    fs.writeFileSync(file, 'module.exports = 99;\n');
+    const recorded = recordWithReadCount(root, payload, file);
+    assert.strictEqual(recorded.reads, 1);
+    assert.strictEqual(loadState(root).repeatedFailure.count, 1);
+    assert.strictEqual(loadState(root).reportIssued, false);
+    assert.strictEqual(core.decideStop(root, common).action, 'block');
   });
 
   process.stdout.write(`RESULT: ${passed} passed, 0 failed\n`);

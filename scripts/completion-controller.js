@@ -4,6 +4,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const { readStdin } = require('./transcript-utils');
 const { getProjectDir } = require('./utils');
+const { findProjectRoot, normalizeToolName } = require('./adapters/codex/hook-contract');
 const { decideStop, noteSubagentStop, recordParentObservation } = require('./core/completion-control');
 
 if (process.env.CRABSHELL_BACKGROUND === '1') process.exit(0);
@@ -39,9 +40,14 @@ function legacyClaudeStopReasons(payload) {
 
 function handlePayload(payload, options = {}) {
   const eventName = payload?.hook_event_name;
-  const projectDir = options.projectDir || payload?.cwd || getProjectDir();
+  const projectDir = options.projectDir || (options.host === 'codex' ? findProjectRoot(payload?.cwd) : getProjectDir());
   if (eventName === 'PostToolUse') {
-    return { eventName, result: recordParentObservation(projectDir, payload) };
+    const normalized = options.host === 'codex' ? {
+      ...payload,
+      tool_name: normalizeToolName(payload.tool_name),
+      tool_input: { ...payload.tool_input, command: payload.tool_input?.command || payload.tool_input?.cmd },
+    } : payload;
+    return { eventName, result: recordParentObservation(projectDir, normalized, { host: options.host || 'claude' }) };
   }
   if (eventName === 'SubagentStop') {
     return { eventName, result: noteSubagentStop(projectDir, payload) };

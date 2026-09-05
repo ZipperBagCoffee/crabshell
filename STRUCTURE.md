@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.121.0)
+# Crabshell Plugin Structure (v21.122.0)
 
-**Version**: 21.121.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.122.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -13,13 +13,14 @@ Codex compatibility is provided in the same repository through a separate `.code
 ```
 crabshell/
 ├── .crabshell/                       # Crabshell local storage
+│   ├── project.md                    # Canonical project description shared by both hosts
 │   ├── memory/                       # Project memory storage
 │   │   ├── logbook.md                # Rolling session summary (auto-rotates)
 │   │   ├── logbook_*.md               # Rotated archives (L2)
 │   │   ├── *.summary.json            # L3 summaries (Haiku-generated)
 │   │   ├── memory-index.json         # Rotation tracking & delta state
 │   │   ├── counter.json              # PostToolUse counter (separated v20.5.0)
-│   │   ├── project.md                # Project overview (optional)
+│   │   ├── project.md                # Preserved legacy description; copied to ../project.md only when absent
 │   │   ├── logs/                     # Refine logs
 │   │   └── sessions/                 # Per-session archive
 │   │       └── *.l1.jsonl            # L1 session transcripts (deduplicated)
@@ -74,6 +75,11 @@ crabshell/
 │   ├── inject-rules.js               # Rules injection + intent-independent pressure bailout
 │   ├── _test-bailout-main.js         # Real-main bailout reset/read-only regression
 │   ├── _test-check-pipeline-wiring.js # Wiring probe: discover/check/mutation sensitivity on a tmpdir fixture (v21.121.0)
+│   ├── _test-command-observation.js  # Declared commands, actual exits, assertions, and rejected lookalikes
+│   ├── _test-hook-payload-shapes.js  # Captured Claude outputs and host-specific success handling
+│   ├── _test-project-memory.js       # Setter-to-reader continuity and legacy/conflict preservation
+│   ├── _test-codex-docs.js           # Installed document launchers targeting separate consumer projects
+│   ├── fixtures/hook-payloads/       # Captured success/failure JSON and provenance README
 │   ├── shared-context.js              # Shared project context + orchestration defaults
 │   ├── subagent-context.js            # Bounded worker contract injection
 │   ├── extract-delta.js              # L1 delta extraction
@@ -93,14 +99,14 @@ crabshell/
 │   ├── core/path-policy.js           # Host-neutral memory path policy (v21.104.0)
 │   ├── core/codex-app-server.js      # Codex JSON-RPC/CLI capability client (v21.104.0)
 │   ├── core/orchestration-policy.js  # 8-field task contract + parent completion policy (v21.105.0)
-│   ├── core/first-turn-context.js     # Shared turn contract + mandatory intent/understanding/explanation ending
-│   ├── core/memory-context.js         # Shared read-only SessionStart memory selection
+│   ├── core/first-turn-context.js     # Shared compact turn contract
+│   ├── core/memory-context.js         # Shared SessionStart selection with preserving legacy-description copy
 │   ├── core/execution-lifecycle.js    # Shared execution-authorized cleanup/reset with host data isolation
 │   ├── core/workflow-context.js       # Restart-safe active D/P/T/W recovery
 │   ├── core/compaction-context.js     # Shared compact/restart recovery context
 │   ├── core/subagent-context.js       # Shared task-specific child context
-│   ├── core/command-observation.js    # Actual command/result normalization
-│   ├── core/completion-control.js     # Parent evidence + bounded Stop/SubagentStop state owner
+│   ├── core/command-observation.js    # Declared checks, host-specific results, and project content fingerprint
+│   ├── core/completion-control.js     # Current-content parent evidence; one fingerprint per result event
 │   ├── core/support-state.js          # Seven-state live doctor model
 │   ├── adapters/codex/               # Native adapters for nine synchronous Codex events
 │   ├── completion-controller.js       # Single Claude Stop/SubagentStop owner retaining existing guards
@@ -180,12 +186,12 @@ crabshell/
 │   ├── knowledge/SKILL.md            # /crabshell:knowledge (K-page creation + view) (v21.74.0)
 │   └── hotfix/SKILL.md              # /crabshell:hotfix (H-page lightweight fix recording) (v21.75.0)
 │
-├── codex-skills/                     # Codex-native bundled skills (13 total)
+├── codex-skills/                     # Codex-native bundled skills (12 total)
 │   ├── load-memory/scripts/          # Installed-cache memory wrapper
 │   ├── save-memory/scripts/          # Installed-cache memory wrapper
 │   ├── search-memory/scripts/        # Installed-cache memory wrapper
 │   ├── status/                       # Live Codex doctor skill + wrapper
-│   └── {discussion,plan,ticket,...}/ # Codex document/workflow skills
+│   └── {discussing,planning,ticketing,investigating,hotfix,knowledge,regressing}/scripts/codex-docs.js
 │
 ├── templates/                        # Auto-init templates (v13.9.20)
 │   └── workflow.md                   # Understanding-First workflow template
@@ -213,16 +219,18 @@ The repository intentionally keeps Claude and Codex runtime surfaces side by sid
 | `.agents/plugins/marketplace.json` | Codex | Repo-scoped native marketplace entry (`source.path: "./"`) |
 | `.codex-plugin/plugin.json` | Codex | Codex metadata plus explicit `codex-skills/` and `hooks/codex-hooks.json` paths |
 | `hooks/codex-hooks.json` | Codex | Nine synchronous native lifecycle events with loader/rejection fail-open launchers; prevents default Claude-hook discovery |
-| `codex-skills/` | Codex | Bundled skills, including installed-cache memory and doctor wrappers |
-| `scripts/codex-memory.js` | Codex | Explicit memory load/save/search/status wrapper; automatic read-only load comes from SessionStart |
-| `scripts/codex-docs.js` | Codex | Manual W/H/D/P/T/I document creation wrapper |
+| `codex-skills/` | Codex | Memory/doctor wrappers and seven document launchers requiring an absolute project target |
+| `scripts/codex-memory.js` | Codex | Explicit memory load/save/search/status with shared project-description resolution |
+| `scripts/codex-docs.js` | Codex | Shared document engine; installed launchers require absolute `--project-dir` |
 | `scripts/codex-doctor.js` | Shared status | Live Claude/Codex installed, activated, trusted, behavior-verified, degraded, drifted, and unsupported diagnosis |
 | `scripts/core/path-policy.js` | Shared | Host-neutral path policy used by Claude and Codex adapters |
-| `scripts/core/{first-turn-context,memory-context,workflow-context,compaction-context,subagent-context,completion-control}.js` | Shared | Host-neutral turn semantics, mandatory three-field response ending, memory/workflow recovery, and completion behavior consumed by both native hook manifests |
+| `scripts/core/{first-turn-context,memory-context,workflow-context,compaction-context,subagent-context,completion-control}.js` | Shared | Compact turn contract, canonical project memory/workflow recovery, and current-content completion evidence consumed by both native hook manifests |
 | `scripts/claude-to-agents.js` | Codex | `CLAUDE.md` to `AGENTS.md` conversion |
 | `scripts/install-codex.js` | Claude Code -> Codex | Legacy/development manual bridge; native marketplace installation is the default |
 
-Installing one runtime does not activate the other runtime. Claude and Codex each load their own manifest and native adapters; neither launches or requires the other. Both automatically read the same memory/workflow state and apply shared parent-completion semantics. Claude retains its automatic SessionEnd capture and pressure/sycophancy hooks. Fixed-count, role-collapse, and behavior-verifier hooks are retired from both runtimes.
+Installing one runtime does not activate the other runtime. Claude and Codex each load their own manifest and native adapters; neither launches or requires the other. Both load shared memory/workflow state and apply parent-completion semantics; a legacy-only project description may be copied to the canonical path during a read. Claude retains automatic SessionEnd capture and pressure telemetry; behavioral pressure/sycophancy/scope hooks are unwired. Fixed-count, role-collapse, and behavior-verifier hooks are retired from both runtimes.
+
+Document skills `discussing`, `planning`, `ticketing`, `investigating`, `hotfix`, `knowledge`, and `regressing` each contain `scripts/codex-docs.js`. These small launchers resolve the shared engine from the installed plugin and require `--project-dir` so documents target the consumer project.
 
 ## Core Scripts
 
@@ -250,7 +258,7 @@ Main automation engine with commands:
 - `compress`: Archive old files (30+ days)
 - `refine-all`: Process raw.jsonl to L1
 - `dedupe-l1`: Remove duplicate L1 files (keep largest per session)
-- `memory-set/get/list`: Hierarchical memory management
+- `memory-set/get/list`: Shared `.crabshell/project.md` management through `getProjectMemoryPath`; legacy-only copies preserve the source, canonical files win conflicts, and setters make a `.bak` before replacement
 
 ### scripts/refine-raw.js
 L1 generation:
@@ -283,7 +291,7 @@ Session start loader:
 ### scripts/inject-rules.js
 UserPromptSubmit hook:
 - Inject critical rules every prompt via `additionalContext`
-- Append the `## Codex Delegation` guidance block (`CODEX_DELEGATION`) on the Claude host only — /codex:rescue usage, latest-model example, project-root launch, prompt-carried constraints, completion re-verification, Windows/Linux sandbox quirks (v21.111.0)
+- Append the `## Codex Delegation` guidance block (`CODEX_DELEGATION`) on Claude execution turns — /codex:rescue usage, model example, project-root launch, prompt-carried constraints, captured hook payload handoff, completion re-verification, and platform notes
 - `RULES` Simple Communication is a four-slot response contract (v21.115.0, I085): `[conclusion] → [evidence] → [critical exception] → [next action]` in the reader's words, first sentence is the direct answer, keep-vs-cut list on shortening, bullets only for 3+ parallel items with max 4 per group, one term unpacked per sentence (비유 금지), concrete over abstract, no self-coined acronyms, accuracy outranks brevity, banter never as padding
 - `RULES` VERIFICATION: chat report is `"M of N passed"` plus failed items — no table, no passing-item list, no raw observations (v21.115.0/.1, I085)
 - Configurable frequency via `rulesInjectionFrequency`
@@ -404,7 +412,7 @@ L1 generation:
 3.5. Stop
    └─> completion-controller.js (single Stop owner, v21.107.0)
        ├─> decideStop — blocks stop on execution-authorized turns while a D/P/T or W workflow (incl. regressing-state.json) is active; parent-evidence gate; bounded identical-failure reporting
-       └─> spawned legacy validators: sycophancy-guard.js (agreement-without-verification), doc-watchdog.js stop (missing work log), scope-guard.js (scope reduction)
+       └─> retained validator: doc-watchdog.js stop; behavioral sycophancy/scope validators remain unwired
    Note: regressing continuation is goal-driven from v21.110.0 — the regressing skill emits a `/goal` handoff (host goal mode: Claude Code 2.1.139+, Codex CLI 0.128.0+); regressing-loop-guard.js is retired from wiring and kept as a compatibility/test source.
 
 4. PostToolUse
@@ -414,6 +422,7 @@ L1 generation:
    │   ├─> checkAndRotate() - archive if > 23,750 tokens
    │   └─> At threshold: create/update L1 (session-aware reuse + incremental offset read) → extractDelta() → creates delta_temp.txt
    ├─> verification-sequence.js record (.*) — track source edits and test runs (v21.0.0)
+   ├─> completion-controller.js (Bash|Write|Edit) — declared result evidence and content-change invalidation
    ├─> skill-tracker.js (Skill, async) — set skill-active flag on Skill tool calls (v19.33.0)
    └─> doc-watchdog.js record (Write|Edit, async) — track code edits and D/P/T doc edits (v21.18.0)
 
@@ -439,6 +448,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.122.0 | Declared verification commands, captured host result distinction, command/edit evidence invalidation, one fingerprint per result, canonical project.md with preserving migration, and seven Codex document launchers. |
 | 21.121.0 | feat: D116 — `skills/verifying/scripts/check-pipeline-wiring.js` (discover candidate hops from hooks.json / `[CRABSHELL_*]` tokens / agent frontmatter; check a parent-approved `wiring-contract.json`; `--completeness` fails unclassified hops; `--hooks` fixture for mutation tests) + `_test-check-pipeline-wiring.js` (9 cases). `verifying` SKILL.md: Step 2a optional `arch-explorer:build` map (documentation only) + connection inventory + per-hop structural entries; `/verifying wiring`; Rules 11–12. |
 | 21.120.0 | feat: closing-verdict rule in `RULES` + checklist — last paragraph states each item done / in progress / not started + next action (CLI shows the end of long output first). |
 | 21.119.0 | feat: `RULES` term clause → decision rule (needed terms only, plain meaning at first use, codenames restated, too-many-terms cutoff); checklist carries "unpacked at first use"; banter restored to directive form with a permission-form negative lock. |

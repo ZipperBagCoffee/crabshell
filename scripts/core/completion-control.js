@@ -5,7 +5,7 @@ const path = require('path');
 const { getLastUserMessage } = require('../transcript-utils');
 const { getStorageRoot, readJsonOrDefault, writeJson } = require('../utils');
 const { classifyUserIntent } = require('./turn-intent');
-const { commandObservation } = require('./command-observation');
+const { commandObservation, projectFingerprint } = require('./command-observation');
 const { buildWorkflowContext } = require('./workflow-context');
 
 const STATE_FILE = 'completion-control.json';
@@ -116,13 +116,19 @@ function noteSubagentStop(projectDir, payload = {}) {
   return { recorded: true, state: next };
 }
 
-function recordParentObservation(projectDir, payload = {}) {
-  const state = loadState(projectDir);
+function recordParentObservation(projectDir, payload = {}, options = {}) {
+  let state = loadState(projectDir);
   if (!state.pendingParentEvidence) return { recorded: false, reason: 'no-child-claim' };
   if (!isExecutionAuthorized(state, payload, 'PostToolUse')) return { recorded: false, reason: 'not-authorized' };
-  const observation = commandObservation(payload);
+  // Reuse only within this event; later tool events and Stop still rescan.
+  const sourceFingerprint = state.observation ? projectFingerprint(projectDir) : null;
+  state = invalidateChangedObservation(projectDir, state, sourceFingerprint);
+  const observation = commandObservation(payload, projectDir, options);
   if (!observation) return { recorded: false, reason: 'not-decisive-command' };
-  if (!observation.conclusive) return { recorded: false, reason: 'ambiguous-command-result' };
+  if (!observation.conclusive) {
+    saveState(projectDir, { ...state, observation: null, repeatedFailure: null, reportIssued: false });
+    return { recorded: false, reason: 'ambiguous-command-result' };
+  }
   let repeatedFailure = null;
   if (!observation.passed) {
     const previous = state.repeatedFailure;
@@ -133,11 +139,17 @@ function recordParentObservation(projectDir, payload = {}) {
   }
   const next = saveState(projectDir, {
     ...state,
-    observation: { ...observation, observedAt: new Date().toISOString() },
+    observation: { ...observation, sourceFingerprint: sourceFingerprint ?? projectFingerprint(projectDir), observedAt: new Date().toISOString() },
     repeatedFailure,
     reportIssued: observation.passed ? false : state.reportIssued,
   });
   return { recorded: true, state: next, observation };
+}
+
+function invalidateChangedObservation(projectDir, state, sourceFingerprint = null) {
+  if (!state.observation) return state;
+  if (state.observation.sourceFingerprint === (sourceFingerprint ?? projectFingerprint(projectDir))) return state;
+  return saveState(projectDir, { ...state, observation: null, repeatedFailure: null, reportIssued: false });
 }
 
 function block(reason, extra = {}) {
@@ -146,8 +158,7 @@ function block(reason, extra = {}) {
 
 function decideStop(projectDir, payload = {}) {
   if (payload.stop_hook_active === true) return { action: 'allow', reason: 'continuation-already-active' };
-  if (!isWorkflowActive(projectDir)) return { action: 'allow', reason: 'inactive-workflow' };
-  const state = loadState(projectDir);
+  const state = invalidateChangedObservation(projectDir, loadState(projectDir));
   if (!isExecutionAuthorized(state, payload, 'Stop')) return { action: 'allow', reason: 'not-authorized' };
 
   if (state.pendingParentEvidence && !state.observation) {
@@ -164,6 +175,8 @@ function decideStop(projectDir, payload = {}) {
     }
     return block(`${detail} Fix the observed failure or run a materially different decisive check before completion.`);
   }
+
+  if (!isWorkflowActive(projectDir)) return { action: 'allow', reason: 'inactive-workflow' };
 
   if (state.observation?.passed) {
     return block('Parent verification passed, but the persisted D/P/T or W workflow is still active. Update the authoritative document state and continue only its unmet outcomes; stop only after the workflow is marked complete.');

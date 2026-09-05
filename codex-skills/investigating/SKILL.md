@@ -9,10 +9,12 @@ Use this when a question needs a durable investigation record, not just a chat a
 
 ## Create The I Document First
 
-Run:
+Resolve `{SKILL_DIR}` to the directory containing this `SKILL.md` and
+`{PROJECT_ROOT}` to the absolute active project root. Run the bundled script
+by its absolute path with that project as the explicit target:
 
 ```bash
-node scripts/codex-docs.js investigation "topic" --topic="what is being investigated and why" --questions="Q1; Q2; Q3" --sources="Internet: TBD; Local: TBD; User-specified: TBD" --constraints="[Project] ...; [Inferred] ..."
+node "{SKILL_DIR}/scripts/codex-docs.js" investigation "topic" --topic="what is being investigated and why" --questions="Q1; Q2; Q3" --sources="Internet: TBD; Local: TBD; User-specified: TBD" --constraints="[Project] ...; [Inferred] ..." --project-dir="{PROJECT_ROOT}"
 ```
 
 The script creates `.crabshell/investigation/INNN-*.md` and appends to `.crabshell/investigation/INDEX.md`.

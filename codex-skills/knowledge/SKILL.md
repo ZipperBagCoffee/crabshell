@@ -5,10 +5,12 @@ description: Create a Crabshell K knowledge page from Codex. Use for verified fa
 
 # Knowledge
 
-Run:
+Resolve `{SKILL_DIR}` to the directory containing this `SKILL.md` and
+`{PROJECT_ROOT}` to the absolute active project root. Run the bundled script
+by its absolute path with that project as the explicit target:
 
 ```bash
-node scripts/codex-docs.js knowledge "title" --category="fact|tip" --what="..." --when="..." --source="..." --tags="tag1,tag2"
+node "{SKILL_DIR}/scripts/codex-docs.js" knowledge "title" --category="fact|tip" --what="..." --when="..." --source="..." --tags="tag1,tag2" --project-dir="{PROJECT_ROOT}"
 ```
 
 The script creates `.crabshell/knowledge/K{NNN}-*.md` and appends to `.crabshell/knowledge/INDEX.md`.
