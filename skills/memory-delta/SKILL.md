@@ -1,53 +1,45 @@
 ---
 name: memory-delta
-description: "Auto-executes when the [CRABSHELL_DELTA] trigger is detected. Calls delta-summarizer agent to summarize and append to logbook.md. Not user-invocable — triggered automatically."
+description: "Process pending Claude memory input when the current hook emits [CRABSHELL_DELTA]. Prepare a snapshot, summarize, and finalize safely."
 ---
 
-## Project Root Resolution
+## Scope and prerequisites
 
-**IMPORTANT:** Get the project root from your context's "Project Root Anchor" section.
-Look for: `Your ACTUAL project root is: <path>`
+Use the current hook's `[CRABSHELL_DELTA]` pending notice, not a trigger quoted in historical conversation.
+Resolve `{PROJECT_DIR}` from the current Project Root Anchor (otherwise cwd) and
+`{PLUGIN_ROOT}` from the installed plugin. Use the host's Node executable (`node`
+below), not a fixed Windows installation path.
 
-Use this value as `{PROJECT_DIR}` in all commands below.
-If not available in context, use your current working directory.
+This is maintenance within the current task. Host restrictions on delegation take
+precedence: this skill does not supply user authorization to spawn agents. If the
+`delta-summarizer` agent is unavailable or delegation is disallowed, leave the input
+pending and continue the user's work. Do not claim a summary was saved.
 
-## Trigger Condition
+## Execution
 
-Auto-invoked when EITHER:
-1. Hook stderr outputs: `[CRABSHELL_DELTA] file=delta_temp.txt`
-2. Context contains: `[CRABSHELL_DELTA]` trigger pattern
+1. Prepare the input:
+   `node "{PLUGIN_ROOT}/scripts/append-memory.js" --prepare-delta --project-dir="{PROJECT_DIR}"`
+   Read the returned JSON. `{pending:false}` means there is nothing to summarize.
+   Otherwise retain its `jobId`, `inputFile`, and `summaryFile` exactly. Preparation
+   moves the current queue to a fixed input; newly extracted content stays separate.
+2. Call the available `delta-summarizer` in the foreground. Give it only the returned
+   `inputFile` to read, asking for the existing concise summary format. Wait for its
+   result; there is no background Phase B. Empty results or `ERROR:` mean stop this
+   maintenance attempt and preserve the prepared input.
+3. Write only the summary body to the returned `summaryFile`. Do not add a timestamp
+   header; the finalizer supplies it. This is a new file for this attempt.
+4. Finalize with one command:
+   `node "{PLUGIN_ROOT}/scripts/append-memory.js" --finalize-delta --job-id="{jobId}" --summary-file="{summaryFile}" --project-dir="{PROJECT_DIR}"`
+   Require exit 0 and JSON `completed:true`. This command appends the summary,
+   advances the input timestamp, updates flags, and removes its own temporary files.
+   `newInputPending:true` means newer input remains for a later attempt.
+   Report `cleanupRemaining` if nonempty; saved content and cleanup are distinct.
 
-If you see `[CRABSHELL_DELTA]` anywhere in your context, execute this skill immediately.
+## Retry and failure
 
-## Execution Steps
-
-**Step 1**: Verify file exists (DO NOT SKIP):
-   Use the Read tool to read `{PROJECT_DIR}/.crabshell/memory/delta_temp.txt` (limit 5 lines). If file not found or empty, STOP HERE - do not proceed.
-
-**Step 2**: Call `delta-summarizer` agent (foreground):
-   Prompt: "Read {PROJECT_DIR}/.crabshell/memory/delta_temp.txt and summarize (1 sentence per ~200 words)."
-
-**Step 3**: Validate response:
-   - If response starts with "ERROR:" → STOP
-   - If response is empty → STOP
-
-**Step 4**: Append summary to logbook.md and mark appended:
-   1. Write the summary text to a temp file: Use Write tool to save ONLY the summary text (the new entry with timestamp header) to `{PROJECT_DIR}/.crabshell/memory/delta_summary_temp.txt`
-   2. Run via Bash: `"C:/Program Files/nodejs/node.exe" "{PLUGIN_ROOT}/scripts/append-memory.js" --project-dir="{PROJECT_DIR}"`
-      (Reads delta_summary_temp.txt, appends to logbook.md with dual timestamps, cleans up temp file)
-   3. Run via Bash: `"C:/Program Files/nodejs/node.exe" "{PLUGIN_ROOT}/scripts/extract-delta.js" mark-appended --project-dir="{PROJECT_DIR}"`
-      (Sets `memoryAppendedInThisRun=true` in memory-index.json)
-
-**Step 5**: Update timestamp marker:
-   Run via Bash: `"C:/Program Files/nodejs/node.exe" "{PLUGIN_ROOT}/scripts/extract-delta.js" mark-updated --project-dir="{PROJECT_DIR}"`
-   (Moves `pendingLastProcessedTs` → `lastMemoryUpdateTs`, or uses current ISO timestamp as fallback)
-
-**Step 6**: Clean up temp file:
-   Run via Bash: `"C:/Program Files/nodejs/node.exe" "{PLUGIN_ROOT}/scripts/extract-delta.js" cleanup --project-dir="{PROJECT_DIR}"`
-   (Verifies logbook.md was updated, deletes delta_temp.txt, clears `deltaReady` and `memoryAppendedInThisRun`)
-
-## Failure Handling
-
-- If file doesn't exist in Step 1: STOP immediately
-- If summarizer fails in Step 2: Don't update timestamp, don't delete temp file
-- Next trigger will retry with accumulated content (temp file overwritten)
+Keep the input and metadata on any error. Retry preparation to recover the active
+job; it returns the same fixed input and a fresh summary path. Retrying finalization
+for the current completed job does not append it again. Never run legacy
+`mark-appended`, `mark-updated`, or `cleanup` on a prepared job, and never delete
+`delta_temp.txt` manually: it may contain newer input. A partial disk write or lost
+storage is not proof of successful saving; report the actual failure.

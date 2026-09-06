@@ -5,7 +5,7 @@ const { buildSubagentContext, createSubagentOutput } = require('../../core/subag
 const { normalizeSubagentStart } = require('./hook-contract');
 
 async function main() {
-  const normalized = normalizeSubagentStart(await readStdin(2000));
+  const normalized = normalizeSubagentStart(await readStdin(2000, { host: 'codex' }));
   if (!normalized) return;
   const context = buildSubagentContext(normalized.projectDir);
   process.stdout.write(JSON.stringify(createSubagentOutput(context)) + '\n');

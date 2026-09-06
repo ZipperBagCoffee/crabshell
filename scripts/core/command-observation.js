@@ -3,6 +3,7 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const { readCodexCommandResult } = require('./host-tool-result');
 
 // Parse one invocation, never search quoted arguments for command names. Shell
 // composition needs per-process results, which a single tool result cannot prove.
@@ -102,6 +103,18 @@ function isTestExecution(command, projectDir, cwd = projectDir) {
   return !isTrivialTest(command) && Boolean(findDeclaration(command, projectDir, cwd));
 }
 
+function declarationKey(declaration) {
+  return crypto.createHash('sha256').update(JSON.stringify({
+    tokens: declaration.tokens.map((token, index) => canonicalToken(token, index, declaration.cwd)),
+    cwd: declaration.cwd,
+  })).digest('hex');
+}
+
+function checkKeyForCommand(command, projectDir, cwd = projectDir) {
+  const declaration = findDeclaration(command, projectDir, cwd);
+  return declaration ? declarationKey(declaration) : null;
+}
+
 // Keep the content identity with the existing observation, not in another
 // change journal. Ignore generated state and dependencies, but include the
 // project's verification configuration and runner.
@@ -179,21 +192,30 @@ function commandObservation(hookData = {}, projectDir, options = {}) {
   if (hookData.tool_name !== 'Bash' || isTrivialTest(command)) return null;
   const declaration = findDeclaration(command, projectDir, cwd);
   if (!declaration) return null;
-  const text = responseText(hookData.tool_response).replace(/\s+/g, ' ').trim();
-  const response = hookData.tool_response;
+  const host = options.host || 'claude';
+  const nativeResult = host === 'codex' ? readCodexCommandResult(hookData, projectDir) : null;
+  const failureEvent = host === 'claude' && hookData.hook_event_name === 'PostToolUseFailure';
+  const response = nativeResult || (failureEvent && typeof hookData.error === 'string' ? hookData.error : hookData.tool_response);
+  const displayResponse = nativeResult ? { exit_code: nativeResult.exit_code, status: nativeResult.status,
+    stdout: nativeResult.stdout, stderr: nativeResult.stderr } : response;
+  const text = responseText(displayResponse).replace(/\s+/g, ' ').trim();
   const failed = isToolFailure(response) || isToolFailure(hookData)
-    || hookData.tool_result_is_error === true || hookData.hook_event_name === 'PostToolUseFailure';
+    || hookData.tool_result_is_error === true || failureEvent;
   const running = isRunning(response);
-  let exitCode = getExitCode(response);
+  const interrupted = hookData.is_interrupt === true || response?.interrupted === true;
+  // Codex string output can be arbitrary stdout, even "Exit code: 0". Only
+  // structured host evidence or the bound completion record supplies its code.
+  const codeResponse = failureEvent && typeof response === 'string' ? response.trimStart().split(/\r?\n/, 1)[0] : response;
+  let exitCode = host === 'codex' && typeof response === 'string' ? null : getExitCode(codeResponse);
   // Claude PostToolUse receives a structured Output only after success. Its
   // Bash Output has no exit-code field. Codex also emits PostToolUse on failure,
   // so the caller must retain host provenance and explicit codes take priority.
-  const claudeSuccessEvent = (options.host || 'claude') === 'claude'
+  const claudeSuccessEvent = host === 'claude'
     && hookData.hook_event_name === 'PostToolUse'
     && response !== null && typeof response === 'object' && !Array.isArray(response)
     && !failed && !running;
   if (exitCode === null && claudeSuccessEvent) exitCode = 0;
-  let conclusive = exitCode !== null && !running;
+  let conclusive = !running && !interrupted && (exitCode !== null || (failureEvent && typeof hookData.error === 'string' && hookData.error.length > 0));
   let contractPassed = true;
   if (conclusive && !failed && declaration.contract) {
     const contract = declaration.contract;
@@ -220,6 +242,12 @@ function commandObservation(hookData = {}, projectDir, options = {}) {
     passed: conclusive && exitCode === 0 && !failed && contractPassed,
     excerpt,
     fingerprint,
+    callId: hookData.tool_use_id || null,
+    startedAtMs: nativeResult?.startedAtMs || null,
+    completedAtMs: nativeResult?.completedAtMs || null,
+    evidenceSource: nativeResult?.evidenceSource || (failureEvent ? 'claude-failure-event' : 'hook-result'),
+    checkKey: declarationKey(declaration),
+    outcome: interrupted ? 'interrupted' : running ? 'running' : !conclusive ? 'unknown' : failed || exitCode !== 0 || !contractPassed ? 'failed' : 'passed',
   };
 }
 
@@ -233,5 +261,6 @@ module.exports = {
   isToolFailure,
   isTrivialTest,
   projectFingerprint,
+  checkKeyForCommand,
   responseText,
 };

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+'use strict';
 /**
  * append-memory.js — Safely append a summary to logbook.md
  *
@@ -10,46 +11,55 @@
 
 const fs = require('fs');
 const path = require('path');
-const { STORAGE_ROOT, MEMORY_FILE } = require('./constants');
+const { STORAGE_ROOT, MEMORY_FILE, DELTA_SUMMARY_FILE } = require('./constants');
 const { parseProjectDirArg } = require('./utils');
-
-function getTimestamps() {
-  const d = new Date();
-  const p = n => String(n).padStart(2, '0');
-  const utc = `${d.getUTCFullYear()}-${p(d.getUTCMonth()+1)}-${p(d.getUTCDate())}_${p(d.getUTCHours())}${p(d.getUTCMinutes())}`;
-  const local = `${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`;
-  return { utc, local };
-}
+const { formatMemoryEntry } = require('./core/memory-entry');
+const { withMemoryIndex, withMemoryRotation, readMemoryIndex, regularFile } = require('./core/memory-lock');
 
 function main() {
   const projectDir = parseProjectDirArg(process.argv.slice(2));
+  const value = flag => process.argv.find(arg => arg.startsWith(flag+'='))?.slice(flag.length+1);
+  if (process.argv.includes('--prepare-delta')) {
+    console.log(JSON.stringify(require('./core/delta-transaction').prepareDelta(projectDir)));return;
+  }
+  if (process.argv.includes('--finalize-delta')) {
+    console.log(JSON.stringify(require('./core/delta-transaction').finalizeDelta(projectDir,value('--job-id'),value('--summary-file'))));return;
+  }
+  return withMemoryIndex(projectDir,directory=>withMemoryRotation(directory,()=>legacyAppend(projectDir)));
+}
+
+function legacyAppend(projectDir) {
   const memoryDir = path.join(projectDir, STORAGE_ROOT, 'memory');
-  const summaryPath = path.join(memoryDir, 'delta_summary_temp.txt');
+  const job = readMemoryIndex(memoryDir).deltaJob;
+  if (job && job.status !== 'complete') throw Error('A prepared delta job exists; use --finalize-delta.');
+  const summaryPath = path.join(memoryDir, DELTA_SUMMARY_FILE);
   const memoryPath = path.join(memoryDir, MEMORY_FILE);
+  regularFile(summaryPath);regularFile(memoryPath);
 
   // Read summary
   if (!fs.existsSync(summaryPath)) {
-    console.error('ERROR: delta_summary_temp.txt not found');
-    process.exit(1);
+    throw Error('delta_summary_temp.txt not found');
   }
 
   const summary = fs.readFileSync(summaryPath, 'utf8').trim();
   if (!summary) {
-    console.error('ERROR: delta_summary_temp.txt is empty');
-    process.exit(1);
+    throw Error('delta_summary_temp.txt is empty');
   }
 
   // Generate timestamps
-  const ts = getTimestamps();
+  const entry = formatMemoryEntry(summary);
 
   // Append to logbook.md
-  const entry = `\n## ${ts.utc} (local ${ts.local})\n${summary}\n`;
-  fs.appendFileSync(memoryPath, entry, 'utf8');
-  console.log(`Appended to ${MEMORY_FILE}: ## ${ts.utc} (local ${ts.local})`);
+  fs.appendFileSync(memoryPath, entry.text, 'utf8');
+  console.log(`Appended to ${MEMORY_FILE}: ${entry.header}`);
 
   // Clean up temp file
   try { fs.unlinkSync(summaryPath); } catch (e) { /* ignore */ }
   console.log('Cleaned up delta_summary_temp.txt');
 }
 
-main();
+if (require.main === module) {
+  try { main(); } catch (error) { console.error('ERROR: '+error.message);process.exitCode=1; }
+}
+
+module.exports = { main };

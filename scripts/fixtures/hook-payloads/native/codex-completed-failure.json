@@ -1,0 +1,42 @@
+[
+  {
+    "timestamp": "2026-09-05T07:14:11.572Z",
+    "ordinal": 15,
+    "type": "event_msg",
+    "payload": {
+      "type": "item_completed",
+      "thread_id": "01a0706a-e31a-7802-9355-0abe2e32c836",
+      "turn_id": "01a0706a-e3b4-7ad0-8afc-9f1dce50f938",
+      "item": {
+        "type": "CommandExecution",
+        "id": "call_d118_2",
+        "process_id": "18144",
+        "command": [
+          "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+          "-Command",
+          "node -e \"process.stderr.write('D118_NATIVE_FAILURE');process.exit(7)\""
+        ],
+        "cwd": "file:///C:/Users/user/Documents/memory-keeper-plugin/.crabshell/verification/D118/native-tools-pRXgeK/project",
+        "parsed_cmd": [
+          {
+            "type": "unknown",
+            "cmd": "node -e \"process.stderr.write('D118_NATIVE_FAILURE');process.exit(7)\""
+          }
+        ],
+        "source": "unified_exec_startup",
+        "status": "failed",
+        "stdout": "D118_NATIVE_FAILURE",
+        "stderr": "",
+        "aggregated_output": "D118_NATIVE_FAILURE",
+        "exit_code": 1,
+        "duration": {
+          "secs": 0,
+          "nanos": 83757100
+        },
+        "formatted_output": "D118_NATIVE_FAILURE"
+      },
+      "started_at_ms": 1788592451488,
+      "completed_at_ms": 1788592451572
+    }
+  }
+]

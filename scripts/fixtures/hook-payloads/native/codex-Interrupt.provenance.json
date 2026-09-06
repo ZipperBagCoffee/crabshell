@@ -1,0 +1,14 @@
+{
+  "driver": "local deterministic API responses, no real model inference",
+  "host": "codex",
+  "version": "0.153.3",
+  "source": ".crabshell/verification/D118/native-tools-OfFuBx/project/.crabshell/captures/codex-Interrupt-unknown-1788600650325-0c7f85fa-eed2-4344-a786-7fe8ee44b7d7.input.json",
+  "sha256": "1e8bd804ff21acd11a7fa3686c39d138cc7408c0abb56c81586a85373be754da",
+  "observations": {
+    "nativeInterrupt": true,
+    "nativeStop": false,
+    "turnStatus": "interrupted",
+    "completionSuspended": true,
+    "verificationState": "EDITED"
+  }
+}

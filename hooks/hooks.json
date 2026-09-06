@@ -70,7 +70,22 @@
         ]
       }
     ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/verification-sequence.js\" record" },
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/completion-controller.js\"" }
+        ]
+      }
+    ],
     "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/completion-controller.js\"" }
+        ]
+      },
       {
         "matcher": "Read|Grep|Glob|Bash|Write|Edit",
         "hooks": [

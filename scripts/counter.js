@@ -171,7 +171,8 @@ async function check() {
       if (deltaResult.success) {
         // Set deltaReady flag so inject-rules.js knows this is a legitimate delta
         const index = readIndexSafe(indexPath);
-        index.deltaReady = true;
+        const queue = path.join(memoryDir, 'delta_temp.txt');
+        index.deltaReady = fs.existsSync(queue) && fs.statSync(queue).size > 0;
         writeJson(indexPath, index);
         setCounter(0);
       } else {
@@ -272,13 +273,14 @@ async function final() {
     const idxPath = path.join(getStorageRoot(), MEMORY_DIR, 'memory-index.json');
     const finalMemoryDir = path.join(getStorageRoot(), MEMORY_DIR);
     const finalLocked = acquireIndexLock(finalMemoryDir);
-    try {
+    if (finalLocked) try {
       const idx = readIndexSafe(idxPath);
       // Reset offset — final() creates definitive L1 from scratch, next session starts fresh
       delete idx.lastL1TranscriptOffset;
       delete idx.lastL1TranscriptMtime;
       if (deltaResult.success) {
-        idx.deltaReady = true;
+        const queue = path.join(finalMemoryDir, 'delta_temp.txt');
+        idx.deltaReady = fs.existsSync(queue) && fs.statSync(queue).size > 0;
       }
       writeJson(idxPath, idx);
     } finally {

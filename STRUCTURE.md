@@ -1,10 +1,10 @@
-# Crabshell Plugin Structure (v21.122.0)
+# Crabshell Plugin Structure (v21.123.0)
 
-**Version**: 21.122.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.123.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
-Crabshell is a dual-runtime Claude Code/Codex plugin. Both hosts use native lifecycle hooks backed by shared first-turn, memory, workflow, compaction, subagent, and parent-completion cores. Claude retains automatic SessionEnd capture and pressure/sycophancy behavior; Codex supplies nine synchronous native lifecycle events. Both share the D/P/T/I/W/K document system and `.crabshell/` storage.
+Crabshell is a dual-runtime Claude Code/Codex plugin. Both hosts use native lifecycle hooks backed by shared first-turn, memory, workflow, compaction, subagent, and parent-completion cores. Claude retains automatic SessionEnd capture and pressure telemetry; Codex supplies synchronous native lifecycle and Interrupt events. Both share the D/P/T/I/W/K document system and `.crabshell/` storage. Version 21.123.0 adds the failure/capture/finalization/recovery components listed below.
 
 Codex compatibility is provided in the same repository through a separate `.codex-plugin/plugin.json`, `codex-skills/`, and explicit wrapper scripts. Claude Code and Codex ship from the same repo but activate different manifests; both can share the `.crabshell/` memory and document store.
 
@@ -19,6 +19,9 @@ crabshell/
 │   │   ├── logbook_*.md               # Rotated archives (L2)
 │   │   ├── *.summary.json            # L3 summaries (Haiku-generated)
 │   │   ├── memory-index.json         # Rotation tracking & delta state
+│   │   ├── delta-jobs/               # Fixed delta inputs and attempt-specific summaries
+│   │   ├── completion-control.json   # Parent evidence plus bounded recovery information
+│   │   ├── verification-state.json   # Required checks, content identity and interruption state
 │   │   ├── counter.json              # PostToolUse counter (separated v20.5.0)
 │   │   ├── project.md                # Preserved legacy description; copied to ../project.md only when absent
 │   │   ├── logs/                     # Refine logs
@@ -66,7 +69,7 @@ crabshell/
 │
 ├── hooks/                            # Lifecycle hooks
 │   ├── hooks.json                    # Claude Code hook config
-│   └── codex-hooks.json              # Nine-event Codex-native lifecycle config + fail-open launchers
+│   └── codex-hooks.json              # Codex-native lifecycle + Interrupt, fail-open launchers
 │
 ├── scripts/                          # Core implementation (Node.js)
 │   ├── find-node.sh                  # Fallback Node.js locator utility (v18.0.0, hardened v21.99.3)
@@ -91,7 +94,7 @@ crabshell/
 │   ├── transcript-utils.js           # Shared stdin/transcript utilities (v21.0.0)
 │   ├── refine-raw.js                 # raw.jsonl -> l1.jsonl conversion
 │   ├── regressing-state.js            # Regressing phase tracker (v19.23.0)
-│   ├── append-memory.js              # Atomic logbook.md append (v19.53.0)
+│   ├── append-memory.js              # Prepare/finalize CLI and legacy summary append
 │   ├── regressing-guard.js           # PreToolUse regressing skill enforcement (v19.23.0)
 │   ├── sycophancy-guard.js           # RETIRED v21.113.0 (unwired, I083 R5) — was Stop + PreToolUse dual-layer sycophancy detection + verification claim detection (v19.29.0, v20.7.0, v21.1.0). Also writes feedbackPressure.oscillationCount (reversal phrases) and tooGoodSkepticism.retryCount (all-None P/O/G) at Stop hook — these are pressure-adjacent counters independent of feedbackPressure.level. See three pressure counters (feedbackPressure.level, feedbackPressure.oscillationCount, tooGoodSkepticism.retryCount) in USER-MANUAL.md §Pressure System.
 │   ├── path-guard.js                # PreToolUse path validation + shell var resolution + logbook.md Edit block + Write shrink guard (v19.31.0, v20.3.0, v20.6.0, v21.8.0)
@@ -107,8 +110,16 @@ crabshell/
 │   ├── core/subagent-context.js       # Shared task-specific child context
 │   ├── core/command-observation.js    # Declared checks, host-specific results, and project content fingerprint
 │   ├── core/completion-control.js     # Current-content parent evidence; one fingerprint per result event
+│   ├── core/host-tool-result.js       # Bind native Codex completion records to the hook invocation
+│   ├── core/check-history.js          # Per-check ordering, duplicate and late-result handling
+│   ├── core/state-lock.js             # Serialize verification/completion state writers
+│   ├── core/hook-capture.js           # Optional raw inputs and separate capture metadata
+│   ├── core/delta-transaction.js      # Fixed input, retry-aware finalization and owned-file cleanup
+│   ├── core/memory-lock.js            # Shared index/rotation locks for memory writes
+│   ├── core/memory-entry.js           # Shared summary timestamp format
+│   ├── core/recovery-context.js       # Bounded historical request/check/pause context
 │   ├── core/support-state.js          # Seven-state live doctor model
-│   ├── adapters/codex/               # Native adapters for nine synchronous Codex events
+│   ├── adapters/codex/               # Native synchronous lifecycle and Interrupt adapters
 │   ├── completion-controller.js       # Single Claude Stop/SubagentStop owner retaining existing guards
 │   ├── codex-doctor.js               # Cross-runtime source/cache/hook/trust/behavior/drift diagnostics
 │   ├── codex-memory.js               # Manual Codex memory load/save/search/status
@@ -218,7 +229,7 @@ The repository intentionally keeps Claude and Codex runtime surfaces side by sid
 | `skills/` | Claude Code | Claude-oriented skill instructions |
 | `.agents/plugins/marketplace.json` | Codex | Repo-scoped native marketplace entry (`source.path: "./"`) |
 | `.codex-plugin/plugin.json` | Codex | Codex metadata plus explicit `codex-skills/` and `hooks/codex-hooks.json` paths |
-| `hooks/codex-hooks.json` | Codex | Nine synchronous native lifecycle events with loader/rejection fail-open launchers; prevents default Claude-hook discovery |
+| `hooks/codex-hooks.json` | Codex | Synchronous native lifecycle and Interrupt events with loader/rejection fail-open launchers; prevents default Claude-hook discovery |
 | `codex-skills/` | Codex | Memory/doctor wrappers and seven document launchers requiring an absolute project target |
 | `scripts/codex-memory.js` | Codex | Explicit memory load/save/search/status with shared project-description resolution |
 | `scripts/codex-docs.js` | Codex | Shared document engine; installed launchers require absolute `--project-dir` |
@@ -448,6 +459,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.123.0 | Native hook capture, result binding/history and locks, Codex failure/Interrupt handling, prepared delta finalization and recovery context. |
 | 21.122.0 | Declared verification commands, captured host result distinction, command/edit evidence invalidation, one fingerprint per result, canonical project.md with preserving migration, and seven Codex document launchers. |
 | 21.121.0 | feat: D116 — `skills/verifying/scripts/check-pipeline-wiring.js` (discover candidate hops from hooks.json / `[CRABSHELL_*]` tokens / agent frontmatter; check a parent-approved `wiring-contract.json`; `--completeness` fails unclassified hops; `--hooks` fixture for mutation tests) + `_test-check-pipeline-wiring.js` (9 cases). `verifying` SKILL.md: Step 2a optional `arch-explorer:build` map (documentation only) + connection inventory + per-hop structural entries; `/verifying wiring`; Rules 11–12. |
 | 21.120.0 | feat: closing-verdict rule in `RULES` + checklist — last paragraph states each item done / in progress / not started + next action (CLI shows the end of long output first). |

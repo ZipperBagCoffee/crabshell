@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.122.0)
+# Crabshell User Manual (v21.123.0)
 
 ## Why Do You Need This?
 
@@ -67,9 +67,10 @@ Codex automatically loads existing memory/workflow context at SessionStart and u
 ### What Happens in Codex
 
 - SessionStart reads the same project memory and active D/P/T/W workflow context without modifying it.
-- UserPromptSubmit applies the same question/execution boundary and shared turn contract, including the trailing `[의도]`/`[이해]`/`[설명]` block, through Codex-native output.
+- UserPromptSubmit supplies the shared scoped task contract and concise core rules. Polite action requests authorize that work; quoted commands and inspection questions do not authorize edits.
 - PreCompact/PostCompact recover memory and workflow context; SubagentStart supplies the current task/non-goals/references/success contract.
 - PostToolUse records decisive parent command results. SubagentStop is only a child claim; Stop requires parent evidence and bounds identical retry failures.
+- Interrupt preserves a paused record and invalidates earlier test success. Historical work records never authorize resuming stopped work.
 - Use `crabshell:save-memory` for an explicit Codex session note. Codex does not invoke Claude's SessionEnd capture or pressure counters.
 
 ### What Gets Saved
@@ -80,6 +81,9 @@ Codex automatically loads existing memory/workflow context at SessionStart and u
 ├── logbook_*.md          # Rotated archives (L2)
 ├── *.summary.json       # L3 summaries (Haiku-generated)
 ├── memory-index.json    # Rotation tracking & delta state
+├── delta-jobs/          # Fixed delta inputs and attempt-specific summary files
+├── completion-control.json # Parent evidence and bounded recovery record
+├── verification-state.json # Required-check results and interruption state
 ├── counter.json         # PostToolUse counter
 ├── config.json          # Per-project configuration
 ├── project.md           # Legacy description if present; canonical file is ../project.md
@@ -254,6 +258,8 @@ The plugin uses Claude Code hooks to run automatically:
 | `PreToolUse` | `doc-watchdog.js gate` | Before Write/Edit | Soft warning (additionalContext) when 5+ code edits without D/P/T doc update (regressing only) |
 | `PostToolUse` | `doc-watchdog.js record` | After Write/Edit | Tracks code file edits (increment counter) and D/P/T doc edits (reset counter) in doc-watchdog.json |
 | `PostToolUse` | `completion-controller.js` | After Bash, Write, or Edit | Records declared parent check results after a child claim and invalidates evidence when project content changes |
+| `PostToolUseFailure` | `verification-sequence.js record` + `completion-controller.js` | After failed Claude Bash calls | Records failure/interruption and invalidates prior success; commit and Stop remain the blocking boundaries |
+| `PreToolUse` | `completion-controller.js` | Before Claude Bash calls | Records declared check invocation identity and order for parent evidence |
 | `PostToolUse` | `skill-tracker.js` | After Skill tool call | Sets skill-active flag on Skill tool calls for guard scripts |
 | `Stop`, `SubagentStop` | `completion-controller.js` | Child/parent completion boundary | One state owner: child claim is not proof; requires parent evidence, bounds identical failures, preserves workflow continuation, and runs the retained doc-watchdog Stop validator (sycophancy/scope/pressure guards unwired v21.113.0) |
 | `PreCompact` | `pre-compact.js` | Before context compaction | Outputs memory state, active documents, and regressing state as context to preserve across compaction |
@@ -261,7 +267,7 @@ The plugin uses Claude Code hooks to run automatically:
 | `SubagentStart` | `subagent-context.js` | When subagent spawns | Injects project concept, COMPRESSED_CHECKLIST, regressing state, and project root anchor into subagent context |
 | `SessionEnd` | `counter.js final` | Execution-authorized session ends | Creates final L1 backup and extracts remaining delta; question-only sessions remain read-only |
 
-Hook launchers invoke Node directly; `scripts/find-node.sh` is a fallback utility. Claude `PostToolUseFailure` is not wired in this release, so successful-event handling does not imply complete failure-event coverage.
+Hook launchers invoke Node directly; `scripts/find-node.sh` is a fallback utility. Since v21.123.0, Claude `PostToolUseFailure` for Bash runs `verification-sequence.js record` and `completion-controller.js`. It records failures; blocking remains at PreToolUse commit and Stop decisions. PreToolUse Bash also tells the controller which check started, so late results cannot replace a newer invocation.
 
 ### Codex Hook Surface
 
@@ -269,15 +275,16 @@ Hook launchers invoke Node directly; `scripts/find-node.sh` is a fallback utilit
 |------|--------|-------------|-------------|
 | `SessionStart` | `adapters/codex/session-start.js` | Session begins | Shared memory and workflow recovery, including preserving legacy-description copy when needed |
 | `UserPromptSubmit` | `adapters/codex/user-prompt-submit.js` | Every prompt | Shared compact turn contract without the Claude-only Codex delegation block; execution lifecycle writes to Codex plugin data/project state |
-| `PreToolUse` | `adapters/codex/pre-tool-use.js` | Matching local file/shell tools | Applies the shared `.crabshell/` path policy and returns native `hookSpecificOutput` deny JSON for wrong-project memory paths |
-| `PostToolUse` | `adapters/codex/post-tool-use.js` | After Bash, Write, or Edit | Normalizes cmd arguments, records declared parent checks with explicit result codes, and invalidates content-stale evidence |
+| `PreToolUse` | `adapters/codex/pre-tool-use.js` | Matching local file/shell tools | Applies shared memory path policy, records check starts and blocks commit without a current passing check |
+| `PostToolUse` | `adapters/codex/post-tool-use.js` | After Bash, Write, or Edit | Normalizes commands; binds output-only hooks to explicit native transcript exit codes; updates parent and commit evidence with shared content identity |
 | `PreCompact` | `adapters/codex/pre-compact.js` | Before compaction | Emits shared memory/workflow recovery context without writes |
 | `PostCompact` | `adapters/codex/post-compact.js` | After compaction | Restores shared context while keeping Claude-specific compaction effects in Claude only |
 | `SubagentStart` | `adapters/codex/subagent-start.js` | Child starts | Supplies exact current intent, task, non-goals, references, allowed changes, and observable success |
 | `SubagentStop` | `adapters/codex/stop.js` | Child stops | Records the child result as a claim, never as completion proof |
 | `Stop` | `adapters/codex/stop.js` | Parent attempts completion | Applies the shared parent-evidence and bounded-continuation decision using Codex-native block JSON |
+| `Interrupt` | `adapters/codex/stop.js` | User interrupts an active turn | Saves paused work and invalidates success; records only, without blocking the interruption |
 
-Codex reads `hooks/codex-hooks.json` through the explicit `.codex-plugin/plugin.json` `hooks` field. That prevents accidental discovery of Claude's `hooks/hooks.json`. The nine Codex events are synchronous and native; every launcher catches adapter-load and rejected-`main()` failures so infrastructure errors exit 0 without interrupting the triggering tool call. Shared semantics live in host-neutral cores, while Claude-specific pressure/sycophancy and SessionEnd capture stay in Claude. Retired fixed-count, role-collapse, and behavior-verifier hooks are absent from both manifests.
+Codex reads `hooks/codex-hooks.json` through the explicit `.codex-plugin/plugin.json` `hooks` field. That prevents accidental discovery of Claude's `hooks/hooks.json`. Its events are synchronous and native; every launcher catches adapter-load and rejected-`main()` failures so infrastructure errors exit 0 without interrupting the triggering tool call. Shared semantics live in host-neutral cores, while Claude-specific SessionEnd capture stays in Claude. Retired fixed-count, role-collapse, and behavior-verifier hooks are absent from both manifests.
 
 ### Internal Task Contract and Shared Response Ending
 
@@ -316,7 +323,7 @@ Guard scripts are PreToolUse/Stop hooks that prevent common mistakes:
 | `regressing-loop-guard.js` | Retained compatibility/test helper for the old count-independent continuation path; `completion-controller.js` is now the sole manifest Stop owner. Regressing continuation is goal-driven (v21.110.0): the regressing skill prints a `/goal` handoff line for host goal mode. |
 
 Guards run automatically via hooks. No configuration needed.
-For Codex, the shared path policy and shared completion control have native adapters. The remaining documentation and edit/commit guards are Claude-only.
+For Codex, shared path policy, completion control and the edit/commit verification state have native adapters. The document guards remain Claude-only.
 
 ---
 
@@ -429,9 +436,40 @@ The eight-field task contract, risk boundary for user questions, bounded worker 
 
 Parent evidence recognizes commands declared in `.crabshell/verification/manifest.json` (`tools` or non-manual `entries`) and the package's `scripts.test` command chain. Declare custom check names there instead of relying on a filename containing `test`. A single invocation must match; compound shell commands and printed command names are not accepted as check identity. Entry assertions also apply; forbidden-change assertions require the declared runner because a post-tool event cannot reconstruct their before-state.
 
-Claude's captured successful `PostToolUse` Bash object has no exit-code field. An explicit code overrides the event-based success inference; failure, interruption, and running indicators prevent it. Codex keeps an explicit-code requirement. Captured fixtures are under `scripts/fixtures/hook-payloads/`; actual Codex result-field capture remains pending.
+Claude's captured successful `PostToolUse` Bash object has no exit-code field. An explicit code overrides success inference; failure, interruption, and running indicators prevent it. Claude failures arrive as a top-level `error` plus `is_interrupt`. The captured Codex CLI PostToolUse contains only output text: `host-tool-result.js` obtains an explicit `exit_code` from the matching completed command in its transcript. Session, turn, command ID and cwd must agree; missing or conflicting evidence stays unconfirmed. Captures and provenance are under `scripts/fixtures/hook-payloads/native/`.
 
 Project content identity excludes `.git`, `.crabshell`, `node_modules`, `dist`, `build`, and symlinks, then includes the verification manifest and runner separately. It does not use `.gitignore`. The same result reuses its computed value, but later events and Stop check contents again; large-project latency remains an evaluation item.
+
+### Hook Input Capture and Recovery
+
+Available since v21.123.0. Set
+`CRABSHELL_HOOK_CAPTURE_DIR=.crabshell/hook-captures` when reproducing a host payload
+issue. Capture is off by default. It saves raw stdin and separate host/event/hash
+metadata only inside the project's `.crabshell`; failures leave the hook running.
+Captured input can contain command output or prompts. Keep it local and select only
+the needed fixture before sharing. `HOOK_DATA` and timed-out input are labeled
+separately from complete stdin. See [capture procedure](scripts/fixtures/hook-payloads/CAPTURE.md).
+
+The existing completion state includes a bounded recovery record: initial/latest
+request excerpts, last observed check and unfinished/paused status. SessionStart and
+compaction read it without creating fresh task permission. An explicit stop or a
+supported interrupt invalidates earlier success and prevents late results from
+resuming work. A new explicit action can resume, followed by a fresh check. Missing
+events after forced process termination cannot guarantee saving.
+
+### Prepared Delta Finalization
+
+Claude's `memory-delta` skill uses `append-memory.js --prepare-delta` before summary
+generation. Its returned input stays fixed while later extraction uses a separate
+queue. If the host permits the available summarizer, it runs in the foreground;
+one `--finalize-delta --job-id=... --summary-file=...` command then saves the summary,
+advances only the captured input cutoff and cleans its own temporary files. Failed
+or unavailable summarization leaves input pending. Do not manually delete the new
+queue or run legacy cleanup on an active prepared job. Codex gets a pending notice
+because the automatic summarizer skills are not bundled. Legacy explicit summary
+append remains available when no prepared job exists. Retry protection covers a
+completed append followed by a failed metadata write; arbitrary partial disk writes
+or storage loss are not promised to be atomic.
 
 ### Codex Plugin Configuration
 

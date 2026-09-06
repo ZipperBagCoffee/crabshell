@@ -122,7 +122,8 @@ async function main() {
       assert.ok(getCheck(first, 'hook-source').details.hooks.every(hook => path.basename(hook.sourcePath) === 'codex-hooks.json'));
       assert.deepStrictEqual(
         [...new Set(getCheck(first, 'hook-source').details.hooks.map(hook => hook.eventName))].sort(),
-        ['postCompact', 'postToolUse', 'preCompact', 'preToolUse', 'sessionStart', 'stop', 'subagentStart', 'subagentStop', 'userPromptSubmit']
+        Object.keys(JSON.parse(fs.readFileSync(path.join(sourceRoot, 'hooks/codex-hooks.json'), 'utf8')).hooks)
+          .map(event => event[0].toLowerCase() + event.slice(1)).sort()
       );
       assert.ok(!fs.existsSync(sentinelPath), 'Claude-only hook sentinel unexpectedly ran');
       assert.strictEqual(first.hosts.codexCli.states.installed, true);

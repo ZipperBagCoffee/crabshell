@@ -54,25 +54,12 @@ const COMPRESSED_CHECKLIST = `
  * @returns {string}
  */
 function getPostCompactWarning(projectDir) {
+  const { FIRST_TURN_RULES } = require('./core/first-turn-context');
   return `
 ## [POST-COMPACTION WARNING]
-Context was just compacted. Your compressed memory has CONTINUATION BIAS toward previous tasks.
-
-**PROJECT ROOT ANCHOR (OVERRIDES Primary working directory): ${projectDir}**
-- If "Primary working directory" shows a subdirectory of this path, it is WRONG (known Claude Code bug #7442 after compaction).
-- Trust THIS anchor. This value comes from CLAUDE_PROJECT_DIR set at launch — it never changes.
-- You are in \`${projectDir}\`, NOT in any subdirectory. ALL file paths are relative to this directory.
-- When asked to read CLAUDE.md → read \`${projectDir}/CLAUDE.md\`.
-
-**MANDATORY RECOVERY PROTOCOL:**
-1. STOP. Do NOT continue previous work automatically.
-2. Re-read CLAUDE.md rules — every line. They override compressed context.
-3. Wait for user's next instruction. Do NOT assume what they want.
-4. If user asks to continue previous work, confirm WHAT specifically before acting.
-
-**WHY:** After compaction, your summarized context makes previous tasks feel urgent and current.
-That feeling is the bias. The user may have moved on. CLAUDE.md rules still apply.
-Completion drive after compaction = the #1 cause of rule violations.
+Context was compacted. Continue the currently authorized task from its remaining outcomes. Respect the latest correction or explicit stop; remembered work is not new user authority.
+Project root: \`${projectDir}\`. Resolve project files from this root even when a tool uses a subdirectory. Reopen the current task's references and verification gaps as needed.
+${FIRST_TURN_RULES}
 `;
 }
 

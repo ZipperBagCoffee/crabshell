@@ -1,6 +1,19 @@
 {
   "description": "Crabshell Codex-native lifecycle, memory continuity, and deterministic path guard.",
   "hooks": {
+    "Interrupt": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"Promise.resolve().then(() => require(process.env.PLUGIN_ROOT + '/scripts/adapters/codex/stop.js').main({ host: 'codex' })).catch(() => {})\"",
+            "commandWindows": "node -e \"Promise.resolve().then(() => require(process.env.PLUGIN_ROOT + '/scripts/adapters/codex/stop.js').main({ host: 'codex' })).catch(() => {})\"",
+            "timeout": 3,
+            "statusMessage": "Preserving the interrupted work state"
+          }
+        ]
+      }
+    ],
     "PreCompact": [
       {
         "matcher": "manual|auto",

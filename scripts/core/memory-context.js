@@ -103,10 +103,12 @@ function buildMemoryContext(projectDir, options = {}) {
   const { sections, pendingSummaries } = collectMemorySections(projectDir, options);
   const workflowContext = buildWorkflowContext(projectDir, { purpose: 'session', now: options.now });
   const output = [];
+  const recovery = require('./recovery-context').buildRecoveryContext(projectDir);
+  if (recovery && options.includeCheckpoint !== false) output.push(recovery);
 
   if (sections.length > 0) {
     output.push(`=== Crabshell: ${projectName} ===`);
-    if (source === 'compact') output.push(getPostCompactWarning(projectDir).trim());
+    if (source === 'compact' && options.includeRecovery !== false) output.push(getPostCompactWarning(projectDir).trim());
     if (pendingSummaries.length > 0) {
       output.push(`## Pending Memory Summaries\n${pendingSummaries.map(file => `- ${file}`).join('\n')}`);
     }
@@ -116,7 +118,7 @@ function buildMemoryContext(projectDir, options = {}) {
     output.push('=== End of Memory ===');
   } else {
     output.push(`--- Crabshell: No memory for ${projectName} ---`);
-    if (source === 'compact') output.push(getPostCompactWarning(projectDir).trim());
+    if (source === 'compact' && options.includeRecovery !== false) output.push(getPostCompactWarning(projectDir).trim());
     if (workflowContext) output.push(workflowContext);
     output.push(MEMORY_NOTES.trim());
   }

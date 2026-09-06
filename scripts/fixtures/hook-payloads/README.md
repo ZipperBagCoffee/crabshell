@@ -9,7 +9,16 @@ with the first D117 bundle-1 implementation on 2026-09-05.
 | File | Event | What it shows |
 |---|---|---|
 | `claude-posttooluse-bash-success.json` | Claude Code `PostToolUse`, tool `Bash` | The structured Output object: `stdout`, `stderr`, `interrupted`, `isImage`, `noOutputExpected`. **No exit-code field.** |
-| `claude-posttoolusefailure-bash.json` | Claude Code failing `Bash` call | The result is a **string** `"Error: Exit code N\n<output>"` with `is_error: true` on the tool_result block. `PostToolUse` never receives it; it belongs to `PostToolUseFailure`. |
+| `claude-posttoolusefailure-bash.json` | Claude Code failing `Bash` transcript result | A **string** `"Error: Exit code N\n<output>"` with `is_error: true` on the tool_result block. This is transcript evidence, not the raw failure hook envelope. |
+
+The `native/` directory contains complete raw stdin captures from Claude Code
+2.1.261 and Codex CLI 0.153.3, driven by a deterministic local API endpoint on
+2026-09-05. `provenance.json` and the Interrupt sidecar record source paths and hashes.
+Claude failure stdin has top-level `error` and `is_interrupt`; Codex PostToolUse has
+output text with no exit field. Its `codex-completed-*` companions were captured from
+the matching transcript record while the hook ran, where the explicit exit code was
+already available. This establishes real CLI execution and delivery, not model
+reasoning quality. See [raw capture procedure](CAPTURE.md).
 
 ## Host facts (with sources)
 
@@ -29,10 +38,12 @@ with the first D117 bundle-1 implementation on 2026-09-05.
   every real success "undetermined".
 - Failure observations for Claude need a `PostToolUseFailure` hook; `PostToolUse` alone cannot
   see them (not wired as of v21.121.0).
-- Codex payload shapes are a separate contract; see `../codex/` and do not assume they match.
+- Codex payload shapes are a separate contract; prefer the raw `native/codex-*`
+  captures over the older adapter examples under `../codex/`.
 
 ## Adding a fixture
 
 Capture, do not type: take the `toolUseResult` (or the hook's stdin JSON if you log it) from a
-real session, keep `tool_input`/`tool_response` verbatim, and record host, date and source in
-the `_captured` block. Never "clean up" a shape to make a test pass.
+real session, keep raw stdin byte-for-byte, and record host, date and source in a
+separate metadata file. Older fixtures retain their original `_captured` blocks.
+Never "clean up" a shape to make a test pass.

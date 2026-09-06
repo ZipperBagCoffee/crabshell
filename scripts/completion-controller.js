@@ -5,7 +5,8 @@ const { spawnSync } = require('child_process');
 const { readStdin } = require('./transcript-utils');
 const { getProjectDir } = require('./utils');
 const { findProjectRoot, normalizeToolName } = require('./adapters/codex/hook-contract');
-const { decideStop, noteSubagentStop, recordParentObservation } = require('./core/completion-control');
+const { decideStop, noteSubagentStop, recordParentObservation, prepareParentCheck, interruptWork } = require('./core/completion-control');
+const { commandObservation, projectFingerprint } = require('./core/command-observation');
 
 if (process.env.CRABSHELL_BACKGROUND === '1') process.exit(0);
 
@@ -41,13 +42,26 @@ function legacyClaudeStopReasons(payload) {
 function handlePayload(payload, options = {}) {
   const eventName = payload?.hook_event_name;
   const projectDir = options.projectDir || (options.host === 'codex' ? findProjectRoot(payload?.cwd) : getProjectDir());
-  if (eventName === 'PostToolUse') {
+  if (eventName === 'Interrupt' || payload.is_interrupt === true || payload.tool_response?.interrupted === true) {
+    return { eventName, result: interruptWork(projectDir, payload) };
+  }
+  if (['PreToolUse', 'PostToolUse', 'PostToolUseFailure'].includes(eventName)) {
     const normalized = options.host === 'codex' ? {
       ...payload,
       tool_name: normalizeToolName(payload.tool_name),
       tool_input: { ...payload.tool_input, command: payload.tool_input?.command || payload.tool_input?.cmd },
     } : payload;
-    return { eventName, result: recordParentObservation(projectDir, normalized, { host: options.host || 'claude' }) };
+    if (options.host === 'codex' && eventName !== 'PreToolUse') {
+      let fingerprint;
+      const evidence = { host: 'codex', observation: commandObservation(normalized, projectDir, { host: 'codex' }),
+        getFingerprint: () => fingerprint ?? (fingerprint = projectFingerprint(projectDir)) };
+      if (evidence.observation || ['Write', 'Edit', 'apply_patch'].includes(normalized.tool_name)) {
+        require('./verification-sequence').recordVerification(normalized, projectDir, evidence);
+      }
+      return { eventName, result: recordParentObservation(projectDir, normalized, evidence) };
+    }
+    return { eventName, result: eventName === 'PreToolUse' ? prepareParentCheck(projectDir, normalized)
+      : recordParentObservation(projectDir, normalized, { host: options.host || 'claude' }) };
   }
   if (eventName === 'SubagentStop') {
     return { eventName, result: noteSubagentStop(projectDir, payload) };
@@ -61,7 +75,7 @@ function handlePayload(payload, options = {}) {
 }
 
 async function main(options = {}) {
-  const payload = await readStdin(2000);
+  const payload = await readStdin(2000, { host: options.host || 'claude' });
   if (!payload || Object.keys(payload).length === 0) return;
   const handled = handlePayload(payload, options);
   if (handled.eventName !== 'Stop' || handled.result.action !== 'block') {

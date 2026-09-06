@@ -5,7 +5,7 @@ const { main: runSharedUserPromptHook } = require('../../inject-rules');
 const { normalizeUserPromptSubmit } = require('./hook-contract');
 
 async function main() {
-  const normalized = normalizeUserPromptSubmit(await readStdin(2000));
+  const normalized = normalizeUserPromptSubmit(await readStdin(2000, { host: 'codex' }));
   if (!normalized) return;
   await runSharedUserPromptHook({
     hookData: normalized.hookData,

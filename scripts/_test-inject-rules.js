@@ -1156,8 +1156,10 @@ test('CONSTANTS: PRESSURE injection constants retired (v21.113.0, I083 R4)', fun
 
 // DELTA_INSTRUCTION constant test removed (AC-4: constant deleted from inject-rules.js)
 
-test('CONSTANTS: ROTATION_INSTRUCTION contains BLOCKING', function() {
-  assert(mod.ROTATION_INSTRUCTION.includes('BLOCKING'));
+test('CONSTANTS: pending rotation preserves work and requires available capability', function() {
+  assert(mod.ROTATION_INSTRUCTION.includes('host delegation permissions'));
+  assert(mod.ROTATION_INSTRUCTION.includes('preserve the archives'));
+  assert(!mod.ROTATION_INSTRUCTION.includes('BLOCKING'));
 });
 
 // ============================================================

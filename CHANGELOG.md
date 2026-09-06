@@ -1,5 +1,18 @@
 # Changelog
 
+## [21.123.0] - 2026-09-05
+
+### feat: native failure evidence, recoverable memory finalization, and interrupted-work recovery
+
+- Capture raw hook input only when `CRABSHELL_HOOK_CAPTURE_DIR` is enabled, with separate provenance metadata and project-local storage boundaries. Added actual Claude and Codex CLI input fixtures, including native Codex Interrupt.
+- Wire Claude `PostToolUseFailure` and record declared-check starts. Codex output-only results use the matching completed transcript command's explicit exit code, bound to its session, turn, invocation and working directory. Per-check history and serialized state writes reject duplicate, superseded and interrupted results while preserving unresolved independent failures.
+- Apply shared check state to the Codex commit gate. Ordinary non-check shell observations avoid whole-project scans; content identity still catches same-size/same-mtime edits, new untracked inputs and verification configuration changes.
+- Remove contradictory blanket tool prohibitions and unavailable Codex memory-skill calls. Keep scoped request guidance and core rules across prompts and compaction; correct Korean inspection-question classification.
+- Prepare fixed delta input before summarization and finalize append, timestamp advancement, flags and owned-file cleanup with one command. New queued input survives finalization; completed append retries do not duplicate the saved entry. Legacy append remains available outside an active prepared job.
+- Preserve bounded request/check/unfinished-state recovery in existing completion state. Native Codex Interrupt and explicit stop requests invalidate passing evidence; old results cannot resume interrupted work. Recovery context records past observations without granting execution permission.
+- Add capture, result ordering, memory transaction, guidance and recovery regressions. Preserve full command output from native Windows/Linux matrix runs for diagnosing future intermittent failures.
+- Verification scope: real CLI execution and hook delivery were driven with fixed local API responses; model reasoning quality and Codex desktop-app behavior were not evaluated. Arbitrary partial disk writes, forced termination without a hook, and the previously unexplained intermittent fixture failure remain outside the guarantees.
+
 ## [21.122.0] - 2026-09-05
 
 ### feat: reliable verification evidence, shared project descriptions, and portable Codex document skills

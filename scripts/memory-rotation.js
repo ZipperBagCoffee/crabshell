@@ -1,11 +1,12 @@
 const fs = require('fs');
+const { withMemoryIndex } = require('./core/memory-lock');
 const path = require('path');
 const { estimateTokensFromFile, extractTailByTokens, updateIndex, acquireLock, releaseLock, getProjectDir, getStorageRoot } = require('./utils');
 const { ROTATION_THRESHOLD_TOKENS, CARRYOVER_TOKENS, getTimestamp, MEMORY_DIR, ARCHIVE_PREFIX } = require('./constants');
 
 const SAFETY_MARGIN = 0.95;
 
-function checkAndRotate(memoryPath, config) {
+function checkAndRotateUnlocked(memoryPath, config) {
   if (!fs.existsSync(memoryPath)) return null;
   
   const tokens = estimateTokensFromFile(memoryPath);
@@ -51,4 +52,9 @@ function checkAndRotate(memoryPath, config) {
   }
 }
 
+function checkAndRotate(memoryPath, config) {
+  if (!fs.existsSync(memoryPath)) return null;
+  try { return withMemoryIndex(getProjectDir(), () => checkAndRotateUnlocked(memoryPath, config)); }
+  catch (error) { console.error('[CRABSHELL] Rotation deferred: '+error.message); return null; }
+}
 module.exports = { checkAndRotate };

@@ -4,7 +4,7 @@
  * Tests for classifyUserIntent() in inject-rules.js
  */
 
-const { classifyUserIntent, DEFAULT_NO_EXECUTION, EXECUTION_JUDGMENT } = require('./inject-rules');
+const { classifyUserIntent } = require('./inject-rules');
 
 let passed = 0;
 let failed = 0;
@@ -43,7 +43,7 @@ test('"start the server" → execution', classifyUserIntent('start the server'),
 test('"apply the patch" → execution', classifyUserIntent('apply the patch'), 'execution');
 
 // Question patterns (read-only turns since D111; the old 3-way test predated the question class)
-test('"설명해줘" → default', classifyUserIntent('설명해줘'), 'default');
+test('"설명해줘" → question', classifyUserIntent('설명해줘'), 'question');
 test('"뭐야?" → question', classifyUserIntent('뭐야?'), 'question');
 test('"what is this" → question', classifyUserIntent('what is this'), 'question');
 test('"explain the code" → question', classifyUserIntent('explain the code'), 'question');
@@ -55,11 +55,13 @@ test('"" → default', classifyUserIntent(''), 'default');
 test('null → default', classifyUserIntent(null), 'default');
 test('undefined → default', classifyUserIntent(undefined), 'default');
 
-console.log('--- Constants present ---');
-test('DEFAULT_NO_EXECUTION defined', typeof DEFAULT_NO_EXECUTION, 'string');
-test('DEFAULT_NO_EXECUTION non-empty', DEFAULT_NO_EXECUTION.length > 0, true);
-test('EXECUTION_JUDGMENT defined', typeof EXECUTION_JUDGMENT, 'string');
-test('EXECUTION_JUDGMENT non-empty', EXECUTION_JUDGMENT.length > 0, true);
+console.log('--- Requests and references ---');
+test('polite English action', classifyUserIntent('Can you fix this bug?'), 'execution');
+test('quoted question is reference data', classifyUserIntent('Fix this bug. The previous error was "why?".'), 'execution');
+test('quoted action inside a question', classifyUserIntent('What does "apply this change" mean?'), 'question');
+test('research and record request', classifyUserIntent('조사해서 문서로 남겨줘'), 'execution');
+test('read discussion request', classifyUserIntent('d118 확인해봐'), 'question');
+test('explicit read-only constraint', classifyUserIntent('Do not change the code; explain it.'), 'question');
 
 console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed`);
 if (failed > 0) {

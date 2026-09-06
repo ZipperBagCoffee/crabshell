@@ -5,7 +5,7 @@ const { buildCompactionContext, createCompactionOutput } = require('../../core/c
 const { normalizeCompaction } = require('./hook-contract');
 
 async function main() {
-  const normalized = normalizeCompaction(await readStdin(2000), 'PreCompact');
+  const normalized = normalizeCompaction(await readStdin(2000, { host: 'codex' }), 'PreCompact');
   if (!normalized) return;
   const context = buildCompactionContext(normalized.projectDir);
   process.stdout.write(JSON.stringify(createCompactionOutput('PreCompact', context)) + '\n');

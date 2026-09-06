@@ -135,10 +135,10 @@ try {
     assert.ok(manifest.interface.defaultPrompt.length <= 3);
   });
 
-  test('Codex hooks contain the nine synchronous native lifecycle events', () => {
+  test('Codex hooks contain the supported synchronous native lifecycle events', () => {
     const config = JSON.parse(fs.readFileSync(path.join(repoRoot, 'hooks', 'codex-hooks.json'), 'utf8'));
     assert.strictEqual(validateCodexHookConfig(config), true);
-    assert.deepStrictEqual(Object.keys(config.hooks).sort(), ['PostCompact', 'PostToolUse', 'PreCompact', 'PreToolUse', 'SessionStart', 'Stop', 'SubagentStart', 'SubagentStop', 'UserPromptSubmit']);
+    assert.deepStrictEqual(Object.keys(config.hooks).sort(), ['Interrupt', 'PostCompact', 'PostToolUse', 'PreCompact', 'PreToolUse', 'SessionStart', 'Stop', 'SubagentStart', 'SubagentStop', 'UserPromptSubmit']);
     const handlers = Object.values(config.hooks).flatMap(groups => groups.flatMap(group => group.hooks));
     assert.ok(handlers.length > 0);
     assert.ok(handlers.every(handler => handler.type === 'command' && handler.async !== true));

@@ -253,10 +253,10 @@ test('Gate: EDITED state + git commit → exit 2 (block)', () => {
   assert(r.exitCode === 2, `expected exit 2 (block), got ${r.exitCode}`);
 });
 
-test('Gate: TESTED state + git commit → exit 0 (allow)', () => {
+test('Gate: TESTED label without a content identity cannot authorize commit', () => {
   resetState({ sessionId: null, lastUpdated: null, state: 'TESTED', editsSinceTest: [], lastTestTs: '2026-03-29T00:00:00.000Z' });
   const r = runScript('gate', { tool_name: 'Bash', tool_input: { command: 'git commit -m "test"' } });
-  assert(r.exitCode === 0, `expected exit 0 (allow), got ${r.exitCode}`);
+  assert(r.exitCode === 2, `expected missing evidence to block, got ${r.exitCode}`);
 });
 
 test('Gate: CLEAN state + git commit → exit 0 (allow)', () => {

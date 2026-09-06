@@ -87,7 +87,7 @@ function denyOutput(reason) {
 function validateCodexHookConfig(config) {
   if (!config || !config.hooks || typeof config.hooks !== 'object') throw new Error('Codex hook config must contain hooks.');
   const events = Object.keys(config.hooks).sort();
-  const requiredEvents = ['PostCompact', 'PostToolUse', 'PreCompact', 'PreToolUse', 'SessionStart', 'Stop', 'SubagentStart', 'SubagentStop', 'UserPromptSubmit'];
+  const requiredEvents = ['Interrupt', 'PostCompact', 'PostToolUse', 'PreCompact', 'PreToolUse', 'SessionStart', 'Stop', 'SubagentStart', 'SubagentStop', 'UserPromptSubmit'];
   if (events.length !== requiredEvents.length || events.some((event, index) => event !== requiredEvents[index])) {
     throw new Error(`Codex hooks must contain exactly ${requiredEvents.join(' and ')}; found ${events.join(', ') || '<none>'}.`);
   }
@@ -130,7 +130,7 @@ function validateCodexHookConfig(config) {
       || !postToolHandlers.every(handler => /adapters[\/]codex[\/]post-tool-use\.js/.test(String(handler.command)))) {
     throw new Error('PostToolUse must use the shared Codex parent-evidence adapter for commands and edits.');
   }
-  for (const eventName of ['Stop', 'SubagentStop']) {
+  for (const eventName of ['Interrupt', 'Stop', 'SubagentStop']) {
     const handlers = config.hooks[eventName].flatMap(group => group.hooks);
     if (handlers.length !== 1 || !handlers.every(handler => /adapters[\/]codex[\/]stop\.js/.test(String(handler.command)))) {
       throw new Error(`${eventName} must have one shared Codex completion adapter.`);

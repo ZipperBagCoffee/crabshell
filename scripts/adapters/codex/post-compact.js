@@ -6,7 +6,7 @@ const { normalizeCompaction } = require('./hook-contract');
 const { runPostCompactEffects } = require('./post-compact-effects');
 
 async function main() {
-  const normalized = normalizeCompaction(await readStdin(2000), 'PostCompact');
+  const normalized = normalizeCompaction(await readStdin(2000, { host: 'codex' }), 'PostCompact');
   if (!normalized) return;
   const result = runPostCompactEffects(normalized.projectDir);
   for (const diagnostic of result.diagnostics) {

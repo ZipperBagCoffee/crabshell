@@ -5,6 +5,7 @@ const path = require('path');
 const { getStorageRoot, readJsonOrDefault } = require('../utils');
 const { REGRESSING_STATE_FILE } = require('../constants');
 const { buildMemoryContext } = require('./memory-context');
+const { getPostCompactWarning } = require('../shared-context');
 
 const MAX_CONTEXT_CHARS = 9000;
 const TERMINAL_DOC_STATUSES = new Set(['done', 'concluded', 'verified', 'abandoned']);
@@ -23,11 +24,16 @@ function getActiveDocs(projectDir) {
     let content;
     try { content = fs.readFileSync(indexPath, 'utf8'); } catch { continue; }
     for (const line of content.split(/\r?\n/)) {
-      const match = line.match(/^\|\s*([^\|]+?)\s*\|\s*([^\|]+?)\s*\|\s*([^\|]+?)\s*\|/);
-      if (!match) continue;
-      const id = match[1].trim();
-      const title = match[2].trim();
-      const status = match[3].trim().toLowerCase();
+      if (!line.startsWith('|')) continue;
+      const rawCells = line.split(/(?<!\\)\|/).slice(1, -1), cells = [];
+      for (let i = 0; i < rawCells.length; i++) {
+        let cell = rawCells[i];
+        while (cell.includes('[[') && !cell.includes(']]') && i + 1 < rawCells.length) cell += '|' + rawCells[++i];
+        cells.push(cell.replace(/\\\|/g, '|').trim());
+      }
+      if (cells.length < 3) continue;
+      const [id, title] = cells;
+      const status = cells[2].toLowerCase();
       if (id === 'ID' || id.startsWith('-') || TERMINAL_DOC_STATUSES.has(status)) continue;
       active.push({ type: label, id, title, status });
     }
@@ -55,8 +61,10 @@ function getRegressingSnapshot(projectDir, now = Date.now()) {
 }
 
 function boundContext(context, maxChars = MAX_CONTEXT_CHARS) {
+  if (maxChars <= 0) return '';
   if (context.length <= maxChars) return context;
   const marker = '\n\n[... compaction context bounded ...]\n\n';
+  if (maxChars <= marker.length) return context.slice(0, maxChars);
   const half = Math.floor((maxChars - marker.length) / 2);
   return context.slice(0, half) + marker + context.slice(-half);
 }
@@ -64,11 +72,11 @@ function boundContext(context, maxChars = MAX_CONTEXT_CHARS) {
 function buildCompactionContext(projectDir, options = {}) {
   const regressing = getRegressingSnapshot(projectDir, options.now || Date.now());
   const activeDocs = getActiveDocs(projectDir);
-  const parts = [
-    '## Crabshell Compaction Recovery Context',
-    `Project root: ${projectDir}`,
-    'Do not resume prior work solely because it appears in compacted context. Follow the next user instruction.',
-  ];
+  const pinned = '## Crabshell Compaction Recovery Context\n\n' + getPostCompactWarning(projectDir).trim() + '\n\n'
+    + require('./recovery-context').buildRecoveryContext(projectDir);
+  const maxChars = options.maxChars || MAX_CONTEXT_CHARS;
+  if (pinned.length > maxChars) throw new Error('Compaction context limit is smaller than the pinned working rules.');
+  const parts = [];
 
   if (regressing) {
     parts.push('### Active Regressing State');
@@ -90,8 +98,8 @@ function buildCompactionContext(projectDir, options = {}) {
     parts.push('### Active Documents\nNone observed.');
   }
 
-  parts.push(buildMemoryContext(projectDir, { source: 'compact', tailLines: 30 }).trim());
-  return boundContext(parts.join('\n\n') + '\n', options.maxChars);
+  parts.push(buildMemoryContext(projectDir, { source: 'compact', tailLines: 30, includeRecovery: false, includeCheckpoint: false }).trim());
+  return pinned + boundContext(parts.join('\n\n') + '\n', maxChars - pinned.length);
 }
 
 function createCompactionOutput(eventName, context) {

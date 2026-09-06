@@ -22,7 +22,7 @@ const {
 const { classifyUserIntent } = require('./core/turn-intent');
 const { runExecutionLifecycle } = require('./core/execution-lifecycle');
 const { buildWorkflowContext } = require('./core/workflow-context');
-const { noteExecutionAuthorization } = require('./core/completion-control');
+const { noteExecutionAuthorization, interruptWork } = require('./core/completion-control');
 
 // Emergency stop keywords - when detected, replaces entire context with EMERGENCY STOP
 const EMERGENCY_KEYWORDS = ['아시발멈춰', 'BRAINMELT'];
@@ -179,30 +179,20 @@ This context REPLACES all normal rules. Your ONLY job right now is steps 1-5.
 `;
 
 const DELTA_INSTRUCTION = `
-## [CRABSHELL_DELTA] - Background Memory Processing
+## [CRABSHELL_DELTA] - Pending Memory
 
-**TRIGGER DETECTED: [CRABSHELL_DELTA] file=delta_temp.txt**
-
-Memory delta is ready for background summarization:
-
-1. Invoke Skill tool NOW: skill="memory-delta" (this launches a background agent)
-2. After launching, respond to user normally — do NOT wait for completion
-3. When the background agent completes, a task-notification will arrive — follow Phase B in the skill
-
-This is a NON-BLOCKING background task. Respond to the user WITHOUT waiting.
-If you see this trigger, the delta file EXISTS and should be processed in background.
+The memory-delta skill can prepare an immutable input, summarize it in the foreground,
+then finalize it with one command. Use it when compatible with the current task and
+host delegation permissions. If the skill or summarizer is unavailable, preserve the
+pending input and continue the user's work; do not claim the memory was saved.
 `;
 
 const ROTATION_INSTRUCTION = `
-## BLOCKING PREREQUISITE - ROTATION REQUIRED
+## [CRABSHELL_ROTATE] - Pending Archive Summaries
 
-After delta processing (if any), before responding to user:
-
-1. Use the Skill tool: skill="memory-rotate"
-2. Complete all steps in the skill
-3. THEN respond to user
-
-This is a SYSTEM MAINTENANCE TASK. You CANNOT skip this.
+The memory-rotate skill reads pending entries from memory-index.json. Use it when
+compatible with the current task and host delegation permissions. If unavailable,
+preserve the archives and continue the user's work; this does not block a response.
 `;
 
 const COMPRESSED_CHECKLIST = COMPRESSED_CHECKLIST_SHARED;
@@ -213,12 +203,6 @@ const DELEGATION_REMINDER = `\n## Delegation Check\nThe parent retains the task 
 // Codex delegation guidance — Claude host only (/codex:rescue is a Claude Code plugin surface;
 // on the Codex host the guidance would be circular).
 const CODEX_DELEGATION = `\n## Codex Delegation\n- /codex:rescue: stuck, second opinion, or large handoff. status·result·cancel for background jobs.\n- Model: use the latest (e.g. --model gpt-6-astra).\n- Launch from the project root — cwd keys the job registry, resume, and sandbox scope.\n- Codex inherits no CLAUDE.md/hooks — put constraints (no commit/push/installs, file scope) in the prompt.\n- "Task started" ≠ done — status --wait, then result; re-verify the diff yourself.\n- Hook-facing code (tool_response, event routing): hand over a captured payload from scripts/fixtures/hook-payloads/ — a synthetic shape passes the worker's test and fails on the host.\n- Windows: sandbox git fails ("dubious ownership") until \`git config --global --add safe.directory <repo>\`. Linux: bwrap error = AppArmor userns blocks sandbox.\n`;
-
-// IA-2: Default no-execution prompt
-const DEFAULT_NO_EXECUTION = `\n## Execution Default\nDefault: respond with explanation only. Do not call tools unless explicitly instructed to execute.\n`;
-
-// IA-3: Execution judgment prompt
-const EXECUTION_JUDGMENT = `\n## Execution Pattern Detected\nExecution pattern detected in user message. Before acting: verify this is truly an execution instruction, not a question containing action words (e.g., '설명해라' = explain, not execute). If uncertain, explain your intended action first.\n`;
 
 function shouldInjectDelegationReminder(userPrompt, isRegressingActive) {
   if (isRegressingActive) return true;
@@ -493,6 +477,7 @@ async function main(options = {}) {
     const userPrompt = (hookData && (hookData.prompt || hookData.input)) || '';
     const intent = classifyUserIntent(userPrompt);
     const isBailout = detectBailout(hookData);
+    if (require('./core/turn-intent').isStopRequest(userPrompt)) interruptWork(projectDir, hookData);
 
     // Emergency stop check — replaces entire context
     if (checkEmergencyStop(hookData)) {
@@ -586,7 +571,10 @@ async function main(options = {}) {
       // Check for pending delta - requires BOTH file existence AND deltaReady flag
       // deltaReady is set by counter.js when counter >= interval (or at session end)
       // This prevents stale delta files from triggering on every prompt
-      const hasPendingDelta = checkDeltaPending(projectDir) && index.deltaReady === true && !index.deltaProcessing;
+      const preparedPending = require('./core/delta-transaction').preparedInputExists(
+        path.join(getStorageRoot(projectDir), 'memory'), index.deltaJob);
+      const hasPendingDelta = preparedPending || (checkDeltaPending(projectDir) && index.deltaReady === true && !index.deltaProcessing);
+      const claudeHost = (options.host || 'claude') === 'claude';
 
       // Check for pending rotation summaries
       const pendingRotations = checkRotationPending(projectDir);
@@ -599,12 +587,15 @@ async function main(options = {}) {
         context += CODEX_DELEGATION;
       }
 
-      if (hasPendingDelta) {
+      if (hasPendingDelta && claudeHost) {
         context += DELTA_INSTRUCTION;
       }
-      if (pendingRotations.length > 0) {
+      if (pendingRotations.length > 0 && claudeHost) {
         context += ROTATION_INSTRUCTION;
         context += `\nFiles: ${pendingRotations.map(f => f.file).join(', ')}`;
+      }
+      if (!claudeHost && (hasPendingDelta || pendingRotations.length > 0)) {
+        context += '\nMemory input or archive summaries are pending. This Codex plugin does not provide the automatic summarizer skills. Preserve pending files and continue the current task; do not report them as summarized.\n';
       }
 
       // Check for active regressing session
@@ -633,24 +624,15 @@ async function main(options = {}) {
       // Pressure levels are tracked for telemetry only — no model-visible
       // injection (I083 R4, retired v21.113.0).
 
-      // Input classification and execution default (D085 IA-1 to IA-5)
-      if (!workflowReminder) {
-        context += DEFAULT_NO_EXECUTION;
-        const intent = classifyUserIntent(userPrompt);
-        if (intent === 'execution') {
-          context += EXECUTION_JUDGMENT;
-        }
-      }
-
       // Output rules via additionalContext (hidden from user, seen by Claude)
       const output = createContextOutput('UserPromptSubmit', context);
       console.log(JSON.stringify(output));
 
       // Explicit trigger patterns to stderr (visible to Claude)
-      if (hasPendingDelta) {
-        console.error(`[CRABSHELL_DELTA] file=delta_temp.txt`);
+      if (hasPendingDelta && claudeHost) {
+        console.error('[CRABSHELL_DELTA] pending=true');
       }
-      if (pendingRotations.length > 0) {
+      if (pendingRotations.length > 0 && claudeHost) {
         console.error(`[CRABSHELL_ROTATE] pending=${pendingRotations.length}`);
       }
       if (workflowReminder) {
@@ -710,6 +692,4 @@ module.exports = {
   COMPRESSED_CHECKLIST,
   DELEGATION_REMINDER,
   CODEX_DELEGATION,
-  DEFAULT_NO_EXECUTION,
-  EXECUTION_JUDGMENT,
 };

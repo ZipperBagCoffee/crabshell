@@ -97,7 +97,7 @@ function buildWorkflowContext(projectDir, options = {}) {
   if (!regressing && !worklogs) return '';
   const purpose = options.purpose || 'session';
   const authority = purpose === 'execution'
-    ? 'The current user prompt authorizes execution. Continue from the persisted phase, documents, and unmet outcomes below. Do not restart completed workflow setup.'
+    ? 'The current user prompt authorizes execution only within its requested scope. Use the persisted phase, documents, and unmet outcomes below when that request continues this work; they do not authorize unrelated changes. Do not restart completed workflow setup.'
     : 'This is persisted context, not user authority to resume. Follow the latest user request. If the user asks to continue, start from the unmet outcomes below instead of restarting.';
   const context = ['## Active Crabshell Workflow', authority, regressing, worklogs].filter(Boolean).join('\n\n');
   const maxChars = options.maxChars || MAX_WORKFLOW_CONTEXT_CHARS;

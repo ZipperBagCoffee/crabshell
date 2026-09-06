@@ -58,7 +58,7 @@ node scripts/codex-docs.js investigation "research topic"
 node scripts/codex-docs.js worklog "task title"
 ```
 
-Codex activates nine synchronous native lifecycle events: SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, PreCompact, PostCompact, SubagentStart, SubagentStop, and Stop. They share host-neutral memory/workflow/verification cores with Claude while emitting each host's native hook response. Every Codex launcher catches adapter-load and rejected-`main()` failures so hook infrastructure errors fail open instead of interrupting the user's tool call. Claude's automatic SessionEnd capture remains Claude-specific; the retired verifier, pressure/sycophancy/scope guards, and fixed agent-count hooks are absent from both runtimes.
+Codex activates synchronous native lifecycle events: SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, PreCompact, PostCompact, SubagentStart, SubagentStop, Stop, and Interrupt. They share host-neutral memory/workflow/verification cores with Claude while emitting each host's native hook response. Every Codex launcher catches adapter-load and rejected-`main()` failures so hook infrastructure errors fail open instead of interrupting the user's tool call. Claude's automatic SessionEnd capture remains Claude-specific; the retired verifier, pressure/sycophancy/scope guards, and fixed agent-count hooks are absent from both runtimes.
 
 On every prompt, both native `UserPromptSubmit` paths inject one shared compact turn contract and Rules Quick-Check. The per-response `[의도]`/`[이해]`/`[설명]` ending was retired in v21.113.0 (I083 R8, user-approved).
 
@@ -72,7 +72,9 @@ On every prompt, both native `UserPromptSubmit` paths inject one shared compact 
 
 Project verification uses a portable schema-v2 manifest. Commands are repo-relative, and behavioral entries pass only when command exits, structured observations, and forbidden-path snapshots match; printing `PASS` is never sufficient by itself.
 
-Parent completion evidence recognizes checks declared in the project manifest or package test configuration. Claude's successful `PostToolUse` output may omit an exit code; Codex evidence requires an explicit code. Both completion adapters observe commands and edits, compare current project content with the checked content, and reuse one fingerprint within a result event. Claude failure-event wiring and live Codex result-field capture remain follow-up work.
+Parent completion evidence recognizes checks declared in the project manifest or package test configuration. Claude success can omit an exit code; `PostToolUseFailure` records its separate error envelope. Codex obtains an explicit code from a matching completed command in the native transcript when its hook only contains output text. Failures, interruptions, duplicate and late results cannot reuse an earlier passing check. Ordinary shell reads avoid a whole-project content scan; decisive checks, edits and commit/Stop decisions retain content-based validation.
+
+**New in v21.123.0:** opt-in raw hook capture, failure/result ordering, scoped request guidance, prepared memory finalization, and a small recovery record. The record preserves request excerpts, observed checks and unfinished/paused status; it does not grant new execution permission. Claude delta processing prepares a fixed input, summarizes it in the foreground when the host permits, and uses one finalize command. New input stays queued. Codex preserves pending automatic summaries because those summarizer skills are not bundled. See [runtime and memory details](USER-MANUAL.md#hook-input-capture-and-recovery).
 
 ## What Gets Saved
 
@@ -241,6 +243,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.123.0 | Native failure/Interrupt capture and result binding; ordered check state and Codex commit gate; scoped request guidance; prepared delta finalization and bounded recovery; fewer ordinary-command source scans. |
 | 21.122.0 | Declared-check evidence with host-specific captured result handling; command/edit content invalidation with one scan per result; shared project.md path and preserving migration; seven portable Codex document launchers. |
 | 21.121.0 | feat: D116 — pipeline wiring probe. `skills/verifying/scripts/check-pipeline-wiring.js` (`discover` / `check --contract … --hop … --completeness`) validates a parent-approved connection contract against the source — hooks.json event/matcher/script/args + `node --check`, `[CRABSHELL_*]` trigger producers/consumers, agent frontmatter — and fails on any unclassified hop; a mutation test runs against a fixture copy via `--hooks`. `verifying` SKILL.md Step 2a adds an optional `arch-explorer:build` map (documentation only, `generated`/`unavailable`/`generation-failed`), `/verifying wiring`, Rules 11–12. 9-case test; this repo's manifest V017–V043, runner 42/42. code-wiki deferred. |
 | 21.120.0 | feat: closing-verdict rule — a CLI reader lands on the end of long output first, so the last paragraph must state each work item as done / in progress / not started plus the user's next action; this closing verdict is the one permitted restatement. Injected via RULES and the per-turn checklist, with keyword locks. |

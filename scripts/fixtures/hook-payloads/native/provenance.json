@@ -1,0 +1,61 @@
+{
+  "driver": "Real CLI tool execution driven by deterministic local API responses; no real model inference.",
+  "sources": [
+    {
+      "file": "codex-PostToolUse-success.json",
+      "host": "codex",
+      "version": "0.153.3",
+      "source": ".crabshell/verification/D118/native-tools-pRXgeK/project/.crabshell/captures/codex-PostToolUse-Bash-1788592450573-88dde3cf-9560-4b34-b518-934668c2f0cb.input.json",
+      "sha256": "57a0dc75bf277a7f92b57f9d0474239a39ae9c650faca2fd7a58a20a380113d6"
+    },
+    {
+      "file": "codex-PostToolUse-failure.json",
+      "host": "codex",
+      "version": "0.153.3",
+      "source": ".crabshell/verification/D118/native-tools-pRXgeK/project/.crabshell/captures/codex-PostToolUse-Bash-1788592451848-d9f46393-9f37-4881-9a93-0c20ac6e78e6.input.json",
+      "sha256": "db47da3aef5a65e2feb3d6ce52d5ee9bd1e6cc477ab84c982f82b07f1f4576eb"
+    },
+    {
+      "file": "codex-PreToolUse-success.json",
+      "host": "codex",
+      "version": "0.153.3",
+      "source": ".crabshell/verification/D118/native-tools-pRXgeK/project/.crabshell/captures/codex-PreToolUse-Bash-1788592449547-e3a0e1fd-a6db-4e51-b6b2-f0917c390995.input.json",
+      "sha256": "9db6989df5e5897a4a097fe7ae2231b3ececa399210c9cc0af51b34e1d03177f"
+    },
+    {
+      "file": "codex-PreToolUse-failure.json",
+      "host": "codex",
+      "version": "0.153.3",
+      "source": ".crabshell/verification/D118/native-tools-pRXgeK/project/.crabshell/captures/codex-PreToolUse-Bash-1788592450877-9f2b0ac2-02fe-4200-b23d-683c0447d49a.input.json",
+      "sha256": "d205f61b8985ff283b1a2c4cc3f9de8f1ac701759d8f34fd1f2c8c0df7f353c9"
+    },
+    {
+      "file": "claude-PostToolUse-success.json",
+      "host": "claude",
+      "version": "2.1.261",
+      "source": ".crabshell/verification/D118/native-tools-Bu1TDL/project/.crabshell/captures/claude-PostToolUse-Bash-1788591865049-4eded7cd-c93a-4be2-9c81-93af74334547.input.json",
+      "sha256": "0c490071c0d9f8214a5d071cfbc402d75febbffb24bf30cf1b758bfeacbe1c9d"
+    },
+    {
+      "file": "claude-PostToolUseFailure-failure.json",
+      "host": "claude",
+      "version": "2.1.261",
+      "source": ".crabshell/verification/D118/native-tools-Bu1TDL/project/.crabshell/captures/claude-PostToolUseFailure-Bash-1788591865519-0349a27e-a262-40f5-a8c7-f16b5d47767b.input.json",
+      "sha256": "af10540ce0628b6a66248625698a6f30ac121e76208bb4fab3faac38504de34b"
+    },
+    {
+      "file": "claude-PreToolUse-success.json",
+      "host": "claude",
+      "version": "2.1.261",
+      "source": ".crabshell/verification/D118/native-tools-Bu1TDL/project/.crabshell/captures/claude-PreToolUse-Bash-1788591862598-fa3abbcc-9897-4c23-8aee-db9646468112.input.json",
+      "sha256": "728e5df62b5b3a4fc036682900248bdb0a27a6d1b783a0bfdd76aada2da3d543"
+    },
+    {
+      "file": "claude-PreToolUse-failure.json",
+      "host": "claude",
+      "version": "2.1.261",
+      "source": ".crabshell/verification/D118/native-tools-Bu1TDL/project/.crabshell/captures/claude-PreToolUse-Bash-1788591865190-b6332953-da8a-41f4-b5d4-d88cd9e2290b.input.json",
+      "sha256": "e9b82fabb28855fc40440ad44ef3be2c1f31d6be0a6cfc7b525d03a0363f648b"
+    }
+  ]
+}

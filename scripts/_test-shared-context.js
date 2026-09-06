@@ -58,9 +58,11 @@ test('getPostCompactWarning contains POST-COMPACTION WARNING header', function()
   assert(warning.includes('POST-COMPACTION WARNING'), 'should contain header');
 });
 
-test('getPostCompactWarning contains MANDATORY RECOVERY PROTOCOL', function() {
+test('getPostCompactWarning preserves scoped continuation and working rules', function() {
   const warning = getPostCompactWarning('/test/dir');
-  assert(warning.includes('MANDATORY RECOVERY PROTOCOL'), 'should contain recovery protocol');
+  assert(warning.includes('currently authorized task'), 'should preserve authorized continuation');
+  assert(warning.includes('Rules Quick-Check'), 'should preserve core rules');
+  assert(!warning.includes("Wait for user's next instruction"), 'compaction alone is not a new approval gate');
 });
 
 // ============================================================

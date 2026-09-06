@@ -59,6 +59,8 @@ module.exports = {
 
   // Delta extraction settings
   DELTA_TEMP_FILE: 'delta_temp.txt',
+  DELTA_JOBS_DIR: 'delta-jobs',
+  DELTA_SUMMARY_FILE: 'delta_summary_temp.txt',
   HAIKU_CONTEXT_LIMIT: 200000,  // 200K tokens
   HAIKU_SAFE_MARGIN: 0.95,      // 5% margin
   HAIKU_SAFE_TOKENS: Math.floor(200000 * 0.95),  // 190K tokens

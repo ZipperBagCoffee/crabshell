@@ -1,10 +1,13 @@
 'use strict';
 
 const path = require('path');
+const fs = require('fs');
 const { spawnSync } = require('child_process');
 const { runCodex } = require('./core/codex-app-server');
 
 const repoRoot = path.resolve(__dirname, '..');
+let evidenceDir = null;
+let evidenceSequence = 0;
 
 function execute(command, args, options = {}) {
   const result = spawnSync(command, args, {
@@ -14,13 +17,17 @@ function execute(command, args, options = {}) {
     timeout: options.timeout || 300000,
     windowsHide: true,
   });
-  return {
+  const observation = {
     exitCode: result.status,
     signal: result.signal,
     stdout: String(result.stdout || ''),
     stderr: String(result.stderr || ''),
     error: result.error?.message || null,
   };
+  if (evidenceDir) {
+    fs.writeFileSync(path.join(evidenceDir, `command-${++evidenceSequence}.json`), JSON.stringify({ command, args, ...observation }, null, 2));
+  }
+  return observation;
 }
 
 function observe(name, result, required) {
@@ -61,6 +68,10 @@ function currentClaudeVersion() {
 
 function runMatrix() {
   if (process.platform !== 'win32') throw new Error('Run the cross-platform matrix from Windows with WSL available.');
+  const evidenceRoot = path.join(repoRoot, '.crabshell', 'verification', 'native-hosts');
+  fs.mkdirSync(evidenceRoot, { recursive: true });
+  evidenceDir = fs.mkdtempSync(path.join(evidenceRoot, 'run-'));
+  evidenceSequence = 0;
   const results = [];
 
   results.push(observe(
@@ -89,6 +100,7 @@ function runMatrix() {
 
   return {
     passed: results.every(result => result.passed),
+    evidenceDir,
     hosts: results,
     codexApp: 'not-directly-exercised',
   };
@@ -101,6 +113,7 @@ if (require.main === module) {
     else {
       for (const host of report.hosts) process.stdout.write(`${host.passed ? 'OK' : 'FAIL'} ${host.name}\n`);
       process.stdout.write(`Codex app: ${report.codexApp}\n`);
+      process.stdout.write(`Evidence: ${report.evidenceDir}\n`);
     }
     process.exitCode = report.passed ? 0 : 1;
   } catch (error) {

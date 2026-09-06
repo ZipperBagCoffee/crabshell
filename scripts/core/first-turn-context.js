@@ -5,7 +5,7 @@ const { COMPRESSED_CHECKLIST, readProjectConcept } = require('../shared-context'
 const FIRST_TURN_RULES = `
 ## Crabshell Turn Contract
 
-- Follow the latest user request and correction; a question authorizes an answer and read-only inspection, not edits or resuming older work.
+- Follow the latest user request and correction; a question authorizes an answer and read-only inspection, not unrequested edits. Requests to act, including polite questions, authorize that scoped work. Status questions do not discard an already authorized task; explicit stops and corrections take precedence.
 - Open named references before changing code; preserve every requested item, quantity, host, and named reference.
 - The parent owns scope, the final diff, and the completion decision — a worker's done/PASS claim is not completion evidence.
 ${COMPRESSED_CHECKLIST}`;

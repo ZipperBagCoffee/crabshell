@@ -1,10 +1,13 @@
 // scripts/extract-delta.js
+'use strict';
 const fs = require('fs');
 const path = require('path');
 const { getProjectDir, getStorageRoot, readJsonOrDefault, readIndexSafe, writeJson, estimateTokens, extractTailByTokens } = require('./utils');
 const { SESSIONS_DIR, MEMORY_DIR, MEMORY_FILE, INDEX_FILE, DELTA_TEMP_FILE, HAIKU_SAFE_TOKENS, FIRST_RUN_MAX_ENTRIES, DELTA_OUTPUT_TRUNCATE } = require('./constants');
+const { withMemoryIndex, readMemoryIndex } = require('./core/memory-lock');
+const { preparedInputExists } = require('./core/delta-transaction');
 
-function extractDelta(sessionId) {
+function extractDeltaUnlocked(sessionId) {
   try {
     const projectDir = getProjectDir();
     const memoryDir = path.join(getStorageRoot(projectDir), MEMORY_DIR);
@@ -13,7 +16,8 @@ function extractDelta(sessionId) {
 
     // Get last update timestamp
     const index = readIndexSafe(indexPath);  // Use safe reader to preserve all fields
-    const lastUpdateTs = index.lastMemoryUpdateTs || null;
+    const queued = fs.existsSync(path.join(memoryDir, DELTA_TEMP_FILE)) || preparedInputExists(memoryDir, index.deltaJob);
+    const lastUpdateTs = (queued && index.pendingLastProcessedTs) || index.lastMemoryUpdateTs || null;
 
     // Get L1 file — prefer session-specific file if sessionId provided
     if (!fs.existsSync(sessionsDir)) {
@@ -138,7 +142,7 @@ function extractDelta(sessionId) {
 // Update timestamp after logbook.md is updated
 // Uses L1 entry timestamp (pendingLastProcessedTs) instead of wall clock time
 // This prevents gaps where entries created between processing and marking get skipped
-function markMemoryUpdated() {
+function markMemoryUpdatedUnlocked() {
   try {
     const projectDir = getProjectDir();
     const memoryDir = path.join(getStorageRoot(projectDir), MEMORY_DIR);
@@ -165,7 +169,7 @@ function markMemoryUpdated() {
 }
 
 // Delete temp file (only if logbook.md was physically updated since delta creation)
-function cleanupDeltaTemp() {
+function cleanupDeltaTempUnlocked() {
   try {
     const projectDir = getProjectDir();
     const memoryDir = path.join(getStorageRoot(projectDir), MEMORY_DIR);
@@ -205,7 +209,7 @@ function cleanupDeltaTemp() {
 }
 
 // Set deltaProcessing flag in memory-index.json (prevents re-trigger while background agent runs)
-function markDeltaProcessing() {
+function markDeltaProcessingUnlocked() {
   try {
     const projectDir = getProjectDir();
     const memoryDir = path.join(getStorageRoot(projectDir), MEMORY_DIR);
@@ -224,7 +228,7 @@ function markDeltaProcessing() {
 }
 
 // Set memoryAppendedInThisRun flag in memory-index.json
-function markMemoryAppended() {
+function markMemoryAppendedUnlocked() {
   try {
     const projectDir = getProjectDir();
     const memoryDir = path.join(getStorageRoot(projectDir), MEMORY_DIR);
@@ -241,6 +245,25 @@ function markMemoryAppended() {
     return false;
   }
 }
+
+function extractDelta(sessionId) {
+  try { return withMemoryIndex(getProjectDir(), () => extractDeltaUnlocked(sessionId)); }
+  catch (error) { return { success: false, reason: error.message }; }
+}
+
+function legacyMarker(action) {
+  try {
+    return withMemoryIndex(getProjectDir(), directory => {
+      const job = readMemoryIndex(directory).deltaJob;
+      if (job && job.status !== 'complete') throw Error('Prepared delta job exists; use append-memory.js --finalize-delta.');
+      return action();
+    });
+  } catch (error) { console.error('[CRABSHELL] '+error.message); return false; }
+}
+const markDeltaProcessing = () => legacyMarker(markDeltaProcessingUnlocked);
+const markMemoryAppended = () => legacyMarker(markMemoryAppendedUnlocked);
+const markMemoryUpdated = () => legacyMarker(markMemoryUpdatedUnlocked);
+const cleanupDeltaTemp = () => legacyMarker(cleanupDeltaTempUnlocked);
 
 // CLI interface
 if (require.main === module) {
@@ -259,16 +282,16 @@ if (require.main === module) {
       console.log(JSON.stringify(result));
       break;
     case 'mark-processing':
-      markDeltaProcessing();
+      process.exitCode = markDeltaProcessing() ? 0 : 1;
       break;
     case 'mark-appended':
-      markMemoryAppended();
+      process.exitCode = markMemoryAppended() ? 0 : 1;
       break;
     case 'mark-updated':
-      markMemoryUpdated();
+      process.exitCode = markMemoryUpdated() ? 0 : 1;
       break;
     case 'cleanup':
-      cleanupDeltaTemp();
+      process.exitCode = cleanupDeltaTemp() ? 0 : 1;
       break;
     default:
       console.log('Usage: extract-delta.js <extract|mark-processing|mark-appended|mark-updated|cleanup>');

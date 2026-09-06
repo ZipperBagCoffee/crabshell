@@ -1,6 +1,7 @@
 'use strict';
 
 const path = require('path');
+const fs = require('fs');
 
 // Skip processing during background memory summarization
 // F1 mitigation: keep inline env check for fail-open invariant — D106 IA-10 RA2
@@ -9,7 +10,9 @@ if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 const { readStdin, normalizePath } = require('./transcript-utils');
 const { getProjectDir, readJsonOrDefault, writeJson } = require('./utils');
 const { STORAGE_ROOT } = require('./constants');
-const { isGitCommit, commandObservation, projectFingerprint } = require('./core/command-observation');
+const { isGitCommit, commandObservation, projectFingerprint, checkKeyForCommand } = require('./core/command-observation');
+const { startCheck, recordCheck, currentCheck } = require('./core/check-history');
+const { withStateLock } = require('./core/state-lock');
 
 // --- Constants ---
 const STATE_FILE = 'verification-state.json';
@@ -98,71 +101,144 @@ function handleSessionIsolation(state, sessionId) {
 
 // --- Mode: record (PostToolUse) ---
 
-async function handleRecord(hookData, projectDir) {
+function handleRecord(hookData, projectDir, options = {}) {
   const toolName = hookData.tool_name;
   const input = hookData.tool_input || {};
 
   let state = loadState(projectDir);
+  if (state.suspendedSessionId && state.suspendedSessionId === hookData.session_id) return 0;
+  const eventTurn = hookData.turn_id || hookData.prompt_id;
+  if (eventTurn && state.interruptedTurns?.includes(JSON.stringify([hookData.session_id, eventTurn]))) return 0;
   state = handleSessionIsolation(state, hookData.session_id);
 
-  if ((toolName === 'Edit' || toolName === 'Write') && input.file_path) {
-    if (isSourceFile(input.file_path)) {
-      if (state.state === 'TESTED' && state.lastTestFingerprint === projectFingerprint(projectDir)) {
-        process.exit(0);
-        return;
+  const editedPaths = ['Edit', 'Write'].includes(toolName) && input.file_path ? [input.file_path]
+    : toolName === 'apply_patch' && typeof input.command === 'string'
+      ? [...input.command.matchAll(/^\*\*\* (?:Add File|Update File|Delete File|Move to): (.+)$/gm)].map(match => match[1].trim()) : [];
+  if (editedPaths.length > 0) {
+    const relevant = editedPaths.filter(file => {
+      const relative = path.isAbsolute(file) ? path.relative(projectDir, file) : file;
+      return !relative.startsWith('..' + path.sep) && isSourceFile(relative);
+    });
+    if (relevant.length > 0) {
+      if (state.state === 'TESTED' && state.lastTestFingerprint === (options.getFingerprint ? options.getFingerprint() : projectFingerprint(projectDir))) {
+        return 0;
       }
       state.state = 'EDITED';
-      const normalized = normalizePath(input.file_path);
-      if (!state.editsSinceTest.includes(normalized)) {
-        state.editsSinceTest.push(normalized);
+      for (const file of relevant) {
+        const normalized = normalizePath(file);
+        if (!state.editsSinceTest.includes(normalized)) state.editsSinceTest.push(normalized);
+        process.stderr.write(`[VERIFICATION_SEQ] Recorded source edit: ${normalized}\n`);
       }
-      process.stderr.write(`[VERIFICATION_SEQ] Recorded source edit: ${normalized}\n`);
     }
   } else if (toolName === 'Bash' && input.command) {
-    const observation = commandObservation(hookData, projectDir);
+    const observation = Object.hasOwn(options, 'observation') ? options.observation : commandObservation(hookData, projectDir, options);
     if (observation) {
-      if (!observation.passed) {
-        process.stderr.write(`[VERIFICATION_SEQ] Verification failed or is undetermined; state unchanged\n`);
+      const candidate = { ...observation, sourceFingerprint: observation.passed ? (options.getFingerprint ? options.getFingerprint() : projectFingerprint(projectDir)) : null };
+      const merged = recordCheck(state, hookData, candidate);
+      if (!merged.accepted) {
+        saveState(projectDir, state);
+        return 0;
+      }
+      const current = currentCheck(state);
+      if (!current?.passed) {
+        state.state = 'EDITED';
+        state.lastTestFingerprint = null;
+        process.stderr.write(`[VERIFICATION_SEQ] Latest required check failed, is running, or is undetermined; commit gate stays armed\n`);
       } else {
         state.state = 'TESTED';
         state.editsSinceTest = [];
         state.lastTestTs = new Date().toISOString();
-        state.lastTestFingerprint = projectFingerprint(projectDir);
+        state.lastTestFingerprint = current.sourceFingerprint;
         process.stderr.write(`[VERIFICATION_SEQ] Recorded passing test execution, state → TESTED\n`);
       }
     }
   }
 
   saveState(projectDir, state);
-  process.exit(0);
+  return 0;
 }
 
 // --- Mode: gate (PreToolUse) ---
 
-async function handleGate(hookData, projectDir) {
+function handleGate(hookData, projectDir) {
   const toolName = hookData.tool_name;
   const input = hookData.tool_input || {};
 
   let state = loadState(projectDir);
   state = handleSessionIsolation(state, hookData.session_id);
 
+  if (toolName === 'Bash' && input.command) {
+    const key = checkKeyForCommand(input.command, projectDir, input.workdir || hookData.cwd || projectDir);
+    if (!state.suspendedSessionId && startCheck(state, hookData, key)) {
+      state.state = 'EDITED';
+      saveState(projectDir, state);
+    }
+  }
+
   // Gate: git commit without test
   if (toolName === 'Bash' && input.command && isGitCommit(input.command)) {
+    if (state.state === 'TESTED' && (!state.lastTestFingerprint || state.lastTestFingerprint !== projectFingerprint(projectDir))) {
+      state.state = 'EDITED';
+      saveState(projectDir, state);
+    }
     if (state.state === 'EDITED') {
       const files = state.editsSinceTest.join(', ');
       const output = {
         decision: 'block',
-        reason: `Git commit blocked: source files were edited but no tests were run. Edited files: [${files}]. Run the test suite to verify changes before committing.`
+        reason: `Git commit blocked: current source has no passing required check. Edited files: [${files}]. Run the declared check and inspect its result before committing.`
       };
-      process.stderr.write(`[VERIFICATION_SEQ] Blocked: git commit in EDITED state (no test run)\n`);
-      console.log(JSON.stringify(output));
-      process.exit(2);
-      return;
+      return { exitCode: 2, reason: output.reason };
     }
   }
 
   // All other cases: allow
-  process.exit(0);
+  return { exitCode: 0 };
+}
+
+function recordVerification(hookData, projectDir, options = {}) {
+  if (hookData.is_interrupt === true || hookData.tool_response?.interrupted === true) {
+    interruptVerification(projectDir, hookData);
+    return 0;
+  }
+  return withStateLock(getStatePath(projectDir), () => handleRecord(hookData, projectDir, options));
+}
+
+function interruptVerification(projectDir, payload) {
+  if (!fs.existsSync(getStatePath(projectDir))) return;
+  return withStateLock(getStatePath(projectDir), () => {
+    const state = loadState(projectDir);
+    if (state.sessionId && payload.session_id && state.sessionId !== payload.session_id) return;
+    state.state = 'EDITED';state.lastTestFingerprint = null;
+    state.suspendedSessionId = payload.session_id;
+    const eventTurn = payload.turn_id || payload.prompt_id;
+    if (eventTurn) state.interruptedTurns = [...new Set([...(state.interruptedTurns || []), JSON.stringify([payload.session_id,eventTurn])])].slice(-16);
+    if (state.checkHistory) {
+      state.checkHistory.pending = {};
+      state.checkHistory.results = {};
+      state.checkHistory.trackedStarts = true;
+    }
+    saveState(projectDir, state);
+  });
+}
+
+function resumeVerification(projectDir, payload) {
+  if (!fs.existsSync(getStatePath(projectDir))) return;
+  return withStateLock(getStatePath(projectDir), () => {
+    const state = loadState(projectDir);
+    if (!state.suspendedSessionId) return;
+    if (state.suspendedSessionId !== payload.session_id) return;
+    delete state.suspendedSessionId;
+    saveState(projectDir, state);
+  });
+}
+
+function gateVerification(hookData, projectDir) {
+  const command = hookData.tool_input?.command;
+  if (hookData.tool_name !== 'Bash' || (!isGitCommit(command)
+      && !checkKeyForCommand(command, projectDir, hookData.tool_input?.workdir || hookData.cwd || projectDir))) {
+    return { exitCode: 0 };
+  }
+  return withStateLock(getStatePath(projectDir), () => handleGate(hookData, projectDir));
 }
 
 // --- Main ---
@@ -183,14 +259,18 @@ async function main() {
 
   const projectDir = getProjectDir();
 
-  if (mode === 'record') {
-    await handleRecord(hookData, projectDir);
-  } else {
-    await handleGate(hookData, projectDir);
+  if (mode === 'record') process.exit(recordVerification(hookData, projectDir));
+  const result = gateVerification(hookData, projectDir);
+  if (result.reason) {
+    process.stderr.write(`[VERIFICATION_SEQ] ${result.reason}\n`);
+    console.log(JSON.stringify({ decision: 'block', reason: result.reason }));
   }
+  process.exit(result.exitCode);
 }
 
-main().catch(e => {
+if (require.main === module) main().catch(e => {
   process.stderr.write(`[VERIFICATION_SEQ ERROR] ${e.message}\n`);
   process.exit(0); // fail-open
 });
+
+module.exports = { recordVerification, gateVerification, interruptVerification, resumeVerification };

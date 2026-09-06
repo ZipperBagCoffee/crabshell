@@ -11,8 +11,8 @@
     {
       "name": "crabshell",
       "source": "./",
-      "description": "Session memory (delta extraction, Haiku summarization, token-based rotation), compact rules injection with 9 deterministic guard hooks, and structured workflows (D/P/T/I/H documents, 20 skills).",
-      "version": "21.122.0",
+      "description": "Shared project memory, native Claude Code and Codex hooks, verification, and structured document workflows.",
+      "version": "21.123.0",
       "author": {
         "name": "TaWa"
       },
