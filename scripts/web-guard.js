@@ -10,11 +10,13 @@ const path = require('path');
 const os = require('os');
 const { getStorageRoot, getProjectDir } = require('./utils');
 
-// Server-name fragments that indicate a usable search alternative to built-in WebSearch.
+// Web search providers, matched as whole words of a server name ("brave-search",
+// "mcp-exa"). A bare "search" is not enough: "codebase-search" searches local code.
 const SEARCH_MCP_HINTS = [
-  'tavily', 'brave', 'exa', 'serper', 'perplex', 'jina', 'firecrawl',
-  'kagi', 'searxng', 'duckduckgo', 'ddg', 'websearch', 'web-search', 'search'
+  'tavily', 'brave', 'exa', 'serper', 'perplexity', 'jina', 'firecrawl',
+  'kagi', 'searxng', 'duckduckgo', 'ddg', 'websearch', 'web-search'
 ];
+const SEARCH_MCP_PATTERN = new RegExp('(?:^|[^a-z0-9])(?:' + SEARCH_MCP_HINTS.join('|') + ')(?:[^a-z0-9]|$)');
 
 // Modes: 'block' (default) | 'warn' | 'off'
 function getMode(projectDir) {
@@ -29,15 +31,24 @@ function getMode(projectDir) {
   return 'block';
 }
 
-function collectMcpServerNames(userConfigPath, projectMcpJsonPath) {
+// Claude Code keys ~/.claude.json projects by absolute path; compare slash- and
+// (on Windows) case-insensitively.
+function sameProjectPath(a, b) {
+  const clean = value => String(value || '').replace(/\\/g, '/').replace(/\/+$/, '');
+  return process.platform === 'win32' ? clean(a).toLowerCase() === clean(b).toLowerCase() : clean(a) === clean(b);
+}
+
+// Servers this project can use: user-wide, this project's entry in the user config,
+// and the project .mcp.json. Other projects' servers are not available here.
+function collectMcpServerNames(userConfigPath, projectMcpJsonPath, projectDir) {
   const names = [];
   try {
     const raw = fs.readFileSync(userConfigPath, 'utf8');
     const parsed = JSON.parse(raw);
     if (parsed && parsed.mcpServers) names.push(...Object.keys(parsed.mcpServers));
     if (parsed && parsed.projects) {
-      for (const proj of Object.values(parsed.projects)) {
-        if (proj && proj.mcpServers) names.push(...Object.keys(proj.mcpServers));
+      for (const [key, proj] of Object.entries(parsed.projects)) {
+        if (proj && proj.mcpServers && sameProjectPath(key, projectDir)) names.push(...Object.keys(proj.mcpServers));
       }
     }
   } catch { /* unreadable user config -> ignore */ }
@@ -55,10 +66,9 @@ function findSearchMcp(projectDir, overrides) {
     path.join(os.homedir(), '.claude.json');
   const projectMcpJsonPath = (overrides && overrides.projectMcpJsonPath) ||
     path.join(projectDir, '.mcp.json');
-  const names = collectMcpServerNames(userConfigPath, projectMcpJsonPath);
+  const names = collectMcpServerNames(userConfigPath, projectMcpJsonPath, projectDir);
   for (const name of names) {
-    const lower = String(name).toLowerCase();
-    if (SEARCH_MCP_HINTS.some(hint => lower.includes(hint))) return name;
+    if (SEARCH_MCP_PATTERN.test(String(name).toLowerCase())) return name;
   }
   return null;
 }

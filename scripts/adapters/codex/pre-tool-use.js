@@ -11,20 +11,22 @@ async function main() {
   const normalized = normalizePreToolUse(payload);
   if (!normalized) return;
   const result = evaluatePathPolicy(normalized.hookData, normalized.projectDir);
-  if (!result) {
-    if (normalized.hookData.tool_name === 'Bash') {
-      const commandPayload = { ...payload, tool_name: 'Bash',
-        tool_input: { ...payload.tool_input, command: payload.tool_input?.command || payload.tool_input?.cmd } };
-      const gate = gateVerification(commandPayload, normalized.projectDir);
-      if (gate.reason) { console.log(JSON.stringify(denyOutput(gate.reason))); return; }
-      prepareParentCheck(normalized.projectDir, commandPayload);
-      // Codex adds PreToolUse hookSpecificOutput.additionalContext to the model's context.
-      if (gate.notice) console.log(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', additionalContext: `[CRABSHELL] ${gate.notice}` } }));
-    }
+  if (result) process.stderr.write(result.diagnostic + '\n');
+  if (result && result.reason) {
+    console.log(JSON.stringify(denyOutput(result.reason)));
     return;
   }
-  process.stderr.write(result.diagnostic + '\n');
-  console.log(JSON.stringify(denyOutput(result.reason)));
+  const notices = result && result.advisory ? [result.advisory] : [];
+  if (normalized.hookData.tool_name === 'Bash') {
+    const commandPayload = { ...payload, tool_name: 'Bash',
+      tool_input: { ...payload.tool_input, command: payload.tool_input?.command || payload.tool_input?.cmd } };
+    const gate = gateVerification(commandPayload, normalized.projectDir);
+    if (gate.reason) { console.log(JSON.stringify(denyOutput(gate.reason))); return; }
+    prepareParentCheck(normalized.projectDir, commandPayload);
+    if (gate.notice) notices.push(`[CRABSHELL] ${gate.notice}`);
+  }
+  // Codex adds PreToolUse hookSpecificOutput.additionalContext to the model's context.
+  if (notices.length) console.log(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', additionalContext: notices.join('\n') } }));
 }
 
 if (require.main === module) {

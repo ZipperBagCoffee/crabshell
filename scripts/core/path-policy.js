@@ -4,8 +4,11 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { normalizePath } = require('../transcript-utils');
+const { analyzeBashCommand } = require('./shell-writes');
 
-const MEMORY_PATH_PATTERN = /\.crabshell[/\\]/;
+const WINDOWS = process.platform === 'win32';
+// Windows folders ignore case, so ".CRABSHELL" is the same folder there.
+const MEMORY_PATH_PATTERN = WINDOWS ? /\.crabshell(?:[/\\]|$)/i : /\.crabshell(?:[/\\]|$)/;
 const MEMORY_PATH_SEGMENT = '.crabshell/';
 
 function resolveDotsInPath(normalizedPath) {
@@ -51,8 +54,26 @@ function hasUnresolvedVariables(value) {
   return /\$[A-Za-z_]|\$\{|\$\(|`/.test(value);
 }
 
+// Windows paths are case-insensitive ("c:/users" and "C:/Users" are one folder).
+function startsWithPath(value, prefix) {
+  return WINDOWS ? value.toLowerCase().startsWith(prefix.toLowerCase()) : value.startsWith(prefix);
+}
+
+// Forward slashes, single separators ("C:\\\\x" in code is one folder), a trailing
+// slash after a bare ".crabshell", and Git Bash forms (/c/Users, /tmp) on Windows.
+function canonicalPath(value) {
+  let result = normalizePath(value).replace(/(?!^)\/{2,}/g, '/');
+  if (/\.crabshell$/i.test(result)) result += '/';
+  if (WINDOWS) {
+    const drive = /^\/([A-Za-z])(\/|$)/.exec(result);
+    if (drive) result = drive[1].toUpperCase() + ':/' + result.slice(drive[0].length);
+    else if (/^\/tmp(\/|$)/.test(result)) result = normalizePath(os.tmpdir()).replace(/\/+$/, '') + result.slice(4);
+  }
+  return result;
+}
+
 function checkPath(filePath, projectDir) {
-  const normalized = normalizePath(filePath);
+  const normalized = canonicalPath(filePath);
   const normalizedProject = normalizePath(projectDir);
 
   if (!MEMORY_PATH_PATTERN.test(normalized)) {
@@ -63,20 +84,28 @@ function checkPath(filePath, projectDir) {
   if (hasShellVariable(normalized)) {
     const resolved = resolveShellVariables(normalized, normalizedProject);
     if (hasUnresolvedVariables(resolved)) {
-      return { targets: true, valid: false };
+      // valid:false keeps the old answer for direct callers; evaluatePathPolicy
+      // treats an unresolved path as undecidable and does not block on it.
+      return { targets: true, valid: false, unresolved: true };
     }
     pathToValidate = resolved;
   }
 
-  const resolvedPath = resolveDotsInPath(pathToValidate);
+  const resolvedPath = resolveDotsInPath(canonicalPath(pathToValidate));
   const resolvedProject = resolveDotsInPath(normalizedProject);
   const expectedPrefix = resolvedProject.replace(/\/+$/, '') + '/' + MEMORY_PATH_SEGMENT;
-  if (resolvedPath.startsWith(expectedPrefix)) {
+  if (startsWithPath(resolvedPath, expectedPrefix)) {
     return { targets: true, valid: true };
   }
+  // Scratch copies and test fixtures live under the OS temp folder.
+  const tempRoot = resolveDotsInPath(normalizePath(os.tmpdir())).replace(/\/+$/, '') + '/';
+  if (startsWithPath(resolvedPath, tempRoot)) {
+    return { targets: true, valid: true, temporary: true };
+  }
 
-  if (resolvedPath === '.crabshell/' || resolvedPath.startsWith('.crabshell/') ||
-      resolvedPath === './.crabshell/' || resolvedPath.startsWith('./.crabshell/')) {
+  // A relative path that stays below the working folder is this project's (the
+  // hook sees one command; a folder change in an earlier command is invisible).
+  if (!/^(?:[A-Za-z]:\/|\/|~)/.test(resolvedPath) && !/^\.\.(\/|$)/.test(resolvedPath)) {
     return { targets: true, valid: true };
   }
 
@@ -108,38 +137,50 @@ function deny(reason, diagnostic) {
   return { reason, diagnostic };
 }
 
+function advise(targetPath, projectDir, diagnostic) {
+  return {
+    advisory: `[CRABSHELL] "${targetPath}" is another project's Crabshell folder, not this project's (${normalizePath(projectDir)}/.crabshell/). Reading it is allowed; do not treat it as this project's memory or documents.`,
+    diagnostic,
+  };
+}
+
 function evaluatePathPolicy(hookData, projectDir) {
   if (!hookData || !hookData.tool_name || !hookData.tool_input) return null;
   const toolName = hookData.tool_name;
   const input = hookData.tool_input;
   const normalizedProject = normalizePath(projectDir);
 
+  // Reading another project's .crabshell is harmless; the model is only told.
   if (toolName === 'Read' || toolName === 'Grep' || toolName === 'Glob') {
     const filePath = input.file_path || input.path || '';
     if (!filePath) return null;
     const result = checkPath(filePath, projectDir);
-    if (!result.targets || result.valid) return null;
+    if (!result.targets || result.valid || result.unresolved) return null;
     const normalizedFile = normalizePath(filePath);
-    return deny(
-      `Wrong .crabshell/ path detected. You are accessing "${normalizedFile}" but the project root is "${normalizedProject}". Use "${normalizedProject}/.crabshell/" instead.`,
-      `[PATH_GUARD] Blocked ${toolName}: ${normalizedFile}`
-    );
+    if (isPluginGlobalConfig(normalizedFile)) return null;
+    return advise(normalizedFile, projectDir, `[PATH_GUARD] ${toolName} of another project's .crabshell: ${normalizedFile}`);
   }
 
+  // Bash: block only when another project's .crabshell path is a write target.
   if (toolName === 'Bash') {
     const command = input.command || '';
     if (!command) return null;
-    for (const memoryPath of extractMemoryPathsFromCommand(command)) {
-      const result = checkPath(memoryPath, projectDir);
-      if (result.targets && !result.valid) {
-        const normalizedMemoryPath = normalizePath(memoryPath);
+    let advisory = null;
+    for (const candidate of analyzeBashCommand(command)) {
+      const result = checkPath(candidate.path, projectDir);
+      if (!result.targets || result.valid || result.unresolved) continue;
+      const normalizedMemoryPath = normalizePath(candidate.path);
+      if (candidate.write) {
         return deny(
-          `Wrong .crabshell/ path in Bash command. Found "${normalizedMemoryPath}" but the project root is "${normalizedProject}". Use "${normalizedProject}/.crabshell/" instead.`,
-          `[PATH_GUARD] Blocked Bash command with wrong path: ${normalizedMemoryPath}`
+          `Wrong .crabshell/ path in Bash command. The command writes "${normalizedMemoryPath}" but the project root is "${normalizedProject}". Use "${normalizedProject}/.crabshell/" instead.`,
+          `[PATH_GUARD] Blocked Bash write to another project's .crabshell: ${normalizedMemoryPath}`
         );
       }
+      if (!advisory && !isPluginGlobalConfig(normalizedMemoryPath)) {
+        advisory = advise(normalizedMemoryPath, projectDir, `[PATH_GUARD] Bash reads another project's .crabshell: ${normalizedMemoryPath}`);
+      }
     }
-    return null;
+    return advisory;
   }
 
   const filePath = normalizePath(input.file_path || '');
@@ -179,7 +220,14 @@ function evaluatePathPolicy(hookData, projectDir) {
   return null;
 }
 
+// The plugin's own user-level settings file (~/.crabshell/config.json).
+function isPluginGlobalConfig(normalizedPath) {
+  const config = normalizePath(os.homedir()) + '/.crabshell/config.json';
+  return normalizedPath.length === config.length && startsWithPath(normalizedPath, config);
+}
+
 module.exports = {
+  analyzeBashCommand, // re-exported from core/shell-writes
   checkPath,
   evaluatePathPolicy,
   extractMemoryPathsFromCommand,

@@ -12,37 +12,10 @@ const homeDir = os.homedir().replace(/\\/g, '/');
 let passed = 0;
 let failed = 0;
 
-function runTest(name, hookData, expectBlock) {
-  const json = JSON.stringify(hookData);
-  try {
-    const result = execSync(
-      `"${nodePath}" "${scriptPath}"`,
-      {
-        input: json,
-        env: { ...process.env, CLAUDE_PROJECT_DIR: projectDir },
-        timeout: 5000,
-        encoding: 'utf8'
-      }
-    );
-    if (expectBlock) {
-      console.log(`FAIL: ${name} — expected block but got allow. stdout: ${result}`);
-      failed++;
-    } else {
-      console.log(`PASS: ${name} — allowed (exit 0)`);
-      passed++;
-    }
-  } catch (e) {
-    if (e.status === 2 && expectBlock) {
-      console.log(`PASS: ${name} — blocked (exit 2)`);
-      passed++;
-    } else if (e.status === 2 && !expectBlock) {
-      console.log(`FAIL: ${name} — expected allow but got block. stdout: ${e.stdout}`);
-      failed++;
-    } else {
-      console.log(`FAIL: ${name} — unexpected exit ${e.status}`);
-      failed++;
-    }
-  }
+// expect: true = block (exit 2), false = allow silently, 'advise' = allow and tell the
+// model (hookSpecificOutput.additionalContext) that the path is not this project's.
+function runTest(name, hookData, expect) {
+  runTestWithDir(name, hookData, expect, projectDir);
 }
 
 function runTestWithDir(name, hookData, expectBlock, customProjectDir) {
@@ -57,18 +30,22 @@ function runTestWithDir(name, hookData, expectBlock, customProjectDir) {
         encoding: 'utf8'
       }
     );
-    if (expectBlock) {
+    const advised = /"additionalContext"/.test(result);
+    if (expectBlock === true) {
       console.log(`FAIL: ${name} — expected block but got allow. stdout: ${result}`);
       failed++;
+    } else if ((expectBlock === 'advise') !== advised) {
+      console.log(`FAIL: ${name} — expected ${expectBlock === 'advise' ? 'an advisory' : 'no advisory'}. stdout: ${result}`);
+      failed++;
     } else {
-      console.log(`PASS: ${name} — allowed (exit 0)`);
+      console.log(`PASS: ${name} — allowed (exit 0${advised ? ', advisory' : ''})`);
       passed++;
     }
   } catch (e) {
-    if (e.status === 2 && expectBlock) {
+    if (e.status === 2 && expectBlock === true) {
       console.log(`PASS: ${name} — blocked (exit 2)`);
       passed++;
-    } else if (e.status === 2 && !expectBlock) {
+    } else if (e.status === 2) {
       console.log(`FAIL: ${name} — expected allow but got block. stdout: ${e.stdout}`);
       failed++;
     } else {
@@ -105,9 +82,9 @@ function assertEq(actual, expected, msg) {
 
 console.log('\n--- Subprocess: Read tests ---');
 
-runTest('Read: wrong forward slash path',
+runTest('Read: wrong forward slash path (read — allow + advisory)',
   { tool_name: 'Read', tool_input: { file_path: 'C:/Users/chulg/Documents/YesPresident/.crabshell/memory/file.md' } },
-  true
+  'advise'
 );
 
 runTest('Read: correct forward slash path',
@@ -115,9 +92,9 @@ runTest('Read: correct forward slash path',
   false
 );
 
-runTest('Read: wrong backslash path',
+runTest('Read: wrong backslash path (read — allow + advisory)',
   { tool_name: 'Read', tool_input: { file_path: 'C:\\Users\\chulg\\Documents\\YesPresident\\.crabshell\\memory\\file.md' } },
-  true
+  'advise'
 );
 
 runTest('Read: correct backslash path',
@@ -137,9 +114,9 @@ runTest('Read: non-memory path',
 
 console.log('\n--- Subprocess: Grep tests ---');
 
-runTest('Grep: wrong path',
+runTest('Grep: wrong path (read — allow + advisory)',
   { tool_name: 'Grep', tool_input: { path: 'C:/Users/chulg/Documents/YesPresident/.crabshell/memory/', pattern: 'test' } },
-  true
+  'advise'
 );
 
 runTest('Grep: correct path',
@@ -149,9 +126,9 @@ runTest('Grep: correct path',
 
 console.log('\n--- Subprocess: Glob tests ---');
 
-runTest('Glob: wrong path',
+runTest('Glob: wrong path (read — allow + advisory)',
   { tool_name: 'Glob', tool_input: { path: 'C:/Users/chulg/Documents/YesPresident/.crabshell/memory/', pattern: '*.md' } },
-  true
+  'advise'
 );
 
 runTest('Glob: correct project path (allow)',
@@ -161,9 +138,9 @@ runTest('Glob: correct project path (allow)',
 
 console.log('\n--- Subprocess: Bash tests ---');
 
-runTest('Bash: wrong path in command',
+runTest('Bash: cat of wrong path (read — allow + advisory)',
   { tool_name: 'Bash', tool_input: { command: 'cat C:/Users/chulg/Documents/YesPresident/.crabshell/memory/delta_temp.txt' } },
-  true
+  'advise'
 );
 
 runTest('Bash: correct path in command',
@@ -171,9 +148,9 @@ runTest('Bash: correct path in command',
   false
 );
 
-runTest('Bash: mixed correct+wrong paths',
+runTest('Bash: cat of correct+wrong paths (reads — allow + advisory)',
   { tool_name: 'Bash', tool_input: { command: 'cat C:/Users/chulg/Documents/YesPresident/.crabshell/memory/file.md && cat C:/Users/chulg/Documents/memory-keeper-plugin/.crabshell/memory/logbook.md' } },
-  true
+  'advise'
 );
 
 runTest('Bash: no memory path',
@@ -205,16 +182,16 @@ runTest('Read: parent traversal resolving to correct project (allow)',
   false
 );
 
-runTest('Read: parent traversal resolving to wrong project (block)',
+runTest('Read: parent traversal resolving to wrong project (read — allow + advisory)',
   { tool_name: 'Read', tool_input: { file_path: 'C:/Users/chulg/Documents/memory-keeper-plugin/../YesPresident/.crabshell/memory/file.md' } },
-  true
+  'advise'
 );
 
 console.log('\n--- Subprocess: Quoted paths with spaces ---');
 
-runTest('Bash: quoted path with spaces (block)',
+runTest('Bash: cat of quoted path with spaces (read — allow + advisory)',
   { tool_name: 'Bash', tool_input: { command: 'cat "C:/Users/some user/Documents/YesPresident/.crabshell/memory/file.md"' } },
-  true
+  'advise'
 );
 
 runTest('Bash: echo mentioning .crabshell/memory/ in quoted string (allow)',
@@ -228,9 +205,9 @@ runTestWithDir('Bash: double-quoted path with spaces (correct project — allow)
   'D:/Public Analysis'
 );
 
-runTestWithDir('Bash: double-quoted path with spaces (wrong project — block)',
+runTestWithDir('Bash: cat of double-quoted path with spaces (wrong project read — allow + advisory)',
   { tool_name: 'Bash', tool_input: { command: 'cat "D:/Other Project/.crabshell/memory/file.md"' } },
-  true,
+  'advise',
   'D:/Public Analysis'
 );
 
@@ -245,6 +222,97 @@ runTestWithDir('Bash: backslash quoted path with spaces (correct project — all
   false,
   'D:/Public Analysis'
 );
+
+console.log('\n--- Subprocess: writes to a wrong .crabshell stay blocked (P178_T002) ---');
+
+const WRONG = 'C:/Users/chulg/Documents/YesPresident/.crabshell/memory/file.md';
+const RIGHT = 'C:/Users/chulg/Documents/memory-keeper-plugin/.crabshell/memory/logbook.md';
+runTest('Bash write: redirect to wrong path (block)', { tool_name: 'Bash', tool_input: { command: `echo x >> ${WRONG}` } }, true);
+runTest('Bash write: tee to wrong path (block)', { tool_name: 'Bash', tool_input: { command: `echo x | tee -a ${WRONG}` } }, true);
+runTest('Bash write: rm of wrong path (block)', { tool_name: 'Bash', tool_input: { command: `rm -f ${WRONG}` } }, true);
+runTest('Bash write: sed -i on wrong path (block)', { tool_name: 'Bash', tool_input: { command: `sed -i s/a/b/ ${WRONG}` } }, true);
+runTest('Bash write: cp from this project to wrong path (destination — block)', { tool_name: 'Bash', tool_input: { command: `cp ${RIGHT} ${WRONG}` } }, true);
+runTest('Bash read: cp from wrong path into this project (source read — allow + advisory)', { tool_name: 'Bash', tool_input: { command: `cp ${WRONG} ${RIGHT}.copy` } }, 'advise');
+runTest('Bash write: redirect to quoted path with spaces (block)', { tool_name: 'Bash', tool_input: { command: 'echo x > "C:/Users/some user/Documents/YesPresident/.crabshell/memory/file.md"' } }, true);
+runTest('Bash write: touch through parent traversal to wrong project (block)', { tool_name: 'Bash', tool_input: { command: 'touch C:/Users/chulg/Documents/memory-keeper-plugin/../YesPresident/.crabshell/memory/file.md' } }, true);
+runTest('Bash write: mkdir under $HOME/.crabshell (block)', { tool_name: 'Bash', tool_input: { command: 'mkdir -p $HOME/.crabshell/memory/' } }, true);
+runTest('Bash write: rm under ${HOME}/.crabshell (braces — block)', { tool_name: 'Bash', tool_input: { command: 'rm ${HOME}/.crabshell/memory/logbook.md' } }, true);
+runTest('Bash write: redirect under ~/.crabshell (block)', { tool_name: 'Bash', tool_input: { command: 'echo x > ~/.crabshell/memory/something' } }, true);
+runTest('Bash write: node -e writeFileSync to wrong path (block)', { tool_name: 'Bash', tool_input: { command: `node -e "require('fs').writeFileSync('${WRONG}', 'x')"` } }, true);
+runTest('Bash read: node -e readFileSync of wrong path (allow + advisory)', { tool_name: 'Bash', tool_input: { command: `node -e "console.log(require('fs').readFileSync('${WRONG}', 'utf8'))"` } }, 'advise');
+runTest('Bash write: bash -c with redirect to wrong path (block)', { tool_name: 'Bash', tool_input: { command: `bash -c "echo x > ${WRONG}"` } }, true);
+runTest('Bash write: python heredoc writing wrong path (block)', { tool_name: 'Bash', tool_input: { command: `python - <<'PY'\nopen('${WRONG}', 'w').write('x')\nPY` } }, true);
+runTest('Bash text: cat heredoc body naming wrong path (data, not a target — allow)', { tool_name: 'Bash', tool_input: { command: `cat > notes.txt <<'EOF'\nrm ${WRONG}\nEOF` } }, false);
+runTest('Bash text: comment naming wrong path (allow)', { tool_name: 'Bash', tool_input: { command: `ls # then rm ${WRONG}` } }, false);
+runTest('Bash write: lower-case drive letter of this project is the same folder (allow)', { tool_name: 'Bash', tool_input: { command: 'echo x >> c:/users/chulg/documents/memory-keeper-plugin/.crabshell/memory/logbook.md' } }, process.platform === 'win32' ? false : true);
+
+console.log('\n--- Unit: Bash write analysis (P178_T002 independent review cases) ---');
+{
+  const { evaluatePathPolicy } = require('./core/path-policy');
+  const P = projectDir.replace(/\\/g, '/');
+  const D = '.crab' + 'shell';
+  const OC = `${P.replace(/\/[^/]+$/, '')}/OtherProj/${D}`;
+  const TMP = os.tmpdir().replace(/\\/g, '/');
+  const verdict = r => !r ? 'allow' : r.reason ? 'block' : 'advise';
+  const cases = [
+    // Writes the first parser missed (the pre-cycle guard blocked every mention).
+    ['whole folder removed without a trailing slash', 'block', `rm -rf ${OC}`],
+    ['whole folder moved', 'block', `mv ${OC} ${OC}.bak`],
+    ['glob delete', 'block', `rm -rf ${OC}/memory/*`],
+    ['brace-expansion delete', 'block', `rm ${OC}/memory/{a,b}.md`],
+    ['cp destination with 2>/dev/null', 'block', `cp a.md ${OC}/memory/a.md 2>/dev/null`],
+    ['cp destination with 2>&1 | tail', 'block', `cp a.md ${OC}/memory/a.md 2>&1 | tail -1`],
+    ['cp -t destination folder', 'block', `cp -t ${OC}/memory/ a.md`],
+    ['>& redirect to a file', 'block', `echo x >& ${OC}/memory/f`],
+    ['find | xargs rm', 'block', `find ${OC}/memory -name "*.bak" | xargs rm -f`],
+    ['node execSync rm', 'block', `node -e "require('child_process').execSync('rm -rf ${OC}/memory')"`],
+    ['python subprocess rm list', 'block', `python -c "import subprocess; subprocess.run(['rm','-rf','${OC}/memory'])"`],
+    ['python os.system rm', 'block', `python -c "import os; os.system('rm -rf ${OC}/memory')"`],
+    ['cat heredoc piped into node', 'block', `cat <<'EOF' | node\nrequire('fs').writeFileSync('${OC}/memory/x','y')\nEOF`],
+    ['tar extract into the folder', 'block', `tar -xf mem.tar -C ${OC}/memory`],
+    ['curl -o into the folder', 'block', `curl -sSo ${OC}/memory/x.json https://example.com/x.json`],
+    ['powershell Remove-Item', 'block', `powershell -Command "Remove-Item -Recurse ${OC}/memory"`],
+    ['cmd rmdir with backslashes', 'block', `cmd //c "rmdir /s /q ${OC.replace(/\//g, '\\')}\\memory"`],
+    ['$(rm ...) inside double quotes', 'block', `echo "removed: $(rm -v ${OC}/memory/x.md)"`],
+    ['variable assigned in the same command', 'block', `T=${OC.replace('/' + D, '')}; rm -rf $T/${D}/memory`],
+    ['for-loop items removed', 'block', `for f in ${OC}/memory/a.md ${OC}/memory/b.md; do rm "$f"; done`],
+    ['bash heredoc with backslash delimiter', 'block', `bash <<\\EOF\nrm -rf ${OC}/memory\nEOF`],
+    ['here-string code for node', 'block', `node <<< "require('fs').writeFileSync('${OC}/memory/x','y')"`],
+    ['nested bash -c', 'block', `bash -c "bash -c 'rm -rf ${OC}/memory/x'"`],
+    // Harmless commands the guard must not block.
+    ['node write through CLAUDE_PROJECT_DIR + literal', 'allow', `node -e "require('fs').writeFileSync(process.env.CLAUDE_PROJECT_DIR + '/${D}/memory/x.json','{}')"`],
+    ['sed -i script naming the folder', 'allow', `sed -i 's/\\.crabshell\\//X/' README.md`],
+    ['perl -pi script naming the folder', 'allow', `perl -pi -e 's/old\\/${D}\\/memory/new/' notes.md`],
+    ['dd of= this project', 'allow', `dd if=/dev/zero of=${P}/${D}/tmp/zero bs=1 count=1`],
+    ['node reads another project, writes here', 'advise', `node -e "const fs=require('fs');fs.writeFileSync('copy.md', fs.readFileSync('${OC}/memory/logbook.md','utf8'))"`],
+    ['python shutil.copy from another project', 'advise', `python -c "import shutil; shutil.copy('${OC}/memory/logbook.md','copy.md')"`],
+    ['python open with encoding=ascii (read)', 'advise', `python -c "print(open('${OC}/memory/logbook.md', encoding='ascii').read())"`],
+    ['find -exec grep (read)', 'advise', `find ${OC}/memory -name "*.md" -exec grep -l foo {} +`],
+    ['ln -s pointing at another project (read)', 'advise', `ln -s ${OC}/memory ./other-mem`],
+    ['this project written with doubled backslashes in code', 'allow', `node -e "require('fs').appendFileSync('${P.replace(/\//g, '\\\\\\\\')}\\\\\\\\${D}\\\\\\\\memory\\\\\\\\x.md','y')"`],
+    ['relative fixture folder inside the project', 'allow', `mkdir -p test/fixtures/${D}/memory`],
+    ['OS temp folder', 'allow', `echo x > ${TMP}/fx/${D}/memory/logbook.md`],
+    ['commit message heredoc naming a path', 'allow', `git commit -m "$(cat <<'EOF'\nfix: rm ${OC}/memory no longer blocked\nEOF\n)"`],
+    ['grep pattern with an escaped dot', 'allow', `grep -rn "\\${D}/" scripts`],
+  ];
+  if (process.platform === 'win32') {
+    cases.push(['upper-case folder name on Windows', 'block', `rm -rf ${OC.replace(D, '.CRABSHELL')}/memory`]);
+    cases.push(['Git Bash /tmp path', 'allow', `mkdir -p /tmp/fixture/${D}/memory`]);
+    cases.push(['Git Bash /c/ form of this project', 'allow', `echo x >> /${P[0].toLowerCase()}${P.slice(2)}/${D}/memory/logbook.md`]);
+  }
+  for (const [name, expected, command] of cases) {
+    unitTest(`Bash analysis: ${name} → ${expected}`, () => {
+      const observed = verdict(evaluatePathPolicy({ tool_name: 'Bash', tool_input: { command } }, P));
+      assertEq(observed, expected, command.slice(0, 120));
+    });
+  }
+  unitTest('Bash analysis: a 200KB command is judged in under a second', () => {
+    const big = 'node -e "' + `'${OC}/x';` + 'open('.repeat(40000) + '"';
+    const started = Date.now();
+    evaluatePathPolicy({ tool_name: 'Bash', tool_input: { command: big } }, P);
+    assert(Date.now() - started < 1000, `took ${Date.now() - started} ms`);
+  });
+}
 
 // ============================================================
 // SECTION 2: Subprocess tests — Shell variable resolution (v21.8.0)
@@ -264,20 +332,20 @@ runTest('Shell: ${CLAUDE_PROJECT_DIR}/.crabshell/memory/ (braces — allow)',
 );
 
 // $HOME resolves to home dir, which is NOT the project dir → wrong path → block
-runTest('Shell: $HOME/.crabshell/memory/ (resolves to homedir, not project — block)',
+runTest('Shell: ls $HOME/.crabshell/memory/ (homedir read — allow + advisory)',
   { tool_name: 'Bash', tool_input: { command: 'ls $HOME/.crabshell/memory/' } },
-  true
+  'advise'
 );
 
-runTest('Shell: ${HOME}/.crabshell/memory/ (braces, resolves to homedir — block)',
+runTest('Shell: cat ${HOME}/.crabshell/memory/ (braces, homedir read — allow + advisory)',
   { tool_name: 'Bash', tool_input: { command: 'cat ${HOME}/.crabshell/memory/logbook.md' } },
-  true
+  'advise'
 );
 
 // ~ resolves to home dir → block (not project dir)
-runTest('Shell: ~/.crabshell/memory/ (tilde resolves to homedir — block)',
+runTest('Shell: cat ~/.crabshell/memory/ (tilde, homedir read — allow + advisory)',
   { tool_name: 'Bash', tool_input: { command: 'cat ~/.crabshell/memory/something' } },
-  true
+  'advise'
 );
 
 // $PROJECT_DIR resolves to project dir → allow
@@ -287,9 +355,9 @@ runTest('Shell: $PROJECT_DIR/.crabshell/memory/ (alias for project dir — allow
 );
 
 // $USERPROFILE resolves to home dir → block
-runTest('Shell: $USERPROFILE/.crabshell/memory/ (resolves to homedir — block)',
+runTest('Shell: Read $USERPROFILE/.crabshell/memory/ (homedir read — allow + advisory)',
   { tool_name: 'Read', tool_input: { file_path: '$USERPROFILE/.crabshell/memory/logbook.md' } },
-  true
+  'advise'
 );
 
 // When project dir IS home dir, $HOME should allow
@@ -307,31 +375,31 @@ runTestWithDir('Shell: ~/.crabshell/ when projectDir=homedir (allow)',
 
 console.log('\n--- Subprocess: Unknown variable blocking ---');
 
-runTest('Shell: $RANDOM_VAR/.crabshell/memory/ (unknown var — block)',
+runTest('Shell: $RANDOM_VAR/.crabshell/memory/ (unknown var cannot be judged — allow)',
   { tool_name: 'Bash', tool_input: { command: 'ls $RANDOM_VAR/.crabshell/memory/' } },
-  true
+  false
 );
 
-runTest('Shell: $FOO/.crabshell/memory/ (unknown var — block)',
+runTest('Shell: $FOO/.crabshell/memory/ (unknown var cannot be judged — allow)',
   { tool_name: 'Bash', tool_input: { command: 'cat $FOO/.crabshell/memory/file.md' } },
-  true
+  false
 );
 
-runTest('Shell: ${UNKNOWN_DIR}/.crabshell/memory/ (unknown braces var — block)',
+runTest('Shell: ${UNKNOWN_DIR}/.crabshell/memory/ (unknown braces var cannot be judged — allow)',
   { tool_name: 'Bash', tool_input: { command: 'ls ${UNKNOWN_DIR}/.crabshell/memory/' } },
-  true
+  false
 );
 
-runTest('Shell: $UNKNOWN_VAR/.crabshell/memory/ via Read (block)',
+runTest('Shell: $UNKNOWN_VAR/.crabshell/memory/ via Read (unknown var cannot be judged — allow)',
   { tool_name: 'Read', tool_input: { file_path: '$UNKNOWN_VAR/.crabshell/memory/' } },
-  true
+  false
 );
 
 console.log('\n--- Subprocess: Mixed paths with variables ---');
 
-runTest('Shell: $HOME/../other/.crabshell/ (traversal after resolve — block)',
+runTest('Shell: cat $HOME/../other/.crabshell/ (traversal after resolve, read — allow + advisory)',
   { tool_name: 'Bash', tool_input: { command: 'cat $HOME/../other/.crabshell/memory/file.md' } },
-  true
+  'advise'
 );
 
 runTest('Shell: Read $CLAUDE_PROJECT_DIR/.crabshell/ (allow)',
@@ -344,9 +412,9 @@ runTest('Shell: Read ${CLAUDE_PROJECT_DIR}/.crabshell/ (brace syntax — allow)'
   false
 );
 
-runTest('Shell: Read $HOME/.crabshell/ (resolves to wrong dir — block)',
+runTest('Shell: Read $HOME/.crabshell/ (wrong dir read — allow + advisory)',
   { tool_name: 'Read', tool_input: { file_path: '$HOME/.crabshell/memory/logbook.md' } },
-  true
+  'advise'
 );
 
 console.log('\n--- Subprocess: Non-.crabshell/ paths with vars (should NOT be affected) ---');
@@ -386,15 +454,15 @@ runTest('Shell: `echo .crabshell`/memory/ (backtick hides .crabshell — not det
 );
 
 // When .crabshell/ IS visible in the path (subshell is the prefix), the guard CAN detect+block
-runTest('Shell: Read $(pwd)/.crabshell/memory/ (subshell prefix, .crabshell/ visible — block)',
+runTest('Shell: Read $(pwd)/.crabshell/memory/ (subshell cannot be judged — allow)',
   { tool_name: 'Read', tool_input: { file_path: '$(pwd)/.crabshell/memory/logbook.md' } },
-  true
+  false
 );
 
 // Bash with subshell prefix + visible .crabshell/
-runTest('Shell: Bash $(pwd)/.crabshell/memory/ (subshell prefix, .crabshell/ visible — block)',
+runTest('Shell: Bash $(pwd)/.crabshell/memory/ (subshell cannot be judged — allow)',
   { tool_name: 'Bash', tool_input: { command: 'cat $(pwd)/.crabshell/memory/logbook.md' } },
-  true
+  false
 );
 
 // ============================================================

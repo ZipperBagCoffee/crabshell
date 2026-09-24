@@ -1,7 +1,5 @@
 'use strict';
 
-const path = require('path');
-const { spawnSync } = require('child_process');
 const { readStdin } = require('./transcript-utils');
 const { getProjectDir } = require('./utils');
 const { findProjectRoot, normalizeToolName } = require('./adapters/codex/hook-contract');
@@ -10,33 +8,18 @@ const { commandObservation, projectFingerprint } = require('./core/command-obser
 
 if (process.env.CRABSHELL_BACKGROUND === '1') process.exit(0);
 
-function legacyClaudeStopReasons(payload) {
+// Claude-only Stop checks, run in this process. sycophancy-guard and scope-guard
+// retired from Stop dispatch in v21.113.0 (I083 R5: behavioral policing moved out
+// of hooks; scripts remain on disk).
+function legacyClaudeStopReasons(payload, projectDir = getProjectDir()) {
   if (payload.stop_hook_active === true) return [];
-  // sycophancy-guard and scope-guard retired from Stop dispatch in v21.113.0
-  // (I083 R5: behavioral policing moved out of hooks; scripts remain on disk).
-  const validators = [
-    ['doc-watchdog.js', 'stop'],
-  ];
-  const reasons = [];
-  for (const args of validators) {
-    const result = spawnSync(process.execPath, [path.join(__dirname, args[0]), ...args.slice(1)], {
-      input: JSON.stringify(payload),
-      encoding: 'utf8',
-      env: { ...process.env, CRABSHELL_STOP_AGGREGATED: '1' },
-      windowsHide: true,
-      timeout: 30000,
-    });
-    if (result.stderr) process.stderr.write(result.stderr);
-    if (result.status !== 2) continue;
-    try {
-      const parsed = JSON.parse(String(result.stdout || '').trim());
-      if (parsed.decision === 'block' && parsed.reason) reasons.push(parsed.reason);
-    } catch {
-      const fallback = String(result.stderr || '').trim();
-      if (fallback) reasons.push(fallback.slice(0, 1000));
-    }
+  try {
+    const reason = require('./doc-watchdog').stopReason(payload, projectDir);
+    return reason ? [reason] : [];
+  } catch (error) {
+    process.stderr.write(`[CRABSHELL] doc-watchdog Stop check skipped: ${error.message}\n`);
+    return [];
   }
-  return reasons;
 }
 
 function handlePayload(payload, options = {}) {
@@ -68,7 +51,7 @@ function handlePayload(payload, options = {}) {
   }
   if (eventName !== 'Stop') return { eventName, result: { action: 'allow', reason: 'unsupported-event' } };
   const shared = decideStop(projectDir, payload);
-  const legacyReasons = options.host === 'claude' ? legacyClaudeStopReasons(payload) : [];
+  const legacyReasons = options.host === 'claude' ? legacyClaudeStopReasons(payload, projectDir) : [];
   const reasons = [shared.action === 'block' ? shared.reason : '', ...legacyReasons].filter(Boolean);
   if (reasons.length === 0) return { eventName, result: shared };
   return { eventName, result: { ...shared, action: 'block', reason: reasons.join('\n\n') } };

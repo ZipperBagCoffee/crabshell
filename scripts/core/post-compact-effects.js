@@ -8,8 +8,8 @@ const {
   readJsonOrDefault,
   releaseIndexLock,
   writeJson,
-} = require('../../utils');
-const { INDEX_FILE, REGRESSING_STATE_FILE } = require('../../constants');
+} = require('../utils');
+const { INDEX_FILE, REGRESSING_STATE_FILE } = require('../constants');
 
 function runPostCompactEffects(projectDir, options = {}) {
   const storageRoot = getStorageRoot(projectDir);

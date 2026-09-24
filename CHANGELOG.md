@@ -1,5 +1,62 @@
 # Changelog
 
+## [21.125.0] - 2026-09-24
+
+### feat: guards block only real risks; Claude hooks run one process per event
+
+- **Path guard blocks writes, not reads.**
+  - A Bash command is blocked only when it would write into another project's `.crabshell` folder. Writes include:
+    - redirects;
+    - `rm`/`mv`/`mkdir`/`touch`/`tee` and similar;
+    - the destination of `cp`/`rsync`/`ln`/`cp -t`;
+    - `sed -i`/`perl -i`;
+    - `find -delete` or `-exec rm`;
+    - `… | xargs rm`;
+    - `tar -x`/`-c`, `curl -o`, `dd of=`;
+    - `powershell`/`cmd` strings;
+    - `$(…)` and backticks;
+    - code given to `node -e`/`python -c`/heredocs when that code writes the path or runs a writing command.
+  - Reading another project's `.crabshell` is allowed, and the model is told it is not this project's memory. This covers `cat`, the `cp` source and the Read/Grep/Glob tools. The plugin's own `~/.crabshell/config.json` gets no notice.
+  - Never blocked:
+    - mentions in prose, grep patterns and sed scripts;
+    - heredoc bodies given to non-interpreters;
+    - comments;
+    - paths under the OS temp folder, including Git Bash `/tmp`;
+    - paths built from a variable the command does not define;
+    - relative paths.
+  - Variables assigned in the same command and for-loop items are resolved.
+  - Git Bash `/c/…` paths, doubled backslashes in code and a bare `.crabshell` folder name are recognized. On Windows the folder name is matched without case, so `.CRABSHELL` is now also blocked (new).
+  - Logbook in-place edits, logbook shrinking and direct skill-flag writes stay blocked.
+  - The Bash analysis lives in `scripts/core/shell-writes.js`.
+- **doc-watchdog counts only edits inside the project.** It uses the commit gate's source-file definition, so `hooks.json`, `package.json` and other non-prose files now count as code edits too. Its five-edit warning now reaches the model (`hookSpecificOutput.additionalContext`).
+- **web-guard counts only search servers this project can use:** user-wide servers, this project's entry in `~/.claude.json`, and `.mcp.json`. Provider names must be whole words of the server name. `search` alone no longer counts, so `codebase-search` and `example-docs` are not web search servers.
+- **One Claude process per hook event.**
+  - `hooks/hooks.json` starts `scripts/adapters/claude/pre-tool-use.js` for PreToolUse (Bash, Write, Edit, WebFetch, WebSearch; timeout 90 s) and `scripts/adapters/claude/post-tool-use.js` for PostToolUse and PostToolUseFailure.
+  - One tool call now starts this many processes: Edit 10 → 2, Bash 6 → 2, Read 3 → 1. Measured medians: Edit 240 → 189 ms, Bash 188 → 186 ms, Read 153 → 96 ms.
+  - Each guard loads and runs inside its own try/catch, so a guard that fails is skipped and the rest still decide. All guards run even after one denies, which keeps side effects such as recording a declared check's start. verify-guard is skipped once another guard has denied, because it only runs the declared checks and records nothing.
+  - Denials use exit 0 with `permissionDecision: "deny"`. Anything a module prints while the checks run goes to stderr, so stdout stays one JSON object.
+  - Read/Grep/Glob have no PreToolUse hook. The other-project notice arrives after the read.
+  - skill-tracker and doc-watchdog's recorder now run inline instead of as async hooks, so the skill flag is set before the next tool call.
+  - The Stop hook runs doc-watchdog's check in-process instead of starting a child process.
+  - Each guard script still runs alone and exports its evaluation function.
+- **Claude compaction hooks removed.** Claude PreCompact and PostCompact output never reached the model. PostCompact's effects now run when the session restarts after compaction (SessionStart `compact`): the pressure notice is re-injected on the next prompt, and the compaction is logged. The shared function moved to `scripts/core/post-compact-effects.js`. Codex keeps both hooks.
+- `codex-doctor` probes the Codex adapter with a write (never run), since reads are now allowed.
+- **Tests:**
+  - `_test-restriction-controls.js` (24): each lifted restriction is paired with a write that must stay blocked.
+  - `_test-hook-wiring-cost.js` (10).
+  - `_test-claude-dispatcher-parity.js` (13): old separate guards compared with the dispatcher. Intentional changes are listed in its header.
+  - `_test-claude-dispatchers.js` (16).
+  - `_test-path-guard.js` grew to 173, including 41 cases from an independent review.
+  - Expectations changed with the contract: `_test-path-guard.js` (reads now get a notice), `_test-codex-hook-contract.js`, `_test-counter.js`, `_test-cross-runtime-parent-completion.js`, `_test-legacy-orchestration-retirement.js`.
+- **Remaining limits:**
+  - Write/Edit tool calls into another project's `.crabshell` are still not checked.
+  - The guard cannot know values from earlier commands (`cd other && rm .crabshell/x`, `path.join`).
+  - The PowerShell tool is not guarded.
+  - A guard that hangs cancels every guard's decision at the 90 s timeout. A timed-out PreToolUse does not block the tool.
+  - The parity test's old side uses the current scripts. A HEAD-based comparison of 21 cases was run once by review.
+  - `_v013-cycle1-check.js` still fails.
+  - The manifest lists tests one by one.
+
 ## [21.124.0] - 2026-09-24
 
 ### feat: concurrent sessions keep their own memory and decisions; SessionStart memory fits the host limit

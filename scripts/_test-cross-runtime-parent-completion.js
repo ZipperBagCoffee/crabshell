@@ -218,7 +218,8 @@ try {
     assert.strictEqual(result.status, 0, result.stderr);
     assert.doesNotMatch(String(result.stdout || ''), /"decision":"block"/);
     const controllerSource = fs.readFileSync(claudeController, 'utf8');
-    assert.ok(controllerSource.includes('doc-watchdog.js'), 'ritual validator retained');
+    // P178_T003: the Stop check runs in-process (require) instead of a child process.
+    assert.ok(/require\('\.\/doc-watchdog(?:\.js)?'\)\.stopReason/.test(controllerSource), 'ritual validator retained');
     for (const retired of ["'sycophancy-guard.js'", "'scope-guard.js'"]) {
       assert.ok(!controllerSource.includes(retired), retired + ' should be retired from Stop dispatch');
     }

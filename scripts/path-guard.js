@@ -13,6 +13,10 @@ async function main() {
   const result = pathPolicy.evaluatePathPolicy(hookData, getProjectDir());
   if (!result) return;
   process.stderr.write(result.diagnostic + '\n');
+  if (!result.reason) {
+    console.log(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', additionalContext: result.advisory } }));
+    return;
+  }
   console.log(JSON.stringify({ decision: 'block', reason: result.reason }));
   process.exitCode = 2;
 }

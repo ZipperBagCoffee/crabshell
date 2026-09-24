@@ -141,6 +141,8 @@ function statePath(sandbox) {
   // CRABSHELL_BACKGROUND === '1' early-exit, excluding utils.js itself).
   // deferral-guard.js removed (P152_T001 AC-4 — file deleted).
   const HOOK_FILES = [
+    'adapters/claude/post-tool-use.js',
+    'adapters/claude/pre-tool-use.js',
     'counter.js',
     'doc-watchdog.js',
     'docs-guard.js',

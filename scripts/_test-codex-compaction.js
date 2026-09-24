@@ -7,7 +7,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { validateCompactionOutput } = require('./core/compaction-context');
-const { validatePostCompactEffects } = require('./adapters/codex/post-compact-effects');
+const { validatePostCompactEffects } = require('./core/post-compact-effects');
 
 const preAdapter = path.join(__dirname, 'adapters', 'codex', 'pre-compact.js');
 const postAdapter = path.join(__dirname, 'adapters', 'codex', 'post-compact.js');

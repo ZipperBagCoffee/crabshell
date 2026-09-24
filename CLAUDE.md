@@ -50,6 +50,7 @@ Match the method to the claim: to claim behavior, execute the most direct practi
   - sycophancy-guard.js, pressure-guard.js, scope-guard.js: **retired from wiring v21.113.0** (I083 R4/R5 — behavioral policing moved out of hooks; scripts remain on disk, re-wire via hooks.json/completion-controller if regression observed)
   - verify-guard.js, docs-guard.js, log-guard.js, verification-sequence.js, doc-watchdog.js: deterministic/ritual → keep, audit on next model change
   - regressing-loop-guard.js: retired from Stop wiring v21.107.0; continuation = goal-mode handoff (regressing SKILL.md Step 2.6, v21.110.0) + completion-controller bounded continuation
-  - post-compact.js: zero effect → removal candidate
+  - post-compact.js: unwired from Claude v21.125.0 (its output reaches no model); its effects (pressure re-injection reset, compaction log) run at SessionStart(compact) via core/post-compact-effects.js; Codex keeps its PostCompact hook
+  - Claude runs these guards in one process per event since v21.125.0 (adapters/claude/pre-tool-use.js, post-tool-use.js); each guard script still runs alone for tests and audits
   - regressing-guard.js: narrow scope → merger candidate
 - **Document-first (all skills):** In every D/P/T/I/H/W document skill, write results to the document using Write/Edit tool BEFORE reporting in conversation. The document update is the primary output; the conversation summary is secondary. Verbal-only reporting without a prior document write = violation.

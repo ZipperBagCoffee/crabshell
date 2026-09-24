@@ -1,10 +1,10 @@
-# Crabshell Plugin Structure (v21.124.0)
+# Crabshell Plugin Structure (v21.125.0)
 
-**Version**: 21.124.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.125.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
-Crabshell is a dual-runtime Claude Code/Codex plugin. Both hosts use native lifecycle hooks backed by shared first-turn, memory, workflow, compaction, subagent, and parent-completion cores. Claude retains automatic SessionEnd capture and pressure telemetry; Codex supplies synchronous native lifecycle and Interrupt events. Both share the D/P/T/I/W/K document system and `.crabshell/` storage. Version 21.124.0 adds per-session state (`scripts/core/session-state.js`, `scripts/core/session-delta.js`) and the SessionStart budget; Version 21.123.0 added the failure/capture/finalization/recovery components listed below.
+Crabshell is a dual-runtime Claude Code/Codex plugin. Both hosts use native lifecycle hooks backed by shared first-turn, memory, workflow, compaction, subagent, and parent-completion cores. Claude retains automatic SessionEnd capture and pressure telemetry; Codex supplies synchronous native lifecycle and Interrupt events. Both share the D/P/T/I/W/K document system and `.crabshell/` storage. Version 21.125.0 runs each Claude hook event in one process (`scripts/adapters/claude/`) and narrows the path guard to writes (`scripts/core/shell-writes.js`); Version 21.124.0 added per-session state (`scripts/core/session-state.js`, `scripts/core/session-delta.js`) and the SessionStart budget; Version 21.123.0 added the failure/capture/finalization/recovery components listed below.
 
 Codex compatibility is provided in the same repository through a separate `.codex-plugin/plugin.json`, `codex-skills/`, and explicit wrapper scripts. Claude Code and Codex ship from the same repo but activate different manifests; both can share the `.crabshell/` memory and document store.
 
@@ -98,9 +98,11 @@ crabshell/
 │   ├── append-memory.js              # Prepare/finalize CLI and legacy summary append
 │   ├── regressing-guard.js           # PreToolUse regressing skill enforcement (v19.23.0)
 │   ├── sycophancy-guard.js           # RETIRED v21.113.0 (unwired, I083 R5) — was Stop + PreToolUse dual-layer sycophancy detection + verification claim detection (v19.29.0, v20.7.0, v21.1.0). Also writes feedbackPressure.oscillationCount (reversal phrases) and tooGoodSkepticism.retryCount (all-None P/O/G) at Stop hook — these are pressure-adjacent counters independent of feedbackPressure.level. See three pressure counters (feedbackPressure.level, feedbackPressure.oscillationCount, tooGoodSkepticism.retryCount) in USER-MANUAL.md §Pressure System.
-│   ├── path-guard.js                # PreToolUse path validation + shell var resolution + logbook.md Edit block + Write shrink guard (v19.31.0, v20.3.0, v20.6.0, v21.8.0)
+│   ├── path-guard.js                # Path guard entry: blocks Bash writes into another project's .crabshell, notices reads, logbook Edit/shrink block (v19.31.0, v20.6.0, v21.125.0)
 │   ├── web-guard.js                 # PreToolUse WebFetch/WebSearch guard — raw-fetch redirect, conditional WebSearch block, block/warn/off modes (v21.114.0, I084)
 │   ├── core/path-policy.js           # Host-neutral memory path policy (v21.104.0)
+│   ├── core/shell-writes.js          # Static Bash analysis: .crabshell paths named and whether written (v21.125.0)
+│   ├── core/post-compact-effects.js  # Pressure re-injection reset + compaction log; Claude SessionStart(compact), Codex PostCompact (v21.125.0)
 │   ├── core/codex-app-server.js      # Codex JSON-RPC/CLI capability client (v21.104.0)
 │   ├── core/orchestration-policy.js  # 8-field task contract + parent completion policy (v21.105.0)
 │   ├── core/first-turn-context.js     # Shared compact turn contract
@@ -121,6 +123,7 @@ crabshell/
 │   ├── core/recovery-context.js       # Bounded historical request/check/pause context
 │   ├── core/support-state.js          # Seven-state live doctor model
 │   ├── adapters/codex/               # Native synchronous lifecycle and Interrupt adapters
+│   ├── adapters/claude/              # One process per Claude event: pre-tool-use.js, post-tool-use.js, dispatch.js (v21.125.0)
 │   ├── completion-controller.js       # Single Claude Stop/SubagentStop owner retaining existing guards
 │   ├── codex-doctor.js               # Cross-runtime source/cache/hook/trust/behavior/drift diagnostics
 │   ├── codex-memory.js               # Manual Codex memory load/save/search/status
@@ -135,7 +138,7 @@ crabshell/
 │   ├── pressure-guard.js            # RETIRED v21.113.0 (unwired, I083 R4) — was PreToolUse pressure blocking — all 6 tools (v19.47.0, v21.1.0)
 │   ├── log-guard.js                # PreToolUse D/P/T log enforcement — terminal status + cycle log guard (v21.4.0)
 │   ├── verification-sequence.js     # PostToolUse state tracker + PreToolUse commit/edit gate (v21.0.0)
-│   ├── skill-tracker.js             # PostToolUse per-session skill flag setter (v19.33.0, v21.124.0)
+│   ├── skill-tracker.js             # Per-session skill flag setter, run inline by the PostToolUse dispatcher (v19.33.0, v21.124.0, v21.125.0)
 │   ├── _test-path-guard.js           # Path-guard unit tests + shell var resolution tests (v20.0.0, v21.8.0)
 │   ├── _test-web-guard.js            # Web-guard subprocess + unit tests — block/warn/off, MCP detection, fail-open (v21.114.0)
 │   ├── _test-sycophancy-guard.js     # Sycophancy-guard unit tests (v20.4.0)
@@ -148,13 +151,17 @@ crabshell/
 │   ├── _test-inject-rules.js        # inject-rules.js export + behavioral tests (v21.6.0)
 │   ├── _test-counter.js             # counter.js export + subprocess + lock + pruning + offset tests (v21.10.0)
 │   ├── _test-verify-guard.js        # verify-guard.js integration tests — Write/Edit new/existing distinction (v21.16.0)
-│   ├── doc-watchdog.js              # PostToolUse/PreToolUse/Stop doc-update omission FSM (v21.18.0)
+│   ├── doc-watchdog.js              # Doc-update omission checks: recordEdit/gateEdit/stopReason, in-project files only (v21.18.0, v21.125.0)
 │   ├── _test-doc-watchdog.js        # doc-watchdog.js 12-test integration suite (v21.18.0)
+│   ├── _test-restriction-controls.js # Lifted restrictions paired with writes that stay blocked (v21.125.0)
+│   ├── _test-hook-wiring-cost.js     # Synchronous hook processes per tool call; Stop starts no child (v21.125.0)
+│   ├── _test-claude-dispatcher-parity.js # Old separate guards vs the PreToolUse dispatcher (v21.125.0)
+│   ├── _test-claude-dispatchers.js   # Moved behavior: compact effects, Read notice, inline observers, stdout, fail-open (v21.125.0)
 │   ├── scope-guard.js               # RETIRED v21.113.0 (unwired, I083 R5) — was Stop scope reduction detection (user qty vs response qty) (v21.19.0)
 │   ├── _test-scope-guard.js         # scope-guard.js 20-test integration suite (v21.19.0)
 │   ├── shared-context.js            # Shared constants/functions for cross-hook reuse (v21.21.0)
-│   ├── pre-compact.js               # PreCompact hook — memory preservation instructions into compaction prompt (v21.21.0)
-│   ├── post-compact.js              # PostCompact hook — compaction event logging + regressing state preservation (v21.21.0)
+│   ├── pre-compact.js               # Compaction context script; unwired from Claude v21.125.0 (its output reaches no model)
+│   ├── post-compact.js              # Post-compaction script; unwired from Claude v21.125.0 (effects run at SessionStart compact)
 │   ├── subagent-context.js          # SubagentStart hook — inject project constraints + rules into sub-agents (v21.21.0)
 │   ├── _test-shared-context.js      # shared-context.js test suite (v21.21.0)
 │   ├── _test-pre-compact.js         # pre-compact.js test suite (v21.21.0)
@@ -315,14 +322,13 @@ UserPromptSubmit hook:
 - Check ticket statuses for active regressing → inject warning for todo/in-progress tickets (v21.12.0)
 
 ### scripts/path-guard.js
-PreToolUse path validation (v19.31.0, v20.3.0 Edit block, v20.6.0 Write shrink guard, v21.8.0 shell var resolution):
-- Block Read/Grep/Glob/Bash/Write/Edit calls targeting `.crabshell/` outside `CLAUDE_PROJECT_DIR`
-- Shell variable resolution: $CLAUDE_PROJECT_DIR, $PROJECT_DIR, $HOME, $USERPROFILE, ~ resolved before validation; unresolved vars + .crabshell/ = fail-closed (v21.8.0)
-- Block Edit on `memory/logbook.md` — logbook.md is append-only
-- Block Write shrink on `memory/logbook.md` — line count decrease detection (v20.6.0)
-- Bash command string inspection: regex extraction of `.crabshell/` paths within command strings
-- Fail-open on parse errors (user experience protection)
-- Windows path normalization (backslash → forward slash)
+Path guard (v19.31.0; v21.125.0 write-only blocking). The Claude PreToolUse dispatcher calls the same policy; the script also runs alone:
+- Bash: block only a write into another project's `.crabshell` — redirects, rm/mv/mkdir/tee, cp/rsync/ln destinations, sed -i, find -delete, xargs rm, tar/curl/dd, powershell/cmd strings, `$(…)`, and interpreter code that writes (`core/shell-writes.js`)
+- Reads of another project's `.crabshell` (Bash, and Read/Grep/Glob via the PostToolUse dispatcher): notice only; `~/.crabshell/config.json` gets none
+- Not judged: prose, grep patterns, sed scripts, heredoc text, comments, OS temp folder (incl. Git Bash /tmp), variables the command does not define, relative paths
+- Shell variables: $CLAUDE_PROJECT_DIR, $PROJECT_DIR, $HOME, $USERPROFILE, ~, and variables assigned in the same command are resolved; Git Bash /c/… paths and doubled backslashes are normalized; Windows folder names match without case
+- Block Edit on `memory/logbook.md` (append-only), Write shrink of it (v20.6.0), and direct skill-flag writes
+- Fail-open on parse errors
 
 ### scripts/web-guard.js
 PreToolUse WebFetch/WebSearch guard (v21.114.0, I084 — built-in tools summarize pages via a small model, "lossy by design" per Anthropic docs):
@@ -404,44 +410,40 @@ L1 generation:
        │   └─> If yes: Inject phase-specific reminder (planning/ticketing → MANDATORY SKILL TOOL CALL)
        └─> Output indicator: [rules injected], [rules + delta pending], [rules + rotation pending]
 
-3. PreToolUse — multiple guards (ordered: cheapest first)
-   ├─> path-guard.js (Read|Grep|Glob|Bash|Write|Edit) — block wrong project root
-   │   ├─> Block Edit on memory/logbook.md — append-only enforcement (v20.3.0)
-   │   └─> Block Write shrink on logbook.md — line count decrease detection (v20.6.0)
-   ├─> web-guard.js (WebFetch|WebSearch) — raw-source enforcement (v21.114.0)
-   │   ├─> WebFetch: block with URL-substituted trafilatura/r.jina.ai/curl redirect
-   │   └─> WebSearch: block only if a search MCP is configured; else allow + snippet-verification warning
-   ├─> regressing-guard.js (Write|Edit) — block direct plan/ticket writes during active regressing
-   ├─> docs-guard.js (Write|Edit) — block writes to .crabshell/ D/P/T/I without active skill flag
-   ├─> log-guard.js (Write|Edit) — block INDEX.md terminal status without log + block tickets with pending result sections + block cycle docs without previous cycle logs (v21.4.0, v21.11.0)
-   ├─> verify-guard.js (Write|Edit) — block Final Verification without /verifying run
-   │   └─> Require at least 1 behavioral (type: "direct") AC in manifest (v20.3.0)
-   ├─> verification-sequence.js gate (Write|Edit|Bash) — source edit→test→commit enforcement (v21.0.0)
-   │   └─> Block git commit if source files edited but no test run
-   ├─> doc-watchdog.js gate (Write|Edit) — soft warning when code edits >= 5 without D/P/T doc update during regressing (v21.18.0)
-   (pressure-guard/sycophancy-guard unwired v21.113.0 — I083 R4/R5)
+3. PreToolUse (Bash|Write|Edit|WebFetch|WebSearch) — one process: adapters/claude/pre-tool-use.js (v21.125.0)
+   Each guard in its own try/catch; all run even after a deny (verify-guard is skipped after a deny); stdout redirected to stderr while they run; one JSON object out (deny = exit 0 + permissionDecision "deny")
+   ├─> completion-controller (Bash) — prepare the parent's check
+   ├─> path-guard (Bash|Write|Edit) — block writes into another project's .crabshell; notice reads; logbook Edit/shrink block
+   ├─> web-guard (WebFetch|WebSearch) — raw-source enforcement (v21.114.0); only this project's search MCP servers count
+   ├─> regressing-guard (Write|Edit) — block direct plan/ticket writes during active regressing
+   ├─> docs-guard (Write|Edit) — block writes to .crabshell/ D/P/T/I without this session's skill flag
+   ├─> log-guard (Write|Edit) — block INDEX.md terminal status without log + tickets with pending result sections + cycle docs without previous cycle logs
+   ├─> verification gate (Bash) — block git commit while source edits lack a passing declared check; record a declared check's start
+   ├─> doc-watchdog gate (Write|Edit) — soft notice when in-project code edits >= 5 without a D/P/T doc update during regressing
+   └─> verify-guard (Write|Edit) — Final Verification writes run the declared checks
+   (pressure-guard/sycophancy-guard unwired v21.113.0 — I083 R4/R5; Read|Grep|Glob have no PreToolUse hook since v21.125.0)
 
 3.5. Stop
    └─> completion-controller.js (single Stop owner, v21.107.0)
        ├─> decideStop — blocks stop on execution-authorized turns while a D/P/T or W workflow (incl. regressing-state.json) is active; parent-evidence gate; bounded identical-failure reporting
-       └─> retained validator: doc-watchdog.js stop; behavioral sycophancy/scope validators remain unwired
+       └─> retained validator in the same process: doc-watchdog stopReason; behavioral sycophancy/scope validators remain unwired
    Note: regressing continuation is goal-driven from v21.110.0 — the regressing skill emits a `/goal` handoff (host goal mode: Claude Code 2.1.139+, Codex CLI 0.128.0+); regressing-loop-guard.js is retired from wiring and kept as a compatibility/test source.
 
-4. PostToolUse
-   ├─> counter.js check (.*)
+4. PostToolUse (.*) and PostToolUseFailure (Bash) — one process: adapters/claude/post-tool-use.js (v21.125.0)
+   ├─> counter check
    │   ├─> Detect regressing skill calls → auto-advance phase, record the calling session as owner
    │   ├─> Increment this session's counter (no shared lock)
    │   └─> At this session's threshold (memory-index lock): checkAndRotate() → update this session's L1 from its own position → extractDelta(sid8) → "session=<sid8>" block in delta_temp.txt
-   ├─> verification-sequence.js record (.*) — track source edits and test runs (v21.0.0)
-   ├─> completion-controller.js (Bash|Write|Edit) — declared result evidence and content-change invalidation
-   ├─> skill-tracker.js (Skill, async) — set this session's skill flag (cleared on compaction and SessionEnd)
-   └─> doc-watchdog.js record (Write|Edit, async) — track code edits and D/P/T doc edits (v21.18.0)
+   ├─> verification record — track source edits and test runs (v21.0.0)
+   ├─> completion-controller (Bash|Write|Edit) — declared result evidence and content-change invalidation
+   ├─> skill-tracker (Skill) — set this session's skill flag inline (cleared on compaction and SessionEnd)
+   ├─> doc-watchdog record (Write|Edit) — track in-project code edits and D/P/T doc edits
+   └─> path notice (Read|Grep|Glob) — reading another project's .crabshell
+   PostToolUseFailure runs only verification record + completion-controller.
 
-5. PreCompact (v21.21.0)
-   └─> pre-compact.js — inject memory preservation instructions into compaction prompt
-
-6. PostCompact (v21.21.0)
-   └─> post-compact.js — log compaction event + preserve regressing state
+5-6. Compaction — no Claude PreCompact/PostCompact hooks since v21.125.0 (their output reaches no model)
+   └─> SessionStart source "compact" → load-memory.js → core/post-compact-effects.js (pressure re-injection reset, compaction log)
+   Codex keeps adapters/codex/pre-compact.js and post-compact.js.
 
 7. SubagentStart (v21.21.0)
    └─> subagent-context.js — inject project constraints + rules + model routing table (T1/T2/T3 via readModelRouting()) into sub-agents
@@ -459,6 +461,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.125.0 | Guards block only real risks: path guard blocks writes into another project's `.crabshell` (reads get a notice; mentions, temp folders, unknown variables allowed), doc-watchdog counts only in-project edits, web-guard counts only this project's search servers; Claude hooks run one process per event (Edit 10→2, Bash 6→2, Read 3→1) with per-guard fail-open; Claude compaction hooks removed (effects run at SessionStart compact) |
 | 21.124.0 | Concurrent sessions: per-session L1 position, save counter, delta watermark, completion entry and skill flag; owner-token locks with one-at-a-time takeover; tree-scoped commit gate (prose/style/image edits exempt, advice when no check is configured, background launches not passing); SessionStart memory within a 9,500-character budget; L1 first-line loss fixed. |
 | 21.123.0 | Native hook capture, result binding/history and locks, Codex failure/Interrupt handling, prepared delta finalization and recovery context. |
 | 21.122.0 | Declared verification commands, captured host result distinction, command/edit evidence invalidation, one fingerprint per result, canonical project.md with preserving migration, and seven Codex document launchers. |
