@@ -12,7 +12,7 @@
       "name": "crabshell",
       "source": "./",
       "description": "Shared project memory, native Claude Code and Codex hooks, verification, and structured document workflows.",
-      "version": "21.125.0",
+      "version": "21.126.0",
       "author": {
         "name": "TaWa"
       },

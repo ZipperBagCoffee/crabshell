@@ -2,81 +2,14 @@
   "schemaVersion": 2,
   "projectType": "Node.js CLI plugin with Claude and Codex adapters",
   "created": "2026-03-28T08:20:00Z",
-  "updated": "2026-09-24T10:36:26.964Z",
+  "updated": "2026-09-24T11:13:02.427Z",
   "tools": {
     "build": null,
     "run": null,
-    "test": "node .crabshell/verification/run-verify.js"
+    "test": "node .crabshell/verification/run-verify.js",
+    "changed": "node .crabshell/verification/run-verify.js --changed"
   },
   "entries": [
-    {
-      "id": "V001",
-      "ia": "Claude rules and orchestration defaults remain executable",
-      "type": "structural",
-      "command": {
-        "file": "node",
-        "args": [
-          "scripts/_test-inject-rules.js"
-        ]
-      },
-      "contract": {
-        "exitCode": 0,
-        "assertions": [],
-        "forbiddenChanges": []
-      },
-      "timeout": 30000
-    },
-    {
-      "id": "V002",
-      "ia": "D110 internal task contract, reference perturbation, false-done gate, and host workflow parity",
-      "type": "structural",
-      "command": {
-        "file": "node",
-        "args": [
-          "scripts/_test-orchestration-defaults.js"
-        ]
-      },
-      "contract": {
-        "exitCode": 0,
-        "assertions": [],
-        "forbiddenChanges": []
-      },
-      "timeout": 30000
-    },
-    {
-      "id": "V003",
-      "ia": "Native Codex hook payload/output and explicit hook selection contract",
-      "type": "structural",
-      "command": {
-        "file": "node",
-        "args": [
-          "scripts/_test-codex-hook-contract.js"
-        ]
-      },
-      "contract": {
-        "exitCode": 0,
-        "assertions": [],
-        "forbiddenChanges": []
-      },
-      "timeout": 30000
-    },
-    {
-      "id": "V004",
-      "ia": "Shared Codex manual memory formats and operations",
-      "type": "structural",
-      "command": {
-        "file": "node",
-        "args": [
-          "scripts/_test-codex-memory-regression.js"
-        ]
-      },
-      "contract": {
-        "exitCode": 0,
-        "assertions": [],
-        "forbiddenChanges": []
-      },
-      "timeout": 30000
-    },
     {
       "id": "V005",
       "ia": "Native Codex clean install, cache, skill, restored prompt response contract, hook trust/hash, and spaces-path behavior",
@@ -119,57 +52,40 @@
       "timeout": 30000
     },
     {
-      "id": "V007",
-      "ia": "Final Verification guard requires a structured behavioral contract",
-      "type": "structural",
-      "command": {
-        "file": "node",
-        "args": [
-          "scripts/_test-verify-guard.js"
-        ]
-      },
-      "contract": {
-        "exitCode": 0,
-        "assertions": [],
-        "forbiddenChanges": []
-      },
-      "timeout": 30000
-    },
-    {
-      "id": "V008",
-      "ia": "Claude path guard preserves wrong-project memory isolation",
-      "type": "structural",
-      "command": {
-        "file": "node",
-        "args": [
-          "scripts/_test-path-guard.js"
-        ]
-      },
-      "contract": {
-        "exitCode": 0,
-        "assertions": [],
-        "forbiddenChanges": []
-      },
-      "timeout": 30000
-    },
-    {
       "id": "V009",
-      "ia": "Current release version is 21.125.0 after one-process hooks and write-only path blocking",
+      "ia": "Every file that carries the release version agrees with .claude-plugin/plugin.json",
       "type": "structural",
       "command": {
         "file": "node",
         "args": [
           "-e",
-          "const v=JSON.parse(require(\"fs\").readFileSync(\".claude-plugin/plugin.json\",\"utf8\")).version;process.stdout.write(JSON.stringify({version:v}));"
+          "0"
         ]
       },
       "contract": {
         "exitCode": 0,
         "assertions": [
           {
-            "kind": "stdoutJsonEquals",
-            "pointer": "/version",
-            "equals": "21.125.0"
+            "kind": "jsonMatches",
+            "actual": {
+              "path": ".codex-plugin/plugin.json",
+              "pointer": "/version"
+            },
+            "expected": {
+              "path": ".claude-plugin/plugin.json",
+              "pointer": "/version"
+            }
+          },
+          {
+            "kind": "jsonMatches",
+            "actual": {
+              "path": ".claude-plugin/marketplace.json",
+              "pointer": "/plugins/0/version"
+            },
+            "expected": {
+              "path": ".claude-plugin/plugin.json",
+              "pointer": "/version"
+            }
           }
         ],
         "forbiddenChanges": []
@@ -196,23 +112,6 @@
             "equals": true
           }
         ],
-        "forbiddenChanges": []
-      },
-      "timeout": 30000
-    },
-    {
-      "id": "V011",
-      "ia": "Fail-open edge cases run alone because the suite temporarily hides utils.js",
-      "type": "structural",
-      "command": {
-        "file": "node",
-        "args": [
-          "scripts/_test-fail-open-edge-cases.js"
-        ]
-      },
-      "contract": {
-        "exitCode": 0,
-        "assertions": [],
         "forbiddenChanges": []
       },
       "timeout": 30000
@@ -690,91 +589,6 @@
       "timeout": 30000
     },
     {
-      "id": "V047",
-      "ia": "Opt-in raw input capture preserves bytes and fails open at storage boundaries",
-      "type": "structural",
-      "command": {
-        "file": "node",
-        "args": [
-          "scripts/_test-hook-capture.js"
-        ]
-      },
-      "contract": {
-        "exitCode": 0,
-        "assertions": [],
-        "forbiddenChanges": []
-      },
-      "timeout": 30000
-    },
-    {
-      "id": "V048",
-      "ia": "Captured native result binding, failure/retry order, concurrent writers and content detection",
-      "type": "structural",
-      "command": {
-        "file": "node",
-        "args": [
-          "scripts/_test-native-result-evidence.js"
-        ]
-      },
-      "contract": {
-        "exitCode": 0,
-        "assertions": [],
-        "forbiddenChanges": []
-      },
-      "timeout": 30000
-    },
-    {
-      "id": "V049",
-      "ia": "Prepared memory finalization preserves new input and retries after failed metadata writes",
-      "type": "structural",
-      "command": {
-        "file": "node",
-        "args": [
-          "scripts/_test-delta-transaction.js"
-        ]
-      },
-      "contract": {
-        "exitCode": 0,
-        "assertions": [],
-        "forbiddenChanges": []
-      },
-      "timeout": 30000
-    },
-    {
-      "id": "V050",
-      "ia": "Both prompt hosts deliver consistent scoped guidance and supported pending memory instructions",
-      "type": "structural",
-      "command": {
-        "file": "node",
-        "args": [
-          "scripts/_test-request-memory-guidance.js"
-        ]
-      },
-      "contract": {
-        "exitCode": 0,
-        "assertions": [],
-        "forbiddenChanges": []
-      },
-      "timeout": 30000
-    },
-    {
-      "id": "V051",
-      "ia": "Stop/start/compact recovery and explicit interrupted-turn boundaries",
-      "type": "structural",
-      "command": {
-        "file": "node",
-        "args": [
-          "scripts/_test-recovery-checkpoint.js"
-        ]
-      },
-      "contract": {
-        "exitCode": 0,
-        "assertions": [],
-        "forbiddenChanges": []
-      },
-      "timeout": 30000
-    },
-    {
       "id": "V052",
       "ia": "hook PostToolUse (every tool) to the Claude post-tool-use dispatcher is wired and loadable",
       "type": "structural",
@@ -859,71 +673,12 @@
       "timeout": 30000
     },
     {
-      "id": "V055",
-      "ia": "The Claude PreToolUse dispatcher decides like the separate guards it replaced, keeps their side effects, and survives one guard failing to load",
+      "id": "V059",
+      "ia": "Every scripts/_test-*.js test passes without touching this repository's own memory log (found by name; explicit entries keep their own arguments)",
       "type": "behavioral",
-      "command": {
-        "file": "node",
-        "args": [
-          "scripts/_test-claude-dispatcher-parity.js"
-        ]
-      },
-      "contract": {
-        "exitCode": 0,
-        "assertions": [],
-        "forbiddenChanges": [
-          ".crabshell/memory/logbook.md"
-        ]
-      },
-      "timeout": 180000
-    },
-    {
-      "id": "V056",
-      "ia": "Behavior moved by one-process hooks: PostCompact effects at SessionStart(compact), Read notice after the read, inline observers, fail-open on bad input",
-      "type": "behavioral",
-      "command": {
-        "file": "node",
-        "args": [
-          "scripts/_test-claude-dispatchers.js"
-        ]
-      },
-      "contract": {
-        "exitCode": 0,
-        "assertions": [],
-        "forbiddenChanges": [
-          ".crabshell/memory/logbook.md"
-        ]
-      },
-      "timeout": 180000
-    },
-    {
-      "id": "V057",
-      "ia": "One tool call starts at most two synchronous Claude hook processes (one for reads) and Stop starts no child process",
-      "type": "behavioral",
-      "command": {
-        "file": "node",
-        "args": [
-          "scripts/_test-hook-wiring-cost.js"
-        ]
-      },
-      "contract": {
-        "exitCode": 0,
-        "assertions": [],
-        "forbiddenChanges": [
-          ".crabshell/memory/logbook.md"
-        ]
-      },
-      "timeout": 180000
-    },
-    {
-      "id": "V058",
-      "ia": "Harmless reads, mentions and temp-folder work are not blocked while writes to another project, logbook edits and this project's web-search servers still are",
-      "type": "behavioral",
-      "command": {
-        "file": "node",
-        "args": [
-          "scripts/_test-restriction-controls.js"
-        ]
+      "discover": {
+        "pattern": "scripts/_test-*.js",
+        "exclude": []
       },
       "contract": {
         "exitCode": 0,
@@ -934,5 +689,14 @@
       },
       "timeout": 180000
     }
-  ]
+  ],
+  "changed": {
+    "global": [
+      "hooks/*.json",
+      "scripts/constants.js",
+      "scripts/utils.js",
+      ".claude-plugin/*.json",
+      ".codex-plugin/*.json"
+    ]
+  }
 }

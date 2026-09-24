@@ -10,7 +10,7 @@ if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 const { readStdin, normalizePath } = require('./transcript-utils');
 const { getProjectDir, readJsonOrDefault, writeJson } = require('./utils');
 const { STORAGE_ROOT } = require('./constants');
-const { isGitCommit, commandObservation, projectFingerprint, checkKeyForCommand, declaredCommands, hasCheckConfiguration, isSourceFile } = require('./core/command-observation');
+const { isGitCommit, commandObservation, projectFingerprint, checkKeyForCommand, declaredCommands, hasCheckConfiguration, isSourceFile, isRequiredCheck } = require('./core/command-observation');
 const { startCheck, recordCheck, currentCheck } = require('./core/check-history');
 const { withStateLock } = require('./core/state-lock');
 
@@ -99,6 +99,10 @@ function handleRecord(hookData, projectDir, options = {}) {
       state.state = 'EDITED';
       state.lastTestFingerprint = null;
       process.stderr.write(`[VERIFICATION_SEQ] Latest required check failed, is running, or is undetermined; commit gate stays armed\n`);
+    } else if (current.required === false) {
+      // One manifest entry passing proves that entry, not the change: the gate
+      // waits for the project's own check (manifest tools or package.json "test").
+      process.stderr.write(`[VERIFICATION_SEQ] Passing single manifest entry recorded; the commit gate needs a manifest tools command or package.json test\n`);
     } else {
       state.state = 'TESTED';
       state.editsSinceTest = [];
@@ -124,7 +128,8 @@ function handleGate(hookData, projectDir) {
   if (toolName === 'Bash' && input.command) {
     const key = checkKeyForCommand(input.command, projectDir, input.workdir || hookData.cwd || projectDir);
     if (!isSuspended(state, hookData.session_id) && startCheck(state, hookData, key)) {
-      state.state = 'EDITED';
+      // Starting a single manifest entry does not re-lock a verified tree.
+      if (isRequiredCheck(input.command, projectDir, input.workdir || hookData.cwd || projectDir)) state.state = 'EDITED';
       saveState(projectDir, state);
     }
   }
@@ -192,7 +197,7 @@ function interruptVerification(projectDir, payload) {
       state.checkHistory.trackedStarts = true;
     }
     const remaining = state.checkHistory ? currentCheck(state) : null;
-    if (remaining?.passed && remaining.sourceFingerprint) {
+    if (remaining?.passed && remaining.sourceFingerprint && remaining.required !== false) {
       state.state = 'TESTED';
       state.lastTestFingerprint = remaining.sourceFingerprint;
     } else {

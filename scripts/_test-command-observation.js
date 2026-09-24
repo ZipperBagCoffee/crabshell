@@ -43,19 +43,27 @@ test('official runner and arbitrary declared check are recognized without filena
   assert.strictEqual(isTestExecution('node "acceptance check.js"', root), true);
   assert.strictEqual(isTestExecution('node _test-undeclared.js', root), false);
 });
-test('real assertion exit and output move EDITED to TESTED', () => {
+// P179: a single manifest entry passing is evidence, but only the project's own check
+// (manifest tools / package.json test) unlocks the commit gate.
+test('real assertion exit and output pass the entry; the commit gate stays armed until a required check', () => {
   const run = spawnSync(process.execPath, ['acceptance check.js'], { cwd: root, encoding: 'utf8', windowsHide: true });
   assert.strictEqual(run.status, 0, run.stderr);
   assert.match(run.stdout, /Arithmetic assertion passed/);
   const response = { exitCode: run.status, stdout: run.stdout, stderr: run.stderr };
   assert.strictEqual(observe('node "acceptance check.js"', response).passed, true);
-  assert.strictEqual(sequence('node "acceptance check.js"', response), 'TESTED');
+  assert.strictEqual(observe('node "acceptance check.js"', response).required, false);
+  assert.strictEqual(sequence('node "acceptance check.js"', response), 'EDITED');
 });
 test('official runner actually executes the declared check and supplies passing evidence', () => {
   fs.copyFileSync(path.join(__dirname, '..', 'skills', 'verifying', 'scripts', 'run-verify.js'), path.join(verification, 'run-verify.js'));
   manifest.entries[0].id = 'arithmetic';
   fs.writeFileSync(manifestPath, JSON.stringify(manifest));
-  const run = spawnSync(process.execPath, ['.crabshell/verification/run-verify.js'], { cwd: root, encoding: 'utf8', windowsHide: true });
+  // This test can itself run inside the declared verification runner; the fixture's
+  // own full run must not inherit that runner's nested-run guard.
+  const fixtureEnv = { ...process.env };
+  delete fixtureEnv.CRABSHELL_VERIFY_RUNNING;
+  delete fixtureEnv.PROJECT_ROOT;
+  const run = spawnSync(process.execPath, ['.crabshell/verification/run-verify.js'], { cwd: root, env: fixtureEnv, encoding: 'utf8', windowsHide: true });
   assert.strictEqual(run.status, 0, run.stderr || run.stdout);
   assert.match(run.stdout, /Verification Results: PASS: 1 \/ FAIL: 0/);
   const response = { exitCode: run.status, stdout: run.stdout };
@@ -104,12 +112,17 @@ test('missing, running, interrupted, failed and string-only responses stay EDITE
 test('clean Claude PostToolUse objects use event success rather than requiring synthetic exit fields', () => {
   // These three old synthetic negative cases contradicted Claude's successful
   // event contract. Their stdout/status fields are not the source of success.
+  // The command is also declared as a project tool, so it is a required check (P179).
+  manifest.tools.direct = 'node "acceptance check.js"';
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest));
   for (const response of [{ stdout: 'passed' }, { success: true, status: 'completed' }, { stdout: 'Exit code: 0' }]) {
     assert.strictEqual(observe('node "acceptance check.js"', response).passed, true);
     assert.strictEqual(sequence('node "acceptance check.js"', response), 'TESTED');
     const withoutEvent = commandObservation({ tool_name: 'Bash', tool_input: { command: 'node "acceptance check.js"' }, tool_response: response }, root);
     assert.strictEqual(withoutEvent.conclusive, false);
   }
+  delete manifest.tools.direct;
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest));
 });
 test('changing manifest input changes recognized commands without reader or expectation changes', () => {
   function checkDeclaredInput(file) {

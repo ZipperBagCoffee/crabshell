@@ -162,11 +162,15 @@ Create `.crabshell/verification/manifest.json` using schema version 2:
   "tools": {
     "build": "{build command or null}",
     "run": "{run command or null}",
-    "test": "{test command or null}"
+    "test": "node .crabshell/verification/run-verify.js",
+    "changed": "node .crabshell/verification/run-verify.js --changed"
   },
+  "changed": { "global": ["{files every check depends on, as globs, e.g. config/*.json}"] },
   "entries": []
 }
 ```
+
+`tools` commands (and the package.json `test` script) are the project's **required checks**: only they unlock the commit gate. A single entry's command still counts as evidence for that entry, but passing one entry does not unlock a commit. `changed.global` lists files whose change must run every check. Package manifests and lockfiles, the manifest, and the runner itself are always global.
 
 ### Step 5: Populate entries from current context
 
@@ -229,6 +233,18 @@ Supported assertions are `jsonEquals`, `jsonMatches`, `stdoutJsonEquals`, `fileE
 
 **Collect verification targets by convention, not by list.** When several scripts of the same kind must all run, have the probe discover them from the filesystem — a test file that exists but appears in no list is silently never executed. Assert that the discovered count is above zero so an empty glob fails loudly, and never hardcode how many were found.
 
+The runner does this for test files with a discovery entry. It runs one check per file matching `pattern` (a literal folder and a file-name glob), shares the entry's `contract`, and fails with `matched no files` when nothing matches. A file that an explicit entry already runs is not discovered again. Every `exclude` item needs a `reason`. `command` is optional, and `{file}` is replaced with each file; the default is `node <file>`.
+```json
+{
+  "id": "V100",
+  "ia": "every test file passes",
+  "type": "behavioral",
+  "discover": { "pattern": "scripts/_test-*.js", "exclude": [{ "file": "scripts/_test-slow.js", "reason": "needs a live service" }] },
+  "contract": { "exitCode": 0, "assertions": [], "forbiddenChanges": ["data/user-owned.json"] },
+  "timeout": 180000
+}
+```
+
 ### Step 6: Create verification runner script
 
 Copy `${CLAUDE_PLUGIN_ROOT}/skills/verifying/scripts/run-verify.js` to `.crabshell/verification/run-verify.js`. This tracked file is the single runner implementation. Do not retype or fork it in the skill document.
@@ -255,8 +271,20 @@ Read `.crabshell/verification/manifest.json`. If not found: "No manifest. Run `/
 ### Step 2: Execute verification runner
 
 ```bash
-node .crabshell/verification/run-verify.js
+node .crabshell/verification/run-verify.js            # every check; rebuilds the load map when all pass
+node .crabshell/verification/run-verify.js --changed  # only the checks the changed files touch
 ```
+
+A full run records `test-map.json` beside the manifest. The map lists, for each check, the repository files and folders it requires, reads, lists, or copies. Child processes are included, along with path strings and relative requires in the test file and the files its assertions read. The map is kept only when every check passed.
+
+`--changed` looks at the working tree against HEAD, including renames by old and new path and untracked files. `--files a,b` names the files instead, and `--dry-run` prints the selection as JSON without running anything. It selects checks whose test file changed, or whose recorded files or folders contain a changed file. Checks that record no files, and entries marked `always: true`, always run. It runs **every** check when:
+- a changed file matches `changed.global` or the default globals;
+- there is no map, or the map cannot be read;
+- the manifest, the runner, a test, or any recorded file changed after the map was written;
+- a changed non-prose file is not in the map;
+- no changed file is found at all.
+
+Prose that no check reads selects nothing. A release that changes a version file listed in `changed.global` therefore always runs everything. Remaining blind spots: reads made by non-Node processes, and paths computed from data a check never touches. Run the full set before a release.
 
 ### Step 2b: When an entry fails, decide what is wrong before touching anything
 

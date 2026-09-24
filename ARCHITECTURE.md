@@ -1,8 +1,8 @@
-# Crabshell Architecture (v21.125.0)
+# Crabshell Architecture (v21.126.0)
 
 ## Overview
 
-Crabshell is a dual-runtime Claude Code/Codex plugin. Both hosts use native hook manifests backed by shared first-turn, memory, workflow, compaction, subagent, command-observation, and parent-completion cores. Claude Code retains automatic SessionEnd capture, pressure telemetry, and deterministic guards; behavioral pressure/sycophancy/scope hooks are unwired. Codex uses synchronous native lifecycle/Interrupt events and explicit memory/document skills. Both runtimes share `.crabshell/` storage without launching or requiring each other. Version 21.125.0 runs each Claude hook event in one process and blocks only writes into another project's memory folder; version 21.124.0 keeps memory, verification, completion and skill-flag state per session so concurrent sessions do not interfere, and fits SessionStart memory within the host limit.
+Crabshell is a dual-runtime Claude Code/Codex plugin. Both hosts use native hook manifests backed by shared first-turn, memory, workflow, compaction, subagent, command-observation, and parent-completion cores. Claude Code retains automatic SessionEnd capture, pressure telemetry, and deterministic guards; behavioral pressure/sycophancy/scope hooks are unwired. Codex uses synchronous native lifecycle/Interrupt events and explicit memory/document skills. Both runtimes share `.crabshell/` storage without launching or requiring each other. Version 21.126.0 lets verification run only the checks the changed files touch and lets only the project's own check commands unlock commits; version 21.125.0 runs each Claude hook event in one process and blocks only writes into another project's memory folder; version 21.124.0 keeps memory, verification, completion and skill-flag state per session so concurrent sessions do not interfere, and fits SessionStart memory within the host limit.
 
 ## Core Philosophy
 
@@ -184,7 +184,7 @@ Codex marketplace -> installed cache -> .codex-plugin/plugin.json
 Several host sessions may work in one project. State is split by what it describes:
 
 - Per session: the save counter, L1 read position and document skill flag (`memory/session-state/<sid8>/`, sid8 = first 8 characters of session_id, the L1 file key), the delta watermark (`memory-index.json` `sessionDelta[sid8]`), and the completion-control entry (`completion-control.json` `sessions[session_id]`, full id because JSON keys need no file-name form and Codex ids share time-ordered prefixes). Payloads without a session id use the legacy project-wide fields or the `_` entry.
-- Per working tree: the commit gate (`verification-state.json`). Any session's source edit arms it and only a passing declared check on the current content disarms it.
+- Per working tree: the commit gate (`verification-state.json`). Any session's source edit arms it. Only a passing *required* check on the current content disarms it: a manifest `tools` command or package.json `test`, and since v21.126.0 no longer a single entry. Each declaration carries its source (`tools`, `package`, `entry`), and the observation carries `required`.
 - Per workflow: `regressing-state.json` records the owning session; the session that runs the workflow's next skill takes ownership.
 
 Locks carry an owner token and are taken over only from a dead or stale owner, one process at a time. SessionStart memory is assembled within `SESSION_START_MAX_CHARS` (9,500) by priority, below Claude Code's 10,000-character inline limit.
@@ -409,7 +409,7 @@ Regressing retains document-cycle continuation but has no parallel-worker count 
 | `run-orchestration-corpus.js` | regression CLI | Run baseline/current Codex conversation fixtures, reference perturbation, false-done rejection, and workspace side-effect checks |
 | `verify-cross-runtime.js` | regression CLI | Sequential shared-behavior and negative-mutation entry; fail-open suite runs alone and last |
 | `_test-cross-platform-native-hosts.js` | release smoke | Isolated Windows/Linux Claude Code CLI and Codex CLI install/activation matrix; app reported separately |
-| `skills/verifying/scripts/run-verify.js` | verification source | Canonical portable schema-v2 runner: repo-relative commands, structured assertions, and forbidden-path snapshots |
+| `skills/verifying/scripts/run-verify.js` | verification source | Canonical portable schema-v2 runner: repo-relative commands, structured assertions, and forbidden-path snapshots. v21.126.0: `discover` entries (one check per matching test file). A full run writes a load map (`test-map.json`) from a NODE_OPTIONS tracer that re-attaches to child processes (require, reads, listings, copies) plus a static path-string scan. `--changed` selects the checks the changed files touch, and falls back to all when it cannot know |
 | `.crabshell/verification/run-verify.js` | generated project runner | Byte-equivalent generated runner consumed by `verify-guard.js`; stdout text is diagnostic, not a pass oracle |
 | `sycophancy-guard.js` | (unwired v21.113.0 — I083 R5) | Retired from PreToolUse and Stop dispatch; anti-sycophancy training in Sonnet 4.5+ models replaced the prompt/hook layer. Script kept on disk |
 | `scope-guard.js` | (unwired v21.113.0 — I083 R5) | Retired from Stop dispatch; scope preservation lives as a short principle in RULES. Script kept on disk |
@@ -570,6 +570,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.126.0 | Verification runs what changed: the manifest discovers every `scripts/_test-*.js` (22 → all 77 tests in the declared checks), `run-verify.js --changed` runs only the checks the changed files touch (a load map from a child-process-aware tracer; falls back to everything when it cannot know), the commit gate is unlocked only by the project's own check commands, and the declared checks pass on a fresh clone |
 | 21.125.0 | Guards block only real risks: path guard blocks writes into another project's `.crabshell` (reads get a notice; mentions, temp folders, unknown variables allowed), doc-watchdog counts only in-project edits, web-guard counts only this project's search servers; Claude hooks run one process per event (Edit 10→2, Bash 6→2, Read 3→1) with per-guard fail-open; Claude compaction hooks removed (effects run at SessionStart compact) |
 | 21.124.0 | Concurrent sessions: per-session L1 position, save counter, delta watermark, completion entry and skill flag; owner-token locks with one-at-a-time takeover; tree-scoped commit gate (prose/style/image edits exempt, advice when no check is configured, background launches not passing); SessionStart memory within a 9,500-character budget; L1 first-line loss fixed. |
 | 21.123.0 | Native failure/Interrupt evidence, bound Codex transcript results, ordered check state, prepared delta finalization and bounded recovery. |

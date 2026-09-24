@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.125.0)
+# Crabshell User Manual (v21.126.0)
 
 ## Why Do You Need This?
 
@@ -422,6 +422,8 @@ The eight-field task contract, risk boundary for user questions, bounded worker 
 ### Declaring verification commands
 
 Parent evidence recognizes commands declared in `.crabshell/verification/manifest.json` (`tools` or non-manual `entries`) and the package's `scripts.test` command chain. Declare custom check names there instead of relying on a filename containing `test`. A single invocation must match; compound shell commands and printed command names are not accepted as check identity. Entry assertions also apply; forbidden-change assertions require the declared runner because a post-tool event cannot reconstruct their before-state.
+
+Since v21.126.0 the commit gate is unlocked only by a **required** check: a manifest `tools` command such as `test` (every check) or `changed` (`run-verify.js --changed`, only the checks the changed files touch), or package.json `test`. A passing single entry is still evidence for that entry, but it neither unlocks nor re-locks the gate. This repository's manifest discovers every `scripts/_test-*.js` with a `discover` entry. `changed.global` lists the files whose change runs everything (here `hooks/*.json`, `scripts/constants.js`, `scripts/utils.js`, the plugin manifests). `--changed` also runs everything when the load map (`test-map.json`, written by a passing full run) is missing or older than a file it recorded. See the verifying skill for the selection rules and their blind spots.
 
 Claude's captured successful `PostToolUse` Bash object has no exit-code field. An explicit code overrides success inference; failure, interruption, and running indicators prevent it. Claude failures arrive as a top-level `error` plus `is_interrupt`. The captured Codex CLI PostToolUse contains only output text: `host-tool-result.js` obtains an explicit `exit_code` from the matching completed command in its transcript. Session, turn, command ID and cwd must agree; missing or conflicting evidence stays unconfirmed. Captures and provenance are under `scripts/fixtures/hook-payloads/native/`.
 

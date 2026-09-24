@@ -1,0 +1,151 @@
+{
+  "schemaVersion": 1,
+  "generatedFrom": {
+    "hooks": "hooks/hooks.json"
+  },
+  "hooks": [
+    {
+      "id": "userpromptsubmit:inject-rules",
+      "event": "UserPromptSubmit",
+      "matcher": "*",
+      "script": "scripts/inject-rules.js",
+      "args": []
+    },
+    {
+      "id": "sessionstart:load-memory",
+      "event": "SessionStart",
+      "matcher": null,
+      "script": "scripts/load-memory.js",
+      "args": []
+    },
+    {
+      "id": "posttooluse:post-tool-use",
+      "event": "PostToolUse",
+      "matcher": ".*",
+      "script": "scripts/adapters/claude/post-tool-use.js",
+      "args": []
+    },
+    {
+      "id": "posttoolusefailure:post-tool-use",
+      "event": "PostToolUseFailure",
+      "matcher": "Bash",
+      "script": "scripts/adapters/claude/post-tool-use.js",
+      "args": []
+    },
+    {
+      "id": "pretooluse:pre-tool-use",
+      "event": "PreToolUse",
+      "matcher": "Bash|Write|Edit|WebFetch|WebSearch",
+      "script": "scripts/adapters/claude/pre-tool-use.js",
+      "args": []
+    },
+    {
+      "id": "stop:completion-controller",
+      "event": "Stop",
+      "matcher": "",
+      "script": "scripts/completion-controller.js",
+      "args": []
+    },
+    {
+      "id": "sessionend:counter:final",
+      "event": "SessionEnd",
+      "matcher": null,
+      "script": "scripts/counter.js",
+      "args": [
+        "final"
+      ]
+    },
+    {
+      "id": "subagentstart:subagent-context",
+      "event": "SubagentStart",
+      "matcher": null,
+      "script": "scripts/subagent-context.js",
+      "args": []
+    },
+    {
+      "id": "subagentstop:completion-controller",
+      "event": "SubagentStop",
+      "matcher": null,
+      "script": "scripts/completion-controller.js",
+      "args": []
+    }
+  ],
+  "triggers": [
+    {
+      "id": "trigger:crabshell_delta",
+      "token": "[CRABSHELL_DELTA]",
+      "producers": [
+        {
+          "file": "scripts/counter.js"
+        },
+        {
+          "file": "scripts/inject-rules.js"
+        }
+      ],
+      "consumers": [
+        {
+          "file": "skills/memory-delta/SKILL.md",
+          "section": "Scope and prerequisites"
+        }
+      ]
+    },
+    {
+      "id": "trigger:crabshell_rotate",
+      "token": "[CRABSHELL_ROTATE]",
+      "producers": [
+        {
+          "file": "scripts/counter.js"
+        },
+        {
+          "file": "scripts/inject-rules.js"
+        },
+        {
+          "file": "scripts/legacy-migration.js"
+        },
+        {
+          "file": "scripts/memory-rotation.js"
+        }
+      ],
+      "consumers": [
+        {
+          "file": "skills/memory-rotate/SKILL.md",
+          "section": "Trigger and scope"
+        }
+      ]
+    },
+    {
+      "id": "trigger:crabshell_save",
+      "token": "[CRABSHELL_SAVE]",
+      "producers": [
+        {
+          "file": "scripts/counter.js"
+        }
+      ],
+      "consumers": [
+        {
+          "file": "skills/memory-autosave/SKILL.md",
+          "section": "Trigger Message"
+        }
+      ]
+    }
+  ],
+  "agents": [
+    {
+      "id": "agent:delta-summarizer",
+      "skill": "skills/memory-delta/SKILL.md",
+      "agent": "delta-summarizer",
+      "agentFile": "agents/delta-summarizer.md"
+    },
+    {
+      "id": "agent:memory-summarizer",
+      "skill": "skills/memory-rotate/SKILL.md",
+      "agent": "memory-summarizer",
+      "agentFile": "agents/memory-summarizer.md"
+    }
+  ],
+  "ignore": {
+    "hooks": [],
+    "triggers": [],
+    "agents": []
+  }
+}
