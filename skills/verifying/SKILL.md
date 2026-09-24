@@ -280,7 +280,7 @@ A full run records `test-map.json` beside the manifest. The map lists, for each 
 `--changed` looks at the working tree against HEAD, including renames by old and new path and untracked files. `--files a,b` names the files instead, and `--dry-run` prints the selection as JSON without running anything. It selects checks whose test file changed, or whose recorded files or folders contain a changed file. Checks that record no files, and entries marked `always: true`, always run. It runs **every** check when:
 - a changed file matches `changed.global` or the default globals;
 - there is no map, or the map cannot be read;
-- the manifest, the runner, a test, or any recorded file changed after the map was written;
+- the manifest, the runner, a test, or any recorded file changed after the map was written (the map stores each file's content hash, so a file whose time moved but whose content is unchanged — a revert, a checkout — does not count);
 - a changed non-prose file is not in the map;
 - no changed file is found at all.
 

@@ -478,11 +478,16 @@ function planChanged(manifest, entries, projectRoot, manifestPath, changedFiles)
   const changedSet = new Set(changed);
   // A file is newer than the map when it changed after its time was recorded (the
   // end of the full run); files without a recorded time compare with the run start.
+  // A moved time with the recorded content (a revert, a checkout) is not a change.
   const fileTimes = map.fileTimes || {};
+  const fileHashes = map.fileHashes || {};
   const newer = file => {
     try {
-      const mtime = fs.statSync(path.join(projectRoot, file)).mtimeMs;
-      return Object.hasOwn(fileTimes, file) ? mtime > fileTimes[file] + 1 : mtime > createdAt;
+      const absolute = path.join(projectRoot, file);
+      const mtime = fs.statSync(absolute).mtimeMs;
+      const moved = Object.hasOwn(fileTimes, file) ? mtime > fileTimes[file] + 1 : mtime > createdAt;
+      if (moved && Object.hasOwn(fileHashes, file)) return hashBuffer(fs.readFileSync(absolute)) !== fileHashes[file];
+      return moved;
     } catch (_) { return false; }
   };
   if (changed.length === 0) return everything('no changed files found (edits invisible to git, or nothing changed)');
@@ -659,18 +664,28 @@ function main(argv = process.argv.slice(2), options = {}) {
   if (buildMap && !allPassed) console.error('[VERIFY] load map not updated: a check failed or timed out, so its record may be incomplete');
   if (buildMap && allPassed) {
     try {
-      // Drop the map itself (checks may read it) and record every file's time now,
-      // so files written during the run are not mistaken for later changes.
+      // Drop the map itself (checks may read it) and record every checked file's
+      // time and content now, so files written during the run are not mistaken for
+      // later changes and a later revert to the same content is not one either.
       const mapRelative = insideRoot(projectRoot, mapPath(manifestPath));
       const fileTimes = {};
+      const fileHashes = {};
+      const note = file => {
+        if (!file || file.endsWith('/') || file === mapRelative || Object.hasOwn(fileTimes, file)) return;
+        try {
+          const absolute = path.join(projectRoot, file);
+          fileTimes[file] = fs.statSync(absolute).mtimeMs;
+          fileHashes[file] = hashBuffer(fs.readFileSync(absolute));
+        } catch (_) {}
+      };
       for (const record of Object.values(mapEntries)) {
         record.files = record.files.filter(file => file !== mapRelative);
-        for (const file of record.files) {
-          if (file.endsWith('/') || Object.hasOwn(fileTimes, file)) continue;
-          try { fileTimes[file] = fs.statSync(path.join(projectRoot, file)).mtimeMs; } catch (_) {}
-        }
+        record.files.forEach(note);
+        note(record.test);
       }
-      fs.writeFileSync(mapPath(manifestPath), JSON.stringify({ version: 2, createdAt: startedAt, fileTimes, entries: mapEntries }, null, 2) + '\n');
+      note(insideRoot(projectRoot, manifestPath));
+      note(insideRoot(projectRoot, __filename));
+      fs.writeFileSync(mapPath(manifestPath), JSON.stringify({ version: 2, createdAt: startedAt, fileTimes, fileHashes, entries: mapEntries }, null, 2) + '\n');
     } catch (error) {
       console.error(`[VERIFY] WARN: load map not written: ${error.message}`);
     }

@@ -128,10 +128,16 @@ for (const file of ['scripts/constants.js', 'scripts/utils.js', 'hooks/hooks.jso
   git(dir, 'checkout', '--', 'scripts/lib-b.js');
 }
 {
+  // An edited test file (new content after the map); a moved time alone is not an
+  // edit since the map records content hashes (R29–R31).
   const future = new Date(Date.now() + 60 * 60 * 1000);
-  fs.utimesSync(path.join(dir, 'scripts', '_test-a.js'), future, future);
+  const testA = path.join(dir, 'scripts', '_test-a.js');
+  const original = fs.readFileSync(testA);
+  fs.appendFileSync(testA, '// edited after the map\n');
+  fs.utimesSync(testA, future, future);
   const plan = dryRun(dir, ['scripts/lib-b.js']);
   report.check('R10 control: a load map older than a test file runs everything', plan.full === true && /stale|older/i.test(String(plan.reason)), show(plan));
+  fs.writeFileSync(testA, original);
 }
 
 // Discovery rules.
@@ -274,10 +280,41 @@ function touchLater(dir, rel) {
   const built = runner(whole, []);
   const manifest = path.join(whole, CRAB, 'verification', 'manifest.json');
   const later = new Date(Date.now() + 60 * 60 * 1000);
+  fs.writeFileSync(manifest, JSON.stringify({ ...JSON.parse(fs.readFileSync(manifest, 'utf8')), note: 'edited after the map' }, null, 2));
   fs.utimesSync(manifest, later, later);
   const plan = dryRun(whole, ['scripts/lib-b.js']);
   report.check('R28 control: with .crabshell ignored, a manifest edit still runs everything',
     built.status === 0 && plan.full === true && /manifest\.json/.test(String(plan.reason)), `exit=${built.status} ${show(plan)}`);
+}
+
+// R29–R31: a file whose time moved but whose content did not (a revert, a checkout,
+// a branch switch) is not a change, so it must not make --changed run everything.
+function rewriteSameLater(dir, rel) {
+  const file = path.join(dir, rel);
+  const later = new Date(Date.now() + 2 * 60 * 60 * 1000);
+  fs.writeFileSync(file, fs.readFileSync(file));
+  fs.utimesSync(file, later, later);
+}
+{
+  const same = fixture('same-content');
+  const built = runner(same, []);
+  rewriteSameLater(same, 'scripts/lib-b.js');
+  let plan = dryRun(same, ['scripts/lib-a.js']);
+  report.check('R29 a recorded file rewritten with the same content does not make --changed run everything',
+    built.status === 0 && plan.full === false && selectsTest(plan, '_test-a.js'), `exit=${built.status} ${show(plan)}`);
+  rewriteSameLater(same, 'scripts/_test-b.js');
+  rewriteSameLater(same, `${CRAB}/verification/manifest.json`);
+  plan = dryRun(same, ['scripts/lib-a.js']);
+  report.check('R30 a test file and the manifest rewritten with the same content do not either',
+    plan.full === false && selectsTest(plan, '_test-a.js'), show(plan));
+  const mapFile = path.join(same, CRAB, 'verification', 'test-map.json');
+  const oldMap = JSON.parse(fs.readFileSync(mapFile, 'utf8'));
+  delete oldMap.fileHashes;
+  fs.writeFileSync(mapFile, JSON.stringify(oldMap, null, 2) + '\n');
+  rewriteSameLater(same, 'scripts/lib-b.js');
+  plan = dryRun(same, ['scripts/lib-a.js']);
+  report.check('R31 control: a map without content hashes keeps the time rule (a moved time runs everything)',
+    plan.full === true && /older than/.test(String(plan.reason)), show(plan));
 }
 
 // R14: this repository — a counter.js change selects fewer than all checks but
