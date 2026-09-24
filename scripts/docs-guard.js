@@ -2,63 +2,18 @@
 
 const path = require('path');
 const fs = require('fs');
-const { SKILL_ACTIVE_FILE } = require('./constants');
+const { STORAGE_ROOT, MEMORY_DIR, REGRESSING_STATE_FILE, DOC_TYPES } = require('./constants');
 const { readStdin, normalizePath } = require('./transcript-utils');
 
 // Skip processing during background memory summarization
 // F1 mitigation: keep inline env check for fail-open invariant — D106 IA-10 RA2
 if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 
-const { getProjectDir } = require('./utils');
+const { getProjectDir, readJsonOrDefault, docDirsPattern } = require('./utils');
+const { getActiveSkill } = require('./core/skill-flag');
 
-// Protected .crabshell/ subdirectories (D/P/T/I/W documents)
-const PROTECTED_DOCS_PATTERN = /\.crabshell\/(discussion|plan|ticket|investigation|worklog|hotfix)\//;
-
-// Skills that legitimately create/modify .crabshell/ D/P/T/I files
-const LEGITIMATE_SKILLS = [
-  'discussing', 'planning', 'ticketing', 'investigating',
-  'regressing', 'verifying', 'hotfix'
-];
-
-// Legacy project-wide flag lifetime (payloads without a session id only).
-const SKILL_ACTIVE_TTL_MS = 15 * 60 * 1000;
-
-/**
- * Return the active document skill for this session, or null.
- * A session's own flag has no timer: it lasts until the session compacts
- * (the skill instructions leave the context) or ends. Another session's flag
- * never counts. Payloads without a session id use the legacy 15-minute flag.
- */
-function getActiveSkill(projectDir, sessionId) {
-  const { readSessionState, sessionKey } = require('./core/session-state');
-  if (sessionKey(sessionId)) {
-    const data = readSessionState(projectDir, sessionId, 'skill-active', null);
-    return data && LEGITIMATE_SKILLS.includes(data.skill) ? data.skill : null;
-  }
-  const { STORAGE_ROOT } = require('./constants');
-  const flagPath = path.join(projectDir, STORAGE_ROOT, 'memory', SKILL_ACTIVE_FILE);
-  try {
-    if (!fs.existsSync(flagPath)) return null;
-    const data = JSON.parse(fs.readFileSync(flagPath, 'utf8'));
-    if (!data || !data.skill || !data.activatedAt) return null;
-
-    // Check TTL
-    const ttl = data.ttl || SKILL_ACTIVE_TTL_MS;
-    const elapsed = Date.now() - new Date(data.activatedAt).getTime();
-    if (elapsed > ttl) {
-      // Expired — clean up
-      try { fs.unlinkSync(flagPath); } catch {}
-      return null;
-    }
-
-    // Check if it's a legitimate skill
-    if (!LEGITIMATE_SKILLS.includes(data.skill)) return null;
-
-    return data.skill;
-  } catch {
-    return null;
-  }
-}
+// Document folders only a document skill may write (constants DOC_TYPES skillOnly)
+const PROTECTED_DOCS_PATTERN = new RegExp(`${docDirsPattern(type => type.skillOnly)}/`);
 
 /**
  * Check if a Discussion document Edit is blocked by an active regressing session.
@@ -70,16 +25,9 @@ function checkDiscussionRegressingBlock(filePath, toolName, activeSkill, project
   if (toolName !== 'Edit') return null;
   if (!filePath.includes('discussion/') && !filePath.includes('discussion\\')) return null;
 
-  // Read regressing-state.json inline (avoid circular dependency)
-  try {
-    const { STORAGE_ROOT } = require('./constants');
-    const statePath = require('path').join(projectDir, STORAGE_ROOT, 'memory', 'regressing-state.json');
-    const data = JSON.parse(require('fs').readFileSync(statePath, 'utf8'));
-    if (!data || data.active !== true) return null;
-  } catch {
-    // File absent or unreadable → allow (fail-open)
-    return null;
-  }
+  // Absent or unreadable state → allow (fail-open)
+  const data = readJsonOrDefault(path.join(projectDir, STORAGE_ROOT, MEMORY_DIR, REGRESSING_STATE_FILE), null);
+  if (!data || data.active !== true) return null;
 
   // Regressing is active — discussing skill is the only legitimate actor for log appends
   if (activeSkill === 'discussing') return null;
@@ -150,13 +98,8 @@ function evaluateDocsGuard(hookData, projectDir) {
   const docType = filePath.match(PROTECTED_DOCS_PATTERN);
   const category = docType ? docType[1] : 'docs';
 
-  const skillMap = {
-    discussion: 'discussing',
-    plan: 'planning',
-    ticket: 'ticketing',
-    investigation: 'investigating'
-  };
-  const suggestedSkill = skillMap[category] || 'the appropriate document skill';
+  const typeRow = DOC_TYPES.find(type => type.dir === category);
+  const suggestedSkill = (typeRow && typeRow.skill) || 'the appropriate document skill';
 
   return {
     reason: `Direct write to .crabshell/${category}/ blocked. You MUST invoke the Skill tool first (skill="${suggestedSkill}") before writing ${category} documents. This prevents post-compaction skill bypass where documents are created from memory without proper skill workflow.`,

@@ -1,6 +1,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const { STORAGE_ROOT, DOC_TYPES } = require('./constants');
 
 // ---------------------------------------------------------------------------
 // CLI argument parsing
@@ -28,7 +29,7 @@ for (const arg of args) {
 
 // Resolve to absolute path
 projectDir = path.resolve(projectDir);
-const crabshellDir = path.join(projectDir, '.crabshell');
+const crabshellDir = path.join(projectDir, STORAGE_ROOT);
 
 if (!fs.existsSync(crabshellDir)) {
   console.error(`Error: .crabshell/ not found under ${projectDir}`);
@@ -45,14 +46,7 @@ console.log('');
 // ---------------------------------------------------------------------------
 // Directory → document type mapping
 // ---------------------------------------------------------------------------
-const DOC_DIRS = [
-  { dir: 'discussion',    type: 'discussion',    prefix: 'D', ticketOnly: false },
-  { dir: 'investigation', type: 'investigation', prefix: 'I', ticketOnly: false },
-  { dir: 'plan',          type: 'plan',          prefix: 'P', ticketOnly: false },
-  { dir: 'ticket',        type: 'ticket',        prefix: 'P', ticketOnly: true  },
-  { dir: 'worklog',       type: 'worklog',       prefix: 'W', ticketOnly: false },
-  { dir: 'hotfix',        type: 'hotfix',        prefix: 'H', ticketOnly: false },
-];
+const DOC_DIRS = DOC_TYPES.filter(type => type.linked).map(type => ({ dir: type.dir, type: type.dir }));
 
 // ---------------------------------------------------------------------------
 // Counters

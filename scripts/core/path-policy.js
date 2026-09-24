@@ -209,8 +209,7 @@ function evaluatePathPolicy(hookData, projectDir) {
     }
   }
 
-  if ((toolName === 'Write' || toolName === 'Edit') && (filePath.endsWith('memory/skill-active.json')
-      || /memory\/session-state\/[^/]+\/skill-active\.json$/.test(filePath))) {
+  if ((toolName === 'Write' || toolName === 'Edit') && require('./skill-flag').isSkillFlagPath(filePath)) {
     return deny(
       'skill-active.json is managed by the skill-tracker hook. Direct Write/Edit is not allowed.',
       `[PATH_GUARD] Blocked ${toolName} on skill-active.json`

@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.126.0)
+# Crabshell Architecture (v21.127.0)
 
 ## Overview
 
@@ -33,7 +33,7 @@ Two meta-principles guide Claude's approach to obstacles:
 
 ### Dual Injection Optimization
 - **CLAUDE.md** (session start): Full RULES text (~940 tokens, 3.8KB measured v21.113.0 — compressed from ~2,530 tokens in I083 R3) synced via `syncRulesToClaudeMd()` with marker-based replacement
-- **additionalContext** (every prompt): compact turn contract + 4-line Rules Quick-Check (~550 tokens total including Project Concept, measured v21.113.0 — down from ~1,220) — per-response 3-field ending and pressure texts retired
+- **additionalContext** (every prompt): compact turn contract + 4-line Rules Quick-Check (1,914 characters on a question prompt, measured v21.127.0; the project description is no longer repeated per prompt — SessionStart loads it as the project overview, SubagentStart gives it to workers) — per-response 3-field ending and pressure texts retired
 - **Error fallback**: FIRST_TURN_RULES injected via additionalContext only when the normal path throws an exception
 
 ## System Architecture
@@ -68,7 +68,7 @@ Two meta-principles guide Claude's approach to obstacles:
 |  | - Load logbook.md  |  | - syncRulesToClaudeMd() (RULES→CLAUDE.md) |  |
 |  | - Load L3 summaries|  | - Inject COMPRESSED_CHECKLIST per prompt   |  |
 |  | - Load project.md  |  |   (~300 tokens via additionalContext)      |  |
-|  | - Load moc-digest  |  | - Inject Project Concept (10 lines/500ch) |  |
+|  | - Load moc-digest  |  | - Project description: SessionStart only  |  |
 |  | - Active workflow  |  | - Inject prompt-aware memory snippets     |  |
 |  | - Legacy copy only |  | - Execution-only cleanup/rule sync        |  |
 |  +--------------------+  | - Pressure lastShownLevel tracking        |  |
@@ -233,7 +233,6 @@ Claude `PostToolUseFailure` is wired to both verification-state and parent-evide
        ├─> First execution prompt: cleanup/reset + syncRulesToClaudeMd() + MEMORY.md warning
        ├─> Inject COMPRESSED_CHECKLIST (~380 tokens measured) via additionalContext
        │   (Full RULES ~2,530 tokens only on error fallback)
-       ├─> Inject Project Concept (first 20 lines of project.md, max 1000 chars) via additionalContext
        ├─> Inject prompt-aware memory snippets (keyword-match top 3 sections)
        ├─> Check for pending rotation (summaryGenerated: false)
        │   └─> If yes: Inject ROTATION_INSTRUCTION → Claude executes memory-rotate skill
@@ -570,6 +569,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.127.0 | Commit gate says what to declare when a manifest has only single entries; rules gain one advisor line and banter/length/list wording that matches common brevity rules; per-prompt context 1,021 characters shorter (the project description loads at SessionStart, not every prompt); one definition per shared value: `DOC_TYPES` table, duration constants, `core/skill-flag.js`, `tryWithMemoryIndex`/`tryWithMemoryRotation` for every hand-written lock, JSON through `readJsonOrDefault`/`writeJson` |
 | 21.126.0 | Verification runs what changed: the manifest discovers every `scripts/_test-*.js` (22 → all 77 tests in the declared checks), `run-verify.js --changed` runs only the checks the changed files touch (a load map from a child-process-aware tracer; falls back to everything when it cannot know), the commit gate is unlocked only by the project's own check commands, and the declared checks pass on a fresh clone |
 | 21.125.0 | Guards block only real risks: path guard blocks writes into another project's `.crabshell` (reads get a notice; mentions, temp folders, unknown variables allowed), doc-watchdog counts only in-project edits, web-guard counts only this project's search servers; Claude hooks run one process per event (Edit 10→2, Bash 6→2, Read 3→1) with per-guard fail-open; Claude compaction hooks removed (effects run at SessionStart compact) |
 | 21.124.0 | Concurrent sessions: per-session L1 position, save counter, delta watermark, completion entry and skill flag; owner-token locks with one-at-a-time takeover; tree-scoped commit gate (prose/style/image edits exempt, advice when no check is configured, background launches not passing); SessionStart memory within a 9,500-character budget; L1 first-line loss fixed. |

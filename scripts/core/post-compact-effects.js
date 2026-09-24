@@ -3,12 +3,11 @@
 const fs = require('fs');
 const path = require('path');
 const {
-  acquireIndexLock,
   getStorageRoot,
   readJsonOrDefault,
-  releaseIndexLock,
   writeJson,
 } = require('../utils');
+const { tryWithMemoryIndex } = require('./memory-lock');
 const { INDEX_FILE, REGRESSING_STATE_FILE } = require('../constants');
 
 function runPostCompactEffects(projectDir, options = {}) {
@@ -35,13 +34,9 @@ function runPostCompactEffects(projectDir, options = {}) {
     diagnostics.push(`could not read regressing state: ${error.message}`);
   }
 
-  let locked = false;
   try {
     const indexPath = path.join(memoryDir, INDEX_FILE);
-    locked = acquireIndexLock(memoryDir);
-    if (!locked) {
-      diagnostics.push('index lock busy, skipping lastShownLevel reset (fail-open)');
-    } else {
+    const outcome = tryWithMemoryIndex(memoryDir, () => {
       const index = readJsonOrDefault(indexPath, null);
       if (index && index.feedbackPressure && typeof index.feedbackPressure.lastShownLevel === 'number') {
         index.feedbackPressure.lastShownLevel = 0;
@@ -49,11 +44,10 @@ function runPostCompactEffects(projectDir, options = {}) {
         result.pressureReset = true;
         diagnostics.push('feedbackPressure.lastShownLevel reset to 0');
       }
-    }
+    });
+    if (!outcome.ran) diagnostics.push('index lock busy, skipping lastShownLevel reset (fail-open)');
   } catch (error) {
     diagnostics.push(`lastShownLevel reset failed: ${error.message}`);
-  } finally {
-    if (locked) releaseIndexLock(memoryDir);
   }
 
   try {

@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const { getStorageRoot, readJsonOrDefault } = require('../utils');
-const { REGRESSING_STATE_FILE } = require('../constants');
+const { REGRESSING_STATE_FILE, REGRESSING_STALE_MS, DOC_TYPES } = require('../constants');
 const { buildMemoryContext } = require('./memory-context');
 const { getPostCompactWarning } = require('../shared-context');
 
@@ -12,14 +12,8 @@ const TERMINAL_DOC_STATUSES = new Set(['done', 'concluded', 'verified', 'abandon
 
 function getActiveDocs(projectDir) {
   const storageRoot = getStorageRoot(projectDir);
-  const docTypes = [
-    { dir: 'discussion', label: 'Discussion' },
-    { dir: 'plan', label: 'Plan' },
-    { dir: 'ticket', label: 'Ticket' },
-    { dir: 'investigation', label: 'Investigation' },
-  ];
   const active = [];
-  for (const { dir, label } of docTypes) {
+  for (const { dir, title: label } of DOC_TYPES.filter(type => type.tracked)) {
     const indexPath = path.join(storageRoot, dir, 'INDEX.md');
     let content;
     try { content = fs.readFileSync(indexPath, 'utf8'); } catch { continue; }
@@ -55,7 +49,7 @@ function getRegressingSnapshot(projectDir, now = Date.now()) {
     planId: state.planId || null,
     ticketIds: Array.isArray(state.ticketIds) ? state.ticketIds : state.ticketId ? [state.ticketId] : [],
     lastUpdatedAt: updatedAt,
-    stale: Number.isFinite(updatedMs) ? now - updatedMs > 24 * 60 * 60 * 1000 : true,
+    stale: Number.isFinite(updatedMs) ? now - updatedMs > REGRESSING_STALE_MS : true,
     statePath,
   };
 }

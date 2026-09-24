@@ -4,18 +4,10 @@
 const fs = require('fs');
 const path = require('path');
 
-const { STORAGE_ROOT } = require('./constants');
+const { STORAGE_ROOT, DOC_TYPES } = require('./constants');
 const { ensureDir } = require('./utils');
 
-const TYPES = {
-  discussion: { dir: 'discussion', prefix: 'D', title: 'Discussion', index: ['ID', 'Topic', 'Status', 'Date'] },
-  plan: { dir: 'plan', prefix: 'P', title: 'Plan', index: ['ID', 'Plan', 'Status', 'Date', 'Related'] },
-  ticket: { dir: 'ticket', prefix: 'T', title: 'Ticket', index: ['ID', 'Ticket', 'Status', 'Date', 'Plan'] },
-  investigation: { dir: 'investigation', prefix: 'I', title: 'Investigation', index: ['ID', 'Title', 'Status', 'Created', 'Related'] },
-  hotfix: { dir: 'hotfix', prefix: 'H', title: 'Hotfix', index: ['ID', 'Title', 'Status', 'Date'] },
-  worklog: { dir: 'worklog', prefix: 'W', title: 'Worklog', index: ['ID', 'Task', 'Status', 'Date', 'Related'] },
-  knowledge: { dir: 'knowledge', prefix: 'K', title: 'Knowledge', index: ['ID', 'Title', 'Cat', 'Tags', 'Source'] }
-};
+const TYPES = Object.fromEntries(DOC_TYPES.map(type => [type.dir, { dir: type.dir, prefix: type.prefix, title: type.title, index: type.indexColumns }]));
 
 function parseArgs(argv) {
   const args = { _: [] };
@@ -210,14 +202,15 @@ function main(argv = process.argv.slice(2), options = {}) {
   const title = args._.join(' ').trim() || args.title;
   const root = path.resolve(args['project-dir'] || process.cwd());
   if (!command || !title) {
-    console.error('Usage: node scripts/codex-docs.js <worklog|hotfix|discussion|plan|ticket|investigation|knowledge> <title>');
+    console.error(`Usage: node scripts/codex-docs.js <${Object.keys(TYPES).join('|')}> <title>`);
     process.exit(1);
   }
   if (command === 'worklog') return createWorklog(root, title, args);
   if (command === 'hotfix') return createHotfix(root, title, args);
   if (command === 'investigation' || command === 'investigating') return createInvestigation(root, title, args);
   if (command === 'knowledge') return createKnowledge(root, title, args);
-  if (command === 'discussion' || command === 'plan' || command === 'ticket') return createSimple(root, command, title, args);
+  // Every other document type uses the plain template.
+  if (Object.prototype.hasOwnProperty.call(TYPES, command)) return createSimple(root, command, title, args);
   console.error(`Unknown command: ${command}`);
   process.exit(1);
 }

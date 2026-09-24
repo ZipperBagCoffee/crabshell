@@ -7,30 +7,22 @@ const { readStdin, normalizePath } = require('./transcript-utils');
 // F1 mitigation: keep inline env check for fail-open invariant — D106 IA-10 RA2
 if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 
-const { getProjectDir } = require('./utils');
+const { getProjectDir, readJsonOrDefault, writeJson, docDirsPattern } = require('./utils');
 const { isSourceFile } = require('./core/command-observation');
+const { STORAGE_ROOT, MEMORY_DIR, TICKET_DIR, DOC_WATCHDOG_FILE, DOC_WATCHDOG_THRESHOLD, REGRESSING_STATE_FILE } = require('./constants');
 
-// Constants
-const DOC_PATTERN = /^\.crabshell\/(discussion|plan|ticket|investigation|hotfix)\/[^/]+\.md$/i;
-const DOC_WATCHDOG_THRESHOLD = 5;
-const STATE_FILE = 'doc-watchdog.json';
+const DOC_PATTERN = new RegExp(`^${docDirsPattern(type => type.workflow)}\\/[^/]+\\.md$`, 'i');
 
 function getStatePath(projectDir) {
-  return path.join(projectDir, '.crabshell', 'memory', STATE_FILE);
+  return path.join(projectDir, STORAGE_ROOT, MEMORY_DIR, DOC_WATCHDOG_FILE);
 }
 
 function readState(projectDir) {
-  try {
-    return JSON.parse(fs.readFileSync(getStatePath(projectDir), 'utf8'));
-  } catch {
-    return { editsSinceDocUpdate: 0, lastDocUpdateAt: null, lastCodeEditAt: null, lastCodeEditFile: null };
-  }
+  return readJsonOrDefault(getStatePath(projectDir), { editsSinceDocUpdate: 0, lastDocUpdateAt: null, lastCodeEditAt: null, lastCodeEditFile: null });
 }
 
 function writeState(projectDir, state) {
-  const dir = path.dirname(getStatePath(projectDir));
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(getStatePath(projectDir), JSON.stringify(state, null, 2));
+  writeJson(getStatePath(projectDir), state);
 }
 
 // Path relative to the project, or null for a file outside it (scratch copies,
@@ -54,11 +46,7 @@ function isDocFile(projectDir, filePath) {
 }
 
 function readRegressingState(projectDir) {
-  try {
-    return JSON.parse(fs.readFileSync(path.join(projectDir, '.crabshell', 'memory', 'regressing-state.json'), 'utf8'));
-  } catch {
-    return null;
-  }
+  return readJsonOrDefault(path.join(projectDir, STORAGE_ROOT, MEMORY_DIR, REGRESSING_STATE_FILE), null);
 }
 
 // The edited file of a Write/Edit payload, or '' when there is none.
@@ -111,7 +99,7 @@ function stopReason(payload, projectDir) {
   // No code edits this session → nothing to check
   if (!state.lastCodeEditAt) return null;
   const ticketIds = regressing.ticketIds || [];
-  const ticketDir = path.join(projectDir, '.crabshell', 'ticket');
+  const ticketDir = path.join(projectDir, STORAGE_ROOT, TICKET_DIR);
   for (const ticketId of ticketIds) {
     let ticketFile = null;
     try {

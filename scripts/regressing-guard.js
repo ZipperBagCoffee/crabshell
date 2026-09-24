@@ -25,8 +25,8 @@ function evaluateRegressingGuard(hookData, projectDir) {
   const isTicketDoc = /\.crabshell\/ticket\/P\d{3}_T\d{3}/.test(filePath);
   if (!isPlanDoc && !isTicketDoc) return null;
 
-  const { STORAGE_ROOT } = require('./constants');
-  const statePath = path.join(projectDir, STORAGE_ROOT, 'memory', 'regressing-state.json');
+  const { STORAGE_ROOT, MEMORY_DIR, REGRESSING_STATE_FILE } = require('./constants');
+  const statePath = path.join(projectDir, STORAGE_ROOT, MEMORY_DIR, REGRESSING_STATE_FILE);
 
   let state;
   try {

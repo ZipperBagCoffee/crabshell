@@ -884,10 +884,12 @@ test('SUBPROCESS: reset outputs confirmation', function() {
 // ============================================================
 // 14. Locking structural checks
 // ============================================================
-test('LOCK: counter.js uses acquireIndexLock', function() {
+// D119 P180: index writes go through core/memory-lock tryWithMemoryIndex, which
+// acquires and always releases the index lock (skips when another process holds it).
+test('LOCK: counter.js holds the index lock through tryWithMemoryIndex', function() {
   const src = fs.readFileSync(counterPath, 'utf8');
-  assert(src.includes('acquireIndexLock'), 'counter.js should use acquireIndexLock');
-  assert(src.includes('releaseIndexLock'), 'counter.js should use releaseIndexLock');
+  assert(src.includes('tryWithMemoryIndex('), 'counter.js should use tryWithMemoryIndex');
+  assert(!/\b(acquireIndexLock|releaseIndexLock)\(/.test(src), 'counter.js should not acquire or release the lock by hand');
 });
 
 test('LOCK: no raw fs.writeFileSync for memory-index in check()', function() {
@@ -898,10 +900,10 @@ test('LOCK: no raw fs.writeFileSync for memory-index in check()', function() {
   assert(!checkBody.includes('fs.writeFileSync(idxPath'), 'no raw writeFileSync for idxPath');
 });
 
-test('LOCK: inject-rules.js uses acquireIndexLock', function() {
+test('LOCK: inject-rules.js holds the index lock through tryWithMemoryIndex', function() {
   const src = fs.readFileSync(path.join(__dirname, 'inject-rules.js'), 'utf8');
-  assert(src.includes('acquireIndexLock'), 'inject-rules.js should use acquireIndexLock');
-  assert(src.includes('releaseIndexLock'), 'inject-rules.js should use releaseIndexLock');
+  assert(src.includes('tryWithMemoryIndex('), 'inject-rules.js should use tryWithMemoryIndex');
+  assert(!/\b(acquireIndexLock|releaseIndexLock)\(/.test(src), 'inject-rules.js should not acquire or release the lock by hand');
 });
 
 test('SESSION_START: load-memory.js delegates to the read-only memory core', function() {
@@ -1574,13 +1576,13 @@ test('INTEGRATION: offset update inside acquireIndexLock in check()', function()
   const checkEnd = src.indexOf('async function final()');
   const checkBody = src.slice(checkStart, checkEnd);
 
-  // acquireIndexLock comes before lastL1TranscriptOffset write
-  const lockPos = checkBody.indexOf('acquireIndexLock');
+  // The offset is used inside the callback that tryWithMemoryIndex runs under the lock
+  const lockPos = checkBody.indexOf('tryWithMemoryIndex(memoryDir');
   const offsetWritePos = checkBody.indexOf('lastL1TranscriptOffset');
-  const unlockPos = checkBody.indexOf('releaseIndexLock');
-  assert(lockPos !== -1, 'acquireIndexLock in check()');
+  const unlockPos = checkBody.indexOf('return outcome.ran');
+  assert(lockPos !== -1, 'tryWithMemoryIndex in check()');
   assert(offsetWritePos !== -1, 'lastL1TranscriptOffset in check()');
-  assert(unlockPos !== -1, 'releaseIndexLock in check()');
+  assert(unlockPos !== -1, 'locked callback end in check()');
   assert(lockPos < offsetWritePos, 'lock before offset write');
   assert(offsetWritePos < unlockPos, 'offset write before unlock');
 });
@@ -1679,9 +1681,10 @@ test('INTEGRATION: offset cleared in final() lock block', function() {
   const finalBody = src.slice(finalStart, finalEnd);
 
   // Find the locked section that clears offset
-  const lockPos = finalBody.indexOf('acquireIndexLock(finalMemoryDir'); // D119: the call now also passes a wait time
+  // D119: the locked callback ends with the longer SessionEnd wait time
+  const lockPos = finalBody.indexOf('tryWithMemoryIndex(finalMemoryDir');
   const clearPos = finalBody.indexOf('delete idx.lastL1TranscriptOffset');
-  const unlockPos = finalBody.indexOf('releaseIndexLock(finalMemoryDir)');
+  const unlockPos = finalBody.indexOf('{ waitMs: FINAL_LOCK_WAIT_MS })');
 
   assert(lockPos !== -1, 'lock in final()');
   assert(clearPos !== -1, 'offset clear in final()');

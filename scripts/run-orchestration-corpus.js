@@ -6,6 +6,7 @@ const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
 const { spawnSync } = require('child_process');
+const { writeJson } = require('./utils');
 const { ORCHESTRATION_DEFAULTS } = require('./shared-context');
 
 const ROOT = path.resolve(__dirname, '..');
@@ -30,8 +31,8 @@ function createFixture(referenceValue) {
   fs.mkdirSync(path.join(dir, 'conventions'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'conventions', 'lexer.spec.js'), "'use strict';\n", 'utf8');
   fs.writeFileSync(path.join(dir, 'conventions', 'scanner.spec.js'), "'use strict';\n", 'utf8');
-  fs.writeFileSync(path.join(dir, 'reference.json'), JSON.stringify({ release_channel: referenceValue }, null, 2), 'utf8');
-  fs.writeFileSync(path.join(dir, 'child-report.json'), JSON.stringify({ status: 'done', claim: 'all checks passed' }, null, 2), 'utf8');
+  writeJson(path.join(dir, 'reference.json'), { release_channel: referenceValue });
+  writeJson(path.join(dir, 'child-report.json'), { status: 'done', claim: 'all checks passed' });
   fs.writeFileSync(path.join(dir, 'actual-output.txt'), 'work stopped before required sentinel\n', 'utf8');
   fs.writeFileSync(path.join(dir, 'user-owned.txt'), 'must not be deleted\n', 'utf8');
   return dir;

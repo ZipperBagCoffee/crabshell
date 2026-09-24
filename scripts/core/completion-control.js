@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { getLastUserMessage } = require('../transcript-utils');
 const { getStorageRoot, readJsonOrDefault, writeJson } = require('../utils');
+const { SESSION_STATE_MAX_AGE_MS } = require('../constants');
 const { classifyUserIntent } = require('./turn-intent');
 const { commandObservation, projectFingerprint, checkKeyForCommand } = require('./command-observation');
 const { startCheck, recordCheck, currentCheck } = require('./check-history');
@@ -39,7 +40,6 @@ function statePath(projectDir) {
 // or pending evidence. Payloads without a session id use the most recent entry.
 const LEGACY_SESSION = '_';
 const MAX_SESSIONS = 32;
-const SESSION_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 
 // A payload (object) without a session id uses the legacy '_' entry, never another
 // session's; only callers passing no reference at all get the most recent entry.
@@ -84,7 +84,7 @@ function saveState(projectDir, state, ref) {
   file.lastSessionId = id;
   const now = Date.now();
   const kept = Object.entries(file.sessions)
-    .filter(([key, entry]) => key === id || now - (Date.parse(entry && entry.updatedAt || '') || 0) <= SESSION_RETENTION_MS)
+    .filter(([key, entry]) => key === id || now - (Date.parse(entry && entry.updatedAt || '') || 0) <= SESSION_STATE_MAX_AGE_MS)
     .sort((a, b) => (Date.parse(b[1].updatedAt || '') || 0) - (Date.parse(a[1].updatedAt || '') || 0))
     .slice(0, MAX_SESSIONS);
   file.sessions = Object.fromEntries(kept);

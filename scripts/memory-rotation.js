@@ -1,7 +1,7 @@
 const fs = require('fs');
-const { withMemoryIndex } = require('./core/memory-lock');
+const { withMemoryIndex, tryWithMemoryRotation } = require('./core/memory-lock');
 const path = require('path');
-const { estimateTokensFromFile, extractTailByTokens, updateIndex, acquireLock, releaseLock, getProjectDir, getStorageRoot } = require('./utils');
+const { estimateTokensFromFile, extractTailByTokens, updateIndex, getProjectDir, getStorageRoot } = require('./utils');
 const { ROTATION_THRESHOLD_TOKENS, CARRYOVER_TOKENS, getTimestamp, MEMORY_DIR, ARCHIVE_PREFIX } = require('./constants');
 
 const SAFETY_MARGIN = 0.95;
@@ -18,12 +18,7 @@ function checkAndRotateUnlocked(memoryPath, config) {
   const projectDir = getProjectDir();
   const memoryDir = path.join(getStorageRoot(projectDir), MEMORY_DIR);
 
-  if (!acquireLock(memoryDir)) {
-    console.log('[CRABSHELL] Another rotation in progress, skipping');
-    return null;
-  }
-
-  try {
+  const outcome = tryWithMemoryRotation(memoryDir, () => {
     const timestamp = getTimestamp();
     const archiveName = ARCHIVE_PREFIX + timestamp.replace(/-/g, '').replace('_', '_') + '.md';
     const archivePath = path.join(memoryDir, archiveName);
@@ -47,9 +42,12 @@ function checkAndRotateUnlocked(memoryPath, config) {
       tokens: tokens,
       hookOutput: '[CRABSHELL_ROTATE] file=' + archiveName
     };
-  } finally {
-    releaseLock(memoryDir);
+  });
+  if (!outcome.ran) {
+    console.log('[CRABSHELL] Another rotation in progress, skipping');
+    return null;
   }
+  return outcome.value;
 }
 
 function checkAndRotate(memoryPath, config) {

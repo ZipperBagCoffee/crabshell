@@ -4,7 +4,8 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { readCodexCommandResult } = require('./host-tool-result');
-const { NON_SOURCE_EXTENSIONS, NON_SOURCE_BASENAMES, SOURCE_EXCLUDED_DIRS } = require('../constants');
+const { readJsonOrDefault } = require('../utils');
+const { NON_SOURCE_EXTENSIONS, NON_SOURCE_BASENAMES, SOURCE_EXCLUDED_DIRS, STORAGE_ROOT } = require('../constants');
 
 // Parse one invocation, never search quoted arguments for command names. Shell
 // composition needs per-process results, which a single tool result cannot prove.
@@ -38,20 +39,20 @@ function commandTokens(command) {
 }
 
 function readJson(file) {
-  try { return JSON.parse(fs.readFileSync(file, 'utf8').replace(/^﻿/, '')); } catch { return {}; }
+  return readJsonOrDefault(file, {}) || {};
 }
 
 // True when the project has any check configuration at all (a verification
 // manifest file or a package.json test script), even if nothing in it is runnable.
 function hasCheckConfiguration(projectDir) {
   if (!projectDir) return false;
-  if (fs.existsSync(path.join(projectDir, '.crabshell', 'verification', 'manifest.json'))) return true;
+  if (fs.existsSync(path.join(projectDir, STORAGE_ROOT, 'verification', 'manifest.json'))) return true;
   return typeof (readJson(path.join(projectDir, 'package.json')).scripts || {}).test === 'string';
 }
 
 function declaredCommands(projectDir) {
   if (!projectDir) return [];
-  const manifest = readJson(path.join(projectDir, '.crabshell', 'verification', 'manifest.json'));
+  const manifest = readJson(path.join(projectDir, STORAGE_ROOT, 'verification', 'manifest.json'));
   const declarations = [];
   for (const command of Object.values(manifest.tools || {})) {
     const tokens = commandTokens(command);
@@ -164,7 +165,7 @@ function projectFingerprint(projectDir) {
     }
   }
   visit(projectDir);
-  for (const file of [path.join('.crabshell', 'verification', 'manifest.json'), path.join('.crabshell', 'verification', 'run-verify.js'), 'package.json']) {
+  for (const file of [path.join(STORAGE_ROOT, 'verification', 'manifest.json'), path.join(STORAGE_ROOT, 'verification', 'run-verify.js'), 'package.json']) {
     const absolute = path.join(projectDir, file);
     if (fs.existsSync(absolute)) hash.update(file).update(fs.readFileSync(absolute));
   }

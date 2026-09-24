@@ -1328,9 +1328,10 @@ test('RULES: Simple Communication term-discipline decision rule present', functi
 // v21.119.0: banter was a directive ("mix in") until the v21.115.0 rewrite demoted it
 // to a permission ("is welcome") — and permissions are ignored while directives are
 // followed (I085). Restored as a directive; the permission form must not come back.
+// D119: bounded to one line that adds no length (user's global brevity rule).
 test('RULES: banter is a directive, not a permission', function() {
-  assert(mod.RULES.includes('Mix in light internet-community banter'),
-    'RULES missing the banter directive');
+  assert(/Mix in one light banter line[^.]*adds no length/.test(mod.RULES),
+    'RULES missing the one-line banter directive');
   assert(!mod.RULES.includes('banter (깐족 유머) is welcome'),
     'banter must not regress to permission form');
 });

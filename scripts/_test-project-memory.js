@@ -30,9 +30,10 @@ function assertReaders(root, expected) {
     assert.ok(run(root, script, [], { hook_event_name: 'SessionStart', source: 'startup' }).includes(expected), script);
     assert.ok(run(root, script, [], { hook_event_name: 'SessionStart', source: 'compact' }).includes(expected), `${script} recovery`);
   }
+  // D119 P180: prompts no longer repeat the description SessionStart already loaded.
   for (const script of ['inject-rules.js', 'adapters/codex/user-prompt-submit.js']) {
     const result = run(root, script, [], { hook_event_name: 'UserPromptSubmit', prompt: 'What is the project?' });
-    assert.ok(result.includes('Project Concept') && result.includes(expected), script);
+    assert.ok(!result.includes('Project Concept') && !result.includes(expected), script);
   }
   for (const script of ['pre-compact.js', 'adapters/codex/pre-compact.js', 'adapters/codex/post-compact.js']) {
     assert.ok(run(root, script, [], { hook_event_name: script.includes('post-compact') ? 'PostCompact' : 'PreCompact' }).includes(expected), script);

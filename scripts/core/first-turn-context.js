@@ -1,6 +1,6 @@
 'use strict';
 
-const { COMPRESSED_CHECKLIST, readProjectConcept } = require('../shared-context');
+const { COMPRESSED_CHECKLIST } = require('../shared-context');
 
 const FIRST_TURN_RULES = `
 ## Crabshell Turn Contract
@@ -21,9 +21,9 @@ function getTimezoneOffset() {
 
 function buildFirstTurnContext(projectDir) {
   const nodePath = process.execPath.replace(/\\/g, '/');
-  const projectConcept = readProjectConcept(projectDir);
+  // The project description is loaded once per session by SessionStart (and by
+  // SubagentStart for workers); repeating it on every prompt only cost context.
   let context = FIRST_TURN_RULES;
-  if (projectConcept) context += `\n## Project Concept\n${projectConcept}\n`;
   context += `\n## Node.js Path\nWhen running Node.js commands, use this runtime path when bare \`node\` is unavailable:\n\`${nodePath}\`\n`;
   context += `\n## Project Root Anchor\nProject root: \`${projectDir}\`\n`;
   context += `\n## Timezone\nTZ_OFFSET: ${getTimezoneOffset()}\n`;

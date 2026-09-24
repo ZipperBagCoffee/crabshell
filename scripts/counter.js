@@ -8,11 +8,12 @@ const os = require('os');
 // F1 mitigation: keep inline env check for fail-open invariant — D106 IA-10 RA2
 if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 
-const { getProjectDir, getProjectName, getStorageRoot, readFileOrDefault, writeFile, readJsonOrDefault, readIndexSafe, writeJson, ensureDir, getTimestamp, acquireIndexLock, releaseIndexLock } = require('./utils');
+const { getProjectDir, getProjectName, getStorageRoot, readFileOrDefault, writeFile, readJsonOrDefault, readIndexSafe, writeJson, ensureDir, getTimestamp } = require('./utils');
+const { tryWithMemoryIndex } = require('./core/memory-lock');
 const { refineRaw, refineRawSync } = require('./refine-raw');
 const { checkAndRotate } = require('./memory-rotation');
 const { extractDelta } = require('./extract-delta');
-const { MEMORY_DIR, MEMORY_FILE, SESSIONS_DIR, COUNTER_FILE } = require('./constants');
+const { STORAGE_ROOT, MEMORY_DIR, MEMORY_FILE, SESSIONS_DIR, COUNTER_FILE, INDEX_FILE } = require('./constants');
 const { detectRegressingSkillCall, advancePhase } = require('./regressing-state');
 const { readStdin, findTranscriptPath } = require('./transcript-utils');
 const { inspectSessionTranscript, resolveClaudeTranscript } = require('./core/session-intent');
@@ -20,7 +21,7 @@ const { getProjectMemoryPath } = require('./shared-context');
 const { readSessionState, writeSessionState, removeSessionState, pruneSessionStates, sessionKey } = require('./core/session-state');
 const { markSessionStarted } = require('./core/session-delta');
 
-const GLOBAL_CONFIG_PATH = path.join(os.homedir(), '.crabshell', 'config.json');
+const GLOBAL_CONFIG_PATH = path.join(os.homedir(), STORAGE_ROOT, 'config.json');
 const DEFAULT_INTERVAL = 15;
 const FINAL_LOCK_WAIT_MS = 800;
 
@@ -121,17 +122,14 @@ async function check(payload = null) {
   const pressureReset = hookData.tool_name === 'TaskCreate';
   if (!saveDue && !pressureReset) return;
 
-  const locked = acquireIndexLock(memoryDir);
-  if (!locked) {
-    // Another process holds the lock (fail-open). The counter stays at or above
-    // the interval, so this session's next tool call retries the save.
-    return;
-  }
-  try {
+  // When another process holds the lock the save is skipped (fail-open): the
+  // counter stays at or above the interval, so this session's next tool call
+  // retries it.
+  const outcome = tryWithMemoryIndex(memoryDir, () => {
     // Pressure reset on Task delegation
     if (pressureReset) {
       try {
-        const idxPath = path.join(getStorageRoot(), MEMORY_DIR, 'memory-index.json');
+        const idxPath = path.join(getStorageRoot(), MEMORY_DIR, INDEX_FILE);
         const idx = readIndexSafe(idxPath);
         if (idx.feedbackPressure && idx.feedbackPressure.level > 0 && idx.feedbackPressure.level < 3) {
           idx.feedbackPressure.level = 0;
@@ -152,7 +150,7 @@ async function check(payload = null) {
       else console.log(rotationResult.hookOutput);
     }
 
-    const indexPath = path.join(getStorageRoot(), MEMORY_DIR, 'memory-index.json');
+    const indexPath = path.join(getStorageRoot(), MEMORY_DIR, INDEX_FILE);
     const sessionsDir = path.join(getStorageRoot(), SESSIONS_DIR);
 
     // Step 1: Create/update L1 from current transcript
@@ -210,10 +208,9 @@ async function check(payload = null) {
     // extraction sets deltaReady in the same lock hold.
     extractDelta(sessionId8);
     setCounter(0, sessionId);
-  } finally {
-    releaseIndexLock(memoryDir);
-  }
-  return notices;
+    return notices;
+  });
+  return outcome.ran ? outcome.value : undefined;
 }
 
 async function final() {
@@ -304,7 +301,7 @@ async function final() {
   let deltaResult = { success: false, reason: 'memory index busy' };
   let deltaOutput = '';
   {
-    const idxPath = path.join(getStorageRoot(), MEMORY_DIR, 'memory-index.json');
+    const idxPath = path.join(getStorageRoot(), MEMORY_DIR, INDEX_FILE);
     const finalMemoryDir = path.join(getStorageRoot(), MEMORY_DIR);
     if (sessionId8) {
       // The final L1 holds the whole transcript; a resumed session continues after it.
@@ -319,8 +316,7 @@ async function final() {
     }
     // SessionEnd shares a 1.5 s host budget; waiting longer than a tool-call hook
     // keeps a busy lock from dropping the session's last entries.
-    const finalLocked = acquireIndexLock(finalMemoryDir, FINAL_LOCK_WAIT_MS);
-    if (finalLocked) try {
+    tryWithMemoryIndex(finalMemoryDir, () => {
       if (sessionId8 && !hadSessionL1) {
         // A session ending before its first save: its L1 holds only its own entries.
         const started = readIndexSafe(idxPath);
@@ -334,13 +330,11 @@ async function final() {
         delete idx.lastL1TranscriptMtime;
         writeJson(idxPath, idx);
       }
-    } finally {
-      releaseIndexLock(finalMemoryDir);
-    }
+    }, { waitMs: FINAL_LOCK_WAIT_MS });
   }
   if (sessionId8) {
     removeSessionState(getProjectDir(), sessionId, 'counter');
-    removeSessionState(getProjectDir(), sessionId, 'skill-active');
+    require('./core/skill-flag').clearSkillActive(getProjectDir(), sessionId);
   }
   try { pruneSessionStates(getProjectDir()); } catch {}
   if (deltaResult.success) {

@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { STORAGE_ROOT, MEMORY_DIR, MEMORY_FILE } = require('./constants');
 const { CodexAppServer, runCodex } = require('./core/codex-app-server');
 const { validateCodexHookConfig } = require('./adapters/codex/hook-contract');
 const { codexAppState, deriveSupportState } = require('./core/support-state');
@@ -119,7 +120,7 @@ function probePluginData(dataPath) {
 // the drive root.
 function probeHook(pluginRoot, projectDir = pluginRoot) {
   const adapter = path.join(pluginRoot, 'scripts', 'adapters', 'codex', 'pre-tool-use.js');
-  const wrongLogbook = path.join(path.parse(path.resolve(projectDir)).root, 'crabshell-doctor-wrong-project', '.crabshell', 'memory', 'logbook.md');
+  const wrongLogbook = path.join(path.parse(path.resolve(projectDir)).root, 'crabshell-doctor-wrong-project', STORAGE_ROOT, MEMORY_DIR, MEMORY_FILE);
   const payload = {
     session_id: 'doctor-probe',
     transcript_path: null,
