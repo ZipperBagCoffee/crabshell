@@ -17,8 +17,6 @@ const DOCS_SKILLS = [
   'regressing', 'verifying', 'hotfix'
 ];
 
-// Default TTL: 15 minutes
-const DEFAULT_TTL_MS = 15 * 60 * 1000;
 
 /**
  * Detect if hookData represents a docs-relevant Skill call.
@@ -39,23 +37,20 @@ function detectDocsSkillCall(hookData) {
 }
 
 /**
- * Set the skill-active flag file.
+ * Set the skill-active flag. With a session id it is that session's own flag
+ * (session-state/<sid8>/skill-active.json), valid until the session compacts or
+ * ends; without one, the legacy project-wide flag file.
  */
-function setSkillActive(projectDir, skillName) {
+function setSkillActive(projectDir, skillName, sessionId) {
+  const data = { skill: skillName, activatedAt: new Date().toISOString() };
+  const { writeSessionState } = require('./core/session-state');
+  if (writeSessionState(projectDir, sessionId, 'skill-active', data)) return;
   const { STORAGE_ROOT } = require('./constants');
   const memoryDir = path.join(projectDir, STORAGE_ROOT, 'memory');
   if (!fs.existsSync(memoryDir)) {
     fs.mkdirSync(memoryDir, { recursive: true });
   }
-
-  const flagPath = path.join(memoryDir, SKILL_ACTIVE_FILE);
-  const data = {
-    skill: skillName,
-    activatedAt: new Date().toISOString(),
-    ttl: DEFAULT_TTL_MS
-  };
-
-  fs.writeFileSync(flagPath, JSON.stringify(data, null, 2));
+  fs.writeFileSync(path.join(memoryDir, SKILL_ACTIVE_FILE), JSON.stringify({ ...data, ttl: 15 * 60 * 1000 }, null, 2));
 }
 
 async function main() {
@@ -67,7 +62,7 @@ async function main() {
   if (!detectedSkill) { process.exit(0); return; }
 
   const projectDir = getProjectDir();
-  setSkillActive(projectDir, detectedSkill);
+  setSkillActive(projectDir, detectedSkill, hookData.session_id);
 
   process.stderr.write(`[SKILL_TRACKER] Activated: ${detectedSkill}\n`);
   process.exit(0);

@@ -7,7 +7,7 @@ const { normalizeCompaction } = require('./hook-contract');
 async function main() {
   const normalized = normalizeCompaction(await readStdin(2000, { host: 'codex' }), 'PreCompact');
   if (!normalized) return;
-  const context = buildCompactionContext(normalized.projectDir);
+  const context = buildCompactionContext(normalized.projectDir, { sessionId: normalized.hookData && normalized.hookData.session_id });
   process.stdout.write(JSON.stringify(createCompactionOutput('PreCompact', context)) + '\n');
 }
 

@@ -69,6 +69,20 @@ function setupProject() {
   return { tmpDir, memDir, sessDir };
 }
 
+// D119 P177_T002: a hook payload with a session id counts in that session's own
+// counter (memory/session-state/<first 8 chars>/counter.json); counter.json is the
+// legacy project-wide counter for payloads without a session id.
+function sessionCounterPath(memDir, sessionId) {
+  return path.join(memDir, 'session-state', sessionId.slice(0, 8), 'counter.json');
+}
+function writeSessionCounter(memDir, sessionId, value) {
+  ensureDir(path.dirname(sessionCounterPath(memDir, sessionId)));
+  fs.writeFileSync(sessionCounterPath(memDir, sessionId), JSON.stringify({ counter: value }));
+}
+function readSessionCounter(memDir, sessionId) {
+  return JSON.parse(fs.readFileSync(sessionCounterPath(memDir, sessionId), 'utf8')).counter;
+}
+
 // Load module exports
 const mod = require(counterPath);
 
@@ -537,7 +551,7 @@ test('SUBPROCESS check: counter increments', function() {
   const { tmpDir, memDir } = setupProject();
   try {
     runCheck(tmpDir, { tool_name: 'Read', session_id: 'test1234abcd' });
-    const data = JSON.parse(fs.readFileSync(path.join(memDir, 'counter.json'), 'utf8'));
+    const data = { counter: readSessionCounter(memDir, 'test1234abcd') };
     assertEqual(data.counter, 1, 'counter after 1 check');
   } finally {
     cleanupDir(tmpDir);
@@ -550,7 +564,7 @@ test('SUBPROCESS check: multiple increments accumulate', function() {
     for (let i = 0; i < 3; i++) {
       runCheck(tmpDir, { tool_name: 'Read', session_id: 'test1234abcd' });
     }
-    const data = JSON.parse(fs.readFileSync(path.join(memDir, 'counter.json'), 'utf8'));
+    const data = { counter: readSessionCounter(memDir, 'test1234abcd') };
     assertEqual(data.counter, 3, 'counter after 3 checks');
   } finally {
     cleanupDir(tmpDir);
@@ -560,9 +574,9 @@ test('SUBPROCESS check: multiple increments accumulate', function() {
 test('SUBPROCESS check: at interval counter resets to 0', function() {
   const { tmpDir, memDir } = setupProject();
   try {
-    fs.writeFileSync(path.join(memDir, 'counter.json'), JSON.stringify({ counter: 14 }));
+    writeSessionCounter(memDir, 'test1234abcd', 14);
     runCheck(tmpDir, { tool_name: 'Read', session_id: 'test1234abcd' });
-    const data = JSON.parse(fs.readFileSync(path.join(memDir, 'counter.json'), 'utf8'));
+    const data = { counter: readSessionCounter(memDir, 'test1234abcd') };
     assertEqual(data.counter, 0, 'counter resets at interval');
   } finally {
     cleanupDir(tmpDir);
@@ -573,9 +587,9 @@ test('SUBPROCESS check: custom interval from config', function() {
   const { tmpDir, memDir } = setupProject();
   try {
     fs.writeFileSync(path.join(memDir, 'config.json'), JSON.stringify({ saveInterval: 3 }));
-    fs.writeFileSync(path.join(memDir, 'counter.json'), JSON.stringify({ counter: 2 }));
+    writeSessionCounter(memDir, 'test1234abcd', 2);
     runCheck(tmpDir, { tool_name: 'Read', session_id: 'test1234abcd' });
-    const data = JSON.parse(fs.readFileSync(path.join(memDir, 'counter.json'), 'utf8'));
+    const data = { counter: readSessionCounter(memDir, 'test1234abcd') };
     assertEqual(data.counter, 0, 'counter resets at custom interval');
   } finally {
     cleanupDir(tmpDir);
@@ -585,9 +599,9 @@ test('SUBPROCESS check: custom interval from config', function() {
 test('SUBPROCESS check: counter below interval does not reset', function() {
   const { tmpDir, memDir } = setupProject();
   try {
-    fs.writeFileSync(path.join(memDir, 'counter.json'), JSON.stringify({ counter: 5 }));
+    writeSessionCounter(memDir, 'test1234abcd', 5);
     runCheck(tmpDir, { tool_name: 'Read', session_id: 'test1234abcd' });
-    const data = JSON.parse(fs.readFileSync(path.join(memDir, 'counter.json'), 'utf8'));
+    const data = { counter: readSessionCounter(memDir, 'test1234abcd') };
     assertEqual(data.counter, 6, 'counter should be 6');
   } finally {
     cleanupDir(tmpDir);
@@ -618,7 +632,7 @@ test('SUBPROCESS check: TaskCreate with no pressure no crash', function() {
   const { tmpDir, memDir } = setupProject();
   try {
     runCheck(tmpDir, { tool_name: 'TaskCreate', session_id: 'test5678efgh' });
-    const data = JSON.parse(fs.readFileSync(path.join(memDir, 'counter.json'), 'utf8'));
+    const data = { counter: readSessionCounter(memDir, 'test5678efgh') };
     assertEqual(data.counter, 1, 'counter increments');
   } finally {
     cleanupDir(tmpDir);
@@ -725,7 +739,7 @@ test('SUBPROCESS check: Skill without regressing-state no crash', function() {
   const { tmpDir, memDir } = setupProject();
   try {
     runCheck(tmpDir, { tool_name: 'Skill', tool_input: { skill: 'planning' }, session_id: 'testreg5' });
-    const data = JSON.parse(fs.readFileSync(path.join(memDir, 'counter.json'), 'utf8'));
+    const data = { counter: readSessionCounter(memDir, 'testreg5') };
     assertEqual(data.counter, 1, 'counter increments');
   } finally {
     cleanupDir(tmpDir);
@@ -769,7 +783,7 @@ test('EDGE: missing .crabshell/memory/ directory created by check', function() {
   const tmpDir = makeTempDir('edge-nodir');
   try {
     runCheck(tmpDir, { tool_name: 'Read', session_id: 'edgetest1' });
-    const counterFile = path.join(tmpDir, '.crabshell', 'memory', 'counter.json');
+    const counterFile = sessionCounterPath(path.join(tmpDir, '.crabshell', 'memory'), 'edgetest1');
     assert(fs.existsSync(counterFile), 'counter.json created');
     const data = JSON.parse(fs.readFileSync(counterFile, 'utf8'));
     assertEqual(data.counter, 1, 'counter=1');
@@ -781,9 +795,9 @@ test('EDGE: missing .crabshell/memory/ directory created by check', function() {
 test('EDGE: corrupted counter.json recovered by check', function() {
   const { tmpDir, memDir } = setupProject();
   try {
-    fs.writeFileSync(path.join(memDir, 'counter.json'), 'NOT JSON!!!');
+    ensureDir(path.dirname(sessionCounterPath(memDir, 'edgetest2'))); fs.writeFileSync(sessionCounterPath(memDir, 'edgetest2'), 'NOT JSON!!!');
     runCheck(tmpDir, { tool_name: 'Read', session_id: 'edgetest2' });
-    const data = JSON.parse(fs.readFileSync(path.join(memDir, 'counter.json'), 'utf8'));
+    const data = { counter: readSessionCounter(memDir, 'edgetest2') };
     assertEqual(data.counter, 1, 'recovered');
   } finally {
     cleanupDir(tmpDir);
@@ -795,7 +809,7 @@ test('EDGE: corrupted memory-index.json TaskCreate no crash', function() {
   try {
     fs.writeFileSync(path.join(memDir, 'memory-index.json'), '{broken json}');
     runCheck(tmpDir, { tool_name: 'TaskCreate', session_id: 'edgetest3' });
-    const data = JSON.parse(fs.readFileSync(path.join(memDir, 'counter.json'), 'utf8'));
+    const data = { counter: readSessionCounter(memDir, 'edgetest3') };
     assertEqual(data.counter, 1, 'counter increments');
   } finally {
     cleanupDir(tmpDir);
@@ -1664,7 +1678,7 @@ test('INTEGRATION: offset cleared in final() lock block', function() {
   const finalBody = src.slice(finalStart, finalEnd);
 
   // Find the locked section that clears offset
-  const lockPos = finalBody.indexOf('acquireIndexLock(finalMemoryDir)');
+  const lockPos = finalBody.indexOf('acquireIndexLock(finalMemoryDir'); // D119: the call now also passes a wait time
   const clearPos = finalBody.indexOf('delete idx.lastL1TranscriptOffset');
   const unlockPos = finalBody.indexOf('releaseIndexLock(finalMemoryDir)');
 

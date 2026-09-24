@@ -73,7 +73,7 @@ function buildCompactionContext(projectDir, options = {}) {
   const regressing = getRegressingSnapshot(projectDir, options.now || Date.now());
   const activeDocs = getActiveDocs(projectDir);
   const pinned = '## Crabshell Compaction Recovery Context\n\n' + getPostCompactWarning(projectDir).trim() + '\n\n'
-    + require('./recovery-context').buildRecoveryContext(projectDir);
+    + require('./recovery-context').buildRecoveryContext(projectDir, options.sessionId);
   const maxChars = options.maxChars || MAX_CONTEXT_CHARS;
   if (pinned.length > maxChars) throw new Error('Compaction context limit is smaller than the pinned working rules.');
   const parts = [];

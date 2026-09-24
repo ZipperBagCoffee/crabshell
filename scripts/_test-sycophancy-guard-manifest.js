@@ -10,6 +10,9 @@
 const { spawnSync } = require('child_process');
 const path = require('path');
 
+// D119 P177_T001: pin the project to a temp dir so the guard never writes live project state.
+process.env.CLAUDE_PROJECT_DIR = require('fs').mkdtempSync(path.join(require('os').tmpdir(), 'sycophancy-test-project-'));
+
 const scriptPath = path.join(__dirname, 'sycophancy-guard.js');
 const nodePath = process.execPath;
 

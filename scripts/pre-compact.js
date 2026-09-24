@@ -111,7 +111,7 @@ async function main() {
   lines.push('## [CRABSHELL PRE-COMPACT CONTEXT]');
   lines.push('Preserve the following when compacting. Do NOT summarize these away.\n');
   lines.push(require('./core/first-turn-context').FIRST_TURN_RULES);
-  lines.push(require('./core/recovery-context').buildRecoveryContext(projectDir));
+  lines.push(require('./core/recovery-context').buildRecoveryContext(projectDir, stdinData && stdinData.session_id));
 
   // 1. Project concept (first line of project.md)
   try {

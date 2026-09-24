@@ -8,6 +8,7 @@ const {
   SESSIONS_DIR,
   INDEX_FILE,
   MEMORY_FILE,
+  SESSION_START_MAX_CHARS,
 } = require('../constants');
 const { getPostCompactWarning, getProjectMemoryPath } = require('../shared-context');
 const { buildWorkflowContext } = require('./workflow-context');
@@ -47,26 +48,48 @@ function getUnreflectedL1Content(l1Path, memoryContent) {
   }
 }
 
+// Section caps (characters) inside the SessionStart budget, highest priority first.
+const PART_CAPS = {
+  project: 1200, workflow: 2500, recovery: 2000, recent: 6000,
+  previous: 1200, pending: 400, unreflected: 800, digest: 2500,
+};
+const MIN_PART_CHARS = 80;
+
+// Keep the end of the text, starting at a line boundary when one is available.
+function tailWithin(text, limit) {
+  if (text.length <= limit) return text;
+  const slice = text.slice(-limit);
+  const newline = slice.indexOf('\n');
+  return newline >= 0 && newline < slice.length - 1 ? slice.slice(newline + 1) : slice;
+}
+
+function headWithin(text, limit) {
+  if (text.length <= limit) return text;
+  const marker = '\n[... truncated for the SessionStart budget ...]';
+  return text.slice(0, Math.max(0, limit - marker.length)) + marker;
+}
+
 function collectMemorySections(projectDir, options = {}) {
   const storageRoot = getStorageRoot(projectDir);
   const memoryDir = path.join(storageRoot, MEMORY_DIR);
-  const sections = [];
+  const parts = {};
   const pendingSummaries = [];
 
   const projectText = readFileOrDefault(getProjectMemoryPath(projectDir), '').trim();
-  if (projectText) sections.push(`## Project Overview\n${projectText}`);
+  if (projectText) parts.project = `## Project Overview\n${projectText}`;
 
   const index = readJsonOrDefault(path.join(memoryDir, INDEX_FILE), null);
   const rotatedFiles = index && Array.isArray(index.rotatedFiles) ? index.rotatedFiles : [];
   for (const entry of rotatedFiles.filter(candidate => !candidate.summaryGenerated)) {
     if (entry && entry.file) pendingSummaries.push(entry.file);
   }
+  if (pendingSummaries.length > 0) parts.pending = `## Pending Memory Summaries\n${pendingSummaries.map(file => `- ${file}`).join('\n')}`;
   const generated = rotatedFiles.filter(entry => entry && entry.summaryGenerated && entry.summary);
   if (generated.length > 0) {
     const latest = generated[generated.length - 1];
     const summary = readJsonOrDefault(path.join(memoryDir, latest.summary), null);
     if (summary && summary.overallSummary) {
-      sections.push(`## Previous Memory Summary\n${summary.overallSummary}`);
+      parts.previous = `## Previous Memory Summary\n${summary.overallSummary}`;
     }
   }
 
@@ -77,52 +100,69 @@ function collectMemorySections(projectDir, options = {}) {
     const l1Files = fs.readdirSync(sessionsDir).filter(file => file.endsWith('.l1.jsonl')).sort().reverse();
     if (l1Files.length > 0) {
       const unreflected = getUnreflectedL1Content(path.join(sessionsDir, l1Files[0]), memoryContent);
-      if (unreflected) sections.push(`## Unreflected from Last Session\n${unreflected.join('\n')}`);
+      if (unreflected) parts.unreflected = `## Unreflected from Last Session\n${unreflected.join('\n')}`;
     }
   }
 
   if (memoryContent.trim()) {
     const tailLines = Number(options.tailLines || DEFAULT_TAIL_LINES);
     const lines = memoryContent.split(/\r?\n/);
-    if (lines.length > tailLines) {
-      sections.push(`## Recent Sessions (last ${tailLines} lines)\n${lines.slice(-tailLines).join('\n')}`);
-    } else {
-      sections.push(`## Recent Sessions\n${memoryContent}`);
-    }
+    parts.recent = lines.length > tailLines ? lines.slice(-tailLines).join('\n') : memoryContent;
   }
 
   const mocDigest = readFileOrDefault(path.join(storageRoot, 'moc-digest.md'), '').trim();
-  if (mocDigest) sections.push(mocDigest);
+  if (mocDigest) parts.digest = mocDigest;
 
-  return { sections, pendingSummaries };
+  const sections = ['project', 'previous', 'unreflected', 'recent', 'digest']
+    .filter(name => parts[name])
+    .map(name => name === 'recent' ? `## Recent Sessions\n${parts.recent}` : parts[name]);
+  return { sections, parts, pendingSummaries };
 }
 
+// Assemble the context within the budget: parts are admitted in priority order
+// (each cut to its cap and to what is left), then rendered in reading order.
 function buildMemoryContext(projectDir, options = {}) {
   const source = options.source || 'unknown';
   const projectName = path.basename(projectDir);
-  const { sections, pendingSummaries } = collectMemorySections(projectDir, options);
-  const workflowContext = buildWorkflowContext(projectDir, { purpose: 'session', now: options.now });
-  const output = [];
-  const recovery = require('./recovery-context').buildRecoveryContext(projectDir);
-  if (recovery && options.includeCheckpoint !== false) output.push(recovery);
+  const budget = options.maxChars || SESSION_START_MAX_CHARS;
+  const { parts } = collectMemorySections(projectDir, options);
+  const workflowContext = buildWorkflowContext(projectDir, { purpose: 'session', now: options.now }) || '';
+  const recovery = options.includeCheckpoint !== false
+    ? require('./recovery-context').buildRecoveryContext(projectDir, options.sessionId).trim() : '';
+  const hasMemory = Boolean(parts.project || parts.previous || parts.unreflected || parts.recent || parts.digest);
 
-  if (sections.length > 0) {
-    output.push(`=== Crabshell: ${projectName} ===`);
-    if (source === 'compact' && options.includeRecovery !== false) output.push(getPostCompactWarning(projectDir).trim());
-    if (pendingSummaries.length > 0) {
-      output.push(`## Pending Memory Summaries\n${pendingSummaries.map(file => `- ${file}`).join('\n')}`);
-    }
-    output.push(sections.join('\n\n---\n\n'));
-    if (workflowContext) output.push(workflowContext);
-    output.push(MEMORY_NOTES.trim());
-    output.push('=== End of Memory ===');
-  } else {
-    output.push(`--- Crabshell: No memory for ${projectName} ---`);
-    if (source === 'compact' && options.includeRecovery !== false) output.push(getPostCompactWarning(projectDir).trim());
-    if (workflowContext) output.push(workflowContext);
-    output.push(MEMORY_NOTES.trim());
+  const header = hasMemory ? `=== Crabshell: ${projectName} ===` : `--- Crabshell: No memory for ${projectName} ---`;
+  const warning = source === 'compact' && options.includeRecovery !== false ? getPostCompactWarning(projectDir).trim() : '';
+  const footer = [MEMORY_NOTES.trim(), hasMemory ? '=== End of Memory ===' : ''].filter(Boolean);
+  let remaining = budget - [header, warning, ...footer].join('\n\n').length - 120;
+
+  const admitted = {};
+  function admit(name, text, keepTail) {
+    if (!text) return;
+    const limit = Math.min(PART_CAPS[name], remaining);
+    if (limit < MIN_PART_CHARS) return;
+    admitted[name] = keepTail ? tailWithin(text, limit) : headWithin(text, limit);
+    remaining -= admitted[name].length + 7;
   }
+  admit('project', parts.project);
+  admit('workflow', workflowContext.trim());
+  admit('recovery', recovery);
+  if (parts.recent) {
+    const heading = '## Recent Sessions (newest last)\n';
+    const limit = Math.min(PART_CAPS.recent, remaining) - heading.length;
+    if (limit >= MIN_PART_CHARS) {
+      admitted.recent = heading + tailWithin(parts.recent, limit);
+      remaining -= admitted.recent.length + 7;
+    }
+  }
+  admit('previous', parts.previous);
+  admit('pending', parts.pending);
+  admit('unreflected', parts.unreflected);
+  admit('digest', parts.digest);
 
+  const memoryBody = ['project', 'previous', 'pending', 'recent', 'unreflected', 'digest']
+    .filter(name => admitted[name]).map(name => admitted[name]).join('\n\n---\n\n');
+  const output = [header, warning, memoryBody, admitted.workflow, admitted.recovery, ...footer];
   return output.filter(Boolean).join('\n\n') + '\n';
 }
 

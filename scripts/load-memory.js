@@ -17,8 +17,14 @@ function projectDirFromArgs(argv = process.argv.slice(2)) {
 async function main(options = {}) {
   const hookData = options.hookData || await readStdin(3000) || {};
   const projectDir = options.projectDir || projectDirFromArgs(options.argv);
+  if (hookData.source === 'compact' && hookData.session_id) {
+    // Compaction drops the loaded skill instructions, so document writes must
+    // go through the skill again (docs-guard reads this session's flag).
+    try { require('./core/session-state').removeSessionState(projectDir, hookData.session_id, 'skill-active'); } catch {}
+  }
   const context = buildMemoryContext(projectDir, {
     source: hookData.source || 'unknown',
+    sessionId: hookData.session_id,
     tailLines: options.tailLines,
   });
   const output = createSessionStartOutput(context);

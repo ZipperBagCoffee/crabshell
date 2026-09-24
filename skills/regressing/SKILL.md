@@ -57,8 +57,8 @@ Create ONE Discussion document that wraps the entire regressing session:
 
 After creating the Discussion document, write the regressing state file:
 - Path: `.crabshell/memory/regressing-state.json`
-- Content: `{ "active": true, "discussion": "{D-ID}", "cycle": 1, "totalCycles": {N}, "userSpecifiedN": {true|false}, "phase": "planning", "planId": null, "ticketIds": [], "startedAt": "{ISO}", "lastUpdatedAt": "{ISO}" }`
-- Use Bash tool: `"{NODE_PATH}" -e "require('fs').writeFileSync('{PROJECT_DIR}/.crabshell/memory/regressing-state.json', JSON.stringify({active:true, discussion:'{D-ID}', cycle:1, totalCycles:{N}, userSpecifiedN:{true|false}, phase:'planning', planId:null, ticketIds:[], startedAt:new Date().toISOString(), lastUpdatedAt:new Date().toISOString()}, null, 2))"`
+- Content: `{ "active": true, "discussion": "{D-ID}", "cycle": 1, "totalCycles": {N}, "userSpecifiedN": {true|false}, "phase": "planning", "planId": null, "ticketIds": [], "sessionId": "{session id or null}", "startedAt": "{ISO}", "lastUpdatedAt": "{ISO}" }` — `sessionId` records the owning host session, so only that session is asked to continue the workflow (other sessions in the same project are not).
+- Use Bash tool: `"{NODE_PATH}" -e "require('fs').writeFileSync('{PROJECT_DIR}/.crabshell/memory/regressing-state.json', JSON.stringify({active:true, discussion:'{D-ID}', cycle:1, totalCycles:{N}, userSpecifiedN:{true|false}, phase:'planning', planId:null, ticketIds:[], sessionId:process.env.CLAUDE_CODE_SESSION_ID||null, startedAt:new Date().toISOString(), lastUpdatedAt:new Date().toISOString()}, null, 2))"`
 
 ### Step 2.5: Parameter Recommendation
 

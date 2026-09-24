@@ -12,7 +12,7 @@ async function main() {
   for (const diagnostic of result.diagnostics) {
     process.stderr.write(`[CRABSHELL] PostCompact: ${diagnostic}\n`);
   }
-  const context = buildCompactionContext(normalized.projectDir);
+  const context = buildCompactionContext(normalized.projectDir, { sessionId: normalized.hookData && normalized.hookData.session_id });
   process.stdout.write(JSON.stringify(createCompactionOutput('PostCompact', context)) + '\n');
 }
 

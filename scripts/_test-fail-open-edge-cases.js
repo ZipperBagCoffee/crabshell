@@ -7,10 +7,8 @@
  *  2) utils.js load failure remains fail-open for every retained hook module.
  *  3) lock-contention instrumentation failure preserves lock semantics.
  *
- * Spawn-based per case, sandbox CLAUDE_PROJECT_DIR. Critical pattern: any
- * setup that mutates the live scripts/ directory (Case 1 rename) MUST use
- * try/finally + process.on('exit') restore to guarantee restoration even on
- * test crash.
+ * Spawn-based per case, sandbox CLAUDE_PROJECT_DIR. No case mutates the live
+ * repository: Case 2 removes utils.js from a temporary copy of scripts/.
  */
 
 const { spawnSync } = require('child_process');
@@ -118,26 +116,26 @@ function statePath(sandbox) {
 
 // ---------- Case 2 — utils.js load failure → all hooks fail-open via inline check ----------
 //
-// D106 IA-10 (P142_T002 AC-7): rename scripts/utils.js → scripts/utils.js.bak so
-// any hook that does `require('./utils')` throws MODULE_NOT_FOUND. With
-// CRABSHELL_BACKGROUND=1 set, every hook MUST fail-open (exit 0) because the
-// inline `process.env.CRABSHELL_BACKGROUND === '1'` early-exit runs BEFORE the
-// utils.js require statement (F1 mitigation invariant).
+// D106 IA-10 (P142_T002 AC-7): remove utils.js so any hook that does
+// `require('./utils')` throws MODULE_NOT_FOUND. With CRABSHELL_BACKGROUND=1 set,
+// every hook MUST fail-open (exit 0) because the inline
+// `process.env.CRABSHELL_BACKGROUND === '1'` early-exit runs BEFORE the utils.js
+// require statement (F1 mitigation invariant).
 //
-// Defense-in-depth restore: try/finally + process.on('exit') (mirrors Case 1
-// pattern). If the test crashes between rename and restore, exit handler still
-// restores utils.js so subsequent test runs don't break the live scripts/ dir.
+// D119 P177_T001: the hooks run from a temporary copy of scripts/, so the live
+// directory is never renamed (the old in-place rename briefly broke the live
+// plugin for any hook firing during the test).
 (function() {
-  const liveUtils = path.join(SCRIPTS_DIR, 'utils.js');
-  const bakUtils = path.join(SCRIPTS_DIR, 'utils.js.failopen-test.bak');
-  let renamed = false;
-  // Defense-in-depth restore: even if the test crashes, process.on('exit') runs.
-  const restore = () => {
-    if (renamed && fs.existsSync(bakUtils) && !fs.existsSync(liveUtils)) {
-      try { fs.renameSync(bakUtils, liveUtils); } catch (_) {}
-    }
-  };
-  process.on('exit', restore);
+  const copyRoot = makeSandbox('c2-scripts');
+  const copyScripts = path.join(copyRoot, 'scripts');
+  fs.cpSync(SCRIPTS_DIR, copyScripts, {
+    recursive: true,
+    filter: src => {
+      const name = path.basename(src);
+      return !(name.startsWith('_test-') || name === 'fixtures' || name.endsWith('.bak'));
+    },
+  });
+  const copiedUtils = path.join(copyScripts, 'utils.js');
 
   // Retained hook-capable modules (every script in scripts/ that contains the inline
   // CRABSHELL_BACKGROUND === '1' early-exit, excluding utils.js itself).
@@ -163,21 +161,20 @@ function statePath(sandbox) {
     'verify-guard.js'
   ];
 
-  try {
-    if (!fs.existsSync(liveUtils)) {
+  {
+    if (!fs.existsSync(copiedUtils)) {
       ok('2 utils.js load fail → retained hooks fail-open', false,
-         'precondition: utils.js missing — cannot rename');
+         'precondition: copied utils.js missing — cannot remove');
       return;
     }
-    fs.renameSync(liveUtils, bakUtils);
-    renamed = true;
+    fs.unlinkSync(copiedUtils);
 
-    const env = Object.assign({}, process.env, { CRABSHELL_BACKGROUND: '1' });
+    const env = Object.assign({}, process.env, { CRABSHELL_BACKGROUND: '1', CLAUDE_PROJECT_DIR: copyRoot });
     delete env.CRABSHELL_AGENT;
 
     const failures = [];
     for (const hookName of HOOK_FILES) {
-      const hookPath = path.join(SCRIPTS_DIR, hookName);
+      const hookPath = path.join(copyScripts, hookName);
       if (!fs.existsSync(hookPath)) {
         failures.push(hookName + ' (missing)');
         continue;
@@ -196,13 +193,6 @@ function statePath(sandbox) {
     ok('2 utils.js load fail → all retained hook-capable modules fail-open (CRABSHELL_BACKGROUND=1 inline early-exit)',
        failures.length === 0,
        failures.length > 0 ? 'failed=' + failures.join('; ') : 'all ' + HOOK_FILES.length + ' modules exit 0');
-  } finally {
-    // Synchronous restore — must succeed so subsequent test runs (and the live
-    // plugin) see utils.js back in place.
-    if (renamed && fs.existsSync(bakUtils)) {
-      fs.renameSync(bakUtils, liveUtils);
-      renamed = false;
-    }
   }
 })();
 

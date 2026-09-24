@@ -23,6 +23,9 @@ function isStopRequest(userPrompt) {
 
 function classifyUserIntent(userPrompt) {
   if (!userPrompt) return 'default';
+  // A background task's completion notice arrives as a prompt but is host output,
+  // not the user's request — its "implemented…" wording must not authorize work.
+  if (/^\s*<task-notification>/i.test(userPrompt)) return 'default';
   const prompt = unquotedPrompt(userPrompt);
   if (isStopRequest(userPrompt)) return 'default';
   const clauses = prompt.split(/[?？!\n]+|\.\s+/).map(text => text.trim()).filter(Boolean);

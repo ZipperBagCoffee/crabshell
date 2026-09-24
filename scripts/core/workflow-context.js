@@ -92,7 +92,9 @@ function worklogContext(projectDir, worklogs) {
 function buildWorkflowContext(projectDir, options = {}) {
   const storageRoot = getStorageRoot(projectDir);
   const state = readJsonOrDefault(path.join(storageRoot, 'memory', REGRESSING_STATE_FILE), null);
-  const regressing = regressingContext(projectDir, state, options.now || Date.now());
+  // A regressing run owned by another session is that session's work; worklogs still apply.
+  const foreign = Boolean(options.sessionId && state && state.sessionId && state.sessionId !== options.sessionId);
+  const regressing = foreign ? '' : regressingContext(projectDir, state, options.now || Date.now());
   const worklogs = worklogContext(projectDir, activeWorklogs(storageRoot));
   if (!regressing && !worklogs) return '';
   const purpose = options.purpose || 'session';

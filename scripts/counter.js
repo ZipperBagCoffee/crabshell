@@ -17,9 +17,12 @@ const { detectRegressingSkillCall, advancePhase } = require('./regressing-state'
 const { readStdin, findTranscriptPath } = require('./transcript-utils');
 const { inspectSessionTranscript, resolveClaudeTranscript } = require('./core/session-intent');
 const { getProjectMemoryPath } = require('./shared-context');
+const { readSessionState, writeSessionState, removeSessionState, pruneSessionStates, sessionKey } = require('./core/session-state');
+const { markSessionStarted } = require('./core/session-delta');
 
 const GLOBAL_CONFIG_PATH = path.join(os.homedir(), '.crabshell', 'config.json');
 const DEFAULT_INTERVAL = 15;
+const FINAL_LOCK_WAIT_MS = 800;
 
 // Get logs directory (ensures it exists)
 function getLogsDir() {
@@ -38,16 +41,49 @@ function getConfig() {
   return config;
 }
 
-// Counter stored in counter.json (separated from memory-index.json)
-function getCounter() {
+// Save-interval counter. With a session id it is that session's own count
+// (session-state/<sid8>/counter.json), so sessions do not trigger each other's
+// saves and the count never needs the shared memory-index lock. Without a
+// session id the legacy project-wide counter.json is used.
+function getCounter(sessionId) {
+  if (sessionKey(sessionId)) {
+    const data = readSessionState(getProjectDir(), sessionId, 'counter', { counter: 0 }) || {};
+    return data.counter || 0;
+  }
   const counterPath = path.join(getStorageRoot(), MEMORY_DIR, COUNTER_FILE);
   const data = readJsonOrDefault(counterPath, { counter: 0 });
   return data.counter || 0;
 }
 
-function setCounter(value) {
+function setCounter(value, sessionId) {
+  if (sessionKey(sessionId)) {
+    writeSessionState(getProjectDir(), sessionId, 'counter', { counter: value, updatedAt: new Date().toISOString() });
+    return;
+  }
   const counterPath = path.join(getStorageRoot(), MEMORY_DIR, COUNTER_FILE);
   writeJson(counterPath, { counter: value });
+}
+
+// L1 read position for one transcript. Per session in session-state; the legacy
+// project-wide fields in memory-index.json only for payloads without a session id.
+function readL1Cursor(sessionId, index) {
+  if (sessionKey(sessionId)) return readSessionState(getProjectDir(), sessionId, 'l1-cursor', null);
+  if (index.lastL1TranscriptMtime === undefined && index.lastL1TranscriptOffset === undefined) return null;
+  return { offset: index.lastL1TranscriptOffset || 0, mtime: index.lastL1TranscriptMtime || 0 };
+}
+
+function writeL1Cursor(sessionId, index, cursor) {
+  if (sessionKey(sessionId)) return writeSessionState(getProjectDir(), sessionId, 'l1-cursor', { ...cursor, updatedAt: new Date().toISOString() });
+  index.lastL1TranscriptMtime = cursor.mtime;
+  index.lastL1TranscriptOffset = cursor.offset;
+  return true;
+}
+
+function findSessionL1(sessionsDir, sessionId8) {
+  if (!sessionId8 || !fs.existsSync(sessionsDir)) return null;
+  return fs.readdirSync(sessionsDir)
+    .filter(f => f.endsWith('.l1.jsonl') && f.includes(`_${sessionId8}`))
+    .sort().reverse()[0] || null; // newest first
 }
 
 async function check() {
@@ -55,40 +91,42 @@ async function check() {
   // CLAUDE_PROJECT_DIR (set by Claude Code) is the authoritative project root.
   // Do NOT use hookData.cwd — it changes when Bash cd's to subdirectories.
   const sessionId = hookData.session_id || null;
-  const sessionId8 = sessionId ? sessionId.substring(0, 8) : null;
+  const sessionId8 = sessionKey(sessionId);
 
   const memoryDir = path.join(getStorageRoot(), MEMORY_DIR);
   ensureDir(memoryDir);
+
+  // Regressing: auto-advance phase on skill invocation (own state file).
+  try {
+    const detectedSkill = detectRegressingSkillCall(hookData);
+    if (detectedSkill) {
+      const newPhase = advancePhase(detectedSkill, getProjectDir(), sessionId);
+      if (newPhase) {
+        console.error(`[REGRESSING PHASE] ${detectedSkill} -> ${newPhase}`);
+      }
+    }
+  } catch (e) {
+    // Non-fatal: must not break counter/delta pipeline
+    console.error(`[REGRESSING PHASE ERROR] ${e.message}`);
+  }
+
+  const config = getConfig();
+  const interval = config.saveInterval || DEFAULT_INTERVAL;
+  const counter = getCounter(sessionId) + 1;
+  setCounter(counter, sessionId);
+  const saveDue = counter >= interval;
+  const pressureReset = hookData.tool_name === 'TaskCreate';
+  if (!saveDue && !pressureReset) return;
+
   const locked = acquireIndexLock(memoryDir);
   if (!locked) {
-    // Another process holds the lock — skip this cycle (fail-open).
+    // Another process holds the lock (fail-open). The counter stays at or above
+    // the interval, so this session's next tool call retries the save.
     return;
   }
   try {
-    // Regressing: auto-advance phase on skill invocation
-    try {
-      const detectedSkill = detectRegressingSkillCall(hookData);
-      if (detectedSkill) {
-        const projectDir = getProjectDir();
-        const newPhase = advancePhase(detectedSkill, projectDir);
-        if (newPhase) {
-          console.error(`[REGRESSING PHASE] ${detectedSkill} -> ${newPhase}`);
-        }
-      }
-    } catch (e) {
-      // Non-fatal: must not break counter/delta pipeline
-      console.error(`[REGRESSING PHASE ERROR] ${e.message}`);
-    }
-
-    const config = getConfig();
-    const interval = config.saveInterval || DEFAULT_INTERVAL;
-
-    let counter = getCounter();
-    counter++;
-    setCounter(counter);
-
     // Pressure reset on Task delegation
-    if (hookData.tool_name === 'TaskCreate') {
+    if (pressureReset) {
       try {
         const idxPath = path.join(getStorageRoot(), MEMORY_DIR, 'memory-index.json');
         const idx = readIndexSafe(idxPath);
@@ -101,6 +139,7 @@ async function check() {
         }
       } catch (e) { /* fail-open */ }
     }
+    if (!saveDue) return;
 
     // Check rotation before auto-save
     const memoryPath = path.join(getStorageRoot(), MEMORY_DIR, MEMORY_FILE);
@@ -109,79 +148,66 @@ async function check() {
       console.log(rotationResult.hookOutput);
     }
 
-    if (counter >= interval) {
-      const indexPath = path.join(getStorageRoot(), MEMORY_DIR, 'memory-index.json');
-      const sessionsDir = path.join(getStorageRoot(), SESSIONS_DIR);
+    const indexPath = path.join(getStorageRoot(), MEMORY_DIR, 'memory-index.json');
+    const sessionsDir = path.join(getStorageRoot(), SESSIONS_DIR);
 
-      // Step 1: Create/update L1 from current transcript
-      // Prefer transcript_path from hookData, fallback to findTranscriptPath()
-      const transcriptPath = (hookData.transcript_path && hookData.transcript_path !== '')
-        ? hookData.transcript_path
-        : findTranscriptPath();
+    // Step 1: Create/update L1 from current transcript
+    // Prefer transcript_path from hookData, fallback to findTranscriptPath()
+    const transcriptPath = (hookData.transcript_path && hookData.transcript_path !== '')
+      ? hookData.transcript_path
+      : findTranscriptPath();
 
-      if (transcriptPath) {
-        try {
-          const transcriptMtime = fs.statSync(transcriptPath).mtimeMs;
-          const idx = readIndexSafe(indexPath);
-          // Only create L1 if transcript changed since last L1 creation
-          if (!idx.lastL1TranscriptMtime || transcriptMtime > idx.lastL1TranscriptMtime) {
-            ensureDir(sessionsDir);
+    if (transcriptPath) {
+      try {
+        const stat = fs.statSync(transcriptPath);
+        const idx = readIndexSafe(indexPath);
+        const cursor = readL1Cursor(sessionId, idx);
+        const sameTranscript = !cursor || !cursor.transcriptPath || cursor.transcriptPath === transcriptPath;
+        // Only refine when this transcript changed since this session's last L1 update
+        const changed = !cursor || !sameTranscript || !cursor.mtime
+          || stat.mtimeMs > cursor.mtime || (cursor.size !== undefined && stat.size !== cursor.size);
+        if (changed) {
+          ensureDir(sessionsDir);
 
-            // Find existing L1 for this session to append to (offset mode),
-            // or create new L1 (fresh session / no existing L1)
-            let l1Dest;
-            let startOffset = 0;
-            if (sessionId8) {
-              const existingL1 = fs.readdirSync(sessionsDir)
-                .filter(f => f.endsWith('.l1.jsonl') && f.includes(`_${sessionId8}`))
-                .sort().reverse()[0]; // newest first
-              if (existingL1) {
-                l1Dest = path.join(sessionsDir, existingL1);
-                startOffset = idx.lastL1TranscriptOffset || 0;
-              }
-            }
-            if (!l1Dest) {
-              // New session or no sessionId — create fresh L1
-              const ts = getTimestamp();
-              const l1Name = sessionId8 ? `${ts}_${sessionId8}.l1.jsonl` : `${ts}.l1.jsonl`;
-              l1Dest = path.join(sessionsDir, l1Name);
-              startOffset = 0;
-            }
-
-            const result = refineRawSync(transcriptPath, l1Dest, startOffset);
-            cleanupDuplicateL1(l1Dest);
-            idx.lastL1TranscriptMtime = transcriptMtime;
-            // Update offset for next incremental read
-            if (result && typeof result === 'object' && result.newOffset !== undefined) {
-              idx.lastL1TranscriptOffset = result.newOffset;
-            } else {
-              idx.lastL1TranscriptOffset = fs.statSync(transcriptPath).size;
-            }
-            writeJson(indexPath, idx);
+          // Append to this session's existing L1 from its own position (offset mode),
+          // or create a new L1 (fresh session / no existing L1)
+          let l1Dest;
+          let startOffset = 0;
+          const existingL1 = findSessionL1(sessionsDir, sessionId8);
+          if (existingL1) {
+            l1Dest = path.join(sessionsDir, existingL1);
+            // No per-session cursor yet: a session that predates per-session
+            // tracking falls back to the legacy project-wide position.
+            startOffset = cursor && sameTranscript ? (cursor.offset || 0)
+              : (!cursor && sessionId8 ? idx.lastL1TranscriptOffset || 0 : 0);
+          } else {
+            const ts = getTimestamp();
+            const l1Name = sessionId8 ? `${ts}_${sessionId8}.l1.jsonl` : `${ts}.l1.jsonl`;
+            l1Dest = path.join(sessionsDir, l1Name);
+            startOffset = 0;
+            // First L1 of this session: none of its entries has been summarized.
+            markSessionStarted(idx, sessionId8);
           }
-        } catch (e) {
-          fs.appendFileSync(path.join(getLogsDir(), 'error.log'),
-            `${new Date().toISOString()}: check() L1 creation failed: ${e.message}\n`);
+
+          const result = refineRawSync(transcriptPath, l1Dest, startOffset);
+          if (fs.existsSync(l1Dest)) cleanupDuplicateL1(l1Dest);
+          const newOffset = result && typeof result === 'object' && result.newOffset !== undefined
+            ? result.newOffset : stat.size;
+          writeL1Cursor(sessionId, idx, { transcriptPath, offset: newOffset, mtime: stat.mtimeMs, size: stat.size });
+          writeJson(indexPath, idx);
         }
-      }
-
-      // Step 2: Try delta extraction (pass sessionId for session-aware L1 selection)
-      const deltaResult = extractDelta(sessionId8);
-
-      if (deltaResult.success) {
-        // Set deltaReady flag so inject-rules.js knows this is a legitimate delta
-        const index = readIndexSafe(indexPath);
-        const queue = path.join(memoryDir, 'delta_temp.txt');
-        index.deltaReady = fs.existsSync(queue) && fs.statSync(queue).size > 0;
-        writeJson(indexPath, index);
-        setCounter(0);
-      } else {
-        // No delta available - just reset counter
-        setCounter(0);
+      } catch (e) {
+        fs.appendFileSync(path.join(getLogsDir(), 'error.log'),
+          `${new Date().toISOString()}: check() L1 creation failed: ${e.message}\n`);
       }
     }
+
+    // Step 2: Try delta extraction (session-aware L1 selection and baseline);
+    // extraction sets deltaReady in the same lock hold.
+    extractDelta(sessionId8);
+    setCounter(0, sessionId);
   } finally {
-    if (locked) releaseIndexLock(memoryDir);
+    releaseIndexLock(memoryDir);
   }
 }
 
@@ -193,12 +219,13 @@ async function final() {
 
   // CLAUDE_PROJECT_DIR (set by Claude Code) is the authoritative project root.
   const sessionId = hookData.session_id || null;
-  const sessionId8 = sessionId ? sessionId.substring(0, 8) : null;
+  const sessionId8 = sessionKey(sessionId);
   const projectDir = getProjectDir().replace(/\\/g, '/');
   const timestamp = getTimestamp();
   const sessionsDir = path.join(getStorageRoot(), SESSIONS_DIR);
 
   ensureDir(sessionsDir);
+  const hadSessionL1 = Boolean(findSessionL1(sessionsDir, sessionId8));
 
   // Debug: log what we received
   const logsDir = getLogsDir();
@@ -226,6 +253,7 @@ async function final() {
   }
 
   // Create L1 refined version
+  let l1Created = false;
   if (rawSaved) {
     try {
       const l1Dest = rawSaved.replace('.raw.jsonl', '.l1.jsonl');
@@ -239,6 +267,7 @@ async function final() {
 
       // Remove duplicate L1 files from same session
       cleanupDuplicateL1(l1Dest);
+      l1Created = true;
 
       // Delete raw file unless keepRaw is enabled
       const config = getConfig();
@@ -265,35 +294,57 @@ async function final() {
       `${timestamp}: Failed to prune old L1 files: ${e.message}\n`);
   }
 
-  // Process any remaining delta before session ends (pass sessionId for isolation)
-  const deltaResult = extractDelta(sessionId8);
+  // Process any remaining delta before session ends (pass sessionId for isolation).
+  // Extraction, the session's delta start and its L1 position change in one lock hold.
+  let deltaResult = { success: false, reason: 'memory index busy' };
   let deltaOutput = '';
-  // Clear offset + set deltaReady inside lock
   {
     const idxPath = path.join(getStorageRoot(), MEMORY_DIR, 'memory-index.json');
     const finalMemoryDir = path.join(getStorageRoot(), MEMORY_DIR);
-    const finalLocked = acquireIndexLock(finalMemoryDir);
-    if (finalLocked) try {
-      const idx = readIndexSafe(idxPath);
-      // Reset offset — final() creates definitive L1 from scratch, next session starts fresh
-      delete idx.lastL1TranscriptOffset;
-      delete idx.lastL1TranscriptMtime;
-      if (deltaResult.success) {
-        const queue = path.join(finalMemoryDir, 'delta_temp.txt');
-        idx.deltaReady = fs.existsSync(queue) && fs.statSync(queue).size > 0;
+    if (sessionId8) {
+      // The final L1 holds the whole transcript; a resumed session continues after it.
+      // This is the session's own state file, so it does not wait for the shared lock.
+      const cursorPath = hookData.transcript_path || transcriptSrc;
+      if (cursorPath) {
+        try {
+          const stat = fs.statSync(cursorPath);
+          writeL1Cursor(sessionId, null, { transcriptPath: cursorPath, offset: stat.size, mtime: stat.mtimeMs, size: stat.size });
+        } catch {}
       }
-      writeJson(idxPath, idx);
+    }
+    // SessionEnd shares a 1.5 s host budget; waiting longer than a tool-call hook
+    // keeps a busy lock from dropping the session's last entries.
+    const finalLocked = acquireIndexLock(finalMemoryDir, FINAL_LOCK_WAIT_MS);
+    if (finalLocked) try {
+      if (sessionId8 && !hadSessionL1) {
+        // A session ending before its first save: its L1 holds only its own entries.
+        const started = readIndexSafe(idxPath);
+        if (markSessionStarted(started, sessionId8)) writeJson(idxPath, started);
+      }
+      deltaResult = extractDelta(sessionId8);
+      if (!sessionId8) {
+        // Legacy project-wide position — the next session starts fresh
+        const idx = readIndexSafe(idxPath);
+        delete idx.lastL1TranscriptOffset;
+        delete idx.lastL1TranscriptMtime;
+        writeJson(idxPath, idx);
+      }
     } finally {
-      if (finalLocked) releaseIndexLock(finalMemoryDir);
+      releaseIndexLock(finalMemoryDir);
     }
   }
+  if (sessionId8) {
+    removeSessionState(getProjectDir(), sessionId, 'counter');
+    removeSessionState(getProjectDir(), sessionId, 'skill-active');
+  }
+  try { pruneSessionStates(getProjectDir()); } catch {}
   if (deltaResult.success) {
     deltaOutput = `\n[CRABSHELL_DELTA] file=${deltaResult.deltaFile}\nDelta extracted at session end: ${deltaResult.entryCount} entries.`;
   }
 
   // Quiet mode by default - only show brief message
   if (config.quietStop !== false) {
-    let systemMsg = `[CRABSHELL_SAVE] Session saved. L1: ${rawSaved ? 'OK' : 'SKIP'}`;
+    let systemMsg = `[CRABSHELL_SAVE] Session saved. L1: ${l1Created ? 'OK' : 'SKIP'}`;
     if (deltaOutput) {
       systemMsg += deltaOutput;
     }
@@ -301,7 +352,7 @@ async function final() {
       systemMessage: systemMsg
     };
     console.log(JSON.stringify(output));
-    setCounter(0);
+    if (!sessionId8) setCounter(0);
     return;
   }
 
@@ -329,7 +380,7 @@ printf '\\n## %s (Session End)\\n%s\\n' "${timestamp}" "[Complete session summar
   };
   console.log(JSON.stringify(output));
 
-  setCounter(0);
+  if (!sessionId8) setCounter(0);
 }
 
 function reset() {
@@ -702,8 +753,9 @@ switch (command) {
     break;
   case 'final':
     final().catch(e => {
+      // SessionEnd hook: fail open, never report a hook failure to the host.
       console.error(`[CRABSHELL] Final error: ${e.message}`);
-      process.exit(1);
+      process.exit(0);
     });
     break;
   case 'reset':

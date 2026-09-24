@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { readCodexCommandResult } = require('./host-tool-result');
+const { NON_SOURCE_EXTENSIONS, NON_SOURCE_BASENAMES, SOURCE_EXCLUDED_DIRS } = require('../constants');
 
 // Parse one invocation, never search quoted arguments for command names. Shell
 // composition needs per-process results, which a single tool result cannot prove.
@@ -37,7 +38,15 @@ function commandTokens(command) {
 }
 
 function readJson(file) {
-  try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return {}; }
+  try { return JSON.parse(fs.readFileSync(file, 'utf8').replace(/^﻿/, '')); } catch { return {}; }
+}
+
+// True when the project has any check configuration at all (a verification
+// manifest file or a package.json test script), even if nothing in it is runnable.
+function hasCheckConfiguration(projectDir) {
+  if (!projectDir) return false;
+  if (fs.existsSync(path.join(projectDir, '.crabshell', 'verification', 'manifest.json'))) return true;
+  return typeof (readJson(path.join(projectDir, 'package.json')).scripts || {}).test === 'string';
 }
 
 function declaredCommands(projectDir) {
@@ -115,9 +124,22 @@ function checkKeyForCommand(command, projectDir, cwd = projectDir) {
   return declaration ? declarationKey(declaration) : null;
 }
 
+// A path (relative to the project, or absolute) whose edits need a passing check:
+// anything but prose, stylesheets and images outside generated/state directories.
+function isSourceFile(filePath) {
+  if (!filePath) return false;
+  const normalized = String(filePath).replace(/\\/g, '/').toLowerCase();
+  const segments = normalized.split('/');
+  if (segments.some(segment => SOURCE_EXCLUDED_DIRS.includes(segment))) return false;
+  const extension = path.extname(normalized);
+  if (NON_SOURCE_EXTENSIONS.includes(extension)) return false;
+  return !(extension === '' && NON_SOURCE_BASENAMES.includes(path.basename(normalized)));
+}
+
 // Keep the content identity with the existing observation, not in another
-// change journal. Ignore generated state and dependencies, but include the
-// project's verification configuration and runner.
+// change journal. Only files that need verification count (a README or
+// stylesheet edit after a passing check leaves the evidence current), plus the
+// project's verification configuration: the manifest, its runner, package.json.
 function projectFingerprint(projectDir) {
   const hash = crypto.createHash('sha256');
   function visit(directory, relative = '') {
@@ -125,17 +147,17 @@ function projectFingerprint(projectDir) {
       const name = relative ? `${relative}/${entry.name}` : entry.name;
       if (entry.isSymbolicLink()) continue;
       if (entry.isDirectory()) {
-        if (['.git', '.crabshell', 'node_modules', 'dist', 'build'].includes(entry.name)) continue;
+        if (SOURCE_EXCLUDED_DIRS.includes(entry.name)) continue;
         visit(path.join(directory, entry.name), name);
-      } else if (entry.isFile()) {
+      } else if (entry.isFile() && isSourceFile(name)) {
         hash.update(JSON.stringify(name)).update(fs.readFileSync(path.join(directory, entry.name)));
       }
     }
   }
   visit(projectDir);
-  for (const name of ['manifest.json', 'run-verify.js']) {
-    const file = path.join(projectDir, '.crabshell', 'verification', name);
-    if (fs.existsSync(file)) hash.update(name).update(fs.readFileSync(file));
+  for (const file of [path.join('.crabshell', 'verification', 'manifest.json'), path.join('.crabshell', 'verification', 'run-verify.js'), 'package.json']) {
+    const absolute = path.join(projectDir, file);
+    if (fs.existsSync(absolute)) hash.update(file).update(fs.readFileSync(absolute));
   }
   return hash.digest('hex');
 }
@@ -179,7 +201,8 @@ function isToolFailure(toolResponse) {
 
 function isRunning(response) {
   if (response && typeof response === 'object') {
-    if (response.session_id != null || response.background_task_id != null || response.running === true
+    // Claude reports a background launch as backgroundTaskId; Codex uses session_id / background_task_id.
+    if (response.session_id != null || response.background_task_id != null || response.backgroundTaskId != null || response.running === true
       || /^(running|pending|in_progress|in-progress)$/i.test(response.status || '')) return true;
     return ['metadata', 'result', 'details'].some(key => isRunning(response[key]));
   }
@@ -256,10 +279,12 @@ module.exports = {
   commandTokens,
   declaredCommands,
   getExitCode,
+  hasCheckConfiguration,
   isGitCommit,
   isTestExecution,
   isToolFailure,
   isTrivialTest,
+  isSourceFile,
   projectFingerprint,
   checkKeyForCommand,
   responseText,

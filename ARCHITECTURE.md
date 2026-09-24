@@ -1,8 +1,8 @@
-# Crabshell Architecture (v21.123.0)
+# Crabshell Architecture (v21.124.0)
 
 ## Overview
 
-Crabshell is a dual-runtime Claude Code/Codex plugin. Both hosts use native hook manifests backed by shared first-turn, memory, workflow, compaction, subagent, command-observation, and parent-completion cores. Claude Code retains automatic SessionEnd capture, pressure telemetry, and deterministic guards; behavioral pressure/sycophancy/scope hooks are unwired. Codex uses synchronous native lifecycle/Interrupt events and explicit memory/document skills. Both runtimes share `.crabshell/` storage without launching or requiring each other. Version 21.123.0 adds native failure/capture/finalization/recovery handling.
+Crabshell is a dual-runtime Claude Code/Codex plugin. Both hosts use native hook manifests backed by shared first-turn, memory, workflow, compaction, subagent, command-observation, and parent-completion cores. Claude Code retains automatic SessionEnd capture, pressure telemetry, and deterministic guards; behavioral pressure/sycophancy/scope hooks are unwired. Codex uses synchronous native lifecycle/Interrupt events and explicit memory/document skills. Both runtimes share `.crabshell/` storage without launching or requiring each other. Version 21.124.0 keeps memory, verification, completion and skill-flag state per session so concurrent sessions do not interfere, and fits SessionStart memory within the host limit.
 
 ## Core Philosophy
 
@@ -185,15 +185,25 @@ Codex marketplace -> installed cache -> .codex-plugin/plugin.json
 - `codex-doctor.js` probes both CLIs and derives installed, activated, trusted, behavior-verified, degraded, drifted, and unsupported states. Codex desktop app remains a separate unexercised row.
 - `scripts/install-codex.js` remains a legacy/development bridge and is not part of the native default path.
 
+### Concurrent sessions (v21.124.0)
+
+Several host sessions may work in one project. State is split by what it describes:
+
+- Per session: the save counter, L1 read position and document skill flag (`memory/session-state/<sid8>/`, sid8 = first 8 characters of session_id, the L1 file key), the delta watermark (`memory-index.json` `sessionDelta[sid8]`), and the completion-control entry (`completion-control.json` `sessions[session_id]`, full id because JSON keys need no file-name form and Codex ids share time-ordered prefixes). Payloads without a session id use the legacy project-wide fields or the `_` entry.
+- Per working tree: the commit gate (`verification-state.json`). Any session's source edit arms it and only a passing declared check on the current content disarms it.
+- Per workflow: `regressing-state.json` records the owning session; the session that runs the workflow's next skill takes ownership.
+
+Locks carry an owner token and are taken over only from a dead or stale owner, one process at a time. SessionStart memory is assembled within `SESSION_START_MAX_CHARS` (9,500) by priority, below Claude Code's 10,000-character inline limit.
+
 ### Verification evidence and content identity (v21.123.0)
 
 `command-observation.js` matches a single parsed invocation against project manifest declarations or package test configuration. It rejects command-name lookalikes and compound shell invocations, interprets explicit failure/running/interruption signals, and checks applicable entry assertions. Claude's captured successful PostToolUse object can imply exit zero when no explicit code exists; Codex requires explicit result codes. Fixture provenance is kept under `scripts/fixtures/hook-payloads/`.
 
-Both completion adapters receive `Bash|Write|Edit`; the Codex adapter normalizes `cmd` to `command`. Content changes invalidate parent evidence. A result event reuses one source fingerprint for invalidation and replacement; future events and Stop rescan. The fingerprint excludes `.git`, `.crabshell`, `node_modules`, `dist`, `build`, and symlinks, then includes the verification manifest and runner separately. It does not follow `.gitignore` or provide an atomic snapshot of concurrent external writes.
+Both completion adapters receive `Bash|Write|Edit`; the Codex adapter normalizes `cmd` to `command`. Content changes invalidate parent evidence. A result event reuses one source fingerprint for invalidation and replacement; future events and Stop rescan. The fingerprint excludes `.git`, `.crabshell`, `node_modules`, `dist`, `build`, symlinks and (v21.124.0) prose, stylesheet and image files, then includes the verification manifest, runner and `package.json` separately. It does not follow `.gitignore` or provide an atomic snapshot of concurrent external writes.
 
 Claude `PostToolUseFailure` is wired to both verification-state and parent-evidence recording. Its captured failure is a top-level `error` with `is_interrupt`; success remains a different envelope. Codex `PostToolUse.tool_response` is output text in the captured CLI. `host-tool-result.js` reads a bounded transcript tail and requires a matching command ID, session, turn and project cwd before using `exit_code`. Unsupported/missing/ambiguous records remain inconclusive.
 
-`check-history.js` distinguishes a duplicate notification from a new invocation, preserves independent failed checks, and rejects late superseded results. `state-lock.js` serializes state writes. An ordinary non-check shell event does not scan all source files. Content hashes, not size/mtime, still govern decisive validation. Codex `Interrupt`, Claude interruption results and recognized explicit stop requests suspend owned work and invalidate test success. The bounded `recovery` projection in existing completion state is read at SessionStart and compaction; it carries excerpts and historical evidence, never fresh permission or proof of current success. No new SessionEnd summarization is required.
+`check-history.js` distinguishes a duplicate notification from a new invocation, preserves independent failed checks, and rejects late superseded results. `state-lock.js` serializes state writes. An ordinary non-check shell event does not scan all source files. Content hashes, not size/mtime, still govern decisive validation. Codex `Interrupt`, Claude interruption results and recognized explicit stop requests suspend owned work and invalidate that session's own check results (v21.124.0: another session's passing check on the shared tree stays valid). The bounded `recovery` projection in existing completion state is read at SessionStart and compaction; it carries excerpts and historical evidence, never fresh permission or proof of current success. No new SessionEnd summarization is required.
 
 ## Memory Hierarchy (v13.0.0+)
 
@@ -279,10 +289,11 @@ Claude `PostToolUseFailure` is wired to both verification-state and parent-evide
 
 4. PostToolUse (all tools)
    ├─> counter.js check
-   │   ├─> Detect regressing skill calls → auto-advance phase (v19.23.0)
-   │   ├─> Increment counter
-   │   ├─> checkAndRotate() — archive if > 23,750 tokens
-   │   └─> At threshold: create/update L1 (session-aware reuse + incremental offset read) → extractDelta() → creates delta_temp.txt
+   │   ├─> Detect regressing skill calls → auto-advance phase and record the calling session as owner
+   │   ├─> Increment this session's counter (session-state/<sid8>/counter.json, no shared lock)
+   │   └─> At this session's threshold, under the memory-index lock: checkAndRotate() — archive if > 23,750 tokens →
+   │       create/update this session's L1 from its own read position (session-state/<sid8>/l1-cursor.json) →
+   │       extractDelta(sid8) — this session's L1 only, after its own watermark → appends a "session=<sid8>" block to delta_temp.txt
    ├─> verification-sequence.js record (.*) — v21.0.0+
    │   └─> Track source file edits and test executions in verification-state.json
    ├─> completion-controller.js (Bash|Write|Edit) — declared evidence and content invalidation
@@ -290,7 +301,7 @@ Claude `PostToolUseFailure` is wired to both verification-state and parent-evide
    ├─> doc-watchdog.js record (Write|Edit) — v21.18.0+
    │   └─> Track code edits (increment) and D/P/T doc edits (reset) in doc-watchdog.json
    └─> skill-tracker.js (Skill) — v19.33.0+
-       └─> Set skill-active flag on Skill tool calls (TTL-based, 5min expiry)
+       └─> Set this session's skill flag (session-state/<sid8>/skill-active.json; cleared on compaction and SessionEnd)
 
 4.5. PostToolUseFailure (Claude Bash)
    └─> verification-sequence.js record + completion-controller.js
@@ -301,8 +312,9 @@ Claude `PostToolUseFailure` is wired to both verification-state and parent-evide
        ├─> Create final L1 session transcript (full reprocess, no offset)
        ├─> Cleanup duplicate L1 files
        ├─> pruneOldL1() — delete L1 files >30 days old (v21.10.0)
-       ├─> extractDelta() for remaining content
-       └─> Clear lastL1TranscriptOffset/Mtime (next session starts fresh)
+       ├─> extractDelta(sid8) for remaining content (waits up to 800 ms for the memory-index lock)
+       ├─> Record this session's read position at the end of its transcript (so --resume adds no duplicates)
+       └─> Remove this session's counter and skill flag; prune session-state folders older than 30 days
 
 6. PreCompact — v21.21.0
    └─> pre-compact.js
@@ -406,7 +418,7 @@ Regressing retains document-cycle continuation but has no parallel-worker count 
 | `sycophancy-guard.js` | (unwired v21.113.0 — I083 R5) | Retired from PreToolUse and Stop dispatch; anti-sycophancy training in Sonnet 4.5+ models replaced the prompt/hook layer. Script kept on disk |
 | `scope-guard.js` | (unwired v21.113.0 — I083 R5) | Retired from Stop dispatch; scope preservation lives as a short principle in RULES. Script kept on disk |
 | `regressing-loop-guard.js` | retained compatibility source | Legacy count-independent continuation helper retained for regression coverage; no longer a direct manifest Stop owner. Regressing continuation is goal-driven (v21.110.0): the regressing skill emits a `/goal` handoff for host goal mode, and `completion-controller.js` keeps bounded continuation on execution-authorized turns |
-| `skill-tracker.js` | PostToolUse (Skill) | Set skill-active flag on Skill tool calls (TTL-based, 5min expiry) |
+| `skill-tracker.js` | PostToolUse (Skill) | Set the calling session's skill flag on Skill tool calls (no timer; cleared on compaction and SessionEnd; payloads without a session id use the legacy 15-minute project flag) |
 | `regressing-state.js` | (library) | Phase tracker: getState, buildReminder, detectSkillCall, advancePhase |
 | `extract-delta.js` | (library) | L1 delta extraction, timestamp watermarks, temp file management |
 | `memory-rotation.js` | (library) | Token-based rotation: archive at 23,750 tokens, 2,375 token carryover |
@@ -427,10 +439,11 @@ Regressing retains document-cycle continuation but has no parallel-worker count 
 | MEMORY_DIR | memory | Memory storage directory |
 | SESSIONS_DIR | sessions | Session storage directory |
 | INDEX_FILE | memory-index.json | Rotation tracking + delta state |
-| COUNTER_FILE | counter.json | PostToolUse counter (separated from index) |
+| COUNTER_FILE | counter.json | Legacy project-wide PostToolUse counter (payloads without a session id); sessions count in session-state/<sid8>/counter.json |
+| SESSION_STATE_DIR | session-state | Per-session state: counter, L1 read position, skill flag (key = first 8 characters of session_id, as in L1 file names) |
 | MEMORY_FILE | logbook.md | Active memory file |
 | REGRESSING_STATE_FILE | regressing-state.json | Regressing cycle tracker |
-| SKILL_ACTIVE_FILE | skill-active.json | TTL-based skill flag for docs-guard/verify-guard |
+| SKILL_ACTIVE_FILE | skill-active.json | Skill flag for docs-guard (per session under session-state; project-wide legacy file only without a session id) |
 | DELTA_JOBS_DIR | delta-jobs | Fixed memory inputs and per-attempt summaries |
 | DELTA_SUMMARY_FILE | delta_summary_temp.txt | Legacy standalone summary input |
 
@@ -501,9 +514,10 @@ Save to *.summary.json
 | deltaCreatedAtMemoryMtime | logbook.md mtime when delta was created (for cleanup validation) |
 | deltaReady | Flag: true when delta_temp.txt is ready for processing |
 | deltaJob | Active fixed input ID/hash/cutoff and preparing/ready/appending/appended/complete state |
-| pendingLastProcessedTs | Latest retained L1 cutoff; finalization advances only its captured cutoff and preserves newer queued input |
-| lastL1TranscriptMtime | Transcript file mtime at last L1 creation (skip redundant L1 creation) |
-| lastL1TranscriptOffset | Byte offset into transcript file after last L1 creation (incremental reads, v21.10.0) |
+| pendingLastProcessedTs | Maximum retained L1 cutoff over sessions (compatibility); finalization advances only its captured cutoff and preserves newer queued input |
+| sessionDelta | Per-session watermarks `{ [sid8]: { seenAt, pendingTs, committedTs } }` (v21.124.0); a delta job snapshots `processedThroughBySession` and finalization commits each session's cutoff |
+| lastL1TranscriptMtime | Legacy project-wide transcript mtime, used only for payloads without a session id (sessions keep theirs in session-state/<sid8>/l1-cursor.json) |
+| lastL1TranscriptOffset | Legacy project-wide byte offset, used only for payloads without a session id and once for sessions predating v21.124.0 |
 | feedbackPressure | Pressure system state: `level` (0-3), `consecutiveCount`, `oscillationCount`, `decayCounter`, `lastShownLevel`, `lastDetectedAt` — RMW under index lock |
 | tooGoodSkepticism | Sycophancy guard "too good" P/O/G all-None retry counter: `retryCount` |
 
@@ -515,7 +529,7 @@ Save to *.summary.json
 }
 ```
 
-Separated from memory-index.json to eliminate Write race condition during delta processing. counter.js writes this on every PostToolUse; memory-index.json is now only written during rotation/delta operations.
+Separated from memory-index.json to eliminate Write race condition during delta processing. Since v21.124.0 this file is the legacy counter for payloads without a session id; each session counts in `session-state/<sid8>/counter.json` without the shared lock, and memory-index.json is written only at a save (rotation/L1/delta).
 
 ## L3 Summary Structure
 
@@ -555,6 +569,7 @@ The 4 PreToolUse Write|Edit guards (regressing-guard, docs-guard, log-guard, ver
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.124.0 | Concurrent sessions: per-session L1 position, save counter, delta watermark, completion entry and skill flag; owner-token locks with one-at-a-time takeover; tree-scoped commit gate (prose/style/image edits exempt, advice when no check is configured, background launches not passing); SessionStart memory within a 9,500-character budget; L1 first-line loss fixed. |
 | 21.123.0 | Native failure/Interrupt evidence, bound Codex transcript results, ordered check state, prepared delta finalization and bounded recovery. |
 | 21.122.0 | Declared-check evidence, captured host result handling, edit invalidation with one scan per result, shared project-description resolution, and portable Codex document launchers. |
 | 21.121.0 | feat: D116 — pipeline wiring probe (`check-pipeline-wiring.js`) validates a parent-approved hook/trigger/agent contract against the source and fails on unclassified hops; optional `arch-explorer` map is documentation only. |

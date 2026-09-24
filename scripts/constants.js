@@ -42,6 +42,31 @@ module.exports = {
 
   // Lock settings
   LOCK_STALE_MS: 60000,  // 60 seconds
+  LOCK_WAIT_MS: 250,     // how long a hook waits for a live lock holder before skipping
+
+  // Edits to these files never need a passing check before commit: prose,
+  // stylesheets and images. Every other file — code, configuration (JSON, YAML,
+  // hooks manifests), build files, unknown or no extension — arms the commit gate.
+  NON_SOURCE_EXTENSIONS: [
+    '.md', '.markdown', '.mdx', '.txt', '.rst', '.adoc',
+    '.css', '.scss', '.sass', '.less',
+    '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.webp', '.bmp', '.pdf',
+  ],
+  NON_SOURCE_BASENAMES: ['readme', 'license', 'licence', 'changelog', 'changes', 'notice', 'authors', 'contributors', 'contributing', 'copying'],
+  SOURCE_EXCLUDED_DIRS: ['.crabshell', '.claude', 'node_modules', '.git', 'dist', 'build'],
+
+  // SessionStart context budget. Claude Code moves additionalContext over 10,000
+  // characters to a file and passes only a 2,000-character preview, so the
+  // injected memory must stay below the host cap to reach the model.
+  SESSION_START_MAX_CHARS: 9500,
+
+  // Per-session state (memory/session-state/<first 8 chars of session_id>/).
+  // Key rule: file names and folders (L1 files, session-state/, memory-index
+  // sessionDelta) use the first 8 characters of the session id; JSON maps of
+  // per-session decisions (completion-control sessions, regressing owner) use the
+  // full id, since Codex ids share time-ordered prefixes.
+  SESSION_STATE_DIR: 'session-state',
+  SESSION_STATE_MAX_AGE_MS: 30 * 24 * 60 * 60 * 1000,  // same retention as L1 files
 
   // Retry settings
   MAX_RETRIES: 3,

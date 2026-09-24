@@ -20,14 +20,21 @@ const LEGITIMATE_SKILLS = [
   'regressing', 'verifying', 'hotfix'
 ];
 
-// TTL for skill-active flag (15 minutes)
+// Legacy project-wide flag lifetime (payloads without a session id only).
 const SKILL_ACTIVE_TTL_MS = 15 * 60 * 1000;
 
 /**
- * Check if a skill-active flag is valid (exists, not expired).
- * Returns the skill name if valid, null otherwise.
+ * Return the active document skill for this session, or null.
+ * A session's own flag has no timer: it lasts until the session compacts
+ * (the skill instructions leave the context) or ends. Another session's flag
+ * never counts. Payloads without a session id use the legacy 15-minute flag.
  */
-function getActiveSkill(projectDir) {
+function getActiveSkill(projectDir, sessionId) {
+  const { readSessionState, sessionKey } = require('./core/session-state');
+  if (sessionKey(sessionId)) {
+    const data = readSessionState(projectDir, sessionId, 'skill-active', null);
+    return data && LEGITIMATE_SKILLS.includes(data.skill) ? data.skill : null;
+  }
   const { STORAGE_ROOT } = require('./constants');
   const flagPath = path.join(projectDir, STORAGE_ROOT, 'memory', SKILL_ACTIVE_FILE);
   try {
@@ -126,7 +133,7 @@ async function main() {
   const projectDir = getProjectDir();
 
   // Check if a legitimate skill is active
-  const activeSkill = getActiveSkill(projectDir);
+  const activeSkill = getActiveSkill(projectDir, hookData.session_id);
   if (activeSkill) {
     // Skill is active — check Discussion body edit during regressing before allowing
     const discussionRegressingError = checkDiscussionRegressingBlock(filePath, toolName, activeSkill, projectDir);

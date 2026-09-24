@@ -184,6 +184,10 @@ function getLastUserMessage(transcriptPath) {
       let obj;
       try { obj = JSON.parse(lines[i]); } catch { continue; }
       if (obj.type === 'human' || obj.type === 'user') {
+        // A background task's completion notice is recorded as a user line but is
+        // host output, not the user's request (origin.kind "task-notification").
+        if (obj.origin?.kind === 'task-notification') continue;
+        if (typeof obj.message?.content === 'string' && /^\s*<task-notification>/.test(obj.message.content)) continue;
         // Extract text from content array or string
         if (typeof obj.message?.content === 'string') return obj.message.content;
         if (Array.isArray(obj.message?.content)) {

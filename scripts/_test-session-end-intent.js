@@ -128,7 +128,8 @@ try {
     assert.strictEqual(result.status, 0, result.stderr || result.stdout);
     assert.match(result.stdout, /CRABSHELL_SAVE/);
     const memoryRoot = path.join(root, '.crabshell', 'memory');
-    assert.ok(fs.existsSync(path.join(memoryRoot, 'counter.json')));
+    // D119: the save counter is per session; a persisted SessionEnd records this session's L1 position.
+    assert.ok(fs.existsSync(path.join(memoryRoot, 'session-state', 'session-', 'l1-cursor.json')));
     assert.ok(fs.existsSync(path.join(memoryRoot, 'memory-index.json')));
     assert.ok(fs.readdirSync(path.join(memoryRoot, 'sessions')).some(file => file.endsWith('.l1.jsonl')));
   });
