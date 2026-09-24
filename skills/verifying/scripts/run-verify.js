@@ -452,6 +452,14 @@ function gitChangedFiles(projectRoot) {
   return { files: [...files] };
 }
 
+// Files git can report as changed (tracked, or untracked and not ignored), or null
+// when git is unavailable. Ignored files never appear in the change list.
+function gitVisibleFiles(projectRoot) {
+  const result = spawnSync('git', ['ls-files', '--cached', '--others', '--exclude-standard'], { cwd: projectRoot, encoding: 'utf8', windowsHide: true, maxBuffer: 256 << 20 });
+  if (result.status !== 0) return null;
+  return new Set(result.stdout.split('\n').map(line => toPosix(line.trim())).filter(Boolean));
+}
+
 // Decide which entries a set of changed files needs.
 function planChanged(manifest, entries, projectRoot, manifestPath, changedFiles) {
   const runnable = entries.filter(entry => entry.type !== 'manual');
@@ -478,8 +486,15 @@ function planChanged(manifest, entries, projectRoot, manifestPath, changedFiles)
     } catch (_) { return false; }
   };
   if (changed.length === 0) return everything('no changed files found (edits invisible to git, or nothing changed)');
+  // A recorded file git ignores (runtime state a session keeps writing) can never be
+  // in the change list, so its later change says nothing about the code: only files
+  // git can report are checked. The manifest, runner and test files are always
+  // checked, since a project may ignore its whole .crabshell folder.
+  const visible = gitVisibleFiles(projectRoot);
   const recordedFiles = new Set();
-  for (const record of Object.values(map.entries || {})) for (const file of record.files || []) if (!file.endsWith('/') && file !== mapRelative) recordedFiles.add(file);
+  for (const record of Object.values(map.entries || {})) {
+    for (const file of record.files || []) if (!file.endsWith('/') && file !== mapRelative && (!visible || visible.has(file))) recordedFiles.add(file);
+  }
   for (const file of [manifestRelative, runnerRelative, ...testFiles.values(), ...recordedFiles].filter(Boolean)) {
     if (!changedSet.has(file) && newer(file)) return everything(`load map is older than ${file}`);
   }

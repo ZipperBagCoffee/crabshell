@@ -3,7 +3,8 @@
 const fs = require('fs');
 const path = require('path');
 const { getStorageRoot, readJsonOrDefault } = require('../utils');
-const { REGRESSING_STATE_FILE, REGRESSING_STALE_MS, DOC_TYPES } = require('../constants');
+const { REGRESSING_STATE_FILE, DOC_TYPES } = require('../constants');
+const { isRegressingStale } = require('../regressing-state');
 const { buildMemoryContext } = require('./memory-context');
 const { getPostCompactWarning } = require('../shared-context');
 
@@ -40,7 +41,6 @@ function getRegressingSnapshot(projectDir, now = Date.now()) {
   const state = readJsonOrDefault(statePath, null);
   if (!state || state.active !== true) return null;
   const updatedAt = state.lastUpdatedAt || null;
-  const updatedMs = updatedAt ? new Date(updatedAt).getTime() : NaN;
   return {
     phase: state.phase || null,
     cycle: state.cycle ?? null,
@@ -49,7 +49,7 @@ function getRegressingSnapshot(projectDir, now = Date.now()) {
     planId: state.planId || null,
     ticketIds: Array.isArray(state.ticketIds) ? state.ticketIds : state.ticketId ? [state.ticketId] : [],
     lastUpdatedAt: updatedAt,
-    stale: Number.isFinite(updatedMs) ? now - updatedMs > REGRESSING_STALE_MS : true,
+    stale: isRegressingStale(updatedAt, { now, unknown: true }),
     statePath,
   };
 }

@@ -223,6 +223,63 @@ for (const file of ['scripts/constants.js', 'scripts/utils.js', 'hooks/hooks.jso
   report.check('R23 files written during the full run do not make the next --changed run full', built.status === 0 && plan.full === false, `exit=${built.status} ${show(plan)}`);
 }
 
+// R24–R27: a file git ignores (runtime state a session keeps writing) can never be
+// in the change list, so its later change must not make --changed run everything.
+function ignoredFixture(name) {
+  const dir = fixture(name);
+  write(dir, '.gitignore', 'state/\n');
+  write(dir, 'state/runtime.txt', 'boot\n');
+  write(dir, 'scripts/_test-state.js', "const fs = require('fs'); const path = require('path');\nfs.readFileSync(path.join(__dirname, '..', 'state', 'runtime.txt'), 'utf8');\n");
+  git(dir, 'add', '-A'); git(dir, 'commit', '-q', '-m', 'state');
+  return dir;
+}
+function touchLater(dir, rel) {
+  const later = new Date(Date.now() + 60 * 60 * 1000);
+  fs.writeFileSync(path.join(dir, rel), `written by a session at ${Date.now()}\n`);
+  fs.utimesSync(path.join(dir, rel), later, later);
+}
+{
+  const ig = ignoredFixture('ignored');
+  const built = runner(ig, []);
+  let plan = dryRun(ig, ['scripts/lib-a.js']);
+  report.check('R25 control: before the ignored file changes, selection is by what each test loads',
+    built.status === 0 && plan.full === false && selectsTest(plan, '_test-a.js') && !selectsTest(plan, '_test-state.js'), `exit=${built.status} ${show(plan)}`);
+  touchLater(ig, 'state/runtime.txt');
+  plan = dryRun(ig, ['scripts/lib-b.js']);
+  report.check('R24 a later change to a file git ignores does not make --changed run everything',
+    plan.full === false && selectsTest(plan, '_test-b.js') && !selectsTest(plan, '_test-state.js'), show(plan));
+  fs.rmSync(path.join(ig, '.git'), { recursive: true, force: true });
+  touchLater(ig, 'state/runtime.txt');
+  plan = dryRun(ig, ['scripts/lib-b.js']);
+  report.check('R26 control: without git nothing is known to be ignored, so a later change still runs everything',
+    plan.full === true && /older than state\/runtime\.txt/.test(String(plan.reason)), show(plan));
+}
+{
+  const fresh = ignoredFixture('uncommitted');
+  fs.rmSync(path.join(fresh, '.git'), { recursive: true, force: true });
+  git(fresh, 'init', '-q');
+  const built = runner(fresh, []);
+  touchLater(fresh, 'state/runtime.txt');
+  const plan = dryRun(fresh, ['scripts/lib-b.js']);
+  report.check('R27 a repository with no commits still applies its ignore rules',
+    built.status === 0 && plan.full === false && selectsTest(plan, '_test-b.js'), `exit=${built.status} ${show(plan)}`);
+}
+
+{
+  // Most projects ignore the whole .crabshell folder: its manifest is an ignored
+  // file, yet a manifest edit must still run everything.
+  const whole = fixture('ignores-crabshell');
+  write(whole, '.gitignore', `${CRAB}/\n`);
+  git(whole, 'rm', '-r', '-q', '--cached', CRAB); git(whole, 'add', '-A'); git(whole, 'commit', '-q', '-m', 'ignore crabshell');
+  const built = runner(whole, []);
+  const manifest = path.join(whole, CRAB, 'verification', 'manifest.json');
+  const later = new Date(Date.now() + 60 * 60 * 1000);
+  fs.utimesSync(manifest, later, later);
+  const plan = dryRun(whole, ['scripts/lib-b.js']);
+  report.check('R28 control: with .crabshell ignored, a manifest edit still runs everything',
+    built.status === 0 && plan.full === true && /manifest\.json/.test(String(plan.reason)), `exit=${built.status} ${show(plan)}`);
+}
+
 // R14: this repository — a counter.js change selects fewer than all checks but
 // every test that names counter.js (a static lower bound of "loads counter.js").
 {
