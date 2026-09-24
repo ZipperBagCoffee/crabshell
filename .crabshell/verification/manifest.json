@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "projectType": "Node.js CLI plugin with Claude and Codex adapters",
   "created": "2026-03-28T08:20:00Z",
-  "updated": "2026-09-05T09:45:00Z",
+  "updated": "2026-09-24T10:36:26.964Z",
   "tools": {
     "build": null,
     "run": null,
@@ -154,7 +154,7 @@
     },
     {
       "id": "V009",
-      "ia": "Current release version is 21.124.0 after per-session state and SessionStart budget",
+      "ia": "Current release version is 21.125.0 after one-process hooks and write-only path blocking",
       "type": "structural",
       "command": {
         "file": "node",
@@ -169,7 +169,7 @@
           {
             "kind": "stdoutJsonEquals",
             "pointer": "/version",
-            "equals": "21.124.0"
+            "equals": "21.125.0"
           }
         ],
         "forbiddenChanges": []
@@ -411,370 +411,6 @@
       "timeout": 30000
     },
     {
-      "id": "V019",
-      "ia": "hook PostToolUse to scripts/counter.js check is wired and loadable",
-      "type": "structural",
-      "command": {
-        "file": "node",
-        "args": [
-          ".crabshell/verification/check-pipeline-wiring.js",
-          "check",
-          "--contract",
-          ".crabshell/verification/wiring-contract.json",
-          "--hop",
-          "posttooluse:counter:check"
-        ]
-      },
-      "contract": {
-        "exitCode": 0,
-        "assertions": [
-          {
-            "kind": "stdoutJsonEquals",
-            "pointer": "/passed",
-            "equals": true
-          }
-        ],
-        "forbiddenChanges": []
-      },
-      "timeout": 30000
-    },
-    {
-      "id": "V020",
-      "ia": "hook PostToolUse to scripts/verification-sequence.js record is wired and loadable",
-      "type": "structural",
-      "command": {
-        "file": "node",
-        "args": [
-          ".crabshell/verification/check-pipeline-wiring.js",
-          "check",
-          "--contract",
-          ".crabshell/verification/wiring-contract.json",
-          "--hop",
-          "posttooluse:verification-sequence:record"
-        ]
-      },
-      "contract": {
-        "exitCode": 0,
-        "assertions": [
-          {
-            "kind": "stdoutJsonEquals",
-            "pointer": "/passed",
-            "equals": true
-          }
-        ],
-        "forbiddenChanges": []
-      },
-      "timeout": 30000
-    },
-    {
-      "id": "V021",
-      "ia": "hook PostToolUse to scripts/completion-controller.js is wired and loadable",
-      "type": "structural",
-      "command": {
-        "file": "node",
-        "args": [
-          ".crabshell/verification/check-pipeline-wiring.js",
-          "check",
-          "--contract",
-          ".crabshell/verification/wiring-contract.json",
-          "--hop",
-          "posttooluse:completion-controller"
-        ]
-      },
-      "contract": {
-        "exitCode": 0,
-        "assertions": [
-          {
-            "kind": "stdoutJsonEquals",
-            "pointer": "/passed",
-            "equals": true
-          }
-        ],
-        "forbiddenChanges": []
-      },
-      "timeout": 30000
-    },
-    {
-      "id": "V022",
-      "ia": "hook PostToolUse to scripts/skill-tracker.js is wired and loadable",
-      "type": "structural",
-      "command": {
-        "file": "node",
-        "args": [
-          ".crabshell/verification/check-pipeline-wiring.js",
-          "check",
-          "--contract",
-          ".crabshell/verification/wiring-contract.json",
-          "--hop",
-          "posttooluse:skill-tracker"
-        ]
-      },
-      "contract": {
-        "exitCode": 0,
-        "assertions": [
-          {
-            "kind": "stdoutJsonEquals",
-            "pointer": "/passed",
-            "equals": true
-          }
-        ],
-        "forbiddenChanges": []
-      },
-      "timeout": 30000
-    },
-    {
-      "id": "V023",
-      "ia": "hook PostToolUse to scripts/doc-watchdog.js record is wired and loadable",
-      "type": "structural",
-      "command": {
-        "file": "node",
-        "args": [
-          ".crabshell/verification/check-pipeline-wiring.js",
-          "check",
-          "--contract",
-          ".crabshell/verification/wiring-contract.json",
-          "--hop",
-          "posttooluse:doc-watchdog:record"
-        ]
-      },
-      "contract": {
-        "exitCode": 0,
-        "assertions": [
-          {
-            "kind": "stdoutJsonEquals",
-            "pointer": "/passed",
-            "equals": true
-          }
-        ],
-        "forbiddenChanges": []
-      },
-      "timeout": 30000
-    },
-    {
-      "id": "V024",
-      "ia": "hook PreToolUse to scripts/path-guard.js is wired and loadable",
-      "type": "structural",
-      "command": {
-        "file": "node",
-        "args": [
-          ".crabshell/verification/check-pipeline-wiring.js",
-          "check",
-          "--contract",
-          ".crabshell/verification/wiring-contract.json",
-          "--hop",
-          "pretooluse:path-guard"
-        ]
-      },
-      "contract": {
-        "exitCode": 0,
-        "assertions": [
-          {
-            "kind": "stdoutJsonEquals",
-            "pointer": "/passed",
-            "equals": true
-          }
-        ],
-        "forbiddenChanges": []
-      },
-      "timeout": 30000
-    },
-    {
-      "id": "V025",
-      "ia": "hook PreToolUse to scripts/web-guard.js is wired and loadable",
-      "type": "structural",
-      "command": {
-        "file": "node",
-        "args": [
-          ".crabshell/verification/check-pipeline-wiring.js",
-          "check",
-          "--contract",
-          ".crabshell/verification/wiring-contract.json",
-          "--hop",
-          "pretooluse:web-guard"
-        ]
-      },
-      "contract": {
-        "exitCode": 0,
-        "assertions": [
-          {
-            "kind": "stdoutJsonEquals",
-            "pointer": "/passed",
-            "equals": true
-          }
-        ],
-        "forbiddenChanges": []
-      },
-      "timeout": 30000
-    },
-    {
-      "id": "V026",
-      "ia": "hook PreToolUse to scripts/regressing-guard.js is wired and loadable",
-      "type": "structural",
-      "command": {
-        "file": "node",
-        "args": [
-          ".crabshell/verification/check-pipeline-wiring.js",
-          "check",
-          "--contract",
-          ".crabshell/verification/wiring-contract.json",
-          "--hop",
-          "pretooluse:regressing-guard"
-        ]
-      },
-      "contract": {
-        "exitCode": 0,
-        "assertions": [
-          {
-            "kind": "stdoutJsonEquals",
-            "pointer": "/passed",
-            "equals": true
-          }
-        ],
-        "forbiddenChanges": []
-      },
-      "timeout": 30000
-    },
-    {
-      "id": "V027",
-      "ia": "hook PreToolUse to scripts/docs-guard.js is wired and loadable",
-      "type": "structural",
-      "command": {
-        "file": "node",
-        "args": [
-          ".crabshell/verification/check-pipeline-wiring.js",
-          "check",
-          "--contract",
-          ".crabshell/verification/wiring-contract.json",
-          "--hop",
-          "pretooluse:docs-guard"
-        ]
-      },
-      "contract": {
-        "exitCode": 0,
-        "assertions": [
-          {
-            "kind": "stdoutJsonEquals",
-            "pointer": "/passed",
-            "equals": true
-          }
-        ],
-        "forbiddenChanges": []
-      },
-      "timeout": 30000
-    },
-    {
-      "id": "V028",
-      "ia": "hook PreToolUse to scripts/log-guard.js is wired and loadable",
-      "type": "structural",
-      "command": {
-        "file": "node",
-        "args": [
-          ".crabshell/verification/check-pipeline-wiring.js",
-          "check",
-          "--contract",
-          ".crabshell/verification/wiring-contract.json",
-          "--hop",
-          "pretooluse:log-guard"
-        ]
-      },
-      "contract": {
-        "exitCode": 0,
-        "assertions": [
-          {
-            "kind": "stdoutJsonEquals",
-            "pointer": "/passed",
-            "equals": true
-          }
-        ],
-        "forbiddenChanges": []
-      },
-      "timeout": 30000
-    },
-    {
-      "id": "V029",
-      "ia": "hook PreToolUse to scripts/verify-guard.js is wired and loadable",
-      "type": "structural",
-      "command": {
-        "file": "node",
-        "args": [
-          ".crabshell/verification/check-pipeline-wiring.js",
-          "check",
-          "--contract",
-          ".crabshell/verification/wiring-contract.json",
-          "--hop",
-          "pretooluse:verify-guard"
-        ]
-      },
-      "contract": {
-        "exitCode": 0,
-        "assertions": [
-          {
-            "kind": "stdoutJsonEquals",
-            "pointer": "/passed",
-            "equals": true
-          }
-        ],
-        "forbiddenChanges": []
-      },
-      "timeout": 30000
-    },
-    {
-      "id": "V030",
-      "ia": "hook PreToolUse to scripts/verification-sequence.js gate is wired and loadable",
-      "type": "structural",
-      "command": {
-        "file": "node",
-        "args": [
-          ".crabshell/verification/check-pipeline-wiring.js",
-          "check",
-          "--contract",
-          ".crabshell/verification/wiring-contract.json",
-          "--hop",
-          "pretooluse:verification-sequence:gate"
-        ]
-      },
-      "contract": {
-        "exitCode": 0,
-        "assertions": [
-          {
-            "kind": "stdoutJsonEquals",
-            "pointer": "/passed",
-            "equals": true
-          }
-        ],
-        "forbiddenChanges": []
-      },
-      "timeout": 30000
-    },
-    {
-      "id": "V031",
-      "ia": "hook PreToolUse to scripts/doc-watchdog.js gate is wired and loadable",
-      "type": "structural",
-      "command": {
-        "file": "node",
-        "args": [
-          ".crabshell/verification/check-pipeline-wiring.js",
-          "check",
-          "--contract",
-          ".crabshell/verification/wiring-contract.json",
-          "--hop",
-          "pretooluse:doc-watchdog:gate"
-        ]
-      },
-      "contract": {
-        "exitCode": 0,
-        "assertions": [
-          {
-            "kind": "stdoutJsonEquals",
-            "pointer": "/passed",
-            "equals": true
-          }
-        ],
-        "forbiddenChanges": []
-      },
-      "timeout": 30000
-    },
-    {
       "id": "V032",
       "ia": "hook Stop to scripts/completion-controller.js is wired and loadable",
       "type": "structural",
@@ -815,62 +451,6 @@
           ".crabshell/verification/wiring-contract.json",
           "--hop",
           "sessionend:counter:final"
-        ]
-      },
-      "contract": {
-        "exitCode": 0,
-        "assertions": [
-          {
-            "kind": "stdoutJsonEquals",
-            "pointer": "/passed",
-            "equals": true
-          }
-        ],
-        "forbiddenChanges": []
-      },
-      "timeout": 30000
-    },
-    {
-      "id": "V034",
-      "ia": "hook PreCompact to scripts/pre-compact.js is wired and loadable",
-      "type": "structural",
-      "command": {
-        "file": "node",
-        "args": [
-          ".crabshell/verification/check-pipeline-wiring.js",
-          "check",
-          "--contract",
-          ".crabshell/verification/wiring-contract.json",
-          "--hop",
-          "precompact:pre-compact"
-        ]
-      },
-      "contract": {
-        "exitCode": 0,
-        "assertions": [
-          {
-            "kind": "stdoutJsonEquals",
-            "pointer": "/passed",
-            "equals": true
-          }
-        ],
-        "forbiddenChanges": []
-      },
-      "timeout": 30000
-    },
-    {
-      "id": "V035",
-      "ia": "hook PostCompact to scripts/post-compact.js is wired and loadable",
-      "type": "structural",
-      "command": {
-        "file": "node",
-        "args": [
-          ".crabshell/verification/check-pipeline-wiring.js",
-          "check",
-          "--contract",
-          ".crabshell/verification/wiring-contract.json",
-          "--hop",
-          "postcompact:post-compact"
         ]
       },
       "contract": {
@@ -1110,8 +690,93 @@
       "timeout": 30000
     },
     {
-      "id": "V044",
-      "ia": "Approved hook connection: pretooluse:completion-controller",
+      "id": "V047",
+      "ia": "Opt-in raw input capture preserves bytes and fails open at storage boundaries",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          "scripts/_test-hook-capture.js"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [],
+        "forbiddenChanges": []
+      },
+      "timeout": 30000
+    },
+    {
+      "id": "V048",
+      "ia": "Captured native result binding, failure/retry order, concurrent writers and content detection",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          "scripts/_test-native-result-evidence.js"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [],
+        "forbiddenChanges": []
+      },
+      "timeout": 30000
+    },
+    {
+      "id": "V049",
+      "ia": "Prepared memory finalization preserves new input and retries after failed metadata writes",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          "scripts/_test-delta-transaction.js"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [],
+        "forbiddenChanges": []
+      },
+      "timeout": 30000
+    },
+    {
+      "id": "V050",
+      "ia": "Both prompt hosts deliver consistent scoped guidance and supported pending memory instructions",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          "scripts/_test-request-memory-guidance.js"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [],
+        "forbiddenChanges": []
+      },
+      "timeout": 30000
+    },
+    {
+      "id": "V051",
+      "ia": "Stop/start/compact recovery and explicit interrupted-turn boundaries",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          "scripts/_test-recovery-checkpoint.js"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [],
+        "forbiddenChanges": []
+      },
+      "timeout": 30000
+    },
+    {
+      "id": "V052",
+      "ia": "hook PostToolUse (every tool) to the Claude post-tool-use dispatcher is wired and loadable",
       "type": "structural",
       "command": {
         "file": "node",
@@ -1121,7 +786,7 @@
           "--contract",
           ".crabshell/verification/wiring-contract.json",
           "--hop",
-          "pretooluse:completion-controller"
+          "posttooluse:post-tool-use"
         ]
       },
       "contract": {
@@ -1135,11 +800,11 @@
         ],
         "forbiddenChanges": []
       },
-      "timeout": 10000
+      "timeout": 30000
     },
     {
-      "id": "V045",
-      "ia": "Approved hook connection: posttoolusefailure:verification-sequence:record",
+      "id": "V053",
+      "ia": "hook PostToolUseFailure (Bash) to the Claude post-tool-use dispatcher is wired and loadable",
       "type": "structural",
       "command": {
         "file": "node",
@@ -1149,7 +814,7 @@
           "--contract",
           ".crabshell/verification/wiring-contract.json",
           "--hop",
-          "posttoolusefailure:verification-sequence:record"
+          "posttoolusefailure:post-tool-use"
         ]
       },
       "contract": {
@@ -1163,11 +828,11 @@
         ],
         "forbiddenChanges": []
       },
-      "timeout": 10000
+      "timeout": 30000
     },
     {
-      "id": "V046",
-      "ia": "Approved hook connection: posttoolusefailure:completion-controller",
+      "id": "V054",
+      "ia": "hook PreToolUse (Bash, Write, Edit, WebFetch, WebSearch) to the Claude pre-tool-use dispatcher is wired and loadable",
       "type": "structural",
       "command": {
         "file": "node",
@@ -1177,7 +842,7 @@
           "--contract",
           ".crabshell/verification/wiring-contract.json",
           "--hop",
-          "posttoolusefailure:completion-controller"
+          "pretooluse:pre-tool-use"
         ]
       },
       "contract": {
@@ -1191,32 +856,83 @@
         ],
         "forbiddenChanges": []
       },
-      "timeout": 10000
+      "timeout": 30000
     },
     {
-      "id": "V047", "ia": "Opt-in raw input capture preserves bytes and fails open at storage boundaries", "type": "structural",
-      "command": { "file": "node", "args": ["scripts/_test-hook-capture.js"] },
-      "contract": { "exitCode": 0, "assertions": [], "forbiddenChanges": [] }, "timeout": 30000
+      "id": "V055",
+      "ia": "The Claude PreToolUse dispatcher decides like the separate guards it replaced, keeps their side effects, and survives one guard failing to load",
+      "type": "behavioral",
+      "command": {
+        "file": "node",
+        "args": [
+          "scripts/_test-claude-dispatcher-parity.js"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [],
+        "forbiddenChanges": [
+          ".crabshell/memory/logbook.md"
+        ]
+      },
+      "timeout": 180000
     },
     {
-      "id": "V048", "ia": "Captured native result binding, failure/retry order, concurrent writers and content detection", "type": "structural",
-      "command": { "file": "node", "args": ["scripts/_test-native-result-evidence.js"] },
-      "contract": { "exitCode": 0, "assertions": [], "forbiddenChanges": [] }, "timeout": 30000
+      "id": "V056",
+      "ia": "Behavior moved by one-process hooks: PostCompact effects at SessionStart(compact), Read notice after the read, inline observers, fail-open on bad input",
+      "type": "behavioral",
+      "command": {
+        "file": "node",
+        "args": [
+          "scripts/_test-claude-dispatchers.js"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [],
+        "forbiddenChanges": [
+          ".crabshell/memory/logbook.md"
+        ]
+      },
+      "timeout": 180000
     },
     {
-      "id": "V049", "ia": "Prepared memory finalization preserves new input and retries after failed metadata writes", "type": "structural",
-      "command": { "file": "node", "args": ["scripts/_test-delta-transaction.js"] },
-      "contract": { "exitCode": 0, "assertions": [], "forbiddenChanges": [] }, "timeout": 30000
+      "id": "V057",
+      "ia": "One tool call starts at most two synchronous Claude hook processes (one for reads) and Stop starts no child process",
+      "type": "behavioral",
+      "command": {
+        "file": "node",
+        "args": [
+          "scripts/_test-hook-wiring-cost.js"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [],
+        "forbiddenChanges": [
+          ".crabshell/memory/logbook.md"
+        ]
+      },
+      "timeout": 180000
     },
     {
-      "id": "V050", "ia": "Both prompt hosts deliver consistent scoped guidance and supported pending memory instructions", "type": "structural",
-      "command": { "file": "node", "args": ["scripts/_test-request-memory-guidance.js"] },
-      "contract": { "exitCode": 0, "assertions": [], "forbiddenChanges": [] }, "timeout": 30000
-    },
-    {
-      "id": "V051", "ia": "Stop/start/compact recovery and explicit interrupted-turn boundaries", "type": "structural",
-      "command": { "file": "node", "args": ["scripts/_test-recovery-checkpoint.js"] },
-      "contract": { "exitCode": 0, "assertions": [], "forbiddenChanges": [] }, "timeout": 30000
+      "id": "V058",
+      "ia": "Harmless reads, mentions and temp-folder work are not blocked while writes to another project, logbook edits and this project's web-search servers still are",
+      "type": "behavioral",
+      "command": {
+        "file": "node",
+        "args": [
+          "scripts/_test-restriction-controls.js"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [],
+        "forbiddenChanges": [
+          ".crabshell/memory/logbook.md"
+        ]
+      },
+      "timeout": 180000
     }
   ]
 }

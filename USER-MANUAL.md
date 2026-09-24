@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.124.0)
+# Crabshell User Manual (v21.125.0)
 
 ## Why Do You Need This?
 
@@ -246,29 +246,15 @@ The plugin uses Claude Code hooks to run automatically:
 | Hook | Script | When It Runs | What It Does |
 |------|--------|-------------|-------------|
 | `UserPromptSubmit` | `inject-rules.js` | Every prompt | Emits the compact shared turn contract (4-line Rules Quick-Check); Claude-host `## Codex Delegation` guidance on execution turns only; `봉인해제` / `UNLEASH` immediately resets pressure counters; execution prompts run once-per-session cleanup/reset and Claude rule/memory-warning synchronization. Three-field response ending and pressure texts retired v21.113.0 (I083) |
-| `SessionStart` | `load-memory.js` | Session begins | Loads logbook, summaries, canonical project memory, and active workflow; legacy-only descriptions are copied without overwriting existing data |
-| `PostToolUse` | `counter.js check` | After each tool use | Increments counter; triggers auto-save + delta extraction at interval |
-| `PreToolUse` | `regressing-guard.js` | Before Write/Edit | Enforces phase-based restrictions during active regressing sessions |
-| `PreToolUse` | `docs-guard.js` | Before Write/Edit to docs/ | Blocks writes to docs/ directories without active skill flag |
-| `PreToolUse` | `log-guard.js` | Before Write/Edit | Blocks INDEX.md terminal status without log entries; blocks cycle docs without previous cycle logs |
-| `PreToolUse` | `verify-guard.js` | Before Write/Edit to tickets | Hybrid: Edit always enforces; Write enforces only for existing files (new file creation skips). Blocks Final Verification without prior `/verifying` run |
-| `PreToolUse` | `path-guard.js` | Before Read/Grep/Glob/Bash/Write/Edit | Blocks wrong path, Edit on logbook.md, Write shrink on logbook.md |
-| `PreToolUse` | `web-guard.js` | Before WebFetch/WebSearch | Blocks WebFetch with a URL-substituted raw-fetch redirect (trafilatura → r.jina.ai → curl); blocks WebSearch only when a search MCP is configured, otherwise allows with a snippet-verification warning (v21.114.0) |
-| `PostToolUse` | `verification-sequence.js record` | After each successful tool use | Tracks source edits and passing declared checks using Claude-specific result handling |
-| `PreToolUse` | `verification-sequence.js gate` | Before Write/Edit/Bash | Blocks git commit without tests |
-| `PreToolUse` | `doc-watchdog.js gate` | Before Write/Edit | Soft warning (additionalContext) when 5+ code edits without D/P/T doc update (regressing only) |
-| `PostToolUse` | `doc-watchdog.js record` | After Write/Edit | Tracks code file edits (increment counter) and D/P/T doc edits (reset counter) in doc-watchdog.json |
-| `PostToolUse` | `completion-controller.js` | After Bash, Write, or Edit | Records declared parent check results after a child claim and invalidates evidence when project content changes |
-| `PostToolUseFailure` | `verification-sequence.js record` + `completion-controller.js` | After failed Claude Bash calls | Records failure/interruption and invalidates prior success; commit and Stop remain the blocking boundaries |
-| `PreToolUse` | `completion-controller.js` | Before Claude Bash calls | Records declared check invocation identity and order for parent evidence |
-| `PostToolUse` | `skill-tracker.js` | After Skill tool call | Sets the calling session's skill flag for docs-guard (cleared on compaction and SessionEnd) |
-| `Stop`, `SubagentStop` | `completion-controller.js` | Child/parent completion boundary | One state owner: child claim is not proof; requires parent evidence, bounds identical failures, preserves workflow continuation, and runs the retained doc-watchdog Stop validator (sycophancy/scope/pressure guards unwired v21.113.0) |
-| `PreCompact` | `pre-compact.js` | Before context compaction | Outputs memory state, active documents, and regressing state as context to preserve across compaction |
-| `PostCompact` | `post-compact.js` | After context compaction | Logs compaction event for debugging (side-effect only, no context output) |
+| `SessionStart` | `load-memory.js` | Session begins (also after compaction) | Loads logbook, summaries, canonical project memory, and active workflow; legacy-only descriptions are copied without overwriting existing data. After compaction (`source: "compact"`) it clears this session's skill flag, resets the pressure display so the next prompt re-shows the pressure notice, and logs the compaction — Claude has no PreCompact/PostCompact hooks since v21.125.0 because their output reaches no model |
+| `PreToolUse` | `adapters/claude/pre-tool-use.js` | Before Bash, Write, Edit, WebFetch, WebSearch | One process runs every guard in order, each in its own try/catch (a failing guard is skipped): completion-controller check preparation (Bash), path-guard, web-guard, regressing-guard, docs-guard, log-guard, verification gate (Bash: blocks git commit without a passing declared check, records check starts), doc-watchdog notice, verify-guard. All run even after one denies (verify-guard is skipped after a deny). Denies with exit 0 + `permissionDecision: "deny"` listing every reason (v21.125.0) |
+| `PostToolUse` | `adapters/claude/post-tool-use.js` | After every tool use | One process: counter (auto-save + delta extraction at interval), verification record, completion-controller evidence (Bash/Write/Edit), doc-watchdog edit count (Write/Edit), skill flag (Skill, set before the next tool call), and a notice when Read/Grep/Glob read another project's `.crabshell` (v21.125.0) |
+| `PostToolUseFailure` | `adapters/claude/post-tool-use.js` | After failed Claude Bash calls | Verification record + completion-controller: records failure/interruption and invalidates prior success; commit and Stop remain the blocking boundaries |
+| `Stop`, `SubagentStop` | `completion-controller.js` | Child/parent completion boundary | One state owner: child claim is not proof; requires parent evidence, bounds identical failures, preserves workflow continuation, and runs the retained doc-watchdog Stop check in the same process (sycophancy/scope/pressure guards unwired v21.113.0) |
 | `SubagentStart` | `subagent-context.js` | When subagent spawns | Injects project concept, COMPRESSED_CHECKLIST, regressing state, and project root anchor into subagent context |
 | `SessionEnd` | `counter.js final` | Execution-authorized session ends | Creates final L1 backup and extracts remaining delta; question-only sessions remain read-only |
 
-Hook launchers invoke Node directly; `scripts/find-node.sh` is a fallback utility. Since v21.123.0, Claude `PostToolUseFailure` for Bash runs `verification-sequence.js record` and `completion-controller.js`. It records failures; blocking remains at PreToolUse commit and Stop decisions. PreToolUse Bash also tells the controller which check started, so late results cannot replace a newer invocation.
+Hook launchers invoke Node directly; `scripts/find-node.sh` is a fallback utility. Since v21.125.0 one tool call starts at most two Claude hook processes (Edit 10 → 2, Bash 6 → 2, Read 3 → 1); each guard script still runs alone for tests. While the dispatchers run their checks, anything a module prints goes to stderr, so the host always reads one JSON object. PreToolUse Bash also tells the controller which check started, so late results cannot replace a newer invocation.
 
 ### Codex Hook Surface
 
@@ -279,7 +265,7 @@ Hook launchers invoke Node directly; `scripts/find-node.sh` is a fallback utilit
 | `PreToolUse` | `adapters/codex/pre-tool-use.js` | Matching local file/shell tools | Applies shared memory path policy, records check starts and blocks commit without a current passing check |
 | `PostToolUse` | `adapters/codex/post-tool-use.js` | After Bash, Write, or Edit | Normalizes commands; binds output-only hooks to explicit native transcript exit codes; updates parent and commit evidence with shared content identity |
 | `PreCompact` | `adapters/codex/pre-compact.js` | Before compaction | Emits shared memory/workflow recovery context without writes |
-| `PostCompact` | `adapters/codex/post-compact.js` | After compaction | Restores shared context while keeping Claude-specific compaction effects in Claude only |
+| `PostCompact` | `adapters/codex/post-compact.js` | After compaction | Restores shared context and runs the shared post-compaction effects (`core/post-compact-effects.js`: pressure notice re-injection reset, compaction log); Claude runs the same effects at SessionStart `compact` |
 | `SubagentStart` | `adapters/codex/subagent-start.js` | Child starts | Supplies exact current intent, task, non-goals, references, allowed changes, and observable success |
 | `SubagentStop` | `adapters/codex/stop.js` | Child stops | Records the child result as a claim, never as completion proof |
 | `Stop` | `adapters/codex/stop.js` | Parent attempts completion | Applies the shared parent-evidence and bounded-continuation decision using Codex-native block JSON |
@@ -303,7 +289,7 @@ These defaults are not user-facing configuration knobs. They are centralized in 
 
 ## Guards
 
-Guard scripts are PreToolUse/Stop hooks that prevent common mistakes:
+Guards run inside the Claude PreToolUse, PostToolUse and Stop hooks (one process per event since v21.125.0) and prevent common mistakes:
 
 | Guard | What It Protects Against |
 |-------|------------------------|
@@ -311,12 +297,12 @@ Guard scripts are PreToolUse/Stop hooks that prevent common mistakes:
 | `docs-guard.js` | Direct writes to `docs/` directories outside of an active skill (discussing, planning, ticketing, etc.) |
 | `log-guard.js` | Marking documents as done/verified/concluded in INDEX.md without log entries in the document; creating new cycle documents without logging the previous cycle |
 | `verify-guard.js` | Writing "Final Verification" results to ticket files without actually running `/verifying` first. Hybrid: Edit always enforces; Write only enforces on existing files (new ticket creation is allowed) |
-| `path-guard.js` | File operations targeting a wrong `.crabshell/memory/` path (e.g., a different project's memory directory) |
-| `web-guard.js` | Built-in WebFetch/WebSearch small-model summarization (Anthropic docs: "lossy by design"; hallucinated citations in research). WebFetch is blocked with ready-to-run raw-fetch commands for the same URL; WebSearch is redirected to a configured search MCP (tavily/brave/exa/...) or, when none exists, allowed with a "snippets are pointers, fetch before citing" warning so machines without a search MCP never lose search entirely. Modes: `block` (default) / `warn` / `off` via `webGuard` in config.json (v21.114.0) |
+| `path-guard.js` | Bash commands that write into another project's `.crabshell` (redirects, rm/mv/mkdir/tee, cp/rsync/ln destinations, sed -i, find -delete, xargs rm, tar/curl/dd, powershell/cmd, code that writes). Reading another project's `.crabshell` is allowed with a notice; prose, grep patterns, heredoc text, temp folders and unknown variables are never blocked (v21.125.0). Also: Edit or shrinking Write on `logbook.md`, direct skill-flag writes. Not covered: Write/Edit tool calls into another project, values from earlier commands |
+| `web-guard.js` | Built-in WebFetch/WebSearch small-model summarization (Anthropic docs: "lossy by design"; hallucinated citations in research). WebFetch is blocked with ready-to-run raw-fetch commands for the same URL; WebSearch is redirected to a search MCP this project can use (user-wide, this project's `~/.claude.json` entry, or `.mcp.json`; provider names such as tavily/brave/exa must be a whole word of the server name, v21.125.0) or, when none exists, allowed with a "snippets are pointers, fetch before citing" warning so machines without a search MCP never lose search entirely. Modes: `block` (default) / `warn` / `off` via `webGuard` in config.json (v21.114.0) |
 | `core/path-policy.js` + Codex adapter | The same wrong-project memory paths in Codex; the core decides policy while each host wrapper emits its own native response format |
 | `core/completion-control.js` + host adapters | Child false-done, undeclared/inconclusive checks, repeated identical failures, stale content evidence, and premature active-workflow completion. One result event reuses one content fingerprint |
 | `verification-sequence.js` | Edits to code/configuration before git commit without a passing declared check (any session's edit counts; prose, stylesheet and image edits do not); unchanged content preserves existing verification; a project with no check configuration gets advice instead of a block |
-| `doc-watchdog.js` | Document update omissions during regressing: soft warning when 5+ code edits without D/P/T document update; blocks session end when ticket has no work log since last code edit |
+| `doc-watchdog.js` | Document update omissions during regressing (edits inside the project only; any non-prose file counts as code, v21.125.0): soft notice when 5+ code edits without D/P/T document update; blocks session end when ticket has no work log since last code edit |
 | `skill-tracker.js` | Supporting guard: sets the calling session's skill flag when a Skill tool call is detected, so `docs-guard` knows that session's document writes are authorized; another session's flag never counts |
 | `pressure-guard.js` | **Retired v21.113.0 (I083 R4)** — tool blocking removed; pressure counters remain as user-facing telemetry only (see [Pressure System](#pressure-system)) |
 | `scope-guard.js` | **Retired v21.113.0 (I083 R5)** — Stop-time scope regex removed; scope preservation lives as a short RULES principle |

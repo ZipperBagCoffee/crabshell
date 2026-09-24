@@ -98,7 +98,8 @@ test('EXPORT: all functions present', function() {
 
 test('EXPORT: module.exports does not include internal functions', function() {
   const keys = Object.keys(mod);
-  assert(!keys.includes('check'), 'check should not be exported');
+  // check is exported since P178_T003: the Claude PostToolUse dispatcher calls it in-process.
+  assert(typeof mod.check === 'function', 'check is exported for the PostToolUse dispatcher');
   assert(!keys.includes('final'), 'final should not be exported');
   assert(!keys.includes('reset'), 'reset should not be exported');
   assert(!keys.includes('readStdin'), 'readStdin should not be exported');
@@ -891,7 +892,7 @@ test('LOCK: counter.js uses acquireIndexLock', function() {
 
 test('LOCK: no raw fs.writeFileSync for memory-index in check()', function() {
   const src = fs.readFileSync(counterPath, 'utf8');
-  const checkStart = src.indexOf('async function check()');
+  const checkStart = src.indexOf('async function check(');
   const checkEnd = src.indexOf('async function final()');
   const checkBody = src.slice(checkStart, checkEnd);
   assert(!checkBody.includes('fs.writeFileSync(idxPath'), 'no raw writeFileSync for idxPath');
@@ -1569,7 +1570,7 @@ test('INTEGRATION: offset update inside acquireIndexLock in check()', function()
   // inside the lock (acquireIndexLock). Verify structurally that
   // lastL1TranscriptOffset write is inside the locked section.
   const src = fs.readFileSync(counterPath, 'utf8');
-  const checkStart = src.indexOf('async function check()');
+  const checkStart = src.indexOf('async function check(');
   const checkEnd = src.indexOf('async function final()');
   const checkBody = src.slice(checkStart, checkEnd);
 
@@ -1632,7 +1633,7 @@ test('INTEGRATION: check() reuses existing session L1 for offset append', functi
   // When check() runs multiple times in the same session,
   // it should find the existing L1 by sessionId and append.
   const src = fs.readFileSync(counterPath, 'utf8');
-  const checkStart = src.indexOf('async function check()');
+  const checkStart = src.indexOf('async function check(');
   const checkEnd = src.indexOf('async function final()');
   const checkBody = src.slice(checkStart, checkEnd);
 

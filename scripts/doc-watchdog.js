@@ -8,194 +8,158 @@ const { readStdin, normalizePath } = require('./transcript-utils');
 if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 
 const { getProjectDir } = require('./utils');
+const { isSourceFile } = require('./core/command-observation');
 
 // Constants
-const CODE_EXTENSIONS = ['.js','.ts','.jsx','.tsx','.py','.rb','.go','.rs','.java','.c','.cpp','.h','.lua','.php','.sh'];
-const EXCLUDED_DIRS = ['.crabshell','.claude','node_modules','.git','dist','build'];
-const DOC_PATTERN = /\.crabshell\/(discussion|plan|ticket|investigation|hotfix)\/[^/]+\.md$/i;
+const DOC_PATTERN = /^\.crabshell\/(discussion|plan|ticket|investigation|hotfix)\/[^/]+\.md$/i;
 const DOC_WATCHDOG_THRESHOLD = 5;
 const STATE_FILE = 'doc-watchdog.json';
 
-function getStatePath() {
-  return path.join(getProjectDir(), '.crabshell', 'memory', STATE_FILE);
+function getStatePath(projectDir) {
+  return path.join(projectDir, '.crabshell', 'memory', STATE_FILE);
 }
 
-function readState() {
+function readState(projectDir) {
   try {
-    return JSON.parse(fs.readFileSync(getStatePath(), 'utf8'));
+    return JSON.parse(fs.readFileSync(getStatePath(projectDir), 'utf8'));
   } catch {
     return { editsSinceDocUpdate: 0, lastDocUpdateAt: null, lastCodeEditAt: null, lastCodeEditFile: null };
   }
 }
 
-function writeState(state) {
-  const dir = path.dirname(getStatePath());
+function writeState(projectDir, state) {
+  const dir = path.dirname(getStatePath(projectDir));
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(getStatePath(), JSON.stringify(state, null, 2));
+  fs.writeFileSync(getStatePath(projectDir), JSON.stringify(state, null, 2));
 }
 
-function isCodeFile(filePath) {
-  const normalized = filePath.replace(/\\/g, '/');
-  // Exclude paths in excluded dirs
-  for (const dir of EXCLUDED_DIRS) {
-    if (normalized.includes('/' + dir + '/') || normalized.startsWith(dir + '/')) return false;
-  }
-  const ext = path.extname(normalized).toLowerCase();
-  return CODE_EXTENSIONS.includes(ext);
+// Path relative to the project, or null for a file outside it (scratch copies,
+// other projects): those edits say nothing about this project's documents.
+function projectRelative(projectDir, filePath) {
+  const relative = path.relative(projectDir, path.resolve(projectDir, filePath));
+  if (!relative || relative === '..' || relative.startsWith('..' + path.sep) || path.isAbsolute(relative)) return null;
+  return normalizePath(relative);
 }
 
-function isDocFile(filePath) {
-  const normalized = filePath.replace(/\\/g, '/');
-  // Must be in .crabshell D/P/T/I dirs, must be .md, must NOT be INDEX.md
-  if (DOC_PATTERN.test(normalized) && !normalized.endsWith('INDEX.md')) return true;
-  return false;
+// Same source definition as the commit gate (core/command-observation).
+function isCodeFile(projectDir, filePath) {
+  const relative = projectRelative(projectDir, filePath);
+  return relative !== null && isSourceFile(relative);
 }
 
-function isRegressingActive() {
+// A D/P/T/I/H document of this project, excluding INDEX.md.
+function isDocFile(projectDir, filePath) {
+  const relative = projectRelative(projectDir, filePath);
+  return relative !== null && DOC_PATTERN.test(relative) && !relative.endsWith('INDEX.md');
+}
+
+function readRegressingState(projectDir) {
   try {
-    const statePath = path.join(getProjectDir(), '.crabshell', 'memory', 'regressing-state.json');
-    const state = JSON.parse(fs.readFileSync(statePath, 'utf8'));
-    return state && state.active === true;
+    return JSON.parse(fs.readFileSync(path.join(projectDir, '.crabshell', 'memory', 'regressing-state.json'), 'utf8'));
   } catch {
-    return false;
+    return null;
   }
 }
 
-function getRegressingTicketIds() {
-  try {
-    const statePath = path.join(getProjectDir(), '.crabshell', 'memory', 'regressing-state.json');
-    const state = JSON.parse(fs.readFileSync(statePath, 'utf8'));
-    return (state && state.ticketIds) || [];
-  } catch {
-    return [];
-  }
+// The edited file of a Write/Edit payload, or '' when there is none.
+function editedFile(hookData) {
+  if (!hookData || (hookData.tool_name !== 'Write' && hookData.tool_name !== 'Edit') || !hookData.tool_input) return '';
+  return normalizePath(hookData.tool_input.file_path || hookData.tool_input.path || '');
 }
 
-// Mode: record (PostToolUse)
-async function record() {
-  const hookData = await readStdin();
-  if (!hookData || !hookData.tool_name) { process.exit(0); return; }
-
-  const toolName = hookData.tool_name;
-  if (toolName !== 'Write' && toolName !== 'Edit') { process.exit(0); return; }
-
-  const input = hookData.tool_input;
-  if (!input) { process.exit(0); return; }
-
-  const filePath = normalizePath(input.file_path || input.path || '');
-  if (!filePath) { process.exit(0); return; }
-
-  const state = readState();
-
-  if (isCodeFile(filePath)) {
+// PostToolUse: count code edits since the last document update.
+function recordEdit(hookData, projectDir) {
+  const filePath = editedFile(hookData);
+  if (!filePath) return;
+  const state = readState(projectDir);
+  if (isCodeFile(projectDir, filePath)) {
     state.editsSinceDocUpdate = (state.editsSinceDocUpdate || 0) + 1;
     state.lastCodeEditAt = new Date().toISOString();
     state.lastCodeEditFile = filePath;
-  } else if (isDocFile(filePath)) {
+  } else if (isDocFile(projectDir, filePath)) {
     state.editsSinceDocUpdate = 0;
     state.lastDocUpdateAt = new Date().toISOString();
     state.lastDocUpdateFile = filePath;
   }
-
-  writeState(state);
-  process.exit(0);
+  writeState(projectDir, state);
 }
 
-// Mode: gate (PreToolUse)
-async function gate() {
-  const hookData = await readStdin();
-  if (!hookData || !hookData.tool_name) { process.exit(0); return; }
-
-  const toolName = hookData.tool_name;
-  if (toolName !== 'Write' && toolName !== 'Edit') { process.exit(0); return; }
-
-  const input = hookData.tool_input;
-  if (!input) { process.exit(0); return; }
-
-  const filePath = normalizePath(input.file_path || input.path || '');
-  if (!filePath) { process.exit(0); return; }
-
+// PreToolUse: a soft warning (never a block) after too many code edits during regressing.
+// Returns { context, log } or null.
+function gateEdit(hookData, projectDir) {
+  const filePath = editedFile(hookData);
   // Only gate code files (doc files are the solution, not the problem)
-  if (!isCodeFile(filePath)) { process.exit(0); return; }
-
-  // Only active during regressing
-  if (!isRegressingActive()) { process.exit(0); return; }
-
-  const state = readState();
+  if (!filePath || !isCodeFile(projectDir, filePath)) return null;
+  const regressing = readRegressingState(projectDir);
+  if (!regressing || regressing.active !== true) return null;
   const threshold = DOC_WATCHDOG_THRESHOLD;
-
-  if (threshold <= 0) { process.exit(0); return; } // 0 = disabled
-
-  if ((state.editsSinceDocUpdate || 0) >= threshold) {
-    // Warning via additionalContext (NOT hard block)
-    const msg = `[DOC-WATCHDOG] ${state.editsSinceDocUpdate} code edits since last D/P/T document update (threshold: ${threshold}). Update the relevant ticket/plan log before making more code changes. Last code edit: ${state.lastCodeEditFile || 'unknown'}`;
-    process.stderr.write(msg + '\n');
-    // Return additionalContext for PreToolUse (soft warning, not block)
-    const output = JSON.stringify({ additionalContext: msg });
-    process.stdout.write(output + '\n');
-    process.exit(0);
-    return;
-  }
-
-  process.exit(0);
+  if (threshold <= 0) return null; // 0 = disabled
+  const state = readState(projectDir);
+  if ((state.editsSinceDocUpdate || 0) < threshold) return null;
+  const msg = `[DOC-WATCHDOG] ${state.editsSinceDocUpdate} code edits since last D/P/T document update (threshold: ${threshold}). Update the relevant ticket/plan log before making more code changes. Last code edit: ${state.lastCodeEditFile || 'unknown'}`;
+  return { context: msg, log: msg };
 }
 
-// Mode: stop (Stop hook)
-async function stop() {
-  const hookData = await readStdin();
-
+// Stop: the reason to keep going when a regressing ticket has no work log after
+// code edits, or null.
+function stopReason(payload, projectDir) {
   // Prevent infinite Stop hook loops
-  if (hookData && hookData.stop_hook_active) { process.exit(0); return; }
-
-  // Only active during regressing
-  if (!isRegressingActive()) { process.exit(0); return; }
-
-  const state = readState();
-
+  if (payload && payload.stop_hook_active) return null;
+  const regressing = readRegressingState(projectDir);
+  if (!regressing || regressing.active !== true) return null;
+  const state = readState(projectDir);
   // No code edits this session → nothing to check
-  if (!state.lastCodeEditAt) { process.exit(0); return; }
-
-  // Check if any ticket has a log entry after the last code edit
-  const ticketIds = getRegressingTicketIds();
-  if (ticketIds.length === 0) { process.exit(0); return; }
-
-  const projectDir = getProjectDir();
+  if (!state.lastCodeEditAt) return null;
+  const ticketIds = regressing.ticketIds || [];
   const ticketDir = path.join(projectDir, '.crabshell', 'ticket');
-
   for (const ticketId of ticketIds) {
-    // Find ticket file
-    const pattern = ticketId + '-';
     let ticketFile = null;
     try {
       const files = fs.readdirSync(ticketDir);
-      ticketFile = files.find(f => f.startsWith(pattern) || f.startsWith(ticketId + '.'));
+      ticketFile = files.find(f => f.startsWith(ticketId + '-') || f.startsWith(ticketId + '.'));
       if (!ticketFile) ticketFile = files.find(f => f.includes(ticketId));
     } catch { continue; }
-
     if (!ticketFile) continue;
-
-    const ticketPath = path.join(ticketDir, ticketFile);
     let content;
-    try { content = fs.readFileSync(ticketPath, 'utf8'); } catch { continue; }
-
+    try { content = fs.readFileSync(path.join(ticketDir, ticketFile), 'utf8'); } catch { continue; }
     // Check for log entries: ### [YYYY-MM-DD HH:MM]
     const logMatch = content.match(/### \[\d{4}-\d{2}-\d{2} \d{2}:\d{2}\]/g);
     if (!logMatch || logMatch.length <= 1) {
       // Only "Created" entry — no work log
-      const reason = `Document update pending: ticket ${ticketId} has no work log entry since last code edit (${state.lastCodeEditFile || 'unknown'} at ${state.lastCodeEditAt}). Update the ticket log before ending the session.`;
+      return `Document update pending: ticket ${ticketId} has no work log entry since last code edit (${state.lastCodeEditFile || 'unknown'} at ${state.lastCodeEditAt}). Update the ticket log before ending the session.`;
+    }
+  }
+  return null;
+}
+
+async function main(mode) {
+  const hookData = await readStdin();
+  const projectDir = getProjectDir();
+  if (mode === 'record') {
+    if (hookData && hookData.tool_name) recordEdit(hookData, projectDir);
+  } else if (mode === 'gate') {
+    const result = gateEdit(hookData, projectDir);
+    if (result) {
+      process.stderr.write(result.log + '\n');
+      // PreToolUse context reaches the model only through hookSpecificOutput (soft warning, not block)
+      process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', additionalContext: result.context } }) + '\n');
+    }
+  } else if (mode === 'stop') {
+    const reason = stopReason(hookData, projectDir);
+    if (reason) {
       process.stderr.write(`[DOC-WATCHDOG] ${reason}\n`);
       process.stdout.write(JSON.stringify({ decision: 'block', reason }) + '\n');
       process.exit(2);
       return;
     }
   }
-
   process.exit(0);
 }
 
-// Dispatch by mode
-const mode = process.argv[2];
-if (mode === 'record') record().catch(() => process.exit(0));
-else if (mode === 'gate') gate().catch(() => process.exit(0));
-else if (mode === 'stop') stop().catch(() => process.exit(0));
-else process.exit(0);
+if (require.main === module) {
+  const mode = process.argv[2];
+  if (['record', 'gate', 'stop'].includes(mode)) main(mode).catch(() => process.exit(0));
+  else process.exit(0);
+}
+
+module.exports = { recordEdit, gateEdit, stopReason };

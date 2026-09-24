@@ -3,7 +3,7 @@
 const { readStdin } = require('../../transcript-utils');
 const { buildCompactionContext, createCompactionOutput } = require('../../core/compaction-context');
 const { normalizeCompaction } = require('./hook-contract');
-const { runPostCompactEffects } = require('./post-compact-effects');
+const { runPostCompactEffects } = require('../../core/post-compact-effects');
 
 async function main() {
   const normalized = normalizeCompaction(await readStdin(2000, { host: 'codex' }), 'PostCompact');

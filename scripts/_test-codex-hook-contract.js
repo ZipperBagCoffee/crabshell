@@ -67,11 +67,14 @@ function runCompaction(script, payload) {
 }
 
 try {
+  // P178_T002: only writes to another project's .crabshell are denied; reads get a
+  // notice. The other project sits outside the OS temp folder (temp paths are exempt).
+  const otherLogbook = path.join(os.homedir(), 'crabshell codex other project', '.crabshell', 'memory', 'logbook.md');
   test('native PreToolUse violation returns deny with exit 0', () => {
     const payload = {
       ...fixture,
       cwd: projectRoot,
-      tool_input: { command: `cat "${path.join(tempRoot, 'other project', '.crabshell', 'memory', 'logbook.md')}"` },
+      tool_input: { command: `echo note >> "${otherLogbook}"` },
     };
     const result = run(payload);
     assert.strictEqual(result.status, 0, result.stderr);
@@ -80,6 +83,19 @@ try {
     assert.strictEqual(output.hookSpecificOutput.permissionDecision, 'deny');
     assert.match(output.hookSpecificOutput.permissionDecisionReason, /Wrong \.crabshell\/ path/);
     assert.strictEqual(output.decision, undefined);
+  });
+
+  test('native PreToolUse read of another project is allowed with a notice', () => {
+    const payload = {
+      ...fixture,
+      cwd: projectRoot,
+      tool_input: { command: `cat "${otherLogbook}"` },
+    };
+    const result = run(payload);
+    assert.strictEqual(result.status, 0, result.stderr);
+    const output = JSON.parse(result.stdout.trim());
+    assert.strictEqual(output.hookSpecificOutput.permissionDecision, undefined);
+    assert.match(output.hookSpecificOutput.additionalContext, /another project's Crabshell folder/);
   });
 
   test('native PreToolUse permits the active project path', () => {

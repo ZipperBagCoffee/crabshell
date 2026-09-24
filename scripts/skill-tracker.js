@@ -53,22 +53,26 @@ function setSkillActive(projectDir, skillName, sessionId) {
   fs.writeFileSync(path.join(memoryDir, SKILL_ACTIVE_FILE), JSON.stringify({ ...data, ttl: 15 * 60 * 1000 }, null, 2));
 }
 
+// PostToolUse on Skill: mark a document skill active. Returns a diagnostic or null.
+function trackSkill(hookData, projectDir) {
+  const detectedSkill = detectDocsSkillCall(hookData);
+  if (!detectedSkill) return null;
+  setSkillActive(projectDir, detectedSkill, hookData.session_id);
+  return `[SKILL_TRACKER] Activated: ${detectedSkill}`;
+}
+
 async function main() {
   const hookData = await readStdin();
-  if (!hookData) { process.exit(0); return; }
-
-  // Only process Skill tool calls
-  const detectedSkill = detectDocsSkillCall(hookData);
-  if (!detectedSkill) { process.exit(0); return; }
-
-  const projectDir = getProjectDir();
-  setSkillActive(projectDir, detectedSkill, hookData.session_id);
-
-  process.stderr.write(`[SKILL_TRACKER] Activated: ${detectedSkill}\n`);
+  const log = hookData ? trackSkill(hookData, getProjectDir()) : null;
+  if (log) process.stderr.write(log + '\n');
   process.exit(0);
 }
 
-main().catch(e => {
-  console.error(`[SKILL TRACKER ERROR] ${e.message}`);
-  process.exit(0); // fail-open
-});
+if (require.main === module) {
+  main().catch(e => {
+    console.error(`[SKILL TRACKER ERROR] ${e.message}`);
+    process.exit(0); // fail-open
+  });
+}
+
+module.exports = { trackSkill, detectDocsSkillCall };

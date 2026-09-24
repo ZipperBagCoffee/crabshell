@@ -10,22 +10,21 @@ if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 
 const { getProjectDir } = require('./utils');
 
-async function main() {
-  const hookData = await readStdin();
-  if (!hookData || !hookData.tool_name) { process.exit(0); return; }
+// Returns { reason } when the write must be blocked, otherwise null.
+function evaluateRegressingGuard(hookData, projectDir) {
+  if (!hookData || !hookData.tool_name) return null;
 
   const toolName = hookData.tool_name;
-  if (toolName !== 'Write' && toolName !== 'Edit') { process.exit(0); return; }
+  if (toolName !== 'Write' && toolName !== 'Edit') return null;
 
   const input = hookData.tool_input;
-  if (!input) { process.exit(0); return; }
+  if (!input) return null;
 
   const filePath = (input.file_path || input.path || '').replace(/\\/g, '/');
   const isPlanDoc = /\.crabshell\/plan\/P\d{3}/.test(filePath);
   const isTicketDoc = /\.crabshell\/ticket\/P\d{3}_T\d{3}/.test(filePath);
-  if (!isPlanDoc && !isTicketDoc) { process.exit(0); return; }
+  if (!isPlanDoc && !isTicketDoc) return null;
 
-  const projectDir = getProjectDir();
   const { STORAGE_ROOT } = require('./constants');
   const statePath = path.join(projectDir, STORAGE_ROOT, 'memory', 'regressing-state.json');
 
@@ -33,29 +32,19 @@ async function main() {
   try {
     state = JSON.parse(fs.readFileSync(statePath, 'utf8'));
   } catch {
-    process.exit(0); return; // No state file = no regressing active
+    return null; // No state file = no regressing active
   }
 
-  if (!state || state.active !== true) { process.exit(0); return; }
+  if (!state || state.active !== true) return null;
 
   const { phase } = state;
 
   if (phase === 'planning' && isPlanDoc) {
-    const output = {
-      decision: "block",
-      reason: 'Regressing phase "planning" requires /planning skill invocation first. Use Skill tool with skill="crabshell:planning" instead of writing the plan document directly.'
-    };
-    console.log(JSON.stringify(output));
-    process.exit(2);
+    return { reason: 'Regressing phase "planning" requires /planning skill invocation first. Use Skill tool with skill="crabshell:planning" instead of writing the plan document directly.' };
   }
 
   if (phase === 'ticketing' && isTicketDoc) {
-    const output = {
-      decision: "block",
-      reason: 'Regressing phase "ticketing" requires /ticketing skill invocation first. Use Skill tool with skill="crabshell:ticketing" instead of writing the ticket document directly.'
-    };
-    console.log(JSON.stringify(output));
-    process.exit(2);
+    return { reason: 'Regressing phase "ticketing" requires /ticketing skill invocation first. Use Skill tool with skill="crabshell:ticketing" instead of writing the ticket document directly.' };
   }
 
   // IA-2: Block ticketing when parent plan's agent sections are empty
@@ -82,12 +71,7 @@ async function main() {
             return !body || /^\([^)]*\)$/.test(body);
           });
           if (emptySections.length > 0) {
-            const output = {
-              decision: "block",
-              reason: `Ticketing blocked: Plan ${planId} has empty agent sections: ${emptySections.join(', ')}. Complete planning phase (WA/RA/Orchestrator) before creating tickets.`
-            };
-            console.log(JSON.stringify(output));
-            process.exit(2);
+            return { reason: `Ticketing blocked: Plan ${planId} has empty agent sections: ${emptySections.join(', ')}. Complete planning phase (WA/RA/Orchestrator) before creating tickets.` };
           }
         }
       } catch (e) {
@@ -96,10 +80,22 @@ async function main() {
     }
   }
 
-  process.exit(0);
+  return null;
 }
 
-main().catch(e => {
-  console.error(`[REGRESSING GUARD ERROR] ${e.message}`);
-  process.exit(0); // fail-open
-});
+async function main() {
+  const hookData = await readStdin();
+  const result = evaluateRegressingGuard(hookData, getProjectDir());
+  if (!result) { process.exit(0); return; }
+  console.log(JSON.stringify({ decision: 'block', reason: result.reason }));
+  process.exit(2);
+}
+
+if (require.main === module) {
+  main().catch(e => {
+    console.error(`[REGRESSING GUARD ERROR] ${e.message}`);
+    process.exit(0); // fail-open
+  });
+}
+
+module.exports = { evaluateRegressingGuard };

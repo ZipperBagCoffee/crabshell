@@ -37,9 +37,9 @@ function hookEnv(project, root) {
   return env;
 }
 
-function runHook(root, script, args, payload, project) {
+function runHook(root, script, args, payload, project, extraEnv = {}) {
   const result = spawnSync(process.execPath, [path.join(SCRIPTS, script), ...args], {
-    cwd: project, env: hookEnv(project, root), input: JSON.stringify(payload),
+    cwd: project, env: { ...hookEnv(project, root), ...extraEnv }, input: JSON.stringify(payload),
     encoding: 'utf8', timeout: 60000, windowsHide: true,
   });
   return { status: result.status, stdout: result.stdout || '', stderr: result.stderr || '' };

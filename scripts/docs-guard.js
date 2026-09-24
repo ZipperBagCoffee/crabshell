@@ -111,26 +111,24 @@ function checkInvestigationConstraints(filePath, toolName) {
   } catch { return null; }
 }
 
-async function main() {
-  const hookData = await readStdin();
-  if (!hookData || !hookData.tool_name) { process.exit(0); return; }
+// Returns { reason, log } when the write must be blocked, otherwise null.
+function evaluateDocsGuard(hookData, projectDir) {
+  if (!hookData || !hookData.tool_name) return null;
 
   const toolName = hookData.tool_name;
-  if (toolName !== 'Write' && toolName !== 'Edit') { process.exit(0); return; }
+  if (toolName !== 'Write' && toolName !== 'Edit') return null;
 
   const input = hookData.tool_input;
-  if (!input) { process.exit(0); return; }
+  if (!input) return null;
 
   const filePath = normalizePath(input.file_path || input.path || '');
-  if (!filePath) { process.exit(0); return; }
+  if (!filePath) return null;
 
   // Only guard protected .crabshell/ D/P/T/I paths
-  if (!PROTECTED_DOCS_PATTERN.test(filePath)) { process.exit(0); return; }
+  if (!PROTECTED_DOCS_PATTERN.test(filePath)) return null;
 
   // INDEX.md files are simple listing files — never require skill-active protection
-  if (path.basename(filePath) === 'INDEX.md') { process.exit(0); return; }
-
-  const projectDir = getProjectDir();
+  if (path.basename(filePath) === 'INDEX.md') return null;
 
   // Check if a legitimate skill is active
   const activeSkill = getActiveSkill(projectDir, hookData.session_id);
@@ -138,29 +136,14 @@ async function main() {
     // Skill is active — check Discussion body edit during regressing before allowing
     const discussionRegressingError = checkDiscussionRegressingBlock(filePath, toolName, activeSkill, projectDir);
     if (discussionRegressingError) {
-      const output = {
-        decision: "block",
-        reason: discussionRegressingError
-      };
-      process.stderr.write(`[DOCS_GUARD] Blocked ${toolName} to ${filePath} — discussion body edit during regressing\n`);
-      console.log(JSON.stringify(output));
-      process.exit(2);
-      return;
+      return { reason: discussionRegressingError, log: `[DOCS_GUARD] Blocked ${toolName} to ${filePath} — discussion body edit during regressing` };
     }
     // Check investigation Constraints before allowing
     const constraintError = checkInvestigationConstraints(filePath, toolName);
     if (constraintError) {
-      const output = {
-        decision: "block",
-        reason: constraintError
-      };
-      process.stderr.write(`[DOCS_GUARD] Blocked ${toolName} to ${filePath} — ${constraintError}\n`);
-      console.log(JSON.stringify(output));
-      process.exit(2);
-      return;
+      return { reason: constraintError, log: `[DOCS_GUARD] Blocked ${toolName} to ${filePath} — ${constraintError}` };
     }
-    process.exit(0);
-    return;
+    return null;
   }
 
   // No active skill — block the write
@@ -175,19 +158,26 @@ async function main() {
   };
   const suggestedSkill = skillMap[category] || 'the appropriate document skill';
 
-  const output = {
-    decision: "block",
-    reason: `Direct write to .crabshell/${category}/ blocked. You MUST invoke the Skill tool first (skill="${suggestedSkill}") before writing ${category} documents. This prevents post-compaction skill bypass where documents are created from memory without proper skill workflow.`
+  return {
+    reason: `Direct write to .crabshell/${category}/ blocked. You MUST invoke the Skill tool first (skill="${suggestedSkill}") before writing ${category} documents. This prevents post-compaction skill bypass where documents are created from memory without proper skill workflow.`,
+    log: `[DOCS_GUARD] Blocked ${toolName} to ${filePath} — no active skill`,
   };
+}
 
-  process.stderr.write(`[DOCS_GUARD] Blocked ${toolName} to ${filePath} — no active skill\n`);
-  console.log(JSON.stringify(output));
+async function main() {
+  const hookData = await readStdin();
+  const result = evaluateDocsGuard(hookData, getProjectDir());
+  if (!result) { process.exit(0); return; }
+  process.stderr.write(result.log + '\n');
+  console.log(JSON.stringify({ decision: 'block', reason: result.reason }));
   process.exit(2);
 }
 
-main().catch(e => {
-  console.error(`[DOCS GUARD ERROR] ${e.message}`);
-  process.exit(0); // fail-open
-});
+if (require.main === module) {
+  main().catch(e => {
+    console.error(`[DOCS GUARD ERROR] ${e.message}`);
+    process.exit(0); // fail-open
+  });
+}
 
-module.exports = { checkInvestigationConstraints, checkDiscussionRegressingBlock };
+module.exports = { evaluateDocsGuard, checkInvestigationConstraints, checkDiscussionRegressingBlock };

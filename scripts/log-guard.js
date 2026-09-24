@@ -414,20 +414,18 @@ function checkRegressingCycleGuard(filePath, projectDir) {
 
 // --- Main ---
 
-async function main() {
-  const hookData = await readStdin();
-  if (!hookData || !hookData.tool_name) { process.exit(0); return; }
+// Returns { reason, log } to block, { log } for a diagnostic only, or null.
+function evaluateLogGuard(hookData, projectDir) {
+  if (!hookData || !hookData.tool_name) return null;
 
   const toolName = hookData.tool_name;
-  if (toolName !== 'Write' && toolName !== 'Edit') { process.exit(0); return; }
+  if (toolName !== 'Write' && toolName !== 'Edit') return null;
 
   const input = hookData.tool_input;
-  if (!input) { process.exit(0); return; }
+  if (!input) return null;
 
   const filePath = normalizePath(input.file_path || input.path || '');
-  if (!filePath) { process.exit(0); return; }
-
-  const projectDir = getProjectDir();
+  if (!filePath) return null;
 
   // === Trigger 1: Edit or Write on INDEX.md — status change to terminal ===
   const indexMatch = filePath.match(INDEX_PATTERN);
@@ -446,12 +444,13 @@ async function main() {
       TERMINAL_STATUSES.has(c.toStatus) && !isExemptTransition(c.fromStatus, c.toStatus)
     );
 
+    const logs = [];
     for (const change of terminalChanges) {
       const docFile = findDocumentFile(projectDir, category, change.docId);
 
       if (!docFile) {
         // EC-7: Orphaned INDEX entry (document file missing) → fail-open with warning
-        process.stderr.write(`[LOG_GUARD] Warning: document file not found for ${change.docId} in ${category}/ — fail-open\n`);
+        logs.push(`[LOG_GUARD] Warning: document file not found for ${change.docId} in ${category}/ — fail-open`);
         continue;
       }
 
@@ -459,67 +458,48 @@ async function main() {
       try {
         content = fs.readFileSync(docFile, 'utf8');
       } catch (e) {
-        const output = {
-          decision: 'block',
-          reason: `[LOG_GUARD] Cannot read ${change.docId} document: ${e.message}.`,
-        };
-        process.stderr.write(`[LOG_GUARD] Blocked: cannot read ${docFile}\n`);
-        console.log(JSON.stringify(output));
-        process.exit(2);
-        return;
+        return { reason: `[LOG_GUARD] Cannot read ${change.docId} document: ${e.message}.`, log: `[LOG_GUARD] Blocked: cannot read ${docFile}` };
       }
 
       const entries = parseLogEntries(content);
       const validation = validateLogForTerminal(entries, change.toStatus, change.docId);
 
       if (!validation.valid) {
-        const output = {
-          decision: 'block',
-          reason: `[LOG_GUARD] ${validation.reason}`,
-        };
-        process.stderr.write(`[LOG_GUARD] Blocked: ${change.docId} ${change.fromStatus}→${change.toStatus}\n`);
-        console.log(JSON.stringify(output));
-        process.exit(2);
-        return;
+        return { reason: `[LOG_GUARD] ${validation.reason}`, log: `[LOG_GUARD] Blocked: ${change.docId} ${change.fromStatus}→${change.toStatus}` };
       }
 
       // Pending section check: tickets must not have "(pending)" in result sections
       const pendingValidation = validatePendingSections(content, change.docId);
       if (!pendingValidation.valid) {
-        const output = {
-          decision: 'block',
-          reason: `[LOG_GUARD] ${pendingValidation.reason}`,
-        };
-        process.stderr.write(`[LOG_GUARD] Blocked: ${change.docId} has pending sections\n`);
-        console.log(JSON.stringify(output));
-        process.exit(2);
-        return;
+        return { reason: `[LOG_GUARD] ${pendingValidation.reason}`, log: `[LOG_GUARD] Blocked: ${change.docId} has pending sections` };
       }
     }
 
     // All terminal transitions validated
     if (terminalChanges.length > 0) {
-      process.stderr.write(`[LOG_GUARD] Allowed ${terminalChanges.length} terminal transition(s)\n`);
+      logs.push(`[LOG_GUARD] Allowed ${terminalChanges.length} terminal transition(s)`);
     }
-    process.exit(0);
-    return;
+    return logs.length ? { log: logs.join('\n') } : null;
   }
 
   // === Trigger 2: Bypass 5 — new plan/ticket in regressing cycle > 1 ===
   const cycleCheck = checkRegressingCycleGuard(filePath, projectDir);
   if (cycleCheck && cycleCheck.shouldBlock) {
-    const output = {
-      decision: 'block',
-      reason: `[LOG_GUARD] ${cycleCheck.reason}`,
-    };
-    process.stderr.write(`[LOG_GUARD] Blocked new doc creation: ${cycleCheck.reason}\n`);
-    console.log(JSON.stringify(output));
-    process.exit(2);
-    return;
+    return { reason: `[LOG_GUARD] ${cycleCheck.reason}`, log: `[LOG_GUARD] Blocked new doc creation: ${cycleCheck.reason}` };
   }
 
   // Neither trigger matched — allow
-  process.exit(0);
+  return null;
+}
+
+async function main() {
+  const hookData = await readStdin();
+  const result = evaluateLogGuard(hookData, getProjectDir());
+  if (!result) { process.exit(0); return; }
+  if (result.log) process.stderr.write(result.log + '\n');
+  if (!result.reason) { process.exit(0); return; }
+  console.log(JSON.stringify({ decision: 'block', reason: result.reason }));
+  process.exit(2);
 }
 
 // Only run main() when executed directly (not when require'd by tests)
@@ -532,6 +512,7 @@ if (require.main === module) {
 
 // Exports for testing
 module.exports = {
+  evaluateLogGuard,
   extractStatusFromRow,
   extractIdFromRow,
   detectStatusChanges,

@@ -86,8 +86,11 @@ function findSessionL1(sessionsDir, sessionId8) {
     .sort().reverse()[0] || null; // newest first
 }
 
-async function check() {
-  const hookData = await readStdin(1000);
+// PostToolUse. With a payload (the Claude PostToolUse dispatcher) it does not read
+// stdin and returns host notices instead of printing them.
+async function check(payload = null) {
+  const hookData = payload || await readStdin(1000);
+  const notices = [];
   // CLAUDE_PROJECT_DIR (set by Claude Code) is the authoritative project root.
   // Do NOT use hookData.cwd — it changes when Bash cd's to subdirectories.
   const sessionId = hookData.session_id || null;
@@ -145,7 +148,8 @@ async function check() {
     const memoryPath = path.join(getStorageRoot(), MEMORY_DIR, MEMORY_FILE);
     const rotationResult = checkAndRotate(memoryPath, config);
     if (rotationResult) {
-      console.log(rotationResult.hookOutput);
+      if (payload) notices.push(rotationResult.hookOutput);
+      else console.log(rotationResult.hookOutput);
     }
 
     const indexPath = path.join(getStorageRoot(), MEMORY_DIR, 'memory-index.json');
@@ -209,6 +213,7 @@ async function check() {
   } finally {
     releaseIndexLock(memoryDir);
   }
+  return notices;
 }
 
 async function final() {
@@ -871,5 +876,5 @@ Memory Rotation (v13.0.0):
 
 // Export for testing (only when required as a module, not when run directly)
 if (require.main !== module) {
-  module.exports = { getCounter, setCounter, getConfig, cleanupDuplicateL1, dedupeL1, parseArg, compress, pruneOldL1 };
+  module.exports = { check, getCounter, setCounter, getConfig, cleanupDuplicateL1, dedupeL1, parseArg, compress, pruneOldL1 };
 }

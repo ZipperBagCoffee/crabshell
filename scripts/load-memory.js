@@ -17,10 +17,16 @@ function projectDirFromArgs(argv = process.argv.slice(2)) {
 async function main(options = {}) {
   const hookData = options.hookData || await readStdin(3000) || {};
   const projectDir = options.projectDir || projectDirFromArgs(options.argv);
-  if (hookData.source === 'compact' && hookData.session_id) {
+  if (hookData.source === 'compact') {
     // Compaction drops the loaded skill instructions, so document writes must
     // go through the skill again (docs-guard reads this session's flag).
-    try { require('./core/session-state').removeSessionState(projectDir, hookData.session_id, 'skill-active'); } catch {}
+    if (hookData.session_id) {
+      try { require('./core/session-state').removeSessionState(projectDir, hookData.session_id, 'skill-active'); } catch {}
+    }
+    // Claude has no PostCompact wiring (its output reaches no model); its effects
+    // run here: the next prompt re-injects the pressure notice, and the
+    // compaction is logged.
+    try { require('./core/post-compact-effects').runPostCompactEffects(projectDir); } catch {}
   }
   const context = buildMemoryContext(projectDir, {
     source: hookData.source || 'unknown',

@@ -197,9 +197,13 @@ test(
     && !/WA_COUNT_FILE|wa-count\.json/.test(loadMemorySource)
 );
 
+// P178_T003: Claude has no PostCompact hook (its output reaches no model); the
+// effects run from SessionStart(compact) in load-memory.js. Codex keeps its hook.
+const codexHookText = fs.readFileSync(path.join(ROOT, 'hooks', 'codex-hooks.json'), 'utf8');
 test(
-  'post-compact and native install bridge remain configured',
-  hookText.includes('post-compact.js')
+  'post-compact effects and native install bridge remain configured',
+  codexHookText.includes('adapters/codex/post-compact.js')
+    && loadMemorySource.includes('runPostCompactEffects')
     && fs.existsSync(path.join(ROOT, 'scripts', 'install-codex.js'))
 );
 

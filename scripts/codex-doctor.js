@@ -114,8 +114,12 @@ function probePluginData(dataPath) {
   if (observed !== 'crabshell doctor write probe\n') throw new Error('Write probe read-back did not match.');
 }
 
+// Probes the guard with a write (never executed) to another project's memory: reads
+// are allowed, and paths under the OS temp folder are exempt, so the target sits at
+// the drive root.
 function probeHook(pluginRoot, projectDir = pluginRoot) {
   const adapter = path.join(pluginRoot, 'scripts', 'adapters', 'codex', 'pre-tool-use.js');
+  const wrongLogbook = path.join(path.parse(path.resolve(projectDir)).root, 'crabshell-doctor-wrong-project', '.crabshell', 'memory', 'logbook.md');
   const payload = {
     session_id: 'doctor-probe',
     transcript_path: null,
@@ -123,7 +127,7 @@ function probeHook(pluginRoot, projectDir = pluginRoot) {
     permission_mode: 'default',
     hook_event_name: 'PreToolUse',
     tool_name: 'Bash',
-    tool_input: { command: `cat "${path.join(path.dirname(projectDir), 'wrong-project', '.crabshell', 'memory', 'logbook.md')}"` },
+    tool_input: { command: `echo probe >> "${wrongLogbook}"` },
     tool_use_id: 'doctor-tool',
     model: 'doctor',
     turn_id: 'doctor-turn',
@@ -394,7 +398,7 @@ async function runDoctor(options) {
 
   try {
     const reason = probeHook(cachePath || options.pluginRoot, options.projectDir);
-    report.checks.push(check('hook-probe', 'ok', 'Codex adapter returned the native deny contract for a wrong-project memory path.', { reason }));
+    report.checks.push(check('hook-probe', 'ok', 'Codex adapter returned the native deny contract for a write to a wrong-project memory path.', { reason }));
   } catch (error) {
     report.checks.push(check('hook-probe', 'error', `Codex hook probe failed: ${error.message}`));
   }
