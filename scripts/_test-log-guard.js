@@ -20,18 +20,11 @@ const {
   detectStatusChangesWrite,
   isExemptTransition,
   findDocumentFile,
-  parseLogEntries,
-  isCreatedEntry,
-  isStatusChangeEntry,
-  validateLogForTerminal,
   validatePendingSections,
-  checkRegressingCycleGuard,
+  evaluateLogGuard,
   ALL_STATUSES,
   TERMINAL_STATUSES,
-  MIN_ENTRY_BODY_LENGTH,
   INDEX_PATTERN,
-  PLAN_DOC_PATTERN,
-  TICKET_DOC_PATTERN,
 } = require('./log-guard');
 
 let passed = 0;
@@ -82,15 +75,17 @@ const tmpTicketDir = path.join(projectDir, '.crabshell', 'ticket');
 const tmpDiscDir = path.join(projectDir, '.crabshell', 'discussion');
 const tmpDocFile = path.join(tmpTicketDir, 'P999_T001-test-doc.md');
 const tmpDiscFile = path.join(tmpDiscDir, 'D999-test-discussion.md');
+const UNFINISHED_EXEC = '## Execution Results\n(placeholder — parent writes implementation evidence here)\n\n';
+const UNFINISHED_FINAL = '## Final Verification\n(placeholder — parent writes the final evaluation here)\n### Correctness\n### Coherence\n\n';
 
 // Save originals for restore
-function createTempDoc(logContent) {
+function createTempDoc(logContent, sections = '') {
   const content = `# P999_T001 - Test Document
 
 ## Intent
 Test document for log-guard tests.
 
-## Log
+${sections}## Log
 
 ${logContent}`;
   fs.writeFileSync(tmpDocFile, content, 'utf8');
@@ -257,92 +252,6 @@ test('Not exempt: open→concluded', () => {
 });
 
 // ============================================================
-// UNIT TESTS: parseLogEntries + validateLogForTerminal
-// ============================================================
-
-test('parseLogEntries: document with work + created entries', () => {
-  const content = `# Test
-
-## Log
-
----
-### [2026-03-29 10:00] Created
-Initial creation of the document.
-
----
-### [2026-03-29 11:00] Work Complete
-Implemented feature X with full tests passing. All 6 acceptance criteria verified.
-
----
-### [2026-03-29 12:00] Status Change: todo → done
-`;
-  const entries = parseLogEntries(content);
-  assertEqual(entries.length, 3, 'total entries');
-  assert(isCreatedEntry(entries[0]), 'first should be Created');
-  assert(!isCreatedEntry(entries[1]), 'second should not be Created');
-  assert(isStatusChangeEntry(entries[2]), 'third should be Status Change');
-});
-
-test('parseLogEntries: Discussion Log heading', () => {
-  const content = `# Test
-
-## Discussion Log
-
----
-### [2026-03-29 10:00] Started
-Discussion started with analysis of the problem space and constraints.
-
----
-### [2026-03-29 11:00] Key Decision
-Decided to use approach B after comparing three alternatives with evidence.
-`;
-  const entries = parseLogEntries(content);
-  assertEqual(entries.length, 2, 'count');
-});
-
-test('parseLogEntries: no Log section → empty', () => {
-  const content = `# Test
-
-## Intent
-Something.
-`;
-  const entries = parseLogEntries(content);
-  assertEqual(entries.length, 0, 'count');
-});
-
-test('validateLogForTerminal: substantive work entries → valid', () => {
-  const entries = [
-    { type: 'Created', timestamp: '2026-03-29 10:00', body: 'Initial creation.', bodyLength: 17 },
-    { type: 'Implementation complete', timestamp: '2026-03-29 11:00', body: 'Implemented feature X with full test coverage passing all criteria.', bodyLength: 66 },
-  ];
-  const result = validateLogForTerminal(entries, 'done', 'P001_T001');
-  assert(result.valid, 'should be valid');
-});
-
-test('validateLogForTerminal: only Created entry → invalid', () => {
-  const entries = [
-    { type: 'Created', timestamp: '2026-03-29 10:00', body: 'Initial creation.', bodyLength: 17 },
-  ];
-  const result = validateLogForTerminal(entries, 'done', 'P001_T001');
-  assert(!result.valid, 'should be invalid');
-  assert(result.reason.includes('P001_T001'), 'reason should mention docId');
-});
-
-test('validateLogForTerminal: empty entries → invalid', () => {
-  const result = validateLogForTerminal([], 'done', 'P001_T001');
-  assert(!result.valid, 'should be invalid');
-});
-
-test('Bypass 1: short rubber-stamp entry → invalid', () => {
-  const entries = [
-    { type: 'Created', timestamp: '2026-03-29 10:00', body: 'Init.', bodyLength: 5 },
-    { type: 'Done', timestamp: '2026-03-29 11:00', body: 'Done.', bodyLength: 5 },
-  ];
-  const result = validateLogForTerminal(entries, 'done', 'P001_T001');
-  assert(!result.valid, `should be invalid (body < ${MIN_ENTRY_BODY_LENGTH})`);
-});
-
-// ============================================================
 // INTEGRATION TESTS: full script execution
 // ============================================================
 
@@ -434,7 +343,9 @@ Implemented all acceptance criteria. Feature X works with full test coverage pas
   }
 });
 
-test('Terminal transition: in-progress→done WITHOUT log → BLOCK', () => {
+// Contract change (D119 cycle 8): the work-log length rule was removed — results
+// live in the result sections, and the log may hold only its Created entry.
+test('Terminal transition: in-progress→done with only a Created log entry → allow', () => {
   createTempDoc(`---
 ### [2026-03-29 10:00] Created
 Test doc initial creation for guard testing.
@@ -448,18 +359,17 @@ Test doc initial creation for guard testing.
         new_string: '| P999_T001 | Test doc | done | 2026-03-29 | P999 |'
       }
     });
-    assertEqual(r.exitCode, 2, 'exitCode');
-    assert(r.stdout.includes('"decision":"block"') || r.stdout.includes('"decision": "block"'), 'should have block decision');
+    assertEqual(r.exitCode, 0, 'exitCode');
   } finally {
     cleanupTempDoc();
   }
 });
 
-test('Terminal transition: done→verified WITHOUT work log → BLOCK', () => {
+test('Terminal transition: done→verified while Final Verification is still template → BLOCK', () => {
   createTempDoc(`---
 ### [2026-03-29 10:00] Created
 Test doc initial creation for guard testing.
-`);
+`, UNFINISHED_FINAL);
   try {
     const r = runScript({
       tool_name: 'Edit',
@@ -470,12 +380,15 @@ Test doc initial creation for guard testing.
       }
     });
     assertEqual(r.exitCode, 2, 'exitCode');
+    assert(r.stdout.includes('Final Verification'), 'reason names the section');
   } finally {
     cleanupTempDoc();
   }
 });
 
-test('Terminal transition: open→concluded for discussion WITHOUT work log → BLOCK', () => {
+// Contract change (D119 cycle 8): only tickets are checked; a discussion concludes
+// through its Final Report or an explicit status-change entry.
+test('Terminal transition: open→concluded for a discussion → allow (not checked)', () => {
   fs.writeFileSync(tmpDiscFile, `# D999 - Test Discussion
 
 ## Discussion Log
@@ -493,7 +406,7 @@ Started the discussion about test topic.
         new_string: '| D999 | Test Discussion | concluded | 2026-03-29 | |'
       }
     });
-    assertEqual(r.exitCode, 2, 'exitCode');
+    assertEqual(r.exitCode, 0, 'exitCode');
   } finally {
     cleanupTempDisc();
   }
@@ -516,7 +429,7 @@ test('EC-10: No skill-active bypass — blocks regardless of skill state', () =>
   createTempDoc(`---
 ### [2026-03-29 10:00] Created
 Test doc initial creation for guard testing.
-`);
+`, UNFINISHED_EXEC);
   const flagPath = path.join(projectDir, '.crabshell', 'memory', 'skill-active.json');
   let originalFlag = null;
   try { originalFlag = fs.readFileSync(flagPath, 'utf8'); } catch {}
@@ -546,30 +459,6 @@ Test doc initial creation for guard testing.
     } else {
       try { fs.unlinkSync(flagPath); } catch {}
     }
-  }
-});
-
-test('EC-4: Status Change entries do not count as work log', () => {
-  createTempDoc(`---
-### [2026-03-29 10:00] Created
-Test doc initial creation for guard testing.
-
----
-### [2026-03-29 11:00] Status Change: todo → in-progress
-Status changed from todo to in-progress for work start.
-`);
-  try {
-    const r = runScript({
-      tool_name: 'Edit',
-      tool_input: {
-        file_path: '.crabshell/ticket/INDEX.md',
-        old_string: '| P999_T001 | Test doc | in-progress | 2026-03-29 | P999 |',
-        new_string: '| P999_T001 | Test doc | done | 2026-03-29 | P999 |'
-      }
-    });
-    assertEqual(r.exitCode, 2, 'exitCode — Status Change entries should not count');
-  } finally {
-    cleanupTempDoc();
   }
 });
 
@@ -654,109 +543,11 @@ test('Integration: Write to non-INDEX.md file → allow (trigger 2 only for plan
 // ADVERSARIAL TESTS (WA4): bypass resistance scenarios
 // ============================================================
 
-test('ADV-1: Bypass 1 — rubber-stamp "### [date] x" (empty body) → BLOCK', () => {
-  // LLM writes minimal entry type with no body
-  createTempDoc(`---
-### [2026-03-29 10:00] Created
-Init.
-
----
-### [2026-03-29 11:00] x
-`);
-  try {
-    const r = runScript({
-      tool_name: 'Edit',
-      tool_input: {
-        file_path: '.crabshell/ticket/INDEX.md',
-        old_string: '| P999_T001 | Test doc | in-progress | 2026-03-29 | P999 |',
-        new_string: '| P999_T001 | Test doc | done | 2026-03-29 | P999 |'
-      }
-    });
-    assertEqual(r.exitCode, 2, 'exitCode — empty body entry should be blocked');
-  } finally {
-    cleanupTempDoc();
-  }
-});
-
-test('ADV-2: Bypass 1 — rubber-stamp short entry "done" → BLOCK', () => {
-  createTempDoc(`---
-### [2026-03-29 10:00] Created
-Initial creation.
-
----
-### [2026-03-29 11:00] Work Log
-done
-`);
-  try {
-    const r = runScript({
-      tool_name: 'Edit',
-      tool_input: {
-        file_path: '.crabshell/ticket/INDEX.md',
-        old_string: '| P999_T001 | Test doc | in-progress | 2026-03-29 | P999 |',
-        new_string: '| P999_T001 | Test doc | done | 2026-03-29 | P999 |'
-      }
-    });
-    assertEqual(r.exitCode, 2, 'exitCode — 4-char body should be blocked');
-    assert(r.stdout.includes(String(MIN_ENTRY_BODY_LENGTH)), 'reason should mention char limit');
-  } finally {
-    cleanupTempDoc();
-  }
-});
-
-test('ADV-3: Bypass 1 — exactly 30 chars body → BLOCK (need >30, not >=30)', () => {
-  // Body is exactly 30 chars: "123456789012345678901234567890"
-  createTempDoc(`---
-### [2026-03-29 10:00] Created
-Init.
-
----
-### [2026-03-29 11:00] Work Log
-123456789012345678901234567890
-`);
-  try {
-    const r = runScript({
-      tool_name: 'Edit',
-      tool_input: {
-        file_path: '.crabshell/ticket/INDEX.md',
-        old_string: '| P999_T001 | Test doc | in-progress | 2026-03-29 | P999 |',
-        new_string: '| P999_T001 | Test doc | done | 2026-03-29 | P999 |'
-      }
-    });
-    assertEqual(r.exitCode, 2, 'exitCode — exactly 30 chars (not >30) should block');
-  } finally {
-    cleanupTempDoc();
-  }
-});
-
-test('ADV-4: Bypass 1 — 31 chars body → ALLOW (just over threshold)', () => {
-  createTempDoc(`---
-### [2026-03-29 10:00] Created
-Init.
-
----
-### [2026-03-29 11:00] Work Log
-1234567890123456789012345678901
-`);
-  try {
-    const r = runScript({
-      tool_name: 'Edit',
-      tool_input: {
-        file_path: '.crabshell/ticket/INDEX.md',
-        old_string: '| P999_T001 | Test doc | in-progress | 2026-03-29 | P999 |',
-        new_string: '| P999_T001 | Test doc | done | 2026-03-29 | P999 |'
-      }
-    });
-    assertEqual(r.exitCode, 0, 'exitCode — 31 chars (>30) should allow');
-  } finally {
-    cleanupTempDoc();
-  }
-});
-
 test('ADV-5: ADVERSARIAL — status change via row with extra whitespace still detected', () => {
   createTempDoc(`---
 ### [2026-03-29 10:00] Created
 Created the document for guard testing.
-`);
+`, UNFINISHED_EXEC);
   try {
     const r = runScript({
       tool_name: 'Edit',
@@ -766,14 +557,14 @@ Created the document for guard testing.
         new_string: '|  P999_T001  |  Test doc  |  done  |  2026-03-29  |  P999  |'
       }
     });
-    // Only Created entry → should block even with extra spaces in row
+    // Unfinished Execution Results → should block even with extra spaces in row
     assertEqual(r.exitCode, 2, 'exitCode — extra whitespace rows should still be parsed');
   } finally {
     cleanupTempDoc();
   }
 });
 
-test('ADV-6: ADVERSARIAL — batch: 2 terminal changes, one doc has log, one does not → BLOCK', () => {
+test('ADV-6: ADVERSARIAL — batch: 2 ticket changes, one ticket unfinished → BLOCK', () => {
   const tmpDoc2 = path.join(tmpTicketDir, 'P999_T002-test-doc2.md');
   // T001 has substantive log
   createTempDoc(`---
@@ -784,8 +575,11 @@ Initial creation for batch test document one.
 ### [2026-03-29 11:00] Work Log
 Completed all acceptance criteria. Full implementation done with tests.
 `);
-  // T002 has only Created
+  // T002 still has template Execution Results
   fs.writeFileSync(tmpDoc2, `# P999_T002 - Test Document 2
+
+## Execution Results
+(placeholder — parent writes implementation evidence here)
 
 ## Log
 
@@ -803,8 +597,8 @@ Created second document for batch test.
         new_string: '| P999_T001 | Doc1 | done | 2026 | P999 |\n| P999_T002 | Doc2 | done | 2026 | P999 |'
       }
     });
-    // T002 lacks work log → entire batch should block
-    assertEqual(r.exitCode, 2, 'exitCode — batch should block if ANY doc lacks substantive log');
+    // T002 is unfinished → entire batch should block
+    assertEqual(r.exitCode, 2, 'exitCode — batch should block if ANY ticket is unfinished');
   } finally {
     cleanupTempDoc();
     try { fs.unlinkSync(tmpDoc2); } catch {}
@@ -895,86 +689,15 @@ Created plan for Write trigger testing purposes.
   }
 });
 
-test('ADV-9: Unit — parseLogEntries body length excludes separator lines (---)', () => {
-  // Verify that --- lines and blank lines are not counted in body length
-  const content = `# Doc
-## Log
-
----
-### [2026-03-29 10:00] Work Log
----
-
-
----
-short
----
-`;
-  const entries = parseLogEntries(content);
-  assertEqual(entries.length, 1);
-  // Body should only contain "short" (5 chars), not the --- or blank lines
-  assertEqual(entries[0].body, 'short');
-  assertEqual(entries[0].bodyLength, 5);
-});
-
-test('ADV-10: Unit — parseLogEntries with Log section followed by another ## section', () => {
-  const content = `# Doc
-
-## Log
-
----
-### [2026-03-29 10:00] Created
-Created the document for section boundary testing.
-
----
-### [2026-03-29 11:00] Work Log
-Implemented the feature with comprehensive testing coverage.
-
-## Final Verification
-
-Some verification content that should NOT be parsed as log entry.
-### [2026-03-29 12:00] Fake Entry
-This should not appear.
-`;
-  const entries = parseLogEntries(content);
-  assertEqual(entries.length, 2, 'should only parse entries in Log section');
-  assertEqual(entries[0].type, 'Created');
-  assertEqual(entries[1].type, 'Work Log');
-});
-
-test('ADV-11: Unit — checkRegressingCycleGuard returns null when not regressing', () => {
-  // Ensure function returns null (no block) for non-regressing context
-  const result = checkRegressingCycleGuard(
-    '.crabshell/plan/P999-test.md',
-    projectDir
-  );
-  // No regressing state file or not active → should return null
-  // (depends on actual state, but in test context this is fine)
-  // The test verifies the function doesn't crash and returns null-ish
-  assert(result === null || (result && !result.shouldBlock), 'should not block outside regressing');
-});
-
-test('ADV-12: Unit — validateLogForTerminal with only StatusChange entries → INVALID', () => {
-  const entries = [
-    { type: 'Created', timestamp: '2026-03-29 10:00', body: 'Init.', bodyLength: 5 },
-    { type: 'Status Change: todo → in-progress', timestamp: '2026-03-29 11:00',
-      body: 'Status transition happened automatically.', bodyLength: 41 },
-    { type: 'Status Change: in-progress → done', timestamp: '2026-03-29 12:00',
-      body: 'Marking as done after completion of work.', bodyLength: 41 },
-  ];
-  const result = validateLogForTerminal(entries, 'verified', 'P001_T001');
-  assert(!result.valid, 'Status Change entries should not count — no real work logged');
-});
-
-test('ADV-13: Unit — multiple short non-Created entries, none > 30 chars → INVALID', () => {
-  const entries = [
-    { type: 'Created', timestamp: '2026-03-29', body: 'Init.', bodyLength: 5 },
-    { type: 'Work Log', timestamp: '2026-03-29', body: 'started work', bodyLength: 12 },
-    { type: 'Review', timestamp: '2026-03-29', body: 'looks good to me', bodyLength: 16 },
-    { type: 'Done', timestamp: '2026-03-29', body: 'all done now', bodyLength: 12 },
-  ];
-  const result = validateLogForTerminal(entries, 'done', 'P001_T001');
-  assert(!result.valid, 'multiple short entries should still fail');
-  assert(result.reason.includes('3'), 'reason should mention count of work entries found');
+test('ADV-11: Unit — writing a ticket document during a later regressing cycle is not a trigger', () => {
+  const statePath = path.join(projectDir, '.crabshell', 'memory', 'regressing-state.json');
+  fs.writeFileSync(statePath, JSON.stringify({ active: true, cycle: 3, totalCycles: 10, phase: 'ticketing', prevPlanId: 'P001', ticketIds: [] }));
+  try {
+    const ticket = path.join(projectDir, '.crabshell', 'ticket', 'D001_T002-next.md').replace(/\\/g, '/');
+    assertEqual(evaluateLogGuard({ tool_name: 'Write', tool_input: { file_path: ticket, content: '# next\n' } }, projectDir), null, 'result');
+  } finally {
+    fs.rmSync(statePath, { force: true });
+  }
 });
 
 test('ADV-14: Integration — Write to INDEX.md with no status changes → allow', () => {

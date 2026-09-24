@@ -676,14 +676,16 @@ test('SUBPROCESS check: TaskCreate with pressure.level=0 is no-op', function() {
 // ============================================================
 // 11. Subprocess: check — Skill phase advancement
 // ============================================================
-test('SUBPROCESS check: Skill planning advances to ticketing', function() {
+// D119 cycle 8: a document skill call advances the workflow only when its
+// arguments name the workflow's discussion or plan (tool_input.args).
+test('SUBPROCESS check: Skill planning naming the workflow plan advances to ticketing', function() {
   const { tmpDir, memDir } = setupProject();
   try {
     fs.writeFileSync(path.join(memDir, 'regressing-state.json'), JSON.stringify({
       active: true, phase: 'planning', cycle: 1, totalCycles: 3,
-      discussion: 'D001', lastUpdatedAt: new Date().toISOString()
+      discussion: 'D001', planId: 'P001', lastUpdatedAt: new Date().toISOString()
     }));
-    runCheck(tmpDir, { tool_name: 'Skill', tool_input: { skill: 'planning' }, session_id: 'testreg1' });
+    runCheck(tmpDir, { tool_name: 'Skill', tool_input: { skill: 'planning', args: 'P001' }, session_id: 'testreg1' });
     const state = JSON.parse(fs.readFileSync(path.join(memDir, 'regressing-state.json'), 'utf8'));
     assertEqual(state.phase, 'ticketing', 'phase');
   } finally {
@@ -713,7 +715,7 @@ test('SUBPROCESS check: Skill ticketing advances to execution', function() {
       active: true, phase: 'ticketing', cycle: 1, totalCycles: 3,
       discussion: 'D001', planId: 'P001', lastUpdatedAt: new Date().toISOString()
     }));
-    runCheck(tmpDir, { tool_name: 'Skill', tool_input: { skill: 'ticketing' }, session_id: 'testreg3' });
+    runCheck(tmpDir, { tool_name: 'Skill', tool_input: { skill: 'ticketing', args: 'D001 "T1 — work"' }, session_id: 'testreg3' });
     const state = JSON.parse(fs.readFileSync(path.join(memDir, 'regressing-state.json'), 'utf8'));
     assertEqual(state.phase, 'execution', 'phase');
   } finally {

@@ -7,6 +7,7 @@ const { REGRESSING_STATE_FILE, DOC_TYPES } = require('../constants');
 const { isRegressingStale } = require('../regressing-state');
 const { buildMemoryContext } = require('./memory-context');
 const { getPostCompactWarning } = require('../shared-context');
+const { readIndexRows } = require('./index-rows');
 
 const MAX_CONTEXT_CHARS = 9000;
 const TERMINAL_DOC_STATUSES = new Set(['done', 'concluded', 'verified', 'abandoned']);
@@ -18,19 +19,9 @@ function getActiveDocs(projectDir) {
     const indexPath = path.join(storageRoot, dir, 'INDEX.md');
     let content;
     try { content = fs.readFileSync(indexPath, 'utf8'); } catch { continue; }
-    for (const line of content.split(/\r?\n/)) {
-      if (!line.startsWith('|')) continue;
-      const rawCells = line.split(/(?<!\\)\|/).slice(1, -1), cells = [];
-      for (let i = 0; i < rawCells.length; i++) {
-        let cell = rawCells[i];
-        while (cell.includes('[[') && !cell.includes(']]') && i + 1 < rawCells.length) cell += '|' + rawCells[++i];
-        cells.push(cell.replace(/\\\|/g, '|').trim());
-      }
-      if (cells.length < 3) continue;
-      const [id, title] = cells;
-      const status = cells[2].toLowerCase();
-      if (id === 'ID' || id.startsWith('-') || TERMINAL_DOC_STATUSES.has(status)) continue;
-      active.push({ type: label, id, title, status });
+    for (const { id, status, cells } of readIndexRows(content)) {
+      if (cells.length < 3 || TERMINAL_DOC_STATUSES.has(status)) continue;
+      active.push({ type: label, id, title: cells[1], status });
     }
   }
   return active;

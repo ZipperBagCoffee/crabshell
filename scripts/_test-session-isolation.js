@@ -219,7 +219,9 @@ const stop = (project, sid, file) => h.runHook(root, 'completion-controller.js',
 {
   const project = h.makeProject(root, 's21-ownership-moves');
   fs.writeFileSync(h.memoryPath(project, 'regressing-state.json'), JSON.stringify({ active: true, phase: 'planning', cycle: 1, totalCycles: 1, discussion: 'D900', sessionId: A, lastUpdatedAt: new Date().toISOString() }));
-  h.runHook(root, 'counter.js', ['check'], { hook_event_name: 'PostToolUse', session_id: C, tool_name: 'Skill', tool_input: { skill: 'crabshell:planning' } }, project);
+  // The planning phase ends with the cycle plan written into the discussion
+  // (/discussing naming it); calls that do not name the workflow do not count.
+  h.runHook(root, 'counter.js', ['check'], { hook_event_name: 'PostToolUse', session_id: C, tool_name: 'Skill', tool_input: { skill: 'crabshell:discussing', args: 'D900' } }, project);
   const owner = (h.readJson(h.memoryPath(project, 'regressing-state.json')) || {}).sessionId;
   report.check('S21 the session that runs the workflow\'s next skill becomes its owner (after /clear or relaunch)', owner === C, `owner=${owner}`);
 }

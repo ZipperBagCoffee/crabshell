@@ -17,6 +17,7 @@
 const fs = require('fs');
 const path = require('path');
 const { STORAGE_ROOT, DOC_TYPES } = require('./constants');
+const { readIndexRows } = require('./core/index-rows');
 
 // ---------- CLI parsing ----------
 
@@ -342,16 +343,9 @@ function checkIndex(crabshellDir) {
       }
     }
 
-    // For each INDEX row referencing a known ID pattern, check file exists
-    // We look for patterns that look like document IDs: D\d+, P\d+, I\d+, W\d+, P\d+_T\d+
-    const idPattern = /\b([DPITWH]\d+(?:_T\d+)?)\b/g;
-    const indexedIds = new Set();
-    for (const line of idxLines) {
-      let m;
-      while ((m = idPattern.exec(line)) !== null) {
-        indexedIds.add(m[1]);
-      }
-    }
+    // For each INDEX row, check the document it lists (its ID column) exists.
+    // IDs in other columns (Related, Tickets, titles) belong to other folders.
+    const indexedIds = new Set(readIndexRows(idxContent).map(row => row.id));
 
     const diskIds = new Set(dirFiles.map((f) => fileId(f)));
     for (const id of indexedIds) {
@@ -500,4 +494,5 @@ function main() {
   process.exit(0);
 }
 
-main();
+// Runs only when executed: the lint writes a report into the target project.
+if (require.main === module) main();

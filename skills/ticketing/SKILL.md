@@ -35,8 +35,8 @@ INDEX.md content:
 ```
 # Ticket Index
 
-| ID | Title | Status | Created | Plan |
-|----|-------|--------|---------|------|
+| ID | Title | Status | Created | Parent |
+|----|-------|--------|---------|--------|
 ```
 
 ### Step 3: Determine next ticket ID
@@ -314,5 +314,5 @@ If ticket status → `verified`:
 10. **Mandatory append of results:** The parent must append execution, direct verification, and final evaluation to the corresponding T sections. If delegation/review was used, its evidence and the parent's disposition must also be recorded. Verification not recorded in the document is treated as not performed. Before completion, the parent reads the T document and confirms all three required sections no longer contain `placeholder`; optional review notes are not a completion gate.
 11. **Exhaustive verification standard:** Verification follows the VERIFICATION-FIRST principle in RULES (Predict → Execute → Compare). When no project verification tool exists, invoke the 'verifying' skill. Direct → indirect → explicitly "unverified".
 12. **Regressing context transfer:** In the regressing loop, this T document's `## Final Verification > Next Direction` content is passed to the next cycle plan entry's Context (in the D log; for sessions still using plans, the next P document's Context). The Orchestrator must explicitly perform this transfer. (D is the top-level container and does not receive per-cycle context.)
-13. **Regressing state update:** If `.crabshell/memory/regressing-state.json` exists and is active, and the ticket belongs to that workflow (its parent is the state's `discussion` or `planId`, and this session is the state's `sessionId`), update it after ticket creation using: `"{NODE_PATH}" -e "const f='{PROJECT_DIR}/.crabshell/memory/regressing-state.json';const s=JSON.parse(require('fs').readFileSync(f,'utf8'));s.ticketIds.push('{T-ID}');s.lastUpdatedAt=new Date().toISOString();require('fs').writeFileSync(f,JSON.stringify(s,null,2))"`. Phase transition is handled automatically by the PostToolUse hook. Only applies when regressing-state.json exists — standalone ticketing usage is unaffected. Tickets for other work (a one-pass record in another session) are not added to the cycle.
+13. **Regressing state update:** If `.crabshell/memory/regressing-state.json` exists and is active, and the ticket belongs to that workflow (its parent is the state's `discussion` or `planId`), update it after ticket creation using: `"{NODE_PATH}" -e "const f='{PROJECT_DIR}/.crabshell/memory/regressing-state.json';const s=JSON.parse(require('fs').readFileSync(f,'utf8'));s.ticketIds.push('{T-ID}');s.lastUpdatedAt=new Date().toISOString();require('fs').writeFileSync(f,JSON.stringify(s,null,2))"`. Phase transition is handled automatically by the PostToolUse hook. Only applies when regressing-state.json exists — standalone ticketing usage is unaffected. Tickets for other work (a one-pass record in another session) are not added to the cycle.
 14. **No autonomous code writes:** Every Write/Edit to a code file must trace to an explicit Acceptance Criterion in this ticket. If a code file write is not covered by an AC, STOP — either add an AC (if in scope) or raise an Open Question. Completion drive = writing beyond the ticket's AC scope.

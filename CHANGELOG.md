@@ -1,5 +1,19 @@
 # Changelog
 
+## [21.131.0] - 2026-09-24
+
+### feat: one INDEX row reader; ticket checks that fire on real rows; workflow calls must name the workflow
+
+- **One reader for INDEX rows** (`scripts/core/index-rows.js`). The skills write the ID cell as `[[slug|ID]]` and Obsidian tables escape other links as `[[slug\|ID]]`; a plain `split('|')` cut both apart, so every check that read a row's ID or status was silently off on real INDEX files (they have used wikilinks since the April migration). `log-guard`, the prompt-time ticket status reminder, the lint ghost check, the migration's INDEX lookup and the compaction context now share the reader; the compaction context lists active documents by bare ID.
+- **log-guard now checks what a ticket actually records.** A ticket cannot be marked `done` while its Execution Results still hold template text (`(placeholder` or `(pending)` with only empty sub-headings), or `verified` while any result section does. It reads the document the row links to, so a draft sharing an ID prefix is not mistaken for it.
+  - **Removed — the work-log length rule** (a terminal status needed a log entry over 30 characters). It had been inactive since the wikilink migration; replayed on this repository it would have blocked 162 of 602 real transitions (plans 64, tickets 68, hotfixes 21), including the ticketing cascade, because results live in the result sections. With the new check, 7 of 602 are blocked — each a ticket marked verified with empty result sections.
+  - **Removed — the previous-cycle check**, which read `prevPlanId` from the regressing state; nothing wrote it, so it never ran.
+  - Plans, discussions, investigations and hotfixes are no longer checked here: a plan becomes done through the ticketing cascade, a discussion concludes through its final report.
+- **A document skill call moves a regressing workflow only when it names the workflow.** `/discussing`, `/planning` and `/ticketing` count for the workflow's phase and owner only when their arguments name its discussion or plan (`D001_T001` names `D001`; `D0012` does not). Before, another session's `/ticketing D050 "x"` moved this workflow to execution and took ownership; only `/discussing` was checked. The first discussing phase (no discussion ID yet) still advances without arguments.
+- **Ticketing wording.** Rule 13 decides by the ticket's parent only (the model cannot see its session ID). A new ticket INDEX names its last column `Parent` (Claude template and the Codex document tool); existing INDEX files keep theirs.
+- **Scripts that change a project no longer run when loaded.** `migrate-obsidian.js` and `lint-obsidian.js` run only when executed (`require.main === module`); `migrate-obsidian` exports `lookupIndexEntry`. While this release was being written, a test that loaded `migrate-obsidian.js` ran the Obsidian migration on this repository's own documents (IDs in prose became links; five draft files got frontmatter, which was removed again).
+- **Tests:** `_test-index-rows.js` (rows copied from this repository's INDEX files; each consumer; unfinished-section rules). `_test-log-guard.js` drops the unit tests of the removed functions and rewrites six integration tests for the new contract; `_test-d-parent-tickets.js` adds the phase cases A2 and A4–A9; `_test-d-t-skills.js` adds Rule 13 and the INDEX header; `_test-counter.js` and `_test-session-isolation.js` pass the workflow name with the skill call.
+
 ## [21.130.0] - 2026-09-24
 
 ### feat: documents are D (the discussion carries the plan) → T; retired guards removed

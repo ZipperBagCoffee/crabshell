@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.130.0)
+# Crabshell User Manual (v21.131.0)
 
 ## Why Do You Need This?
 
@@ -299,7 +299,7 @@ Guards run inside the Claude PreToolUse, PostToolUse and Stop hooks (one process
 | Guard | What It Protects Against |
 |-------|------------------------|
 | `docs-guard.js` | Direct writes to `docs/` directories outside of an active skill (discussing, planning, ticketing, etc.) |
-| `log-guard.js` | Marking documents as done/verified/concluded in INDEX.md without log entries in the document; creating new cycle documents without logging the previous cycle |
+| `log-guard.js` | Marking a ticket done in INDEX.md while its Execution Results is still template text, or verified while any result section is (other documents are not checked) |
 | `verify-guard.js` | Writing "Final Verification" results to ticket files without actually running `/verifying` first. Hybrid: Edit always enforces; Write only enforces on existing files (new ticket creation is allowed) |
 | `path-guard.js` | Bash commands that write into another project's `.crabshell` (redirects, rm/mv/mkdir/tee, cp/rsync/ln destinations, sed -i, find -delete, xargs rm, tar/curl/dd, powershell/cmd, code that writes). Reading another project's `.crabshell` is allowed with a notice; prose, grep patterns, heredoc text, temp folders and unknown variables are never blocked (v21.125.0). Also: Edit or shrinking Write on `logbook.md`, direct skill-flag writes. Not covered: Write/Edit tool calls into another project, values from earlier commands |
 | `web-guard.js` | Built-in WebFetch/WebSearch small-model summarization (Anthropic docs: "lossy by design"; hallucinated citations in research). WebFetch is blocked with ready-to-run raw-fetch commands for the same URL; WebSearch is redirected to a search MCP this project can use (user-wide, this project's `~/.claude.json` entry, or `.mcp.json`; provider names such as tavily/brave/exa must be a whole word of the server name, v21.125.0) or, when none exists, allowed with a "snippets are pointers, fetch before citing" warning so machines without a search MCP never lose search entirely. Modes: `block` (default) / `warn` / `off` via `webGuard` in config.json (v21.114.0) |

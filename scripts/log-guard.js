@@ -1,25 +1,21 @@
 'use strict';
 
 /**
- * log-guard.js — PreToolUse guard for D/P/T/I status transitions
+ * log-guard.js — PreToolUse guard for ticket status transitions
  *
- * Purpose: Prevent status transitions to terminal states in INDEX.md
- * unless the corresponding document file has substantive log entries.
+ * Purpose: a ticket cannot be marked done while its Execution Results still
+ * hold template text, or verified while any result section does (ticketing
+ * Rule 10). Trigger: Edit OR Write on INDEX.md that changes a ticket's status
+ * to done/verified. Rows are read with core/index-rows (wikilink ID cells
+ * included).
  *
- * Two triggers:
- *   Trigger 1: Edit OR Write on INDEX.md that changes status → terminal
- *   Trigger 2: Write/Edit creating new plan/ticket during regressing cycle > 1
- *              (Bypass 5 defense: LLM skips to next cycle without closing previous)
+ * Other documents are not checked: a plan becomes done through the ticketing
+ * cascade and a discussion concludes through its Final Report. The former
+ * work-log length rule was removed in D119 cycle 8 — it had been inactive since
+ * the wikilink INDEX migration and, replayed on this repository, would have
+ * blocked 162 of 602 real transitions whose results live in result sections.
  *
- * Bypass defenses:
- *   Bypass 1 (Rubber-stamp): Non-Created entries must have body > 30 chars.
- *     countLogEntries is replaced by parseLogEntries + validateLogForTerminal.
- *   Bypass 2 (Bash INDEX.md): Not solvable here — path-guard.js restricts
- *     Bash on .crabshell/ paths. KNOWN LIMITATION: if Bash somehow modifies
- *     INDEX.md status directly (e.g., sed), this guard won't catch it.
- *   Bypass 5 (Next-step trigger): Checks regressing-state.json prevPlanId
- *     when creating new plan/ticket docs in cycle > 1; blocks if previous
- *     cycle tickets are not in terminal status.
+ * KNOWN LIMITATION: a Bash command that edits INDEX.md directly is not seen.
  *
  * Matcher: Write|Edit (registered in hooks.json PreToolUse)
  */
@@ -32,17 +28,14 @@ const { readStdin, normalizePath } = require('./transcript-utils');
 // F1 mitigation: keep inline env check for fail-open invariant — D106 IA-10 RA2
 if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 
-const { getProjectDir, docDirsPattern, ticketDocPattern } = require('./utils');
+const { getProjectDir, docDirsPattern } = require('./utils');
 const { STORAGE_ROOT, TICKET_ID_SOURCE } = require('./constants');
+const { parseIndexRow } = require('./core/index-rows');
 
 // --- Constants ---
 
 // INDEX.md path pattern
 const INDEX_PATTERN = new RegExp(`${docDirsPattern(type => type.workflow)}\\/INDEX\\.md$`, 'i');
-
-// Plan/ticket document pattern (not INDEX.md) — used by Trigger 2
-const PLAN_DOC_PATTERN = /\.crabshell\/plan\/P\d{3}[^/]*\.md$/;
-const TICKET_DOC_PATTERN = new RegExp(`${ticketDocPattern()}[^/]*\\.md$`);
 
 // All known statuses across document types
 const ALL_STATUSES = new Set([
@@ -51,16 +44,15 @@ const ALL_STATUSES = new Set([
   'open', 'concluded'                                                    // discussions/investigations
 ]);
 
-// Terminal statuses that require substantive log entries
+// Statuses that claim completion
 const TERMINAL_STATUSES = new Set(['done', 'verified', 'concluded']);
 
-// Minimum body length for a log entry to count as substantive (Bypass 1 defense)
-const MIN_ENTRY_BODY_LENGTH = 30;
+const TICKET_ID = new RegExp(`^${TICKET_ID_SOURCE}$`);
 
 // --- Helpers ---
 
 /**
- * Check if a transition is exempt from log requirement.
+ * Check if a transition is exempt from the check.
  * Exempt = transitions that represent process steps, not completion claims.
  */
 function isExemptTransition(fromStatus, toStatus) {
@@ -75,69 +67,42 @@ function isExemptTransition(fromStatus, toStatus) {
 }
 
 /**
- * Extract status from a pipe-delimited table row.
- * Status is always column 3 in INDEX.md tables:
- *   | ID | Title | Status | Created | ... |
- * cells[0]='' cells[1]=ID cells[2]=Title cells[3]=Status
+ * Status of an INDEX.md row (third column: | ID | Title | Status | ... |),
+ * or null when the row is not a document row or the cell is not a status.
  */
 function extractStatusFromRow(row) {
-  if (!row || typeof row !== 'string') return null;
-  const trimmed = row.trim();
-  if (!trimmed.startsWith('|')) return null;
-  const cells = trimmed.split('|').map(c => c.trim());
-  if (cells.length < 4) return null;
-  const candidate = cells[3].toLowerCase();
-  if (ALL_STATUSES.has(candidate)) return candidate;
-  return null;
+  const parsed = parseIndexRow(row);
+  return parsed && ALL_STATUSES.has(parsed.status) ? parsed.status : null;
 }
 
 /**
- * Extract document ID from a pipe-delimited table row.
- * ID is cells[1] after split by '|'.
+ * Document ID of an INDEX.md row — bare (D052) or wikilinked ([[D052-slug|D052]]).
  */
 function extractIdFromRow(row) {
-  if (!row || typeof row !== 'string') return null;
-  const trimmed = row.trim();
-  if (!trimmed.startsWith('|')) return null;
-  const cells = trimmed.split('|').map(c => c.trim());
-  if (cells.length < 2) return null;
-  const id = cells[1];
-  if (/^[DPTIH]\d{3}(_T\d{3})?$/.test(id)) return id;
-  return null;
+  const parsed = parseIndexRow(row);
+  return parsed ? parsed.id : null;
+}
+
+// Status changes between two versions of INDEX rows:
+// [{ docId, fromStatus, toStatus, target }] (target = the row's link target).
+function compareRows(oldText, newText) {
+  const rows = text => String(text || '').split(/\r?\n/).map(parseIndexRow).filter(row => row && ALL_STATUSES.has(row.status));
+  const oldMap = new Map(rows(oldText).map(row => [row.id, row.status]));
+  const changes = [];
+  for (const row of rows(newText)) {
+    const fromStatus = oldMap.get(row.id);
+    if (fromStatus && fromStatus !== row.status) changes.push({ docId: row.id, fromStatus, toStatus: row.status, target: row.target || null });
+  }
+  return changes;
 }
 
 /**
  * Detect ALL status changes between old_string and new_string (Edit).
- * Returns array of {docId, fromStatus, toStatus}.
  * Handles batch edits (multiple rows changed in one old→new).
  */
 function detectStatusChanges(oldString, newString) {
-  const changes = [];
-  if (!oldString || !newString) return changes;
-
-  const oldLines = oldString.split(/\r?\n/).filter(l => l.trim().startsWith('|'));
-  const newLines = newString.split(/\r?\n/).filter(l => l.trim().startsWith('|'));
-
-  // Build ID→status map from old lines
-  const oldMap = new Map();
-  for (const line of oldLines) {
-    const id = extractIdFromRow(line);
-    const status = extractStatusFromRow(line);
-    if (id && status) oldMap.set(id, status);
-  }
-
-  // Compare new lines against old
-  for (const line of newLines) {
-    const id = extractIdFromRow(line);
-    const status = extractStatusFromRow(line);
-    if (!id || !status) continue;
-    const oldStatus = oldMap.get(id);
-    if (oldStatus && oldStatus !== status) {
-      changes.push({ docId: id, fromStatus: oldStatus, toStatus: status });
-    }
-  }
-
-  return changes;
+  if (!oldString || !newString) return [];
+  return compareRows(oldString, newString);
 }
 
 /**
@@ -145,47 +110,26 @@ function detectStatusChanges(oldString, newString) {
  * Reads existing file content from disk, compares with new content.
  */
 function detectStatusChangesWrite(filePath, newContent) {
-  const changes = [];
   let oldContent;
   try {
-    const osPath = filePath.replace(/\//g, path.sep);
-    oldContent = fs.readFileSync(osPath, 'utf8');
+    oldContent = fs.readFileSync(filePath.replace(/\//g, path.sep), 'utf8');
   } catch {
-    return changes; // File doesn't exist — creation, not update
+    return []; // File doesn't exist — creation, not update
   }
-
-  const oldLines = oldContent.split(/\r?\n/).filter(l => l.trim().startsWith('|'));
-  const newLines = newContent.split(/\r?\n/).filter(l => l.trim().startsWith('|'));
-
-  const oldMap = new Map();
-  for (const line of oldLines) {
-    const id = extractIdFromRow(line);
-    const status = extractStatusFromRow(line);
-    if (id && status) oldMap.set(id, status);
-  }
-
-  for (const line of newLines) {
-    const id = extractIdFromRow(line);
-    const status = extractStatusFromRow(line);
-    if (!id || !status) continue;
-    const oldStatus = oldMap.get(id);
-    if (oldStatus && oldStatus !== status) {
-      changes.push({ docId: id, fromStatus: oldStatus, toStatus: status });
-    }
-  }
-
-  return changes;
+  return compareRows(oldContent, newContent);
 }
 
 /**
- * Find the document file for a given document ID in a category directory.
+ * Find the document file for an ID in a category directory: the row's link
+ * target when it exists (two files can share an ID prefix, e.g. a draft next
+ * to the document), otherwise the first file named after the ID.
  */
-function findDocumentFile(projectDir, category, docId) {
+function findDocumentFile(projectDir, category, docId, target) {
   const docDir = path.join(projectDir, STORAGE_ROOT, category);
   try {
+    if (target && fs.existsSync(path.join(docDir, `${target}.md`))) return path.join(docDir, `${target}.md`);
     if (!fs.existsSync(docDir)) return null;
-    const files = fs.readdirSync(docDir);
-    const match = files.find(f =>
+    const match = fs.readdirSync(docDir).find(f =>
       f.startsWith(docId) && f.endsWith('.md') && f !== 'INDEX.md'
     );
     return match ? path.join(docDir, match) : null;
@@ -194,223 +138,45 @@ function findDocumentFile(projectDir, category, docId) {
   }
 }
 
-/**
- * Parse log entries from a document's ## Log section.
- * Returns array of {type, timestamp, body, bodyLength}.
- *
- * Entry header: ### [YYYY-MM-DD HH:MM] EntryType
- * Body: text between header and next entry/section/EOF.
- */
-function parseLogEntries(content) {
-  const entries = [];
-  if (!content) return entries;
+// Ticket result sections. The template puts "(placeholder — ...)" (older
+// tickets: "(pending)") under each heading, some with a role suffix such as
+// "(Work Agent)"; a section is unfinished while that marker and empty
+// sub-headings are all it holds.
+const RESULT_SECTION = /^## (Execution Results|Verification Results|Final Verification|Orchestrator Evaluation)\b[^\n]*$/gm;
+const TEMPLATE_MARKER = /^\((?:pending|placeholder)\b/;
 
-  // Find ## Log or ## Discussion Log section
-  const logMatch = content.match(/^##\s+(Log|Discussion Log)\s*$/m);
-  if (!logMatch) return entries;
-
-  const logStart = logMatch.index + logMatch[0].length;
-  const rest = content.slice(logStart);
-  // Section ends at next ## heading or EOF
-  const nextHeading = rest.match(/\n## [^#]/);
-  const logContent = nextHeading ? rest.slice(0, nextHeading.index) : rest;
-
-  const entryRegex = /^###\s+\[([^\]]+)\]\s+(.+)/gm;
-  let match;
-  const headers = [];
-  while ((match = entryRegex.exec(logContent)) !== null) {
-    headers.push({
-      index: match.index,
-      endOfHeader: match.index + match[0].length,
-      timestamp: match[1],
-      type: match[2].trim(),
-    });
+function unfinishedSections(content) {
+  const unfinished = [];
+  for (const match of content.matchAll(RESULT_SECTION)) {
+    const rest = content.slice(match.index + match[0].length);
+    const next = rest.search(/\n## [^#]/);
+    const lines = (next === -1 ? rest : rest.slice(0, next)).split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    if (lines.length && TEMPLATE_MARKER.test(lines[0]) && lines.slice(1).every(l => /^#{3,}\s/.test(l))) unfinished.push(match[1]);
   }
-
-  for (let i = 0; i < headers.length; i++) {
-    const h = headers[i];
-    const bodyStart = h.endOfHeader;
-    const bodyEnd = i + 1 < headers.length ? headers[i + 1].index : logContent.length;
-    const rawBody = logContent.slice(bodyStart, bodyEnd);
-    // Strip blank lines and separator lines (---), then measure
-    const body = rawBody
-      .split(/\r?\n/)
-      .filter(l => l.trim() !== '' && l.trim() !== '---')
-      .map(l => l.trim())
-      .join('\n')
-      .trim();
-
-    entries.push({
-      type: h.type,
-      timestamp: h.timestamp,
-      body,
-      bodyLength: body.length,
-    });
-  }
-
-  return entries;
+  return unfinished;
 }
 
 /**
- * Check if a log entry is a "Created" entry.
- */
-function isCreatedEntry(entry) {
-  return /^Created$/i.test(entry.type);
-}
-
-/**
- * Check if a log entry is a "Status Change" entry.
- */
-function isStatusChangeEntry(entry) {
-  return /^Status Change:/i.test(entry.type);
-}
-
-/**
- * Validate that a document has substantive log entries for a terminal transition.
- * Returns {valid: boolean, reason: string}.
- *
- * Bypass 1 defense:
- *   - Must have >= 1 non-Created, non-StatusChange entry
- *   - Those entries must have body > MIN_ENTRY_BODY_LENGTH chars
- */
-function validateLogForTerminal(entries, toStatus, docId) {
-  if (entries.length === 0) {
-    return {
-      valid: false,
-      reason: `${docId}: no log entries found. Add work log entries before transitioning to "${toStatus}".`,
-    };
-  }
-
-  // Filter to work entries (not Created, not Status Change)
-  const workEntries = entries.filter(e => !isCreatedEntry(e) && !isStatusChangeEntry(e));
-
-  if (workEntries.length === 0) {
-    return {
-      valid: false,
-      reason: `${docId}: only "Created"/"Status Change" entries found. Status "${toStatus}" requires at least one work log entry (Work Log, Verification Run, etc.) beyond initial creation.`,
-    };
-  }
-
-  // Bypass 1 defense: check body length of work entries
-  const substantive = workEntries.filter(e => e.bodyLength > MIN_ENTRY_BODY_LENGTH);
-  if (substantive.length === 0) {
-    return {
-      valid: false,
-      reason: `${docId}: found ${workEntries.length} work log entries, but none have substantive content (>${MIN_ENTRY_BODY_LENGTH} chars). Add meaningful descriptions before transitioning to "${toStatus}".`,
-    };
-  }
-
-  return { valid: true, reason: '' };
-}
-
-/**
- * Check if a ticket document still has "(pending)" in result sections.
+ * Check that a ticket's result sections are filled in for the target status:
+ * done needs Execution Results (verification comes after done); verified —
+ * or an unspecified status — needs every result section.
  * Only applies to ticket documents (constants TICKET_ID_SOURCE).
  * Returns {valid: boolean, reason: string}.
- *
- * Checks these sections:
- *   - ## Execution Results (Work Agent)
- *   - ## Verification Results (Review Agent)
- *   - ## Orchestrator Evaluation
  */
-function validatePendingSections(content, docId) {
-  if (!content) return { valid: true, reason: '' };
+function validatePendingSections(content, docId, toStatus) {
+  if (!content || !TICKET_ID.test(docId)) return { valid: true, reason: '' };
 
-  // Only check tickets
-  if (!new RegExp(`^${TICKET_ID_SOURCE}$`).test(docId)) return { valid: true, reason: '' };
-
-  const pendingSections = [];
-
-  const patterns = [
-    { label: 'Execution Results (Work Agent)', regex: /^## Execution Results \(Work Agent\)\s*\n\(pending\)/m },
-    { label: 'Verification Results (Review Agent)', regex: /^## Verification Results \(Review Agent\)\s*\n\(pending\)/m },
-    { label: 'Orchestrator Evaluation', regex: /^## Orchestrator Evaluation\s*\n\(pending\)/m },
-  ];
-
-  for (const p of patterns) {
-    if (p.regex.test(content)) {
-      pendingSections.push(p.label);
-    }
-  }
+  const pendingSections = unfinishedSections(content)
+    .filter(section => toStatus !== 'done' || section === 'Execution Results');
 
   if (pendingSections.length > 0) {
     return {
       valid: false,
-      reason: `${docId}: cannot transition to terminal status — the following sections still contain "(pending)": ${pendingSections.join(', ')}. Complete these sections before marking done.`,
+      reason: `${docId}: cannot transition to "${toStatus || 'verified'}" — these sections still hold template text ("(placeholder" or "(pending)"): ${pendingSections.join(', ')}. Write the results into them first.`,
     };
   }
 
   return { valid: true, reason: '' };
-}
-
-// --- Trigger 2: Bypass 5 defense ---
-
-/**
- * Check if creating a new plan/ticket during regressing cycle > 1.
- * If so, verify previous cycle's tickets reached terminal status.
- * Returns {shouldBlock, reason} or null if N/A.
- */
-function checkRegressingCycleGuard(filePath, projectDir) {
-  const normalized = normalizePath(filePath);
-
-  // Only triggers on plan/ticket documents (not INDEX.md)
-  const isPlanDoc = PLAN_DOC_PATTERN.test(normalized) && !/INDEX\.md$/i.test(normalized);
-  const isTicketDoc = TICKET_DOC_PATTERN.test(normalized) && !/INDEX\.md$/i.test(normalized);
-  if (!isPlanDoc && !isTicketDoc) return null;
-
-  // Check regressing state
-  const { STORAGE_ROOT, REGRESSING_STATE_FILE } = require('./constants');
-  const statePath = path.join(projectDir, STORAGE_ROOT, 'memory', REGRESSING_STATE_FILE);
-  let state;
-  try {
-    state = JSON.parse(fs.readFileSync(statePath, 'utf8'));
-  } catch {
-    return null;
-  }
-
-  if (!state || state.active !== true) return null;
-  const cycle = state.cycle || 1;
-  if (cycle <= 1) return null;
-
-  // Need prevPlanId to find previous cycle's tickets
-  const prevPlanId = state.prevPlanId;
-  if (!prevPlanId) return null;
-
-  // Read ticket INDEX.md
-  const ticketIndexPath = path.join(projectDir, STORAGE_ROOT, 'ticket', 'INDEX.md');
-  let ticketIndex;
-  try {
-    ticketIndex = fs.readFileSync(ticketIndexPath, 'utf8');
-  } catch {
-    return null; // Can't read — fail-open
-  }
-
-  const rows = ticketIndex.split(/\r?\n/).filter(r => r.trim().startsWith('|'));
-  const incomplete = [];
-
-  for (const row of rows) {
-    const id = extractIdFromRow(row);
-    const status = extractStatusFromRow(row);
-    if (!id || !status) continue;
-
-    // Check Plan column (cells[5] after split by |)
-    const cells = row.split('|').map(c => c.trim());
-    const planCol = cells.length >= 6 ? cells[5] : '';
-
-    if (planCol === prevPlanId && !['done', 'verified', 'concluded', 'abandoned'].includes(status)) {
-      incomplete.push({ id, status });
-    }
-  }
-
-  if (incomplete.length > 0) {
-    const details = incomplete.map(t => `${t.id}(${t.status})`).join(', ');
-    return {
-      shouldBlock: true,
-      reason: `Regressing cycle ${cycle}: previous plan ${prevPlanId} has incomplete tickets: ${details}. Update their status in INDEX.md before creating new cycle documents.`,
-    };
-  }
-
-  return null;
 }
 
 // --- Main ---
@@ -428,69 +194,46 @@ function evaluateLogGuard(hookData, projectDir) {
   const filePath = normalizePath(input.file_path || input.path || '');
   if (!filePath) return null;
 
-  // === Trigger 1: Edit or Write on INDEX.md — status change to terminal ===
+  // Edit or Write on INDEX.md — a ticket status change to done/verified
   const indexMatch = filePath.match(INDEX_PATTERN);
-  if (indexMatch) {
-    const category = indexMatch[1]; // discussion|plan|ticket|investigation
+  if (!indexMatch) return null;
+  const category = indexMatch[1]; // the document folder (constants DOC_TYPES)
 
-    let changes = [];
-    if (toolName === 'Edit') {
-      changes = detectStatusChanges(input.old_string || '', input.new_string || '');
-    } else if (toolName === 'Write') {
-      changes = detectStatusChangesWrite(filePath, input.content || '');
+  const changes = toolName === 'Edit'
+    ? detectStatusChanges(input.old_string || '', input.new_string || '')
+    : detectStatusChangesWrite(filePath, input.content || '');
+
+  const ticketChanges = changes.filter(c =>
+    TICKET_ID.test(c.docId) && TERMINAL_STATUSES.has(c.toStatus) && !isExemptTransition(c.fromStatus, c.toStatus)
+  );
+
+  const logs = [];
+  for (const change of ticketChanges) {
+    const docFile = findDocumentFile(projectDir, category, change.docId, change.target);
+
+    if (!docFile) {
+      // Orphaned INDEX entry (document file missing) → fail-open with warning
+      logs.push(`[LOG_GUARD] Warning: document file not found for ${change.docId} in ${category}/ — fail-open`);
+      continue;
     }
 
-    // Filter to non-exempt terminal transitions
-    const terminalChanges = changes.filter(c =>
-      TERMINAL_STATUSES.has(c.toStatus) && !isExemptTransition(c.fromStatus, c.toStatus)
-    );
-
-    const logs = [];
-    for (const change of terminalChanges) {
-      const docFile = findDocumentFile(projectDir, category, change.docId);
-
-      if (!docFile) {
-        // EC-7: Orphaned INDEX entry (document file missing) → fail-open with warning
-        logs.push(`[LOG_GUARD] Warning: document file not found for ${change.docId} in ${category}/ — fail-open`);
-        continue;
-      }
-
-      let content;
-      try {
-        content = fs.readFileSync(docFile, 'utf8');
-      } catch (e) {
-        return { reason: `[LOG_GUARD] Cannot read ${change.docId} document: ${e.message}.`, log: `[LOG_GUARD] Blocked: cannot read ${docFile}` };
-      }
-
-      const entries = parseLogEntries(content);
-      const validation = validateLogForTerminal(entries, change.toStatus, change.docId);
-
-      if (!validation.valid) {
-        return { reason: `[LOG_GUARD] ${validation.reason}`, log: `[LOG_GUARD] Blocked: ${change.docId} ${change.fromStatus}→${change.toStatus}` };
-      }
-
-      // Pending section check: tickets must not have "(pending)" in result sections
-      const pendingValidation = validatePendingSections(content, change.docId);
-      if (!pendingValidation.valid) {
-        return { reason: `[LOG_GUARD] ${pendingValidation.reason}`, log: `[LOG_GUARD] Blocked: ${change.docId} has pending sections` };
-      }
+    let content;
+    try {
+      content = fs.readFileSync(docFile, 'utf8');
+    } catch (e) {
+      return { reason: `[LOG_GUARD] Cannot read ${change.docId} document: ${e.message}.`, log: `[LOG_GUARD] Blocked: cannot read ${docFile}` };
     }
 
-    // All terminal transitions validated
-    if (terminalChanges.length > 0) {
-      logs.push(`[LOG_GUARD] Allowed ${terminalChanges.length} terminal transition(s)`);
+    const pendingValidation = validatePendingSections(content, change.docId, change.toStatus);
+    if (!pendingValidation.valid) {
+      return { reason: `[LOG_GUARD] ${pendingValidation.reason}`, log: `[LOG_GUARD] Blocked: ${change.docId} ${change.fromStatus}→${change.toStatus} has unfinished sections` };
     }
-    return logs.length ? { log: logs.join('\n') } : null;
   }
 
-  // === Trigger 2: Bypass 5 — new plan/ticket in regressing cycle > 1 ===
-  const cycleCheck = checkRegressingCycleGuard(filePath, projectDir);
-  if (cycleCheck && cycleCheck.shouldBlock) {
-    return { reason: `[LOG_GUARD] ${cycleCheck.reason}`, log: `[LOG_GUARD] Blocked new doc creation: ${cycleCheck.reason}` };
+  if (ticketChanges.length > 0) {
+    logs.push(`[LOG_GUARD] Allowed ${ticketChanges.length} ticket transition(s)`);
   }
-
-  // Neither trigger matched — allow
-  return null;
+  return logs.length ? { log: logs.join('\n') } : null;
 }
 
 async function main() {
@@ -520,16 +263,8 @@ module.exports = {
   detectStatusChangesWrite,
   isExemptTransition,
   findDocumentFile,
-  parseLogEntries,
-  isCreatedEntry,
-  isStatusChangeEntry,
-  validateLogForTerminal,
   validatePendingSections,
-  checkRegressingCycleGuard,
   ALL_STATUSES,
   TERMINAL_STATUSES,
-  MIN_ENTRY_BODY_LENGTH,
   INDEX_PATTERN,
-  PLAN_DOC_PATTERN,
-  TICKET_DOC_PATTERN,
 };
