@@ -1,10 +1,10 @@
-# Crabshell Plugin Structure (v21.125.0)
+# Crabshell Plugin Structure (v21.126.0)
 
-**Version**: 21.125.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.126.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
-Crabshell is a dual-runtime Claude Code/Codex plugin. Both hosts use native lifecycle hooks backed by shared first-turn, memory, workflow, compaction, subagent, and parent-completion cores. Claude retains automatic SessionEnd capture and pressure telemetry; Codex supplies synchronous native lifecycle and Interrupt events. Both share the D/P/T/I/W/K document system and `.crabshell/` storage. Version 21.125.0 runs each Claude hook event in one process (`scripts/adapters/claude/`) and narrows the path guard to writes (`scripts/core/shell-writes.js`); Version 21.124.0 added per-session state (`scripts/core/session-state.js`, `scripts/core/session-delta.js`) and the SessionStart budget; Version 21.123.0 added the failure/capture/finalization/recovery components listed below.
+Crabshell is a dual-runtime Claude Code/Codex plugin. Both hosts use native lifecycle hooks backed by shared first-turn, memory, workflow, compaction, subagent, and parent-completion cores. Claude retains automatic SessionEnd capture and pressure telemetry; Codex supplies synchronous native lifecycle and Interrupt events. Both share the D/P/T/I/W/K document system and `.crabshell/` storage. Version 21.126.0 adds test discovery, the load map and `--changed` to the verification runner; Version 21.125.0 runs each Claude hook event in one process (`scripts/adapters/claude/`) and narrows the path guard to writes (`scripts/core/shell-writes.js`); Version 21.124.0 added per-session state (`scripts/core/session-state.js`, `scripts/core/session-delta.js`) and the SessionStart budget; Version 21.123.0 added the failure/capture/finalization/recovery components listed below.
 
 Codex compatibility is provided in the same repository through a separate `.codex-plugin/plugin.json`, `codex-skills/`, and explicit wrapper scripts. Claude Code and Codex ship from the same repo but activate different manifests; both can share the `.crabshell/` memory and document store.
 
@@ -41,10 +41,11 @@ crabshell/
 │   ├── knowledge/                    # Knowledge pages (K001, K002...) — verified facts + operational tips
 │   │   └── INDEX.md
 │   └── verification/                 # Project-local schema-v2 verification artifacts
-│       ├── manifest.json             # Portable command/assertion contracts
-│       ├── run-verify.js             # Generated from the tracked skill runner
-│       ├── check-pipeline-wiring.js  # Copied from the tracked skill probe (v21.121.0)
-│       ├── wiring-contract.json      # Parent-approved hook/trigger/agent hops (v21.121.0)
+│       ├── manifest.json             # Portable command/assertion contracts; discover entry + tools.changed + changed.global (v21.126.0)
+│       ├── run-verify.js             # Generated from the tracked skill runner (--changed, load map, v21.126.0)
+│       ├── test-map.json             # Load map written by a passing full run (generated, not tracked; v21.126.0)
+│       ├── check-pipeline-wiring.js  # Copied from the tracked skill probe (v21.121.0; tracked in git since v21.126.0)
+│       ├── wiring-contract.json      # Parent-approved hook/trigger/agent hops (v21.121.0; tracked in git since v21.126.0)
 │       └── architecture/index.html   # Optional arch-explorer map — documentation only (v21.121.0)
 │
 ├── .claude-plugin/                   # Plugin configuration
@@ -154,6 +155,8 @@ crabshell/
 │   ├── doc-watchdog.js              # Doc-update omission checks: recordEdit/gateEdit/stopReason, in-project files only (v21.18.0, v21.125.0)
 │   ├── _test-doc-watchdog.js        # doc-watchdog.js 12-test integration suite (v21.18.0)
 │   ├── _test-restriction-controls.js # Lifted restrictions paired with writes that stay blocked (v21.125.0)
+│   ├── _test-changed-runner.js      # Discovery, load map and --changed selection incl. review false-negative cases (v21.126.0)
+│   ├── _test-gate-required-checks.js # Only tools/package.json test unlock the commit gate; entries stay evidence (v21.126.0)
 │   ├── _test-hook-wiring-cost.js     # Synchronous hook processes per tool call; Stop starts no child (v21.125.0)
 │   ├── _test-claude-dispatcher-parity.js # Old separate guards vs the PreToolUse dispatcher (v21.125.0)
 │   ├── _test-claude-dispatchers.js   # Moved behavior: compact effects, Read notice, inline observers, stdout, fail-open (v21.125.0)
@@ -461,6 +464,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.126.0 | Verification runs what changed: the manifest discovers every `scripts/_test-*.js` (22 → all 77 tests in the declared checks), `run-verify.js --changed` runs only the checks the changed files touch (a load map from a child-process-aware tracer; falls back to everything when it cannot know), the commit gate is unlocked only by the project's own check commands, and the declared checks pass on a fresh clone |
 | 21.125.0 | Guards block only real risks: path guard blocks writes into another project's `.crabshell` (reads get a notice; mentions, temp folders, unknown variables allowed), doc-watchdog counts only in-project edits, web-guard counts only this project's search servers; Claude hooks run one process per event (Edit 10→2, Bash 6→2, Read 3→1) with per-guard fail-open; Claude compaction hooks removed (effects run at SessionStart compact) |
 | 21.124.0 | Concurrent sessions: per-session L1 position, save counter, delta watermark, completion entry and skill flag; owner-token locks with one-at-a-time takeover; tree-scoped commit gate (prose/style/image edits exempt, advice when no check is configured, background launches not passing); SessionStart memory within a 9,500-character budget; L1 first-line loss fixed. |
 | 21.123.0 | Native hook capture, result binding/history and locks, Codex failure/Interrupt handling, prepared delta finalization and recovery context. |

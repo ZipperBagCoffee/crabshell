@@ -1,5 +1,56 @@
 # Changelog
 
+## [21.126.0] - 2026-09-24
+
+### feat: verification runs what changed; only the project's own checks unlock commits
+
+- **Every test file is a declared check.**
+  - The manifest's `discover` entry runs one check per `scripts/_test-*.js`. Before, the declared checks named 22 of 75 test files; now all 77 run (71 discovered, 6 explicit entries with their own arguments).
+  - A discovery rule that matches nothing fails with `matched no files`.
+  - Every `exclude` needs a reason.
+  - Explicit entries keep their own arguments, and the files they already run are not discovered twice.
+  - The rule pulls in the tests of retired guard scripts, which pass. They stay until the retired-code decision is made.
+- **`run-verify.js --changed` runs only the checks your change touches.**
+  - A passing full run writes `test-map.json` beside the manifest.
+  - For every check, the map records the files and folders it requires, reads, lists, copies or opens. This includes child processes: the tracer re-attaches even when a test builds a fresh environment or its own `NODE_OPTIONS`. It also records path strings in the test file and the files its assertions read.
+  - `--changed` reads the working tree against HEAD, with renames listed by both paths and untracked files included. `--files a,b` names the files instead, and `--dry-run` prints the selection.
+  - It runs everything when:
+    - a file matches `changed.global` (here `hooks/*.json`, `scripts/constants.js`, `scripts/utils.js`, the plugin manifests) or the defaults (package files, the manifest, the runner);
+    - there is no map;
+    - any recorded file changed after the map was written;
+    - a changed non-prose file is not in the map;
+    - nothing changed.
+  - A failing full run keeps the previous map.
+  - Measured on this repository: a `scripts/counter.js` change selects 33 of 94 checks, `scripts/web-guard.js` 25, `codex-skills/discussing/SKILL.md` 3, `hooks/hooks.json` all.
+- **Commit gate:**
+  - Only the project's required checks unlock a commit: manifest `tools` commands (`test`, the new `changed`) and package.json `test`.
+  - Passing a single manifest entry is still evidence for that entry. It no longer unlocks a commit, and starting one no longer re-locks a verified tree.
+  - Another session's interrupt no longer turns a single-entry pass into a verified tree.
+- **Fresh clones:**
+  - `check-pipeline-wiring.js` and `wiring-contract.json` are tracked.
+  - V009 checks that the version files agree instead of naming a version.
+  - In a clean checkout of this release (no `.crabshell/memory`, no map), the declared checks passed 94/94 with no missing-file failures.
+- **Verifying skill:** documents `discover`, `tools.changed`, `changed.global`, `--changed`, the load map, the fallback rules and the remaining blind spots.
+- **Found by running every test:** `_test-command-observation.js` could not run inside the declared runner (nested-run guard inherited); fixed.
+- **Independent review:**
+  - It found 9 ways a failing check could be skipped. All are fixed, each with a case that fails on the earlier code. The cases in `_test-changed-runner.js`:
+    - a test's own `NODE_OPTIONS`;
+    - file copies;
+    - dependency drift;
+    - renames;
+    - a document added to a listed folder;
+    - an empty change set;
+    - files read only by assertions;
+    - maps written by failing runs;
+    - file-URL reads.
+  - It also found the interrupt and re-lock gate issues (`_test-gate-required-checks.js` G7, G8).
+- **Tests:** `_test-changed-runner.js` (30), `_test-gate-required-checks.js` (8). Expectations changed with the contract in `_test-command-observation.js`: a single entry keeps the gate armed.
+- **Remaining limits:**
+  - Reads by non-Node processes and paths computed from data a check never touches are invisible to the map. Releases that change a version file always run everything.
+  - Editing a test, the manifest or the runner makes the next `--changed` run everything until a full run rebuilds the map.
+  - The native-host evidence folder keeps growing under `.crabshell/verification/`.
+  - `scripts/_v013-cycle1-check.js` still fails and is outside the discovery rule (not named `_test-*`); its deletion is an open question.
+
 ## [21.125.0] - 2026-09-24
 
 ### feat: guards block only real risks; Claude hooks run one process per event

@@ -55,21 +55,21 @@ function declaredCommands(projectDir) {
   const declarations = [];
   for (const command of Object.values(manifest.tools || {})) {
     const tokens = commandTokens(command);
-    if (tokens) declarations.push({ tokens, cwd: projectDir });
+    if (tokens) declarations.push({ tokens, cwd: projectDir, source: 'tools' });
   }
   for (const entry of manifest.entries || []) {
     if (entry.type === 'manual') continue;
     const command = entry.command;
     const tokens = typeof command === 'string' ? commandTokens(command)
       : command?.file && Array.isArray(command.args) ? [command.file, ...command.args] : null;
-    if (tokens) declarations.push({ tokens, cwd: path.resolve(projectDir, command.cwd || '.'), contract: entry.contract });
+    if (tokens) declarations.push({ tokens, cwd: path.resolve(projectDir, command.cwd || '.'), contract: entry.contract, source: 'entry' });
   }
   const scripts = readJson(path.join(projectDir, 'package.json')).scripts || {};
   // Test lifecycle configuration is authoritative; custom names can be declared
   // in manifest.tools/entries, without extending this recognizer.
   if (typeof scripts.test === 'string') {
-    declarations.push({ tokens: ['npm', 'test'], cwd: projectDir });
-    declarations.push({ tokens: ['npm', 'run', 'test'], cwd: projectDir });
+    declarations.push({ tokens: ['npm', 'test'], cwd: projectDir, source: 'package' });
+    declarations.push({ tokens: ['npm', 'run', 'test'], cwd: projectDir, source: 'package' });
   }
   // Follow package scripts referenced by declared checks, including arbitrary
   // names. The project, rather than a maintained list of tool names, chooses.
@@ -80,7 +80,7 @@ function declaredCommands(projectDir) {
     if (!name || expanded.has(name) || typeof scripts[name] !== 'string') continue;
     expanded.add(name);
     const command = commandTokens(scripts[name]);
-    if (command) declarations.push({ tokens: command, cwd: projectDir });
+    if (command) declarations.push({ tokens: command, cwd: projectDir, source: declarations[index].source });
   }
   return declarations;
 }
@@ -100,7 +100,10 @@ function findDeclaration(command, projectDir, cwd = projectDir) {
     && tokens.every((token, index) => canonicalToken(token, index, cwd)
       === canonicalToken(declaration.tokens[index], index, declaration.cwd)));
   // A generic tool alias must not bypass the same command's entry contract.
-  return matches.find(declaration => declaration.contract) || matches[0] || null;
+  const chosen = matches.find(declaration => declaration.contract) || matches[0] || null;
+  // Required = the project's own check commands (manifest tools, package.json test);
+  // a single manifest entry is evidence but does not unlock the commit gate.
+  return chosen && { ...chosen, required: matches.some(declaration => declaration.source !== 'entry') };
 }
 
 function isTrivialTest(command) {
@@ -122,6 +125,12 @@ function declarationKey(declaration) {
 function checkKeyForCommand(command, projectDir, cwd = projectDir) {
   const declaration = findDeclaration(command, projectDir, cwd);
   return declaration ? declarationKey(declaration) : null;
+}
+// True when the command is one of the project's own checks (manifest tools,
+// package.json test) — the only checks that arm or unlock the commit gate.
+function isRequiredCheck(command, projectDir, cwd = projectDir) {
+  const declaration = findDeclaration(command, projectDir, cwd);
+  return Boolean(declaration && declaration.required !== false);
 }
 
 // A path (relative to the project, or absolute) whose edits need a passing check:
@@ -270,6 +279,7 @@ function commandObservation(hookData = {}, projectDir, options = {}) {
     completedAtMs: nativeResult?.completedAtMs || null,
     evidenceSource: nativeResult?.evidenceSource || (failureEvent ? 'claude-failure-event' : 'hook-result'),
     checkKey: declarationKey(declaration),
+    required: declaration.required !== false,
     outcome: interrupted ? 'interrupted' : running ? 'running' : !conclusive ? 'unknown' : failed || exitCode !== 0 || !contractPassed ? 'failed' : 'passed',
   };
 }
@@ -287,5 +297,6 @@ module.exports = {
   isSourceFile,
   projectFingerprint,
   checkKeyForCommand,
+  isRequiredCheck,
   responseText,
 };
