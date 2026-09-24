@@ -62,6 +62,11 @@ function activeTaskScope(projectDir) {
   const ticketAllowed = tickets.map(ticket => readSection(ticket.content, 'Allowed Files')).filter(Boolean).join(' | ');
   const ticketAcceptance = tickets.map(ticket => readSection(ticket.content, 'Acceptance Criteria')).filter(Boolean).join(' | ');
   const planScope = readSection(plan.content, 'Scope');
+  // Discussion-based cycles have no plan: each ticket's own Scope (Included / Excluded) is the boundary.
+  const ticketScopes = tickets.map(ticket => readSection(ticket.content, 'Scope')).filter(Boolean);
+  const scopePart = (text, excluded) => { const at = text.search(/Excluded:/i); return at < 0 ? text : (excluded ? text.slice(at) : text.slice(0, at)).trim(); };
+  const ticketIncluded = ticketScopes.map(text => scopePart(text, false)).join(' | ');
+  const ticketExcluded = ticketScopes.map(text => scopePart(text, true)).join(' | ');
   const discussionNonGoals = readSection(discussion.content, 'Non-Goals');
   const references = [discussion, plan, ...tickets]
     .filter(document => document.id)
@@ -74,8 +79,8 @@ function activeTaskScope(projectDir) {
     `Exact task: ${compact(ticketIntent || readSection(plan.content, 'Intent'), 600) || '<not available>'}`,
     `Non-goals: ${compact(discussionNonGoals, 550) || '<not available>'}`,
     `Authoritative references: ${references || '<not available>'}`,
-    `Allowed changes: ${compact(ticketAllowed || planScope, 650) || '<not available>'}`,
-    `Forbidden changes: ${compact(planScope, 550) || '<not available>'}`,
+    `Allowed changes: ${compact(ticketAllowed || planScope || ticketIncluded, 650) || '<not available>'}`,
+    `Forbidden changes: ${compact(planScope || ticketExcluded, 550) || '<not available>'}`,
     `Observable success: ${compact(ticketAcceptance || readSection(plan.content, 'Acceptance Criteria'), 900) || '<not available>'}`,
   ].join('\n');
 }

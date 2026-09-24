@@ -1,5 +1,20 @@
 # Changelog
 
+## [21.130.0] - 2026-09-24
+
+### feat: documents are D (the discussion carries the plan) → T; retired guards removed
+
+- **Discussion-parent tickets.** A ticket can name a discussion as its parent: `D001_T001` (the new default), alongside `P001_T001` for existing plans.
+  - The ticket ID shape is defined once (`TICKET_PARENT_SOURCE`, `TICKET_ID_SOURCE` in `constants.js`, `utils.ticketDocPattern()`); `verify-guard`, `regressing-guard`, `log-guard` and the Codex document tool derive it. Before, a `D###_T###` ticket was skipped by these guards without an error.
+  - The Codex document tool takes `--parent=D001` (or `P001`; `--plan` still works) and rejects a missing or malformed parent without writing a file.
+  - A discussion that parents tickets is never concluded by the ticketing cascade; it concludes with its final report. Existing plans keep the old cascade.
+- **Regressing without plan documents.** Each cycle's plan is a `Cycle N plan` entry in the discussion log (intent, context, scope, steps, analysis, intent check), recorded with `/discussing`; tickets are created with `/ticketing D###`. The `/discussing` call ends the planning phase (`advancePhase` now accepts it; `/planning` still does for sessions using plans). Ticket numbers continue across cycles; the state file's `ticketIds` and the cycle entries record which ticket belongs to which cycle. For discussion-based cycles no hook enforces the plan-quality gate — it is the skill's rule.
+- **No new P or H documents.** `/planning` and `/hotfix` now direct new work to the discussion (one-pass work is a discussion with one ticket) and keep their update modes for existing documents (`/planning P001`, `/hotfix H001`). Existing P and H documents stay readable and searchable. Claude and Codex skills, the rules (`Workflows`, `Documents` lines) and the manuals are updated.
+- **Retired code deleted (user decision):** `sycophancy-guard.js`, `pressure-guard.js`, `scope-guard.js`, `regressing-loop-guard.js` (unwired since v21.107–113), `_v013-cycle1-check.js`, and the ten tests that only exercised them. Git history keeps them. The declared checks go from 97 to 89 (the new tests included).
+- **Independent review fixes:** another session's `/discussing` (for example a one-pass record) no longer moves this workflow's phase or takes it over — only a call naming the workflow's discussion counts; the Codex document tool refuses a parent that does not exist; worker scope and workflow outcomes for discussion-based cycles come from the ticket's Scope and the discussion's Convergence Criteria instead of `<not available>`; the ticketing skill adds only this workflow's tickets to the cycle, and its plan cascade never concludes an active regressing discussion or one that parents its own tickets; a one-pass discussion is concluded when its ticket is verified.
+- **Known, left for the next cycle:** the work-log check in `log-guard` and the prompt-time ticket status reminder do not parse wikilink INDEX rows (pre-existing, affects both parents); the previous-cycle completion check depends on a `prevPlanId` nothing writes.
+- **Tests:** `_test-d-parent-tickets.js` (each guard, the Codex tool and the phase change on P and D parents), `_test-d-t-skills.js` (skill instructions for both hosts and the rules).
+
 ## [21.129.0] - 2026-09-24
 
 ### feat: --changed ignores files whose time moved but content did not

@@ -25,7 +25,7 @@ The following patterns indicate regressing has degenerated into sequential batch
 
 | Anti-Pattern | What it looks like | Correct alternative |
 |---|---|---|
-| **Pre-partitioning** | P(1) divides total work into N equal parts, assigning each to a cycle | P(1) addresses highest-impact improvements. P(2+) respond to verification gaps. Cycle count is emergent, not planned |
+| **Pre-partitioning** | Cycle 1's plan divides total work into N equal parts, assigning each to a cycle | Cycle 1's plan addresses the highest-impact improvements; later cycle plans respond to verification gaps. Cycle count is emergent, not planned |
 | **Sequential pipeline** | Cycle 1 = modify, Cycle 2 = sync, Cycle 3 = version bump | Sequential tasks (version bump, cache sync, deploy) belong in the SAME cycle as separate tickets — NOT as separate cycles. Each cycle is a complete implement-verify-improve loop |
 | **Copy-paste feedback** | Next Direction says "continue with remaining items" | Next Direction diagnoses specific problems with evidence |
 | **Parent abdication** | Parent accepts a worker/reviewer claim as the final decision | Parent reopens decisive references, diffs, execution results, and side effects before completion |
@@ -89,7 +89,7 @@ Silence = proceed. Adjust any parameter by responding.
 
 ### Step 2.6: Goal-Mode Handoff (host continuation)
 
-Session continuation is goal-driven, not hook-forced. The host's goal mode (Claude Code 2.1.139+ `/goal`, Codex CLI 0.128.0+ `/goal`) keeps the session working until the host's evaluator confirms the Discussion is concluded. The old unconditional Stop-hook block (`regressing-loop-guard.js`) is retired; `completion-controller.js` still enforces bounded continuation on execution-authorized turns.
+Session continuation is goal-driven, not hook-forced. The host's goal mode (Claude Code 2.1.139+ `/goal`, Codex CLI 0.128.0+ `/goal`) keeps the session working until the host's evaluator confirms the Discussion is concluded. The old unconditional Stop-hook block (`regressing-loop-guard.js`) was removed; `completion-controller.js` still enforces bounded continuation on execution-authorized turns.
 
 Immediately after Step 2.5, print this ready-to-paste line for the user (fill in the real D-ID, file name, and cap):
 
@@ -98,7 +98,7 @@ Immediately after Step 2.5, print this ready-to-paste line for the user (fill in
 ```
 
 - Starting goal mode is the user's choice; the skill cannot start it. If the user does not start it, cycles still continue autonomously per Rule 5.
-- The goal condition MUST point at the D document only — the evaluator judges by reading it, so cycle results must land in the D/P/T documents (document-first) for the evaluator to see progress.
+- The goal condition MUST point at the D document only — the evaluator judges by reading it, so cycle results must land in the D/T documents (document-first) for the evaluator to see progress.
 
 ### Step 3: Pre-check (optional)
 
@@ -110,29 +110,25 @@ Immediately after Step 2.5, print this ready-to-paste line for the user (fill in
 
 ```
 repeat until convergence or cap reached:
-  Step 4a: Planning (P)
+  Step 4a: Cycle plan (an entry in the D log)
   Step 4b: Ticketing (T)
   Step 4c: Ticket Execution
   Step 4d: Feedback Transfer
 ```
 
-#### Step 4a: Planning — Create P(n)
-- Invoke `/planning`, formulate plan based on D's IA
-- **Cycle 1**: Plan addresses the highest-impact improvements for the CURRENT state. MUST NOT pre-allocate or partition work across future cycles. Plan should be completable in this single cycle.
-- **Cycle 2+**: P(n) Context MUST include T(n-1)'s `## Final Verification > Next Direction`. Plan MUST directly respond to diagnosed problems from the previous cycle — not continue a pre-determined schedule.
-- Parent: inspect the authoritative references, formulate the plan, and append analysis to the P document.
-- Optional delegation/review: use only for bounded independent work or a material risk. A reviewer, when used, checks the plan without receiving prior conclusions as its evidence source.
-- Parent: intent check against D's IA. REJECT plans that pre-allocate future-cycle work, reopen decisive references, and append the final intent check to the P document.
-- **Quality Gate (BLOCKING):** Parent analysis and Intent Check MUST be populated before Step 4b. If optional review was used, its evidence and the parent's disposition of each finding MUST also be recorded. An agent count or an empty optional-review section is not a quality gate.
-- After approval, proceed to ticket creation
-
-After /planning completes, update regressing state:
-- Set `"planId": "{P-ID}"`, `"lastUpdatedAt": "{ISO}"` using: `"{NODE_PATH}" -e "const f='{PROJECT_DIR}/.crabshell/memory/regressing-state.json';const s=JSON.parse(require('fs').readFileSync(f,'utf8'));s.planId='{P-ID}';s.lastUpdatedAt=new Date().toISOString();require('fs').writeFileSync(f,JSON.stringify(s,null,2))"` (phase transition is automatic via PostToolUse hook)
+#### Step 4a: Cycle plan — an entry in the D log
+- Invoke `/discussing D{NNN}` and append a `Cycle {n} plan` entry to the D document's log. The discussion carries the plan: new cycles create no plan document (existing P documents stay readable and searchable).
+- The entry contains: **Intent** (what this cycle improves), **Context** (cycle 2+: the previous cycle's Next Direction), **Scope** (included / excluded), **Steps**, **Analysis** (the evidence inspected — files, functions, measurements), **Intent Check** (against D's IA, at least one risk, approve or reject).
+- **Cycle 1**: the highest-impact improvements for the CURRENT state. MUST NOT pre-allocate or partition work across future cycles. The plan should be completable in this single cycle.
+- **Cycle 2+**: respond directly to the diagnosed problems from the previous cycle — not a pre-determined schedule.
+- The parent owns plan analysis: inspect the authoritative references, formulate the plan, and write the analysis into the entry. Optional review only for bounded independent work or a material risk; a reviewer receives the intent, scope and criteria, not your conclusions.
+- **Quality Gate (BLOCKING):** Analysis and Intent Check are written in the entry before Step 4b. For discussion-based cycles no hook enforces this — it is this skill's rule. If optional review was used, record its evidence and your disposition of each finding.
+- The `/discussing` call ends the planning phase: the PostToolUse hook moves the regressing state to `ticketing`. `planId` stays `null`.
 
 #### Step 4b: Ticketing — Create T(n,1..M)
-- Invoke `/ticketing` one or more times per plan to create tickets from P(n)
+- Invoke `/ticketing D{NNN} "title"` one or more times to create tickets under the discussion. Ticket IDs (`D{NNN}_T{NNN}`) continue across cycles; the state file's `ticketIds` and the D log's cycle entries record which tickets belong to this cycle
 - Ticket sizing: 3-5 acceptance criteria per ticket. Independent work items are separate tickets.
-- A plan with a single coherent work item produces one ticket. A plan with multiple independent work items produces multiple tickets.
+- A cycle plan with a single coherent work item produces one ticket; one with multiple independent work items produces multiple tickets.
 
 After each /ticketing invocation, update regressing state:
 - Append the new ticket's ID to `"ticketIds"` array, update `"lastUpdatedAt": "{ISO}"` using: `"{NODE_PATH}" -e "const f='{PROJECT_DIR}/.crabshell/memory/regressing-state.json';const s=JSON.parse(require('fs').readFileSync(f,'utf8'));s.ticketIds.push('{T-ID}');s.lastUpdatedAt=new Date().toISOString();require('fs').writeFileSync(f,JSON.stringify(s,null,2))"` (phase transition is automatic via PostToolUse hook)
@@ -143,7 +139,7 @@ After each /ticketing invocation, update regressing state:
 - **Ticket execution ordering:** Dependent tickets (e.g., T002 depends on T001's file changes) MUST execute sequentially — T001 completes before T002 starts. Independent tickets MAY execute in parallel. The Orchestrator determines dependency order before execution begins.
 - **Agent flow:** The parent owns each phase and delegates only bounded independent work when risk or latency justifies it. No worker count or WA:RA pairing is a completion condition.
 - Parent executes in-scope work and appends execution evidence to the T document. Delegation is optional and bounded by the ticket contract.
-  - **Framing:** Any delegated prompt follows ticketing/planning framing and verification standards, names exact scope and non-goals, and forbids fan-out.
+  - **Framing:** Any delegated prompt follows ticketing framing and verification standards, names exact scope and non-goals, and forbids fan-out.
 - Optional independent review: use when change risk, shared contracts, security, data loss, or user-visible behavior warrants it. Reviewer count never follows worker count.
   - **Independence Protocol:** A reviewer MUST NOT use worker conclusions as its observation source. Provide the ticket acceptance/verification contract and the P/O/G template; the parent later cross-references findings against implementation evidence.
   - **Reviewer prompt, when review is used, MUST include this verification context and output template:**
@@ -212,8 +208,8 @@ After ticket execution completes, update regressing state:
   (2) Root cause hypothesis
   (3) Recommended focus with rationale
   If Next Direction is a generic TODO list without cycle-specific observations → REJECT and require re-evaluation.
-- Pass validated feedback to next cycle P(n+1)'s Context
-- **Document-first rule:** Record the feedback transfer in the D document's Discussion Log and the P(n+1) document's Context section using the Edit tool BEFORE beginning cycle planning. The document update is the primary action; conversation narration is secondary.
+- Pass the validated feedback into the next cycle plan entry's Context
+- **Document-first rule:** Record the feedback transfer in the D document's Discussion Log (via `/discussing`) BEFORE beginning the next cycle plan. The document update is the primary action; conversation narration is secondary.
 - This transfer is explicitly performed by the Orchestrator
 
 After feedback transfer:
@@ -257,22 +253,22 @@ Termination reason: {convergence | cap reached | user stop}
 
 ## Document Structure
 
-One D wraps the entire session. Each cycle creates one P + one or more T:
+One D wraps the entire session and carries each cycle's plan as a log entry. Each cycle adds one plan entry and one or more tickets under the D:
 
 ```
 D (open)
-  → P(1) → T(1,1), T(1,2), ...    [cycle 1]
-  → P(2) → T(2,1)                  [cycle 2]
+  → Cycle 1 plan (D log) → D_T001, D_T002, ...    [cycle 1]
+  → Cycle 2 plan (D log) → D_T003                  [cycle 2]
   → ...
-  → P(N) → T(N,1), T(N,2), ...    [cycle N]
 D (closed with final report)
 ```
 
 | Document | Count | Role |
 |----------|-------|------|
-| D | 1 | Top-level container: intent, IA, final report |
-| P | N | One per cycle: plan based on D's IA + previous feedback |
-| T | >= N | One or more per cycle: execution + verification |
+| D | 1 | Top-level container: intent, IA, one plan entry per cycle, feedback transfers, final report |
+| T | >= N | One or more per cycle, parent = the D: execution + verification |
+
+Sessions started before this layout keep their P documents (`P{NNN}` plans with `P{NNN}_T{NNN}` tickets); guards and tools accept both parents.
 
 ## User Interaction
 
@@ -282,17 +278,17 @@ D (closed with final report)
 
 ## Rules
 
-1. **1 cycle = 1 P + 1..M T.** Each cycle produces exactly one plan and one or more tickets. Ticket sizing: 3-5 acceptance criteria per ticket, independent work items are separate tickets. No steps may be skipped.
+1. **1 cycle = 1 plan entry in the D log + 1..M T.** Each cycle produces exactly one plan entry and one or more tickets. Ticket sizing: 3-5 acceptance criteria per ticket, independent work items are separate tickets. No steps may be skipped.
 2. **One D wraps all cycles.** D opens at start, closes with final report at end. Do NOT create a new D per cycle.
 3. **Verification-based Optimization.** No iteration without verification. Must verify at the end of each cycle, and verification results determine the next cycle.
-4. **T→P context transfer is mandatory.** The Orchestrator must explicitly pass T(n)'s final verification results as Context to P(n+1).
+4. **Context transfer between cycles is mandatory.** The Orchestrator must explicitly pass cycle n's final verification results as the Context of cycle n+1's plan entry.
 5. **User intervention only at the end.** Do not ask for user confirmation during intermediate cycles.
-6. **Use existing skill invocations.** Invoke discussing (once at start), planning, and ticketing skills internally.
+6. **Use existing skill invocations.** Invoke discussing (at start, for each cycle plan entry and each feedback transfer) and ticketing skills internally.
 7. **Early termination on convergence.** If the Orchestrator's verification finds no improvement opportunities with substantive justification (minimum 3 sentences enumerating what was examined and why further cycles would not improve the result), the session terminates early. Generic "ALL PASS" without this justification is not valid convergence — it is rubber-stamping. **When the wrapping D document contains a `## Convergence Criteria` section, the Orchestrator MUST evaluate each criterion explicitly — convergence is only valid when all listed criteria are met or explicitly declared out-of-scope with rationale.**
-8. **Hotfix is the lightweight alternative.** Regressing is the primary mode; standalone one-off tasks are done directly and recorded with hotfix.
-9. **D's IA is the constant anchor.** All P and T documents reference D's IA as read-only evaluation criteria throughout all cycles.
+8. **A one-ticket discussion is the lightweight alternative.** Regressing is the primary mode; standalone one-off tasks are done directly and recorded as a discussion with one ticket.
+9. **D's IA is the constant anchor.** Every cycle plan entry and T document references D's IA as read-only evaluation criteria throughout all cycles.
 10. **Parent-owned orchestration.** The parent owns intent, implementation decisions, decisive verification, and completion. Delegate only bounded independent work when risk or latency justifies it; do not require a worker/reviewer pair or use agent count as evidence. Delegates do not fan out.
 11. **Orchestrator anti-rubber-stamp.** The Orchestrator MUST provide substantive evaluation for each cycle. "No improvement opportunities" and "ALL PASS" without detailed justification are INVALID. When the Orchestrator genuinely finds no improvements, it must enumerate what was specifically examined and provide a reasoned argument (minimum 3 sentences) for why the output is optimal.
-12. **Cycles are for result improvement, not sequential work progression.** Each cycle produces a complete result and verifies it. The next cycle's purpose is to improve the previous cycle's output based on verified gaps — not to continue with remaining work. P(1) MUST NOT pre-allocate work across cycles. If P(n) divides total work into equal parts or references "what cycle N+1 will do," it is INVALID. The scope of cycle N+1 is unknown until cycle N's verification reveals what needs improvement. Cycle count is emergent — N is a safety cap, not a quota to fill. **Sequential tasks (version bump, cache sync, deploy) belong in the SAME cycle as the code change, as separate tickets — NOT as separate cycles.** A cycle is incomplete if it produces a code change without its operational follow-through.
+12. **Cycles are for result improvement, not sequential work progression.** Each cycle produces a complete result and verifies it. The next cycle's purpose is to improve the previous cycle's output based on verified gaps — not to continue with remaining work. Cycle 1's plan MUST NOT pre-allocate work across cycles. If a cycle plan divides total work into equal parts or references "what cycle N+1 will do," it is INVALID. The scope of cycle N+1 is unknown until cycle N's verification reveals what needs improvement. Cycle count is emergent — N is a safety cap, not a quota to fill. **Sequential tasks (version bump, cache sync, deploy) belong in the SAME cycle as the code change, as separate tickets — NOT as separate cycles.** A cycle is incomplete if it produces a code change without its operational follow-through.
 13. **Distinct-risk review.** When multiple reviewers are useful, assign different risks rather than duplicating a checklist. The parent compares their independent evidence and resolves discrepancies; no reviewer count or cross-review ritual is a completion condition.
 14. **Question-save-continue protocol.** When a question arises during ticket execution that would normally pause for user input: (1) Do NOT emit the question to the user. (2) Append the question as an `## Open Questions` entry to the active T document using Edit tool (document-first). Include: question text, local timestamp, context (which AC triggered the question). (3) Make a reasonable assumption to unblock execution — state the assumption in the T document entry. (4) Continue execution without waiting. Open questions are addressed by the next cycle's planning phase. Exception: questions about destructive actions (delete, reset, overwrite) MAY be emitted to the user — state the specific risk first.

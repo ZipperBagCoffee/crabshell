@@ -1,6 +1,6 @@
 ---
 name: regressing
-description: Run a Codex-compatible D/P/T iterative improvement workflow. Use when the task needs repeated plan-execute-verify cycles rather than a one-shot worklog.
+description: Run a Codex-compatible D-T iterative improvement workflow (the discussion carries each cycle's plan). Use when the task needs repeated plan-execute-verify cycles rather than a one-shot worklog.
 ---
 
 # Regressing
@@ -27,18 +27,16 @@ Then add a `## Convergence Criteria` section to the D document. Every item must 
 
 Goal mode keeps Codex looping plan-execute-verify cycles until its evaluator confirms the D is concluded. Starting it is the user's choice; without it, continue cycles manually per step 4. Because the evaluator judges only by reading the D document, write each cycle's results into the documents before ending a cycle.
 
-2. For each cycle, create a P document for the current improvement target:
+2. For each cycle, append a "Cycle N plan" entry to the D document's log: intent, scope, steps, the evidence you inspected, and an intent check against the Intent Anchor. There is no separate plan document.
+
+3. Create one or more tickets under the discussion:
 
 ```bash
-node "{SKILL_DIR}/scripts/codex-docs.js" plan "cycle 1 plan" --related="[[D001-topic|D001]]" --project-dir="{PROJECT_ROOT}"
+node "{SKILL_DIR}/scripts/codex-docs.js" ticket "ticket title" --parent="D001" --project-dir="{PROJECT_ROOT}"
 ```
 
-3. Create one or more T documents for executable work:
+Ticket IDs continue within the discussion (`D001_T001`, `D001_T002`, …) across cycles; the D log's cycle entries record which tickets belong to which cycle.
 
-```bash
-node "{SKILL_DIR}/scripts/codex-docs.js" ticket "ticket title" --plan="[[P001-topic|P001]]" --project-dir="{PROJECT_ROOT}"
-```
-
-4. Execute, verify, then write the verification gaps and next direction back into the ticket or plan before starting another cycle.
+4. Execute, verify, then write the verification gaps and next direction into the ticket and into the next cycle's plan entry in the D log before starting another cycle.
 
 Do not pre-partition future cycles. Each cycle should respond to the previous cycle's verification results.

@@ -48,16 +48,16 @@ function buildRegressingReminder(projectDir) {
     case 'planning':
       message = `\n## REGRESSING ACTIVE — Phase: Planning (Cycle ${cycle} (cap: ${totalCycles}), ${discussion})\n\n` +
         `\u26A0 MANDATORY SKILL TOOL CALL REQUIRED.\n` +
-        `You MUST invoke the Skill tool with skill="crabshell:planning" to create this cycle's plan.\n` +
-        `- DO NOT write plan documents directly. DO NOT formulate plans inline.\n` +
-        `- The ONLY acceptable action is: Skill tool \u2192 skill="crabshell:planning"\n` +
-        `- Phase will not advance until /planning is invoked via Skill tool.\n`;
+        `Write this cycle's plan as a "Cycle ${cycle} plan" entry in ${discussion}: Skill tool \u2192 skill="crabshell:discussing" with args "${discussion}".\n` +
+        `- The entry needs Intent, Context, Scope, Steps, Analysis and Intent Check.\n` +
+        `- Sessions that still use a plan document invoke skill="crabshell:planning" instead.\n` +
+        `- Phase advances to ticketing when that skill call is made.\n`;
       break;
 
     case 'ticketing':
-      message = `\n## REGRESSING ACTIVE — Phase: Ticketing (Cycle ${cycle} (cap: ${totalCycles}), ${discussion}, Plan: ${planId})\n\n` +
+      message = `\n## REGRESSING ACTIVE — Phase: Ticketing (Cycle ${cycle} (cap: ${totalCycles}), ${discussion}${planId ? `, Plan: ${planId}` : ''})\n\n` +
         `\u26A0 MANDATORY SKILL TOOL CALL REQUIRED.\n` +
-        `You MUST invoke the Skill tool with skill="crabshell:ticketing" to create this cycle's ticket from ${planId}.\n` +
+        `You MUST invoke the Skill tool with skill="crabshell:ticketing" to create this cycle's tickets under ${planId || discussion}.\n` +
         `- DO NOT write ticket documents directly. DO NOT execute work without a ticket.\n` +
         `- The ONLY acceptable action is: Skill tool \u2192 skill="crabshell:ticketing"\n` +
         `- Phase will not advance until /ticketing is invoked via Skill tool.\n`;
@@ -106,10 +106,16 @@ function detectRegressingSkillCall(hookData) {
  * @param {string} projectDir
  * @returns {string|null} - new phase if advanced, null otherwise
  */
-function advancePhase(detectedSkill, projectDir, sessionId) {
+function advancePhase(detectedSkill, projectDir, sessionId, skillArgs) {
   const statePath = path.join(getStorageRoot(projectDir), 'memory', REGRESSING_STATE_FILE);
   const state = readJsonOrDefault(statePath, null);
   if (!state || state.active !== true) return null;
+
+  // Another session may be using /discussing for unrelated work (a one-pass record):
+  // only a call that names this workflow's discussion counts, for ownership and phase.
+  // (The initial discussing phase runs before the discussion has an ID.)
+  if (detectedSkill === 'discussing' && state.phase !== 'discussing' && state.discussion
+      && !new RegExp(`\\b${state.discussion}\\b`).test(String(skillArgs || ''))) return null;
 
   // The session that runs the workflow's skills owns it (it moves after /clear or
   // a relaunch as soon as the continuing session invokes the next skill).
@@ -119,18 +125,14 @@ function advancePhase(detectedSkill, projectDir, sessionId) {
     writeJson(statePath, state);
   }
 
-  // Transitions: discussing->planning, planning->ticketing, ticketing->execution
-  const transitions = {
-    discussing: 'planning',
-    planning: 'ticketing',
-    ticketing: 'execution'
-  };
+  // Transitions: discussing->planning, planning->ticketing, ticketing->execution.
+  // A discussion-based cycle writes its plan into the discussion (/discussing), so
+  // /discussing ends the planning phase too; /planning still does for plan documents.
+  const next = { discussing: 'planning', planning: 'ticketing', ticketing: 'execution' };
+  const endsPhase = detectedSkill === state.phase || (state.phase === 'planning' && detectedSkill === 'discussing');
+  if (!endsPhase) return null;
 
-  // Only advance if detectedSkill matches current phase
-  if (state.phase !== detectedSkill) return null;
-
-  const newPhase = transitions[detectedSkill];
-  if (!newPhase) return null;
+  const newPhase = next[state.phase];
 
   state.phase = newPhase;
   state.lastUpdatedAt = new Date().toISOString();

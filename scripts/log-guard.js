@@ -32,8 +32,8 @@ const { readStdin, normalizePath } = require('./transcript-utils');
 // F1 mitigation: keep inline env check for fail-open invariant — D106 IA-10 RA2
 if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 
-const { getProjectDir, docDirsPattern } = require('./utils');
-const { STORAGE_ROOT } = require('./constants');
+const { getProjectDir, docDirsPattern, ticketDocPattern } = require('./utils');
+const { STORAGE_ROOT, TICKET_ID_SOURCE } = require('./constants');
 
 // --- Constants ---
 
@@ -42,7 +42,7 @@ const INDEX_PATTERN = new RegExp(`${docDirsPattern(type => type.workflow)}\\/IND
 
 // Plan/ticket document pattern (not INDEX.md) — used by Trigger 2
 const PLAN_DOC_PATTERN = /\.crabshell\/plan\/P\d{3}[^/]*\.md$/;
-const TICKET_DOC_PATTERN = /\.crabshell\/ticket\/P\d{3}_T\d{3}[^/]*\.md$/;
+const TICKET_DOC_PATTERN = new RegExp(`${ticketDocPattern()}[^/]*\\.md$`);
 
 // All known statuses across document types
 const ALL_STATUSES = new Set([
@@ -305,7 +305,7 @@ function validateLogForTerminal(entries, toStatus, docId) {
 
 /**
  * Check if a ticket document still has "(pending)" in result sections.
- * Only applies to ticket documents (P\d{3}_T\d{3}).
+ * Only applies to ticket documents (constants TICKET_ID_SOURCE).
  * Returns {valid: boolean, reason: string}.
  *
  * Checks these sections:
@@ -317,7 +317,7 @@ function validatePendingSections(content, docId) {
   if (!content) return { valid: true, reason: '' };
 
   // Only check tickets
-  if (!/^P\d{3}_T\d{3}$/.test(docId)) return { valid: true, reason: '' };
+  if (!new RegExp(`^${TICKET_ID_SOURCE}$`).test(docId)) return { valid: true, reason: '' };
 
   const pendingSections = [];
 

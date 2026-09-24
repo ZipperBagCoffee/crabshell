@@ -9,8 +9,8 @@ const { commandObservation, projectFingerprint } = require('./core/command-obser
 if (process.env.CRABSHELL_BACKGROUND === '1') process.exit(0);
 
 // Claude-only Stop checks, run in this process. sycophancy-guard and scope-guard
-// retired from Stop dispatch in v21.113.0 (I083 R5: behavioral policing moved out
-// of hooks; scripts remain on disk).
+// left Stop dispatch in v21.113.0 (I083 R5: behavioral policing moved out of
+// hooks) and were deleted in v21.130.0.
 function legacyClaudeStopReasons(payload, projectDir = getProjectDir()) {
   if (payload.stop_hook_active === true) return [];
   try {

@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.129.0)
+# Crabshell Plugin Structure (v21.130.0)
 
-**Version**: 21.129.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.130.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -98,7 +98,6 @@ crabshell/
 │   ├── regressing-state.js            # Regressing phase tracker (v19.23.0)
 │   ├── append-memory.js              # Prepare/finalize CLI and legacy summary append
 │   ├── regressing-guard.js           # PreToolUse regressing skill enforcement (v19.23.0)
-│   ├── sycophancy-guard.js           # RETIRED v21.113.0 (unwired, I083 R5) — was Stop + PreToolUse dual-layer sycophancy detection + verification claim detection (v19.29.0, v20.7.0, v21.1.0). Also writes feedbackPressure.oscillationCount (reversal phrases) and tooGoodSkepticism.retryCount (all-None P/O/G) at Stop hook — these are pressure-adjacent counters independent of feedbackPressure.level. See three pressure counters (feedbackPressure.level, feedbackPressure.oscillationCount, tooGoodSkepticism.retryCount) in USER-MANUAL.md §Pressure System.
 │   ├── path-guard.js                # Path guard entry: blocks Bash writes into another project's .crabshell, notices reads, logbook Edit/shrink block (v19.31.0, v20.6.0, v21.125.0)
 │   ├── web-guard.js                 # PreToolUse WebFetch/WebSearch guard — raw-fetch redirect, conditional WebSearch block, block/warn/off modes (v21.114.0, I084)
 │   ├── core/path-policy.js           # Host-neutral memory path policy (v21.104.0)
@@ -137,16 +136,11 @@ crabshell/
 │   ├── _test-orchestration-defaults.js # Deterministic orchestration policy tests (v21.105.0)
 │   ├── docs-guard.js                # PreToolUse D/P/T/I skill bypass prevention (v19.33.0)
 │   ├── verify-guard.js              # PreToolUse Final Verification + behavioral AC (v19.34.0, v20.3.0)
-│   ├── pressure-guard.js            # RETIRED v21.113.0 (unwired, I083 R4) — was PreToolUse pressure blocking — all 6 tools (v19.47.0, v21.1.0)
 │   ├── log-guard.js                # PreToolUse D/P/T log enforcement — terminal status + cycle log guard (v21.4.0)
 │   ├── verification-sequence.js     # PostToolUse state tracker + PreToolUse commit/edit gate (v21.0.0)
 │   ├── skill-tracker.js             # Per-session skill flag setter, run inline by the PostToolUse dispatcher (v19.33.0, v21.124.0, v21.125.0)
 │   ├── _test-path-guard.js           # Path-guard unit tests + shell var resolution tests (v20.0.0, v21.8.0)
 │   ├── _test-web-guard.js            # Web-guard subprocess + unit tests — block/warn/off, MCP detection, fail-open (v21.114.0)
-│   ├── _test-sycophancy-guard.js     # Sycophancy-guard unit tests (v20.4.0)
-│   ├── _test-sycophancy-pretooluse.js # Sycophancy-guard PreToolUse integration tests (v20.7.0)
-│   ├── _test-sycophancy-guard-manifest.js # Sycophancy-guard manifest behavioral test (v20.7.0)
-│   ├── _test-sycophancy-claim-detection.js # Verification claim detection tests (v21.1.0)
 │   ├── _test-verification-sequence.js # Verification-sequence unit/integration tests (v21.0.0)
 │   ├── _test-log-guard.js           # Log-guard unit/integration tests (v21.4.0, v21.11.0)
 │   ├── _test-feedback-detection.js  # Feedback detection + pressure system tests (v21.5.0)
@@ -156,16 +150,16 @@ crabshell/
 │   ├── doc-watchdog.js              # Doc-update omission checks: recordEdit/gateEdit/stopReason, in-project files only (v21.18.0, v21.125.0)
 │   ├── _test-doc-watchdog.js        # doc-watchdog.js 12-test integration suite (v21.18.0)
 │   ├── _test-restriction-controls.js # Lifted restrictions paired with writes that stay blocked (v21.125.0)
-│   ├── _test-changed-runner.js      # Discovery, load map and --changed selection incl. review false-negative cases; git-ignored files (v21.126.0, v21.128.0)
+│   ├── _test-changed-runner.js      # Discovery, load map and --changed selection incl. review false-negative cases; git-ignored files; same-content rewrites (v21.126.0, v21.128.0, v21.129.0)
 │   ├── _test-gate-required-checks.js # Only tools/package.json test unlock the commit gate; entries stay evidence; dead-end guidance (v21.126.0, v21.127.0)
 │   ├── _test-single-source.js        # One definition per shared value across shipped scripts (v21.127.0)
 │   ├── _test-rules-and-injection.js  # Advisor line and unified rule wording; where the project description is injected (v21.127.0)
+│   ├── _test-d-parent-tickets.js     # Guards, the Codex document tool and phase changes treat D###_T### like P###_T### (v21.130.0)
+│   ├── _test-d-t-skills.js           # Skill instructions for D (with the plan) -> T; existing P/H updates kept (v21.130.0)
 │   ├── _test-regressing-stale.js     # One regressing staleness decision; each caller's missing-time answer (v21.128.0)
 │   ├── _test-hook-wiring-cost.js     # Synchronous hook processes per tool call; Stop starts no child (v21.125.0)
 │   ├── _test-claude-dispatcher-parity.js # Old separate guards vs the PreToolUse dispatcher (v21.125.0)
 │   ├── _test-claude-dispatchers.js   # Moved behavior: compact effects, Read notice, inline observers, stdout, fail-open (v21.125.0)
-│   ├── scope-guard.js               # RETIRED v21.113.0 (unwired, I083 R5) — was Stop scope reduction detection (user qty vs response qty) (v21.19.0)
-│   ├── _test-scope-guard.js         # scope-guard.js 20-test integration suite (v21.19.0)
 │   ├── shared-context.js            # Shared constants/functions for cross-hook reuse (v21.21.0)
 │   ├── pre-compact.js               # Compaction context script; unwired from Claude v21.125.0 (its output reaches no model)
 │   ├── post-compact.js              # Post-compaction script; unwired from Claude v21.125.0 (effects run at SessionStart compact)
@@ -176,11 +170,8 @@ crabshell/
 │   ├── _test-subagent-context.js    # subagent-context.js test suite (v21.21.0)
 │   ├── _test-regressing-guard.js    # regressing-guard.js 7-test suite — phase gates + IA-2 agent section validation (v21.41.0)
 │   ├── _test-regressing-guard-edge-cases.js # regressing-guard.js 14 edge-case tests — absent heading, fail-open paths (v21.41.0)
-│   ├── regressing-loop-guard.js     # Retained compatibility helper/test source; not a direct manifest Stop owner
-│   ├── _test-regressing-loop-guard.js
 │   ├── _test-inject-rules-classification.js
 │   ├── _test-parallel-reminder.js
-│   ├── _test-too-good-pog.js
 │   ├── utils.js                      # Shared utilities (getStorageRoot, getProjectDir)
 │   ├── lint-obsidian.js              # 5-check Obsidian document linter (orphans, wikilinks, stale, frontmatter, INDEX) (v21.70.0)
 │   ├── search-docs.js                # BM25 full-text search across D/P/T/I/H/W/K documents (v21.72.0, hotfix/ added v21.75.0)
@@ -428,7 +419,7 @@ L1 generation:
    ├─> verification gate (Bash) — block git commit while source edits lack a passing declared check; record a declared check's start
    ├─> doc-watchdog gate (Write|Edit) — soft notice when in-project code edits >= 5 without a D/P/T doc update during regressing
    └─> verify-guard (Write|Edit) — Final Verification writes run the declared checks
-   (pressure-guard/sycophancy-guard unwired v21.113.0 — I083 R4/R5; Read|Grep|Glob have no PreToolUse hook since v21.125.0)
+   (pressure-guard/sycophancy-guard unwired v21.113.0 — I083 R4/R5, deleted v21.130.0; Read|Grep|Glob have no PreToolUse hook since v21.125.0)
 
 3.5. Stop
    └─> completion-controller.js (single Stop owner, v21.107.0)
@@ -468,6 +459,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.130.0 | Documents are D (the discussion carries the plan) → T: tickets `D###_T###` under a discussion (P###_T### kept), one ticket-ID definition for every guard and the Codex tool, regressing cycles plan in the discussion log, no new P/H documents; retired guards and their tests deleted (97 → 89 checks); review fixes for phase ownership, missing parents and worker scope |
 | 21.129.0 | `--changed` ignores files whose time moved but content did not (the load map stores content hashes; a revert or checkout no longer runs everything); installed contents documented (tests ship with the `./` source, about 38% of tracked bytes) |
 | 21.128.0 | `--changed` stays selective while a session runs: git-ignored files (runtime state) no longer make the load map stale — manifest, runner and tests still checked (a `scripts/codex-docs.js` change: 26 of 97 checks, 96 s vs about 193 s full); `isRegressingStale` is the one staleness decision; `*.bak` ignored |
 | 21.127.0 | Commit gate says what to declare when a manifest has only single entries; rules gain one advisor line and banter/length/list wording that matches common brevity rules; per-prompt context 1,021 characters shorter (the project description loads at SessionStart, not every prompt); one definition per shared value: `DOC_TYPES` table, duration constants, `core/skill-flag.js`, `tryWithMemoryIndex`/`tryWithMemoryRotation` for every hand-written lock, JSON through `readJsonOrDefault`/`writeJson` |

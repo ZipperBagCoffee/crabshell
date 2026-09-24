@@ -56,7 +56,9 @@ function regressingContext(projectDir, state, now) {
   }).filter(ticket => !TERMINAL_STATUSES.has(ticket.status));
   const outcomeSource = activeTickets.length > 0
     ? activeTickets.map(ticket => readSection(ticket.content, 'Acceptance Criteria')).filter(Boolean).join(' | ')
-    : readSection(readPath(planPath), 'Acceptance Criteria');
+    : planPath ? readSection(readPath(planPath), 'Acceptance Criteria')
+      // Discussion-based cycles: the session's outcomes are the discussion's convergence criteria.
+      : readSection(readPath(discussionPath), 'Convergence Criteria');
   const stale = isRegressingStale(state.lastUpdatedAt, { now, unknown: true });
   const paths = [discussionPath, planPath, ...ticketDocs.map(ticket => ticket.path)]
     .filter(Boolean).map(filePath => path.relative(projectDir, filePath)).join(', ');

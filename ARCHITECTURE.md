@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.129.0)
+# Crabshell Architecture (v21.130.0)
 
 ## Overview
 
@@ -140,7 +140,7 @@ Two meta-principles guide Claude's approach to obstacles:
 |  | - investigating (I documents)   |  | - clear-memory                 | |
 |  | - hotfix        (H documents)   |  | - memory-autosave              | |
 |  | - hotfix (one-pass record)      |  | - memory-delta                 | |
-|  | - regressing    (D→P→T loop)    |  | - memory-rotate                | |
+|  | - regressing    (D→T loop)      |  | - memory-rotate                | |
 |  | - verifying     (verification)  |  |                                | |
 |  | - knowledge     (K pages)       |  |                                | |
 |  | - status        (healthcheck)   |  | Setup Skills (1)               | |
@@ -272,7 +272,7 @@ Claude `PostToolUseFailure` is wired to both verification-state and parent-evide
    │   └─> Record the start of a declared check
    ├─> doc-watchdog gate (Write|Edit) — soft notice when in-project code edits >= 5 without a D/P/T doc update (regressing only)
    └─> verify-guard (Write|Edit) — Final Verification writes run the declared checks; skipped once another guard denied
-   (pressure-guard and sycophancy-guard unwired from PreToolUse in v21.113.0 — I083 R4/R5)
+   (pressure-guard and sycophancy-guard unwired from PreToolUse in v21.113.0 — I083 R4/R5; deleted v21.130.0)
    Read|Grep|Glob have no PreToolUse hook since v21.125.0; the other-project notice comes from PostToolUse.
 
 3.5. Stop / SubagentStop — v21.107.0 single owner
@@ -334,7 +334,7 @@ Five skills manage append-only documents stored in `.crabshell/` (gitignored):
 | investigating | Investigation | I001, I002... | Independent research/analysis |
 | (retired: light-workflow, v21.112.0) | Worklog | W001, W002... | Legacy worklog history — read-only; restart context still honors in-flight W docs |
 
-Document hierarchy: D -> P -> T (Discussion spawns Plans, Plans spawn Tickets). Investigations and Worklogs are independent.
+Document hierarchy: D -> T (a Discussion carries the plan as log entries and parents its Tickets, `D###_T###`). Existing P plans keep their `P###_T###` tickets. Investigations and Worklogs are independent.
 
 Each document type has an INDEX.md for tracking. Status cascades upward on completion (ticket verified -> plan closes -> discussion closes).
 
@@ -389,7 +389,6 @@ Regressing retains document-cycle continuation but has no parallel-worker count 
 | `docs-guard.js` | PreToolUse (Write\|Edit) | Block writes to .crabshell/ D/P/T/I/H subdirectories without active skill flag |
 | `log-guard.js` | PreToolUse (Write\|Edit) | Block INDEX.md terminal status without document log entries; block tickets with "(pending)" result sections; block cycle docs without previous cycle logs |
 | `verify-guard.js` | PreToolUse (Write\|Edit) | Hybrid: Edit always enforces verification; Write enforces only for existing files (new file creation skips). Block Final Verification without /verifying run; require behavioral AC in manifest |
-| `pressure-guard.js` | (unwired v21.113.0 — I083 R4) | Retired from PreToolUse; pressure counters remain telemetry-only. Script kept on disk for re-wiring if regression observed |
 | `path-guard.js` | PreToolUse via `adapters/claude/pre-tool-use.js` (Bash\|Write\|Edit); Read\|Grep\|Glob notice via `post-tool-use.js` | Block Bash writes into another project's .crabshell (v21.125.0: reads get a notice; prose, patterns, heredoc text, temp folders and unknown variables are not blocked); block Edit on logbook.md; block Write shrink on logbook.md (v20.6.0); block direct skill-flag writes. Runs alone too |
 | `web-guard.js` | PreToolUse (WebFetch\|WebSearch) | Block WebFetch (small-model summarization, lossy by design) with URL-substituted raw-fetch redirect (trafilatura → r.jina.ai → curl); block WebSearch only when a search MCP is configured in ~/.claude.json or .mcp.json, else allow with snippet-verification warning; modes block/warn/off via `webGuard` config (v21.114.0, I084) |
 | `core/path-policy.js` | shared library | Host-neutral memory path decisions used by Claude and Codex wrappers |
@@ -410,9 +409,7 @@ Regressing retains document-cycle continuation but has no parallel-worker count 
 | `_test-cross-platform-native-hosts.js` | release smoke | Isolated Windows/Linux Claude Code CLI and Codex CLI install/activation matrix; app reported separately |
 | `skills/verifying/scripts/run-verify.js` | verification source | Canonical portable schema-v2 runner: repo-relative commands, structured assertions, and forbidden-path snapshots. v21.126.0: `discover` entries (one check per matching test file). A full run writes a load map (`test-map.json`) from a NODE_OPTIONS tracer that re-attaches to child processes (require, reads, listings, copies) plus a static path-string scan. `--changed` selects the checks the changed files touch, and falls back to all when it cannot know |
 | `.crabshell/verification/run-verify.js` | generated project runner | Byte-equivalent generated runner consumed by `verify-guard.js`; stdout text is diagnostic, not a pass oracle |
-| `sycophancy-guard.js` | (unwired v21.113.0 — I083 R5) | Retired from PreToolUse and Stop dispatch; anti-sycophancy training in Sonnet 4.5+ models replaced the prompt/hook layer. Script kept on disk |
-| `scope-guard.js` | (unwired v21.113.0 — I083 R5) | Retired from Stop dispatch; scope preservation lives as a short principle in RULES. Script kept on disk |
-| `regressing-loop-guard.js` | retained compatibility source | Legacy count-independent continuation helper retained for regression coverage; no longer a direct manifest Stop owner. Regressing continuation is goal-driven (v21.110.0): the regressing skill emits a `/goal` handoff for host goal mode, and `completion-controller.js` keeps bounded continuation on execution-authorized turns |
+| (deleted v21.130.0) | — | `sycophancy-guard.js`, `pressure-guard.js`, `scope-guard.js` (unwired v21.113.0, I083 R4/R5) and `regressing-loop-guard.js` (unwired v21.107.0) were removed with their tests; git history keeps them. Regressing continuation is goal-driven (v21.110.0) with `completion-controller.js` bounded continuation. |
 | `skill-tracker.js` | PostToolUse (Skill) via `post-tool-use.js` (inline since v21.125.0) | Set the calling session's skill flag on Skill tool calls (no timer; cleared on compaction and SessionEnd; payloads without a session id use the legacy 15-minute project flag) |
 | `regressing-state.js` | (library) | Phase tracker: getState, buildReminder, detectSkillCall, advancePhase |
 | `extract-delta.js` | (library) | L1 delta extraction, timestamp watermarks, temp file management |
@@ -550,7 +547,7 @@ Separated from memory-index.json to eliminate Write race condition during delta 
 ### Stop Hook Text Block Gap
 - The Stop hook's `stop_response` field contains only the **last text block** of multi-block responses. When Claude produces text, then calls a tool, then produces more text, only the final text block is visible to the Stop hook.
 - **Impact on sycophancy detection**: Sycophancy patterns in early text blocks (before tool calls) are invisible to the Stop hook. A response that agrees without evidence in block 1, calls Write in block 2, and writes a summary in block 3 would only have block 3 checked by the Stop hook.
-- **Partial mitigation**: The PreToolUse layer of `sycophancy-guard.js` parses mid-turn transcript text before each Write|Edit call. This catches sycophancy that precedes file writes, but only for Write|Edit — not for Read, Grep, Glob, or Bash tool calls.
+- **Partial mitigation (historical, before v21.113.0)**: The PreToolUse layer of `sycophancy-guard.js` parsed mid-turn transcript text before each Write|Edit call. This catches sycophancy that precedes file writes, but only for Write|Edit — not for Read, Grep, Glob, or Bash tool calls.
 - **Remaining gap**: If Claude agrees without evidence and then uses Read/Grep/Glob/Bash (but not Write/Edit), neither the Stop hook nor the PreToolUse guard catches the sycophancy. Expanding PreToolUse to check transcript text for all tool types is a potential future mitigation.
 
 ### Guard Consolidation (IA-6 Analysis, revised v21.125.0)
@@ -569,6 +566,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.130.0 | Documents are D (the discussion carries the plan) → T: tickets `D###_T###` under a discussion (P###_T### kept), one ticket-ID definition for every guard and the Codex tool, regressing cycles plan in the discussion log, no new P/H documents; retired guards and their tests deleted (97 → 89 checks); review fixes for phase ownership, missing parents and worker scope |
 | 21.129.0 | `--changed` ignores files whose time moved but content did not (the load map stores content hashes; a revert or checkout no longer runs everything); installed contents documented (tests ship with the `./` source, about 38% of tracked bytes) |
 | 21.128.0 | `--changed` stays selective while a session runs: git-ignored files (runtime state) no longer make the load map stale — manifest, runner and tests still checked (a `scripts/codex-docs.js` change: 26 of 97 checks, 96 s vs about 193 s full); `isRegressingStale` is the one staleness decision; `*.bak` ignored |
 | 21.127.0 | Commit gate says what to declare when a manifest has only single entries; rules gain one advisor line and banter/length/list wording that matches common brevity rules; per-prompt context 1,021 characters shorter (the project description loads at SessionStart, not every prompt); one definition per shared value: `DOC_TYPES` table, duration constants, `core/skill-flag.js`, `tryWithMemoryIndex`/`tryWithMemoryRotation` for every hand-written lock, JSON through `readJsonOrDefault`/`writeJson` |

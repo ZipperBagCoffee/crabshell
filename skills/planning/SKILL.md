@@ -1,163 +1,22 @@
 ---
 name: planning
-description: "Creates and updates structured plan documents with agent-verified execution strategy. Use when establishing an implementation plan after a discussion, or when breaking work into steps before ticketing. Invoke with /planning \"topic\" to create, or /planning P001 to update. Not for direct execution — create tickets first."
+description: "Crabshell no longer creates plan documents: a new plan is written into its discussion as a log entry, then tickets hang off that discussion (/discussing D001, /ticketing D001 \"title\"). Use /planning P001 only to append a log entry to an existing plan document."
 ---
 
-# Plan Document Skill
+# Plan Document Skill (existing plans only)
 
-## Modes
+## New plans go into the discussion
 
-- **Create mode:** `/planning "title"` — creates a new plan document
-- **Update mode:** `/planning P001` — appends a log entry to an existing plan
+The document workflow is D (a discussion that carries the plan) → T. A new plan is not a separate document:
 
----
+1. Invoke `/discussing D{NNN}` (or `/discussing "topic"` to open one) and append a plan entry to the discussion log with **Intent**, **Context**, **Scope** (included / excluded), **Steps**, **Analysis** (the evidence inspected — files, functions, measurements) and **Intent Check** (against the discussion's Intent Anchor, at least one risk, approve or reject). In regressing this is Step 4a's `Cycle {n} plan` entry.
+2. Create tickets under the discussion: `/ticketing D{NNN} "title"`.
 
-## Create Mode
+The parent owns plan analysis and intent fidelity; an optional independent review receives the intent, scope and criteria, not the parent's conclusions.
 
-When argument is a title string (not a P-prefixed ID):
+When this skill is invoked with a title (the former create mode), do not create a P document: tell the user that new plans go into the discussion and continue with step 1.
 
-### Step 1: Ensure folder exists
-
-Check if `.crabshell/plan/` exists.
-
-- **Folder does not exist:** Create it and create `.crabshell/plan/INDEX.md` with content below.
-- **Folder exists but INDEX.md does NOT exist:** Pre-existing files detected. Create `.crabshell/plan/backup/`, move ALL existing files into it, then create INDEX.md. Report to user: "Moved N existing files to .crabshell/plan/backup/"
-- **Folder exists and INDEX.md exists:** Already managed. Proceed.
-
-INDEX.md content:
-```
-# Plan Index
-
-| ID | Title | Status | Created | Related | Tickets |
-|----|-------|--------|---------|---------|---------|
-```
-
-### Step 2: Determine next ID
-
-Glob `.crabshell/plan/P*.md` (exclude files matching `P\d{3}_T` pattern to avoid tickets in wrong folder).
-Extract numeric part. Next ID = max + 1, zero-padded to 3 digits.
-If no files exist, start at 001.
-
-### Step 3: Create plan document
-
-Ask the user:
-1. **Intent:** What is this plan's purpose? What are the success conditions?
-2. **Scope:** What's included / excluded?
-3. **Plan steps:** What are the high-level steps?
-4. **Verification criteria:** How do we know the plan succeeded? (Observable behavior, not "file contains X")
-
-Then create `.crabshell/plan/P{NNN}-{slug}.md`:
-
-```
----
-type: plan
-id: P{NNN}
-title: "{title}"
-status: draft
-created: {YYYY-MM-DD}
-tags: []
----
-
-# P{NNN} - {title}
-
-## Intent
-{user's answer}
-
-## Scope
-Included: {included}
-Excluded: {excluded}
-
-## Plan
-- [ ] Step 1: {step}
-- [ ] Step 2: {step}
-...
-
-## Plan Execution
-
-The parent owns plan analysis, intent fidelity, and approval. Delegation is optional and bounded by independent value or material risk.
-
-### Step A: Parent — Analysis + Plan Writing
-- Analyze related code/system
-- **Scope Note (from project RULES):** Conciseness applies to communication style, not to verification steps. P/O/G tables and evidence citations are required work product, not verbose output. Evidence IS the answer — "verified" without tool output is not verification. Fill Prediction before looking; fill Observation only from tool output.
-- Identify dependencies and impact scope
-- Write concrete execution plan
-- **Document-first rule:** Write analysis results to `## Analysis Results` in the P document FIRST using Write/Edit tool. After the document is updated, provide a brief summary to the user. The document update is the primary output; the conversation summary is secondary.
-
-### Step B: Optional Independent Review — Risk Based
-- Use independent review only when scope, shared contracts, security, data loss, or user-visible risk warrants it. Reviewer count never follows worker count.
-- **Independence Protocol:** When review is used, the prompt MUST NOT include prior conclusions as its observation source. Provide only: (1) Plan Intent, Scope, and Verification Criteria, (2) the P/O/G template below. The parent later cross-references findings against direct evidence.
-- Verify completeness and accuracy of the plan
-- **Scope Note (from project RULES):** Conciseness applies to communication style, not to verification steps. P/O/G tables and evidence citations are required work product, not verbose output. Evidence IS the answer — "verified" without tool output is not verification. Fill Prediction before looking; fill Observation only from tool output.
-- Review feasibility against codebase reality
-- Identify risks and missing items
-- **Review output MUST use Prediction/Observation/Gap format:**
-  ```
-  For each plan element, provide ALL THREE fields:
-  | Plan Element | Prediction (from Intent + Scope) | Observation (from independent analysis) | Gap |
-  |-------------|-------------------------------|-----------------------------------|-----|
-
-  Rules:
-  - Prediction: derive from Intent and Scope — what SHOULD the plan address?
-  - Observation: independently verify — read the relevant code/system, trace dependencies
-  - Gap: where Prediction ≠ Observation, this is a finding. If Gap is always "none", you are confirming, not reviewing.
-  - Evidence MUST be cited (file path, function name, specific observation from reading the code)
-  ```
-- **Document-first rule:** Write review results to `## Review Results` in the P document FIRST using Write/Edit tool. After the document is updated, provide a brief summary to the user. The document update is the primary output; the conversation summary is secondary.
-
-### Step C: Parent — Intent Check (Critical Evaluation)
-- Compare against D document's Intent Anchor (IA)
-- Confirm plan has not deviated from original intent
-- Verify plan coherence: do the plan steps work together as a whole? Individual steps may each be sound, but combined they may have ordering issues, dependency conflicts, or scope gaps. The plan must be coherent as a system, not just individually valid steps.
-  **Coherence verification methods (minimum 2 of the following):**
-  - **Cross-file sync check:** When the same concept appears across planned target files, grep for the concept and confirm consistent wording/semantics.
-  - **Reference integrity:** When plan steps reference content across files, verify the reference targets will hold after changes.
-  - **Contradiction scan:** Check for conflicting plan steps or contradictory instructions between planned changes.
-  - **Pipeline contradiction scan:** Check whether this change contradicts logic in related pipelines. Level 1: within the changed files. Level 2: in files that interact with the changed component (imports, callers, shared state). Level 3: against project rules/philosophy (CLAUDE.md, SKILL.md principles). A change that works locally but contradicts a related pipeline is not coherent.
-  "Coherent" one-liner without method execution = INVALID.
-- **Evidence Gate (when delegation/review was used):**
-  Independent-looking text is not evidence by itself. The parent applies this gate before using delegated findings.
-  □ Does each plan element review have Prediction, Observation, AND Gap fields?
-  □ Does Observation contain evidence from independent analysis? (file paths, function names, specific code observations)
-  □ Is Prediction ≠ Observation check performed? (rubber-stamp detection)
-  □ For items where Gap = "none": is the justification substantive?
-  → If ANY check fails: reject that evidence and perform or request a fresh observation. If no review was used, the parent performs the same reference and coherence checks directly.
-- Identify at least ONE risk, gap, or concern in the plan (even if approving). "No concerns" requires 3+ sentences of justification referencing specific aspects examined.
-- Decide to approve or reject with substantive reasoning
-- **Document-first rule:** Write intent check results to `## Intent Check` in the P document FIRST using Write/Edit tool. After the document is updated, provide a brief summary to the user. The document update is the primary output; the conversation summary is secondary.
-
-## Tickets
-(Automatically recorded when tickets are created)
-
-## Analysis Results
-(placeholder — parent writes inspected evidence and plan reasoning here)
-
-## Review Results (if used)
-(optional — record independent findings and the parent's disposition when review was warranted)
-
-## Intent Check
-(placeholder — parent writes final intent and scope check here)
-
-## Verification Criteria
-{user's answer — must describe observable behavior}
-
-## Log
-
----
-### [{YYYY-MM-DD HH:MM}] Created
-{background/motivation for this plan}
-```
-
-### Step 4: Update INDEX.md
-
-Append row to `.crabshell/plan/INDEX.md`:
-
-```
-| [[P{NNN}-{slug}|P{NNN}]] | {title} | draft | {YYYY-MM-DD} | | |
-```
-
-### Step 5: Confirm
-
-Tell user: "Created P{NNN} in draft status. Review and approve before creating tickets."
+Existing P documents stay readable and searchable, and their tickets (`P{NNN}_T{NNN}`) keep working.
 
 ---
 
@@ -197,19 +56,11 @@ Update status column and/or Tickets column in `.crabshell/plan/INDEX.md`.
 - `in-progress` → `done` (all tickets verified)
 - any → `abandoned`
 
----
 
-## Rules
+## Rules (existing plans)
 
-1. **NEVER modify existing content.** Only append to Log section, Tickets section, and agent result sections (Analysis Results, Review Results, Intent Check).
-2. **Tickets section:** Only receives appended lines like `- [[P{NNN}_T{NNN}-{slug}|P{NNN}_T{NNN}]]: {title}` when ticketing skill creates a ticket.
-3. **Plan checkboxes:** Never modify. Progress is tracked in Log entries.
-4. **INDEX.md** is the only file where status may be modified.
-5. When plan comes from a discussion/investigation, note `[[D{NNN}-{slug}|D{NNN}]]` or `[[I{NNN}-{slug}|I{NNN}]]` in INDEX.md Related column and add to first log entry. Use bare ID (e.g., `D{NNN}`) as a forward reference if the filename is not yet known.
-6. **No parent transition while children incomplete:** P can only transition to `done` when ALL related tickets are `verified`. If any ticket is incomplete, refuse `done` transition.
-7. **Auto-conclude parent on completion:** When P becomes `done` → automatically update D/I in Related column to `concluded` and append log to those documents. (Triggered by ticketing cascade)
-8. **Mandatory work log:** After performing any work related to this document, append a log entry to the Log section using the existing format (`### [{YYYY-MM-DD HH:MM}] {entry_type}`). This applies regardless of whether this skill was explicitly invoked — if the work touched or advanced this plan's purpose, log it.
-9. **Mandatory result append:** The parent MUST append analysis and final intent-check evidence to the P document. If delegation/review was used, its findings and the parent's disposition MUST also be recorded. Verbal reporting alone is insufficient. Before proceeding, the parent reads the P document and confirms the required parent sections no longer contain `placeholder`; the optional review section is not a completion gate when review was unnecessary.
-10. **Exhaustive verification standard:** Verification follows the VERIFICATION-FIRST principle in RULES (Predict → Execute → Compare). When no project verification tool exists, invoke the 'verifying' skill. Direct → indirect → explicitly "unverified".
-11. **Anti-partitioning (regressing context):** When this plan is part of a regressing cycle, it MUST plan work for the current cycle only. Plans that reference or pre-allocate work for future cycles (e.g., "Cycle 2 will handle X") are INVALID and must be rejected by the parent; an optional reviewer may provide additional independent evidence.
-12. **Regressing state update:** If `.crabshell/memory/regressing-state.json` exists and is active, update it after plan creation using: `"{NODE_PATH}" -e "const f='{PROJECT_DIR}/.crabshell/memory/regressing-state.json';const s=JSON.parse(require('fs').readFileSync(f,'utf8'));s.planId='{P-ID}';s.lastUpdatedAt=new Date().toISOString();require('fs').writeFileSync(f,JSON.stringify(s,null,2))"`. Phase transition is handled automatically by the PostToolUse hook. Only applies when regressing-state.json exists — standalone planning usage is unaffected.
+1. **NEVER modify existing content.** Only append to the Log section, the Tickets section, and the result sections (Analysis Results, Review Results, Intent Check).
+2. **Plan checkboxes:** Never modify. Progress is tracked in Log entries.
+3. **INDEX.md** is the only file where status may be modified.
+4. **No parent transition while children incomplete:** P can only transition to `done` when ALL related tickets are `verified`.
+5. **Mandatory work log:** After performing any work related to an existing plan, append a log entry using `### [{YYYY-MM-DD HH:MM}] {entry_type}`.

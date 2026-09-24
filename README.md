@@ -5,7 +5,7 @@
 Three pillars:
 1. **Session memory** — Both hosts automatically load the same project memory and workflow state. Claude Code retains automatic session capture/rotation; either host can use explicit load/save/search skills.
 2. **Behavioral correction** — Both hosts receive the same compact first-turn contract, workflow, subagent, compaction, and parent-completion semantics through native hooks. v21.113.0 (I083): per-response 3-field ending, model-visible pressure texts, and the pressure/sycophancy/scope behavioral guards are retired; deterministic guards (path, docs, log, verify, commit-gate, doc-watchdog) remain.
-3. **Structured workflows** — D/P/T/I/H document system with host-native skills for planning, investigating, iterative improvement (regressing), and hotfix recording of direct one-pass work (W worklogs are legacy history).
+3. **Structured workflows** — D-T document system: a discussion (D) carries the plan, tickets (T) hang off it; investigations (I) are independent; existing P and H documents stay readable. Host-native skills cover discussing, ticketing, investigating and iterative improvement (regressing).
 
 All plugin output lives under `.crabshell/` — gitignored, clean project root.
 
@@ -74,7 +74,7 @@ Project verification uses a portable schema-v2 manifest. Commands are repo-relat
 
 Parent completion evidence recognizes checks declared in the project manifest or package test configuration. Claude success can omit an exit code; `PostToolUseFailure` records its separate error envelope. Codex obtains an explicit code from a matching completed command in the native transcript when its hook only contains output text. Failures, interruptions, duplicate and late results cannot reuse an earlier passing check. Ordinary shell reads avoid a whole-project content scan; decisive checks, edits and commit/Stop decisions retain content-based validation.
 
-**New in v21.129.0:** reverting or checking out a file no longer makes `run-verify.js --changed` run everything (the load map compares content, not just file times). **v21.128.0:** `run-verify.js --changed` keeps running only the checks your change touches while a session is writing its memory files (a `scripts/codex-docs.js` change runs 26 of 97 checks, about half the full time). **v21.127.0:** a commit blocked because the project declares no full check now says what to declare (`tools.test` or package.json `test`); prompts carry 1,021 fewer characters because the project description loads once per session; the rules add one advisor line and match common brevity rules; document folders, time limits, locks and JSON state each have one definition. **v21.126.0:** the declared checks now run every test file (the manifest discovers them), `run-verify.js --changed` runs only the checks your change touches (everything when it cannot tell), and only the project's own check commands unlock a commit. **v21.125.0:** the path guard blocks only writes into another project's `.crabshell` (reads get a notice; prose, grep patterns, heredoc text, temp folders and unknown variables are no longer blocked), doc-watchdog and web-guard look only at this project, and Claude runs its hooks in one process per event (one Edit starts 2 hook processes instead of 10). **v21.124.0:** sessions running at the same time in one project keep their own memory position, save counter, completion record and skill flag, so they no longer duplicate, drop or unblock each other's work; the commit gate no longer blocks after documentation-only edits and advises instead of blocking when a project declares no check; SessionStart memory fits the host's 10,000-character limit. **v21.123.0:** opt-in raw hook capture, failure/result ordering, scoped request guidance, prepared memory finalization, and a small recovery record. The record preserves request excerpts, observed checks and unfinished/paused status; it does not grant new execution permission. Claude delta processing prepares a fixed input, summarizes it in the foreground when the host permits, and uses one finalize command. New input stays queued. Codex preserves pending automatic summaries because those summarizer skills are not bundled. See [runtime and memory details](USER-MANUAL.md#hook-input-capture-and-recovery).
+**New in v21.130.0:** the document workflow is D → T — a discussion carries the plan and its tickets are `D001_T001`; regressing cycles no longer create plan documents, one-pass work is a discussion with one ticket, and existing P/H documents stay readable. The retired guards were deleted. **v21.129.0:** reverting or checking out a file no longer makes `run-verify.js --changed` run everything (the load map compares content, not just file times). **v21.128.0:** `run-verify.js --changed` keeps running only the checks your change touches while a session is writing its memory files (a `scripts/codex-docs.js` change runs 26 of 97 checks, about half the full time). **v21.127.0:** a commit blocked because the project declares no full check now says what to declare (`tools.test` or package.json `test`); prompts carry 1,021 fewer characters because the project description loads once per session; the rules add one advisor line and match common brevity rules; document folders, time limits, locks and JSON state each have one definition. **v21.126.0:** the declared checks now run every test file (the manifest discovers them), `run-verify.js --changed` runs only the checks your change touches (everything when it cannot tell), and only the project's own check commands unlock a commit. **v21.125.0:** the path guard blocks only writes into another project's `.crabshell` (reads get a notice; prose, grep patterns, heredoc text, temp folders and unknown variables are no longer blocked), doc-watchdog and web-guard look only at this project, and Claude runs its hooks in one process per event (one Edit starts 2 hook processes instead of 10). **v21.124.0:** sessions running at the same time in one project keep their own memory position, save counter, completion record and skill flag, so they no longer duplicate, drop or unblock each other's work; the commit gate no longer blocks after documentation-only edits and advises instead of blocking when a project declares no check; SessionStart memory fits the host's 10,000-character limit. **v21.123.0:** opt-in raw hook capture, failure/result ordering, scoped request guidance, prepared memory finalization, and a small recovery record. The record preserves request excerpts, observed checks and unfinished/paused status; it does not grant new execution permission. Claude delta processing prepares a fixed input, summarizes it in the foreground when the host permits, and uses one finalize command. New input stays queued. Codex preserves pending automatic summaries because those summarizer skills are not bundled. See [runtime and memory details](USER-MANUAL.md#hook-input-capture-and-recovery).
 
 ## What Gets Saved
 
@@ -121,25 +121,25 @@ The supported `counter.js memory-set/get/list` commands use the same `.crabshell
 | `/crabshell:search-docs query` | BM25 full-text search across all D/P/T/I/W documents |
 | `/crabshell:knowledge "title"` | Create a K-page (verified fact or operational tip) in .crabshell/knowledge/ |
 
-## Document Management (D/P/T/I/H System)
+## Document Management (D-T System)
 
 Track project work through structured, append-only documents:
 
 | Skill | ID Format | Statuses | Use For |
 |-------|-----------|----------|---------|
 | `/discussing` | D001 | open, concluded | Decisions, dialogues, conclusions |
-| `/planning` | P001 | draft, approved, in-progress, done | Implementation plans with steps |
-| `/ticketing` | P001_T001 | todo, in-progress, done, verified | Session-sized work units tied to plans |
+| `/planning` | P001 | draft, approved, in-progress, done | Existing plans only (new plans are written into the discussion) |
+| `/ticketing` | D001_T001 (P001_T001 for existing plans) | todo, in-progress, done, verified | Session-sized work units under a discussion |
 | `/investigating` | I001 | open, concluded | Multi-source investigations with cross-review |
-| `/hotfix` | H001 | done | Directly-performed one-pass work (Problem/Fix/Verification) |
+| `/hotfix` | — (H001 for existing records) | — | One-pass work, recorded as a discussion with one ticket; `/hotfix H001` updates an existing H record |
 
 W worklogs (W001...) are legacy history from the retired light-workflow skill (v21.112.0, D113) — still readable and searchable, no new ones are created.
 
-Each document type has its own folder under `.crabshell/` with an `INDEX.md` for status tracking. Tickets inherit from plans and require verification-at-creation (TDD principle).
+Each document type has its own folder under `.crabshell/` with an `INDEX.md` for status tracking. Tickets name their discussion as parent and require verification-at-creation (TDD principle); a discussion is concluded by its final report, not by its tickets.
 
 ## Agent Orchestration Workflow
 
-For one-pass work the parent does the task directly and records it with the hotfix skill. The parent agent owns the task contract, named references, source changes, direct execution, and the final completion decision.
+For one-pass work the parent does the task directly and records it as a discussion with one ticket. The parent agent owns the task contract, named references, source changes, direct execution, and the final completion decision.
 
 Delegation is optional and risk-based. When a worker is useful, its prompt carries the relevant original request, non-goals, authoritative references, read/write scope, expected observation, and verification method. Worker claims, counts, and spot-checks are supporting evidence only; the parent must inspect the resulting diff and decisive observations itself.
 
@@ -244,6 +244,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.130.0 | Documents are D (the discussion carries the plan) → T: tickets `D###_T###` under a discussion (P###_T### kept), one ticket-ID definition for every guard and the Codex tool, regressing cycles plan in the discussion log, no new P/H documents; retired guards and their tests deleted (97 → 89 checks); review fixes for phase ownership, missing parents and worker scope |
 | 21.129.0 | `--changed` ignores files whose time moved but content did not (the load map stores content hashes; a revert or checkout no longer runs everything); installed contents documented (tests ship with the `./` source, about 38% of tracked bytes) |
 | 21.128.0 | `--changed` stays selective while a session runs: git-ignored files (runtime state) no longer make the load map stale — manifest, runner and tests still checked (a `scripts/codex-docs.js` change: 26 of 97 checks, 96 s vs about 193 s full); `isRegressingStale` is the one staleness decision; `*.bak` ignored |
 | 21.127.0 | Commit gate says what to declare when a manifest has only single entries; rules gain one advisor line and banter/length/list wording that matches common brevity rules; per-prompt context 1,021 characters shorter (the project description loads at SessionStart, not every prompt); one definition per shared value: `DOC_TYPES` table, duration constants, `core/skill-flag.js`, `tryWithMemoryIndex`/`tryWithMemoryRotation` for every hand-written lock, JSON through `readJsonOrDefault`/`writeJson` |

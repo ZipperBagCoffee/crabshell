@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { STORAGE_ROOT, MEMORY_DIR, INDEX_FILE, MEMORY_FILE, LOCK_FILE, INDEX_LOCK_FILE, LOCK_STALE_MS, LOCK_WAIT_MS, DOC_TYPES, SUMMARY_SUFFIX } = require('./constants');
+const { STORAGE_ROOT, MEMORY_DIR, INDEX_FILE, MEMORY_FILE, LOCK_FILE, INDEX_LOCK_FILE, LOCK_STALE_MS, LOCK_WAIT_MS, DOC_TYPES, SUMMARY_SUFFIX, TICKET_DIR, TICKET_ID_SOURCE } = require('./constants');
 
 // Subprocess marker — top-level guard for fail-open invariant. D106 IA-10.
 function isBackground() { return process.env.CRABSHELL_BACKGROUND === '1'; }
@@ -48,6 +48,13 @@ function readJsonOrDefault(filePath, defaultValue) {
 function docDirsPattern(filter) {
   const escape = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return `${escape(STORAGE_ROOT)}\\/(${DOC_TYPES.filter(filter).map(type => escape(type.dir)).join('|')})`;
+}
+
+// Regex source for a ticket document path "<STORAGE_ROOT>/ticket/<ticket id>"
+// (constants TICKET_ID_SOURCE: a discussion or plan parent).
+function ticketDocPattern() {
+  const escape = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return `${escape(STORAGE_ROOT)}\\/${escape(TICKET_DIR)}\\/${TICKET_ID_SOURCE}`;
 }
 
 // Default memory-index.json structure - prevents field loss on parse errors
@@ -290,4 +297,4 @@ function releaseIndexLock(memoryDir) {
 
 function ownsIndexLock(memoryDir) { return ownsLock(path.join(memoryDir, INDEX_LOCK_FILE)); }
 
-module.exports = { MEMORY_ROOT, isBackground, getProjectName, getProjectDir, parseProjectDirArg, getStorageRoot, getMemoryDir, ensureDir, readFileOrDefault, readJsonOrDefault, docDirsPattern, getDefaultIndex, readIndexSafe, writeFile, writeJson, getTimestamp, estimateTokens, estimateTokensFromFile, extractTailByTokens, updateIndex, acquireLock, releaseLock, acquireIndexLock, releaseIndexLock, ownsIndexLock, acquireFileLock: _acquireFileLock, releaseFileLock: _releaseFileLock, _recordContention };
+module.exports = { MEMORY_ROOT, isBackground, getProjectName, getProjectDir, parseProjectDirArg, getStorageRoot, getMemoryDir, ensureDir, readFileOrDefault, readJsonOrDefault, docDirsPattern, ticketDocPattern, getDefaultIndex, readIndexSafe, writeFile, writeJson, getTimestamp, estimateTokens, estimateTokensFromFile, extractTailByTokens, updateIndex, acquireLock, releaseLock, acquireIndexLock, releaseIndexLock, ownsIndexLock, acquireFileLock: _acquireFileLock, releaseFileLock: _releaseFileLock, _recordContention };

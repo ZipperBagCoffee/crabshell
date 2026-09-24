@@ -83,6 +83,11 @@ module.exports = {
   REGRESSING_STALE_MS: 24 * 60 * 60 * 1000,
 
   DOC_TYPES,
+  // Ticket IDs are <parent>_T<NNN>. The parent is a discussion (D###, the current
+  // form: the discussion carries the plan) or a plan (P###, kept for existing
+  // documents). Regex sources, so every guard derives the same shape.
+  TICKET_PARENT_SOURCE: '[DP]\\d{3}',
+  TICKET_ID_SOURCE: '[DP]\\d{3}_T\\d{3}',
   // Skills allowed to write documents: each type's own skill plus the two
   // workflow skills that drive them.
   DOC_SKILLS: [...new Set(DOC_TYPES.map(type => type.skill).filter(Boolean)), 'regressing', 'verifying'],

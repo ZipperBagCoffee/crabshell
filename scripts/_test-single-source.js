@@ -1,7 +1,7 @@
 'use strict';
 // D119 P180: each shared value or helper has one definition in shipped code.
-// Scope: scripts/**/*.js that ship, minus tests, fixtures, and the retired scripts
-// that are no longer wired (kept on disk until the user decides to delete them).
+// Scope: scripts/**/*.js that ship, minus tests, fixtures, and the Claude compaction
+// scripts that are no longer wired (tests still run them).
 const fs = require('fs');
 const path = require('path');
 const h = require('./testlib/hook-harness');
@@ -9,7 +9,7 @@ const constants = require('./constants');
 
 const report = h.createReporter('single-source');
 const SCRIPTS = __dirname;
-const RETIRED = new Set(['sycophancy-guard.js', 'pressure-guard.js', 'scope-guard.js', 'regressing-loop-guard.js', 'post-compact.js', 'pre-compact.js']);
+const RETIRED = new Set(['post-compact.js', 'pre-compact.js']);
 const rel = file => path.relative(SCRIPTS, file).replace(/\\/g, '/');
 
 function shipped({ includeRetired = false } = {}) {
