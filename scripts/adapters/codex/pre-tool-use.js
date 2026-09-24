@@ -18,6 +18,8 @@ async function main() {
       const gate = gateVerification(commandPayload, normalized.projectDir);
       if (gate.reason) { console.log(JSON.stringify(denyOutput(gate.reason))); return; }
       prepareParentCheck(normalized.projectDir, commandPayload);
+      // Codex adds PreToolUse hookSpecificOutput.additionalContext to the model's context.
+      if (gate.notice) console.log(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', additionalContext: `[CRABSHELL] ${gate.notice}` } }));
     }
     return;
   }

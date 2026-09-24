@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.123.0)
+# Crabshell User Manual (v21.124.0)
 
 ## Why Do You Need This?
 
@@ -82,9 +82,10 @@ Codex automatically loads existing memory/workflow context at SessionStart and u
 ├── *.summary.json       # L3 summaries (Haiku-generated)
 ├── memory-index.json    # Rotation tracking & delta state
 ├── delta-jobs/          # Fixed delta inputs and attempt-specific summary files
-├── completion-control.json # Parent evidence and bounded recovery record
+├── completion-control.json # Parent evidence and bounded recovery record, one entry per session
 ├── verification-state.json # Required-check results and interruption state
-├── counter.json         # PostToolUse counter
+├── counter.json         # Legacy counter for payloads without a session id
+├── session-state/       # Per-session counter, L1 read position, skill flag
 ├── config.json          # Per-project configuration
 ├── project.md           # Legacy description if present; canonical file is ../project.md
 ├── logs/                # Debug and refine logs
@@ -260,7 +261,7 @@ The plugin uses Claude Code hooks to run automatically:
 | `PostToolUse` | `completion-controller.js` | After Bash, Write, or Edit | Records declared parent check results after a child claim and invalidates evidence when project content changes |
 | `PostToolUseFailure` | `verification-sequence.js record` + `completion-controller.js` | After failed Claude Bash calls | Records failure/interruption and invalidates prior success; commit and Stop remain the blocking boundaries |
 | `PreToolUse` | `completion-controller.js` | Before Claude Bash calls | Records declared check invocation identity and order for parent evidence |
-| `PostToolUse` | `skill-tracker.js` | After Skill tool call | Sets skill-active flag on Skill tool calls for guard scripts |
+| `PostToolUse` | `skill-tracker.js` | After Skill tool call | Sets the calling session's skill flag for docs-guard (cleared on compaction and SessionEnd) |
 | `Stop`, `SubagentStop` | `completion-controller.js` | Child/parent completion boundary | One state owner: child claim is not proof; requires parent evidence, bounds identical failures, preserves workflow continuation, and runs the retained doc-watchdog Stop validator (sycophancy/scope/pressure guards unwired v21.113.0) |
 | `PreCompact` | `pre-compact.js` | Before context compaction | Outputs memory state, active documents, and regressing state as context to preserve across compaction |
 | `PostCompact` | `post-compact.js` | After context compaction | Logs compaction event for debugging (side-effect only, no context output) |
@@ -314,9 +315,9 @@ Guard scripts are PreToolUse/Stop hooks that prevent common mistakes:
 | `web-guard.js` | Built-in WebFetch/WebSearch small-model summarization (Anthropic docs: "lossy by design"; hallucinated citations in research). WebFetch is blocked with ready-to-run raw-fetch commands for the same URL; WebSearch is redirected to a configured search MCP (tavily/brave/exa/...) or, when none exists, allowed with a "snippets are pointers, fetch before citing" warning so machines without a search MCP never lose search entirely. Modes: `block` (default) / `warn` / `off` via `webGuard` in config.json (v21.114.0) |
 | `core/path-policy.js` + Codex adapter | The same wrong-project memory paths in Codex; the core decides policy while each host wrapper emits its own native response format |
 | `core/completion-control.js` + host adapters | Child false-done, undeclared/inconclusive checks, repeated identical failures, stale content evidence, and premature active-workflow completion. One result event reuses one content fingerprint |
-| `verification-sequence.js` | Source edits before git commit without a passing declared check; unchanged content preserves existing verification |
+| `verification-sequence.js` | Edits to code/configuration before git commit without a passing declared check (any session's edit counts; prose, stylesheet and image edits do not); unchanged content preserves existing verification; a project with no check configuration gets advice instead of a block |
 | `doc-watchdog.js` | Document update omissions during regressing: soft warning when 5+ code edits without D/P/T document update; blocks session end when ticket has no work log since last code edit |
-| `skill-tracker.js` | Supporting guard: sets the `skill-active` flag when a Skill tool call is detected, so `docs-guard` and `verify-guard` know when writes are authorized |
+| `skill-tracker.js` | Supporting guard: sets the calling session's skill flag when a Skill tool call is detected, so `docs-guard` knows that session's document writes are authorized; another session's flag never counts |
 | `pressure-guard.js` | **Retired v21.113.0 (I083 R4)** — tool blocking removed; pressure counters remain as user-facing telemetry only (see [Pressure System](#pressure-system)) |
 | `scope-guard.js` | **Retired v21.113.0 (I083 R5)** — Stop-time scope regex removed; scope preservation lives as a short RULES principle |
 | `regressing-guard.js` | Phase-based write restrictions during active regressing sessions — blocks out-of-phase edits to plan/ticket documents |
@@ -482,7 +483,7 @@ or storage loss are not promised to be atomic.
 
 ### lock-contention.json — F-4 Instrumentation State
 
-`.crabshell/memory/lock-contention.json`. Per-lock object (keyed by lock filename), 9 fields: `acquireCount`, `releaseCount`, `contendedCount`, `totalWaitMs`, `totalHeldMs`, `maxWaitMs`, `maxHeldMs`, `lastAcquiredPid`, `lastUpdatedAt`; top-level `measurementWindowStart` ISO marker. F-4 lock contention measurement → F-3 ratification. Additive top-level keys safe (`_recordContention` reads `state[lockName]` only). **Related:** `### _recordContention`.
+`.crabshell/memory/lock-contention.json`. Per-lock object (keyed by lock filename), fields: `acquireCount`, `releaseCount`, `skipCount` (v21.124.0: attempts that gave up), `contendedCount` (acquires that found another live holder), `totalWaitMs`, `totalHeldMs`, `maxWaitMs`, `maxHeldMs`, `lastAcquiredPid`, `lastUpdatedAt`; top-level `measurementWindowStart` ISO marker. F-4 lock contention measurement → F-3 ratification. Additive top-level keys safe (`_recordContention` reads `state[lockName]` only). **Related:** `### _recordContention`.
 
 ### _recordContention — Lock Hold/Wait Measurement
 
@@ -580,7 +581,7 @@ The script processes all documents under `.crabshell/discussion/`, `.crabshell/p
 3. Run `/crabshell:load-memory`
 
 ### Auto-save Not Triggering
-1. Check counter in `.crabshell/memory/counter.json`
+1. Check the session's counter in `.crabshell/memory/session-state/<first 8 characters of session id>/counter.json` (legacy `counter.json` only for payloads without a session id)
 2. Ask Claude: "Reset the memory counter"
 
 ### L1 Files Taking Too Much Space

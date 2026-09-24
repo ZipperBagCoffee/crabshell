@@ -21,3 +21,5 @@ node "{SKILL_DIR}/scripts/codex-memory.js" save --title="Codex session note" --p
 ```
 
 The script appends to `.crabshell/memory/logbook.md` and resets the Crabshell counter.
+If it reports that memory is busy (exit 1, nothing written — another session is
+saving or rotating memory), run the same command again; do not report the note as saved.

@@ -6,6 +6,7 @@ const { getProjectDir, getStorageRoot, readJsonOrDefault, readIndexSafe, writeJs
 const { SESSIONS_DIR, MEMORY_DIR, MEMORY_FILE, INDEX_FILE, DELTA_TEMP_FILE, HAIKU_SAFE_TOKENS, FIRST_RUN_MAX_ENTRIES, DELTA_OUTPUT_TRUNCATE } = require('./constants');
 const { withMemoryIndex, readMemoryIndex } = require('./core/memory-lock');
 const { preparedInputExists } = require('./core/delta-transaction');
+const { deltaBaseline, recordPending, commitPending, pendingSnapshot, registerExistingSession } = require('./core/session-delta');
 
 function extractDeltaUnlocked(sessionId) {
   try {
@@ -17,8 +18,6 @@ function extractDeltaUnlocked(sessionId) {
     // Get last update timestamp
     const index = readIndexSafe(indexPath);  // Use safe reader to preserve all fields
     const queued = fs.existsSync(path.join(memoryDir, DELTA_TEMP_FILE)) || preparedInputExists(memoryDir, index.deltaJob);
-    const lastUpdateTs = (queued && index.pendingLastProcessedTs) || index.lastMemoryUpdateTs || null;
-
     // Get L1 file — prefer session-specific file if sessionId provided
     if (!fs.existsSync(sessionsDir)) {
       return { success: false, reason: 'No sessions dir' };
@@ -33,12 +32,21 @@ function extractDeltaUnlocked(sessionId) {
       return { success: false, reason: 'No L1 files' };
     }
 
-    // Session-aware L1 selection: prefer file matching sessionId, fallback to most recent
+    // Session-aware L1 selection. A session reads only its own L1; without one
+    // there is nothing of this session's to extract (another session's L1 would
+    // be queued twice). Without a session id, the most recent L1 (legacy).
     let selectedL1 = l1Files[0];
     if (sessionId) {
       const sessionMatch = l1Files.find(f => f.includes(`_${sessionId}.l1.jsonl`));
-      if (sessionMatch) selectedL1 = sessionMatch;
+      if (!sessionMatch) return { success: false, reason: 'No L1 for this session' };
+      selectedL1 = sessionMatch;
+      // First sight of a session whose L1 predates per-session tracking.
+      if (registerExistingSession(index, sessionId)) writeJson(indexPath, index);
     }
+
+    // sessionId here is the 8-character session key used in L1 file names.
+    const lastUpdateTs = deltaBaseline(index, sessionId, queued);
+    const firstRun = !lastUpdateTs && !index.lastMemoryUpdateTs;
 
     const l1Path = path.join(sessionsDir, selectedL1);
     const content = fs.readFileSync(l1Path, 'utf8');
@@ -90,7 +98,7 @@ function extractDeltaUnlocked(sessionId) {
     }
 
     // First run handling: limit to recent entries
-    if (!lastUpdateTs && delta.length > FIRST_RUN_MAX_ENTRIES) {
+    if (firstRun && delta.length > FIRST_RUN_MAX_ENTRIES) {
       delta.splice(0, delta.length - FIRST_RUN_MAX_ENTRIES);
     }
 
@@ -100,7 +108,7 @@ function extractDeltaUnlocked(sessionId) {
 
     // Join delta content with UTC timestamp header
     const extractTime = new Date().toISOString();
-    let deltaContent = `\n--- [${extractTime}] ---\n` + delta.join('\n\n');
+    let deltaContent = `\n--- [${extractTime}] session=${sessionId || 'unknown'} ---\n` + delta.join('\n\n');
 
     // Append to delta temp file (don't overwrite!)
     const deltaPath = path.join(memoryDir, DELTA_TEMP_FILE);
@@ -121,9 +129,9 @@ function extractDeltaUnlocked(sessionId) {
       if (fs.existsSync(memoryPath)) {
         idx.deltaCreatedAtMemoryMtime = fs.statSync(memoryPath).mtimeMs;
       }
-      if (maxProcessedTs) {
-        idx.pendingLastProcessedTs = maxProcessedTs;
-      }
+      recordPending(idx, sessionId, maxProcessedTs);
+      // Same lock hold as the append, so no reader sees a queue without its flag.
+      idx.deltaReady = true;
       writeJson(indexPath, idx);
     }
 
@@ -151,6 +159,7 @@ function markMemoryUpdatedUnlocked() {
     const index = readIndexSafe(indexPath);
 
     if (index.pendingLastProcessedTs) {
+      commitPending(index, pendingSnapshot(index));
       index.lastMemoryUpdateTs = index.pendingLastProcessedTs;
       delete index.pendingLastProcessedTs;
     } else {

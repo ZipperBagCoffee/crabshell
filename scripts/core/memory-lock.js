@@ -1,8 +1,8 @@
 'use strict';
 const fs=require('fs');
 const path=require('path');
-const {STORAGE_ROOT,MEMORY_DIR,INDEX_FILE,INDEX_LOCK_FILE}=require('../constants');
-const {acquireIndexLock,releaseIndexLock,acquireLock,releaseLock}=require('../utils');
+const {STORAGE_ROOT,MEMORY_DIR,INDEX_FILE}=require('../constants');
+const {acquireIndexLock,releaseIndexLock,ownsIndexLock,acquireLock,releaseLock}=require('../utils');
 
 function memoryDirectory(projectDir){
   const root=path.resolve(projectDir),directory=path.join(root,STORAGE_ROOT,MEMORY_DIR);
@@ -16,8 +16,7 @@ function memoryDirectory(projectDir){
 }
 function withMemoryIndex(projectDir,action){
   const directory=memoryDirectory(projectDir);
-  let owned=false;
-  try{owned=fs.readFileSync(path.join(directory,INDEX_LOCK_FILE),'utf8').trim()===String(process.pid);}catch{}
+  const owned=ownsIndexLock(directory);
   const acquired=owned?false:acquireIndexLock(directory);
   if(!owned&&!acquired)throw Error('Memory index is busy; data was preserved for retry.');
   try{return action(directory);}finally{if(acquired)releaseIndexLock(directory);}

@@ -109,10 +109,18 @@ function detectRegressingSkillCall(hookData) {
  * @param {string} projectDir
  * @returns {string|null} - new phase if advanced, null otherwise
  */
-function advancePhase(detectedSkill, projectDir) {
+function advancePhase(detectedSkill, projectDir, sessionId) {
   const statePath = path.join(getStorageRoot(projectDir), 'memory', REGRESSING_STATE_FILE);
   const state = readJsonOrDefault(statePath, null);
   if (!state || state.active !== true) return null;
+
+  // The session that runs the workflow's skills owns it (it moves after /clear or
+  // a relaunch as soon as the continuing session invokes the next skill).
+  if (sessionId && state.sessionId !== sessionId) {
+    state.sessionId = sessionId;
+    state.lastUpdatedAt = new Date().toISOString();
+    writeJson(statePath, state);
+  }
 
   // Transitions: discussing->planning, planning->ticketing, ticketing->execution
   const transitions = {

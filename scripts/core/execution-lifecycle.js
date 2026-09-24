@@ -93,17 +93,8 @@ function runExecutionLifecycle(projectDir, hookData = {}, options = {}) {
     result.diagnostics.push(`memory structure initialization failed: ${error.message}`);
   }
 
-  try {
-    const index = readJsonOrDefault(path.join(memoryDir, INDEX_FILE), {});
-    const deltaPath = path.join(memoryDir, DELTA_TEMP_FILE);
-    if (fs.existsSync(deltaPath) && index.deltaReady !== true) {
-      fs.unlinkSync(deltaPath);
-      result.staleDeltaRemoved = true;
-    }
-  } catch (error) {
-    result.diagnostics.push(`stale delta cleanup failed: ${error.message}`);
-  }
-
+  // Only the legacy project-wide flag is stale by definition here; each
+  // session's own flag belongs to that session and is left alone.
   try {
     const skillPath = path.join(memoryDir, SKILL_ACTIVE_FILE);
     if (fs.existsSync(skillPath)) {
@@ -118,10 +109,21 @@ function runExecutionLifecycle(projectDir, hookData = {}, options = {}) {
   try {
     locked = acquireIndexLock(memoryDir);
     if (!locked) {
-      result.diagnostics.push('index lock busy, skipping per-session pressure reset');
+      result.diagnostics.push('index lock busy, skipping stale delta cleanup and per-session pressure reset');
     } else {
       const indexPath = path.join(memoryDir, INDEX_FILE);
       const index = readJsonOrDefault(indexPath, {});
+      // Under the index lock: extraction sets deltaReady in the same lock hold as
+      // its append, so a queue without the flag here is a real leftover.
+      try {
+        const deltaPath = path.join(memoryDir, DELTA_TEMP_FILE);
+        if (fs.existsSync(deltaPath) && index.deltaReady !== true) {
+          fs.unlinkSync(deltaPath);
+          result.staleDeltaRemoved = true;
+        }
+      } catch (error) {
+        result.diagnostics.push(`stale delta cleanup failed: ${error.message}`);
+      }
       let changed = false;
       if (index.feedbackPressure && index.feedbackPressure.oscillationCount > 0) {
         index.feedbackPressure.oscillationCount = 0;

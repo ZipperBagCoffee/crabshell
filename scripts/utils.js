@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { STORAGE_ROOT, MEMORY_DIR, INDEX_FILE, MEMORY_FILE, LOCK_FILE, INDEX_LOCK_FILE, LOCK_STALE_MS } = require('./constants');
+const { STORAGE_ROOT, MEMORY_DIR, INDEX_FILE, MEMORY_FILE, LOCK_FILE, INDEX_LOCK_FILE, LOCK_STALE_MS, LOCK_WAIT_MS } = require('./constants');
 
 // Subprocess marker — top-level guard for fail-open invariant. D106 IA-10.
 function isBackground() { return process.env.CRABSHELL_BACKGROUND === '1'; }
@@ -136,26 +136,99 @@ function updateIndex(archivePath, tokens, memoryDir, dateRange) {
   writeJson(indexPath, index);
 }
 
-function acquireLock(memoryDir) {
-  const lockPath = path.join(memoryDir, LOCK_FILE);
-  try { fs.writeFileSync(lockPath, process.pid.toString(), { flag: 'wx' }); return true; }
-  catch (e) { try { if (Date.now() - fs.statSync(lockPath).mtimeMs > LOCK_STALE_MS) { fs.unlinkSync(lockPath); return acquireLock(memoryDir); } } catch {} return false; }
+// File lock with an owner token. The lock file holds "<pid>:<token>"; only the
+// holder whose token is on disk may delete it, so a holder that outlived the
+// stale threshold cannot remove the lock of the process that took it over.
+const _heldLocks = new Map(); // lockPath -> { token, acquiredAt }
+
+function _sleepMs(ms) {
+  try { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); } catch {}
 }
 
-function releaseLock(memoryDir) { try { fs.unlinkSync(path.join(memoryDir, LOCK_FILE)); } catch {} }
+const STEAL_STALE_MS = 10000;
+
+// The lock content when its owner is gone (process no longer exists, or the
+// lock is older than LOCK_STALE_MS); null while a live owner holds it.
+function _staleLockContent(lockPath) {
+  let content = '', stat;
+  try { content = fs.readFileSync(lockPath, 'utf8'); stat = fs.statSync(lockPath); } catch { return null; }
+  if (Date.now() - stat.mtimeMs > LOCK_STALE_MS) return content;
+  const pid = Number.parseInt(content.split(':')[0], 10);
+  if (!Number.isInteger(pid) || pid <= 0 || pid === process.pid) return null;
+  try { process.kill(pid, 0); return null; } catch (error) { return error.code === 'ESRCH' ? content : null; }
+}
+
+// Remove a dead owner's lock. Takeovers are serialized by a short secondary lock,
+// and the lock is removed only if it still holds the content judged stale, so two
+// waiters cannot both take over (the second would otherwise delete the first's
+// fresh lock).
+function _stealStaleLock(lockPath, staleContent) {
+  const stealPath = `${lockPath}.steal`;
+  try { fs.writeFileSync(stealPath, String(process.pid), { flag: 'wx' }); }
+  catch {
+    try { if (Date.now() - fs.statSync(stealPath).mtimeMs > STEAL_STALE_MS) fs.unlinkSync(stealPath); } catch {}
+    return false;
+  }
+  try {
+    let current;
+    try { current = fs.readFileSync(lockPath, 'utf8'); } catch { return true; } // already released
+    if (current !== staleContent || _staleLockContent(lockPath) === null) return false;
+    fs.unlinkSync(lockPath);
+    return true;
+  } catch { return false; }
+  finally { try { fs.unlinkSync(stealPath); } catch {} }
+}
+
+// Returns { acquired, contended, waitMs }. Waits up to waitMs for a live holder;
+// every path, including a takeover that cannot remove the lock, respects the deadline.
+function _acquireFileLock(lockPath, waitMs = LOCK_WAIT_MS) {
+  const start = Date.now();
+  const token = `${process.pid}:${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
+  let contended = false;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      fs.writeFileSync(lockPath, token, { flag: 'wx' });
+      _heldLocks.set(lockPath, { token, acquiredAt: Date.now() });
+      return { acquired: true, contended, waitMs: Date.now() - start };
+    } catch (error) {
+      if (error.code !== 'EEXIST') return { acquired: false, contended, waitMs: Date.now() - start };
+      contended = true;
+      const stale = _staleLockContent(lockPath);
+      const stolen = stale !== null && _stealStaleLock(lockPath, stale);
+      if (Date.now() - start >= waitMs) return { acquired: false, contended, waitMs: Date.now() - start };
+      if (!stolen) _sleepMs(Math.min(10 + attempt * 5, 40));
+    }
+  }
+}
+
+// Returns held milliseconds, or null when this process does not own the lock.
+function _releaseFileLock(lockPath) {
+  const held = _heldLocks.get(lockPath);
+  if (!held) return null;
+  _heldLocks.delete(lockPath);
+  try { if (fs.readFileSync(lockPath, 'utf8') === held.token) fs.unlinkSync(lockPath); } catch {}
+  return Date.now() - held.acquiredAt;
+}
+
+function ownsLock(lockPath) {
+  const held = _heldLocks.get(lockPath);
+  if (!held) return false;
+  try { return fs.readFileSync(lockPath, 'utf8') === held.token; } catch { return false; }
+}
+
+function acquireLock(memoryDir) { return _acquireFileLock(path.join(memoryDir, LOCK_FILE)).acquired; }
+
+function releaseLock(memoryDir) { _releaseFileLock(path.join(memoryDir, LOCK_FILE)); }
 
 // D107 cycle 5 F-4 instrumentation — best-effort lock-contention measurement.
-// In-process map of acquire timestamps keyed by lockName for accurate held-time
-// pairing in single-process scope. Cross-process held time is approximated via
-// `lastAcquiredAt` on disk (read by releaseIndexLock). Under-counting bias is
-// acceptable: F-4 reports lower bound; concurrent writes to lock-contention.json
-// may lose increments since recordContention CANNOT acquire any lock (deadlock
-// prevention per P147 RA1 R-1 — `recordContention` invoked from inside the lock
-// primitive itself, recursive lock acquisition would infinite-loop).
-const _acquireTimeStore = new Map();
+// Held time is measured in the holding process. Concurrent writes to
+// lock-contention.json may lose increments since recordContention CANNOT acquire
+// any lock (deadlock prevention per P147 RA1 R-1 — it runs inside the lock
+// primitive itself). D119: a failed attempt is a "skip", not an acquire, and an
+// acquire is "contended" only when another holder was actually present.
 const CONTENTION_FILE = 'lock-contention.json';
 
-function _recordContention(memoryDir, lockName, op, ms) {
+function _recordContention(memoryDir, lockName, op, ms, contended) {
   // Fail-open: any error during instrumentation must NOT propagate to the lock
   // primitive. Caller wraps this in try/catch but we also catch internally as
   // defense-in-depth (per P147 AC-6 fail-open invariant).
@@ -181,8 +254,11 @@ function _recordContention(memoryDir, lockName, op, ms) {
       m.acquireCount = (m.acquireCount || 0) + 1;
       m.totalWaitMs = (m.totalWaitMs || 0) + (ms || 0);
       if ((ms || 0) > (m.maxWaitMs || 0)) m.maxWaitMs = ms;
-      if ((ms || 0) > 0) m.contendedCount = (m.contendedCount || 0) + 1;
+      if (contended === undefined ? (ms || 0) > 0 : contended) m.contendedCount = (m.contendedCount || 0) + 1;
       m.lastAcquiredPid = process.pid;
+    } else if (op === 'skip') {
+      m.skipCount = (m.skipCount || 0) + 1;
+      m.totalWaitMs = (m.totalWaitMs || 0) + (ms || 0);
     } else if (op === 'release') {
       m.releaseCount = (m.releaseCount || 0) + 1;
       m.totalHeldMs = (m.totalHeldMs || 0) + (ms || 0);
@@ -193,45 +269,17 @@ function _recordContention(memoryDir, lockName, op, ms) {
   } catch {}
 }
 
-function acquireIndexLock(memoryDir) {
-  const lockPath = path.join(memoryDir, INDEX_LOCK_FILE);
-  const _start = Date.now();
-  try {
-    fs.writeFileSync(lockPath, process.pid.toString(), { flag: 'wx' });
-    const _waitMs = Date.now() - _start;
-    try { _acquireTimeStore.set(lockPath, Date.now()); } catch {}
-    try { _recordContention(memoryDir, INDEX_LOCK_FILE, 'acquire', _waitMs); } catch {}
-    return true;
-  }
-  catch (e) {
-    try {
-      if (Date.now() - fs.statSync(lockPath).mtimeMs > LOCK_STALE_MS) {
-        fs.unlinkSync(lockPath);
-        // Recursion: inner frame records its own metrics; outer frame returns
-        // the inner result. No double-counting because only the successful
-        // writeFileSync branch records.
-        return acquireIndexLock(memoryDir);
-      }
-    } catch {}
-    // Failed acquire: record wait time as contended (best-effort sample).
-    const _waitMs = Date.now() - _start;
-    try { _recordContention(memoryDir, INDEX_LOCK_FILE, 'acquire', _waitMs); } catch {}
-    return false;
-  }
+function acquireIndexLock(memoryDir, waitMs = LOCK_WAIT_MS) {
+  const result = _acquireFileLock(path.join(memoryDir, INDEX_LOCK_FILE), waitMs);
+  try { _recordContention(memoryDir, INDEX_LOCK_FILE, result.acquired ? 'acquire' : 'skip', result.waitMs, result.contended); } catch {}
+  return result.acquired;
 }
 
 function releaseIndexLock(memoryDir) {
-  const lockPath = path.join(memoryDir, INDEX_LOCK_FILE);
-  let _heldMs = 0;
-  try {
-    const _acquireTimeStored = _acquireTimeStore.get(lockPath);
-    if (typeof _acquireTimeStored === 'number') {
-      _heldMs = Date.now() - _acquireTimeStored;
-      _acquireTimeStore.delete(lockPath);
-    }
-  } catch {}
-  try { fs.unlinkSync(lockPath); } catch {}
-  try { _recordContention(memoryDir, INDEX_LOCK_FILE, 'release', _heldMs); } catch {}
+  const heldMs = _releaseFileLock(path.join(memoryDir, INDEX_LOCK_FILE));
+  if (heldMs !== null) { try { _recordContention(memoryDir, INDEX_LOCK_FILE, 'release', heldMs); } catch {} }
 }
 
-module.exports = { MEMORY_ROOT, isBackground, getProjectName, getProjectDir, parseProjectDirArg, getStorageRoot, getMemoryDir, ensureDir, readFileOrDefault, readJsonOrDefault, getDefaultIndex, readIndexSafe, writeFile, writeJson, getTimestamp, estimateTokens, estimateTokensFromFile, extractTailByTokens, updateIndex, acquireLock, releaseLock, acquireIndexLock, releaseIndexLock, _recordContention };
+function ownsIndexLock(memoryDir) { return ownsLock(path.join(memoryDir, INDEX_LOCK_FILE)); }
+
+module.exports = { MEMORY_ROOT, isBackground, getProjectName, getProjectDir, parseProjectDirArg, getStorageRoot, getMemoryDir, ensureDir, readFileOrDefault, readJsonOrDefault, getDefaultIndex, readIndexSafe, writeFile, writeJson, getTimestamp, estimateTokens, estimateTokensFromFile, extractTailByTokens, updateIndex, acquireLock, releaseLock, acquireIndexLock, releaseIndexLock, ownsIndexLock, acquireFileLock: _acquireFileLock, releaseFileLock: _releaseFileLock, _recordContention };

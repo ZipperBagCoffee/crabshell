@@ -112,8 +112,17 @@ function save(args) {
   }
   const ts = timestamps();
   const entry = `\n## ${ts.utc} (local ${ts.local})\n### ${title}\n${body}\n`;
-  fs.appendFileSync(memoryPath, entry, 'utf8');
-  writeJson(path.join(memoryDir, COUNTER_FILE), { counter: 0 });
+  // Same locks as the Claude append path, so a rotation cannot move logbook.md mid-append.
+  const { withMemoryIndex, withMemoryRotation } = require('./core/memory-lock');
+  try {
+    withMemoryIndex(projectDir, directory => withMemoryRotation(directory, () => {
+      fs.appendFileSync(memoryPath, entry, 'utf8');
+      writeJson(path.join(memoryDir, COUNTER_FILE), { counter: 0 });
+    }));
+  } catch (error) {
+    console.error(`Crabshell memory is busy; nothing was written. Retry the save. (${error.message})`);
+    process.exit(1);
+  }
   console.log(`Saved Crabshell memory entry to ${path.relative(projectDir, memoryPath)}: ## ${ts.utc} (local ${ts.local})`);
 }
 

@@ -220,15 +220,35 @@ test('existing lock file prevents rotation → returns null', function() {
     const memoryPath = path.join(memDir, 'logbook.md');
     fs.writeFileSync(memoryPath, makeContent(100000));
 
-    // Place a fresh lock file (mtime = now, within stale threshold)
+    // Place a fresh lock file (mtime = now, within stale threshold) owned by a
+    // live process other than this one. D119 P177_T002: the lock file carries
+    // "<pid>:<token>"; the parent process is alive for the whole test.
     const lockPath = path.join(memDir, '.rotation.lock');
-    fs.writeFileSync(lockPath, '99999');  // fake PID
+    fs.writeFileSync(lockPath, `${process.ppid}:held-by-another-process`);
 
     const result = mod.checkAndRotate(memoryPath, {});
     assertEqual(result, null, 'result should be null when lock held');
 
     // Cleanup lock
     try { fs.unlinkSync(lockPath); } catch (e) {}
+  } finally {
+    delete process.env.CLAUDE_PROJECT_DIR;
+    cleanupDir(tmpDir);
+  }
+});
+
+test('lock left by a process that no longer exists is taken over → rotation proceeds', function() {
+  const { tmpDir, memDir } = setupProject();
+  try {
+    process.env.CLAUDE_PROJECT_DIR = tmpDir;
+    const memoryPath = path.join(memDir, 'logbook.md');
+    fs.writeFileSync(memoryPath, makeContent(100000));
+    const exited = require('child_process').spawnSync(process.execPath, ['-e', 'process.stdout.write(String(process.pid))'], { encoding: 'utf8' });
+    const lockPath = path.join(memDir, '.rotation.lock');
+    fs.writeFileSync(lockPath, `${exited.stdout}:left-by-crashed-process`);
+
+    const result = mod.checkAndRotate(memoryPath, {});
+    assert(result !== null, 'rotation proceeds after taking over a dead owner\'s lock');
   } finally {
     delete process.env.CLAUDE_PROJECT_DIR;
     cleanupDir(tmpDir);

@@ -235,6 +235,7 @@ function refineRawSync(inputPath, outputPath, startOffset) {
 
   let content;
   let effectiveOffset = 0;
+  let consumedTo = fileSize;
 
   if (useOffset) {
     // Edge case: file smaller than offset (truncated/rotated) → reset to 0
@@ -253,20 +254,36 @@ function refineRawSync(inputPath, outputPath, startOffset) {
     } finally {
       fs.closeSync(fd);
     }
-    content = buf.toString('utf8');
-
-    // Edge case: offset lands in middle of a JSON line → skip to next newline
+    // Work on bytes so offsets stay exact at multi-byte characters.
+    let begin = 0;
+    // Edge case: offset lands in middle of a JSON line → skip to next newline.
+    // The offset is at a line boundary when the byte before it is '\n' (the usual
+    // case, since newOffset ends after a complete line); then the first line is
+    // whole and must be kept.
     if (effectiveOffset > 0) {
-      const firstNewline = content.indexOf('\n');
-      if (firstNewline === -1) {
-        // Edge case: no newlines in chunk (single giant partial line) → skip entirely
-        return { lineCount: 0, newOffset: fileSize };
+      const previous = Buffer.alloc(1);
+      const fdPrevious = fs.openSync(inputPath, 'r');
+      try { fs.readSync(fdPrevious, previous, 0, 1, effectiveOffset - 1); } finally { fs.closeSync(fdPrevious); }
+      if (previous[0] !== 0x0a) {
+        const firstNewline = buf.indexOf(0x0a);
+        if (firstNewline === -1) {
+          // Edge case: no newlines in chunk (single giant partial line) → skip entirely
+          return { lineCount: 0, newOffset: fileSize };
+        }
+        begin = firstNewline + 1;
       }
-      if (firstNewline > 0) {
-        content = content.substring(firstNewline + 1);
-      }
-      // firstNewline === 0 means we started right at a line boundary
     }
+    // A trailing line without '\n' may still be written by the host. Hold it back
+    // (and stop the offset before it) unless it is already a complete JSON record.
+    let finish = buf.length;
+    if (buf.length > begin && buf[buf.length - 1] !== 0x0a) {
+      const tailStart = Math.max(begin, buf.lastIndexOf(0x0a) + 1);
+      let complete = false;
+      try { JSON.parse(buf.slice(tailStart).toString('utf8')); complete = true; } catch {}
+      if (!complete) finish = tailStart;
+    }
+    consumedTo = effectiveOffset + finish;
+    content = buf.slice(begin, finish).toString('utf8');
   } else {
     content = fs.readFileSync(inputPath, 'utf8');
   }
@@ -291,7 +308,7 @@ function refineRawSync(inputPath, outputPath, startOffset) {
         fs.writeFileSync(outputPath, output.join('\n'));
       }
     }
-    return { lineCount: output.length, newOffset: fileSize };
+    return { lineCount: output.length, newOffset: consumedTo };
   }
 
   fs.writeFileSync(outputPath, output.join('\n'));

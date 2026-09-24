@@ -2,10 +2,14 @@
 const path = require('path');
 const {getStorageRoot,readJsonOrDefault}=require('../utils');
 
-function buildRecoveryContext(projectDir) {
+// Only the given session's record is shown: another session's request is not this
+// session's work, and a new session (no record yet) gets no recovery text.
+function buildRecoveryContext(projectDir, sessionId) {
+  if(!sessionId)return '';
   const file=path.join(getStorageRoot(projectDir),'memory','completion-control.json');
-  const state=readJsonOrDefault(file,null),record=state?.recovery;
-  if(!record)return '';
+  const {loadState}=require('./completion-control');
+  const state=loadState(projectDir,sessionId),record=state?.recovery;
+  if(!record||state.authorizedSessionId!==sessionId)return '';
   const verification=readJsonOrDefault(path.join(getStorageRoot(projectDir),'memory','verification-state.json'),null);
   const observed=verification && require('./check-history').currentCheck(verification);
   const check=record.lastCheck || (observed ? {

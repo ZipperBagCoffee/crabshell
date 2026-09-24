@@ -7,7 +7,7 @@ const { normalizeSessionStart } = require('./hook-contract');
 async function main() {
   const normalized = normalizeSessionStart(await readStdin(2000, { host: 'codex' }));
   if (!normalized) return;
-  const context = buildMemoryContext(normalized.projectDir, { source: normalized.source });
+  const context = buildMemoryContext(normalized.projectDir, { source: normalized.source, sessionId: normalized.hookData.session_id });
   process.stdout.write(JSON.stringify(createSessionStartOutput(context)) + '\n');
 }
 

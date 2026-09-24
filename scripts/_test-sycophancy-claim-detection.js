@@ -10,6 +10,9 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 
+// D119 P177_T001: pin the project to a temp dir so the guard never writes live project state.
+process.env.CLAUDE_PROJECT_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'sycophancy-test-project-'));
+
 const SCRIPT = path.join(__dirname, 'sycophancy-guard.js');
 const NODE = process.execPath;
 

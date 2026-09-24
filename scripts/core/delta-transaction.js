@@ -4,6 +4,7 @@ const {INDEX_FILE,MEMORY_FILE,DELTA_TEMP_FILE,DELTA_JOBS_DIR,ARCHIVE_PREFIX}=req
 const {writeJson}=require('../utils');
 const {withMemoryIndex,withMemoryRotation,readMemoryIndex,regularFile}=require('./memory-lock');
 const {formatMemoryEntry}=require('./memory-entry');
+const {pendingSnapshot,commitPending}=require('./session-delta');
 const digest=data=>crypto.createHash('sha256').update(data).digest('hex');
 
 function paths(directory,id){
@@ -40,7 +41,7 @@ function prepareDelta(projectDir){
     if(!fs.existsSync(source)||fs.statSync(source).size===0)return {pending:false};
     const input=fs.readFileSync(source);
     job={id:job?.status==='preparing'?job.id:crypto.randomUUID(),status:'preparing',inputSha256:digest(input),inputBytes:input.length,
-      processedThrough:index.pendingLastProcessedTs||null,preparedAt:new Date().toISOString()};
+      processedThrough:index.pendingLastProcessedTs||null,processedThroughBySession:pendingSnapshot(index),preparedAt:new Date().toISOString()};
     const location=paths(directory,job.id);fs.mkdirSync(location.directory,{recursive:true});
     index.deltaJob=job;writeJson(indexPath,index);
     fs.renameSync(source,location.input);
@@ -88,6 +89,7 @@ function finalizeDelta(projectDir,id,submittedSummary){
       job.status='appended';writeJson(indexPath,index);
     }
     if(job.processedThrough&&(!index.lastMemoryUpdateTs||job.processedThrough>index.lastMemoryUpdateTs))index.lastMemoryUpdateTs=job.processedThrough;
+    commitPending(index,job.processedThroughBySession);
     const queue=path.join(directory,DELTA_TEMP_FILE);
     index.deltaReady=fs.existsSync(queue)&&fs.statSync(queue).size>0;
     index.deltaProcessing=false;delete index.memoryAppendedInThisRun;

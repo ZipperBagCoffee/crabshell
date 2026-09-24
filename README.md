@@ -74,7 +74,7 @@ Project verification uses a portable schema-v2 manifest. Commands are repo-relat
 
 Parent completion evidence recognizes checks declared in the project manifest or package test configuration. Claude success can omit an exit code; `PostToolUseFailure` records its separate error envelope. Codex obtains an explicit code from a matching completed command in the native transcript when its hook only contains output text. Failures, interruptions, duplicate and late results cannot reuse an earlier passing check. Ordinary shell reads avoid a whole-project content scan; decisive checks, edits and commit/Stop decisions retain content-based validation.
 
-**New in v21.123.0:** opt-in raw hook capture, failure/result ordering, scoped request guidance, prepared memory finalization, and a small recovery record. The record preserves request excerpts, observed checks and unfinished/paused status; it does not grant new execution permission. Claude delta processing prepares a fixed input, summarizes it in the foreground when the host permits, and uses one finalize command. New input stays queued. Codex preserves pending automatic summaries because those summarizer skills are not bundled. See [runtime and memory details](USER-MANUAL.md#hook-input-capture-and-recovery).
+**New in v21.124.0:** sessions running at the same time in one project keep their own memory position, save counter, completion record and skill flag, so they no longer duplicate, drop or unblock each other's work; the commit gate no longer blocks after documentation-only edits and advises instead of blocking when a project declares no check; SessionStart memory fits the host's 10,000-character limit. **v21.123.0:** opt-in raw hook capture, failure/result ordering, scoped request guidance, prepared memory finalization, and a small recovery record. The record preserves request excerpts, observed checks and unfinished/paused status; it does not grant new execution permission. Claude delta processing prepares a fixed input, summarizes it in the foreground when the host permits, and uses one finalize command. New input stays queued. Codex preserves pending automatic summaries because those summarizer skills are not bundled. See [runtime and memory details](USER-MANUAL.md#hook-input-capture-and-recovery).
 
 ## What Gets Saved
 
@@ -181,7 +181,8 @@ Coding conventions: ...
 ├── logbook_*.md            # Rotated archives (L2)
 ├── *.summary.json         # L3 summaries (Haiku-generated)
 ├── memory-index.json      # Rotation tracking & delta state
-├── counter.json           # PostToolUse counter
+├── counter.json           # Legacy counter (payloads without a session id)
+├── session-state/         # Per-session counter, L1 read position, skill flag
 ├── logs/                  # Refine logs
 └── sessions/
     └── *.l1.jsonl         # L1 session transcripts (deduplicated)
@@ -243,6 +244,7 @@ logbook.md                - Active rolling memory (loaded at startup)
 
 | Version | Changes |
 |---------|---------|
+| 21.124.0 | Concurrent sessions: per-session L1 position, save counter, delta watermark, completion entry and skill flag; owner-token locks with one-at-a-time takeover; tree-scoped commit gate (prose/style/image edits exempt, advice when no check is configured, background launches not passing); SessionStart memory within a 9,500-character budget; L1 first-line loss fixed. |
 | 21.123.0 | Native failure/Interrupt capture and result binding; ordered check state and Codex commit gate; scoped request guidance; prepared delta finalization and bounded recovery; fewer ordinary-command source scans. |
 | 21.122.0 | Declared-check evidence with host-specific captured result handling; command/edit content invalidation with one scan per result; shared project.md path and preserving migration; seven portable Codex document launchers. |
 | 21.121.0 | feat: D116 — pipeline wiring probe. `skills/verifying/scripts/check-pipeline-wiring.js` (`discover` / `check --contract … --hop … --completeness`) validates a parent-approved connection contract against the source — hooks.json event/matcher/script/args + `node --check`, `[CRABSHELL_*]` trigger producers/consumers, agent frontmatter — and fails on any unclassified hop; a mutation test runs against a fixture copy via `--hooks`. `verifying` SKILL.md Step 2a adds an optional `arch-explorer:build` map (documentation only, `generated`/`unavailable`/`generation-failed`), `/verifying wiring`, Rules 11–12. 9-case test; this repo's manifest V017–V043, runner 42/42. code-wiki deferred. |

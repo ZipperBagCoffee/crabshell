@@ -1,10 +1,10 @@
-# Crabshell Plugin Structure (v21.123.0)
+# Crabshell Plugin Structure (v21.124.0)
 
-**Version**: 21.123.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.124.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
-Crabshell is a dual-runtime Claude Code/Codex plugin. Both hosts use native lifecycle hooks backed by shared first-turn, memory, workflow, compaction, subagent, and parent-completion cores. Claude retains automatic SessionEnd capture and pressure telemetry; Codex supplies synchronous native lifecycle and Interrupt events. Both share the D/P/T/I/W/K document system and `.crabshell/` storage. Version 21.123.0 adds the failure/capture/finalization/recovery components listed below.
+Crabshell is a dual-runtime Claude Code/Codex plugin. Both hosts use native lifecycle hooks backed by shared first-turn, memory, workflow, compaction, subagent, and parent-completion cores. Claude retains automatic SessionEnd capture and pressure telemetry; Codex supplies synchronous native lifecycle and Interrupt events. Both share the D/P/T/I/W/K document system and `.crabshell/` storage. Version 21.124.0 adds per-session state (`scripts/core/session-state.js`, `scripts/core/session-delta.js`) and the SessionStart budget; Version 21.123.0 added the failure/capture/finalization/recovery components listed below.
 
 Codex compatibility is provided in the same repository through a separate `.codex-plugin/plugin.json`, `codex-skills/`, and explicit wrapper scripts. Claude Code and Codex ship from the same repo but activate different manifests; both can share the `.crabshell/` memory and document store.
 
@@ -20,9 +20,10 @@ crabshell/
 │   │   ├── *.summary.json            # L3 summaries (Haiku-generated)
 │   │   ├── memory-index.json         # Rotation tracking & delta state
 │   │   ├── delta-jobs/               # Fixed delta inputs and attempt-specific summaries
-│   │   ├── completion-control.json   # Parent evidence plus bounded recovery information
+│   │   ├── completion-control.json   # Parent evidence plus bounded recovery information, one entry per session (v21.124.0)
 │   │   ├── verification-state.json   # Required checks, content identity and interruption state
-│   │   ├── counter.json              # PostToolUse counter (separated v20.5.0)
+│   │   ├── counter.json              # Legacy PostToolUse counter for payloads without a session id
+│   │   ├── session-state/<sid8>/     # Per-session counter, L1 read position, skill flag (v21.124.0)
 │   │   ├── project.md                # Preserved legacy description; copied to ../project.md only when absent
 │   │   ├── logs/                     # Refine logs
 │   │   └── sessions/                 # Per-session archive
@@ -134,7 +135,7 @@ crabshell/
 │   ├── pressure-guard.js            # RETIRED v21.113.0 (unwired, I083 R4) — was PreToolUse pressure blocking — all 6 tools (v19.47.0, v21.1.0)
 │   ├── log-guard.js                # PreToolUse D/P/T log enforcement — terminal status + cycle log guard (v21.4.0)
 │   ├── verification-sequence.js     # PostToolUse state tracker + PreToolUse commit/edit gate (v21.0.0)
-│   ├── skill-tracker.js             # PostToolUse skill-active flag setter (v19.33.0)
+│   ├── skill-tracker.js             # PostToolUse per-session skill flag setter (v19.33.0, v21.124.0)
 │   ├── _test-path-guard.js           # Path-guard unit tests + shell var resolution tests (v20.0.0, v21.8.0)
 │   ├── _test-web-guard.js            # Web-guard subprocess + unit tests — block/warn/off, MCP detection, fail-open (v21.114.0)
 │   ├── _test-sycophancy-guard.js     # Sycophancy-guard unit tests (v20.4.0)
@@ -428,13 +429,12 @@ L1 generation:
 
 4. PostToolUse
    ├─> counter.js check (.*)
-   │   ├─> Detect regressing skill calls → auto-advance phase (v19.23.0)
-   │   ├─> Increment counter
-   │   ├─> checkAndRotate() - archive if > 23,750 tokens
-   │   └─> At threshold: create/update L1 (session-aware reuse + incremental offset read) → extractDelta() → creates delta_temp.txt
+   │   ├─> Detect regressing skill calls → auto-advance phase, record the calling session as owner
+   │   ├─> Increment this session's counter (no shared lock)
+   │   └─> At this session's threshold (memory-index lock): checkAndRotate() → update this session's L1 from its own position → extractDelta(sid8) → "session=<sid8>" block in delta_temp.txt
    ├─> verification-sequence.js record (.*) — track source edits and test runs (v21.0.0)
    ├─> completion-controller.js (Bash|Write|Edit) — declared result evidence and content-change invalidation
-   ├─> skill-tracker.js (Skill, async) — set skill-active flag on Skill tool calls (v19.33.0)
+   ├─> skill-tracker.js (Skill, async) — set this session's skill flag (cleared on compaction and SessionEnd)
    └─> doc-watchdog.js record (Write|Edit, async) — track code edits and D/P/T doc edits (v21.18.0)
 
 5. PreCompact (v21.21.0)
@@ -451,14 +451,15 @@ L1 generation:
        ├─> Create final L1 session transcript (full reprocess, no offset)
        ├─> Cleanup duplicate L1 files
        ├─> pruneOldL1() — delete L1 files >30 days old (v21.10.0)
-       ├─> extractDelta() for remaining content
-       └─> Clear lastL1TranscriptOffset/Mtime (next session starts fresh)
+       ├─> extractDelta(sid8) for remaining content (waits up to 800 ms for the lock)
+       └─> Record this session's read position at transcript end; remove its counter and skill flag
 ```
 
 ## Version History
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.124.0 | Concurrent sessions: per-session L1 position, save counter, delta watermark, completion entry and skill flag; owner-token locks with one-at-a-time takeover; tree-scoped commit gate (prose/style/image edits exempt, advice when no check is configured, background launches not passing); SessionStart memory within a 9,500-character budget; L1 first-line loss fixed. |
 | 21.123.0 | Native hook capture, result binding/history and locks, Codex failure/Interrupt handling, prepared delta finalization and recovery context. |
 | 21.122.0 | Declared verification commands, captured host result distinction, command/edit evidence invalidation, one fingerprint per result, canonical project.md with preserving migration, and seven Codex document launchers. |
 | 21.121.0 | feat: D116 — `skills/verifying/scripts/check-pipeline-wiring.js` (discover candidate hops from hooks.json / `[CRABSHELL_*]` tokens / agent frontmatter; check a parent-approved `wiring-contract.json`; `--completeness` fails unclassified hops; `--hooks` fixture for mutation tests) + `_test-check-pipeline-wiring.js` (9 cases). `verifying` SKILL.md: Step 2a optional `arch-explorer:build` map (documentation only) + connection inventory + per-hop structural entries; `/verifying wiring`; Rules 11–12. |
