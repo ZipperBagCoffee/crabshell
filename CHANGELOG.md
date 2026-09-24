@@ -1,5 +1,16 @@
 # Changelog
 
+## [21.128.0] - 2026-09-24
+
+### feat: --changed stays selective while a session runs
+
+- **`run-verify.js --changed` no longer falls back to running everything because a session keeps writing runtime files.** When deciding whether the load map is out of date, recorded files that git ignores (for example `.crabshell/memory/*`) are skipped — they can never appear in the change list. The manifest, the runner and the test files are still checked, even in projects that ignore their whole `.crabshell` folder. Without git nothing is skipped.
+  - Measured on this repository with a fresh map and hooks writing four memory files afterwards: a `scripts/codex-docs.js` change runs 26 of 97 checks in 96 s (the full run takes about 193 s); `scripts/counter.js` selects 35, `scripts/search-docs.js` 24, a Codex skill document 3.
+  - Blind spot, documented in the verifying skill: a check whose input is an ignored file is not re-selected when that file changes. Run the full set before a release (unchanged rule).
+- **One definition of "regressing state is stale":** `isRegressingStale` in `regressing-state.js`. Each caller keeps its answer for a missing or unreadable time — recovery and workflow context report it as stale, the lifecycle diagnostic and the prompt reminder stay quiet.
+- This repository ignores `*.bak` backups, so local backups no longer enter the change list.
+- **Tests:** `_test-changed-runner.js` R24–R28 (ignored file changed after the map; control before it; no git; no commits; a project ignoring `.crabshell` still reruns everything on a manifest edit), `_test-regressing-stale.js`.
+
 ## [21.127.0] - 2026-09-24
 
 ### feat: shorter prompt context, rules aligned with user brevity, one definition per shared value

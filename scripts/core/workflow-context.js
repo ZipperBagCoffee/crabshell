@@ -3,7 +3,8 @@
 const fs = require('fs');
 const path = require('path');
 const { getStorageRoot, readJsonOrDefault } = require('../utils');
-const { REGRESSING_STATE_FILE, REGRESSING_STALE_MS } = require('../constants');
+const { REGRESSING_STATE_FILE } = require('../constants');
+const { isRegressingStale } = require('../regressing-state');
 const { findDocument, readSection } = require('./subagent-context');
 
 const TERMINAL_STATUSES = new Set(['done', 'verified', 'concluded', 'abandoned', 'closed']);
@@ -56,8 +57,7 @@ function regressingContext(projectDir, state, now) {
   const outcomeSource = activeTickets.length > 0
     ? activeTickets.map(ticket => readSection(ticket.content, 'Acceptance Criteria')).filter(Boolean).join(' | ')
     : readSection(readPath(planPath), 'Acceptance Criteria');
-  const updatedAt = state.lastUpdatedAt ? new Date(state.lastUpdatedAt).getTime() : NaN;
-  const stale = !Number.isFinite(updatedAt) || now - updatedAt > REGRESSING_STALE_MS;
+  const stale = isRegressingStale(state.lastUpdatedAt, { now, unknown: true });
   const paths = [discussionPath, planPath, ...ticketDocs.map(ticket => ticket.path)]
     .filter(Boolean).map(filePath => path.relative(projectDir, filePath)).join(', ');
 

@@ -2,6 +2,15 @@ const path = require('path');
 const { getProjectDir, getStorageRoot, readJsonOrDefault, writeJson } = require('./utils');
 const { REGRESSING_STATE_FILE, REGRESSING_STALE_MS } = require('./constants');
 
+// True when a regressing state last updated at lastUpdatedAt is older than
+// REGRESSING_STALE_MS. A missing or unreadable time returns `unknown`: each caller
+// keeps its own answer for that case.
+function isRegressingStale(lastUpdatedAt, { now = Date.now(), unknown = false } = {}) {
+  const updated = lastUpdatedAt ? new Date(lastUpdatedAt).getTime() : NaN;
+  if (!Number.isFinite(updated)) return unknown;
+  return now - updated > REGRESSING_STALE_MS;
+}
+
 /**
  * Reads .crabshell/memory/regressing-state.json and returns parsed state.
  * Returns null if file doesn't exist, active !== true, or required fields missing.
@@ -73,12 +82,8 @@ function buildRegressingReminder(projectDir) {
   }
 
   // Staleness warning if lastUpdatedAt > 24 hours old
-  if (lastUpdatedAt) {
-    const updatedTime = new Date(lastUpdatedAt).getTime();
-    const now = Date.now();
-    if (!isNaN(updatedTime) && (now - updatedTime) > REGRESSING_STALE_MS) {
-      message += `\n\u26A0 WARNING: Regressing state may be stale (last updated: ${lastUpdatedAt}). Verify with user before continuing.\n`;
-    }
+  if (isRegressingStale(lastUpdatedAt)) {
+    message += `\n\u26A0 WARNING: Regressing state may be stale (last updated: ${lastUpdatedAt}). Verify with user before continuing.\n`;
   }
 
   return message;
@@ -133,4 +138,4 @@ function advancePhase(detectedSkill, projectDir, sessionId) {
   return newPhase;
 }
 
-module.exports = { getRegressingState, buildRegressingReminder, detectRegressingSkillCall, advancePhase };
+module.exports = { getRegressingState, buildRegressingReminder, detectRegressingSkillCall, advancePhase, isRegressingStale };

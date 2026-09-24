@@ -284,7 +284,7 @@ A full run records `test-map.json` beside the manifest. The map lists, for each 
 - a changed non-prose file is not in the map;
 - no changed file is found at all.
 
-Prose that no check reads selects nothing. A release that changes a version file listed in `changed.global` therefore always runs everything. Remaining blind spots: reads made by non-Node processes, and paths computed from data a check never touches. Run the full set before a release.
+Prose that no check reads selects nothing. A release that changes a version file listed in `changed.global` therefore always runs everything. Remaining blind spots: reads made by non-Node processes, and paths computed from data a check never touches. Files git ignores (runtime state such as `.crabshell/memory/`) never count as changed and do not make the map stale, so a check whose input is an ignored file is not re-selected when that file changes; the manifest, runner and test files are still checked even when ignored. Run the full set before a release.
 
 ### Step 2b: When an entry fails, decide what is wrong before touching anything
 

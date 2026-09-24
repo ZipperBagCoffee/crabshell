@@ -16,8 +16,8 @@ const {
   DELTA_TEMP_FILE,
   INDEX_FILE,
   REGRESSING_STATE_FILE,
-  REGRESSING_STALE_MS,
 } = require('../constants');
+const { isRegressingStale } = require('../regressing-state');
 
 const MEMORY_MD_WARNING = `## Crabshell Plugin
 - This MEMORY.md = Claude Code built-in auto memory (200-line limit, auto-loaded in system prompt)
@@ -59,8 +59,7 @@ function ensureClaudeMemoryWarning(projectDir, options = {}) {
 function staleRegressingDiagnostic(memoryDir, now = Date.now()) {
   const state = readJsonOrDefault(path.join(memoryDir, REGRESSING_STATE_FILE), null);
   if (!state || state.active !== true || !state.lastUpdatedAt) return null;
-  const updatedAt = new Date(state.lastUpdatedAt).getTime();
-  if (!Number.isFinite(updatedAt) || now - updatedAt <= REGRESSING_STALE_MS) return null;
+  if (!isRegressingStale(state.lastUpdatedAt, { now })) return null;
   return `WARNING: regressing state is stale (last updated: ${state.lastUpdatedAt}). Verify with user before continuing.`;
 }
 

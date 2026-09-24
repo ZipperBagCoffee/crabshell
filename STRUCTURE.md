@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.127.0)
+# Crabshell Plugin Structure (v21.128.0)
 
-**Version**: 21.127.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.128.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -156,10 +156,11 @@ crabshell/
 │   ├── doc-watchdog.js              # Doc-update omission checks: recordEdit/gateEdit/stopReason, in-project files only (v21.18.0, v21.125.0)
 │   ├── _test-doc-watchdog.js        # doc-watchdog.js 12-test integration suite (v21.18.0)
 │   ├── _test-restriction-controls.js # Lifted restrictions paired with writes that stay blocked (v21.125.0)
-│   ├── _test-changed-runner.js      # Discovery, load map and --changed selection incl. review false-negative cases (v21.126.0)
+│   ├── _test-changed-runner.js      # Discovery, load map and --changed selection incl. review false-negative cases; git-ignored files (v21.126.0, v21.128.0)
 │   ├── _test-gate-required-checks.js # Only tools/package.json test unlock the commit gate; entries stay evidence; dead-end guidance (v21.126.0, v21.127.0)
 │   ├── _test-single-source.js        # One definition per shared value across shipped scripts (v21.127.0)
 │   ├── _test-rules-and-injection.js  # Advisor line and unified rule wording; where the project description is injected (v21.127.0)
+│   ├── _test-regressing-stale.js     # One regressing staleness decision; each caller's missing-time answer (v21.128.0)
 │   ├── _test-hook-wiring-cost.js     # Synchronous hook processes per tool call; Stop starts no child (v21.125.0)
 │   ├── _test-claude-dispatcher-parity.js # Old separate guards vs the PreToolUse dispatcher (v21.125.0)
 │   ├── _test-claude-dispatchers.js   # Moved behavior: compact effects, Read notice, inline observers, stdout, fail-open (v21.125.0)
@@ -467,6 +468,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.128.0 | `--changed` stays selective while a session runs: git-ignored files (runtime state) no longer make the load map stale — manifest, runner and tests still checked (a `scripts/codex-docs.js` change: 26 of 97 checks, 96 s vs about 193 s full); `isRegressingStale` is the one staleness decision; `*.bak` ignored |
 | 21.127.0 | Commit gate says what to declare when a manifest has only single entries; rules gain one advisor line and banter/length/list wording that matches common brevity rules; per-prompt context 1,021 characters shorter (the project description loads at SessionStart, not every prompt); one definition per shared value: `DOC_TYPES` table, duration constants, `core/skill-flag.js`, `tryWithMemoryIndex`/`tryWithMemoryRotation` for every hand-written lock, JSON through `readJsonOrDefault`/`writeJson` |
 | 21.126.0 | Verification runs what changed: the manifest discovers every `scripts/_test-*.js` (22 → all 77 tests in the declared checks), `run-verify.js --changed` runs only the checks the changed files touch (a load map from a child-process-aware tracer; falls back to everything when it cannot know), the commit gate is unlocked only by the project's own check commands, and the declared checks pass on a fresh clone |
 | 21.125.0 | Guards block only real risks: path guard blocks writes into another project's `.crabshell` (reads get a notice; mentions, temp folders, unknown variables allowed), doc-watchdog counts only in-project edits, web-guard counts only this project's search servers; Claude hooks run one process per event (Edit 10→2, Bash 6→2, Read 3→1) with per-guard fail-open; Claude compaction hooks removed (effects run at SessionStart compact) |
