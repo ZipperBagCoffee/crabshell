@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.130.0)
+# Crabshell Plugin Structure (v21.131.0)
 
-**Version**: 21.130.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.131.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -120,6 +120,7 @@ crabshell/
 │   ├── core/delta-transaction.js      # Fixed input, retry-aware finalization and owned-file cleanup
 │   ├── core/memory-lock.js            # Shared index/rotation locks; tryWithMemoryIndex/tryWithMemoryRotation skip when busy (v21.127.0)
 │   ├── core/skill-flag.js             # Document-skill flag: set, read, clear, path check; no load-time side effects (v21.127.0)
+│   ├── core/index-rows.js             # One reader for INDEX.md rows: bare or wikilinked ID, status, cells, link target (v21.131.0)
 │   ├── core/memory-entry.js           # Shared summary timestamp format
 │   ├── core/recovery-context.js       # Bounded historical request/check/pause context
 │   ├── core/support-state.js          # Seven-state live doctor model
@@ -136,7 +137,7 @@ crabshell/
 │   ├── _test-orchestration-defaults.js # Deterministic orchestration policy tests (v21.105.0)
 │   ├── docs-guard.js                # PreToolUse D/P/T/I skill bypass prevention (v19.33.0)
 │   ├── verify-guard.js              # PreToolUse Final Verification + behavioral AC (v19.34.0, v20.3.0)
-│   ├── log-guard.js                # PreToolUse D/P/T log enforcement — terminal status + cycle log guard (v21.4.0)
+│   ├── log-guard.js                # PreToolUse ticket status check — done/verified need filled result sections (v21.131.0)
 │   ├── verification-sequence.js     # PostToolUse state tracker + PreToolUse commit/edit gate (v21.0.0)
 │   ├── skill-tracker.js             # Per-session skill flag setter, run inline by the PostToolUse dispatcher (v19.33.0, v21.124.0, v21.125.0)
 │   ├── _test-path-guard.js           # Path-guard unit tests + shell var resolution tests (v20.0.0, v21.8.0)
@@ -156,6 +157,7 @@ crabshell/
 │   ├── _test-rules-and-injection.js  # Advisor line and unified rule wording; where the project description is injected (v21.127.0)
 │   ├── _test-d-parent-tickets.js     # Guards, the Codex document tool and phase changes treat D###_T### like P###_T### (v21.130.0)
 │   ├── _test-d-t-skills.js           # Skill instructions for D (with the plan) -> T; existing P/H updates kept (v21.130.0)
+│   ├── _test-index-rows.js           # INDEX rows copied from this repository; every consumer; unfinished ticket sections (v21.131.0)
 │   ├── _test-regressing-stale.js     # One regressing staleness decision; each caller's missing-time answer (v21.128.0)
 │   ├── _test-hook-wiring-cost.js     # Synchronous hook processes per tool call; Stop starts no child (v21.125.0)
 │   ├── _test-claude-dispatcher-parity.js # Old separate guards vs the PreToolUse dispatcher (v21.125.0)
@@ -353,11 +355,11 @@ PreToolUse WebFetch/WebSearch guard (v21.114.0, I084 — built-in tools summariz
 - Separates the active consumer project from the installed plugin root so the bundled status skill works outside the plugin source checkout
 
 ### scripts/log-guard.js
-PreToolUse D/P/T log enforcement (v21.4.0, v21.11.0):
-- Dual-trigger guard on Write|Edit to `.crabshell/` paths
-- Trigger 1: Block INDEX.md terminal status changes (→done/verified/concluded) when the referenced document has no log entries
-- Pending section check (v21.11.0): After log validation passes, block ticket terminal transitions when Execution Results/Verification Results/Orchestrator Evaluation sections still contain "(pending)"
-- Trigger 2: Block new cycle documents (P/T) in regressing when the previous cycle's documents lack log entries
+PreToolUse ticket status check (v21.4.0; narrowed v21.131.0):
+- Trigger: Write|Edit on a document INDEX.md that changes a ticket's status to done or verified; rows are read with `core/index-rows.js` (bare or wikilinked IDs)
+- done needs Execution Results filled; verified needs every result section (Execution Results, Verification Results, Final Verification, Orchestrator Evaluation) filled — a section is unfinished while it holds only `(placeholder`/`(pending)` and empty sub-headings
+- Reads the document the row links to (a draft sharing the ID prefix is not mistaken for it)
+- Plans, discussions, investigations and hotfixes are not checked; the work-log length rule and the previous-cycle check were removed in v21.131.0
 - Fail-open on parse errors (user experience protection)
 
 ### scripts/verify-guard.js
@@ -415,7 +417,7 @@ L1 generation:
    ├─> web-guard (WebFetch|WebSearch) — raw-source enforcement (v21.114.0); only this project's search MCP servers count
    ├─> regressing-guard (Write|Edit) — block direct plan/ticket writes during active regressing
    ├─> docs-guard (Write|Edit) — block writes to .crabshell/ D/P/T/I without this session's skill flag
-   ├─> log-guard (Write|Edit) — block INDEX.md terminal status without log + tickets with pending result sections + cycle docs without previous cycle logs
+   ├─> log-guard (Write|Edit) — block a ticket marked done/verified while its result sections are still template text
    ├─> verification gate (Bash) — block git commit while source edits lack a passing declared check; record a declared check's start
    ├─> doc-watchdog gate (Write|Edit) — soft notice when in-project code edits >= 5 without a D/P/T doc update during regressing
    └─> verify-guard (Write|Edit) — Final Verification writes run the declared checks
@@ -459,6 +461,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.131.0 | One INDEX row reader (`core/index-rows.js`) shared by log-guard, the ticket reminder, lint, migration and compaction — checks that were off on wikilink rows now work; log-guard checks ticket result sections (done: Execution Results; verified: all), work-log length rule and the never-run previous-cycle check removed; document skill calls move a regressing workflow only when they name it; `migrate-obsidian`/`lint-obsidian` run only when executed |
 | 21.130.0 | Documents are D (the discussion carries the plan) → T: tickets `D###_T###` under a discussion (P###_T### kept), one ticket-ID definition for every guard and the Codex tool, regressing cycles plan in the discussion log, no new P/H documents; retired guards and their tests deleted (97 → 89 checks); review fixes for phase ownership, missing parents and worker scope |
 | 21.129.0 | `--changed` ignores files whose time moved but content did not (the load map stores content hashes; a revert or checkout no longer runs everything); installed contents documented (tests ship with the `./` source, about 38% of tracked bytes) |
 | 21.128.0 | `--changed` stays selective while a session runs: git-ignored files (runtime state) no longer make the load map stale — manifest, runner and tests still checked (a `scripts/codex-docs.js` change: 26 of 97 checks, 96 s vs about 193 s full); `isRegressingStale` is the one staleness decision; `*.bak` ignored |

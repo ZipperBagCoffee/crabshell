@@ -2,46 +2,50 @@
 const fs = require('fs');
 const path = require('path');
 const { STORAGE_ROOT, DOC_TYPES } = require('./constants');
+const { readIndexRows } = require('./core/index-rows');
 
 // ---------------------------------------------------------------------------
-// CLI argument parsing
+// CLI argument parsing (runs only when this file is executed, never on require:
+// the migration rewrites every document under the target project)
 // ---------------------------------------------------------------------------
-const args = process.argv.slice(2);
 let projectDir = process.cwd();
+let crabshellDir = null;
 let dryRun = false;
 let backup = false;
 let generateMoc = false;
 let generateDigest = false;
 
-for (const arg of args) {
-  if (arg.startsWith('--project-dir=')) {
-    projectDir = arg.slice('--project-dir='.length).replace(/^["']|["']$/g, '');
-  } else if (arg === '--dry-run') {
-    dryRun = true;
-  } else if (arg === '--backup') {
-    backup = true;
-  } else if (arg === '--generate-moc') {
-    generateMoc = true;
-  } else if (arg === '--generate-digest') {
-    generateDigest = true;
+function configure(args) {
+  for (const arg of args) {
+    if (arg.startsWith('--project-dir=')) {
+      projectDir = arg.slice('--project-dir='.length).replace(/^["']|["']$/g, '');
+    } else if (arg === '--dry-run') {
+      dryRun = true;
+    } else if (arg === '--backup') {
+      backup = true;
+    } else if (arg === '--generate-moc') {
+      generateMoc = true;
+    } else if (arg === '--generate-digest') {
+      generateDigest = true;
+    }
   }
+
+  // Resolve to absolute path
+  projectDir = path.resolve(projectDir);
+  crabshellDir = path.join(projectDir, STORAGE_ROOT);
+
+  if (!fs.existsSync(crabshellDir)) {
+    console.error(`Error: .crabshell/ not found under ${projectDir}`);
+    process.exit(1);
+  }
+
+  console.log(`Project dir   : ${projectDir}`);
+  console.log(`Dry-run       : ${dryRun}`);
+  console.log(`Backup        : ${backup}`);
+  console.log(`Generate MOC  : ${generateMoc}`);
+  console.log(`Generate Digest: ${generateDigest}`);
+  console.log('');
 }
-
-// Resolve to absolute path
-projectDir = path.resolve(projectDir);
-const crabshellDir = path.join(projectDir, STORAGE_ROOT);
-
-if (!fs.existsSync(crabshellDir)) {
-  console.error(`Error: .crabshell/ not found under ${projectDir}`);
-  process.exit(1);
-}
-
-console.log(`Project dir   : ${projectDir}`);
-console.log(`Dry-run       : ${dryRun}`);
-console.log(`Backup        : ${backup}`);
-console.log(`Generate MOC  : ${generateMoc}`);
-console.log(`Generate Digest: ${generateDigest}`);
-console.log('');
 
 // ---------------------------------------------------------------------------
 // Directory → document type mapping
@@ -109,23 +113,11 @@ function extractTitleFromContent(content) {
  */
 function lookupIndexEntry(indexPath, docId) {
   if (!fs.existsSync(indexPath)) return { status: 'open', created: '' };
-  const content = fs.readFileSync(indexPath, 'utf8');
-  const lines = content.split(/\r?\n/);
-  for (const line of lines) {
-    // Table row: | ID | Title | Status | Created | ... |
-    const cells = line.split('|').map(c => c.trim());
-    if (cells.length < 2) continue;
-    if (cells[1] === docId) {
-      const status = cells[3] || 'open';
-      const created = cells[4] || '';
-      const dateMatch = created.match(/\d{4}-\d{2}-\d{2}/);
-      return {
-        status: (status.toLowerCase() || 'open'),
-        created: dateMatch ? dateMatch[0] : ''
-      };
-    }
-  }
-  return { status: 'open', created: '' };
+  // Table row: | ID | Title | Status | Created | ... | (ID bare or wikilinked)
+  const row = readIndexRows(fs.readFileSync(indexPath, 'utf8')).find(r => r.id === docId);
+  if (!row) return { status: 'open', created: '' };
+  const dateMatch = (row.cells[3] || '').match(/\d{4}-\d{2}-\d{2}/);
+  return { status: row.status || 'open', created: dateMatch ? dateMatch[0] : '' };
 }
 
 /**
@@ -871,44 +863,52 @@ function generateDigestFile() {
 // Main
 // ---------------------------------------------------------------------------
 
-if (generateDigest) {
-  console.log('Starting digest generation...\n');
-  try {
-    generateDigestFile();
-  } catch (e) {
-    console.error('Unexpected error during digest generation:', e);
-    process.exit(1);
+function main() {
+  configure(process.argv.slice(2));
+
+  if (generateDigest) {
+    console.log('Starting digest generation...\n');
+    try {
+      generateDigestFile();
+    } catch (e) {
+      console.error('Unexpected error during digest generation:', e);
+      process.exit(1);
+    }
+    // If only --generate-digest (no --generate-moc), exit now
+    if (!generateMoc) process.exit(0);
   }
-  // If only --generate-digest (no --generate-moc), exit now
-  if (!generateMoc) process.exit(0);
-}
 
-if (generateMoc) {
-  console.log('Starting MOC generation...\n');
-  try {
-    generateMOC();
-  } catch (e) {
-    console.error('Unexpected error during MOC generation:', e);
-    process.exit(1);
+  if (generateMoc) {
+    console.log('Starting MOC generation...\n');
+    try {
+      generateMOC();
+    } catch (e) {
+      console.error('Unexpected error during MOC generation:', e);
+      process.exit(1);
+    }
+    process.exit(0);
   }
-  process.exit(0);
+
+  console.log('Starting Obsidian migration...\n');
+
+  try {
+    processFrontmatter();
+    processIndexFiles();
+    processInlineReferences();
+  } catch (e) {
+    console.error('Unexpected error:', e);
+    totalErrors++;
+  }
+
+  console.log('=== Migration complete ===');
+  console.log(`  Files scanned               : ${totalScanned}`);
+  console.log(`  Frontmatter added           : ${totalFrontmatterAdded}`);
+  console.log(`  INDEX.md IDs converted      : ${totalIndexRowsConverted}`);
+  console.log(`  Inline references converted : ${totalInlineConverted}`);
+  console.log(`  Skipped (has frontmatter)   : ${totalSkippedFrontmatter}`);
+  console.log(`  Errors                      : ${totalErrors}`);
 }
 
-console.log('Starting Obsidian migration...\n');
+if (require.main === module) main();
 
-try {
-  processFrontmatter();
-  processIndexFiles();
-  processInlineReferences();
-} catch (e) {
-  console.error('Unexpected error:', e);
-  totalErrors++;
-}
-
-console.log('=== Migration complete ===');
-console.log(`  Files scanned               : ${totalScanned}`);
-console.log(`  Frontmatter added           : ${totalFrontmatterAdded}`);
-console.log(`  INDEX.md IDs converted      : ${totalIndexRowsConverted}`);
-console.log(`  Inline references converted : ${totalInlineConverted}`);
-console.log(`  Skipped (has frontmatter)   : ${totalSkippedFrontmatter}`);
-console.log(`  Errors                      : ${totalErrors}`);
+module.exports = { lookupIndexEntry };

@@ -8,6 +8,7 @@ if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 
 const { getProjectDir, getStorageRoot, readJsonOrDefault, readIndexSafe, writeJson } = require('./utils');
 const { tryWithMemoryIndex } = require('./core/memory-lock');
+const { readIndexRows } = require('./core/index-rows');
 const { buildRegressingReminder, getRegressingState } = require('./regressing-state');
 const { TICKET_DIR, REGRESSING_STATE_FILE, MEMORY_DIR, MEMORY_FILE, INDEX_FILE, DELTA_TEMP_FILE } = require('./constants');
 const { readStdin } = require('./transcript-utils');
@@ -440,17 +441,8 @@ function checkTicketStatuses(projectDir) {
       return null;
     }
 
-    // Parse INDEX.md table rows: | ID | Title | Status | Created | Plan |
-    const lines = content.split(/\r?\n/);
     const statusMap = {};
-    for (const line of lines) {
-      if (!line.startsWith('|')) continue;
-      const cells = line.split('|').map(c => c.trim()).filter(Boolean);
-      if (cells.length < 3) continue;
-      // Skip header row and separator row
-      if (cells[0] === 'ID' || cells[0].startsWith('-')) continue;
-      statusMap[cells[0]] = cells[2].toLowerCase();
-    }
+    for (const row of readIndexRows(content)) statusMap[row.id] = row.status;
 
     const needsUpdate = [];
     for (const tid of ticketIds) {

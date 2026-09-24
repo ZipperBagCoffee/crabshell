@@ -46,9 +46,11 @@ for (const parent of ['P001', 'D001']) {
     report.check(`R ${kind}: regressing-guard blocks writing a ticket directly in the ticketing phase`, Boolean(result && /ticketing/.test(result.reason || '')), JSON.stringify(result).slice(0, 160));
   }
   {
-    const { TICKET_DOC_PATTERN, validatePendingSections } = require('./log-guard');
-    report.check(`L1 ${kind}: log-guard recognizes the ticket document path`, TICKET_DOC_PATTERN.test(`/x/${CRAB}/ticket/${id}-probe.md`));
-    const pending = validatePendingSections('## Execution Results (Work Agent)\n(pending)\n', id);
+    // L1 changed in D119 cycle 8: log-guard no longer matches ticket document paths
+    // (that served only the removed previous-cycle check); it reads INDEX rows.
+    const { extractIdFromRow, validatePendingSections } = require('./log-guard');
+    report.check(`L1 ${kind}: log-guard reads the ticket ID of a wikilink INDEX row`, extractIdFromRow(`| [[${id}-probe|${id}]] | Probe | todo | 2026-09-24 | [[${parent}-x|${parent}]] |`) === id);
+    const pending = validatePendingSections('## Execution Results\n(placeholder — parent writes implementation evidence here)\n', id);
     report.check(`L2 ${kind}: log-guard flags a ticket whose result sections are still pending`, pending.valid === false, JSON.stringify(pending).slice(0, 160));
   }
 }
@@ -84,9 +86,27 @@ for (const parent of ['P001', 'D001']) {
   const moved = advancePhase('discussing', other, 'other-session', '"one-pass fix"');
   const after = readState(other);
   report.check('A3 another session\'s unrelated /discussing neither moves the phase nor takes ownership', moved === null && after.phase === 'planning' && after.sessionId === 'owner-session', JSON.stringify({ moved, phase: after.phase, owner: after.sessionId }));
+  // A2 changed in D119 cycle 8: every document skill call counts for the workflow
+  // only when its arguments name the workflow's discussion or plan.
   const viaPlan = project('phase-planning');
-  regressing(viaPlan, 'planning');
-  report.check('A2 control: planning phase + /planning still moves to ticketing', advancePhase('planning', viaPlan) === 'ticketing');
+  regressing(viaPlan, 'planning', { sessionId: 'owner-session' });
+  const planMoved = [advancePhase('planning', viaPlan, 'other-session', 'P050'), advancePhase('planning', viaPlan, 'other-session', undefined)];
+  report.check('A2 /planning that does not name the workflow (P050, no args) leaves phase and owner', planMoved.every(m => m === null) && readState(viaPlan).phase === 'planning' && readState(viaPlan).sessionId === 'owner-session', JSON.stringify({ planMoved, ...readState(viaPlan) }).slice(0, 200));
+  const ticketing = (name, extra = {}) => { const dir = project(name); regressing(dir, 'ticketing', { sessionId: 'owner-session', ...extra }); return dir; };
+  const foreign = ticketing('phase-foreign-ticket');
+  const foreignMoved = advancePhase('ticketing', foreign, 'other-session', 'D050 "one-pass fix"');
+  report.check('A4 another session\'s /ticketing D050 neither moves the phase nor takes ownership', foreignMoved === null && readState(foreign).phase === 'ticketing' && readState(foreign).sessionId === 'owner-session', JSON.stringify(readState(foreign)).slice(0, 200));
+  const own = ticketing('phase-own-ticket');
+  report.check('A5 /ticketing D001 "title" moves ticketing to execution', advancePhase('ticketing', own, 'owner-session', 'D001 "T1 — work"') === 'execution');
+  const update = ticketing('phase-ticket-id');
+  report.check('A6 a ticket ID naming the workflow (D001_T001) counts', advancePhase('ticketing', update, 'owner-session', 'D001_T001') === 'execution');
+  const lookalike = ticketing('phase-lookalike');
+  report.check('A7 boundary: D0012 does not name D001', advancePhase('ticketing', lookalike, 'owner-session', 'D0012 "x"') === null && readState(lookalike).phase === 'ticketing');
+  const legacy = ticketing('phase-plan-parent', { planId: 'P007' });
+  report.check('A8 a workflow with a plan counts a call naming the plan (P007)', advancePhase('ticketing', legacy, 'owner-session', 'P007 "x"') === 'execution');
+  const initial = project('phase-initial');
+  regressing(initial, 'discussing', { discussion: null });
+  report.check('A9 the initial discussing phase (no discussion ID yet) moves to planning without arguments', advancePhase('discussing', initial, 'owner-session', undefined) === 'planning');
 }
 
 // Context builders for a discussion-based cycle (no plan document).

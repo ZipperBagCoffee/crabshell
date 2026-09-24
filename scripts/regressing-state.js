@@ -111,11 +111,14 @@ function advancePhase(detectedSkill, projectDir, sessionId, skillArgs) {
   const state = readJsonOrDefault(statePath, null);
   if (!state || state.active !== true) return null;
 
-  // Another session may be using /discussing for unrelated work (a one-pass record):
-  // only a call that names this workflow's discussion counts, for ownership and phase.
-  // (The initial discussing phase runs before the discussion has an ID.)
-  if (detectedSkill === 'discussing' && state.phase !== 'discussing' && state.discussion
-      && !new RegExp(`\\b${state.discussion}\\b`).test(String(skillArgs || ''))) return null;
+  // Another session may be using a document skill for unrelated work (a one-pass
+  // record, another discussion's ticket): only a call whose arguments name this
+  // workflow's discussion or plan counts, for ownership and phase. D001_T001 names
+  // D001; D0012 does not. (The initial discussing phase runs before the discussion
+  // has an ID.)
+  const workflowIds = [state.discussion, state.planId].filter(Boolean);
+  if (state.phase !== 'discussing' && workflowIds.length
+      && !new RegExp(`\\b(?:${workflowIds.join('|')})(?!\\d)`).test(String(skillArgs || ''))) return null;
 
   // The session that runs the workflow's skills owns it (it moves after /clear or
   // a relaunch as soon as the continuing session invokes the next skill).

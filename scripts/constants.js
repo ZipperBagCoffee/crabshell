@@ -11,7 +11,7 @@
 const DOC_TYPES = [
   { dir: 'discussion', prefix: 'D', title: 'Discussion', skill: 'discussing', workflow: true, skillOnly: true, linked: true, tracked: true, regressing: true, indexColumns: ['ID', 'Topic', 'Status', 'Date'] },
   { dir: 'plan', prefix: 'P', title: 'Plan', skill: 'planning', workflow: true, skillOnly: true, linked: true, tracked: true, regressing: true, indexColumns: ['ID', 'Plan', 'Status', 'Date', 'Related'] },
-  { dir: 'ticket', prefix: 'T', title: 'Ticket', skill: 'ticketing', workflow: true, skillOnly: true, linked: true, tracked: true, regressing: true, indexColumns: ['ID', 'Ticket', 'Status', 'Date', 'Plan'] },
+  { dir: 'ticket', prefix: 'T', title: 'Ticket', skill: 'ticketing', workflow: true, skillOnly: true, linked: true, tracked: true, regressing: true, indexColumns: ['ID', 'Ticket', 'Status', 'Date', 'Parent'] },
   { dir: 'investigation', prefix: 'I', title: 'Investigation', skill: 'investigating', workflow: true, skillOnly: true, linked: true, tracked: true, indexColumns: ['ID', 'Title', 'Status', 'Created', 'Related'] },
   { dir: 'hotfix', prefix: 'H', title: 'Hotfix', skill: 'hotfix', workflow: true, skillOnly: true, linked: true, indexColumns: ['ID', 'Title', 'Status', 'Date'] },
   { dir: 'worklog', prefix: 'W', title: 'Worklog', skillOnly: true, linked: true, indexColumns: ['ID', 'Task', 'Status', 'Date', 'Related'] },
