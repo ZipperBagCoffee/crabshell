@@ -1,5 +1,13 @@
 # Changelog
 
+## [21.129.0] - 2026-09-24
+
+### feat: --changed ignores files whose time moved but content did not
+
+- **A revert, a `git checkout` or a branch switch no longer makes `--changed` run everything.** The load map now stores each checked file's content hash (recorded files, every test file, the manifest and the runner). A file whose time moved past its recorded time is hashed, and when the content matches the map it is not a change. Maps written by older runners keep the time rule. Measured here: `scripts/codex-docs.js` edited and restored with `git checkout` — the next `--changed` still selects 24 of 97 checks for a `scripts/search-docs.js` change, and the repository's own selection check (R14) runs without rebuilding the map; the decision takes about 0.16 s.
+- **Installed files, documented.** Both hosts copy the whole plugin folder; with this marketplace's `"source": "./"` there is no exclude list, so tests and fixtures ship (about 38% of tracked bytes; they never run in hooks). The user manual lists the distributions that could leave them out.
+- **Tests:** `_test-changed-runner.js` R29–R31 (same-content rewrite of a recorded file, a test file and the manifest; a map without hashes keeps the time rule). R10 and R28 now make real edits, since a moved time alone is no longer an edit.
+
 ## [21.128.0] - 2026-09-24
 
 ### feat: --changed stays selective while a session runs

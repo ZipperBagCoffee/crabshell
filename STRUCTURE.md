@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.128.0)
+# Crabshell Plugin Structure (v21.129.0)
 
-**Version**: 21.128.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.129.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -43,7 +43,7 @@ crabshell/
 │   └── verification/                 # Project-local schema-v2 verification artifacts
 │       ├── manifest.json             # Portable command/assertion contracts; discover entry + tools.changed + changed.global (v21.126.0)
 │       ├── run-verify.js             # Generated from the tracked skill runner (--changed, load map, v21.126.0)
-│       ├── test-map.json             # Load map written by a passing full run (generated, not tracked; v21.126.0)
+│       ├── test-map.json             # Load map written by a passing full run: per-check files, file times and content hashes (generated, not tracked; v21.126.0, v21.129.0)
 │       ├── check-pipeline-wiring.js  # Copied from the tracked skill probe (v21.121.0; tracked in git since v21.126.0)
 │       ├── wiring-contract.json      # Parent-approved hook/trigger/agent hops (v21.121.0; tracked in git since v21.126.0)
 │       └── architecture/index.html   # Optional arch-explorer map — documentation only (v21.121.0)
@@ -468,6 +468,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.129.0 | `--changed` ignores files whose time moved but content did not (the load map stores content hashes; a revert or checkout no longer runs everything); installed contents documented (tests ship with the `./` source, about 38% of tracked bytes) |
 | 21.128.0 | `--changed` stays selective while a session runs: git-ignored files (runtime state) no longer make the load map stale — manifest, runner and tests still checked (a `scripts/codex-docs.js` change: 26 of 97 checks, 96 s vs about 193 s full); `isRegressingStale` is the one staleness decision; `*.bak` ignored |
 | 21.127.0 | Commit gate says what to declare when a manifest has only single entries; rules gain one advisor line and banter/length/list wording that matches common brevity rules; per-prompt context 1,021 characters shorter (the project description loads at SessionStart, not every prompt); one definition per shared value: `DOC_TYPES` table, duration constants, `core/skill-flag.js`, `tryWithMemoryIndex`/`tryWithMemoryRotation` for every hand-written lock, JSON through `readJsonOrDefault`/`writeJson` |
 | 21.126.0 | Verification runs what changed: the manifest discovers every `scripts/_test-*.js` (22 → all 77 tests in the declared checks), `run-verify.js --changed` runs only the checks the changed files touch (a load map from a child-process-aware tracer; falls back to everything when it cannot know), the commit gate is unlocked only by the project's own check commands, and the declared checks pass on a fresh clone |

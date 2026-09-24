@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.128.0)
+# Crabshell User Manual (v21.129.0)
 
 ## Why Do You Need This?
 
@@ -38,6 +38,10 @@ For local development, `codex plugin marketplace add .` works only when `.` is t
 Start a new Codex session, review/trust the Crabshell hook definition, and invoke `crabshell:status`. It reports live installed, activated, trusted, behavior-verified, degraded, drifted, and unsupported states for Claude Code CLI and Codex CLI. Codex desktop-app evidence is kept separate. The old `/crabshell:install-codex` command remains a legacy/development bridge.
 
 Codex automatically loads existing memory/workflow context at SessionStart and uses native prompt, compaction, subagent, command-observation, and completion hooks. Explicit load/save/search skills remain available. Claude retains its automatic SessionEnd capture and pressure/sycophancy system; neither host launches the other.
+
+### What an install contains
+
+Both hosts copy the whole plugin folder into their plugin cache (Claude Code: `~/.claude/plugins/cache`, Codex: `~/.codex/plugins/cache/<marketplace>/<plugin>/<version>/`). This marketplace lists the plugin with `"source": "./"`, a source type with no exclude list, so the tests (`scripts/_test-*.js`), their fixtures and helpers are installed too — about 38% of the tracked files by size. They never run during hooks; they cost only disk space and copy time. Leaving them out would take a different distribution: a `git-subdir` source (the plugin in its own subfolder, tests outside it), an npm package with a `files` list (both hosts can install npm sources), or a `command` source that builds the folder on the user's machine.
 
 ---
 
