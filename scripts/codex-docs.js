@@ -4,7 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const { STORAGE_ROOT, DOC_TYPES } = require('./constants');
+const { STORAGE_ROOT, DOC_TYPES, TICKET_PARENT_SOURCE } = require('./constants');
 const { ensureDir } = require('./utils');
 
 const TYPES = Object.fromEntries(DOC_TYPES.map(type => [type.dir, { dir: type.dir, prefix: type.prefix, title: type.title, index: type.indexColumns }]));
@@ -66,20 +66,20 @@ function nextId(dir, prefix) {
   return `${prefix}${String(max + 1).padStart(3, '0')}`;
 }
 
-function planIdFromLink(input) {
-  const text = String(input || '').trim();
-  const match = text.match(/\bP\d{3}\b/);
+// The parent ID (a discussion D### or a plan P###) in a bare ID or a wikilink.
+function parentIdFromLink(input) {
+  const match = String(input || '').trim().match(new RegExp(`\\b${TICKET_PARENT_SOURCE}\\b`));
   return match ? match[0] : null;
 }
 
-function nextTicketId(dir, planId) {
-  const re = new RegExp(`^${planId}_T(\\d{3})-.*\\.md$`);
+function nextTicketId(dir, parentId) {
+  const re = new RegExp(`^${parentId}_T(\\d{3})-.*\\.md$`);
   let max = 0;
   for (const file of fs.readdirSync(dir)) {
     const m = file.match(re);
     if (m) max = Math.max(max, Number(m[1]));
   }
-  return `${planId}_T${String(max + 1).padStart(3, '0')}`;
+  return `${parentId}_T${String(max + 1).padStart(3, '0')}`;
 }
 
 function appendIndex(indexPath, row) {
@@ -171,12 +171,22 @@ function createInvestigation(root, title, args) {
 
 function createSimple(root, type, title, args) {
   const { dir, indexPath, spec } = ensureIndex(root, type);
-  const planId = type === 'ticket' ? planIdFromLink(args.plan) : null;
-  if (type === 'ticket' && !planId) {
-    console.error('ERROR: ticket creation requires --plan with a valid P### reference, e.g. --plan="[[P001-topic|P001]]"');
+  // --parent names the ticket's discussion (D###) or plan (P###); --plan is the older spelling.
+  const parentRef = args.parent || args.plan;
+  const parentId = type === 'ticket' ? parentIdFromLink(parentRef) : null;
+  if (type === 'ticket' && !parentId) {
+    console.error('ERROR: ticket creation requires --parent with the discussion (D###) or plan (P###) it belongs to, e.g. --parent=D001');
     process.exit(1);
   }
-  const id = type === 'ticket' ? nextTicketId(dir, planId) : nextId(dir, spec.prefix);
+  if (type === 'ticket') {
+    const parentDir = path.join(root, STORAGE_ROOT, TYPES[parentId.startsWith('D') ? 'discussion' : 'plan'].dir);
+    const exists = fs.existsSync(parentDir) && fs.readdirSync(parentDir).some(file => file.startsWith(`${parentId}-`) && file.endsWith('.md'));
+    if (!exists) {
+      console.error(`ERROR: parent ${parentId} does not exist under ${path.relative(root, parentDir) || parentDir}; create it first.`);
+      process.exit(1);
+    }
+  }
+  const id = type === 'ticket' ? nextTicketId(dir, parentId) : nextId(dir, spec.prefix);
   const slug = slugify(title);
   const t = nowParts();
   const filename = `${id}-${slug}.md`;
@@ -186,7 +196,7 @@ function createSimple(root, type, title, args) {
   fs.writeFileSync(filePath, body, 'utf8');
   const link = `[[${wikiTarget(filename)}|${id}]]`;
   if (type === 'plan') appendIndex(indexPath, `| ${link} | ${title} | ${status} | ${t.date} | ${args.related || ''} |`);
-  else if (type === 'ticket') appendIndex(indexPath, `| ${link} | ${title} | ${status} | ${t.date} | ${args.plan || ''} |`);
+  else if (type === 'ticket') appendIndex(indexPath, `| ${link} | ${title} | ${status} | ${t.date} | ${parentRef || ''} |`);
   else appendIndex(indexPath, `| ${link} | ${title} | ${status} | ${t.date} |`);
   console.log(path.relative(root, filePath));
 }

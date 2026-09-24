@@ -54,7 +54,7 @@ Filename: `.crabshell/discussion/D{NNN}-{slug}.md`
 ```
 Constraint Check:
 - [Project] {each constraint from project.md}
-- [Inferred] {constraints from task context, e.g., "Per P{NNN}, scope limited to X"}
+- [Inferred] {constraints from task context, e.g., "Per D{NNN}'s cycle plan, scope limited to X"}
 Additional constraints? Silence = proceed.
 ```
 4. Confirmed constraints are written to the `## Constraints` section of the D document
@@ -176,11 +176,11 @@ If the entry includes a status change, update the status column in `.crabshell/d
 1. **NEVER modify existing content** in a discussion document. Only append to the Discussion Log section.
 2. **Timestamps** use local time: `[YYYY-MM-DD HH:MM]`
 3. **INDEX.md** is the only file where existing content may be modified (status column updates).
-4. When the discussion leads to a plan, note in the log: "→ See [[P{NNN}-{slug}|P{NNN}]]" and update INDEX.md Related column with the same wikilink format. Obtain `{slug}` by globbing `.crabshell/plan/P{NNN}-*.md` and extracting the basename without `.md`. If the target document does not exist yet, use the bare ID temporarily: "→ See P{NNN}".
-5. **No parent transition while children incomplete:** If a related P exists and is not yet `done` → do not transition D to `concluded`. Can only conclude when related plan is completed.
-6. **Auto-conclude:** When related P becomes `done`, D is automatically set to `concluded` by ticketing cascade. No manual conclusion needed.
+4. **The discussion carries the plan.** A plan (in regressing, each `Cycle {n} plan`) is a log entry in this document with Intent, Context, Scope, Steps, Analysis and Intent Check; tickets name this discussion as their parent (`D{NNN}_T{NNN}`, created with `/ticketing D{NNN} "title"`) and are listed in INDEX.md's Related column. Discussions that link to an existing plan keep "→ See [[P{NNN}-{slug}|P{NNN}]]" entries.
+5. **No parent transition while children incomplete:** Do not transition D to `concluded` while any of its tickets (`D{NNN}_T{NNN}`) is neither `verified` nor `abandoned`, or while a related existing plan is not `done`. Exception: a regressing Final Report that records the cycle cap or a user stop concludes the D and lists the tickets still open.
+6. **Concluding:** A discussion that is itself its tickets' parent is never concluded by the ticketing cascade — it concludes with its Final Report (regressing) or an explicit status change entry. Only a discussion linked to an existing plan is auto-concluded when that plan becomes `done`.
 7. **Mandatory work log:** After performing any work related to this document, append a log entry to the Discussion Log section using the existing format (`### [{YYYY-MM-DD HH:MM}] {entry_type}`). This applies regardless of whether this skill was explicitly invoked — if the work touched or advanced this discussion's purpose, log it.
-8. **Orchestrator reference obligation:** Orchestrator MUST reference this D document's Intent Anchor during P (planning) and T (execution) stages. IA items are read-only evaluation criteria and cannot be modified.
-9. **Regressing context passing:** In regressing mode, this D document serves as the top-level container for all cycles. The D stays open throughout all cycles and closes with the final report. Cycle feedback (T(n) → P(n+1)) bypasses D and goes directly between T and P documents. **When created for regressing mode, the Intent Anchor MUST include an item requiring '/verifying each cycle' — this anchors the verification tool check as a first-class IA requirement, not just a procedural step.**
+8. **Orchestrator reference obligation:** Orchestrator MUST reference this D document's Intent Anchor when writing each plan entry and during T (execution). IA items are read-only evaluation criteria and cannot be modified.
+9. **Regressing context passing:** In regressing mode, this D document serves as the top-level container for all cycles. The D stays open throughout all cycles and closes with the final report. Each cycle's plan and its feedback transfer are log entries in this D (cycle plan entries). **When created for regressing mode, the Intent Anchor MUST include an item requiring '/verifying each cycle' — this anchors the verification tool check as a first-class IA requirement, not just a procedural step.**
 10. **Scope Note:** In this project, verification means closing the gap between belief and reality through observation (Predict → Execute → Compare). Evidence citations are required work product, not verbose output.
 11. **IA Source Mapping is mandatory for regressing mode.** Every IA item must trace to a user statement. The IA Source Mapping table must be populated before proceeding to the first cycle.

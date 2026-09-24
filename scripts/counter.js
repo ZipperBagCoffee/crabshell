@@ -104,7 +104,7 @@ async function check(payload = null) {
   try {
     const detectedSkill = detectRegressingSkillCall(hookData);
     if (detectedSkill) {
-      const newPhase = advancePhase(detectedSkill, getProjectDir(), sessionId);
+      const newPhase = advancePhase(detectedSkill, getProjectDir(), sessionId, hookData.tool_input && hookData.tool_input.args);
       if (newPhase) {
         console.error(`[REGRESSING PHASE] ${detectedSkill} -> ${newPhase}`);
       }

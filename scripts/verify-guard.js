@@ -9,10 +9,10 @@ const { readStdin, normalizePath } = require('./transcript-utils');
 // F1 mitigation: keep inline env check for fail-open invariant — D106 IA-10 RA2
 if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 
-const { getProjectDir } = require('./utils');
+const { getProjectDir, ticketDocPattern } = require('./utils');
 
-// Ticket file pattern: .crabshell/ticket/P###_T###*
-const TICKET_FILE_PATTERN = /\.crabshell\/ticket\/P\d{3}_T\d{3}/;
+// Ticket file pattern: <STORAGE_ROOT>/ticket/<D### or P###>_T###*
+const TICKET_FILE_PATTERN = new RegExp(ticketDocPattern());
 
 /**
  * Check if the content being written contains Final Verification section.

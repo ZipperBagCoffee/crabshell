@@ -8,7 +8,6 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 const NODE = process.execPath;
 const HOOKS_PATH = path.join(ROOT, 'hooks', 'hooks.json');
-const REGRESSING_GUARD = path.join(__dirname, 'regressing-loop-guard.js');
 const INJECT_RULES = path.join(__dirname, 'inject-rules.js');
 
 let passed = 0;
@@ -31,31 +30,6 @@ function makeSandbox(prefix) {
   fs.mkdirSync(path.join(dir, '.crabshell', 'memory'), { recursive: true });
   sandboxes.push(dir);
   return dir;
-}
-
-function runRegressingGuard(waCount) {
-  const sandbox = makeSandbox('crabshell-count-retirement-');
-  const memoryDir = path.join(sandbox, '.crabshell', 'memory');
-  fs.writeFileSync(path.join(memoryDir, 'regressing-state.json'), JSON.stringify({
-    active: true,
-    cycle: 3,
-    totalCycles: 10,
-    phase: 'execution',
-    planId: 'P157',
-    ticketIds: ['P157_T002']
-  }), 'utf8');
-  fs.writeFileSync(path.join(memoryDir, 'wa-count.json'), JSON.stringify({ waCount }), 'utf8');
-
-  const env = Object.assign({}, process.env, { CLAUDE_PROJECT_DIR: sandbox });
-  delete env.CRABSHELL_BACKGROUND;
-  const result = spawnSync(NODE, [REGRESSING_GUARD], {
-    input: JSON.stringify({ stop_hook_active: false }),
-    encoding: 'utf8',
-    env
-  });
-  let output = null;
-  try { output = JSON.parse(result.stdout || '{}'); } catch (_) {}
-  return { status: result.status, output, stderr: result.stderr };
 }
 
 function runInjectRules(state) {
@@ -101,29 +75,8 @@ test(
   'completionOwners=' + continuationOwners + ' legacyOwners=' + retiredOwners
 );
 
-const countZero = runRegressingGuard(0);
-const countOne = runRegressingGuard(1);
-const sameDecision = countZero.status === 2
-  && countOne.status === 2
-  && countZero.output
-  && countOne.output
-  && countZero.output.decision === 'block'
-  && countOne.output.decision === 'block'
-  && countZero.output.reason === countOne.output.reason;
-test(
-  'regressing continuation is invariant across waCount=0 and waCount=1',
-  sameDecision,
-  JSON.stringify({ zero: countZero, one: countOne })
-);
-
-const guardSource = fs.readFileSync(REGRESSING_GUARD, 'utf8');
-const mainStart = guardSource.indexOf('async function main()');
-const mainEnd = guardSource.indexOf('if (require.main === module)');
-const guardMain = guardSource.slice(mainStart, mainEnd);
-test(
-  'active regressing main path does not read count or background-agent state',
-  !/getWaCount|getBackgroundAgentPending|WA_COUNT_FILE/.test(guardMain)
-);
+// The retired regressing-loop-guard.js was deleted (D119 cycle 7); the checks
+// above keep it out of the Stop wiring.
 
 const pending = runInjectRules({
   status: 'pending',

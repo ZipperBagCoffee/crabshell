@@ -1,16 +1,17 @@
 ---
 name: planning
-description: Create a Crabshell P plan document from Codex. Use when a task needs an implementation plan before tickets.
+description: Crabshell no longer creates separate plan documents. Use when asked to plan work — the plan goes into the discussion, then tickets.
 ---
 
 # Planning
 
+New plans go into the discussion: append a plan entry (intent, scope, steps, the evidence inspected, an intent check) to the D document's log, then create tickets with `--parent` naming that discussion (see the ticketing skill).
+
 Resolve `{SKILL_DIR}` to the directory containing this `SKILL.md` and
-`{PROJECT_ROOT}` to the absolute active project root. Run the bundled script
-by its absolute path with that project as the explicit target:
+`{PROJECT_ROOT}` to the absolute active project root. If no discussion exists yet, create one:
 
 ```bash
-node "{SKILL_DIR}/scripts/codex-docs.js" plan "plan title" --intent="..." --context="..." --ac="- Acceptance criterion" --related="[[D001-topic|D001]]" --project-dir="{PROJECT_ROOT}"
+node "{SKILL_DIR}/scripts/codex-docs.js" discussion "topic" --intent="..." --context="..." --project-dir="{PROJECT_ROOT}"
 ```
 
-After creating the plan, edit the generated P document with concrete steps, acceptance criteria, and verification commands.
+Existing P documents stay readable and searchable; append to their Log sections when work continues on them.

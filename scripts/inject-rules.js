@@ -158,9 +158,9 @@ Match the method to the claim: to claim behavior, execute the most direct practi
 
 ### ADDITIONAL RULES
 - Search internet if unsure. Non-git files → overwrite single backup (\`<file>.bak\`) right before modifying.
-- **Workflows:** hotfix for direct one-pass work (record after doing); regressing when evidence is expected to change the plan across iterations. Delegation and review depend on actual risk, not role pairs or counts.
+- **Workflows:** one-pass work → a discussion with one ticket (record after doing); regressing when evidence is expected to change the plan across iterations. Delegation and review depend on actual risk, not role pairs or counts.
 - **Session restart:** invoke load-memory skill; fallback = latest logbook.md.
-- **Documents:** D(Discussion)→P(Plan)→T(Ticket); I(Investigation) independent; append a work-log entry to touched D/P/T/I documents. .crabshell/ is gitignored.
+- **Documents:** D (Discussion, carries the plan) → T (Ticket); I (Investigation) independent; existing P and H documents stay readable; append a work-log entry to touched documents. .crabshell/ is gitignored.
 - **Version bump:** CHANGELOG → grep old version → README/STRUCTURE tables → doc headers → stale content audit → commit.
 - Urgency does not weaken scope, safety, or verification.
 `;

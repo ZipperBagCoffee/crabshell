@@ -1,27 +1,27 @@
 ---
 name: ticketing
-description: "Creates and updates ticket documents as executable work units tied to a plan. Use when breaking a plan into session-sized tasks with acceptance criteria and verification steps. Invoke with /ticketing P001 \"topic\" to create, or /ticketing P001_T001 to update. Each ticket uses parent-owned execution and verification with optional bounded delegation."
+description: "Creates and updates ticket documents as executable work units tied to a discussion (or an existing plan). Use when breaking planned work into session-sized tasks with acceptance criteria and verification steps. Invoke with /ticketing D001 \"topic\" to create, or /ticketing D001_T001 to update. Each ticket uses parent-owned execution and verification with optional bounded delegation."
 ---
 
 # Ticket Document Skill
 
 ## Modes
 
-- **Create mode:** `/ticketing P001 "title"` — creates a new ticket under plan P001
-- **Update mode:** `/ticketing P001_T001` — appends a log entry to an existing ticket
+- **Create mode:** `/ticketing D001 "title"` — creates a new ticket under discussion D001 (the discussion carries the plan). `/ticketing P001 "title"` still creates a ticket under an existing plan P001.
+- **Update mode:** `/ticketing D001_T001` (or `P001_T001`) — appends a log entry to an existing ticket
+
+`{PARENT}` below is the parent ID: `D{NNN}` for a discussion, `P{NNN}` for an existing plan.
 
 ---
 
 ## Create Mode
 
-When arguments are a Plan ID + title string:
+When arguments are a parent ID (D### or P###) + title string:
 
-### Step 1: Validate parent plan
+### Step 1: Validate the parent
 
-Read `.crabshell/plan/INDEX.md`. Find the row for the given Plan ID.
-- If plan not found → error: "Plan {ID} does not exist."
-- If plan status is `draft` → warn: "Plan {ID} is not yet approved. Create ticket anyway? (not recommended)"
-- If plan status is `approved` or `in-progress` → proceed
+- **Discussion parent (`D{NNN}`):** read `.crabshell/discussion/INDEX.md` and find the row. If it is missing → error: "Discussion {ID} does not exist." If its status is `concluded` or `abandoned` → warn before creating. Its latest plan entry (for regressing, the `Cycle {n} plan` log entry) should hold the Analysis and Intent Check before tickets are created.
+- **Plan parent (`P{NNN}`, existing plans):** read `.crabshell/plan/INDEX.md` and find the row. If it is missing → error: "Plan {ID} does not exist." If its status is `draft` → warn: "Plan {ID} is not yet approved. Create ticket anyway? (not recommended)". If `approved` or `in-progress` → proceed.
 
 ### Step 2: Ensure ticket folder exists
 
@@ -41,9 +41,9 @@ INDEX.md content:
 
 ### Step 3: Determine next ticket ID
 
-Glob `.crabshell/ticket/P{NNN}_T*.md` where P{NNN} is the parent plan.
+Glob `.crabshell/ticket/{PARENT}_T*.md` where {PARENT} is the parent ID.
 Extract ticket numbers. Next = max + 1, zero-padded to 3 digits.
-If no tickets for this plan, start at 001.
+If no tickets for this parent, start at 001. A discussion that spans several regressing cycles keeps counting (`D119_T001`, `D119_T002`, …).
 
 ### Step 4a: Line-number pre-flight (MANDATORY for Scope authoring)
 
@@ -63,22 +63,22 @@ Ask the user:
 3. **Acceptance Criteria:** Specific conditions for "done"
 4. **Verification:** How to verify each acceptance criterion? (Must be executable commands or observable behavior. "File contains X" is NOT acceptable.)
 
-Then create `.crabshell/ticket/P{NNN}_T{NNN}-{slug}.md`:
+Then create `.crabshell/ticket/{PARENT}_T{NNN}-{slug}.md`:
 
 ```
 ---
 type: ticket
-id: P{NNN}_T{NNN}
+id: {PARENT}_T{NNN}
 title: "{title}"
 status: todo
 created: {YYYY-MM-DD}
 tags: []
 ---
 
-# P{NNN}_T{NNN} - {title}
+# {PARENT}_T{NNN} - {title}
 
 ## Parent
-- Plan: [[P{NNN}-{slug}|P{NNN}]] - {plan title}
+- Parent: [[{PARENT}-{slug}|{PARENT}]] - {parent title}
 
 ## Intent
 {user's answer}
@@ -226,32 +226,33 @@ This step is procedural and happens every time.
 Append row to `.crabshell/ticket/INDEX.md`:
 
 ```
-| [[P{NNN}_T{NNN}-{slug}|P{NNN}_T{NNN}]] | {title} | todo | {YYYY-MM-DD} | [[P{NNN}-{slug}|P{NNN}]] |
+| [[{PARENT}_T{NNN}-{slug}|{PARENT}_T{NNN}]] | {title} | todo | {YYYY-MM-DD} | [[{PARENT}-{slug}|{PARENT}]] |
 ```
 
-### Step 6: Update parent plan
+### Step 6: Update the parent
 
-Append to the **Tickets section** of the parent plan document:
+- **Discussion parent:** add the ticket ID to the discussion's row in `.crabshell/discussion/INDEX.md` (Related column, when the INDEX has one — Codex-created INDEX files may not). Do not edit the discussion body here — the next `/discussing` log entry (the cycle's feedback transfer or a work log) lists the tickets.
+- **Plan parent:** append to the **Tickets section** of the plan document:
 
 ```
-- [[P{NNN}_T{NNN}-{slug}|P{NNN}_T{NNN}]]: {title}
+- [[{PARENT}_T{NNN}-{slug}|{PARENT}_T{NNN}]]: {title}
 ```
 
-Also update `.crabshell/plan/INDEX.md` Tickets column to include the new ticket ID.
+  and add the ticket ID to the plan's Tickets column in `.crabshell/plan/INDEX.md`.
 
 ### Step 7: Confirm
 
-Tell user: "Created P{NNN}_T{NNN}. Status: todo. Ready for execution."
+Tell user: "Created {PARENT}_T{NNN}. Status: todo. Ready for execution."
 
 ---
 
 ## Update Mode
 
-When argument matches `P\d{3}_T\d{3}` pattern:
+When argument matches `[DP]\d{3}_T\d{3}` (a discussion or plan parent):
 
 ### Step 1: Read existing ticket
 
-Glob `.crabshell/ticket/P{NNN}_T{NNN}-*.md`. If not found, stop.
+Glob `.crabshell/ticket/{PARENT}_T{NNN}-*.md`. If not found, stop.
 
 ### Step 2: Append log entry
 
@@ -278,14 +279,16 @@ Update ticket INDEX.md status column.
 
 If ticket status → `verified`:
 
-1. **Check parent plan:** Read `.crabshell/ticket/INDEX.md`, find ALL tickets for the same parent plan. Are ALL of them `verified`?
-   - If NO → stop here.
-   - If YES → continue cascade.
-2. **Close parent plan:** Update parent plan's status to `done` in `.crabshell/plan/INDEX.md`. Append log entry to plan document: `Status Change: in-progress → done (all tickets verified)`
-3. **Cascade to D/I:** Read parent plan's `Related` column in `.crabshell/plan/INDEX.md`. For each related D/I ID (stored as wikilinks `[[D{NNN}-{slug}|D{NNN}]]` or bare IDs — extract the ID portion):
-   - **Cross-check:** Read that D/I's Related column in its INDEX.md. If it references OTHER plans besides the one just completed, check those plans' statuses too. ALL related plans must be `done` before concluding.
-   - If all related plans done → update D/I status to `concluded`, append log entry: `Status Change: open → concluded (all related plans completed)`
-   - If other related plans still open → skip, do not conclude. Log: `P{NNN} completed, conclusion deferred due to other related plans still incomplete`
+- **Discussion parent:** no cascade. A discussion parent is never concluded by this cascade — it spans several cycles and concludes only with its Final Report (regressing Step 5) or an explicit `/discussing` status change.
+- **Plan parent (existing plans):**
+  1. **Check parent plan:** Read `.crabshell/ticket/INDEX.md`, find ALL tickets for the same parent plan. Are ALL of them `verified`?
+     - If NO → stop here.
+     - If YES → continue cascade.
+  2. **Close parent plan:** Update parent plan's status to `done` in `.crabshell/plan/INDEX.md`. Append log entry to plan document: `Status Change: in-progress → done (all tickets verified)`
+  3. **Cascade to D/I:** Read parent plan's `Related` column in `.crabshell/plan/INDEX.md`. For each related D/I ID (stored as wikilinks `[[D{NNN}-{slug}|D{NNN}]]` or bare IDs — extract the ID portion). **Skip a discussion that is the active regressing discussion (`regressing-state.json` `discussion`) or that parents its own tickets (`D{NNN}_T{NNN}` rows in the ticket INDEX)** — it spans cycles and concludes only with its Final Report:
+     - **Cross-check:** Read that D/I's Related column in its INDEX.md. If it references OTHER plans besides the one just completed, check those plans' statuses too. ALL related plans must be `done` before concluding.
+     - If all related plans done → update D/I status to `concluded`, append log entry: `Status Change: open → concluded (all related plans completed)`
+     - If other related plans still open → skip, do not conclude. Log: `P{NNN} completed, conclusion deferred due to other related plans still incomplete`
 
 ### Status Transitions
 
@@ -305,11 +308,11 @@ If ticket status → `verified`:
 4. **Verification at creation:** The Verification section MUST be filled at ticket creation time (before work starts). This is the TDD principle — define how you'll check before you build.
 5. **"File contains X" is forbidden** in Verification section. Must describe observable behavior or runnable commands.
 6. **INDEX.md** is the only file where existing content may be modified.
-7. **Plan propagation:** When all tickets verified → auto-update plan status.
+7. **Plan propagation (plan parents only):** When all tickets of a plan are verified → auto-update the plan status. Discussion parents are not propagated.
 8. **1 Ticket = 1 independent execution cycle:** Each ticket is executed as a separate, independent agent cycle. Never batch multiple tickets into a single execution. 3 tickets = 3 separate executions.
 9. **Mandatory work log:** After performing any work related to this document, append a log entry to the Log section using the existing format (`### [{YYYY-MM-DD HH:MM}] {entry_type}`). This applies regardless of whether this skill was explicitly invoked — if the work touched or advanced this ticket's purpose, log it.
 10. **Mandatory append of results:** The parent must append execution, direct verification, and final evaluation to the corresponding T sections. If delegation/review was used, its evidence and the parent's disposition must also be recorded. Verification not recorded in the document is treated as not performed. Before completion, the parent reads the T document and confirms all three required sections no longer contain `placeholder`; optional review notes are not a completion gate.
 11. **Exhaustive verification standard:** Verification follows the VERIFICATION-FIRST principle in RULES (Predict → Execute → Compare). When no project verification tool exists, invoke the 'verifying' skill. Direct → indirect → explicitly "unverified".
-12. **Regressing context transfer:** In the regressing loop, this T document's `## Final Verification > Next Direction` content is passed directly to the next cycle's P(n+1) document's Context. The Orchestrator must explicitly perform this transfer. (D is the top-level container and does not receive per-cycle context.)
-13. **Regressing state update:** If `.crabshell/memory/regressing-state.json` exists and is active, update it after ticket creation using: `"{NODE_PATH}" -e "const f='{PROJECT_DIR}/.crabshell/memory/regressing-state.json';const s=JSON.parse(require('fs').readFileSync(f,'utf8'));s.ticketIds.push('{T-ID}');s.lastUpdatedAt=new Date().toISOString();require('fs').writeFileSync(f,JSON.stringify(s,null,2))"`. Phase transition is handled automatically by the PostToolUse hook. Only applies when regressing-state.json exists — standalone ticketing usage is unaffected.
+12. **Regressing context transfer:** In the regressing loop, this T document's `## Final Verification > Next Direction` content is passed to the next cycle plan entry's Context (in the D log; for sessions still using plans, the next P document's Context). The Orchestrator must explicitly perform this transfer. (D is the top-level container and does not receive per-cycle context.)
+13. **Regressing state update:** If `.crabshell/memory/regressing-state.json` exists and is active, and the ticket belongs to that workflow (its parent is the state's `discussion` or `planId`, and this session is the state's `sessionId`), update it after ticket creation using: `"{NODE_PATH}" -e "const f='{PROJECT_DIR}/.crabshell/memory/regressing-state.json';const s=JSON.parse(require('fs').readFileSync(f,'utf8'));s.ticketIds.push('{T-ID}');s.lastUpdatedAt=new Date().toISOString();require('fs').writeFileSync(f,JSON.stringify(s,null,2))"`. Phase transition is handled automatically by the PostToolUse hook. Only applies when regressing-state.json exists — standalone ticketing usage is unaffected. Tickets for other work (a one-pass record in another session) are not added to the cycle.
 14. **No autonomous code writes:** Every Write/Edit to a code file must trace to an explicit Acceptance Criterion in this ticket. If a code file write is not covered by an AC, STOP — either add an AC (if in scope) or raise an Open Question. Completion drive = writing beyond the ticket's AC scope.

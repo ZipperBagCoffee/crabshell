@@ -35,9 +35,9 @@ Match the method to the claim: to claim behavior, execute the most direct practi
 
 ### ADDITIONAL RULES
 - Search internet if unsure. Non-git files → overwrite single backup (`<file>.bak`) right before modifying.
-- **Workflows:** hotfix for direct one-pass work (record after doing); regressing when evidence is expected to change the plan across iterations. Delegation and review depend on actual risk, not role pairs or counts.
+- **Workflows:** one-pass work → a discussion with one ticket (record after doing); regressing when evidence is expected to change the plan across iterations. Delegation and review depend on actual risk, not role pairs or counts.
 - **Session restart:** invoke load-memory skill; fallback = latest logbook.md.
-- **Documents:** D(Discussion)→P(Plan)→T(Ticket); I(Investigation) independent; append a work-log entry to touched D/P/T/I documents. .crabshell/ is gitignored.
+- **Documents:** D (Discussion, carries the plan) → T (Ticket); I (Investigation) independent; existing P and H documents stay readable; append a work-log entry to touched documents. .crabshell/ is gitignored.
 - **Version bump:** CHANGELOG → grep old version → README/STRUCTURE tables → doc headers → stale content audit → commit.
 - Urgency does not weaken scope, safety, or verification.
 
@@ -48,9 +48,9 @@ Match the method to the claim: to claim behavior, execute the most direct practi
 - **Version bump checklist (MANDATORY):** After updating plugin.json version, BEFORE committing: (1) CHANGELOG.md, (2) grep repo for old version string, (3) add new row to version tables in README.md AND STRUCTURE.md, (4) update header versions in ARCHITECTURE.md, STRUCTURE.md, USER-MANUAL.md, (5) READ each doc section describing changed components — update directory trees, example JSON, description text, constants tables, **(5b) USER-MANUAL.md: if new hooks/guards/skills/config options were added, update Hooks table, Guards table, Slash Commands, Configuration, Pressure System sections accordingly,** (5c) **.crabshell/verification/manifest.json:** V009 checks that every version file agrees with `.claude-plugin/plugin.json` (no literal to edit); grep the manifest for any other old version string, (6) update source repo `.claude-plugin/plugin.json`, (7) commit `feat: <desc> (vX.Y.Z)`, (8) push, (9) user runs `/plugin` → "Update now" to refresh cache. Do NOT commit until steps 1-6 done. NEVER modify cache (`~/.claude/plugins/cache/`) directly — cache is managed by the plugin system.
 - **Model upgrade audit (on major Claude model change):** For each guard: (1) state what behavior it counteracts, (2) run test suite with guard disabled, (3) if behavior gone → candidate for removal. Guard baseline (I047 AG2):
   - inject-rules.js, load-memory.js, path-guard.js: load-bearing → keep
-  - sycophancy-guard.js, pressure-guard.js, scope-guard.js: **retired from wiring v21.113.0** (I083 R4/R5 — behavioral policing moved out of hooks; scripts remain on disk, re-wire via hooks.json/completion-controller if regression observed)
+  - sycophancy-guard.js, pressure-guard.js, scope-guard.js: retired from wiring v21.113.0 (I083 R4/R5 — behavioral policing moved out of hooks), **deleted v21.130.0** (user decision; restore from git history if a regression is observed)
   - verify-guard.js, docs-guard.js, log-guard.js, verification-sequence.js, doc-watchdog.js: deterministic/ritual → keep, audit on next model change
-  - regressing-loop-guard.js: retired from Stop wiring v21.107.0; continuation = goal-mode handoff (regressing SKILL.md Step 2.6, v21.110.0) + completion-controller bounded continuation
+  - regressing-loop-guard.js: retired from Stop wiring v21.107.0, deleted v21.130.0; continuation = goal-mode handoff (regressing SKILL.md Step 2.6, v21.110.0) + completion-controller bounded continuation
   - post-compact.js: unwired from Claude v21.125.0 (its output reaches no model); its effects (pressure re-injection reset, compaction log) run at SessionStart(compact) via core/post-compact-effects.js; Codex keeps its PostCompact hook
   - Claude runs these guards in one process per event since v21.125.0 (adapters/claude/pre-tool-use.js, post-tool-use.js); each guard script still runs alone for tests and audits
   - regressing-guard.js: narrow scope → merger candidate

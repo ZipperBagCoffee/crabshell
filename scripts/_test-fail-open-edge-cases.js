@@ -152,13 +152,9 @@ function statePath(sandbox) {
     'path-guard.js',
     'post-compact.js',
     'pre-compact.js',
-    'pressure-guard.js',
     'regressing-guard.js',
-    'regressing-loop-guard.js',
-    'scope-guard.js',
     'skill-tracker.js',
     'subagent-context.js',
-    'sycophancy-guard.js',
     'verification-sequence.js',
     'verify-guard.js'
   ];

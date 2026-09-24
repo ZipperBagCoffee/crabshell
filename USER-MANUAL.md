@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.129.0)
+# Crabshell User Manual (v21.130.0)
 
 ## Why Do You Need This?
 
@@ -131,15 +131,15 @@ All available skills (slash commands):
 | `/crabshell:search-memory keyword` | Search past sessions across L1/L2/L3 layers. Flags: `--regex`, `--context=N`, `--limit=N` |
 | `/crabshell:clear-memory` | Clean up old memory files |
 
-### Structured Work (D/P/T/I/H Documents)
+### Structured Work (D-T Documents)
 
 | Command | What It Does |
 |---------|-------------|
 | `/crabshell:discussing "topic"` | Create or update a Discussion document (D) |
-| `/crabshell:planning "topic"` | Create or update a Plan document (P) |
-| `/crabshell:ticketing P001 "title"` | Create or update a Ticket document (T) linked to a plan |
+| `/crabshell:planning P001` | Append to an existing Plan document (P); new plans are written into the discussion |
+| `/crabshell:ticketing D001 "title"` | Create or update a Ticket (T) under a discussion (`D001_T001`; `P001` for an existing plan) |
 | `/crabshell:investigating "topic"` | Run a multi-agent Investigation (I) |
-| `/crabshell:hotfix "description"` | Record directly-performed one-pass work (H) — one-line fixes up to small multi-file changes, with Problem/Fix/Verification; or `/crabshell:hotfix H001` to update |
+| `/crabshell:hotfix "description"` | Record directly-performed one-pass work as a discussion with one ticket (Problem/Fix/Verification in the ticket); `/crabshell:hotfix H001` appends to an existing H record |
 
 ### Workflows
 
@@ -169,7 +169,7 @@ Installed Codex skills are invoked by name, including `crabshell:load-memory`, `
 
 ---
 
-## Document System (D/P/T/I)
+## Document System (D-T)
 
 Crabshell includes a structured document system for organizing complex work.
 
@@ -177,19 +177,20 @@ Crabshell includes a structured document system for organizing complex work.
 
 | Type | Name | Purpose |
 |------|------|---------|
-| **D** | Discussion | Explore a topic, capture decisions, frame the problem |
-| **P** | Plan | Concrete implementation plan derived from a Discussion |
-| **T** | Ticket | Specific work item derived from a Plan |
+| **D** | Discussion | Explore a topic, capture decisions, frame the problem, and carry the plan as log entries |
+| **T** | Ticket | Specific work item under a Discussion (`D001_T001`) |
+| **P** | Plan | Existing plans only — new plans are log entries in the Discussion |
 | **I** | Investigation | Independent multi-agent research on a topic |
 
 ### Hierarchy
 
 ```
-D (Discussion) → P (Plan) → T (Ticket)
-I (Investigation) — independent, not part of the D→P→T chain
+D (Discussion, carries the plan) → T (Ticket)
+I (Investigation) — independent, not part of the D→T chain
+Existing P (Plan) and H (Hotfix) documents stay readable and searchable
 ```
 
-- Status cascades upward: when all Tickets under a Plan complete, the Plan completes; when all Plans under a Discussion complete, the Discussion completes.
+- A Discussion is concluded by its final report (or an explicit status change), never automatically by its tickets. For existing plans the old cascade still applies: all Tickets verified → Plan done → linked Discussion concluded.
 - Documents are stored in `docs/` (local only, not committed to git).
 - Each document has a log section that tracks all work done against it.
 
@@ -197,13 +198,13 @@ I (Investigation) — independent, not part of the D→P→T chain
 
 Use `/crabshell:regressing "topic"` for tasks that need multiple rounds of refinement:
 - Creates a single Discussion (D) as wrapper with measurable `## Convergence Criteria`
-- Runs one current-gap Plan (P) then Ticket (T) cycle at a time until the result converges
+- Runs one cycle at a time: a `Cycle N plan` entry in the Discussion, then Tickets under the Discussion, until the result converges
 - Each cycle's scope is determined by the previous cycle's verification results, not pre-allocated
 - Prints a ready-to-paste `/goal` line — start host goal mode (Claude Code 2.1.139+ or Codex CLI 0.128.0+) and the host keeps the session running until the D's Convergence Criteria are met or the cycle cap is reached
 
-### Hotfix (One-Shot Tasks)
+### One-Pass Tasks
 
-For a standalone task that does not need the full D/P/T trail, do the work directly and record it with `/crabshell:hotfix` (Problem/Fix/Verification). The former `/crabshell:light-workflow` skill was retired in v21.112.0 — existing W worklogs under `.crabshell/worklog/` remain readable history, and in-flight W documents from earlier versions are still honored by workflow restart context.
+For a standalone task that does not need iteration, do the work directly and record it as a discussion with one ticket (`/crabshell:hotfix "description"` walks through it; Problem/Fix/Verification go into the ticket). Existing H documents stay readable and accept log entries through `/crabshell:hotfix H001`. The former `/crabshell:light-workflow` skill was retired in v21.112.0 — existing W worklogs under `.crabshell/worklog/` remain readable history, and in-flight W documents from earlier versions are still honored by workflow restart context.
 
 ---
 
@@ -297,7 +298,6 @@ Guards run inside the Claude PreToolUse, PostToolUse and Stop hooks (one process
 
 | Guard | What It Protects Against |
 |-------|------------------------|
-| `sycophancy-guard.js` | **Retired v21.113.0 (I083 R5)** — anti-sycophancy training in Sonnet 4.5+ replaced the hook layer; script remains on disk, unwired from PreToolUse and Stop |
 | `docs-guard.js` | Direct writes to `docs/` directories outside of an active skill (discussing, planning, ticketing, etc.) |
 | `log-guard.js` | Marking documents as done/verified/concluded in INDEX.md without log entries in the document; creating new cycle documents without logging the previous cycle |
 | `verify-guard.js` | Writing "Final Verification" results to ticket files without actually running `/verifying` first. Hybrid: Edit always enforces; Write only enforces on existing files (new ticket creation is allowed) |
@@ -308,10 +308,8 @@ Guards run inside the Claude PreToolUse, PostToolUse and Stop hooks (one process
 | `verification-sequence.js` | Edits to code/configuration before git commit without a passing declared check (any session's edit counts; prose, stylesheet and image edits do not); unchanged content preserves existing verification; a project with no check configuration gets advice instead of a block |
 | `doc-watchdog.js` | Document update omissions during regressing (edits inside the project only; any non-prose file counts as code, v21.125.0): soft notice when 5+ code edits without D/P/T document update; blocks session end when ticket has no work log since last code edit |
 | `skill-tracker.js` | Supporting guard: sets the calling session's skill flag when a Skill tool call is detected, so `docs-guard` knows that session's document writes are authorized; another session's flag never counts |
-| `pressure-guard.js` | **Retired v21.113.0 (I083 R4)** — tool blocking removed; pressure counters remain as user-facing telemetry only (see [Pressure System](#pressure-system)) |
-| `scope-guard.js` | **Retired v21.113.0 (I083 R5)** — Stop-time scope regex removed; scope preservation lives as a short RULES principle |
 | `regressing-guard.js` | Phase-based write restrictions during active regressing sessions — blocks out-of-phase edits to plan/ticket documents |
-| `regressing-loop-guard.js` | Retained compatibility/test helper for the old count-independent continuation path; `completion-controller.js` is now the sole manifest Stop owner. Regressing continuation is goal-driven (v21.110.0): the regressing skill prints a `/goal` handoff line for host goal mode. |
+| (deleted v21.130.0) | `sycophancy-guard.js`, `pressure-guard.js`, `scope-guard.js` (retired v21.113.0) and `regressing-loop-guard.js` were removed with their tests; `completion-controller.js` is the sole Stop owner and regressing continuation is goal-driven (v21.110.0) |
 
 Guards run automatically via hooks. No configuration needed.
 For Codex, shared path policy, completion control and the edit/commit verification state have native adapters. The document guards remain Claude-only.
@@ -324,15 +322,15 @@ For Codex, shared path policy, completion control and the edit/commit verificati
 
 Crabshell tracks three pressure counters (feedbackPressure.level, feedbackPressure.oscillationCount, tooGoodSkepticism.retryCount) in `.crabshell/memory/memory-index.json`. Together they form a graduated response mechanism that restricts tool access when Claude drifts — either via consecutive negative user feedback or via the assistant's own output patterns (reversals, all-None P/O/G).
 
-Pressure enforcement is Claude-only. Codex does not load `pressure-guard.js` or `sycophancy-guard.js`; however, both hosts use the shared UserPromptSubmit path, so `봉인해제` / `UNLEASH` clears the shared pressure state from either host.
+Pressure is telemetry only on both hosts (the enforcement scripts `pressure-guard.js` and `sycophancy-guard.js` were deleted in v21.130.0); both hosts use the shared UserPromptSubmit path, so `봉인해제` / `UNLEASH` clears the shared pressure state from either host.
 
 ### Three Counters
 
 | Counter | Raised By | Trigger | Reset By |
 |---------|-----------|---------|----------|
 | feedbackPressure.level (0-3) | inject-rules.js @ UserPromptSubmit | User message matches NEGATIVE_PATTERNS (W021: profanity-only) | Positive-feedback decay (3 clean prompts) · `봉인해제` / `UNLEASH` · TaskCreate tool (L1-L2 only) |
-| feedbackPressure.oscillationCount | sycophancy-guard.js @ Stop | Assistant response contains REVERSAL_PATTERNS (e.g., "actually, let me", "다시 생각해보니") — **no user input required** | `봉인해제` / `UNLEASH` |
-| tooGoodSkepticism.retryCount | sycophancy-guard.js @ Stop | Assistant response contains a P/O/G table where all Gap cells are None/없음/N/A — **no user input required** | Clean P/O/G (Gap ≠ None) in a later Stop · retryCount > 3 overflow · `봉인해제` / `UNLEASH` (originally BAILOUT, renamed v21.79.0) |
+| feedbackPressure.oscillationCount | (no longer updated — its producer sycophancy-guard.js was deleted v21.130.0) | Assistant response contains REVERSAL_PATTERNS (e.g., "actually, let me", "다시 생각해보니") — **no user input required** | `봉인해제` / `UNLEASH` |
+| tooGoodSkepticism.retryCount | (no longer updated — its producer sycophancy-guard.js was deleted v21.130.0) | Assistant response contains a P/O/G table where all Gap cells are None/없음/N/A — **no user input required** | Clean P/O/G (Gap ≠ None) in a later Stop · retryCount > 3 overflow · `봉인해제` / `UNLEASH` (originally BAILOUT, renamed v21.79.0) |
 
 **Note:** Two of the three counters (oscillationCount, tooGoodSkepticism.retryCount) rise from the assistant's own output independent of the user. Use `/crabshell:status` to inspect current values.
 
@@ -348,7 +346,7 @@ Pressure enforcement is Claude-only. Codex does not load `pressure-guard.js` or 
 ### How It Works
 
 - **Detection:** The `inject-rules.js` hook (UserPromptSubmit) analyzes user prompts for negative feedback signals and updates `feedbackPressure.level` in `memory-index.json`. The `sycophancy-guard.js` hook (Stop) independently analyzes assistant output and updates `feedbackPressure.oscillationCount` and `tooGoodSkepticism.retryCount`.
-- **Enforcement:** The `pressure-guard.js` hook (PreToolUse, matcher: `.*`) checks `feedbackPressure.level` before every tool call and blocks accordingly.
+- **Enforcement:** none since v21.113.0 (the `pressure-guard.js` hook that blocked tools was retired then and deleted in v21.130.0).
 - **Decay:** Positive feedback from the user reduces `feedbackPressure.level` naturally. The assistant-side counters decay only on their own reset paths (see table above).
 - **Exception:** Operations targeting `.crabshell/` or `.claude/` paths are always allowed, even at L3 (so the plugin can still manage its own state).
 

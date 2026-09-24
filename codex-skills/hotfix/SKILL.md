@@ -1,17 +1,18 @@
 ---
 name: hotfix
-description: Record directly-performed work in a Crabshell H hotfix document. Use for any task done in one pass that does not need a D/P/T workflow.
+description: Record directly-performed one-pass work as a discussion with one ticket (Crabshell no longer creates H hotfix documents).
 ---
 
 # Hotfix
 
-After applying and verifying a direct fix or small task, create the hotfix record.
+One-pass work is recorded as a discussion with one ticket. After applying and verifying the change, create both:
+
 Resolve `{SKILL_DIR}` to the directory containing this `SKILL.md` and
-`{PROJECT_ROOT}` to the absolute active project root. Run the bundled script
-by its absolute path with that project as the explicit target:
+`{PROJECT_ROOT}` to the absolute active project root.
 
 ```bash
-node "{SKILL_DIR}/scripts/codex-docs.js" hotfix "title" --problem="..." --fix="..." --verification="..." --project-dir="{PROJECT_ROOT}"
+node "{SKILL_DIR}/scripts/codex-docs.js" discussion "what changed" --intent="..." --context="..." --project-dir="{PROJECT_ROOT}"
+node "{SKILL_DIR}/scripts/codex-docs.js" ticket "what changed" --parent="D001" --ac="- ..." --project-dir="{PROJECT_ROOT}"
 ```
 
-The script creates `.crabshell/hotfix/HNNN-*.md` and appends to `.crabshell/hotfix/INDEX.md`.
+Use the discussion ID the first command printed as `--parent` (D001 in a new project). Write the problem, the fix and its verification into the ticket, set the ticket to `verified` and the discussion to `concluded`. Existing H documents stay readable and searchable; append to their Log sections if work continues on them.

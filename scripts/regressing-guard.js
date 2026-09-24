@@ -8,7 +8,7 @@ const { readStdin } = require('./transcript-utils');
 // F1 mitigation: keep inline env check for fail-open invariant — D106 IA-10 RA2
 if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 
-const { getProjectDir } = require('./utils');
+const { getProjectDir, ticketDocPattern } = require('./utils');
 
 // Returns { reason } when the write must be blocked, otherwise null.
 function evaluateRegressingGuard(hookData, projectDir) {
@@ -22,7 +22,7 @@ function evaluateRegressingGuard(hookData, projectDir) {
 
   const filePath = (input.file_path || input.path || '').replace(/\\/g, '/');
   const isPlanDoc = /\.crabshell\/plan\/P\d{3}/.test(filePath);
-  const isTicketDoc = /\.crabshell\/ticket\/P\d{3}_T\d{3}/.test(filePath);
+  const isTicketDoc = new RegExp(ticketDocPattern()).test(filePath);
   if (!isPlanDoc && !isTicketDoc) return null;
 
   const { STORAGE_ROOT, MEMORY_DIR, REGRESSING_STATE_FILE } = require('./constants');
