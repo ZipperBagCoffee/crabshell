@@ -21,6 +21,18 @@ function withMemoryIndex(projectDir,action){
   if(!owned&&!acquired)throw Error('Memory index is busy; data was preserved for retry.');
   try{return action(directory);}finally{if(acquired)releaseIndexLock(directory);}
 }
+// Runs action under the memory index lock of a memory directory. When another
+// process holds the lock past waitMs it skips instead of throwing and returns
+// { ran: false } — hooks fail open; otherwise { ran: true, value }.
+function tryWithMemoryIndex(directory,action,{waitMs}={}){
+  if(!acquireIndexLock(directory,waitMs))return {ran:false};
+  try{return {ran:true,value:action()};}finally{releaseIndexLock(directory);}
+}
+// Same for the rotation lock: { ran: false } when another rotation holds it.
+function tryWithMemoryRotation(directory,action){
+  if(!acquireLock(directory))return {ran:false};
+  try{return {ran:true,value:action()};}finally{releaseLock(directory);}
+}
 function withMemoryRotation(directory,action){
   if(!acquireLock(directory))throw Error('Memory rotation is busy; data was preserved for retry.');
   try{return action();}finally{releaseLock(directory);}
@@ -35,4 +47,4 @@ function readMemoryIndex(directory){
   if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Invalid memory index; original data preserved.');
   return value;
 }
-module.exports={withMemoryIndex,withMemoryRotation,memoryDirectory,readMemoryIndex,regularFile};
+module.exports={withMemoryIndex,tryWithMemoryIndex,withMemoryRotation,tryWithMemoryRotation,memoryDirectory,readMemoryIndex,regularFile};

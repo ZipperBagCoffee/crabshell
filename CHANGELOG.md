@@ -1,5 +1,24 @@
 # Changelog
 
+## [21.127.0] - 2026-09-24
+
+### feat: shorter prompt context, rules aligned with user brevity, one definition per shared value
+
+- **Commit gate no longer dead-ends.** A project whose manifest has entries but no `tools.test` (and no package.json `test`) could never unlock a commit, because single entries do not unlock it. The block reason now says to declare a full check as `tools.test` (`node .crabshell/verification/run-verify.js`) or a package.json `test` script. Codex uses the same gate.
+- **Rules:**
+  - One advisor line: when an advisor tool is available, call it before committing to an approach and before declaring done; not every turn.
+  - Three rules that contradicted common brevity rules are unified: one light banter line per reply that adds no length (still a directive, not a permission); "Keep it short, but never drop a required fact" replaces "Accuracy outranks brevity"; bullets max 4 per group, tables only when the user asks.
+- **Per-prompt context is 1,021 characters shorter.** UserPromptSubmit no longer repeats the project description (`## Project Concept`); SessionStart (and compaction recovery) loads it as the project overview, and SubagentStart still gives it to workers. Measured on this repository: question prompt 2,935 → 1,914 characters, execution prompt 3,731 → 2,710.
+- **One definition per shared value (hardcoding restraint):**
+  - `constants.js` has one document-type table (`DOC_TYPES`: folder, ID prefix, title, skill, INDEX columns, and flags naming the features that cover each folder). The docs guard, doc watchdog, INDEX log guard, Obsidian lint and migration, document search, the Codex document tool, compaction recovery and the regressing phase detector derive their folder or skill lists from it. Coverage is unchanged, checked folder by folder; the only visible change is that a blocked hotfix write now names the `hotfix` skill.
+  - Durations of a minute or more are named constants (`SKILL_ACTIVE_TTL_MS`, `REGRESSING_STALE_MS`, `SESSION_STATE_MAX_AGE_MS`).
+  - Literals that retyped a constant (`.crabshell`, `logbook.md`, `memory-index.json`, `regressing-state.json`, `doc-watchdog.json`, `.summary.json`, `delta_temp.txt`) use the constant. Eleven constants nothing read are removed, as are four per-folder constants the table replaces.
+  - JSON state goes through `utils.readJsonOrDefault` (now strips a byte-order mark) and the atomic `utils.writeJson`.
+  - The document-skill flag has one owner, `core/skill-flag.js` (set, read, clear, path check); it has no load-time side effects, so any hook can require it.
+  - The 16 hand-written lock acquire/release sites use `tryWithMemoryIndex` / `tryWithMemoryRotation` (`core/memory-lock.js`), which skip instead of throwing when another process holds the lock — the same fail-open behavior each site had, including the longer SessionEnd wait and the prompt hook's read-without-lock fallback.
+- **Review fixes:** the Codex document tool rejects inherited object names (`constructor`, `toString`) as unknown commands instead of crashing, and document search breaks score ties by file path, so the order no longer depends on folder scan order.
+- **Tests:** `_test-single-source.js` (one definition per shared value, scanned over shipped scripts minus retired ones), `_test-rules-and-injection.js` (rules in CLAUDE.md and the AGENTS.md conversion; where the project description is injected), gate cases G9–G11.
+
 ## [21.126.0] - 2026-09-24
 
 ### feat: verification runs what changed; only the project's own checks unlock commits

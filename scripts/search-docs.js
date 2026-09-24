@@ -1,6 +1,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const { STORAGE_ROOT, DOC_TYPES } = require('./constants');
 
 // ---------------------------------------------------------------------------
 // CLI argument parsing
@@ -21,7 +22,7 @@ for (const arg of process.argv.slice(2)) {
 }
 
 projectDir = path.resolve(projectDir);
-const crabshellDir = path.join(projectDir, '.crabshell');
+const crabshellDir = path.join(projectDir, STORAGE_ROOT);
 
 // ---------------------------------------------------------------------------
 // Stopwords
@@ -35,7 +36,7 @@ const STOPWORDS = new Set([
 // ---------------------------------------------------------------------------
 // Document directories to scan
 // ---------------------------------------------------------------------------
-const DOC_DIRS = ['discussion', 'investigation', 'plan', 'ticket', 'worklog', 'knowledge', 'hotfix'];
+const DOC_DIRS = DOC_TYPES.map(type => type.dir);
 
 // ---------------------------------------------------------------------------
 // tokenize(text): lowercase, split on delimiters, filter length>1, no stopwords
@@ -214,7 +215,8 @@ function formatResults(docs, scores, topN) {
   const ranked = scores
     .map((score, idx) => ({ score, idx }))
     .filter(x => x.score > 0)
-    .sort((a, b) => b.score - a.score)
+    // Equal scores: file path order, so ties never depend on folder scan order.
+    .sort((a, b) => b.score - a.score || docs[a.idx].filePath.localeCompare(docs[b.idx].filePath))
     .slice(0, topN);
 
   if (ranked.length === 0) {

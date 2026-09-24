@@ -23,8 +23,9 @@
  */
 const fs = require('fs');
 const path = require('path');
-const { STORAGE_ROOT, MEMORY_DIR, SESSIONS_DIR, LOGS_DIR, WORKFLOW_DIR, DISCUSSION_DIR, PLAN_DIR, TICKET_DIR, INVESTIGATION_DIR, HOTFIX_DIR, INDEX_FILE, COUNTER_FILE, MEMORY_FILE } = require('./constants');
-const { writeJson, acquireIndexLock, releaseIndexLock } = require('./utils');
+const { STORAGE_ROOT, MEMORY_DIR, SESSIONS_DIR, LOGS_DIR, WORKFLOW_DIR, DOC_TYPES, INDEX_FILE, COUNTER_FILE, MEMORY_FILE, SUMMARY_SUFFIX } = require('./constants');
+const { writeJson } = require('./utils');
+const { tryWithMemoryIndex } = require('./core/memory-lock');
 
 
 /**
@@ -156,7 +157,7 @@ function migrateMemoryToLogbook(projectDir) {
   try {
     const memoryDir = path.join(projectDir, STORAGE_ROOT, MEMORY_DIR);
     const oldPath = path.join(memoryDir, 'memory.md');
-    const newPath = path.join(memoryDir, MEMORY_FILE); // 'logbook.md'
+    const newPath = path.join(memoryDir, MEMORY_FILE);
 
     if (!fs.existsSync(memoryDir)) return;
 
@@ -184,8 +185,8 @@ function migrateMemoryToLogbook(projectDir) {
         // Also rename corresponding .summary.json
         const baseName = file.replace(/\.md$/, '');  // memory_YYYYMMDD_HHMMSS
         const newBaseName = newName.replace(/\.md$/, '');
-        const summaryOld = baseName + '.summary.json';  // memory_YYYYMMDD_HHMMSS.summary.json
-        const summaryNew = newBaseName + '.summary.json';
+        const summaryOld = baseName + SUMMARY_SUFFIX;  // memory_YYYYMMDD_HHMMSS.summary.json
+        const summaryNew = newBaseName + SUMMARY_SUFFIX;
         if (fs.existsSync(path.join(memoryDir, summaryOld))) {
           fs.renameSync(path.join(memoryDir, summaryOld), path.join(memoryDir, summaryNew));
           console.error(`[CRABSHELL] Renamed ${summaryOld} -> ${summaryNew}`);
@@ -199,12 +200,8 @@ function migrateMemoryToLogbook(projectDir) {
     // _test-inject-rules-race). Lock busy → skip; the next prompt migrates.
     const indexPath = path.join(memoryDir, INDEX_FILE);
     if (fs.existsSync(indexPath)) {
-      let migrateLocked = false;
       try {
-        migrateLocked = acquireIndexLock(memoryDir);
-        if (!migrateLocked) {
-          console.error(`[CRABSHELL] index lock busy, deferring memory->logbook index migration`);
-        } else {
+        const outcome = tryWithMemoryIndex(memoryDir, () => {
           const index = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
           let changed = false;
           if (index.current === 'memory.md') {
@@ -227,11 +224,10 @@ function migrateMemoryToLogbook(projectDir) {
             writeJson(indexPath, index);
             console.error(`[CRABSHELL] Updated memory-index.json (current + rotatedFiles)`);
           }
-        }
+        });
+        if (!outcome.ran) console.error(`[CRABSHELL] index lock busy, deferring memory->logbook index migration`);
       } catch (e) {
         console.error(`[CRABSHELL] Failed to update memory-index.json: ${e.message}`);
-      } finally {
-        if (migrateLocked) releaseIndexLock(memoryDir);
       }
     }
   } catch (e) {
@@ -259,7 +255,7 @@ function ensureMemoryStructure(projectDir) {
   }
 
   // D/P/T/I document directories
-  const docTypeDirs = [DISCUSSION_DIR, PLAN_DIR, TICKET_DIR, INVESTIGATION_DIR, HOTFIX_DIR];
+  const docTypeDirs = DOC_TYPES.filter(type => type.workflow).map(type => type.dir);
   for (const dir of docTypeDirs) {
     const fullPath = path.join(storageRoot, dir);
     if (!fs.existsSync(fullPath)) {
@@ -301,31 +297,25 @@ function ensureMemoryStructure(projectDir) {
         || !existing.stats;
       if (needsWrite) {
         const setupMemoryDir = path.join(storageRoot, MEMORY_DIR);
-        let setupLocked = false;
-        try {
-          setupLocked = acquireIndexLock(setupMemoryDir);
-          if (setupLocked) {
-            // Re-read inside the lock so we merge onto the freshest state.
-            const fresh = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
-            const index = {
-              ...defaults,
-              ...fresh,
-              rotatedFiles: Array.isArray(fresh.rotatedFiles) ? fresh.rotatedFiles : [],
-              stats: fresh.stats || defaults.stats,
-            };
-            writeJson(indexPath, index);
-          }
-          // Lock busy → skip; the next run completes the setup.
-        } finally {
-          if (setupLocked) releaseIndexLock(setupMemoryDir);
-        }
+        // Lock busy → skip; the next run completes the setup.
+        tryWithMemoryIndex(setupMemoryDir, () => {
+          // Re-read inside the lock so we merge onto the freshest state.
+          const fresh = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
+          const index = {
+            ...defaults,
+            ...fresh,
+            rotatedFiles: Array.isArray(fresh.rotatedFiles) ? fresh.rotatedFiles : [],
+            stats: fresh.stats || defaults.stats,
+          };
+          writeJson(indexPath, index);
+        });
       }
     } catch (e) {
       // Parse error - do NOT overwrite with defaults (file may be temporarily corrupted by race condition)
       // Leave existing file intact; readIndexSafe() will handle parse errors gracefully
     }
   } else {
-    fs.writeFileSync(indexPath, JSON.stringify(defaults, null, 2));
+    writeJson(indexPath, defaults);
   }
 
   // Counter file setup (migrated from memory-index.json)

@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { STORAGE_ROOT, MEMORY_DIR, INDEX_FILE, MEMORY_FILE, LOCK_FILE, INDEX_LOCK_FILE, LOCK_STALE_MS, LOCK_WAIT_MS } = require('./constants');
+const { STORAGE_ROOT, MEMORY_DIR, INDEX_FILE, MEMORY_FILE, LOCK_FILE, INDEX_LOCK_FILE, LOCK_STALE_MS, LOCK_WAIT_MS, DOC_TYPES, SUMMARY_SUFFIX } = require('./constants');
 
 // Subprocess marker — top-level guard for fail-open invariant. D106 IA-10.
 function isBackground() { return process.env.CRABSHELL_BACKGROUND === '1'; }
@@ -25,7 +25,7 @@ function getStorageRoot(projectDir) { return path.join(projectDir || getProjectD
 
 function getMemoryDir() { return path.join(getStorageRoot(), MEMORY_DIR); }
 
-const MEMORY_ROOT = path.join(os.homedir(), '.crabshell', 'projects');
+const MEMORY_ROOT = path.join(os.homedir(), STORAGE_ROOT, 'projects');
 
 function ensureDir(dirPath) {
   if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true });
@@ -38,8 +38,16 @@ function readFileOrDefault(filePath, defaultValue) {
 function readJsonOrDefault(filePath, defaultValue) {
   try {
     if (!fs.existsSync(filePath)) return defaultValue;
-    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    // Editors on Windows may save JSON with a byte-order mark.
+    return JSON.parse(fs.readFileSync(filePath, 'utf8').replace(/^﻿/, ''));
   } catch { return defaultValue; }
+}
+
+// Regex source for "<STORAGE_ROOT>/(<dir>|...)" over the document types a
+// filter keeps (constants DOC_TYPES), so guards never retype the folder list.
+function docDirsPattern(filter) {
+  const escape = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return `${escape(STORAGE_ROOT)}\\/(${DOC_TYPES.filter(filter).map(type => escape(type.dir)).join('|')})`;
 }
 
 // Default memory-index.json structure - prevents field loss on parse errors
@@ -128,7 +136,7 @@ function extractTailByTokens(content, targetTokens) {
 function updateIndex(archivePath, tokens, memoryDir, dateRange) {
   const indexPath = path.join(memoryDir, INDEX_FILE);
   const index = readIndexSafe(indexPath);  // Use safe reader to preserve all fields
-  const entry = { file: path.basename(archivePath), rotatedAt: new Date().toISOString(), tokens, bytes: fs.statSync(archivePath).size, summary: path.basename(archivePath).replace('.md', '.summary.json'), summaryGenerated: false };
+  const entry = { file: path.basename(archivePath), rotatedAt: new Date().toISOString(), tokens, bytes: fs.statSync(archivePath).size, summary: path.basename(archivePath).replace('.md', SUMMARY_SUFFIX), summaryGenerated: false };
   if (dateRange) entry.dateRange = dateRange;
   index.rotatedFiles.push(entry);
   index.stats.totalRotations++;
@@ -282,4 +290,4 @@ function releaseIndexLock(memoryDir) {
 
 function ownsIndexLock(memoryDir) { return ownsLock(path.join(memoryDir, INDEX_LOCK_FILE)); }
 
-module.exports = { MEMORY_ROOT, isBackground, getProjectName, getProjectDir, parseProjectDirArg, getStorageRoot, getMemoryDir, ensureDir, readFileOrDefault, readJsonOrDefault, getDefaultIndex, readIndexSafe, writeFile, writeJson, getTimestamp, estimateTokens, estimateTokensFromFile, extractTailByTokens, updateIndex, acquireLock, releaseLock, acquireIndexLock, releaseIndexLock, ownsIndexLock, acquireFileLock: _acquireFileLock, releaseFileLock: _releaseFileLock, _recordContention };
+module.exports = { MEMORY_ROOT, isBackground, getProjectName, getProjectDir, parseProjectDirArg, getStorageRoot, getMemoryDir, ensureDir, readFileOrDefault, readJsonOrDefault, docDirsPattern, getDefaultIndex, readIndexSafe, writeFile, writeJson, getTimestamp, estimateTokens, estimateTokensFromFile, extractTailByTokens, updateIndex, acquireLock, releaseLock, acquireIndexLock, releaseIndexLock, ownsIndexLock, acquireFileLock: _acquireFileLock, releaseFileLock: _releaseFileLock, _recordContention };

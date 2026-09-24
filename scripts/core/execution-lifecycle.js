@@ -6,17 +6,17 @@ const os = require('os');
 const path = require('path');
 const { ensureMemoryStructure } = require('../init');
 const {
-  acquireIndexLock,
   getStorageRoot,
   readJsonOrDefault,
-  releaseIndexLock,
   writeJson,
 } = require('../utils');
+const { tryWithMemoryIndex } = require('./memory-lock');
+const { clearLegacySkillFlag } = require('./skill-flag');
 const {
   DELTA_TEMP_FILE,
   INDEX_FILE,
   REGRESSING_STATE_FILE,
-  SKILL_ACTIVE_FILE,
+  REGRESSING_STALE_MS,
 } = require('../constants');
 
 const MEMORY_MD_WARNING = `## Crabshell Plugin
@@ -60,7 +60,7 @@ function staleRegressingDiagnostic(memoryDir, now = Date.now()) {
   const state = readJsonOrDefault(path.join(memoryDir, REGRESSING_STATE_FILE), null);
   if (!state || state.active !== true || !state.lastUpdatedAt) return null;
   const updatedAt = new Date(state.lastUpdatedAt).getTime();
-  if (!Number.isFinite(updatedAt) || now - updatedAt <= 24 * 60 * 60 * 1000) return null;
+  if (!Number.isFinite(updatedAt) || now - updatedAt <= REGRESSING_STALE_MS) return null;
   return `WARNING: regressing state is stale (last updated: ${state.lastUpdatedAt}). Verify with user before continuing.`;
 }
 
@@ -96,21 +96,13 @@ function runExecutionLifecycle(projectDir, hookData = {}, options = {}) {
   // Only the legacy project-wide flag is stale by definition here; each
   // session's own flag belongs to that session and is left alone.
   try {
-    const skillPath = path.join(memoryDir, SKILL_ACTIVE_FILE);
-    if (fs.existsSync(skillPath)) {
-      fs.unlinkSync(skillPath);
-      result.staleSkillFlagRemoved = true;
-    }
+    if (clearLegacySkillFlag(projectDir)) result.staleSkillFlagRemoved = true;
   } catch (error) {
     result.diagnostics.push(`stale skill flag cleanup failed: ${error.message}`);
   }
 
-  let locked = false;
   try {
-    locked = acquireIndexLock(memoryDir);
-    if (!locked) {
-      result.diagnostics.push('index lock busy, skipping stale delta cleanup and per-session pressure reset');
-    } else {
+    const outcome = tryWithMemoryIndex(memoryDir, () => {
       const indexPath = path.join(memoryDir, INDEX_FILE);
       const index = readJsonOrDefault(indexPath, {});
       // Under the index lock: extraction sets deltaReady in the same lock hold as
@@ -135,11 +127,10 @@ function runExecutionLifecycle(projectDir, hookData = {}, options = {}) {
       }
       if (changed) writeJson(indexPath, index);
       result.pressureReset = changed;
-    }
+    });
+    if (!outcome.ran) result.diagnostics.push('index lock busy, skipping stale delta cleanup and per-session pressure reset');
   } catch (error) {
     result.diagnostics.push(`per-session pressure reset failed: ${error.message}`);
-  } finally {
-    if (locked) releaseIndexLock(memoryDir);
   }
 
   const staleDiagnostic = staleRegressingDiagnostic(memoryDir, options.now || Date.now());

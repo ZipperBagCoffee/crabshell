@@ -6,9 +6,10 @@ const path = require('path');
 // F1 mitigation: keep inline env check for fail-open invariant — D106 IA-10 RA2
 if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 
-const { getProjectDir, getStorageRoot, readJsonOrDefault, readIndexSafe, writeJson, acquireIndexLock, releaseIndexLock } = require('./utils');
+const { getProjectDir, getStorageRoot, readJsonOrDefault, readIndexSafe, writeJson } = require('./utils');
+const { tryWithMemoryIndex } = require('./core/memory-lock');
 const { buildRegressingReminder, getRegressingState } = require('./regressing-state');
-const { TICKET_DIR, REGRESSING_STATE_FILE, MEMORY_DIR } = require('./constants');
+const { TICKET_DIR, REGRESSING_STATE_FILE, MEMORY_DIR, MEMORY_FILE, INDEX_FILE, DELTA_TEMP_FILE } = require('./constants');
 const { readStdin } = require('./transcript-utils');
 const {
   ORCHESTRATION_DEFAULTS,
@@ -139,7 +140,7 @@ const RULES = `
 
 ### PRINCIPLES
 - **Be Logical**: conclusions must follow from evidence, not plausibility or pattern-match. Trace cause, check contradictions.
-- **Simple Communication**: answer in slot order, in the reader's words — [conclusion] → [evidence] → [critical exception] → [next action]; the first sentence is the direct answer, never a greeting, background, or restatement of the request. The last paragraph is the verdict: each work item's state — done, in progress, or not started — plus the user's next action, because a CLI reader lands on the end of long output first; this closing verdict is the one permitted restatement, and if the reader still must ask "so did it happen or not?", the report failed. When shortening, keep the conclusion, required facts, critical exceptions, and next action; cut the intro, your own work-process narration, repeated conclusions, and ceremonial closings. Bullets only for 3+ parallel items, max 4 per group. Use only the technical terms the reader needs and state each one's plain meaning where it first appears (비유 금지 — explain the thing itself, not through comparisons); if unpacking every term you used would bloat the answer, you are using too many terms; internal codenames and IDs mean nothing to the reader — say what they refer to. Concrete (file/code/value) over abstract; no self-coined acronyms. Write it the way you would say it aloud to the user — spoken register, not report prose. Accuracy outranks brevity. Mix in light internet-community banter (깐족 유머) so the work is fun to read — never at the user's expense, never as padding.
+- **Simple Communication**: answer in slot order, in the reader's words — [conclusion] → [evidence] → [critical exception] → [next action]; the first sentence is the direct answer, never a greeting, background, or restatement of the request. The last paragraph is the verdict: each work item's state — done, in progress, or not started — plus the user's next action, because a CLI reader lands on the end of long output first; this closing verdict is the one permitted restatement, and if the reader still must ask "so did it happen or not?", the report failed. When shortening, keep the conclusion, required facts, critical exceptions, and next action; cut the intro, your own work-process narration, repeated conclusions, and ceremonial closings. Bullets only for 3+ parallel items, max 4 per group; tables only when the user asks. Use only the technical terms the reader needs and state each one's plain meaning where it first appears (비유 금지 — explain the thing itself, not through comparisons); if unpacking every term you used would bloat the answer, you are using too many terms; internal codenames and IDs mean nothing to the reader — say what they refer to. Concrete (file/code/value) over abstract; no self-coined acronyms. Write it the way you would say it aloud to the user — spoken register, not report prose. Keep it short, but never drop a required fact. Mix in one light banter line (깐족 유머) per reply — it adds no length and is never at the user's expense.
 - **Anti-Deception**: every factual claim cites tool output or says "unverified". Before reporting progress or writing "verified/works/correct", audit each claim against a tool result from this session.
 - **Human Oversight**: ask before destructive or irreversible actions, writes outside the workspace, external installs, or product decisions repository evidence cannot resolve. Before deleting a file: state what it does, why deletion is safe, and confirm.
 - **Scope Preservation**: deliver exactly the requested quantity and items. "Takes too long" is never a reason to reduce scope. About to deliver less? Stop and ask. When the user identifies problem P, change only what relates to P.
@@ -152,6 +153,7 @@ Match the method to the claim: to claim behavior, execute the most direct practi
 ### WORKING RULES
 - When criticized: stop, state your understanding and intended action, confirm before acting. When the user reports an issue or makes a claim, investigate with tool evidence before responding.
 - Changing a stated approach requires stating what changed and why.
+- When an advisor tool is available, call it before committing to an approach and before declaring done; not every turn.
 - On failure: report only when the task is blocked — what you tried, what blocked it, remaining alternatives. Do not narrate mistakes you already recovered from. Never recommend giving up. After 3 same-type failures, switch strategy.
 
 ### ADDITIONAL RULES
@@ -214,7 +216,7 @@ function shouldInjectDelegationReminder(userPrompt, isRegressingActive) {
 // getProjectDir, readJsonOrDefault, readIndexSafe imported from utils.js
 
 function checkDeltaPending(projectDir) {
-  const deltaPath = path.join(getStorageRoot(projectDir), 'memory', 'delta_temp.txt');
+  const deltaPath = path.join(getStorageRoot(projectDir), MEMORY_DIR, DELTA_TEMP_FILE);
   if (!fs.existsSync(deltaPath)) return false;
   const size = fs.statSync(deltaPath).size;
   const MIN_DELTA_SIZE = 20 * 1024; // 20KB
@@ -222,7 +224,7 @@ function checkDeltaPending(projectDir) {
 }
 
 function checkRotationPending(projectDir) {
-  const indexPath = path.join(getStorageRoot(projectDir), 'memory', 'memory-index.json');
+  const indexPath = path.join(getStorageRoot(projectDir), MEMORY_DIR, INDEX_FILE);
   const index = readJsonOrDefault(indexPath, {});
   const rotatedFiles = index.rotatedFiles || [];
   return rotatedFiles.filter(f => !f.summaryGenerated);
@@ -352,7 +354,7 @@ function getRelevantMemorySnippets(projectDir, userPrompt) {
   const keywords = extractKeywords(userPrompt);
   if (keywords.length === 0) return null;
 
-  const memoryPath = path.join(getStorageRoot(projectDir), 'memory', 'logbook.md');
+  const memoryPath = path.join(getStorageRoot(projectDir), MEMORY_DIR, MEMORY_FILE);
   if (!fs.existsSync(memoryPath)) return null;
 
   let content;
@@ -511,7 +513,7 @@ async function main(options = {}) {
     const frequency = config.rulesInjectionFrequency || 1;
 
     // Counter stored in memory-index.json
-    const indexPath = path.join(getStorageRoot(projectDir), 'memory', 'memory-index.json');
+    const indexPath = path.join(getStorageRoot(projectDir), MEMORY_DIR, INDEX_FILE);
     const memoryDir = path.join(getStorageRoot(projectDir), 'memory');
 
     // --- RMW (Read-Modify-Write) block — all index mutations inside lock for atomicity ---
@@ -519,13 +521,12 @@ async function main(options = {}) {
     // and compute in-memory state so context injection proceeds, but SKIP the write
     // (prevents lost-update race when another process is mid-write). Warn to stderr.
     const mayMutateState = intent === 'execution' || isBailout;
-    const idxLocked = mayMutateState ? acquireIndexLock(memoryDir) : false;
     let index;
     let isNegativeFeedback;
     let pressureLevel;
     let pressureLevelChanged;
     let count;
-    try {
+    const readAndUpdate = idxLocked => {
       // READ inside lock — snapshot is now consistent with the write below
       index = readIndexSafe(indexPath);
 
@@ -562,9 +563,8 @@ async function main(options = {}) {
         pressureLevelChanged = false;
         count = frequency;
       }
-    } finally {
-      if (idxLocked) releaseIndexLock(memoryDir);
-    }
+    };
+    if (!mayMutateState || !tryWithMemoryIndex(memoryDir, () => readAndUpdate(true)).ran) readAndUpdate(false);
 
     // Check if should inject
     if (count % frequency === 0 || frequency === 1) {

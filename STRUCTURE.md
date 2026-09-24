@@ -1,10 +1,10 @@
-# Crabshell Plugin Structure (v21.126.0)
+# Crabshell Plugin Structure (v21.127.0)
 
-**Version**: 21.126.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.127.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
-Crabshell is a dual-runtime Claude Code/Codex plugin. Both hosts use native lifecycle hooks backed by shared first-turn, memory, workflow, compaction, subagent, and parent-completion cores. Claude retains automatic SessionEnd capture and pressure telemetry; Codex supplies synchronous native lifecycle and Interrupt events. Both share the D/P/T/I/W/K document system and `.crabshell/` storage. Version 21.126.0 adds test discovery, the load map and `--changed` to the verification runner; Version 21.125.0 runs each Claude hook event in one process (`scripts/adapters/claude/`) and narrows the path guard to writes (`scripts/core/shell-writes.js`); Version 21.124.0 added per-session state (`scripts/core/session-state.js`, `scripts/core/session-delta.js`) and the SessionStart budget; Version 21.123.0 added the failure/capture/finalization/recovery components listed below.
+Crabshell is a dual-runtime Claude Code/Codex plugin. Both hosts use native lifecycle hooks backed by shared first-turn, memory, workflow, compaction, subagent, and parent-completion cores. Claude retains automatic SessionEnd capture and pressure telemetry; Codex supplies synchronous native lifecycle and Interrupt events. Both share the D/P/T/I/W/K document system and `.crabshell/` storage. Version 21.127.0 adds the document-type table (`DOC_TYPES` in `scripts/constants.js`), `scripts/core/skill-flag.js` and the lock wrappers in `scripts/core/memory-lock.js`; Version 21.126.0 adds test discovery, the load map and `--changed` to the verification runner; Version 21.125.0 runs each Claude hook event in one process (`scripts/adapters/claude/`) and narrows the path guard to writes (`scripts/core/shell-writes.js`); Version 21.124.0 added per-session state (`scripts/core/session-state.js`, `scripts/core/session-delta.js`) and the SessionStart budget; Version 21.123.0 added the failure/capture/finalization/recovery components listed below.
 
 Codex compatibility is provided in the same repository through a separate `.codex-plugin/plugin.json`, `codex-skills/`, and explicit wrapper scripts. Claude Code and Codex ship from the same repo but activate different manifests; both can share the `.crabshell/` memory and document store.
 
@@ -119,7 +119,8 @@ crabshell/
 │   ├── core/state-lock.js             # Serialize verification/completion state writers
 │   ├── core/hook-capture.js           # Optional raw inputs and separate capture metadata
 │   ├── core/delta-transaction.js      # Fixed input, retry-aware finalization and owned-file cleanup
-│   ├── core/memory-lock.js            # Shared index/rotation locks for memory writes
+│   ├── core/memory-lock.js            # Shared index/rotation locks; tryWithMemoryIndex/tryWithMemoryRotation skip when busy (v21.127.0)
+│   ├── core/skill-flag.js             # Document-skill flag: set, read, clear, path check; no load-time side effects (v21.127.0)
 │   ├── core/memory-entry.js           # Shared summary timestamp format
 │   ├── core/recovery-context.js       # Bounded historical request/check/pause context
 │   ├── core/support-state.js          # Seven-state live doctor model
@@ -156,7 +157,9 @@ crabshell/
 │   ├── _test-doc-watchdog.js        # doc-watchdog.js 12-test integration suite (v21.18.0)
 │   ├── _test-restriction-controls.js # Lifted restrictions paired with writes that stay blocked (v21.125.0)
 │   ├── _test-changed-runner.js      # Discovery, load map and --changed selection incl. review false-negative cases (v21.126.0)
-│   ├── _test-gate-required-checks.js # Only tools/package.json test unlock the commit gate; entries stay evidence (v21.126.0)
+│   ├── _test-gate-required-checks.js # Only tools/package.json test unlock the commit gate; entries stay evidence; dead-end guidance (v21.126.0, v21.127.0)
+│   ├── _test-single-source.js        # One definition per shared value across shipped scripts (v21.127.0)
+│   ├── _test-rules-and-injection.js  # Advisor line and unified rule wording; where the project description is injected (v21.127.0)
 │   ├── _test-hook-wiring-cost.js     # Synchronous hook processes per tool call; Stop starts no child (v21.125.0)
 │   ├── _test-claude-dispatcher-parity.js # Old separate guards vs the PreToolUse dispatcher (v21.125.0)
 │   ├── _test-claude-dispatchers.js   # Moved behavior: compact effects, Read notice, inline observers, stdout, fail-open (v21.125.0)
@@ -464,6 +467,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.127.0 | Commit gate says what to declare when a manifest has only single entries; rules gain one advisor line and banter/length/list wording that matches common brevity rules; per-prompt context 1,021 characters shorter (the project description loads at SessionStart, not every prompt); one definition per shared value: `DOC_TYPES` table, duration constants, `core/skill-flag.js`, `tryWithMemoryIndex`/`tryWithMemoryRotation` for every hand-written lock, JSON through `readJsonOrDefault`/`writeJson` |
 | 21.126.0 | Verification runs what changed: the manifest discovers every `scripts/_test-*.js` (22 → all 77 tests in the declared checks), `run-verify.js --changed` runs only the checks the changed files touch (a load map from a child-process-aware tracer; falls back to everything when it cannot know), the commit gate is unlocked only by the project's own check commands, and the declared checks pass on a fresh clone |
 | 21.125.0 | Guards block only real risks: path guard blocks writes into another project's `.crabshell` (reads get a notice; mentions, temp folders, unknown variables allowed), doc-watchdog counts only in-project edits, web-guard counts only this project's search servers; Claude hooks run one process per event (Edit 10→2, Bash 6→2, Read 3→1) with per-guard fail-open; Claude compaction hooks removed (effects run at SessionStart compact) |
 | 21.124.0 | Concurrent sessions: per-session L1 position, save counter, delta watermark, completion entry and skill flag; owner-token locks with one-at-a-time takeover; tree-scoped commit gate (prose/style/image edits exempt, advice when no check is configured, background launches not passing); SessionStart memory within a 9,500-character budget; L1 first-line loss fixed. |

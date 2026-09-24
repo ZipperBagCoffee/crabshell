@@ -16,6 +16,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { STORAGE_ROOT, DOC_TYPES } = require('./constants');
 
 // ---------- CLI parsing ----------
 
@@ -134,7 +135,7 @@ function lastLogDate(content) {
 
 // ---------- Document directories ----------
 
-const DOC_DIRS = ['discussion', 'investigation', 'plan', 'ticket', 'worklog', 'hotfix'];
+const DOC_DIRS = DOC_TYPES.filter(type => type.linked).map(type => type.dir);
 
 /**
  * Collect all document .md files across DOC_DIRS under .crabshell/.
@@ -436,7 +437,7 @@ function printSummaryTable(results) {
 function main() {
   const args = parseArgs(process.argv);
   const projectDir = path.resolve(args.projectDir);
-  const crabshellDir = path.join(projectDir, '.crabshell');
+  const crabshellDir = path.join(projectDir, STORAGE_ROOT);
 
   // Fail-open: if .crabshell/ doesn't exist, print message and exit 0
   if (!fs.existsSync(crabshellDir)) {

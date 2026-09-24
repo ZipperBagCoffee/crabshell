@@ -32,12 +32,13 @@ const { readStdin, normalizePath } = require('./transcript-utils');
 // F1 mitigation: keep inline env check for fail-open invariant — D106 IA-10 RA2
 if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 
-const { getProjectDir } = require('./utils');
+const { getProjectDir, docDirsPattern } = require('./utils');
+const { STORAGE_ROOT } = require('./constants');
 
 // --- Constants ---
 
 // INDEX.md path pattern
-const INDEX_PATTERN = /\.crabshell\/(discussion|plan|ticket|investigation|hotfix)\/INDEX\.md$/i;
+const INDEX_PATTERN = new RegExp(`${docDirsPattern(type => type.workflow)}\\/INDEX\\.md$`, 'i');
 
 // Plan/ticket document pattern (not INDEX.md) — used by Trigger 2
 const PLAN_DOC_PATTERN = /\.crabshell\/plan\/P\d{3}[^/]*\.md$/;
@@ -180,7 +181,7 @@ function detectStatusChangesWrite(filePath, newContent) {
  * Find the document file for a given document ID in a category directory.
  */
 function findDocumentFile(projectDir, category, docId) {
-  const docDir = path.join(projectDir, '.crabshell', category);
+  const docDir = path.join(projectDir, STORAGE_ROOT, category);
   try {
     if (!fs.existsSync(docDir)) return null;
     const files = fs.readdirSync(docDir);

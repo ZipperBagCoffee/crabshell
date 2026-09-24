@@ -2,12 +2,13 @@
 
 const fs = require('fs');
 const path = require('path');
+const { STORAGE_ROOT } = require('../../constants');
 
 function findProjectRoot(cwd) {
   let current = path.resolve(cwd || process.cwd());
   while (true) {
     const markers = [
-      path.join(current, '.crabshell'),
+      path.join(current, STORAGE_ROOT),
       path.join(current, '.git'),
       path.join(current, '.codex-plugin', 'plugin.json'),
     ];

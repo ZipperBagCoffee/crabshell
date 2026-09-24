@@ -11,7 +11,7 @@ const root = h.makeWorkRoot('gate-required-checks');
 const report = h.createReporter('gate-required-checks');
 const fwd = value => value.replace(/\\/g, '/');
 
-function project(name, { manifest = true, packageTest = false } = {}) {
+function project(name, { manifest = true, packageTest = false, tools = true } = {}) {
   const dir = h.makeProject(root, name);
   fs.mkdirSync(path.join(dir, 'src'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'src', 'app.js'), 'module.exports = 1;\n');
@@ -20,7 +20,7 @@ function project(name, { manifest = true, packageTest = false } = {}) {
     fs.mkdirSync(path.join(dir, '.crabshell', 'verification'), { recursive: true });
     fs.writeFileSync(path.join(dir, '.crabshell', 'verification', 'manifest.json'), JSON.stringify({
       schemaVersion: 2,
-      tools: { test: 'node check-full.js', changed: 'node check-changed.js' },
+      ...(tools ? { tools: { test: 'node check-full.js', changed: 'node check-changed.js' } } : {}),
       entries: [{ id: 'V001', ia: 'one check', type: 'structural', command: { file: 'node', args: ['check-one.js'] }, contract: { exitCode: 0 } }],
     }));
   }
@@ -91,6 +91,25 @@ function commitBlocked(dir) {
   const dir = project('evidence');
   const { checkKeyForCommand } = require('./core/command-observation');
   report.check('G6 control: a manifest entry command is still a declared check (completion evidence)', Boolean(checkKeyForCommand('node check-one.js', dir, dir)));
+}
+
+// G9 (P180): a manifest with entries but no tools.test and no package.json test can
+// never unlock the gate, so the block reason must say what to declare.
+{
+  const dir = project('entries-only', { tools: false });
+  edit(dir);
+  passCheck(dir, 'node check-one.js');
+  const hook = h.runHook(root, 'verification-sequence.js', ['gate'], bashPre('git commit -m "x"'), dir);
+  const shared = require('./verification-sequence').gateVerification(bashPre('git commit -m "x"'), dir);
+  const names = reason => /tools\.test/.test(reason || '') && /run-verify\.js/.test(reason || '') && /package\.json/.test(reason || '');
+  report.check('G9 entries-only manifest: the block reason names tools.test, the runner command, and package.json test', hook.status === 2 && names(hook.stdout), hook.stdout.slice(0, 300));
+  report.check('G10 the shared gate used by the Codex adapter gives the same guidance', shared.exitCode === 2 && names(shared.reason), String(shared.reason).slice(0, 300));
+}
+{
+  const dir = project('with-tools');
+  edit(dir);
+  const result = h.runHook(root, 'verification-sequence.js', ['gate'], bashPre('git commit -m "x"'), dir);
+  report.check('G11 control: a project that declares tools.test keeps the plain run-the-check reason', result.status === 2 && !/tools\.test/.test(result.stdout), result.stdout.slice(0, 200));
 }
 
 report.finish();

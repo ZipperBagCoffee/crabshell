@@ -153,6 +153,11 @@ function handleGate(hookData, projectDir) {
       if (declaredCommands(projectDir).length === 0) {
         return { exitCode: 2, reason: `Git commit blocked: the project's check configuration declares no runnable single command (unreadable manifest, or only compound shell commands). Edited files: [${files}]. Fix .crabshell/verification/manifest.json or package.json "test", run it, then commit.` };
       }
+      if (!declaredCommands(projectDir).some(declaration => declaration.source !== 'entry')) {
+        // Single manifest entries never unlock a commit, so without a full check
+        // this block could never clear: say what to declare.
+        return { exitCode: 2, reason: `Git commit blocked: the project declares no full check, and single manifest entries do not unlock commits. Edited files: [${files}]. Declare a full check as tools.test in .crabshell/verification/manifest.json ("tools": { "test": "node .crabshell/verification/run-verify.js" }) or as a package.json "test" script, run it, then commit.` };
+      }
       const output = {
         decision: 'block',
         reason: `Git commit blocked: current source has no passing required check. Edited files: [${files}]. Run the declared check and inspect its result before committing.`

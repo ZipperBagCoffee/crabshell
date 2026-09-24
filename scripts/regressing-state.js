@@ -1,6 +1,6 @@
 const path = require('path');
 const { getProjectDir, getStorageRoot, readJsonOrDefault, writeJson } = require('./utils');
-const { REGRESSING_STATE_FILE } = require('./constants');
+const { REGRESSING_STATE_FILE, REGRESSING_STALE_MS } = require('./constants');
 
 /**
  * Reads .crabshell/memory/regressing-state.json and returns parsed state.
@@ -76,8 +76,7 @@ function buildRegressingReminder(projectDir) {
   if (lastUpdatedAt) {
     const updatedTime = new Date(lastUpdatedAt).getTime();
     const now = Date.now();
-    const twentyFourHours = 24 * 60 * 60 * 1000;
-    if (!isNaN(updatedTime) && (now - updatedTime) > twentyFourHours) {
+    if (!isNaN(updatedTime) && (now - updatedTime) > REGRESSING_STALE_MS) {
       message += `\n\u26A0 WARNING: Regressing state may be stale (last updated: ${lastUpdatedAt}). Verify with user before continuing.\n`;
     }
   }
@@ -88,18 +87,11 @@ function buildRegressingReminder(projectDir) {
 /**
  * Detect if a PostToolUse hookData represents a regressing-relevant Skill call.
  * @param {object} hookData - PostToolUse hook data
- * @returns {string|null} - normalized skill name ('planning', 'ticketing', 'discussing') or null
+ * @returns {string|null} - normalized skill name of a document type flagged
+ *   `regressing` in constants DOC_TYPES, or null
  */
 function detectRegressingSkillCall(hookData) {
-  if (!hookData || hookData.tool_name !== 'Skill') return null;
-  const input = hookData.tool_input;
-  if (!input || typeof input !== 'object') return null;
-  const skill = input.skill;
-  if (typeof skill !== 'string') return null;
-  // Handle both "planning" and "crabshell:planning"
-  const skillName = skill.includes(':') ? skill.split(':').pop() : skill;
-  if (['planning', 'ticketing', 'discussing'].includes(skillName)) return skillName;
-  return null;
+  return require('./core/skill-flag').detectRegressingSkillCall(hookData);
 }
 
 /**

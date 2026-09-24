@@ -1,15 +1,27 @@
 // All configurable values in one place
+
+// Document types, one row per folder under STORAGE_ROOT. Each flag names a
+// feature that covers the folder, so consumers derive their list from here:
+//   workflow    D/P/T/I/H documents (doc watchdog, INDEX log guard)
+//   skillOnly   written only while a document skill is active (docs guard)
+//   linked      Obsidian link lint and frontmatter migration
+//   tracked     listed as active work in compaction recovery context
+//   regressing  its skill advances the regressing phase
+// indexColumns is the INDEX.md header the bundled Codex document tool writes.
+const DOC_TYPES = [
+  { dir: 'discussion', prefix: 'D', title: 'Discussion', skill: 'discussing', workflow: true, skillOnly: true, linked: true, tracked: true, regressing: true, indexColumns: ['ID', 'Topic', 'Status', 'Date'] },
+  { dir: 'plan', prefix: 'P', title: 'Plan', skill: 'planning', workflow: true, skillOnly: true, linked: true, tracked: true, regressing: true, indexColumns: ['ID', 'Plan', 'Status', 'Date', 'Related'] },
+  { dir: 'ticket', prefix: 'T', title: 'Ticket', skill: 'ticketing', workflow: true, skillOnly: true, linked: true, tracked: true, regressing: true, indexColumns: ['ID', 'Ticket', 'Status', 'Date', 'Plan'] },
+  { dir: 'investigation', prefix: 'I', title: 'Investigation', skill: 'investigating', workflow: true, skillOnly: true, linked: true, tracked: true, indexColumns: ['ID', 'Title', 'Status', 'Created', 'Related'] },
+  { dir: 'hotfix', prefix: 'H', title: 'Hotfix', skill: 'hotfix', workflow: true, skillOnly: true, linked: true, indexColumns: ['ID', 'Title', 'Status', 'Date'] },
+  { dir: 'worklog', prefix: 'W', title: 'Worklog', skillOnly: true, linked: true, indexColumns: ['ID', 'Task', 'Status', 'Date', 'Related'] },
+  { dir: 'knowledge', prefix: 'K', title: 'Knowledge', indexColumns: ['ID', 'Title', 'Cat', 'Tags', 'Source'] },
+];
+
 module.exports = {
   // Token thresholds (with 5% safety margin)
   ROTATION_THRESHOLD_TOKENS: 23750,  // 25000 * 0.95
   CARRYOVER_TOKENS: 2375,            // 2500 * 0.95
-
-  // Byte fallbacks
-  ROTATION_THRESHOLD_BYTES: 95000,   // ~100KB * 0.95
-  CARRYOVER_BYTES: 9500,             // ~10KB * 0.95
-
-  // Token calculation
-  BYTES_PER_TOKEN: 4,
 
   // Storage root directory (project-level)
   STORAGE_ROOT: '.crabshell',
@@ -19,11 +31,7 @@ module.exports = {
   SESSIONS_DIR: 'memory/sessions',
   LOGS_DIR: 'memory/logs',
   WORKFLOW_DIR: 'workflow',
-  DISCUSSION_DIR: 'discussion',
-  PLAN_DIR: 'plan',
   TICKET_DIR: 'ticket',
-  INVESTIGATION_DIR: 'investigation',
-  HOTFIX_DIR: 'hotfix',
 
   // File names
   MEMORY_FILE: 'logbook.md',
@@ -68,15 +76,16 @@ module.exports = {
   SESSION_STATE_DIR: 'session-state',
   SESSION_STATE_MAX_AGE_MS: 30 * 24 * 60 * 60 * 1000,  // same retention as L1 files
 
-  // Retry settings
-  MAX_RETRIES: 3,
-  RETRY_DELAY_MS: 1000,  // Base delay for exponential backoff
+  // A document skill's project-wide flag (payloads without a session id) lapses
+  // after this; a session's own flag lasts until the session compacts or ends.
+  SKILL_ACTIVE_TTL_MS: 15 * 60 * 1000,
+  // Regressing state not updated for this long is reported as possibly stale.
+  REGRESSING_STALE_MS: 24 * 60 * 60 * 1000,
 
-  // Limits for L3 summary
-  MAX_THEMES: 10,
-  MAX_DECISIONS: 10,
-  MAX_ISSUES: 10,
-  SUMMARY_SENTENCES: { min: 10, max: 15 },
+  DOC_TYPES,
+  // Skills allowed to write documents: each type's own skill plus the two
+  // workflow skills that drive them.
+  DOC_SKILLS: [...new Set(DOC_TYPES.map(type => type.skill).filter(Boolean)), 'regressing', 'verifying'],
 
   // Archive settings
   ARCHIVE_PREFIX: 'logbook_',
@@ -86,8 +95,6 @@ module.exports = {
   DELTA_TEMP_FILE: 'delta_temp.txt',
   DELTA_JOBS_DIR: 'delta-jobs',
   DELTA_SUMMARY_FILE: 'delta_summary_temp.txt',
-  HAIKU_CONTEXT_LIMIT: 200000,  // 200K tokens
-  HAIKU_SAFE_MARGIN: 0.95,      // 5% margin
   HAIKU_SAFE_TOKENS: Math.floor(200000 * 0.95),  // 190K tokens
   FIRST_RUN_MAX_ENTRIES: 50,    // First run limit
   DELTA_OUTPUT_TRUNCATE: 300,   // Truncate tool output to this length
