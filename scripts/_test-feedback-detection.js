@@ -179,27 +179,13 @@ test('BAILOUT: reset even at L0 (all fields reset)', function() {
   assertEqual(index.feedbackPressure.oscillationCount, 0, 'oscillationCount reset from 1 to 0');
 });
 
-// IA-1: lastShownLevel tracking in updateFeedbackPressure
-test('IA-1: lastShownLevel initialized to 0', function() {
+// Contract change (D120 T4): lastShownLevel ("pressure level last shown") was read only
+// to recompute itself and reached no output after the pressure notice was retired, so
+// the field is no longer created or kept up to date.
+test('IA-1: updateFeedbackPressure no longer creates a lastShownLevel field', function() {
   const index = {};
   updateFeedbackPressure(index, false);
-  assertEqual(index.feedbackPressure.lastShownLevel, 0, 'initial lastShownLevel should be 0');
-});
-
-test('IA-1: lastShownLevel preserved across updates (not changed by updateFeedbackPressure)', function() {
-  // lastShownLevel is managed by inject-rules main(), not updateFeedbackPressure
-  const index = { feedbackPressure: { level: 2, consecutiveCount: 2, lastDetectedAt: null, decayCounter: 0, oscillationCount: 0, lastShownLevel: 2 } };
-  updateFeedbackPressure(index, true);
-  // updateFeedbackPressure should not reset lastShownLevel
-  assertEqual(index.feedbackPressure.lastShownLevel, 2, 'lastShownLevel should not be changed by updateFeedbackPressure');
-});
-
-test('IA-1: legacy object gets lastShownLevel=0 backfill', function() {
-  // Legacy object without lastShownLevel field
-  const index = { feedbackPressure: { level: 1, consecutiveCount: 1, lastDetectedAt: null, decayCounter: 0, oscillationCount: 0 } };
-  updateFeedbackPressure(index, false);
-  assert(typeof index.feedbackPressure.lastShownLevel === 'number', 'lastShownLevel should be backfilled');
-  assertEqual(index.feedbackPressure.lastShownLevel, 0, 'backfilled lastShownLevel should be 0');
+  assert(!('lastShownLevel' in index.feedbackPressure), 'lastShownLevel should not be created');
 });
 
 // Summary

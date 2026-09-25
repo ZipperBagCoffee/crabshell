@@ -1,6 +1,7 @@
 ---
 name: memory-delta
 description: "Process pending Claude memory input when the current hook emits [CRABSHELL_DELTA]. Prepare a snapshot, summarize, and finalize safely."
+user-invocable: false
 ---
 
 ## Scope and prerequisites

@@ -3,10 +3,11 @@
 /**
  * append-memory.js — Safely append a summary to logbook.md
  *
- * Reads summary from delta_summary_temp.txt, generates dual timestamps,
- * appends to logbook.md, and cleans up the temp file.
+ * Reads summary from delta_summary_temp.txt (or --summary-file, a file inside
+ * the memory folder, so concurrent sessions each use their own), generates dual
+ * timestamps, appends to logbook.md under the memory locks, and removes the file.
  *
- * Usage: node append-memory.js --project-dir=/path/to/project
+ * Usage: node append-memory.js --project-dir=/path/to/project [--summary-file=<path>]
  */
 
 const fs = require('fs');
@@ -25,25 +26,26 @@ function main() {
   if (process.argv.includes('--finalize-delta')) {
     console.log(JSON.stringify(require('./core/delta-transaction').finalizeDelta(projectDir,value('--job-id'),value('--summary-file'))));return;
   }
-  return withMemoryIndex(projectDir,directory=>withMemoryRotation(directory,()=>legacyAppend(projectDir)));
+  return withMemoryIndex(projectDir,directory=>withMemoryRotation(directory,()=>legacyAppend(projectDir, value('--summary-file'))));
 }
 
-function legacyAppend(projectDir) {
+function legacyAppend(projectDir, summaryFile) {
   const memoryDir = path.join(projectDir, STORAGE_ROOT, 'memory');
   const job = readMemoryIndex(memoryDir).deltaJob;
   if (job && job.status !== 'complete') throw Error('A prepared delta job exists; use --finalize-delta.');
-  const summaryPath = path.join(memoryDir, DELTA_SUMMARY_FILE);
+  const summaryPath = summaryFile ? path.resolve(summaryFile) : path.join(memoryDir, DELTA_SUMMARY_FILE);
+  if (path.dirname(summaryPath) !== path.resolve(memoryDir)) throw Error(`--summary-file must be a file directly inside ${memoryDir}`);
   const memoryPath = path.join(memoryDir, MEMORY_FILE);
   regularFile(summaryPath);regularFile(memoryPath);
 
   // Read summary
   if (!fs.existsSync(summaryPath)) {
-    throw Error('delta_summary_temp.txt not found');
+    throw Error(`${path.basename(summaryPath)} not found`);
   }
 
   const summary = fs.readFileSync(summaryPath, 'utf8').trim();
   if (!summary) {
-    throw Error('delta_summary_temp.txt is empty');
+    throw Error(`${path.basename(summaryPath)} is empty`);
   }
 
   // Generate timestamps
@@ -55,7 +57,7 @@ function legacyAppend(projectDir) {
 
   // Clean up temp file
   try { fs.unlinkSync(summaryPath); } catch (e) { /* ignore */ }
-  console.log('Cleaned up delta_summary_temp.txt');
+  console.log(`Cleaned up ${path.basename(summaryPath)}`);
 }
 
 if (require.main === module) {

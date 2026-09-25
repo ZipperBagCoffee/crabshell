@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.131.0)
+# Crabshell User Manual (v21.132.0)
 
 ## Why Do You Need This?
 
@@ -57,7 +57,7 @@ Both hosts copy the whole plugin folder into their plugin cache (Claude Code: `~
 
 **2. During Work:**
 - Auto-save triggers every 15 tool uses (configurable)
-- Delta extracted from L1 session log, Haiku summarizes in background (non-blocking), appended to `logbook.md`
+- Delta extracted from L1 session log, summarized in the foreground by the memory-delta skill (its delta-summarizer agent runs on Haiku), appended to `logbook.md`
 - Auto-rotation when `logbook.md` exceeds ~23,750 tokens
 - Rules re-injected every prompt via COMPRESSED_CHECKLIST
 - CLAUDE.md rules section kept in sync automatically
@@ -251,7 +251,7 @@ The plugin uses Claude Code hooks to run automatically:
 | Hook | Script | When It Runs | What It Does |
 |------|--------|-------------|-------------|
 | `UserPromptSubmit` | `inject-rules.js` | Every prompt | Emits the compact shared turn contract (4-line Rules Quick-Check); Claude-host `## Codex Delegation` guidance on execution turns only; `봉인해제` / `UNLEASH` immediately resets pressure counters; execution prompts run once-per-session cleanup/reset and Claude rule/memory-warning synchronization. Three-field response ending and pressure texts retired v21.113.0 (I083) |
-| `SessionStart` | `load-memory.js` | Session begins (also after compaction) | Loads logbook, summaries, canonical project memory, and active workflow; legacy-only descriptions are copied without overwriting existing data. After compaction (`source: "compact"`) it clears this session's skill flag, resets the pressure display so the next prompt re-shows the pressure notice, and logs the compaction — Claude has no PreCompact/PostCompact hooks since v21.125.0 because their output reaches no model |
+| `SessionStart` | `load-memory.js` | Session begins (also after compaction) | Loads logbook, summaries, canonical project memory, and active workflow; legacy-only descriptions are copied without overwriting existing data. After compaction (`source: "compact"`) it clears this session's skill flag (Claude Code re-attaches only the first 5,000 tokens of each invoked skill) and logs the compaction — Claude has no PreCompact/PostCompact hooks since v21.125.0 because their output reaches no model |
 | `PreToolUse` | `adapters/claude/pre-tool-use.js` | Before Bash, Write, Edit, WebFetch, WebSearch | One process runs every guard in order, each in its own try/catch (a failing guard is skipped): completion-controller check preparation (Bash), path-guard, web-guard, regressing-guard, docs-guard, log-guard, verification gate (Bash: blocks git commit without a passing declared check, records check starts), doc-watchdog notice, verify-guard. All run even after one denies (verify-guard is skipped after a deny). Denies with exit 0 + `permissionDecision: "deny"` listing every reason (v21.125.0) |
 | `PostToolUse` | `adapters/claude/post-tool-use.js` | After every tool use | One process: counter (auto-save + delta extraction at interval), verification record, completion-controller evidence (Bash/Write/Edit), doc-watchdog edit count (Write/Edit), skill flag (Skill, set before the next tool call), and a notice when Read/Grep/Glob read another project's `.crabshell` (v21.125.0) |
 | `PostToolUseFailure` | `adapters/claude/post-tool-use.js` | After failed Claude Bash calls | Verification record + completion-controller: records failure/interruption and invalidates prior success; commit and Stop remain the blocking boundaries |
@@ -298,7 +298,7 @@ Guards run inside the Claude PreToolUse, PostToolUse and Stop hooks (one process
 
 | Guard | What It Protects Against |
 |-------|------------------------|
-| `docs-guard.js` | Direct writes to `docs/` directories outside of an active skill (discussing, planning, ticketing, etc.) |
+| `docs-guard.js` | Writes to `.crabshell/` document folders without this session's document skill loaded (invoke the matching skill — for an existing document, in update mode with its ID); the flag clears at compaction and session end |
 | `log-guard.js` | Marking a ticket done in INDEX.md while its Execution Results is still template text, or verified while any result section is (other documents are not checked) |
 | `verify-guard.js` | Writing "Final Verification" results to ticket files without actually running `/verifying` first. Hybrid: Edit always enforces; Write only enforces on existing files (new ticket creation is allowed) |
 | `path-guard.js` | Bash commands that write into another project's `.crabshell` (redirects, rm/mv/mkdir/tee, cp/rsync/ln destinations, sed -i, find -delete, xargs rm, tar/curl/dd, powershell/cmd, code that writes). Reading another project's `.crabshell` is allowed with a notice; prose, grep patterns, heredoc text, temp folders and unknown variables are never blocked (v21.125.0). Also: Edit or shrinking Write on `logbook.md`, direct skill-flag writes. Not covered: Write/Edit tool calls into another project, values from earlier commands |
@@ -357,7 +357,7 @@ If tool access is locked at L2 or L3, the user can type one of these keywords to
 - **`봉인해제`** (Korean)
 - **`UNLEASH`** (English; renamed from `BAILOUT` in v21.79.0 / W021)
 
-Either keyword resets the pressure counters (feedbackPressure.level, consecutiveCount, decayCounter, oscillationCount, lastShownLevel, and tooGoodSkepticism.retryCount) to zero. The reset runs before question/execution intent gating, so the bare keyword and a keyword embedded in a question both work. On reset, stderr logs `[PRESSURE BAILOUT: reset all 3 counters]` (internal label retained for backward log-compatibility).
+Either keyword resets the pressure counters (feedbackPressure.level, consecutiveCount, decayCounter, oscillationCount, and tooGoodSkepticism.retryCount) to zero. The reset runs before question/execution intent gating, so the bare keyword and a keyword embedded in a question both work. On reset, stderr logs `[PRESSURE BAILOUT: reset all 3 counters]` (internal label retained for backward log-compatibility).
 
 This is the **only** way to immediately escape L2/L3 without waiting for natural decay. When you're stuck at L2/L3, Claude will inform you about these keywords.
 

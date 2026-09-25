@@ -11,6 +11,7 @@ const { tryWithMemoryIndex } = require('./core/memory-lock');
 const { readIndexRows } = require('./core/index-rows');
 const { buildRegressingReminder, getRegressingState } = require('./regressing-state');
 const { TICKET_DIR, REGRESSING_STATE_FILE, MEMORY_DIR, MEMORY_FILE, INDEX_FILE, DELTA_TEMP_FILE } = require('./constants');
+const { recentLogbookHeadings } = require('./core/memory-context');
 const { readStdin } = require('./transcript-utils');
 const {
   ORCHESTRATION_DEFAULTS,
@@ -103,15 +104,11 @@ function detectNegativeFeedback(prompt) {
 
 function updateFeedbackPressure(index, isNegative) {
   if (!index.feedbackPressure) {
-    index.feedbackPressure = { level: 0, consecutiveCount: 0, lastDetectedAt: null, decayCounter: 0, oscillationCount: 0, lastShownLevel: 0 };
+    index.feedbackPressure = { level: 0, consecutiveCount: 0, lastDetectedAt: null, decayCounter: 0, oscillationCount: 0 };
   }
   // Ensure oscillationCount field exists on legacy objects
   if (typeof index.feedbackPressure.oscillationCount !== 'number') {
     index.feedbackPressure.oscillationCount = 0;
-  }
-  // Ensure lastShownLevel field exists on legacy objects
-  if (typeof index.feedbackPressure.lastShownLevel !== 'number') {
-    index.feedbackPressure.lastShownLevel = 0;
   }
   const fp = index.feedbackPressure;
   if (isNegative) {
@@ -141,7 +138,7 @@ const RULES = `
 
 ### PRINCIPLES
 - **Be Logical**: conclusions must follow from evidence, not plausibility or pattern-match. Trace cause, check contradictions.
-- **Simple Communication**: answer in slot order, in the reader's words — [conclusion] → [evidence] → [critical exception] → [next action]; the first sentence is the direct answer, never a greeting, background, or restatement of the request. The last paragraph is the verdict: each work item's state — done, in progress, or not started — plus the user's next action, because a CLI reader lands on the end of long output first; this closing verdict is the one permitted restatement, and if the reader still must ask "so did it happen or not?", the report failed. When shortening, keep the conclusion, required facts, critical exceptions, and next action; cut the intro, your own work-process narration, repeated conclusions, and ceremonial closings. Bullets only for 3+ parallel items, max 4 per group; tables only when the user asks. Use only the technical terms the reader needs and state each one's plain meaning where it first appears (비유 금지 — explain the thing itself, not through comparisons); if unpacking every term you used would bloat the answer, you are using too many terms; internal codenames and IDs mean nothing to the reader — say what they refer to. Concrete (file/code/value) over abstract; no self-coined acronyms. Write it the way you would say it aloud to the user — spoken register, not report prose. Keep it short, but never drop a required fact. Mix in one light banter line (깐족 유머) per reply — it adds no length and is never at the user's expense.
+- **Simple Communication**: answer in slot order, in the reader's words — [conclusion] → [evidence] → [critical exception] → [next action]; the first sentence is the direct answer, never a greeting, background, or restatement of the request. The last paragraph is the verdict: each work item's state — done, in progress, or not started — plus the user's next action if there is one, because a CLI reader lands on the end of long output first; this closing verdict is the one permitted restatement, and if the reader still must ask "so did it happen or not?", the report failed. When shortening, keep the conclusion, required facts, critical exceptions, and next action; cut the intro, your own work-process narration, repeated conclusions, and ceremonial closings. Bullets only for 3+ parallel items, max 4 per group; tables only when the user asks. Use only the technical terms the reader needs and state each one's plain meaning where it first appears (비유 금지 — explain the thing itself, not through comparisons); if unpacking every term you used would bloat the answer, you are using too many terms; internal codenames and IDs mean nothing to the reader — say what they refer to. Concrete (file/code/value) over abstract; no self-coined acronyms. Write it the way you would say it aloud to the user — spoken register, not report prose. Keep it short, but never drop a required fact. Mix in one light banter line (깐족 유머) per reply, at the end of the reply — it adds no length, stays outside factual sentences, lists and documents, and is never at the user's expense.
 - **Anti-Deception**: every factual claim cites tool output or says "unverified". Before reporting progress or writing "verified/works/correct", audit each claim against a tool result from this session.
 - **Human Oversight**: ask before destructive or irreversible actions, writes outside the workspace, external installs, or product decisions repository evidence cannot resolve. Before deleting a file: state what it does, why deletion is safe, and confirm.
 - **Scope Preservation**: deliver exactly the requested quantity and items. "Takes too long" is never a reason to reduce scope. About to deliver less? Stop and ask. When the user identifies problem P, change only what relates to P.
@@ -149,16 +146,17 @@ const RULES = `
 ${ORCHESTRATION_DEFAULTS}
 
 ### VERIFICATION
-Match the method to the claim: to claim behavior, execute the most direct practical surface and observe what comes back; to claim structure, inspect the artifact and say the check was static. Predict before executing, compare, and record the gap; assert structures, invariants, and relations that survive the next release, derive changing values from their source, and reserve exact literals for values whose spelling is itself the contract. On failure, decide before editing whether the code broke an unchanged contract, the approved contract changed, or the check itself was wrong — then state which, and report the failure if none of the three is defensible. Every task ends with a P/O/G check; the chat report is "M of N passed" plus the failed items. No project verification tool → invoke 'verifying' skill first.
+Match the method to the claim: to claim behavior, execute the most direct practical surface and observe what comes back; to claim structure, inspect the artifact and say the check was static. Predict before executing, compare, and record the gap; assert structures, invariants, and relations that survive the next release, derive changing values from their source, and reserve exact literals for values whose spelling is itself the contract. On failure, decide before editing whether the code broke an unchanged contract, the approved contract changed, or the check itself was wrong — then state which, and report the failure if none of the three is defensible. Every task ends with a prediction/observation/gap check; in chat, say the result in plain words as "M of N passed" plus the failed items. No project verification tool → invoke 'verifying' skill first.
 
 ### WORKING RULES
 - When criticized: stop, state your understanding and intended action, confirm before acting. When the user reports an issue or makes a claim, investigate with tool evidence before responding.
 - Changing a stated approach requires stating what changed and why.
 - When an advisor tool is available, call it before committing to an approach and before declaring done; not every turn.
-- On failure: report only when the task is blocked — what you tried, what blocked it, remaining alternatives. Do not narrate mistakes you already recovered from. Never recommend giving up. After 3 same-type failures, switch strategy.
+- On failure: report only when the task is blocked — what you tried, what blocked it, remaining alternatives. Do not narrate mistakes you already recovered from. Never recommend giving up. After 3 same-type failures, switch strategy. A permission denial or policy block is not a failure to route around: report it and stop that path (an alternative the user named, such as curl instead of WebFetch, is allowed).
+- Never rewrite a whole file from filtered or truncated tool output (a filtering wrapper, \`head\`, a partial Read); edit in place, or read the whole file first.
 
 ### ADDITIONAL RULES
-- Search internet if unsure. Non-git files → overwrite single backup (\`<file>.bak\`) right before modifying.
+- Look up facts about the current state of the world — versions, prices, who holds a role, rules in force — even when they feel familiar; stable knowledge needs no lookup. Non-git files → overwrite single backup (\`<file>.bak\`) right before modifying.
 - **Workflows:** one-pass work → a discussion with one ticket (record after doing); regressing when evidence is expected to change the plan across iterations. Delegation and review depend on actual risk, not role pairs or counts.
 - **Session restart:** invoke load-memory skill; fallback = latest logbook.md.
 - **Documents:** D (Discussion, carries the plan) → T (Ticket); I (Investigation) independent; existing P and H documents stay readable; append a work-log entry to touched documents. .crabshell/ is gitignored.
@@ -351,6 +349,7 @@ function extractKeywords(prompt) {
   return keywords;
 }
 
+// Sections SessionStart already loads as Recent Sessions are not offered again.
 function getRelevantMemorySnippets(projectDir, userPrompt) {
   const keywords = extractKeywords(userPrompt);
   if (keywords.length === 0) return null;
@@ -365,7 +364,8 @@ function getRelevantMemorySnippets(projectDir, userPrompt) {
     return null;
   }
 
-  const sections = parseMemorySections(content);
+  const alreadyLoaded = new Set(recentLogbookHeadings(content));
+  const sections = parseMemorySections(content).filter(section => !alreadyLoaded.has(section.heading));
   if (sections.length === 0) return null;
 
   // Score each section by keyword overlap in body content
@@ -516,7 +516,6 @@ async function main(options = {}) {
     let index;
     let isNegativeFeedback;
     let pressureLevel;
-    let pressureLevelChanged;
     let count;
     const readAndUpdate = idxLocked => {
       // READ inside lock — snapshot is now consistent with the write below
@@ -531,7 +530,6 @@ async function main(options = {}) {
             fp.consecutiveCount = 0;
             fp.decayCounter = 0;
             fp.oscillationCount = 0;
-            fp.lastShownLevel = 0;
           }
           if (index.tooGoodSkepticism) index.tooGoodSkepticism.retryCount = 0;
           console.error('[PRESSURE BAILOUT: reset all 3 counters]');
@@ -539,9 +537,6 @@ async function main(options = {}) {
         isNegativeFeedback = isBailout ? false : detectNegativeFeedback(userPrompt);
         pressureLevel = isBailout ? 0 : updateFeedbackPressure(index, isNegativeFeedback);
         if (pressureLevel > 0) console.error(`[PRESSURE L${pressureLevel}]`);
-        const lastShownLevel = (fp && typeof fp.lastShownLevel === 'number') ? fp.lastShownLevel : 0;
-        pressureLevelChanged = pressureLevel !== lastShownLevel;
-        if (pressureLevelChanged && fp) fp.lastShownLevel = pressureLevel;
         count = (index.rulesInjectionCount || 0) + 1;
         if (frequency > 1) index.rulesInjectionCount = count;
         if (idxLocked && (isNegativeFeedback || isBailout || index.feedbackPressure || frequency > 1)) {
@@ -552,7 +547,6 @@ async function main(options = {}) {
       } else {
         isNegativeFeedback = false;
         pressureLevel = fp && typeof fp.level === 'number' ? fp.level : 0;
-        pressureLevelChanged = false;
         count = frequency;
       }
     };

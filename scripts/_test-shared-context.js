@@ -40,7 +40,9 @@ test('COMPRESSED_CHECKLIST is a non-empty string', function() {
 
 test('COMPRESSED_CHECKLIST contains key rules', function() {
   assert(COMPRESSED_CHECKLIST.includes('audit each claim against a tool result'), 'should carry the grounding instruction');
-  assert(COMPRESSED_CHECKLIST.includes('P/O/G'), 'should mention P/O/G');
+  // Contract change (D120 T3, from I091): the per-prompt checklist states the
+  // predict → execute → compare check without the P/O/G acronym, which stays in documents.
+  assert(COMPRESSED_CHECKLIST.includes('predict → execute → compare'), 'should carry the predict/execute/compare check');
   assert(COMPRESSED_CHECKLIST.includes('user approval'), 'should carry the scope/destructive approval rule');
 });
 

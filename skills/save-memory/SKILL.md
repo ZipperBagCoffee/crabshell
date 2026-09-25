@@ -23,12 +23,13 @@ Force immediate save of session memory.
 
 ## Actions
 
-1. **Save to logbook.md:**
-   Generate a timestamp and summary, then use the Write tool or the append-memory.js script:
+1. **Save to logbook.md** through append-memory.js — it takes the memory locks and writes the `## UTC (local …)` header, so never append to logbook.md directly:
+   - Use the Write tool to save the session summary to `{PROJECT_DIR}/.crabshell/memory/manual-summary-{YYYYMMDD-HHMMSS}.txt` (a new name each time, so concurrent sessions do not overwrite each other).
+   - Run (the scripts folder is the plugin's `scripts/`, next to this skill's `skills/` folder):
    ```bash
-   "{NODE_PATH}" -e "const fs=require('fs');const d=new Date();const p=n=>String(n).padStart(2,'0');const ts=d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes());fs.appendFileSync('{PROJECT_DIR}/.crabshell/memory/logbook.md','\\n## '+ts+'\\n')"
+   "{NODE_PATH}" "{SCRIPTS_PATH}/append-memory.js" --project-dir="{PROJECT_DIR}" --summary-file="{PROJECT_DIR}/.crabshell/memory/manual-summary-{YYYYMMDD-HHMMSS}.txt"
    ```
-   Then use the Read tool to read `{PROJECT_DIR}/.crabshell/memory/logbook.md`, append the session summary using the Edit tool.
+   - If it fails with `A prepared delta job exists`, run the memory-delta skill first (it finalizes that pending summary), then run the command again.
 
 ## Notes
 

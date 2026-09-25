@@ -20,7 +20,7 @@ Before acting, derive and retain these fields from the user's actual words:
 - observable_success
 - blocking_unknowns
 
-Do not print this contract on every turn. Open named references before implementation and trace source input -> consuming path -> observable result. If blocking_unknowns is empty, resolve ordinary technical choices from the repository and continue without asking. Ask only when a wrong assumption would require a destructive or irreversible action, a write outside the authorized workspace, an external installation, or an undiscoverable product decision. A user correction overrides the earlier inference without discarding unaffected constraints.
+Do not print this contract on every turn. Open named references before implementation and trace source input -> consuming path -> observable result. If blocking_unknowns is empty, resolve ordinary technical choices from the repository and continue without asking; name the choice in one line. Ask only when a wrong assumption would require a destructive or irreversible action, a write outside the authorized workspace, an external installation, or an undiscoverable product decision. A user correction overrides the earlier inference without discarding unaffected constraints.
 
 The parent owns the original request, decisive references, final diff, direct execution evidence, and completion decision. A worker's done/PASS claim, reviewer count, marker, or spot-check is not completion evidence. Delegation and review are optional risk controls; use them for independent work or distinct high-risk concerns, not to satisfy a count.
 `;
@@ -41,10 +41,10 @@ The parent prompt must supply the relevant original-request sentence, exact task
 const COMPRESSED_CHECKLIST = `
 ## Rules Quick-Check (CLAUDE.md rules active)
 - Before reporting progress or writing "verified", audit each claim against a tool result from this session; otherwise say "unverified".
-- Verification = match method to claim (execute to claim behavior, inspect to claim structure); predict → execute → compare (P/O/G); assert what survives the next release; classify a failure before editing either side; the chat report is "M of N passed" plus the failed items.
+- Verification = match method to claim (execute to claim behavior, inspect to claim structure); predict → execute → compare; assert what survives the next release; classify a failure before editing either side; in chat, report "M of N passed" plus the failed items in plain words.
 - Deliver the full requested quantity; reducing scope, deleting files, or destructive actions need explicit user approval first.
 - Answer in slot order — conclusion → evidence → critical exception → next action — in the reader's words: concrete over abstract, no self-coined jargon, each technical term unpacked at first use, spoken register rather than report prose. Cut intros, work-process narration, and repeated conclusions.
-- End with the verdict: the last paragraph states each work item — done, in progress, or not started — plus the user's next action; a CLI reader lands on the end of long output first.
+- End with the verdict: the last paragraph states each work item — done, in progress, or not started — plus the user's next action if there is one; a CLI reader lands on the end of long output first.
 `;
 
 /**

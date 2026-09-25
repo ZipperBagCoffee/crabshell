@@ -1,6 +1,7 @@
 ---
 name: memory-rotate
 description: "Summarize pending memory archives reported by the current Claude hook. Archive rotation itself is performed by code."
+user-invocable: false
 ---
 
 ## Trigger and scope

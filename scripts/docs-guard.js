@@ -11,6 +11,7 @@ if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 
 const { getProjectDir, readJsonOrDefault, docDirsPattern } = require('./utils');
 const { getActiveSkill } = require('./core/skill-flag');
+const { leadingId } = require('./core/index-rows');
 
 // Document folders only a document skill may write (constants DOC_TYPES skillOnly)
 const PROTECTED_DOCS_PATTERN = new RegExp(`${docDirsPattern(type => type.skillOnly)}/`);
@@ -100,9 +101,13 @@ function evaluateDocsGuard(hookData, projectDir) {
 
   const typeRow = DOC_TYPES.find(type => type.dir === category);
   const suggestedSkill = (typeRow && typeRow.skill) || 'the appropriate document skill';
+  // An existing document is continued in the skill's update mode, called with its ID.
+  const docId = leadingId(path.basename(filePath, '.md'));
+  const existing = Boolean(docId) && fs.existsSync(filePath.replace(/\//g, path.sep));
+  const call = existing ? `skill="${suggestedSkill}", args="${docId}"` : `skill="${suggestedSkill}"`;
 
   return {
-    reason: `Direct write to .crabshell/${category}/ blocked. You MUST invoke the Skill tool first (skill="${suggestedSkill}") before writing ${category} documents. This prevents post-compaction skill bypass where documents are created from memory without proper skill workflow.`,
+    reason: `Direct write to .crabshell/${category}/ blocked: this session has not loaded the ${suggestedSkill} skill (a new session, or compaction re-attached only the start of it). Invoke the Skill tool first (${call})${existing ? ` — ${docId} exists, so call it in update mode with that ID` : ''}. Re-invoking reloads the instructions; it does not redo one-time setup.`,
     log: `[DOCS_GUARD] Blocked ${toolName} to ${filePath} — no active skill`,
   };
 }

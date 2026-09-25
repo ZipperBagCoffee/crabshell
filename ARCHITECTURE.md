@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.131.0)
+# Crabshell Architecture (v21.132.0)
 
 ## Overview
 
@@ -71,7 +71,7 @@ Two meta-principles guide Claude's approach to obstacles:
 |  | - Load moc-digest  |  | - Project description: SessionStart only  |  |
 |  | - Active workflow  |  | - Inject prompt-aware memory snippets     |  |
 |  | - Legacy copy only |  | - Execution-only cleanup/rule sync        |  |
-|  +--------------------+  | - Pressure lastShownLevel tracking        |  |
+|  +--------------------+  | - Pressure level telemetry (stderr only)  |  |
 |                          | - Detect pending delta → INSTRUCTION      |  |
 |                          | - Detect pending rotation → INSTRUCTION   |  |
 |                          | - Detect regressing → phase reminder      |  |
@@ -312,7 +312,7 @@ Claude `PostToolUseFailure` is wired to both verification-state and parent-evide
 6-7. Compaction — Claude has no PreCompact/PostCompact hooks since v21.125.0
    Their output reaches no model. After compaction Claude fires SessionStart with source "compact":
    └─> load-memory.js → clear this session's skill flag + core/post-compact-effects.js
-       (reset feedbackPressure.lastShownLevel so the next prompt re-injects the pressure notice; append compaction.log)
+       (the flag is cleared because Claude Code re-attaches only the first 5,000 tokens of each skill; append compaction.log)
    Codex keeps adapters/codex/pre-compact.js and post-compact.js (Codex passes their additionalContext).
 
 8. SubagentStart — v21.21.0
@@ -509,7 +509,7 @@ Save to *.summary.json
 | sessionDelta | Per-session watermarks `{ [sid8]: { seenAt, pendingTs, committedTs } }` (v21.124.0); a delta job snapshots `processedThroughBySession` and finalization commits each session's cutoff |
 | lastL1TranscriptMtime | Legacy project-wide transcript mtime, used only for payloads without a session id (sessions keep theirs in session-state/<sid8>/l1-cursor.json) |
 | lastL1TranscriptOffset | Legacy project-wide byte offset, used only for payloads without a session id and once for sessions predating v21.124.0 |
-| feedbackPressure | Pressure system state: `level` (0-3), `consecutiveCount`, `oscillationCount`, `decayCounter`, `lastShownLevel`, `lastDetectedAt` — RMW under index lock |
+| feedbackPressure | Pressure system state: `level` (0-3), `consecutiveCount`, `oscillationCount`, `decayCounter`, `lastDetectedAt` — RMW under index lock |
 | tooGoodSkepticism | Sycophancy guard "too good" P/O/G all-None retry counter: `retryCount` |
 
 ### counter.json Structure (v20.5.0)
@@ -565,6 +565,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.132.0 | Skills fit the compaction re-attach budget (regressing/ticketing/verifying bodies ≤ 16,000 bytes, long parts in `references/`); docs-guard names the update call; hand saves go through `append-memory.js`; SessionStart memory marked as data, dropped parts named, knowledge listed, snippets skip loaded entries; rule wording from I091; automatic skills hidden, dead pressure bookkeeping and five duplicate commands removed |
 | 21.131.0 | One INDEX row reader (`core/index-rows.js`) shared by log-guard, the ticket reminder, lint, migration and compaction — checks that were off on wikilink rows now work; log-guard checks ticket result sections (done: Execution Results; verified: all), work-log length rule and the never-run previous-cycle check removed; document skill calls move a regressing workflow only when they name it; `migrate-obsidian`/`lint-obsidian` run only when executed |
 | 21.130.0 | Documents are D (the discussion carries the plan) → T: tickets `D###_T###` under a discussion (P###_T### kept), one ticket-ID definition for every guard and the Codex tool, regressing cycles plan in the discussion log, no new P/H documents; retired guards and their tests deleted (97 → 89 checks); review fixes for phase ownership, missing parents and worker scope |
 | 21.129.0 | `--changed` ignores files whose time moved but content did not (the load map stores content hashes; a revert or checkout no longer runs everything); installed contents documented (tests ship with the `./` source, about 38% of tracked bytes) |

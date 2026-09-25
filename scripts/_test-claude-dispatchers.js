@@ -18,23 +18,20 @@ const POST = 'adapters/claude/post-tool-use.js';
 const lastJson = result => { try { return JSON.parse(result.stdout.trim().split('\n').filter(Boolean).pop() || 'null'); } catch { return null; } };
 const OTHER = fwd(path.join(os.homedir(), 'crabshell-test-other-project'));
 
-// D1: SessionStart after compaction resets the pressure display level (so the next
-// prompt re-injects the pressure notice) and logs the compaction.
+// D1: SessionStart after compaction logs the compaction. Contract change (D120 T4): it
+// no longer resets the pressure display state, which reached no output.
 {
   const project = h.makeProject(root, 'compact');
   const index = h.memoryPath(project, 'memory-index.json');
   const current = h.readJson(index) || {};
-  fs.writeFileSync(index, JSON.stringify({ ...current, feedbackPressure: { level: 2, consecutiveCount: 2, decayCounter: 0, lastShownLevel: 2 } }));
+  const pressure = { level: 2, consecutiveCount: 2, decayCounter: 0 };
+  fs.writeFileSync(index, JSON.stringify({ ...current, feedbackPressure: pressure }));
   const result = h.runHook(root, 'load-memory.js', [], { hook_event_name: 'SessionStart', source: 'compact', session_id: A }, project);
-  const after = h.readJson(index) || {};
-  report.check('D1 SessionStart(compact) resets feedbackPressure.lastShownLevel to 0', after.feedbackPressure && after.feedbackPressure.lastShownLevel === 0,
-    `exit=${result.status} level=${JSON.stringify(after.feedbackPressure)}`);
-  report.check('D1 ...and appends to compaction.log', fs.existsSync(h.memoryPath(project, 'logs', 'compaction.log')));
+  report.check('D1 SessionStart(compact) appends to compaction.log', result.status === 0 && fs.existsSync(h.memoryPath(project, 'logs', 'compaction.log')), `exit=${result.status}`);
+  report.check('D1 ...and leaves the pressure state as it was', JSON.stringify((h.readJson(index) || {}).feedbackPressure) === JSON.stringify(pressure));
   const startup = h.makeProject(root, 'startup');
-  const startupIndex = h.memoryPath(startup, 'memory-index.json');
-  fs.writeFileSync(startupIndex, JSON.stringify({ ...(h.readJson(startupIndex) || {}), feedbackPressure: { level: 2, lastShownLevel: 2 } }));
   h.runHook(root, 'load-memory.js', [], { hook_event_name: 'SessionStart', source: 'startup', session_id: A }, startup);
-  report.check('D1 control: SessionStart(startup) leaves lastShownLevel alone', (h.readJson(startupIndex) || {}).feedbackPressure.lastShownLevel === 2);
+  report.check('D1 control: SessionStart(startup) writes no compaction log', !fs.existsSync(h.memoryPath(startup, 'logs', 'compaction.log')));
 }
 
 // D2: reading another project's .crabshell is allowed and the model is told after the read.

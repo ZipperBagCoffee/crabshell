@@ -18,8 +18,9 @@ async function main(options = {}) {
   const hookData = options.hookData || await readStdin(3000) || {};
   const projectDir = options.projectDir || projectDirFromArgs(options.argv);
   if (hookData.source === 'compact') {
-    // Compaction drops the loaded skill instructions, so document writes must
-    // go through the skill again (docs-guard reads this session's flag).
+    // After compaction Claude Code re-attaches only the first 5,000 tokens of each
+    // invoked skill (older skills can be dropped), so document writes must go
+    // through the skill again (docs-guard reads this session's flag).
     if (hookData.session_id) {
       try { require('./core/skill-flag').clearSkillActive(projectDir, hookData.session_id); } catch {}
     }

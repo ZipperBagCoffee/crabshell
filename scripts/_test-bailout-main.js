@@ -88,7 +88,6 @@ async function testBailoutKeyword(keyword, host) {
   assertEqual(currentState.feedbackPressure.consecutiveCount, 0, `${label}: resets consecutiveCount`);
   assertEqual(currentState.feedbackPressure.decayCounter, 0, `${label}: keeps decayCounter at zero`);
   assertEqual(currentState.feedbackPressure.oscillationCount, 0, `${label}: resets oscillationCount`);
-  assertEqual(currentState.feedbackPressure.lastShownLevel, 0, `${label}: resets lastShownLevel`);
   assertEqual(currentState.tooGoodSkepticism.retryCount, 0, `${label}: resets retryCount`);
   assertEqual(/PRESSURE L3|Pressure L3/.test(output), false, `${label}: does not reinject L3 pressure`);
 }
