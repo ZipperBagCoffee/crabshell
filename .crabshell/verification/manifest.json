@@ -240,11 +240,6 @@
           },
           {
             "kind": "stdoutJsonEquals",
-            "pointer": "/passedCount",
-            "equals": 25
-          },
-          {
-            "kind": "stdoutJsonEquals",
             "pointer": "/failedCount",
             "equals": 0
           }

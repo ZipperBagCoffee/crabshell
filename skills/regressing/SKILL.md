@@ -21,20 +21,8 @@ description: "Runs convergence-based iterative optimization cycles wrapped by a 
 
 ## Anti-Patterns (PROHIBITED)
 
-The following patterns indicate regressing has degenerated into sequential batch execution:
+Pre-partitioning, sequential pipeline, copy-paste feedback, parent abdication, rubber-stamp verification, delegation ritual, operational steps as separate cycles, autonomous writes outside scope. What each looks like and the correct alternative: `references/anti-patterns.md` — read it before writing a cycle plan. If any is detected, halt and restructure.
 
-| Anti-Pattern | What it looks like | Correct alternative |
-|---|---|---|
-| **Pre-partitioning** | Cycle 1's plan divides total work into N equal parts, assigning each to a cycle | Cycle 1's plan addresses the highest-impact improvements; later cycle plans respond to verification gaps. Cycle count is emergent, not planned |
-| **Sequential pipeline** | Cycle 1 = modify, Cycle 2 = sync, Cycle 3 = version bump | Sequential tasks (version bump, cache sync, deploy) belong in the SAME cycle as separate tickets — NOT as separate cycles. Each cycle is a complete implement-verify-improve loop |
-| **Copy-paste feedback** | Next Direction says "continue with remaining items" | Next Direction diagnoses specific problems with evidence |
-| **Parent abdication** | Parent accepts a worker/reviewer claim as the final decision | Parent reopens decisive references, diffs, execution results, and side effects before completion |
-| **Rubber-stamp verification** | "ALL PASS — no improvement opportunities" | Orchestrator enumerates what was examined and why no improvements apply |
-| **Delegation ritual** | Agent count or role pairing is treated as progress or completion evidence | Delegate only bounded independent work when risk or latency justifies it; counts are never completion conditions |
-| **Operational steps as separate cycles** | Cycle 1 = code change, Cycle 2 = version bump + cache sync + commit | Version bump, cache sync, and commit are operational steps within a cycle's ticket(s), not independent cycles |
-| **Autonomous Write outside scope** | Agent writes/edits code files not covered by current ticket AC | Every code file write must trace to a ticket AC. If not covered → STOP and raise Open Question |
-
-If any of these patterns are detected during execution, the Orchestrator MUST halt and restructure before proceeding.
 
 ## Execution Procedure
 
@@ -55,50 +43,12 @@ Create ONE Discussion document that wraps the entire regressing session:
 - This D stays open throughout all cycles and closes at the end
 - Metadata: `[regressing: cap {N}]`
 
-After creating the Discussion document, write the regressing state file:
-- Path: `.crabshell/memory/regressing-state.json`
-- Content: `{ "active": true, "discussion": "{D-ID}", "cycle": 1, "totalCycles": {N}, "userSpecifiedN": {true|false}, "phase": "planning", "planId": null, "ticketIds": [], "sessionId": "{session id or null}", "startedAt": "{ISO}", "lastUpdatedAt": "{ISO}" }` — `sessionId` records the owning host session, so only that session is asked to continue the workflow (other sessions in the same project are not).
-- Use Bash tool: `"{NODE_PATH}" -e "require('fs').writeFileSync('{PROJECT_DIR}/.crabshell/memory/regressing-state.json', JSON.stringify({active:true, discussion:'{D-ID}', cycle:1, totalCycles:{N}, userSpecifiedN:{true|false}, phase:'planning', planId:null, ticketIds:[], sessionId:process.env.CLAUDE_CODE_SESSION_ID||null, startedAt:new Date().toISOString(), lastUpdatedAt:new Date().toISOString()}, null, 2))"`
+After creating the Discussion document, write the regressing state file `.crabshell/memory/regressing-state.json` (`active`, `discussion`, `cycle: 1`, `totalCycles`, `phase: "planning"`, `ticketIds: []`, owning `sessionId`) — exact content and command: `references/session-start.md`.
 
-### Step 2.5: Parameter Recommendation
+### Step 2.5–2.6: Parameters and goal-mode handoff
 
-Before starting execution, recommend session parameters to the user. This happens ONCE at session start — recommended parameters apply to ALL cycles.
+Once, at session start: recommend the cycle cap (10 unless the user wrote a number), agents and model tiers (silence = proceed), then print the ready-to-paste `/goal` line that points at the D document. The recommendation block, inline-number rules and the exact `/goal` line: `references/session-start.md`.
 
-**Recommend the following:**
-
-| Parameter | How to determine | Default |
-|-----------|-----------------|---------|
-| **Cycle cap** | From user invocation. Bare number after topic = cap. | 10 |
-| **Agent count** | Based on topic complexity. 2–3 for focused tasks, 3–5 for broad/complex tasks. | 3 |
-| **Specialist roles** | Each agent gets a distinct expert perspective relevant to the topic (e.g., "Security Auditor", "Performance Engineer", "API Design Specialist"). Roles must be non-overlapping and topic-relevant. | — |
-| **Model tier** | See project.md `## Model Routing` | T1 for planning, T2 for execution/verification. Project-level routing applies. |
-
-**Present to user as a compact recommendation block:**
-
-```
-📋 Parameter Recommendation
-- Cycle cap: {N}
-- Agents: {count} — {Role1}, {Role2}, ...
-- Models: See project.md Model Routing (T1 → T2 per task type)
-Silence = proceed. Adjust any parameter by responding.
-```
-
-**Inline parameter detection:** If the user's invocation includes a bare number after the topic, it is the cycle cap (not agent count). Numbers with "명" or "agents" suffix indicate agent count. Example: `/regressing "topic" 5` → cap=5. `/regressing "topic" 3명` → agents=3, cap=10.
-
-**User interaction:** Silence = proceed with recommended parameters. User may adjust any parameter before execution begins.
-
-### Step 2.6: Goal-Mode Handoff (host continuation)
-
-Session continuation is goal-driven, not hook-forced. The host's goal mode (Claude Code 2.1.139+ `/goal`, Codex CLI 0.128.0+ `/goal`) keeps the session working until the host's evaluator confirms the Discussion is concluded. The old unconditional Stop-hook block (`regressing-loop-guard.js`) was removed; `completion-controller.js` still enforces bounded continuation on execution-authorized turns.
-
-Immediately after Step 2.5, print this ready-to-paste line for the user (fill in the real D-ID, file name, and cap):
-
-```
-/goal Crabshell regressing {D-ID}: every item under "## Convergence Criteria" in .crabshell/discussion/{D-file}.md is met and its frontmatter status is "concluded", or the D Final Report records the cycle cap {N} as reached. Judge only by reading that document.
-```
-
-- Starting goal mode is the user's choice; the skill cannot start it. If the user does not start it, cycles still continue autonomously per Rule 5.
-- The goal condition MUST point at the D document only — the evaluator judges by reading it, so cycle results must land in the D/T documents (document-first) for the evaluator to see progress.
 
 ### Step 3: Pre-check (optional)
 
@@ -140,62 +90,7 @@ After each /ticketing invocation, update regressing state:
 - **Agent flow:** The parent owns each phase and delegates only bounded independent work when risk or latency justifies it. No worker count or WA:RA pairing is a completion condition.
 - Parent executes in-scope work and appends execution evidence to the T document. Delegation is optional and bounded by the ticket contract.
   - **Framing:** Any delegated prompt follows ticketing framing and verification standards, names exact scope and non-goals, and forbids fan-out.
-- Optional independent review: use when change risk, shared contracts, security, data loss, or user-visible behavior warrants it. Reviewer count never follows worker count.
-  - **Independence Protocol:** A reviewer MUST NOT use worker conclusions as its observation source. Provide the ticket acceptance/verification contract and the P/O/G template; the parent later cross-references findings against implementation evidence.
-  - **Reviewer prompt, when review is used, MUST include this verification context and output template:**
-    ```
-    Verification = closing the gap between belief and reality through observation.
-    Fill Prediction BEFORE looking at the code. Fill Observation ONLY from tool output.
-    The Gap column is where real findings live — if Gap is always "none", you are confirming, not verifying.
-
-    For each verification item, provide ALL fields:
-    | Item | Type | Prediction (before observation) | Observation (tool output required) | Gap |
-    |------|------|-------------------------------|-----------------------------------|-----|
-
-    Type: `behavioral` = runtime execution observed (ran command, triggered feature, checked output)
-    Type: `structural` = static check (grep, file read, code inspection)
-
-    Rules:
-    - Observation MUST include tool output (Bash execution, Read result, diff, etc.)
-    - If Prediction and Observation are identical text → INVALID (no actual observation occurred)
-    - If direct execution is impossible: state "Indirect: {method}" + why direct is impossible
-    - Empty Observation or Gap fields → entire verification is INVALID
-    ```
-- **Verification Tool Check (BEFORE Orchestrator evaluation):**
-  1. Check if `.crabshell/verification/manifest.json` exists
-  2. If YES → `/verifying run` and include results in evaluation
-  3. If NO → `/verifying` to create manifest, then `/verifying run`
-  4. No executable runtime → skip with note
-- Parent: final verification → append to T document. MUST critically evaluate implementation evidence and any optional review. Default posture: skepticism — "ALL PASS" requires more justification than "FAIL". A worker/reviewer claim is never the completion condition.
-  - Correctness: Was it done correctly? Cite specific evidence (command output, observed behavior).
-  - Coherence: Do the changes from this cycle work together as a whole? Individual items may each pass, but combined output may have integration gaps. Verify that parts form a coherent whole, not just that each passes individually.
-    **Coherence verification methods (minimum 2 of the following):**
-    - **Cross-file sync check:** When the same concept appears in multiple files, grep for the concept in all locations and confirm consistent wording/semantics.
-    - **Reference integrity:** When file A references file B's content, verify the reference target actually exists and matches.
-    - **Integration test:** Run the changed code/hook and verify that outputs from multiple changed files interact correctly.
-    - **Contradiction scan:** Explicitly check whether any two changes give contradictory instructions.
-    - **Pipeline contradiction scan:** Check whether this change contradicts logic in related pipelines. Level 1: within the changed files. Level 2: in files that interact with the changed component (imports, callers, shared state). Level 3: against project rules/philosophy (CLAUDE.md, SKILL.md principles). A change that works locally but contradicts a related pipeline is not coherent.
-    "Coherent" or "일관됨" as a one-line verdict without executing any of the above methods is INVALID.
-  - Improvement Opportunities: What gaps remain? What was attempted but didn't work well? (Orchestrator MUST enumerate what was examined. "No improvements" requires detailed justification of what was checked and why no improvements apply — minimum 3 sentences referencing specific aspects.)
-  - **Evidence Gate (BLOCKING — check BEFORE evaluating content):**
-    Agents can generate text that looks like verification without actual observation. Apply this gate to parent and delegated evidence alike.
-    □ Does each verification item have Prediction, Observation, AND Gap fields?
-    □ Does Observation contain tool output evidence? (for directly-executable items)
-    □ Is Prediction ≠ Observation? (copy detection)
-    □ For indirect verification: is the reason stated?
-    □ Does at least 1 verification item have Type = behavioral? (structural-only = insufficient for runtime features)
-    → If ANY check fails: reject that evidence and re-run the observation.
-  - **Independent Evidence Cross-Reference (when delegation/review was used):**
-    Compare independent findings against implementation evidence.
-    1. Read the independent P/O/G findings
-    2. Read the execution results and direct tool output
-    3. Identify discrepancies — items where independent observation found problems implementation evidence did not report, or where implementation claimed success but direct observation found issues
-    4. Discrepancies are the highest-priority findings and must be addressed in Correctness evaluation
-  - Next Direction (while verification finds gaps and cycle < cap; final cycle uses Final Report instead):
-    - **Problems Found**: Specific problems or shortcomings observed in THIS cycle's output, with evidence.
-    - **Root Cause Hypothesis**: Why did these problems occur?
-    - **Recommended Focus**: What should the next cycle prioritize and why?
-    - (If this section reads like a generic TODO list without referencing specific observations from this cycle, it is INVALID — rewrite with evidence.)
+- Optional independent review, the Verification Tool Check (`/verifying run`), and the parent's final verification — Correctness, Coherence (at least 2 methods), Improvement Opportunities, the Evidence Gate, the independent-evidence cross-reference and Next Direction — follow `references/cycle-verification.md`; read it before each ticket's final verification. Default posture: skepticism; a worker/reviewer claim is never the completion condition.
 
 After ticket execution completes, update regressing state:
 - Set `"phase": "feedback"`, `"lastUpdatedAt": "{ISO}"` using: `"{NODE_PATH}" -e "const f='{PROJECT_DIR}/.crabshell/memory/regressing-state.json';const s=JSON.parse(require('fs').readFileSync(f,'utf8'));s.phase='feedback';s.lastUpdatedAt=new Date().toISOString();require('fs').writeFileSync(f,JSON.stringify(s,null,2))"`
@@ -228,53 +123,16 @@ After convergence or reaching the cap, return to the D document:
 After final report, clean up regressing state:
 - Delete state file: `"{NODE_PATH}" -e "try{require('fs').unlinkSync('{PROJECT_DIR}/.crabshell/memory/regressing-state.json')}catch(e){}"`
 
-Final Report format:
-
-```
-### [{timestamp}] Regressing Final Report
-Converged after {actual} cycles (cap: {N})
-Termination reason: {convergence | cap reached | user stop}
-
-**Gap Reduction:**
-| Cycle | Gaps Identified | Gaps Resolved | Key Improvement |
-|-------|----------------|---------------|-----------------|
-| 1     | ...            | ...           | ...             |
-| ...   | ...            | ...           | ...             |
-
-**Improvement Trajectory:**
-- Cycle 1→2: {key changes}
-- Cycle 2→3: {key changes}
-
-**Final State:**
-- Achieved: ...
-- Remaining gaps: ...
-- Future recommendations: ...
-```
+Final Report format (fill every field it names): `references/final-report.md`.
 
 ## Document Structure
 
-One D wraps the entire session and carries each cycle's plan as a log entry. Each cycle adds one plan entry and one or more tickets under the D:
+One D wraps the session; each cycle adds one plan entry in the D log and one or more tickets `D{NNN}_T{NNN}` under the D; the D closes with the final report. Diagram and table: `references/document-structure.md`. Sessions started before this layout keep their P documents (`P{NNN}` plans with `P{NNN}_T{NNN}` tickets); guards and tools accept both parents.
 
-```
-D (open)
-  → Cycle 1 plan (D log) → D_T001, D_T002, ...    [cycle 1]
-  → Cycle 2 plan (D log) → D_T003                  [cycle 2]
-  → ...
-D (closed with final report)
-```
-
-| Document | Count | Role |
-|----------|-------|------|
-| D | 1 | Top-level container: intent, IA, one plan entry per cycle, feedback transfers, final report |
-| T | >= N | One or more per cycle, parent = the D: execution + verification |
-
-Sessions started before this layout keep their P documents (`P{NNN}` plans with `P{NNN}_T{NNN}` tickets); guards and tools accept both parents.
 
 ## User Interaction
 
-- **At start**: Confirm topic. Cap is 10 unless user explicitly wrote a number. Do not infer cap from context, memory, or past sessions. Print the goal-mode handoff line (Step 2.6) so the user can run the session under host goal mode.
-- **During**: Fully autonomous. Terminates on convergence (Rule 7) or when cap is reached. At every 10-cycle boundary (when cap was defaulted), present progress report — user approves raising cap by 10 or stops.
-- **At end**: Present final report in D → user requests raising cap or terminates
+At start confirm the topic and cap; during the cycles work autonomously (Rule 5, and its notify exception); at the end present the final report. Details: `references/user-interaction.md`.
 
 ## Rules
 
@@ -282,7 +140,7 @@ Sessions started before this layout keep their P documents (`P{NNN}` plans with 
 2. **One D wraps all cycles.** D opens at start, closes with final report at end. Do NOT create a new D per cycle.
 3. **Verification-based Optimization.** No iteration without verification. Must verify at the end of each cycle, and verification results determine the next cycle.
 4. **Context transfer between cycles is mandatory.** The Orchestrator must explicitly pass cycle n's final verification results as the Context of cycle n+1's plan entry.
-5. **User intervention only at the end.** Do not ask for user confirmation during intermediate cycles.
+5. **User intervention only at the end.** Do not ask for user confirmation during intermediate cycles. Exception — notify, do not ask: a limitation that changes what the user will get (scope cannot be met, a blocked dependency, the cap will be reached) is reported in one line at once; keep working.
 6. **Use existing skill invocations.** Invoke discussing (at start, for each cycle plan entry and each feedback transfer) and ticketing skills internally.
 7. **Early termination on convergence.** If the Orchestrator's verification finds no improvement opportunities with substantive justification (minimum 3 sentences enumerating what was examined and why further cycles would not improve the result), the session terminates early. Generic "ALL PASS" without this justification is not valid convergence — it is rubber-stamping. **When the wrapping D document contains a `## Convergence Criteria` section, the Orchestrator MUST evaluate each criterion explicitly — convergence is only valid when all listed criteria are met or explicitly declared out-of-scope with rationale.**
 8. **A one-ticket discussion is the lightweight alternative.** Regressing is the primary mode; standalone one-off tasks are done directly and recorded as a discussion with one ticket.

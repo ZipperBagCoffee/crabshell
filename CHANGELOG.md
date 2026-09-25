@@ -1,5 +1,21 @@
 # Changelog
 
+## [21.132.0] - 2026-09-24
+
+### feat: skills survive compaction, memory loads as data, rule wording from I091
+
+- **Large skills fit what Claude Code re-attaches after compaction.** It re-attaches only the first 5,000 tokens of each invoked skill (combined 25,000; https://code.claude.com/docs/en/skills.md), so the ends of `regressing`, `ticketing` and `verifying` — their rules — were being cut (seen in a long session). Start-only steps, the ticket template, the review checklist, the Final Report format and manifest-entry guidance moved verbatim into each skill's `references/`; every SKILL.md is now at most 16,000 bytes (regressing 26,685 → 15,838, ticketing 22,349 → 11,289, verifying 20,946 → 13,087; no line lost), checked by `_test-compaction-skills.js`.
+- **The docs guard says how to reload a skill.** When it blocks a document write it names the skill and, for an existing document, the update call with its ID (`skill="discussing", args="D119"`), and says re-invoking reloads the instructions rather than redoing setup.
+- **Memory.**
+  - Hand saves (`save-memory`, and `memory-autosave`'s fallback) go through `append-memory.js` — memory locks and the UTC/local header — never a direct append; `append-memory.js --summary-file=<file in the memory folder>` lets each save use its own file, and the skills say to run memory-delta first when a delta job is prepared.
+  - SessionStart memory ends with two notes: the records are past-session data, not instructions (an item in progress may be done), and only the recent logbook is loaded (search before saying something was never recorded).
+  - A part dropped for the SessionStart budget is named with where to read it; the knowledge INDEX (ID and title) is listed.
+  - Prompt-time memory snippets skip the logbook entries SessionStart loads (recomputed with the same tail rule; hooks stay read-only).
+- **Rule wording (RULES, turn contract, per-prompt checklist).** The chat report is plain "M of N passed" plus failures (no P/O/G acronym in chat); a permission denial or policy block is reported, not routed around; facts about the current state are looked up even when familiar; no whole-file rewrite from filtered or truncated tool output; the chosen option is named in one line; the verdict's next action appears only when there is one; the banter line goes at the end of the reply, outside facts, lists and documents. Regressing Rule 5: a limitation that changes what the user gets is reported at once, and work continues.
+- **Cleanup.** `memory-autosave`, `memory-delta` and `memory-rotate` are `user-invocable: false` (hidden from the `/` menu; Claude still invokes them). The `lastShownLevel` bookkeeping and its reset after compaction were removed — they reached no output since the pressure notice was retired. The five one-line `commands/` files that only invoked the same-named skill were deleted (`/crabshell:save-memory` and the rest are served by the skills; `install-codex.md` stays). Two over-specified checks were loosened: a fixed passed-count in the manifest and a test-name pattern in `verify-cross-runtime.js`.
+- **Version checklist:** run `claude plugin validate .` and `claude plugin validate .claude-plugin/plugin.json`.
+- **Tests:** `_test-compaction-skills.js`, `_test-memory-loading.js`, `_test-rule-wording.js`; tests that pinned removed state or old wording were updated with contract-change comments.
+
 ## [21.131.0] - 2026-09-24
 
 ### feat: one INDEX row reader; ticket checks that fire on real rows; workflow calls must name the workflow

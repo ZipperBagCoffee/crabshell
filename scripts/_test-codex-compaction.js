@@ -126,8 +126,6 @@ try {
     const context = contextFrom(run(postAdapter, 'PostCompact', 'auto'), 'PostCompact');
     assert.match(context, /COMPACTION_MEMORY_MARKER/);
     assert.match(context, /P161_T001/);
-    const index = JSON.parse(fs.readFileSync(path.join(memoryDir, 'memory-index.json'), 'utf8'));
-    assert.strictEqual(index.feedbackPressure.lastShownLevel, 0);
     const logPath = path.join(memoryDir, 'logs', 'compaction.log');
     assert.match(fs.readFileSync(logPath, 'utf8'), /PostCompact hook fired/);
     assert.strictEqual(fs.readFileSync(path.join(projectRoot, 'sentinel.txt'), 'utf8'), 'UNCHANGED\n');
@@ -160,9 +158,10 @@ try {
     assert.throws(() => validateCompactionOutput({ hookSpecificOutput: { hookEventName: 'PreCompact', additionalContext: 'PASS' } }, 'PreCompact'), /recovery context/);
   });
 
-  test('missing reset and missing log mutations are rejected', () => {
-    assert.throws(() => validatePostCompactEffects({ pressureReset: false, compactionLogged: true }, { requirePressureReset: true }), /pressure/);
-    assert.throws(() => validatePostCompactEffects({ pressureReset: true, compactionLogged: false }, { requirePressureReset: true }), /log/);
+  // Contract change (D120 T4): PostCompact no longer resets the retired pressure display state.
+  test('missing log mutation is rejected', () => {
+    assert.throws(() => validatePostCompactEffects({ compactionLogged: false }), /log/);
+    assert.strictEqual(validatePostCompactEffects({ compactionLogged: true }), true);
   });
 
   test('unrelated project mutation is distinguished from allowed PostCompact paths', () => {

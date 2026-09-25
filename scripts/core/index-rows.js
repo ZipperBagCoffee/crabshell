@@ -57,4 +57,11 @@ function readIndexRows(content) {
   return String(content || '').split(/\r?\n/).map(parseIndexRow).filter(Boolean);
 }
 
-module.exports = { splitIndexRow, cellId, parseIndexRow, readIndexRows };
+// The document ID a name starts with ("D123-topic" -> "D123", "D123_T004-work" ->
+// "D123_T004"), or null.
+function leadingId(name) {
+  const match = String(name || '').trim().match(LEADING_ID);
+  return match ? match[1] : null;
+}
+
+module.exports = { splitIndexRow, cellId, parseIndexRow, readIndexRows, leadingId };

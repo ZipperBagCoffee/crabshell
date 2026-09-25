@@ -1,8 +1,10 @@
 'use strict';
 // The document-skill flag: which document skill a session has loaded. The skill
-// tracker sets it, the docs guard reads it, and it is cleared when the skill
-// instructions leave the context (compaction, session end). This module has no
-// load-time side effects, so any hook can require it.
+// tracker sets it, the docs guard reads it, and it is cleared when the full skill
+// instructions may no longer be in context: at session end, and at compaction
+// (Claude Code re-attaches only the first 5,000 tokens of each invoked skill, and
+// older skills can be dropped). This module has no load-time side effects, so any
+// hook can require it.
 const fs = require('fs');
 const path = require('path');
 const { STORAGE_ROOT, MEMORY_DIR, SESSION_STATE_DIR, SKILL_ACTIVE_FILE, SKILL_ACTIVE_TTL_MS, DOC_SKILLS, DOC_TYPES } = require('../constants');

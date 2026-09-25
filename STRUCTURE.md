@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.131.0)
+# Crabshell Plugin Structure (v21.132.0)
 
-**Version**: 21.131.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.132.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -62,11 +62,7 @@ crabshell/
 │   ├── memory-summarizer.md          # L3 summary generator (claude-haiku-4-5-20251001)
 │   └── delta-summarizer.md           # Delta content summarizer (claude-haiku-4-5-20251001)
 │
-├── commands/                         # CLI commands
-│   ├── save-memory.md                # Manual save command
-│   ├── load-memory.md                # Memory load command
-│   ├── search-memory.md              # Session search command
-│   ├── clear-memory.md               # Cleanup command
+├── commands/                         # Legacy command files (slash commands are skills since v21.132.0)
 │   └── install-codex.md              # Manual Codex bridge command (v21.94.0)
 │
 ├── hooks/                            # Lifecycle hooks
@@ -158,6 +154,9 @@ crabshell/
 │   ├── _test-d-parent-tickets.js     # Guards, the Codex document tool and phase changes treat D###_T### like P###_T### (v21.130.0)
 │   ├── _test-d-t-skills.js           # Skill instructions for D (with the plan) -> T; existing P/H updates kept (v21.130.0)
 │   ├── _test-index-rows.js           # INDEX rows copied from this repository; every consumer; unfinished ticket sections (v21.131.0)
+│   ├── _test-compaction-skills.js    # Skill bodies within the compaction re-attach budget; docs-guard update-call hint (v21.132.0)
+│   ├── _test-memory-loading.js       # Hand-save path, SessionStart memory notes/dropped parts/knowledge, snippet de-duplication (v21.132.0)
+│   ├── _test-rule-wording.js         # Rule wording from I091 (v21.132.0)
 │   ├── _test-regressing-stale.js     # One regressing staleness decision; each caller's missing-time answer (v21.128.0)
 │   ├── _test-hook-wiring-cost.js     # Synchronous hook processes per tool call; Stop starts no child (v21.125.0)
 │   ├── _test-claude-dispatcher-parity.js # Old separate guards vs the PreToolUse dispatcher (v21.125.0)
@@ -182,7 +181,7 @@ crabshell/
 │
 ├── skills/                           # Slash command skills (22 total)
 │   ├── memory-autosave/SKILL.md      # Auto-trigger memory save
-│   ├── memory-delta/SKILL.md         # Auto-trigger delta summarization (background non-blocking, Phase A/B)
+│   ├── memory-delta/SKILL.md         # Auto-trigger delta summarization (foreground: prepare → summarize → finalize)
 │   ├── memory-rotate/SKILL.md        # Auto-trigger L3 generation
 │   ├── save-memory/SKILL.md          # /crabshell:save-memory
 │   ├── load-memory/SKILL.md          # /crabshell:load-memory
@@ -193,12 +192,15 @@ crabshell/
 │   ├── discussing/SKILL.md           # /crabshell:discussing (D documents)
 │   ├── planning/SKILL.md             # /crabshell:planning (P documents)
 │   ├── ticketing/SKILL.md            # /crabshell:ticketing (T documents)
+│   │   └── references/ticket-template.md # Ticket document template (v21.132.0)
 │   ├── investigating/SKILL.md        # /crabshell:investigating (I documents)
-│   ├── regressing/SKILL.md           # /crabshell:regressing (D→P→T cycles)
+│   ├── regressing/SKILL.md           # /crabshell:regressing (D→T cycles)
+│   │   └── references/                # session-start, anti-patterns, cycle-verification, final-report, document-structure, user-interaction (v21.132.0)
 │   ├── (light-workflow retired v21.112.0 — one-pass work records via hotfix)
 │   ├── verifying/SKILL.md            # /crabshell:verifying (schema-v2 behavioral verification; Step 2a wiring inventory v21.121.0)
 │   │   ├── scripts/run-verify.js      # Portable single-source verification runner (v21.106.0)
-│   │   └── scripts/check-pipeline-wiring.js # Pipeline wiring probe: discover / check --contract (v21.121.0)
+│   │   ├── scripts/check-pipeline-wiring.js # Pipeline wiring probe: discover / check --contract (v21.121.0)
+│   │   └── references/                # wiring-inventory, manifest-entries (v21.132.0)
 │   ├── status/SKILL.md               # /crabshell:status (plugin healthcheck)
 │   ├── lint/SKILL.md                 # /crabshell:lint (Obsidian document lint checks) (v21.70.0)
 │   ├── search-docs/SKILL.md          # /crabshell:search-docs (BM25 document search) (v21.72.0)
@@ -233,7 +235,7 @@ The repository intentionally keeps Claude and Codex runtime surfaces side by sid
 |------|---------|---------|
 | `.claude-plugin/plugin.json` | Claude Code | Claude plugin metadata and install entrypoint |
 | `hooks/hooks.json` | Claude Code | Automatic lifecycle hooks |
-| `commands/` | Claude Code | Slash command definitions |
+| `commands/` | Claude Code | `install-codex.md` only; every other slash command is a skill in `skills/` |
 | `skills/` | Claude Code | Claude-oriented skill instructions |
 | `.agents/plugins/marketplace.json` | Codex | Repo-scoped native marketplace entry (`source.path: "./"`) |
 | `.codex-plugin/plugin.json` | Codex | Codex metadata plus explicit `codex-skills/` and `hooks/codex-hooks.json` paths |
@@ -461,6 +463,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.132.0 | Skills fit the compaction re-attach budget (regressing/ticketing/verifying bodies ≤ 16,000 bytes, long parts in `references/`); docs-guard names the update call; hand saves go through `append-memory.js`; SessionStart memory marked as data, dropped parts named, knowledge listed, snippets skip loaded entries; rule wording from I091; automatic skills hidden, dead pressure bookkeeping and five duplicate commands removed |
 | 21.131.0 | One INDEX row reader (`core/index-rows.js`) shared by log-guard, the ticket reminder, lint, migration and compaction — checks that were off on wikilink rows now work; log-guard checks ticket result sections (done: Execution Results; verified: all), work-log length rule and the never-run previous-cycle check removed; document skill calls move a regressing workflow only when they name it; `migrate-obsidian`/`lint-obsidian` run only when executed |
 | 21.130.0 | Documents are D (the discussion carries the plan) → T: tickets `D###_T###` under a discussion (P###_T### kept), one ticket-ID definition for every guard and the Codex tool, regressing cycles plan in the discussion log, no new P/H documents; retired guards and their tests deleted (97 → 89 checks); review fixes for phase ownership, missing parents and worker scope |
 | 21.129.0 | `--changed` ignores files whose time moved but content did not (the load map stores content hashes; a revert or checkout no longer runs everything); installed contents documented (tests ship with the `./` source, about 38% of tracked bytes) |

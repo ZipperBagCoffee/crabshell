@@ -5,10 +5,8 @@ const path = require('path');
 const {
   getStorageRoot,
   readJsonOrDefault,
-  writeJson,
 } = require('../utils');
-const { tryWithMemoryIndex } = require('./memory-lock');
-const { INDEX_FILE, REGRESSING_STATE_FILE } = require('../constants');
+const { REGRESSING_STATE_FILE } = require('../constants');
 
 function runPostCompactEffects(projectDir, options = {}) {
   const storageRoot = getStorageRoot(projectDir);
@@ -16,7 +14,6 @@ function runPostCompactEffects(projectDir, options = {}) {
   const diagnostics = [];
   const result = {
     activeRegressingState: false,
-    pressureReset: false,
     compactionLogged: false,
     diagnostics,
   };
@@ -35,22 +32,6 @@ function runPostCompactEffects(projectDir, options = {}) {
   }
 
   try {
-    const indexPath = path.join(memoryDir, INDEX_FILE);
-    const outcome = tryWithMemoryIndex(memoryDir, () => {
-      const index = readJsonOrDefault(indexPath, null);
-      if (index && index.feedbackPressure && typeof index.feedbackPressure.lastShownLevel === 'number') {
-        index.feedbackPressure.lastShownLevel = 0;
-        writeJson(indexPath, index);
-        result.pressureReset = true;
-        diagnostics.push('feedbackPressure.lastShownLevel reset to 0');
-      }
-    });
-    if (!outcome.ran) diagnostics.push('index lock busy, skipping lastShownLevel reset (fail-open)');
-  } catch (error) {
-    diagnostics.push(`lastShownLevel reset failed: ${error.message}`);
-  }
-
-  try {
     const logsDir = path.join(memoryDir, 'logs');
     fs.mkdirSync(logsDir, { recursive: true });
     const logPath = path.join(logsDir, 'compaction.log');
@@ -66,11 +47,8 @@ function runPostCompactEffects(projectDir, options = {}) {
   return result;
 }
 
-function validatePostCompactEffects(result, options = {}) {
+function validatePostCompactEffects(result) {
   if (!result || result.compactionLogged !== true) throw new Error('PostCompact compaction log was not written.');
-  if (options.requirePressureReset === true && result.pressureReset !== true) {
-    throw new Error('PostCompact pressure re-injection state was not reset.');
-  }
   return true;
 }
 

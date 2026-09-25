@@ -36,7 +36,7 @@ const suites = [
   },
   {
     file: '_test-codex-compaction.js',
-    observations: [/wrong event and missing context mutations/, /missing reset and missing log mutations/],
+    observations: [/wrong event and missing context mutations/, /missing log mutation is rejected/],
   },
   {
     file: '_test-alternating-host-continuity.js',
