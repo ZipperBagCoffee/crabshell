@@ -1,6 +1,6 @@
 ---
 name: regressing
-description: "Runs convergence-based iterative optimization cycles wrapped by a single Discussion. Use when a topic needs repeated improvement through plan-execute-verify-feedback loops. Invoke with /regressing \"topic\" N (N = cycle cap, not target). Cycles continue until convergence or cap. Not for one-shot tasks — do the work directly and record it with hotfix instead."
+description: "Runs convergence-based iterative optimization cycles wrapped by a single Discussion. Use when a topic needs repeated improvement through plan-execute-verify-feedback loops. Invoke with /regressing \"topic\" N (N = cycle cap, not target). Cycles continue until convergence or cap. Not for one-shot tasks — use a discussion with a Plan and one ticket instead."
 ---
 
 # Regressing Skill
@@ -90,7 +90,7 @@ After each /ticketing invocation, update regressing state:
 - **Agent flow:** The parent owns each phase and delegates only bounded independent work when risk or latency justifies it. No worker count or WA:RA pairing is a completion condition.
 - Parent executes in-scope work and appends execution evidence to the T document. Delegation is optional and bounded by the ticket contract.
   - **Framing:** Any delegated prompt follows ticketing framing and verification standards, names exact scope and non-goals, and forbids fan-out.
-- Optional independent review, the Verification Tool Check (`/verifying run`), and the parent's final verification — Correctness, Coherence (at least 2 methods), Improvement Opportunities, the Evidence Gate, the independent-evidence cross-reference and Next Direction — follow `references/cycle-verification.md`; read it before each ticket's final verification. Default posture: skepticism; a worker/reviewer claim is never the completion condition.
+- Optional independent review, the Verification Tool Check (`/verifying run`), and the parent's final verification — Correctness, Coherence (at least 2 methods), Improvement Opportunities, the Evidence Gate, the independent-evidence cross-reference, Intent Fidelity (the result against D's IA and the cycle plan) and Next Direction — follow `references/cycle-verification.md`; read it before each ticket's final verification. Default posture: skepticism; a worker/reviewer claim is never the completion condition.
 
 After ticket execution completes, update regressing state:
 - Set `"phase": "feedback"`, `"lastUpdatedAt": "{ISO}"` using: `"{NODE_PATH}" -e "const f='{PROJECT_DIR}/.crabshell/memory/regressing-state.json';const s=JSON.parse(require('fs').readFileSync(f,'utf8'));s.phase='feedback';s.lastUpdatedAt=new Date().toISOString();require('fs').writeFileSync(f,JSON.stringify(s,null,2))"`
@@ -102,6 +102,7 @@ After ticket execution completes, update regressing state:
   (1) Specific problems diagnosed with evidence from this cycle
   (2) Root cause hypothesis
   (3) Recommended focus with rationale
+  (4) Every partial or departed Intent Fidelity row — the deviation from D
   If Next Direction is a generic TODO list without cycle-specific observations → REJECT and require re-evaluation.
 - Pass the validated feedback into the next cycle plan entry's Context
 - **Document-first rule:** Record the feedback transfer in the D document's Discussion Log (via `/discussing`) BEFORE beginning the next cycle plan. The document update is the primary action; conversation narration is secondary.

@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.134.0)
+# Crabshell User Manual (v21.135.0)
 
 ## Why Do You Need This?
 
@@ -139,7 +139,7 @@ All available skills (slash commands):
 | `/crabshell:planning P001` | Append to an existing Plan document (P); new plans are written into the discussion |
 | `/crabshell:ticketing D001 "title"` | Create or update a Ticket (T) under a discussion (`D001_T001`; `P001` for an existing plan) |
 | `/crabshell:investigating "topic"` | Run a multi-agent Investigation (I) |
-| `/crabshell:hotfix "description"` | Record directly-performed one-pass work as a discussion with one ticket (Problem/Fix/Verification in the ticket); `/crabshell:hotfix H001` appends to an existing H record |
+| `/crabshell:hotfix "description"` | One-pass work: a discussion whose Plan you confirm, one ticket with the fix in its Implementation Details, then the change; `/crabshell:hotfix H001` appends to an existing H record |
 
 ### Workflows
 
@@ -177,9 +177,9 @@ Crabshell includes a structured document system for organizing complex work.
 
 | Type | Name | Purpose |
 |------|------|---------|
-| **D** | Discussion | Explore a topic, capture decisions, frame the problem, and carry the plan as log entries |
-| **T** | Ticket | Specific work item under a Discussion (`D001_T001`) |
-| **P** | Plan | Existing plans only — new plans are log entries in the Discussion |
+| **D** | Discussion | Explore a topic, capture decisions, frame the problem, and carry the plan in its `## Plan` (how it will be built — confirmed by you before tickets) |
+| **T** | Ticket | Specific work item under a Discussion (`D001_T001`): its part of the plan in `## Implementation Details`, and the result compared with the Discussion in `## Intent Fidelity` |
+| **P** | Plan | Existing plans only — new plans go into the Discussion's `## Plan` |
 | **I** | Investigation | Independent multi-agent research on a topic |
 
 ### Hierarchy
@@ -190,6 +190,7 @@ I (Investigation) — independent, not part of the D→T chain
 Existing P (Plan) and H (Hotfix) documents stay readable and searchable
 ```
 
+- A new ticket under a Discussion with no plan, or with empty Implementation Details, is blocked (the Codex document tool refuses it too); a ticket cannot be marked verified while its Intent Fidelity table is empty.
 - A Discussion is concluded by its final report (or an explicit status change), never automatically by its tickets. For existing plans the old cascade still applies: all Tickets verified → Plan done → linked Discussion concluded.
 - Documents are stored in `docs/` (local only, not committed to git).
 - Each document has a log section that tracks all work done against it.
@@ -198,13 +199,13 @@ Existing P (Plan) and H (Hotfix) documents stay readable and searchable
 
 Use `/crabshell:regressing "topic"` for tasks that need multiple rounds of refinement:
 - Creates a single Discussion (D) as wrapper with measurable `## Convergence Criteria`
-- Runs one cycle at a time: a `Cycle N plan` entry in the Discussion, then Tickets under the Discussion, until the result converges
+- Runs one cycle at a time: a `Cycle N plan` entry in the Discussion (the same fields as a Plan), then Tickets under the Discussion; each ticket compares its result with the Discussion, and deviations carry into the next cycle, until the result converges
 - Each cycle's scope is determined by the previous cycle's verification results, not pre-allocated
 - Prints a ready-to-paste `/goal` line — start host goal mode (Claude Code 2.1.139+ or Codex CLI 0.128.0+) and the host keeps the session running until the D's Convergence Criteria are met or the cycle cap is reached
 
 ### One-Pass Tasks
 
-For a standalone task that does not need iteration, do the work directly and record it as a discussion with one ticket (`/crabshell:hotfix "description"` walks through it; Problem/Fix/Verification go into the ticket). Existing H documents stay readable and accept log entries through `/crabshell:hotfix H001`. The former `/crabshell:light-workflow` skill was retired in v21.112.0 — existing W worklogs under `.crabshell/worklog/` remain readable history, and in-flight W documents from earlier versions are still honored by workflow restart context.
+For a standalone task that does not need iteration, plan it in a discussion first (a short Plan you confirm), create one ticket, then make the change (`/crabshell:hotfix "description"` walks through it; the fix goes into the ticket's Implementation Details and the check into its results). Existing H documents stay readable and accept log entries through `/crabshell:hotfix H001`. The former `/crabshell:light-workflow` skill was retired in v21.112.0 — existing W worklogs under `.crabshell/worklog/` remain readable history, and in-flight W documents from earlier versions are still honored by workflow restart context.
 
 ---
 
@@ -298,8 +299,8 @@ Guards run inside the Claude PreToolUse, PostToolUse and Stop hooks (one process
 
 | Guard | What It Protects Against |
 |-------|------------------------|
-| `docs-guard.js` | Writes to `.crabshell/` document folders without this session's document skill loaded (invoke the matching skill — for an existing document, in update mode with its ID); the flag clears at compaction and session end |
-| `log-guard.js` | Marking a ticket done in INDEX.md while its Execution Results is still template text, or verified while any result section is (other documents are not checked) |
+| `docs-guard.js` | Writes to `.crabshell/` document folders without this session's document skill loaded (invoke the matching skill — for an existing document, in update mode with its ID); the flag clears at compaction and session end. A new discussion ticket also needs the discussion's Plan and its own Implementation Details (v21.135.0) |
+| `log-guard.js` | Marking a ticket done in INDEX.md while its Execution Results is still template text, or verified while any result section is — Intent Fidelity included since v21.135.0 (other documents are not checked) |
 | `verify-guard.js` | Writing "Final Verification" results to ticket files without actually running `/verifying` first. Hybrid: Edit always enforces; Write only enforces on existing files (new ticket creation is allowed) |
 | `path-guard.js` | Bash commands that write into another project's `.crabshell` (redirects, rm/mv/mkdir/tee, cp/rsync/ln destinations, sed -i, find -delete, xargs rm, tar/curl/dd, powershell/cmd, code that writes). Reading another project's `.crabshell` is allowed with a notice; prose, grep patterns, heredoc text, temp folders and unknown variables are never blocked (v21.125.0). Also: Edit or shrinking Write on `logbook.md`, direct skill-flag writes. Not covered: Write/Edit tool calls into another project, values from earlier commands |
 | `web-guard.js` | Built-in WebFetch/WebSearch small-model summarization (Anthropic docs: "lossy by design"; hallucinated citations in research). WebFetch is blocked with ready-to-run raw-fetch commands for the same URL; WebSearch is redirected to a search MCP this project can use (user-wide, this project's `~/.claude.json` entry, or `.mcp.json`; provider names such as tavily/brave/exa must be a whole word of the server name, v21.125.0) or, when none exists, allowed with a "snippets are pointers, fetch before citing" warning so machines without a search MCP never lose search entirely. Modes: `block` (default) / `warn` / `off` via `webGuard` in config.json (v21.114.0) |
@@ -423,11 +424,11 @@ The eight-field task contract, risk boundary for user questions, bounded worker 
 
 ### Declaring verification commands
 
-Parent evidence recognizes commands declared in `.crabshell/verification/manifest.json` (`tools` or non-manual `entries`) and the package's `scripts.test` command chain. Declare custom check names there instead of relying on a filename containing `test`. A single invocation must match; compound shell commands and printed command names are not accepted as check identity. Entry assertions also apply; forbidden-change assertions require the declared runner because a post-tool event cannot reconstruct their before-state.
+Parent evidence recognizes commands declared in `.crabshell/verification/manifest.json` (`tools` or non-manual `entries`) and the package's `scripts.test` command chain. Declare custom check names there instead of relying on a filename containing `test`. A single invocation must match; compound shell commands and printed command names are not accepted as check identity. Since v21.135.0 a check also counts with one `cd <dir> &&` before it (the folder where the check is declared), output redirection after it (`> file`, `>> file`, `2>&1`, `&> file`), or the `rtk` wrapper, and package.json `test` also counts as `pnpm test`, `yarn test` or `bun run test`; pipes, `;` and `||` stay unaccepted because the exit status would come from another command, and the block reason names the accepted commands and forms. Entry assertions also apply; forbidden-change assertions require the declared runner because a post-tool event cannot reconstruct their before-state.
 
 Since v21.126.0 the commit gate is unlocked only by a **required** check: a manifest `tools` command such as `test` (every check) or `changed` (`run-verify.js --changed`, only the checks the changed files touch), or package.json `test`. A passing single entry is still evidence for that entry, but it neither unlocks nor re-locks the gate. This repository's manifest discovers every `scripts/_test-*.js` with a `discover` entry. `changed.global` lists the files whose change runs everything (here `hooks/*.json`, `scripts/constants.js`, `scripts/utils.js`, the plugin manifests). `--changed` also runs everything when the load map (`test-map.json`, written by a passing full run) is missing or older than a file it recorded. Since v21.128.0 recorded files that git ignores (runtime state such as `.crabshell/memory/`) are left out of that age check, so a running session's memory writes do not force a full run; the manifest, runner and test files are always checked. See the verifying skill for the selection rules and their blind spots.
 
-A manifest with only single entries and no package.json `test` can never unlock a commit. Since v21.127.0 the block reason says so and names the fix: declare a full check as `tools.test` (`node .crabshell/verification/run-verify.js`) or add a package.json `test` script.
+Since v21.135.0 a manifest that has its runner (`.crabshell/verification/run-verify.js`) counts `node .crabshell/verification/run-verify.js` as its full check even without `tools` (`--changed` is not the full check). A manifest with only single entries, no runner and no package.json `test` can never unlock a commit; the block reason says so and names the fix: declare a full check as `tools.test` (`node .crabshell/verification/run-verify.js`) or add a package.json `test` script.
 
 Claude's captured successful `PostToolUse` Bash object has no exit-code field. An explicit code overrides success inference; failure, interruption, and running indicators prevent it. Claude failures arrive as a top-level `error` plus `is_interrupt`. The captured Codex CLI PostToolUse contains only output text: `host-tool-result.js` obtains an explicit `exit_code` from the matching completed command in its transcript. Session, turn, command ID and cwd must agree; missing or conflicting evidence stays unconfirmed. Captures and provenance are under `scripts/fixtures/hook-payloads/native/`.
 

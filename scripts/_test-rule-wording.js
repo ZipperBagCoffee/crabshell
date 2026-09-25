@@ -31,6 +31,27 @@ report.check('W10 git is the record: missing git or repository is set up after c
   /\*\*Git is the record of changes:\*\* if git is not installed or the project is not a git repository, set it up — install git or run `git init` — after confirming with the user/.test(RULES)
   && /before saying what changed, when, or why[^.]*check the git history first: find the commit that changed that text \(`git log -S`/.test(RULES)
   && /Files git does not track[^.]*`<file>\.bak`/.test(RULES) && !/Non-git files →/.test(RULES) && !/say so — its history/.test(RULES));
+// v21.135.0 (D123): plan in the discussion before building, not "record after doing";
+// the per-prompt checklist says it, because RULES in CLAUDE.md alone did not get it done.
+report.check('W11 rules: work that changes files is planned in a discussion first, the user confirms, tickets carry the specifics, the result is compared',
+  !/record after doing/.test(RULES) && /work that changes files starts in a discussion: its Plan settles how[^.]*the user confirms it; each ticket carries that plan's specifics[^.]*compare the result with the discussion's Intent Anchor and Plan/.test(RULES));
+report.check('W12 the per-prompt checklist names the discussing and ticketing skills before the change and the comparison after it',
+  /Work that changes files starts in a discussion: its Plan \(discussing skill\)[^\n]*user confirms it, then its ticket \(ticketing skill\), then the change; before calling it done, compare the result with the discussion\./.test(COMPRESSED_CHECKLIST));
+{
+  // The line reaches the model: run the prompt hook on a temp project, question and execution turns.
+  const os = require('os');
+  const { spawnSync } = require('child_process');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rule-wording-hook-'));
+  fs.mkdirSync(path.join(dir, '.crabshell', 'memory'), { recursive: true });
+  const outputs = ['이거 됐나?', '이 버그 고쳐줘'].map(prompt => {
+    const r = spawnSync(process.execPath, [path.join(__dirname, 'inject-rules.js')], { cwd: dir, encoding: 'utf8',
+      env: { ...process.env, CLAUDE_PROJECT_DIR: dir, CRABSHELL_BACKGROUND: '', HOOK_DATA: '' },
+      input: JSON.stringify({ cwd: dir, session_id: 'wording-test', hook_event_name: 'UserPromptSubmit', prompt }) });
+    try { return JSON.parse(r.stdout).hookSpecificOutput.additionalContext; } catch { return ''; }
+  });
+  report.check('W13 the prompt hook output carries the plan-first line on a question turn and an execution turn',
+    outputs.every(context => context.includes('Work that changes files starts in a discussion')), outputs.map(o => o.length).join(','));
+}
 const rule5 = (regressing.match(/^5\. \*\*[^\n]*/m) || [''])[0];
 report.check('W9 regressing Rule 5: a limitation that changes the result is reported at once, work continues',
   /changes what the user will get/.test(rule5) && /one line/.test(rule5) && /keep working/.test(rule5), rule5.slice(0, 200));

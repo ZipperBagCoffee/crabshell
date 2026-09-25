@@ -27,16 +27,16 @@ Then add a `## Convergence Criteria` section to the D document. Every item must 
 
 Goal mode keeps Codex looping plan-execute-verify cycles until its evaluator confirms the D is concluded. Starting it is the user's choice; without it, continue cycles manually per step 4. Because the evaluator judges only by reading the D document, write each cycle's results into the documents before ending a cycle.
 
-2. For each cycle, append a "Cycle N plan" entry to the D document's log: intent, scope, steps, the evidence you inspected, and an intent check against the Intent Anchor. There is no separate plan document.
+2. For each cycle, append a "Cycle N plan" entry to the D document's log with the same fields as a discussion's `## Plan`: context from the previous cycle, approach, each file → what changes, order, rejected alternatives and why, risks, the evidence you inspected, and an intent check against the Intent Anchor (approve or reject). There is no separate plan document.
 
 3. Create one or more tickets under the discussion:
 
 ```bash
-node "{SKILL_DIR}/scripts/codex-docs.js" ticket "ticket title" --parent="D001" --project-dir="{PROJECT_ROOT}"
+node "{SKILL_DIR}/scripts/codex-docs.js" ticket "ticket title" --parent="D001" --details="this ticket's part of the cycle plan" --project-dir="{PROJECT_ROOT}"
 ```
 
 Ticket IDs continue within the discussion (`D001_T001`, `D001_T002`, …) across cycles; the D log's cycle entries record which tickets belong to which cycle.
 
-4. Execute, verify, then write the verification gaps and next direction into the ticket and into the next cycle's plan entry in the D log before starting another cycle.
+4. Execute, verify, then compare the result with the discussion: fill each ticket's `## Intent Fidelity` table (one row per Intent Anchor item and cycle-plan decision it touches — result, deviation none/partial/departed, evidence, reason or user approval). A ticket can pass its own checks and still drift from the discussion; a departure without the user's approval keeps it from verified. Write the verification gaps, every partial or departed row, and the next direction into the ticket and into the next cycle's plan entry in the D log before starting another cycle.
 
 Do not pre-partition future cycles. Each cycle should respond to the previous cycle's verification results.

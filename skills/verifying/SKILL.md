@@ -157,6 +157,17 @@ Type: `structural` = static check (grep, file read, code inspection)
 Verification Results: PASS: N / FAIL: N / Manual: N / Total: N
 ```
 
+### Step 5: Against the discussion's Intent Anchor
+
+When the run serves a discussion (a ticket under `D{NNN}`, or a regressing cycle), passing entries are not yet proof that the discussion's goals were met. Read that discussion's Intent Anchor and map the results onto it:
+
+```
+| IA-n (from the discussion) | Entries / evidence that prove it | Covered? |
+|---|---|---|
+```
+
+An IA item that no passing entry or other tool output proves is listed as "no evidence" — say so in the ticket's Intent Fidelity table and in the summary, and add an entry or a direct observation for it before calling the goal met. Manifest `ia` fields are outcome prose, not the discussion's IA numbers, so the mapping is this step's judgement, not the runner's.
+
 ---
 
 ## Update Mode

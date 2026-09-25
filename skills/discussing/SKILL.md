@@ -109,6 +109,17 @@ Mapping Type: `direct` (user explicitly stated) or `inferred` (derived from cont
 {If regressing active (regressing-state.json active===true): auto-filled measurable items — one per IA item with its verification method (documented evidence, command exit, numeric threshold) + "Final Report written and D status: concluded". Must be checkable by the host goal evaluator by reading documents or running a command.
 If NOT regressing: user's answer — observable conditions for "done", or "Not applicable — non-regressing discussion."}
 
+## Plan
+{How it will be built, settled here before any ticket. If it is not known yet, write one line "(placeholder — plan before tickets)" and fill it once the discussion settles it.}
+**Approach:** {how it will be built, and why this way}
+**Changes (file → what):** {each file → the function/section → what changes; one line per ticket-sized part}
+**Order:** {which part first, and what depends on what}
+**Rejected alternatives:** {each alternative considered → why not}
+**Risks:** {what could break, and how it will be checked}
+**Analysis:** {the evidence inspected — files, functions, measurements}
+**Intent Check:** {every IA item maps to a change; at least one risk; approve or reject}
+**User confirmation:** {the user's words approving this plan, with date — or "pending"}
+
 ## Discussion Log
 
 ---
@@ -129,7 +140,7 @@ Note: `{slug}` is the kebab-case portion of the document filename. Obtain it by 
 
 ### Step 5: Confirm to user
 
-Tell the user: "Created D{NNN}. Discussion is open. Continue the dialogue and I'll record it."
+Tell the user: "Created D{NNN}. Discussion is open." Then name the next step: settle the `## Plan` (how it will be built), show it to the user and record their confirmation under **User confirmation** — only then create tickets with `/ticketing D{NNN} "title"`. Work that changes files does not start before that.
 
 ---
 
@@ -173,10 +184,10 @@ If the entry includes a status change, update the status column in `.crabshell/d
 
 ## Rules
 
-1. **NEVER modify existing content** in a discussion document. Only append to the Discussion Log section.
+1. **NEVER modify existing content** in a discussion document. Only append to the Discussion Log section. One exception: the `## Plan` section may be filled and revised until the first ticket exists; after that, a change of plan is a `Plan revision` log entry (what changed, why, and the user's confirmation).
 2. **Timestamps** use local time: `[YYYY-MM-DD HH:MM]`
 3. **INDEX.md** is the only file where existing content may be modified (status column updates).
-4. **The discussion carries the plan.** A plan (in regressing, each `Cycle {n} plan`) is a log entry in this document with Intent, Context, Scope, Steps, Analysis and Intent Check; tickets name this discussion as their parent (`D{NNN}_T{NNN}`, created with `/ticketing D{NNN} "title"`) and are listed in INDEX.md's Related column. Discussions that link to an existing plan keep "→ See [[P{NNN}-{slug}|P{NNN}]]" entries.
+4. **The discussion carries the plan.** The `## Plan` section says how the work will be built — approach, files and functions, order, rejected alternatives, risks, analysis, intent check — and the user confirms it before any ticket; each ticket's `## Implementation Details` carries that plan's specifics for its part, and each ticket's `## Intent Fidelity` compares the result with this discussion. In regressing, each `Cycle {n} plan` log entry uses the same fields (plus Context from the previous cycle) and is approved by its Intent Check. Tickets name this discussion as their parent (`D{NNN}_T{NNN}`, created with `/ticketing D{NNN} "title"`) and are listed in INDEX.md's Related column. Discussions that link to an existing plan keep "→ See [[P{NNN}-{slug}|P{NNN}]]" entries.
 5. **No parent transition while children incomplete:** Do not transition D to `concluded` while any of its tickets (`D{NNN}_T{NNN}`) is neither `verified` nor `abandoned`, or while a related existing plan is not `done`. Exception: a regressing Final Report that records the cycle cap or a user stop concludes the D and lists the tickets still open.
 6. **Concluding:** A discussion that is itself its tickets' parent is never concluded by the ticketing cascade — it concludes with its Final Report (regressing) or an explicit status change entry. Only a discussion linked to an existing plan is auto-concluded when that plan becomes `done`.
 7. **Mandatory work log:** After performing any work related to this document, append a log entry to the Discussion Log section using the existing format (`### [{YYYY-MM-DD HH:MM}] {entry_type}`). This applies regardless of whether this skill was explicitly invoked — if the work touched or advanced this discussion's purpose, log it.

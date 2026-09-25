@@ -158,9 +158,12 @@ function handleGate(hookData, projectDir) {
         // this block could never clear: say what to declare.
         return { exitCode: 2, reason: `Git commit blocked: the project declares no full check, and single manifest entries do not unlock commits. Edited files: [${files}]. Declare a full check as tools.test in .crabshell/verification/manifest.json ("tools": { "test": "node .crabshell/verification/run-verify.js" }) or as a package.json "test" script, run it, then commit.` };
       }
+      // Name what counts, so a check run in an unaccepted form is not repeated blindly.
+      const full = [...new Set(declaredCommands(projectDir).filter(declaration => declaration.source !== 'entry')
+        .map(declaration => declaration.tokens.join(' ')))].slice(0, 3);
       const output = {
         decision: 'block',
-        reason: `Git commit blocked: current source has no passing required check. Edited files: [${files}]. Run the declared check and inspect its result before committing.`
+        reason: `Git commit blocked: current source has no passing required check. Edited files: [${files}]. Run ${full.map(command => `\`${command}\``).join(' or ')} as the whole command and inspect its result before committing — \`cd <dir> &&\` before it and \`> file\` / \`2>&1\` after it are accepted; pipes (\`|\`), \`;\` and \`||\` are not, because the exit status would come from the other command.`
       };
       return { exitCode: 2, reason: output.reason };
     }

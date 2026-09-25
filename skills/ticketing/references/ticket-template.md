@@ -24,6 +24,9 @@ tags: []
 Included: {included}
 Excluded: {excluded}
 
+## Implementation Details
+{This ticket's part of the discussion's Plan, specific enough to build from this ticket alone: each file → function/section → what changes; formats, names, order.}
+
 ## Acceptance Criteria
 - [ ] {criterion 1}
 - [ ] {criterion 2}
@@ -97,6 +100,12 @@ This step is procedural and happens every time.
 - **Document-first rule:** Write your evaluation to `## Final Verification` in the T document FIRST using Write/Edit tool. After the document is updated, provide a brief summary to the user. The document update is the primary output; the conversation summary is secondary.
 - Re-run decisive observations directly; do not accept a worker/reviewer claim as completion evidence.
 - Catch cases where "verification was claimed but not actually performed"
+- **Intent Fidelity (BLOCKING — the result against the discussion):** Before the 4-factor evaluation, write `## Intent Fidelity`: one row per discussion item this ticket touches — each IA item and each Plan decision in its Implementation Details:
+  ```
+  | Discussion item (IA-n / Plan decision) | Result | Deviation (none/partial/departed) | Evidence | Reason / user approval |
+  |---|---|---|---|---|
+  ```
+  Evidence is tool output or a file/line, as in Verification Results. A row marked departed without the user's approval means the ticket is not verified: fix the result, or ask the user and record their answer. In regressing, every partial or departed row goes into Next Direction. The log guard blocks `verified` while this section still holds its placeholder.
 - **Evidence Gate (BLOCKING — check BEFORE evaluating content):**
   Agents can generate text that looks like verification without actual observation. Apply this gate to parent and delegated evidence alike.
   □ Does each verification item have Prediction, Observation, AND Gap fields?
@@ -137,6 +146,9 @@ This step is procedural and happens every time.
 
 ## Verification Results
 (placeholder — parent writes direct P/O/G evidence; append optional independent findings when used)
+
+## Intent Fidelity
+(placeholder — parent compares the result with the discussion's Intent Anchor and Plan here)
 
 ## Final Verification
 (placeholder — parent writes the final evaluation here)

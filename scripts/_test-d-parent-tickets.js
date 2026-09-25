@@ -58,10 +58,12 @@ for (const parent of ['P001', 'D001']) {
 // The Codex document tool creates discussion-parent tickets; the plan form stays.
 {
   const dir = project('codex-docs');
-  doc(dir, 'discussion', 'D001-topic.md', '# D001 - topic\n');
+  // Contract change (v21.135.0): a discussion-parent ticket needs the discussion's
+  // plan and --details (its part of it); _test-plan-first-guards.js covers refusals.
+  doc(dir, 'discussion', 'D001-topic.md', '# D001 - topic\n\n## Plan\n**Approach:** probe\n');
   doc(dir, 'plan', 'P001-plan.md', '# P001 - plan\n');
   const run = args => spawnSync(process.execPath, [path.join(__dirname, 'codex-docs.js'), ...args, `--project-dir=${dir}`], { cwd: dir, encoding: 'utf8', windowsHide: true });
-  const d = run(['ticket', 'Discussion child', '--parent=D001']);
+  const d = run(['ticket', 'Discussion child', '--parent=D001', '--details=scripts/a.js → probe']);
   const dFile = fs.readdirSync(path.join(dir, CRAB, 'ticket')).find(f => f.startsWith('D001_T001-'));
   report.check('C1 codex-docs creates D001_T001 for --parent=D001', d.status === 0 && Boolean(dFile), `status=${d.status} ${d.stderr.slice(0, 160)}`);
   const p = run(['ticket', 'Plan child', '--plan=P001']);

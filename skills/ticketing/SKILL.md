@@ -20,7 +20,7 @@ When arguments are a parent ID (D### or P###) + title string:
 
 ### Step 1: Validate the parent
 
-- **Discussion parent (`D{NNN}`):** read `.crabshell/discussion/INDEX.md` and find the row. If it is missing → error: "Discussion {ID} does not exist." If its status is `concluded` or `abandoned` → warn before creating. Its latest plan entry (for regressing, the `Cycle {n} plan` log entry) should hold the Analysis and Intent Check before tickets are created.
+- **Discussion parent (`D{NNN}`):** read `.crabshell/discussion/INDEX.md` and find the row. If it is missing → error: "Discussion {ID} does not exist." If its status is `concluded` or `abandoned` → warn before creating. Then read the discussion's plan: its `## Plan` section (in regressing, the latest `Cycle {n} plan` log entry). If the plan is missing or still `(placeholder`, or — outside regressing — its **User confirmation** is missing or "pending" → STOP: tell the user the Plan comes first, write it with `/discussing D{NNN}`, show it and record their confirmation, then create the ticket. The docs guard also blocks a new ticket under a discussion with no plan.
 - **Plan parent (`P{NNN}`, existing plans):** read `.crabshell/plan/INDEX.md` and find the row. If it is missing → error: "Plan {ID} does not exist." If its status is `draft` → warn: "Plan {ID} is not yet approved. Create ticket anyway? (not recommended)". If `approved` or `in-progress` → proceed.
 
 ### Step 2: Ensure ticket folder exists
@@ -65,7 +65,7 @@ Ask the user:
 
 Then create `.crabshell/ticket/{PARENT}_T{NNN}-{slug}.md`:
 
-Read `references/ticket-template.md` (next to this file) and create the document from it, filling every `{…}` field. The template carries the execution flow each ticket records (Steps A, B, B.5, B.9, C): the parent owns implementation, decisive verification, and completion; delegation is optional and bounded.
+Read `references/ticket-template.md` (next to this file) and create the document from it, filling every `{…}` field. Fill `## Implementation Details` from the discussion's plan: this ticket's part of it, specific enough to build from the ticket alone — each file → function/section → what changes, formats, order. A new ticket with empty or "TBD" Implementation Details is blocked. The template carries the execution flow each ticket records (Steps A, B, B.5, B.9, C): the parent owns implementation, decisive verification, and completion; delegation is optional and bounded.
 
 ### Step 5: Update ticket INDEX.md
 
@@ -148,7 +148,7 @@ If ticket status → `verified`:
 
 ## Rules
 
-1. **NEVER modify existing content.** Only append to Log section and agent result sections (Execution Results, Verification Results, Final Verification).
+1. **NEVER modify existing content.** Only append to Log section and agent result sections (Execution Results, Verification Results, Intent Fidelity, Final Verification).
 2. **Acceptance criteria checkboxes:** Never modify. Completion tracked in Log entries.
 3. **`done` ≠ `verified`:** Work completion and verification are separate events with separate log entries.
 4. **Verification at creation:** The Verification section MUST be filled at ticket creation time (before work starts). This is the TDD principle — define how you'll check before you build.
@@ -157,7 +157,7 @@ If ticket status → `verified`:
 7. **Plan propagation (plan parents only):** When all tickets of a plan are verified → auto-update the plan status. Discussion parents are not propagated.
 8. **1 Ticket = 1 independent execution cycle:** Each ticket is executed as a separate, independent agent cycle. Never batch multiple tickets into a single execution. 3 tickets = 3 separate executions.
 9. **Mandatory work log:** After performing any work related to this document, append a log entry to the Log section using the existing format (`### [{YYYY-MM-DD HH:MM}] {entry_type}`). This applies regardless of whether this skill was explicitly invoked — if the work touched or advanced this ticket's purpose, log it.
-10. **Mandatory append of results:** The parent must append execution, direct verification, and final evaluation to the corresponding T sections. If delegation/review was used, its evidence and the parent's disposition must also be recorded. Verification not recorded in the document is treated as not performed. Before completion, the parent reads the T document and confirms all three required sections no longer contain `placeholder`; optional review notes are not a completion gate.
+10. **Mandatory append of results:** The parent must append execution, direct verification, and final evaluation to the corresponding T sections. If delegation/review was used, its evidence and the parent's disposition must also be recorded. Verification not recorded in the document is treated as not performed. Before completion, the parent reads the T document and confirms the four required sections (Execution Results, Verification Results, Intent Fidelity, Final Verification) no longer contain `placeholder` — the log guard blocks `verified` otherwise; optional review notes are not a completion gate.
 11. **Exhaustive verification standard:** Verification follows the VERIFICATION-FIRST principle in RULES (Predict → Execute → Compare). When no project verification tool exists, invoke the 'verifying' skill. Direct → indirect → explicitly "unverified".
 12. **Regressing context transfer:** In the regressing loop, this T document's `## Final Verification > Next Direction` content is passed to the next cycle plan entry's Context (in the D log; for sessions still using plans, the next P document's Context). The Orchestrator must explicitly perform this transfer. (D is the top-level container and does not receive per-cycle context.)
 13. **Regressing state update:** If `.crabshell/memory/regressing-state.json` exists and is active, and the ticket belongs to that workflow (its parent is the state's `discussion` or `planId`), update it after ticket creation using: `"{NODE_PATH}" -e "const f='{PROJECT_DIR}/.crabshell/memory/regressing-state.json';const s=JSON.parse(require('fs').readFileSync(f,'utf8'));s.ticketIds.push('{T-ID}');s.lastUpdatedAt=new Date().toISOString();require('fs').writeFileSync(f,JSON.stringify(s,null,2))"`. Phase transition is handled automatically by the PostToolUse hook. Only applies when regressing-state.json exists — standalone ticketing usage is unaffected. Tickets for other work (a one-pass record in another session) are not added to the cycle.
