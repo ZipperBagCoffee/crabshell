@@ -38,6 +38,44 @@ function commandTokens(command) {
   return tokens.length ? tokens : null;
 }
 
+// A check run counts in the forms that keep its own exit status (v21.135.0): one
+// leading `cd <dir> &&`, trailing output redirection (`> file`, `2>&1`), and the
+// `rtk` pass-through wrapper that some setups put before every command. Pipes, `;`,
+// `||` and other chaining stay unaccepted: the exit status would belong to another
+// command, so a failing check could look like a pass.
+const LEADING_CD = /^\s*cd\s+(?:"([^"]+)"|'([^']+)'|([^\s"'&|;<>]+))\s*&&\s*/;
+const TRAILING_REDIRECT = /\s+(?:\d?>>?|&>>?)\s*(?:&\d|"[^"]*"|'[^']*'|[^\s"'&|;<>]+)\s*$/;
+const PASS_THROUGH = new Set(['rtk']);
+
+function hostPath(dir) {
+  // Git Bash spells C:\x as /c/x.
+  return process.platform === 'win32' && /^\/[a-z]\//i.test(dir) ? `${dir[1]}:${dir.slice(2)}` : dir;
+}
+
+function checkInvocation(command, cwd) {
+  if (typeof command !== 'string') return null;
+  let rest = command;
+  let dir = null;
+  const cd = rest.match(LEADING_CD);
+  if (cd) {
+    dir = path.resolve(cwd || '.', hostPath(cd[1] || cd[2] || cd[3]));
+    rest = rest.slice(cd[0].length);
+  }
+  for (let previous = null; previous !== rest;) {
+    previous = rest;
+    rest = rest.replace(TRAILING_REDIRECT, '');
+  }
+  const tokens = commandTokens(rest);
+  if (!tokens) return null;
+  while (tokens.length > 1 && PASS_THROUGH.has(path.basename(tokens[0].replace(/\\/g, '/')).replace(/\.(exe|cmd)$/i, ''))) tokens.shift();
+  return { tokens, cwd: dir || cwd, changedDir: Boolean(dir) };
+}
+
+function samePath(a, b) {
+  const norm = value => path.resolve(value).replace(/[\\/]+$/, '');
+  return process.platform === 'win32' ? norm(a).toLowerCase() === norm(b).toLowerCase() : norm(a) === norm(b);
+}
+
 function readJson(file) {
   return readJsonOrDefault(file, {}) || {};
 }
@@ -69,8 +107,19 @@ function declaredCommands(projectDir) {
   // Test lifecycle configuration is authoritative; custom names can be declared
   // in manifest.tools/entries, without extending this recognizer.
   if (typeof scripts.test === 'string') {
-    declarations.push({ tokens: ['npm', 'test'], cwd: projectDir, source: 'package' });
-    declarations.push({ tokens: ['npm', 'run', 'test'], cwd: projectDir, source: 'package' });
+    // Every package manager's spelling of the same "test" script (v21.135.0).
+    for (const tokens of [['npm', 'test'], ['npm', 'run', 'test'], ['pnpm', 'test'], ['pnpm', 'run', 'test'],
+      ['yarn', 'test'], ['yarn', 'run', 'test'], ['bun', 'run', 'test']]) {
+      declarations.push({ tokens, cwd: projectDir, source: 'package' });
+    }
+  }
+  // A manifest's own runner runs every entry, so it is the project's full check even
+  // when the manifest declares no tools (v21.135.0).
+  const runner = path.join(STORAGE_ROOT, 'verification', 'run-verify.js');
+  if (manifest.entries && fs.existsSync(path.join(projectDir, runner))
+    && !declarations.some(declaration => declaration.source === 'tools' && declaration.tokens.length === 2
+      && canonicalToken(declaration.tokens[1], 1, declaration.cwd) === path.resolve(projectDir, runner))) {
+    declarations.push({ tokens: ['node', runner.replace(/\\/g, '/')], cwd: projectDir, source: 'tools' });
   }
   // Follow package scripts referenced by declared checks, including arbitrary
   // names. The project, rather than a maintained list of tool names, chooses.
@@ -95,10 +144,14 @@ function canonicalToken(token, index, cwd) {
 }
 
 function findDeclaration(command, projectDir, cwd = projectDir) {
-  const tokens = commandTokens(command);
-  if (!tokens || !projectDir) return null;
+  const invocation = checkInvocation(command, cwd);
+  if (!invocation || !projectDir) return null;
+  const { tokens } = invocation;
+  // A `cd` prefix must land where the check is declared; otherwise another
+  // folder's tests would unlock this project's commit.
   const matches = declaredCommands(projectDir).filter(declaration => tokens.length === declaration.tokens.length
-    && tokens.every((token, index) => canonicalToken(token, index, cwd)
+    && (!invocation.changedDir || samePath(invocation.cwd, declaration.cwd))
+    && tokens.every((token, index) => canonicalToken(token, index, invocation.cwd)
       === canonicalToken(declaration.tokens[index], index, declaration.cwd)));
   // A generic tool alias must not bypass the same command's entry contract.
   const chosen = matches.find(declaration => declaration.contract) || matches[0] || null;
@@ -108,8 +161,8 @@ function findDeclaration(command, projectDir, cwd = projectDir) {
 }
 
 function isTrivialTest(command) {
-  const tokens = commandTokens(command);
-  return !tokens || /^(echo|printf)$/i.test(tokens[0]);
+  const invocation = checkInvocation(command, null);
+  return !invocation || /^(echo|printf)$/i.test(invocation.tokens[0]);
 }
 
 function isTestExecution(command, projectDir, cwd = projectDir) {
@@ -286,8 +339,10 @@ function commandObservation(hookData = {}, projectDir, options = {}) {
 }
 
 module.exports = {
+  checkInvocation,
   commandObservation,
   commandTokens,
+  findDeclaration,
   declaredCommands,
   getExitCode,
   hasCheckConfiguration,

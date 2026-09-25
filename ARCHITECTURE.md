@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.134.0)
+# Crabshell Architecture (v21.135.0)
 
 ## Overview
 
@@ -139,7 +139,7 @@ Two meta-principles guide Claude's approach to obstacles:
 |  | - ticketing     (T documents)   |  | - search-memory                | |
 |  | - investigating (I documents)   |  | - clear-memory                 | |
 |  | - hotfix        (H documents)   |  | - memory-autosave              | |
-|  | - hotfix (one-pass record)      |  | - memory-delta                 | |
+|  | - hotfix (one-pass work)        |  | - memory-delta                 | |
 |  | - regressing    (D→T loop)      |  | - memory-rotate                | |
 |  | - verifying     (verification)  |  |                                | |
 |  | - knowledge     (K pages)       |  |                                | |
@@ -262,7 +262,7 @@ Claude `PostToolUseFailure` is wired to both verification-state and parent-evide
    │   ├─> regressing active + phase=planning + target is .crabshell/plan/ → deny: use /planning
    │   ├─> regressing active + phase=ticketing + target is .crabshell/ticket/ → deny: use /ticketing
    │   └─> ticket doc while the parent plan has empty agent sections (v21.41.0) → deny
-   ├─> docs-guard (Write|Edit) — deny D/P/T/I/H writes without this session's document-skill flag
+   ├─> docs-guard (Write|Edit) — deny D/P/T/I/H writes without this session's document-skill flag; a new discussion ticket needs the Plan and its Implementation Details (v21.135.0)
    ├─> log-guard (Write|Edit) — v21.4.0+, narrowed v21.131.0
    │   ├─> Deny a ticket → done while Execution Results is still template text
    │   └─> Deny a ticket → verified while any result section is still template text
@@ -341,7 +341,7 @@ Each document type has an INDEX.md for tracking. Status cascades upward on compl
 
 | Skill | Purpose |
 |-------|---------|
-| hotfix | Directly-performed one-pass work recorded in H documents (Problem/Fix/Verification). Replaced light-workflow in v21.112.0 (D113). |
+| hotfix | One-pass work as a discussion whose Plan the user confirms, one ticket, then the change (no new H documents since v21.130.0). Replaced light-workflow in v21.112.0 (D113). |
 | lint | Obsidian document linter — 5 checks (orphans, broken wikilinks, stale status, missing frontmatter, INDEX inconsistencies). |
 | search-docs | BM25 full-text search across D/P/T/I/W documents with field boosting (title 3x, tags 2x, id 1.5x). |
 | regressing | Iterative D->P->T loop. Each cycle targets the current verified gap; an explicit user count is a cap, not a partition target. |
@@ -385,8 +385,8 @@ Regressing retains document-cycle continuation but has no parallel-worker count 
 | `inject-rules.js` | UserPromptSubmit | Dual injection (CLAUDE.md + additionalContext), Claude-host-only Codex delegation guidance, intent-independent pressure bailout, delta/rotation/regressing detection |
 | `counter.js` | PostToolUse, SessionEnd | Main engine: counter, L1 creation, rotation, regressing phase detection |
 | `regressing-guard.js` | PreToolUse (Write\|Edit) | Block direct plan/ticket writes during active regressing; force Skill tool; validate P doc agent sections before ticketing (v21.41.0) |
-| `docs-guard.js` | PreToolUse (Write\|Edit) | Block writes to .crabshell/ D/P/T/I/H subdirectories without active skill flag |
-| `log-guard.js` | PreToolUse (Write\|Edit) | Block a ticket marked done (Execution Results) or verified (every result section) in INDEX.md while those sections still hold template text; rows read with `core/index-rows.js` |
+| `docs-guard.js` | PreToolUse (Write\|Edit) | Block writes to .crabshell/ D/P/T/I/H subdirectories without active skill flag; block a new `D###_T###` ticket whose discussion has no plan or whose Implementation Details is empty (`core/plan-entry.js`, v21.135.0) |
+| `log-guard.js` | PreToolUse (Write\|Edit) | Block a ticket marked done (Execution Results) or verified (every result section, Intent Fidelity included since v21.135.0) in INDEX.md while those sections still hold template text; rows read with `core/index-rows.js` |
 | `verify-guard.js` | PreToolUse (Write\|Edit) | Hybrid: Edit always enforces verification; Write enforces only for existing files (new file creation skips). Block Final Verification without /verifying run; require behavioral AC in manifest |
 | `path-guard.js` | PreToolUse via `adapters/claude/pre-tool-use.js` (Bash\|Write\|Edit); Read\|Grep\|Glob notice via `post-tool-use.js` | Block Bash writes into another project's .crabshell (v21.125.0: reads get a notice; prose, patterns, heredoc text, temp folders and unknown variables are not blocked); block Edit on logbook.md; block Write shrink on logbook.md (v20.6.0); block direct skill-flag writes. Runs alone too |
 | `web-guard.js` | PreToolUse (WebFetch\|WebSearch) | Block WebFetch (small-model summarization, lossy by design) with URL-substituted raw-fetch redirect (trafilatura → r.jina.ai → curl); block WebSearch only when a search MCP is configured in ~/.claude.json or .mcp.json, else allow with snippet-verification warning; modes block/warn/off via `webGuard` config (v21.114.0, I084) |
@@ -565,6 +565,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.135.0 | Plan in the discussion: D gets a `## Plan` (approach, files and functions, order, rejected alternatives, risks, user confirmation) settled before tickets; tickets carry `## Implementation Details` and compare the result with the discussion in `## Intent Fidelity`; a new discussion ticket without a plan or details is blocked (docs-guard, codex-docs), verified needs Intent Fidelity (log-guard); regressing and verifying compare results with the discussion; "record after doing" wording removed, a per-prompt line names the discussing and ticketing skills; commit gate accepts `cd <dir> &&`, `> file`/`2>&1`, `rtk`, pnpm/yarn/`bun run test` and the manifest runner |
 | 21.134.0 | Rule: git is the record of changes — set up git (install or `git init`) after confirming when it is missing; check `git status`/`git diff`; before saying what changed, when or why, find and cite the commit that changed that text (`git log -S`, `git log -p`, `git blame`); files git does not track get a `.bak` |
 | 21.133.0 | Memory saves are mandatory again: the pending-memory and archive notices tell Claude to run `memory-delta` / `memory-rotate` now on every turn (v21.123.0 had made them optional and the logbook stopped getting entries); summarizers run in the background; a large backlog is split into `parts` (≤ 1,500 lines, ≤ 150,000 bytes each); 20KB threshold unchanged |
 | 21.132.0 | Skills fit the compaction re-attach budget (regressing/ticketing/verifying bodies ≤ 16,000 bytes, long parts in `references/`); docs-guard names the update call; hand saves go through `append-memory.js`; SessionStart memory marked as data, dropped parts named, knowledge listed, snippets skip loaded entries; rule wording from I091; automatic skills hidden, dead pressure bookkeeping and five duplicate commands removed |

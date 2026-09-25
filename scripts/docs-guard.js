@@ -12,6 +12,7 @@ if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 const { getProjectDir, readJsonOrDefault, docDirsPattern } = require('./utils');
 const { getActiveSkill } = require('./core/skill-flag');
 const { leadingId } = require('./core/index-rows');
+const { discussionHasPlan, ticketHasDetails } = require('./core/plan-entry');
 
 // Document folders only a document skill may write (constants DOC_TYPES skillOnly)
 const PROTECTED_DOCS_PATTERN = new RegExp(`${docDirsPattern(type => type.skillOnly)}/`);
@@ -60,6 +61,32 @@ function checkInvestigationConstraints(filePath, toolName) {
   } catch { return null; }
 }
 
+/**
+ * A new discussion-parent ticket needs its discussion's plan and its own part of
+ * it (D123): written without them, the ticket was made before anyone settled how
+ * to build. Only the first Write of a D###_T### file is checked; a missing parent
+ * or unreadable file passes (the ticketing skill reports a missing parent).
+ * Returns null if OK, error string if blocked.
+ */
+function checkTicketPlan(filePath, toolName, content, projectDir) {
+  if (toolName !== 'Write') return null;
+  const match = filePath.match(/(?:^|\/)ticket\/(D\d{3})_T\d{3}[^/]*\.md$/);
+  if (!match) return null;
+  try {
+    if (fs.existsSync(filePath.replace(/\//g, path.sep))) return null;
+    const discussionDir = path.join(projectDir, STORAGE_ROOT, 'discussion');
+    const parentFile = fs.existsSync(discussionDir) && fs.readdirSync(discussionDir).find(name => name.startsWith(`${match[1]}-`) && name.endsWith('.md'));
+    if (!parentFile) return null;
+    if (!discussionHasPlan(fs.readFileSync(path.join(discussionDir, parentFile), 'utf8'))) {
+      return `New ticket under ${match[1]} blocked: the discussion has no plan yet. Write its ## Plan first — how it will be built, files and functions, order, rejected alternatives, risks — show it to the user and record their confirmation (skill="discussing", args="${match[1]}"), then create the ticket.`;
+    }
+    if (!ticketHasDetails(content)) {
+      return `New ticket under ${match[1]} blocked: its ## Implementation Details is empty. Fill it with this ticket's part of ${match[1]}'s plan — each file → function/section → what changes — then write the ticket.`;
+    }
+    return null;
+  } catch { return null; }
+}
+
 // Returns { reason, log } when the write must be blocked, otherwise null.
 function evaluateDocsGuard(hookData, projectDir) {
   if (!hookData || !hookData.tool_name) return null;
@@ -91,6 +118,10 @@ function evaluateDocsGuard(hookData, projectDir) {
     const constraintError = checkInvestigationConstraints(filePath, toolName);
     if (constraintError) {
       return { reason: constraintError, log: `[DOCS_GUARD] Blocked ${toolName} to ${filePath} — ${constraintError}` };
+    }
+    const planError = checkTicketPlan(filePath, toolName, input.content, projectDir);
+    if (planError) {
+      return { reason: planError, log: `[DOCS_GUARD] Blocked ${toolName} to ${filePath} — ticket before its discussion's plan or details` };
     }
     return null;
   }
@@ -128,4 +159,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { evaluateDocsGuard, checkInvestigationConstraints, checkDiscussionRegressingBlock };
+module.exports = { evaluateDocsGuard, checkInvestigationConstraints, checkDiscussionRegressingBlock, checkTicketPlan };

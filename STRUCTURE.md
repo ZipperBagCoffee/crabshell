@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.134.0)
+# Crabshell Plugin Structure (v21.135.0)
 
-**Version**: 21.134.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.135.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -117,6 +117,7 @@ crabshell/
 │   ├── core/memory-lock.js            # Shared index/rotation locks; tryWithMemoryIndex/tryWithMemoryRotation skip when busy (v21.127.0)
 │   ├── core/skill-flag.js             # Document-skill flag: set, read, clear, path check; no load-time side effects (v21.127.0)
 │   ├── core/index-rows.js             # One reader for INDEX.md rows: bare or wikilinked ID, status, cells, link target (v21.131.0)
+│   ├── core/plan-entry.js             # Does a discussion have a plan / a ticket its Implementation Details (v21.135.0)
 │   ├── core/memory-entry.js           # Shared summary timestamp format
 │   ├── core/recovery-context.js       # Bounded historical request/check/pause context
 │   ├── core/support-state.js          # Seven-state live doctor model
@@ -131,9 +132,9 @@ crabshell/
 │   ├── _test-linux-native-hosts.sh    # Disposable Linux Node/current-CLI provisioner
 │   ├── run-orchestration-corpus.js   # Live Codex A/B orchestration behavior runner (v21.105.0)
 │   ├── _test-orchestration-defaults.js # Deterministic orchestration policy tests (v21.105.0)
-│   ├── docs-guard.js                # PreToolUse D/P/T/I skill bypass prevention (v19.33.0)
+│   ├── docs-guard.js                # PreToolUse D/P/T/I skill bypass prevention (v19.33.0); a new discussion ticket needs the Plan (v21.135.0)
 │   ├── verify-guard.js              # PreToolUse Final Verification + behavioral AC (v19.34.0, v20.3.0)
-│   ├── log-guard.js                # PreToolUse ticket status check — done/verified need filled result sections (v21.131.0)
+│   ├── log-guard.js                # PreToolUse ticket status check — done/verified need filled result sections (v21.131.0; Intent Fidelity v21.135.0)
 │   ├── verification-sequence.js     # PostToolUse state tracker + PreToolUse commit/edit gate (v21.0.0)
 │   ├── skill-tracker.js             # Per-session skill flag setter, run inline by the PostToolUse dispatcher (v19.33.0, v21.124.0, v21.125.0)
 │   ├── _test-path-guard.js           # Path-guard unit tests + shell var resolution tests (v20.0.0, v21.8.0)
@@ -158,6 +159,9 @@ crabshell/
 │   ├── _test-memory-loading.js       # Hand-save path, SessionStart memory notes/dropped parts/knowledge, snippet de-duplication (v21.132.0)
 │   ├── _test-rule-wording.js         # Rule wording from I091 (v21.132.0); git-record rule (v21.134.0)
 │   ├── _test-memory-save-directive.js # Mandatory memory-save/rotation notices, 20KB cadence, backlog parts (v21.133.0)
+│   ├── _test-plan-first-docs.js      # Plan section, ticket Implementation Details / Intent Fidelity, result-vs-discussion steps (v21.135.0)
+│   ├── _test-plan-first-guards.js    # No ticket before its discussion's plan; no verified without Intent Fidelity (v21.135.0)
+│   ├── _test-gate-loosening.js       # Commit gate: accepted and rejected check forms, block reason (v21.135.0)
 │   ├── _test-regressing-stale.js     # One regressing staleness decision; each caller's missing-time answer (v21.128.0)
 │   ├── _test-hook-wiring-cost.js     # Synchronous hook processes per tool call; Stop starts no child (v21.125.0)
 │   ├── _test-claude-dispatcher-parity.js # Old separate guards vs the PreToolUse dispatcher (v21.125.0)
@@ -360,7 +364,7 @@ PreToolUse WebFetch/WebSearch guard (v21.114.0, I084 — built-in tools summariz
 ### scripts/log-guard.js
 PreToolUse ticket status check (v21.4.0; narrowed v21.131.0):
 - Trigger: Write|Edit on a document INDEX.md that changes a ticket's status to done or verified; rows are read with `core/index-rows.js` (bare or wikilinked IDs)
-- done needs Execution Results filled; verified needs every result section (Execution Results, Verification Results, Final Verification, Orchestrator Evaluation) filled — a section is unfinished while it holds only `(placeholder`/`(pending)` and empty sub-headings
+- done needs Execution Results filled; verified needs every result section (Execution Results, Verification Results, Intent Fidelity since v21.135.0, Final Verification, Orchestrator Evaluation) filled — a section is unfinished while it holds only `(placeholder`/`(pending)` and empty sub-headings
 - Reads the document the row links to (a draft sharing the ID prefix is not mistaken for it)
 - Plans, discussions, investigations and hotfixes are not checked; the work-log length rule and the previous-cycle check were removed in v21.131.0
 - Fail-open on parse errors (user experience protection)
@@ -464,6 +468,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.135.0 | Plan in the discussion: D gets a `## Plan` (approach, files and functions, order, rejected alternatives, risks, user confirmation) settled before tickets; tickets carry `## Implementation Details` and compare the result with the discussion in `## Intent Fidelity`; a new discussion ticket without a plan or details is blocked (docs-guard, codex-docs), verified needs Intent Fidelity (log-guard); regressing and verifying compare results with the discussion; "record after doing" wording removed, a per-prompt line names the discussing and ticketing skills; commit gate accepts `cd <dir> &&`, `> file`/`2>&1`, `rtk`, pnpm/yarn/`bun run test` and the manifest runner |
 | 21.134.0 | Rule: git is the record of changes — set up git (install or `git init`) after confirming when it is missing; check `git status`/`git diff`; before saying what changed, when or why, find and cite the commit that changed that text (`git log -S`, `git log -p`, `git blame`); files git does not track get a `.bak` |
 | 21.133.0 | Memory saves are mandatory again: the pending-memory and archive notices tell Claude to run `memory-delta` / `memory-rotate` now on every turn (v21.123.0 had made them optional and the logbook stopped getting entries); summarizers run in the background; a large backlog is split into `parts` (≤ 1,500 lines, ≤ 150,000 bytes each); 20KB threshold unchanged |
 | 21.132.0 | Skills fit the compaction re-attach budget (regressing/ticketing/verifying bodies ≤ 16,000 bytes, long parts in `references/`); docs-guard names the update call; hand saves go through `append-memory.js`; SessionStart memory marked as data, dropped parts named, knowledge listed, snippets skip loaded entries; rule wording from I091; automatic skills hidden, dead pressure bookkeeping and five duplicate commands removed |

@@ -6,6 +6,7 @@ const path = require('path');
 
 const { STORAGE_ROOT, DOC_TYPES, TICKET_PARENT_SOURCE } = require('./constants');
 const { ensureDir } = require('./utils');
+const { discussionHasPlan } = require('./core/plan-entry');
 
 const TYPES = Object.fromEntries(DOC_TYPES.map(type => [type.dir, { dir: type.dir, prefix: type.prefix, title: type.title, index: type.indexColumns }]));
 
@@ -180,9 +181,18 @@ function createSimple(root, type, title, args) {
   }
   if (type === 'ticket') {
     const parentDir = path.join(root, STORAGE_ROOT, TYPES[parentId.startsWith('D') ? 'discussion' : 'plan'].dir);
-    const exists = fs.existsSync(parentDir) && fs.readdirSync(parentDir).some(file => file.startsWith(`${parentId}-`) && file.endsWith('.md'));
-    if (!exists) {
+    const parentFile = fs.existsSync(parentDir) && fs.readdirSync(parentDir).find(file => file.startsWith(`${parentId}-`) && file.endsWith('.md'));
+    if (!parentFile) {
       console.error(`ERROR: parent ${parentId} does not exist under ${path.relative(root, parentDir) || parentDir}; create it first.`);
+      process.exit(1);
+    }
+    // A discussion parent carries the plan: no ticket before it, none without its part.
+    if (parentId.startsWith('D') && !discussionHasPlan(fs.readFileSync(path.join(parentDir, parentFile), 'utf8'))) {
+      console.error(`ERROR: ${parentId} has no plan yet. Fill its ## Plan (how it will be built: files and functions, order, rejected alternatives, risks) and get the user's confirmation before creating tickets.`);
+      process.exit(1);
+    }
+    if (parentId.startsWith('D') && !(typeof args.details === 'string' && args.details.trim() && !/^TBD\.?$/i.test(args.details.trim()))) {
+      console.error(`ERROR: a ticket under ${parentId} needs --details: its part of ${parentId}'s plan (each file → function/section → what changes).`);
       process.exit(1);
     }
   }
@@ -192,7 +202,10 @@ function createSimple(root, type, title, args) {
   const filename = `${id}-${slug}.md`;
   const filePath = path.join(dir, filename);
   const status = type === 'discussion' ? 'open' : type === 'ticket' ? 'todo' : 'draft';
-  const body = `---\ntype: ${type}\nid: ${id}\ntitle: "${title}"\nstatus: ${status}\ncreated: ${t.date}\ntags: []\n---\n\n# ${id} - ${title}\n\n## Intent\n${args.intent || title}\n\n## Context\n${args.context || 'TBD.'}\n\n## Acceptance Criteria\n${args.ac || '- TBD'}\n\n## Log\n### [${t.minute}] Created\nCreated from Codex ${type} skill.\n`;
+  const plan = type === 'discussion' ? `## Plan\n${typeof args.how === 'string' && args.how.trim() ? args.how : '(placeholder — plan before tickets: approach, each file → what changes, order, rejected alternatives, risks, intent check, user confirmation)'}\n\n` : '';
+  const details = type === 'ticket' ? `## Implementation Details\n${typeof args.details === 'string' && args.details.trim() ? args.details : 'TBD.'}\n\n` : '';
+  const fidelity = type === 'ticket' ? `## Intent Fidelity\n(placeholder — parent compares the result with the discussion's Intent Anchor and Plan here)\n\n` : '';
+  const body = `---\ntype: ${type}\nid: ${id}\ntitle: "${title}"\nstatus: ${status}\ncreated: ${t.date}\ntags: []\n---\n\n# ${id} - ${title}\n\n## Intent\n${args.intent || title}\n\n## Context\n${args.context || 'TBD.'}\n\n${plan}${details}## Acceptance Criteria\n${args.ac || '- TBD'}\n\n${fidelity}## Log\n### [${t.minute}] Created\nCreated from Codex ${type} skill.\n`;
   fs.writeFileSync(filePath, body, 'utf8');
   const link = `[[${wikiTarget(filename)}|${id}]]`;
   if (type === 'plan') appendIndex(indexPath, `| ${link} | ${title} | ${status} | ${t.date} | ${args.related || ''} |`);

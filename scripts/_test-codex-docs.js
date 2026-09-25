@@ -11,7 +11,9 @@ const installed = path.join(temp, 'plugin location with spaces');
 const consumer = path.join(temp, 'ordinary project with spaces');
 fs.mkdirSync(path.join(installed, 'scripts'), { recursive: true });
 fs.mkdirSync(consumer);
-for (const file of ['codex-docs.js', 'constants.js', 'utils.js']) {
+// codex-docs.js reads core/plan-entry.js since v21.135.0 (a ticket needs its discussion's plan).
+fs.mkdirSync(path.join(installed, 'scripts', 'core'), { recursive: true });
+for (const file of ['codex-docs.js', 'constants.js', 'utils.js', 'core/plan-entry.js']) {
   fs.copyFileSync(path.join(__dirname, file), path.join(installed, 'scripts', file));
 }
 const skills = ['discussing', 'planning', 'ticketing', 'investigating', 'hotfix', 'knowledge', 'regressing'];

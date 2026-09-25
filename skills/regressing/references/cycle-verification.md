@@ -53,6 +53,7 @@ Moved out of SKILL.md so the skill body stays within what Claude Code re-attache
     2. Read the execution results and direct tool output
     3. Identify discrepancies — items where independent observation found problems implementation evidence did not report, or where implementation claimed success but direct observation found issues
     4. Discrepancies are the highest-priority findings and must be addressed in Correctness evaluation
+  - **Intent Fidelity (BLOCKING — the result against D):** Write each ticket's `## Intent Fidelity` table before the verdict: one row per D IA item and per cycle-plan decision the ticket touches — `| Discussion item (IA-n / Plan decision) | Result | Deviation (none/partial/departed) | Evidence | Reason / user approval |`. Compare the actual result (diff, command output, the changed documents) with what D and the cycle plan said, not with the ticket's own ACs alone: a ticket can pass its ACs and still drift from D. A departed row without the user's approval keeps the ticket from `verified` (fix it, or ask the user under Rule 5's notify exception). Every partial or departed row is carried into Next Direction and into the next cycle plan's Context; the Final Report lists the deviations that remain.
   - Next Direction (while verification finds gaps and cycle < cap; final cycle uses Final Report instead):
     - **Problems Found**: Specific problems or shortcomings observed in THIS cycle's output, with evidence.
     - **Root Cause Hypothesis**: Why did these problems occur?

@@ -142,7 +142,8 @@ function findDocumentFile(projectDir, category, docId, target) {
 // tickets: "(pending)") under each heading, some with a role suffix such as
 // "(Work Agent)"; a section is unfinished while that marker and empty
 // sub-headings are all it holds.
-const RESULT_SECTION = /^## (Execution Results|Verification Results|Final Verification|Orchestrator Evaluation)\b[^\n]*$/gm;
+// Intent Fidelity (D123): the result compared with the discussion before verified.
+const RESULT_SECTION = /^## (Execution Results|Verification Results|Intent Fidelity|Final Verification|Orchestrator Evaluation)\b[^\n]*$/gm;
 const TEMPLATE_MARKER = /^\((?:pending|placeholder)\b/;
 
 function unfinishedSections(content) {

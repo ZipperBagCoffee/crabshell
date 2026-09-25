@@ -1,6 +1,6 @@
 ---
 name: planning
-description: "Crabshell no longer creates plan documents: a new plan is written into its discussion as a log entry, then tickets hang off that discussion (/discussing D001, /ticketing D001 \"title\"). Use /planning P001 only to append a log entry to an existing plan document."
+description: "Crabshell no longer creates plan documents: a new plan is written into its discussion's Plan section and confirmed by the user, then tickets hang off that discussion (/discussing D001, /ticketing D001 \"title\"). Use /planning P001 only to append a log entry to an existing plan document."
 ---
 
 # Plan Document Skill (existing plans only)
@@ -9,8 +9,8 @@ description: "Crabshell no longer creates plan documents: a new plan is written 
 
 The document workflow is D (a discussion that carries the plan) → T. A new plan is not a separate document:
 
-1. Invoke `/discussing D{NNN}` (or `/discussing "topic"` to open one) and append a plan entry to the discussion log with **Intent**, **Context**, **Scope** (included / excluded), **Steps**, **Analysis** (the evidence inspected — files, functions, measurements) and **Intent Check** (against the discussion's Intent Anchor, at least one risk, approve or reject). In regressing this is Step 4a's `Cycle {n} plan` entry.
-2. Create tickets under the discussion: `/ticketing D{NNN} "title"`.
+1. Invoke `/discussing "topic"` to open a discussion (or `/discussing D{NNN}` for an existing one) and write its `## Plan`: **Approach**, **Changes (file → what)**, **Order**, **Rejected alternatives**, **Risks**, **Analysis** (the evidence inspected — files, functions, measurements), **Intent Check** (against the discussion's Intent Anchor, at least one risk, approve or reject) and **User confirmation**. Show it to the user and record their confirmation. A discussion whose Plan is already fixed by tickets takes a `Plan revision` log entry instead. In regressing this is Step 4a's `Cycle {n} plan` entry, with the same fields.
+2. Create tickets under the discussion: `/ticketing D{NNN} "title"` — each carries its part of the plan in `## Implementation Details`.
 
 The parent owns plan analysis and intent fidelity; an optional independent review receives the intent, scope and criteria, not the parent's conclusions.
 
