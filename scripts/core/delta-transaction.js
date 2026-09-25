@@ -18,10 +18,21 @@ function summaryPath(jobDirectory,file){
   if(path.dirname(resolved)!==jobDirectory||!/^summary-[0-9a-f-]+\.txt$/i.test(path.basename(resolved)))throw Error('Summary must be a prepared file for this delta job.');
   regularFile(resolved);return resolved;
 }
+// One summarizer reads one part: a large backlog (740KB after a missed day) does not fit one read.
+const PART_LINES=1500,PART_BYTES=150000;
+function inputParts(file){
+  const lines=fs.readFileSync(file,'utf8').split('\n');if(lines.length&&lines[lines.length-1]==='')lines.pop();
+  const parts=[];let offset=1,count=0,bytes=0;
+  lines.forEach((line,i)=>{const size=Buffer.byteLength(line)+1;
+    if(count&&(count>=PART_LINES||bytes+size>PART_BYTES)){parts.push({offset,limit:count});offset=i+1;count=0;bytes=0;}
+    count++;bytes+=size;});
+  if(count)parts.push({offset,limit:count});
+  return parts;
+}
 function prepared(directory,job,reused){
   const location=paths(directory,job.id);
   const summary=path.join(location.directory,`summary-${crypto.randomUUID()}.txt`);
-  return {jobId:job.id,inputFile:location.input,summaryFile:summary,processedThrough:job.processedThrough,reused};
+  return {jobId:job.id,inputFile:location.input,summaryFile:summary,processedThrough:job.processedThrough,reused,inputBytes:job.inputBytes,parts:inputParts(location.input)};
 }
 function prepareDelta(projectDir){
   return withMemoryIndex(projectDir,directory=>{

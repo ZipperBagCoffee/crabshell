@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.132.0)
+# Crabshell User Manual (v21.133.0)
 
 ## Why Do You Need This?
 
@@ -57,7 +57,7 @@ Both hosts copy the whole plugin folder into their plugin cache (Claude Code: `~
 
 **2. During Work:**
 - Auto-save triggers every 15 tool uses (configurable)
-- Delta extracted from L1 session log, summarized in the foreground by the memory-delta skill (its delta-summarizer agent runs on Haiku), appended to `logbook.md`
+- Delta extracted from L1 session log, summarized by the memory-delta skill, which Claude must run when the pending notice appears (its delta-summarizer agents run on Haiku in the background), appended to `logbook.md`
 - Auto-rotation when `logbook.md` exceeds ~23,750 tokens
 - Rules re-injected every prompt via COMPRESSED_CHECKLIST
 - CLAUDE.md rules section kept in sync automatically
@@ -454,7 +454,8 @@ events after forced process termination cannot guarantee saving.
 
 Claude's `memory-delta` skill uses `append-memory.js --prepare-delta` before summary
 generation. Its returned input stays fixed while later extraction uses a separate
-queue. If the host permits the available summarizer, it runs in the foreground;
+queue; a large input comes back split into `parts` (at most 1,500 lines and 150,000
+bytes each), one background summarizer per part. When they return,
 one `--finalize-delta --job-id=... --summary-file=...` command then saves the summary,
 advances only the captured input cutoff and cleans its own temporary files. Failed
 or unavailable summarization leaves input pending. Do not manually delete the new

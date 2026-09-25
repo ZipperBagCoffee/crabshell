@@ -1156,10 +1156,13 @@ test('CONSTANTS: PRESSURE injection constants retired (v21.113.0, I083 R4)', fun
 
 // DELTA_INSTRUCTION constant test removed (AC-4: constant deleted from inject-rules.js)
 
-test('CONSTANTS: pending rotation preserves work and requires available capability', function() {
-  assert(mod.ROTATION_INSTRUCTION.includes('host delegation permissions'));
-  assert(mod.ROTATION_INSTRUCTION.includes('preserve the archives'));
-  assert(!mod.ROTATION_INSTRUCTION.includes('BLOCKING'));
+// Contract change (v21.133.0): the rotation notice is a directive again, not an
+// option — the optional wording from v21.123.0 let memory maintenance be skipped.
+test('CONSTANTS: pending rotation is a directive that keeps the archives when it cannot run', function() {
+  assert(mod.ROTATION_INSTRUCTION.includes('skill="memory-rotate"'));
+  assert(/Invoke the Skill tool now/.test(mod.ROTATION_INSTRUCTION));
+  assert(!/when compatible/.test(mod.ROTATION_INSTRUCTION));
+  assert(mod.ROTATION_INSTRUCTION.includes('keep the archives'));
 });
 
 // ============================================================
