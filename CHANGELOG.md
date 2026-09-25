@@ -1,5 +1,13 @@
 # Changelog
 
+## [21.134.0] - 2026-09-24
+
+### feat: git is the record of changes (rule)
+
+- **Why.** Asked why the memory auto-save had stopped, Claude gave a cause from a nearby CHANGELOG entry (an April experiment that failed on subscription accounts) instead of the commit that actually changed the notice (v21.123.0, `cae7ea4`). The user asked for a rule.
+- **Rule (RULES → CLAUDE.md, ADDITIONAL RULES).** If git is not installed or the project is not a git repository, set it up — install git or run `git init` — after confirming with the user. See what changed with `git status` and `git diff`. Before saying what changed, when, or why — including why something changed or disappeared — check the git history first: find the commit that changed that text (`git log -S`, `git log -p`, `git blame`) and cite it. Files git does not track (ignored or outside the repository) get a single `.bak` right before modifying (the old "Non-git files" clause).
+- **Tests:** `_test-rule-wording.js` W10.
+
 ## [21.133.0] - 2026-09-24
 
 ### fix: memory saves are mandatory again

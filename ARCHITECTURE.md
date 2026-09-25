@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.133.0)
+# Crabshell Architecture (v21.134.0)
 
 ## Overview
 
@@ -565,6 +565,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.134.0 | Rule: git is the record of changes — set up git (install or `git init`) after confirming when it is missing; check `git status`/`git diff`; before saying what changed, when or why, find and cite the commit that changed that text (`git log -S`, `git log -p`, `git blame`); files git does not track get a `.bak` |
 | 21.133.0 | Memory saves are mandatory again: the pending-memory and archive notices tell Claude to run `memory-delta` / `memory-rotate` now on every turn (v21.123.0 had made them optional and the logbook stopped getting entries); summarizers run in the background; a large backlog is split into `parts` (≤ 1,500 lines, ≤ 150,000 bytes each); 20KB threshold unchanged |
 | 21.132.0 | Skills fit the compaction re-attach budget (regressing/ticketing/verifying bodies ≤ 16,000 bytes, long parts in `references/`); docs-guard names the update call; hand saves go through `append-memory.js`; SessionStart memory marked as data, dropped parts named, knowledge listed, snippets skip loaded entries; rule wording from I091; automatic skills hidden, dead pressure bookkeeping and five duplicate commands removed |
 | 21.131.0 | One INDEX row reader (`core/index-rows.js`) shared by log-guard, the ticket reminder, lint, migration and compaction — checks that were off on wikilink rows now work; log-guard checks ticket result sections (done: Execution Results; verified: all), work-log length rule and the never-run previous-cycle check removed; document skill calls move a regressing workflow only when they name it; `migrate-obsidian`/`lint-obsidian` run only when executed |

@@ -156,7 +156,8 @@ Match the method to the claim: to claim behavior, execute the most direct practi
 - Never rewrite a whole file from filtered or truncated tool output (a filtering wrapper, \`head\`, a partial Read); edit in place, or read the whole file first.
 
 ### ADDITIONAL RULES
-- Look up facts about the current state of the world — versions, prices, who holds a role, rules in force — even when they feel familiar; stable knowledge needs no lookup. Non-git files → overwrite single backup (\`<file>.bak\`) right before modifying.
+- Look up facts about the current state of the world — versions, prices, who holds a role, rules in force — even when they feel familiar; stable knowledge needs no lookup.
+- **Git is the record of changes:** if git is not installed or the project is not a git repository, set it up — install git or run \`git init\` — after confirming with the user. See what changed with \`git status\` and \`git diff\`; before saying what changed, when, or why — including why something changed or disappeared — check the git history first: find the commit that changed that text (\`git log -S\`, \`git log -p\`, \`git blame\`) and cite it. Files git does not track (ignored or outside the repository) → overwrite a single backup (\`<file>.bak\`) right before modifying.
 - **Workflows:** one-pass work → a discussion with one ticket (record after doing); regressing when evidence is expected to change the plan across iterations. Delegation and review depend on actual risk, not role pairs or counts.
 - **Session restart:** invoke load-memory skill; fallback = latest logbook.md.
 - **Documents:** D (Discussion, carries the plan) → T (Ticket); I (Investigation) independent; existing P and H documents stay readable; append a work-log entry to touched documents. .crabshell/ is gitignored.

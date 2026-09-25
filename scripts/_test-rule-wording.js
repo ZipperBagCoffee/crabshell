@@ -25,6 +25,12 @@ report.check('W6 banter: one line at the end, never inside factual sentences, li
 report.check('W7 the turn contract says to name the chosen option in one line', /name the choice in one line/.test(ORCHESTRATION_DEFAULTS));
 report.check('W8 the per-prompt checklist keeps the report format without the P/O/G acronym',
   /"M of N passed" plus the failed items/.test(COMPRESSED_CHECKLIST) && !/\(P\/O\/G\)/.test(COMPRESSED_CHECKLIST));
+// v21.134.0: a cause for a removed feature was once given from a nearby CHANGELOG
+// line instead of the commit that changed it; the user asked for this rule.
+report.check('W10 git is the record: missing git or repository is set up after confirming; history is checked and the commit cited before saying why; untracked files are backed up',
+  /\*\*Git is the record of changes:\*\* if git is not installed or the project is not a git repository, set it up — install git or run `git init` — after confirming with the user/.test(RULES)
+  && /before saying what changed, when, or why[^.]*check the git history first: find the commit that changed that text \(`git log -S`/.test(RULES)
+  && /Files git does not track[^.]*`<file>\.bak`/.test(RULES) && !/Non-git files →/.test(RULES) && !/say so — its history/.test(RULES));
 const rule5 = (regressing.match(/^5\. \*\*[^\n]*/m) || [''])[0];
 report.check('W9 regressing Rule 5: a limitation that changes the result is reported at once, work continues',
   /changes what the user will get/.test(rule5) && /one line/.test(rule5) && /keep working/.test(rule5), rule5.slice(0, 200));
