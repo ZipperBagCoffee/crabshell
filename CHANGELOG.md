@@ -1,5 +1,15 @@
 # Changelog
 
+## [21.133.0] - 2026-09-24
+
+### fix: memory saves are mandatory again
+
+- **Why.** v21.123.0 rewrote the pending-memory notice from `Invoke Skill tool NOW: skill="memory-delta"` to "use it when compatible with the current task", and the archive notice from a blocking step to an option. The aim was only to make the notice and the skill describe one procedure, but the save became optional: during long work Claude skipped it, and `logbook.md` got no entry from 2026-09-24 01:06 to 18:06 (local) while 740KB of input queued. Before v21.123.0 the logbook got 4–5 entries on each working day.
+- **Notices.** `[CRABSHELL_DELTA]` now says to invoke `memory-delta` now, before other work, on every kind of turn including questions; installing Crabshell is the authorization for the save and its summarizer agents; a job whose summarizers are already running is not launched twice; if the Skill or Agent tool is denied, the input stays and the user is told memory was not saved. `[CRABSHELL_ROTATE]` says the same for `memory-rotate`. The 20KB threshold (a user-set value) is unchanged.
+- **Skills.** `memory-delta` and `memory-rotate` drop "this skill does not supply/grant permission" and run their summarizers in the background; the user's work continues and the results finish the save when they arrive. A job left open when a turn or session ends is resumed by the next notice (`reused:true`).
+- **Large backlogs.** `append-memory.js --prepare-delta` returns `inputBytes` and `parts` — line ranges of at most 1,500 lines and 150,000 bytes — and the skill starts one summarizer per part (a 740KB backlog did not fit one read).
+- **Tests:** `_test-memory-save-directive.js` (directive on a question turn, silence below 20KB, rotation directive, parts cover every line once, skills carry no opt-out); `_test-inject-rules.js` and `_test-request-memory-guidance.js` updated for the directive wording.
+
 ## [21.132.0] - 2026-09-24
 
 ### feat: skills survive compaction, memory loads as data, rule wording from I091

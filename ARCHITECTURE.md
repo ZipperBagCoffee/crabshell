@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.132.0)
+# Crabshell Architecture (v21.133.0)
 
 ## Overview
 
@@ -242,7 +242,7 @@ Claude `PostToolUseFailure` is wired to both verification-state and parent-evide
        │   └─> If todo/in-progress tickets: Inject warning reminder
        ├─> Check for emergency stop keywords → replace entire context
        └─> Output indicator: [rules injected], [rules + rotation pending], [REGRESSING ACTIVE]
-           (Claude pending notices use available foreground summarizers; host delegation rules win. Codex emits a pending notice without invoking missing skills.)
+           (Claude pending notices are directives: run memory-delta / memory-rotate now, summarizers in the background; a denied tool leaves the input pending and is reported. Codex emits a pending notice without invoking missing skills.)
 
 3. PreToolUse (Bash|Write|Edit|WebFetch|WebSearch) — one process: adapters/claude/pre-tool-use.js (v21.125.0)
    Each guard loads and runs inside its own try/catch (a failing guard is skipped, the rest decide).
@@ -356,7 +356,7 @@ Each document type has an INDEX.md for tracking. Status cascades upward on compl
 | search-memory | L1/L2/L3 search (--deep for L1 transcripts) |
 | clear-memory | Cleanup memory files |
 | memory-autosave | Auto-trigger memory save at counter threshold |
-| memory-delta | Prepare fixed queued input, foreground summary, then one finalize command |
+| memory-delta | Mandatory on a pending notice: prepare fixed input, one background summarizer per part, one finalize command |
 | memory-rotate | Auto-trigger L3 summary generation after rotation |
 
 ### Agent Structure
@@ -565,6 +565,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.133.0 | Memory saves are mandatory again: the pending-memory and archive notices tell Claude to run `memory-delta` / `memory-rotate` now on every turn (v21.123.0 had made them optional and the logbook stopped getting entries); summarizers run in the background; a large backlog is split into `parts` (≤ 1,500 lines, ≤ 150,000 bytes each); 20KB threshold unchanged |
 | 21.132.0 | Skills fit the compaction re-attach budget (regressing/ticketing/verifying bodies ≤ 16,000 bytes, long parts in `references/`); docs-guard names the update call; hand saves go through `append-memory.js`; SessionStart memory marked as data, dropped parts named, knowledge listed, snippets skip loaded entries; rule wording from I091; automatic skills hidden, dead pressure bookkeeping and five duplicate commands removed |
 | 21.131.0 | One INDEX row reader (`core/index-rows.js`) shared by log-guard, the ticket reminder, lint, migration and compaction — checks that were off on wikilink rows now work; log-guard checks ticket result sections (done: Execution Results; verified: all), work-log length rule and the never-run previous-cycle check removed; document skill calls move a regressing workflow only when they name it; `migrate-obsidian`/`lint-obsidian` run only when executed |
 | 21.130.0 | Documents are D (the discussion carries the plan) → T: tickets `D###_T###` under a discussion (P###_T### kept), one ticket-ID definition for every guard and the Codex tool, regressing cycles plan in the discussion log, no new P/H documents; retired guards and their tests deleted (97 → 89 checks); review fixes for phase ownership, missing parents and worker scope |
