@@ -37,6 +37,31 @@ report.check('W11 rules: work that changes files is planned in a discussion firs
   !/record after doing/.test(RULES) && /work that changes files starts in a discussion: its Plan settles how[^.]*the user confirms it; each ticket carries that plan's specifics[^.]*compare the result with the discussion's Intent Anchor and Plan/.test(RULES));
 report.check('W12 the per-prompt checklist names the discussing and ticketing skills before the change and the comparison after it',
   /Work that changes files starts in a discussion: its Plan \(discussing skill\)[^\n]*user confirms it, then its ticket \(ticketing skill\), then the change; before calling it done, compare the result with the discussion\./.test(COMPRESSED_CHECKLIST));
+// v21.136.0 (D124): every step followed a rule and the result still looked weird to the
+// user; the check is the user's own question, asked before doing and before handing over.
+// The user rejected a "purpose" test (any result can be argued to fit a purpose).
+{
+  const lines = RULES.split('\n');
+  const at = lines.findIndex(line => line.startsWith('- **Common Sense**:'));
+  const rule = at >= 0 ? lines[at] : '';
+  report.check('W14 rules: Common Sense follows Be Logical, asks whether the result would look weird to the user before doing and before handing over, no "purpose" test',
+    at > 0 && lines[at - 1].startsWith('- **Be Logical**:')
+    && ['would anything here look weird to them', 'before doing it', 'before handing it over', 'open the actual result', 'do not explain it away', 'never excuses']
+      .every(phrase => rule.includes(phrase))
+    && !/purpose/i.test(rule), rule.slice(0, 120));
+}
+report.check('W15 the per-prompt checklist carries the common-sense line',
+  /- Common sense: before doing the work and before handing it over[^\n]*look weird to them, fix it first/.test(COMPRESSED_CHECKLIST));
+// v21.136.0: the user found Simple Communication too long ("이거 좀 긴거같은데"); it was cut
+// from 1,567 to 1,128 characters with every rule kept. The cap keeps it from growing back.
+{
+  const line = RULES.split('\n').find(l => l.startsWith('- **Simple Communication**:')) || '';
+  report.check('W17 Simple Communication stays short (at most 1,200 characters)', line.length > 0 && line.length <= 1200, String(line.length));
+}
+// The user: "검증할때 항상 상식을 물어야할듯" — a weird result fails verification even when every check passes.
+report.check('W16 every verification asks the common-sense question; a weird result fails even when checks pass (rules and per-prompt checklist)',
+  /### VERIFICATION\n[^\n]*Every verification also asks the Common Sense question about the actual result: would anything look weird to the user\? If so, it fails, even when every check passes\./.test(RULES)
+  && /^- Verification = [^\n]*always ask whether the actual result would look weird to the user — if so, it fails even when every check passes/m.test(COMPRESSED_CHECKLIST));
 {
   // The line reaches the model: run the prompt hook on a temp project, question and execution turns.
   const os = require('os');
@@ -49,8 +74,9 @@ report.check('W12 the per-prompt checklist names the discussing and ticketing sk
       input: JSON.stringify({ cwd: dir, session_id: 'wording-test', hook_event_name: 'UserPromptSubmit', prompt }) });
     try { return JSON.parse(r.stdout).hookSpecificOutput.additionalContext; } catch { return ''; }
   });
-  report.check('W13 the prompt hook output carries the plan-first line on a question turn and an execution turn',
-    outputs.every(context => context.includes('Work that changes files starts in a discussion')), outputs.map(o => o.length).join(','));
+  report.check('W13 the prompt hook output carries the plan-first and common-sense lines on a question turn and an execution turn',
+    outputs.every(context => context.includes('Work that changes files starts in a discussion') && context.includes('- Common sense:')),
+    outputs.map(o => o.length).join(','));
 }
 const rule5 = (regressing.match(/^5\. \*\*[^\n]*/m) || [''])[0];
 report.check('W9 regressing Rule 5: a limitation that changes the result is reported at once, work continues',

@@ -1,5 +1,16 @@
 # Changelog
 
+## [21.136.0] - 2026-09-28
+
+### feat: a Common Sense rule; verification asks it; a shorter communication rule
+
+- **Why.** The user: "논리적으로 생각하라는거랑 make sense 하게 작업하라는거랑 다르냐? 왜 매번 뭐 작업을 하면 상식적으로 이해가 안되는 작업을 자꾸함?" Every step followed a rule and the result still looked weird to the person using it. Be Logical checks that each step follows from evidence (and says "not plausibility"); no rule checked the whole result. The user's test: "내가 사람이라고 가정하고 이걸 사용하거나 읽어보는 사람인데 - 이게 이상한가?"
+- **Common Sense principle** (RULES PRINCIPLES, after Be Logical): picture the user as the person who will use or read the result and ask whether anything would look weird to them — about the work before doing it and about the actual result, opened and looked at whole, before handing it over. A weird result is fixed first and not explained away; following a rule never excuses it. The rule separates itself from the plausibility Be Logical forbids (guessing causes). It carries no examples and no "purpose" test — the user rejected both while it was drafted.
+- **Verification asks it.** The VERIFICATION paragraph and the per-prompt Verification line: every verification also asks whether the actual result would look weird to the user; if so, it fails even when every check passes (the user: "검증할때 항상 상식을 물어야할듯").
+- **Per-prompt line.** The quick-check adds "Common sense: …", as D123 did for the plan-first rule, because CLAUDE.md alone did not get it followed.
+- **Shorter Simple Communication.** The user found it too long; it went from 1,567 to 1,128 characters. Every rule is kept (all wording pinned by the tests stays); removed were the joining phrases, rationale and the "so did it happen or not?" test sentence.
+- **Tests:** `_test-rule-wording.js` W14 (Common Sense after Be Logical, its phrases, no "purpose"), W15 (per-prompt line), W16 (verification sentence in both places), W17 (Simple Communication at most 1,200 characters), W13 now also requires the new line in the prompt hook output.
+
 ## [21.135.0] - 2026-09-25
 
 ### feat: the discussion carries the plan; tickets carry its specifics; results are compared with the discussion; a looser commit gate
