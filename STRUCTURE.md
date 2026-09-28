@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.135.0)
+# Crabshell Plugin Structure (v21.136.0)
 
-**Version**: 21.135.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.136.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -468,6 +468,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.136.0 | Rule: **Common Sense** principle after Be Logical — picture the user using or reading the result and ask whether anything would look weird, before doing the work and before handing it over; a weird result is fixed first, never explained away, and no rule excuses it; every verification asks the same question (a weird result fails even when every check passes); a per-prompt line says it; Simple Communication cut from 1,567 to 1,128 characters with every rule kept |
 | 21.135.0 | Plan in the discussion: D gets a `## Plan` (approach, files and functions, order, rejected alternatives, risks, user confirmation) settled before tickets; tickets carry `## Implementation Details` and compare the result with the discussion in `## Intent Fidelity`; a new discussion ticket without a plan or details is blocked (docs-guard, codex-docs), verified needs Intent Fidelity (log-guard); regressing and verifying compare results with the discussion; "record after doing" wording removed, a per-prompt line names the discussing and ticketing skills; commit gate accepts `cd <dir> &&`, `> file`/`2>&1`, `rtk`, pnpm/yarn/`bun run test` and the manifest runner |
 | 21.134.0 | Rule: git is the record of changes — set up git (install or `git init`) after confirming when it is missing; check `git status`/`git diff`; before saying what changed, when or why, find and cite the commit that changed that text (`git log -S`, `git log -p`, `git blame`); files git does not track get a `.bak` |
 | 21.133.0 | Memory saves are mandatory again: the pending-memory and archive notices tell Claude to run `memory-delta` / `memory-rotate` now on every turn (v21.123.0 had made them optional and the logbook stopped getting entries); summarizers run in the background; a large backlog is split into `parts` (≤ 1,500 lines, ≤ 150,000 bytes each); 20KB threshold unchanged |

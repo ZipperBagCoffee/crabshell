@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.135.0)
+# Crabshell User Manual (v21.136.0)
 
 ## Why Do You Need This?
 
@@ -251,7 +251,7 @@ The plugin uses Claude Code hooks to run automatically:
 
 | Hook | Script | When It Runs | What It Does |
 |------|--------|-------------|-------------|
-| `UserPromptSubmit` | `inject-rules.js` | Every prompt | Emits the compact shared turn contract (4-line Rules Quick-Check); Claude-host `## Codex Delegation` guidance on execution turns only; `봉인해제` / `UNLEASH` immediately resets pressure counters; execution prompts run once-per-session cleanup/reset and Claude rule/memory-warning synchronization. Three-field response ending and pressure texts retired v21.113.0 (I083) |
+| `UserPromptSubmit` | `inject-rules.js` | Every prompt | Emits the compact shared turn contract (7-line Rules Quick-Check); Claude-host `## Codex Delegation` guidance on execution turns only; `봉인해제` / `UNLEASH` immediately resets pressure counters; execution prompts run once-per-session cleanup/reset and Claude rule/memory-warning synchronization. Three-field response ending and pressure texts retired v21.113.0 (I083) |
 | `SessionStart` | `load-memory.js` | Session begins (also after compaction) | Loads logbook, summaries, canonical project memory, and active workflow; legacy-only descriptions are copied without overwriting existing data. After compaction (`source: "compact"`) it clears this session's skill flag (Claude Code re-attaches only the first 5,000 tokens of each invoked skill) and logs the compaction — Claude has no PreCompact/PostCompact hooks since v21.125.0 because their output reaches no model |
 | `PreToolUse` | `adapters/claude/pre-tool-use.js` | Before Bash, Write, Edit, WebFetch, WebSearch | One process runs every guard in order, each in its own try/catch (a failing guard is skipped): completion-controller check preparation (Bash), path-guard, web-guard, regressing-guard, docs-guard, log-guard, verification gate (Bash: blocks git commit without a passing declared check, records check starts), doc-watchdog notice, verify-guard. All run even after one denies (verify-guard is skipped after a deny). Denies with exit 0 + `permissionDecision: "deny"` listing every reason (v21.125.0) |
 | `PostToolUse` | `adapters/claude/post-tool-use.js` | After every tool use | One process: counter (auto-save + delta extraction at interval), verification record, completion-controller evidence (Bash/Write/Edit), doc-watchdog edit count (Write/Edit), skill flag (Skill, set before the next tool call), and a notice when Read/Grep/Glob read another project's `.crabshell` (v21.125.0) |

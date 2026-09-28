@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.135.0)
+# Crabshell Architecture (v21.136.0)
 
 ## Overview
 
@@ -33,7 +33,7 @@ Two meta-principles guide Claude's approach to obstacles:
 
 ### Dual Injection Optimization
 - **CLAUDE.md** (session start): Full RULES text (~940 tokens, 3.8KB measured v21.113.0 — compressed from ~2,530 tokens in I083 R3) synced via `syncRulesToClaudeMd()` with marker-based replacement
-- **additionalContext** (every prompt): compact turn contract + 4-line Rules Quick-Check (1,914 characters on a question prompt, measured v21.127.0; the project description is no longer repeated per prompt — SessionStart loads it as the project overview, SubagentStart gives it to workers) — per-response 3-field ending and pressure texts retired
+- **additionalContext** (every prompt): compact turn contract + 7-line Rules Quick-Check (1,914 characters on a question prompt, measured v21.127.0; the project description is no longer repeated per prompt — SessionStart loads it as the project overview, SubagentStart gives it to workers) — per-response 3-field ending and pressure texts retired
 - **Error fallback**: FIRST_TURN_RULES injected via additionalContext only when the normal path throws an exception
 
 ## System Architecture
@@ -565,6 +565,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.136.0 | Rule: **Common Sense** principle after Be Logical — picture the user using or reading the result and ask whether anything would look weird, before doing the work and before handing it over; a weird result is fixed first, never explained away, and no rule excuses it; every verification asks the same question (a weird result fails even when every check passes); a per-prompt line says it; Simple Communication cut from 1,567 to 1,128 characters with every rule kept |
 | 21.135.0 | Plan in the discussion: D gets a `## Plan` (approach, files and functions, order, rejected alternatives, risks, user confirmation) settled before tickets; tickets carry `## Implementation Details` and compare the result with the discussion in `## Intent Fidelity`; a new discussion ticket without a plan or details is blocked (docs-guard, codex-docs), verified needs Intent Fidelity (log-guard); regressing and verifying compare results with the discussion; "record after doing" wording removed, a per-prompt line names the discussing and ticketing skills; commit gate accepts `cd <dir> &&`, `> file`/`2>&1`, `rtk`, pnpm/yarn/`bun run test` and the manifest runner |
 | 21.134.0 | Rule: git is the record of changes — set up git (install or `git init`) after confirming when it is missing; check `git status`/`git diff`; before saying what changed, when or why, find and cite the commit that changed that text (`git log -S`, `git log -p`, `git blame`); files git does not track get a `.bak` |
 | 21.133.0 | Memory saves are mandatory again: the pending-memory and archive notices tell Claude to run `memory-delta` / `memory-rotate` now on every turn (v21.123.0 had made them optional and the logbook stopped getting entries); summarizers run in the background; a large backlog is split into `parts` (≤ 1,500 lines, ≤ 150,000 bytes each); 20KB threshold unchanged |
