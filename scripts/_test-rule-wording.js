@@ -62,21 +62,39 @@ report.check('W15 the per-prompt checklist carries the common-sense line',
 report.check('W16 every verification asks the common-sense question; a weird result fails even when checks pass (rules and per-prompt checklist)',
   /### VERIFICATION\n[^\n]*Every verification also asks the Common Sense question about the actual result: would anything look weird to the user\? If so, it fails, even when every check passes\./.test(RULES)
   && /^- Verification = [^\n]*always ask whether the actual result would look weird to the user — if so, it fails even when every check passes/m.test(COMPRESSED_CHECKLIST));
+// v21.137.0 (D125): the user asked that temporary files made for a test be deleted, safely,
+// once the test is done. The two "confirm before deleting" sentences exempt them, or the
+// model would be told to delete and to ask first on the same turn.
+{
+  const working = (RULES.split('### WORKING RULES')[1] || '').split('### ADDITIONAL RULES')[0];
+  const rule = (working.match(/^- \*\*Temporary files:\*\*[^\n]*/m) || [''])[0];
+  report.check('W18 temporary files: deleted once the test is done, safely (own paths only, exact path, no wildcard, own folders only, leave and report the rest); both confirm-before-delete sentences exempt them',
+    ['deleted once that test or step is finished', 'this needs no confirmation', 'Files the user asked for or will need are not temporary',
+      'note each path when you create it', 'by exact path, never by wildcard', 'recursively only if you created that folder',
+      'not sure you created, stays — tell the user about it'].every(phrase => rule.includes(phrase))
+    && /Before deleting a file other than your own temporary files \(see Temporary files\): state what it does, why deletion is safe, and confirm\./.test(RULES)
+    && /deleting files other than your own temporary files \(delete those once the test is done\)/.test(COMPRESSED_CHECKLIST),
+    rule.slice(0, 120));
+}
 {
   // The line reaches the model: run the prompt hook on a temp project, question and execution turns.
   const os = require('os');
   const { spawnSync } = require('child_process');
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rule-wording-hook-'));
-  fs.mkdirSync(path.join(dir, '.crabshell', 'memory'), { recursive: true });
-  const outputs = ['이거 됐나?', '이 버그 고쳐줘'].map(prompt => {
-    const r = spawnSync(process.execPath, [path.join(__dirname, 'inject-rules.js')], { cwd: dir, encoding: 'utf8',
-      env: { ...process.env, CLAUDE_PROJECT_DIR: dir, CRABSHELL_BACKGROUND: '', HOOK_DATA: '' },
-      input: JSON.stringify({ cwd: dir, session_id: 'wording-test', hook_event_name: 'UserPromptSubmit', prompt }) });
-    try { return JSON.parse(r.stdout).hookSpecificOutput.additionalContext; } catch { return ''; }
-  });
-  report.check('W13 the prompt hook output carries the plan-first and common-sense lines on a question turn and an execution turn',
-    outputs.every(context => context.includes('Work that changes files starts in a discussion') && context.includes('- Common sense:')),
-    outputs.map(o => o.length).join(','));
+  try {
+    fs.mkdirSync(path.join(dir, '.crabshell', 'memory'), { recursive: true });
+    const outputs = ['이거 됐나?', '이 버그 고쳐줘'].map(prompt => {
+      const r = spawnSync(process.execPath, [path.join(__dirname, 'inject-rules.js')], { cwd: dir, encoding: 'utf8',
+        env: { ...process.env, CLAUDE_PROJECT_DIR: dir, CRABSHELL_BACKGROUND: '', HOOK_DATA: '' },
+        input: JSON.stringify({ cwd: dir, session_id: 'wording-test', hook_event_name: 'UserPromptSubmit', prompt }) });
+      try { return JSON.parse(r.stdout).hookSpecificOutput.additionalContext; } catch { return ''; }
+    });
+    report.check('W13 the prompt hook output carries the plan-first and common-sense lines on a question turn and an execution turn',
+      outputs.every(context => context.includes('Work that changes files starts in a discussion') && context.includes('- Common sense:')),
+      outputs.map(o => o.length).join(','));
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 }
 const rule5 = (regressing.match(/^5\. \*\*[^\n]*/m) || [''])[0];
 report.check('W9 regressing Rule 5: a limitation that changes the result is reported at once, work continues',

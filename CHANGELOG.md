@@ -1,5 +1,14 @@
 # Changelog
 
+## [21.137.0] - 2026-09-30
+
+### feat: temporary files are deleted once the test is done
+
+- **Why.** The user: "임시작업으로 tmp 같은걸 만들어서 테스트라든가 뭔가를 하고 나면 테스트가 끝나거나 하면 좀 임시 파일들은 안전하게 지우라고 지침 좀 넣어라". No rule said to clean up; the only deletion rule said to confirm before deleting any file.
+- **Temporary files rule** (RULES WORKING RULES): a file or folder created only for a test or a one-off step — directly or through a script Claude runs — is deleted once that step is finished, before the work is handed over, without asking. Files the user asked for or will need are not temporary. Safely: note each path when it is created; delete only those paths, by exact path, never by wildcard; delete a folder recursively only if Claude created it; anything that existed before, or that Claude is not sure it made, stays and is reported to the user.
+- **No contradiction.** Human Oversight ("Before deleting a file … confirm") and the per-prompt checklist ("deleting files … need explicit user approval first") now exempt Claude's own temporary files; otherwise the same turn would say "delete" and "ask first".
+- **Tests:** `_test-rule-wording.js` W18 (the rule's phrases and both exemptions). W13 ran the prompt hook in an `os.tmpdir()` folder and never removed it (11 `rule-wording-hook-*` folders had piled up); it now removes that folder in `finally`. The 11 old folders were left in place and reported, as the rule says.
+
 ## [21.136.0] - 2026-09-28
 
 ### feat: a Common Sense rule; verification asks it; a shorter communication rule

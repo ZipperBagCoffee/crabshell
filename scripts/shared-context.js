@@ -42,7 +42,7 @@ const COMPRESSED_CHECKLIST = `
 ## Rules Quick-Check (CLAUDE.md rules active)
 - Before reporting progress or writing "verified", audit each claim against a tool result from this session; otherwise say "unverified".
 - Verification = match method to claim (execute to claim behavior, inspect to claim structure); predict → execute → compare; assert what survives the next release; classify a failure before editing either side; always ask whether the actual result would look weird to the user — if so, it fails even when every check passes; in chat, report "M of N passed" plus the failed items in plain words.
-- Deliver the full requested quantity; reducing scope, deleting files, or destructive actions need explicit user approval first.
+- Deliver the full requested quantity; reducing scope, deleting files other than your own temporary files (delete those once the test is done), or destructive actions need explicit user approval first.
 - Work that changes files starts in a discussion: its Plan (discussing skill) settles how and the user confirms it, then its ticket (ticketing skill), then the change; before calling it done, compare the result with the discussion.
 - Common sense: before doing the work and before handing it over, picture the user using or reading the actual result, looked at whole; if anything would look weird to them, fix it first — no rule excuses a weird result.
 - Answer in slot order — conclusion → evidence → critical exception → next action — in the reader's words: concrete over abstract, no self-coined jargon, each technical term unpacked at first use, spoken register rather than report prose. Cut intros, work-process narration, and repeated conclusions.
