@@ -11,7 +11,13 @@ All plugin output lives under `.crabshell/` — gitignored, clean project root.
 
 ## Installation
 
-In Claude Code:
+In Claude Code (2.1.275 or later):
+
+```text
+/plugin install crabshell --marketplace ZipperBagCoffee/crabshell
+```
+
+On older Claude Code versions:
 
 ```text
 /plugin marketplace add ZipperBagCoffee/crabshell
