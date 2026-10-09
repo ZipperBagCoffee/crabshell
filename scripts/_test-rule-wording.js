@@ -76,6 +76,16 @@ report.check('W16 every verification asks the common-sense question; a weird res
     && /deleting files other than your own temporary files \(delete those once the test is done\)/.test(COMPRESSED_CHECKLIST),
     rule.slice(0, 120));
 }
+// v21.138.0 (D126): the user asked for work at a quality one is proud of ("결과물에 자부심이 있을
+// 퀄리티로") and chose this exact clause; it sits right after Common Sense, both hand-over checks.
+{
+  const lines = RULES.split('\n');
+  const at = lines.findIndex(line => line.startsWith('- **Common Sense**:'));
+  const principles = (RULES.split('### PRINCIPLES')[1] || '').split('\n###')[0];
+  const clause = '- **Take Pride**: do every piece of work at a quality you would be proud to put your name on. Before handing it over, ask: would I be proud of this? If not, it is not finished — improve it first.';
+  report.check('W19 rules: Take Pride, word for word as the user chose it, is the principle right after Common Sense',
+    at >= 0 && lines[at + 1] === clause && principles.split('\n').includes(clause), at >= 0 ? (lines[at + 1] || '').slice(0, 120) : 'no Common Sense line');
+}
 {
   // The line reaches the model: run the prompt hook on a temp project, question and execution turns.
   const os = require('os');
