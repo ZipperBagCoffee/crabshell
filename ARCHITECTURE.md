@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.137.0)
+# Crabshell Architecture (v21.138.0)
 
 ## Overview
 
@@ -565,6 +565,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.138.0 | Rule: **Take Pride** principle after Common Sense — do every piece of work at a quality Claude would be proud to put its name on; before handing it over, ask whether it is proud of it, and if not, improve it first. Not added to the per-prompt checklist (the user asked for a rule clause only). `_test-rule-wording.js` W19 checks the clause word for word. |
 | 21.137.0 | Rule: **Temporary files** — a file or folder made only for a test or a one-off step is deleted once that step is finished, without asking, and safely: only paths Claude created, by exact path, never by wildcard, a folder recursively only if Claude created it; anything that existed before or that Claude is not sure it made stays and is reported. Human Oversight and the per-prompt checklist exempt these files from confirm-before-delete, so the two instructions no longer contradict. `_test-rule-wording.js` W18; W13 now removes its own temp folder. |
 | 21.136.0 | Rule: **Common Sense** principle after Be Logical — picture the user using or reading the result and ask whether anything would look weird, before doing the work and before handing it over; a weird result is fixed first, never explained away, and no rule excuses it; every verification asks the same question (a weird result fails even when every check passes); a per-prompt line says it; Simple Communication cut from 1,567 to 1,128 characters with every rule kept |
 | 21.135.0 | Plan in the discussion: D gets a `## Plan` (approach, files and functions, order, rejected alternatives, risks, user confirmation) settled before tickets; tickets carry `## Implementation Details` and compare the result with the discussion in `## Intent Fidelity`; a new discussion ticket without a plan or details is blocked (docs-guard, codex-docs), verified needs Intent Fidelity (log-guard); regressing and verifying compare results with the discussion; "record after doing" wording removed, a per-prompt line names the discussing and ticketing skills; commit gate accepts `cd <dir> &&`, `> file`/`2>&1`, `rtk`, pnpm/yarn/`bun run test` and the manifest runner |

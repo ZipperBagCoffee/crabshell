@@ -1,5 +1,14 @@
 # Changelog
 
+## [21.138.0] - 2026-10-08
+
+### feat: a Take Pride rule
+
+- **Why.** The user asked for a rule to work at a quality one is proud of — "결과물에 자부심이 있을 퀄리티로 작업을 하라고" — and chose the rule-clause wording of the two shown.
+- **Take Pride** (RULES PRINCIPLES, right after Common Sense): "do every piece of work at a quality you would be proud to put your name on. Before handing it over, ask: would I be proud of this? If not, it is not finished — improve it first." Common Sense asks whether anything would look weird; Take Pride asks whether the work is good.
+- **Not in the per-prompt checklist:** the user asked for a rule clause only.
+- **Tests:** `_test-rule-wording.js` W19 (the clause word for word, right after Common Sense).
+
 ## [21.137.0] - 2026-09-30
 
 ### feat: temporary files are deleted once the test is done
