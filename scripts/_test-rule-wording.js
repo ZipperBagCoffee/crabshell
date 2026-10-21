@@ -103,6 +103,20 @@ report.check('W16 every verification asks the common-sense question; a weird res
   report.check('W21 the verifying skill makes --changed the default and no longer says to run the full set before a release',
     !/Run the full set before a release/.test(skill) && /Routine updates run `--changed`/.test(skill) && /ask the user first/.test(skill));
 }
+// v21.141.0 (D130): two lines the user approved from felixrieseberg.com "How to be more ambitious":
+// models switch vocabulary without switching methods, and a model must not judge its own work.
+{
+  const lines = RULES.split('\n');
+  const at = lines.findIndex(line => line.startsWith('- **Take Pride**:'));
+  const principles = (RULES.split('### PRINCIPLES')[1] || '').split('\n###')[0];
+  const depth = '- **Depth**: when a task calls for expertise, use the methods and tools a top practitioner would use, starting from the rawest material available; changing vocabulary is not changing method.';
+  report.check('W22 rules: Depth, word for word as the user approved it, is the principle right after Take Pride',
+    at >= 0 && lines[at + 1] === depth && principles.split('\n').includes(depth), at >= 0 ? (lines[at + 1] || '').slice(0, 120) : 'no Take Pride line');
+  const verification = (RULES.split('### VERIFICATION')[1] || '').split('\n###')[0];
+  const judge = 'Your own reading of your work is not verification; the evidence is a tool result or a check outside your judgment.';
+  report.check('W23 verification: self-judgment is not verification, right after the match-the-method sentence',
+    verification.includes('say the check was static. ' + judge));
+}
 {
   // The line reaches the model: run the prompt hook on a temp project, question and execution turns.
   const os = require('os');
