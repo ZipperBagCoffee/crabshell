@@ -29,6 +29,12 @@ function recordCheck(state, payload, observation) {
   const id = identity(payload);
   const previous = history.results[key];
   const pending = id && Object.hasOwn(history.pending, id) ? history.pending[id] : null;
+  // No result of a background launch ever arrives: keeping it pending would hold
+  // every later result back, so it is dropped and never counts.
+  if (observation.background) {
+    if (pending) delete history.pending[id];
+    return { accepted: false, reason: 'background-launch' };
+  }
   if (previous && id && previous.identity === id) {
     if (previous.observation.outcome === 'interrupted') return { accepted: false, reason: 'interrupted-invocation' };
     if (previous.observation.conclusive && !observation.conclusive) return { accepted: false, reason: 'late-progress' };
@@ -52,6 +58,12 @@ function recordCheck(state, payload, observation) {
   const order = pending?.order || (previous && id && previous.identity === id ? previous.order : ++history.sequence);
   if (pending && observation.outcome !== 'running') delete history.pending[id];
   history.results[key] = { identity: id, order, observation };
+  // An older run of the same check would be rejected as superseded when it lands.
+  if (observation.conclusive) {
+    for (const [other, entry] of Object.entries(history.pending)) {
+      if (entry.checkKey === key && entry.order < order) delete history.pending[other];
+    }
+  }
   return { accepted: true, reason: 'recorded' };
 }
 

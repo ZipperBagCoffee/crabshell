@@ -91,6 +91,9 @@ function handleRecord(hookData, projectDir, options = {}) {
     const candidate = { ...observation, sourceFingerprint: observation.passed ? (options.getFingerprint ? options.getFingerprint() : projectFingerprint(projectDir)) : null };
     const merged = recordCheck(state, hookData, candidate);
     if (!merged.accepted) {
+      if (merged.reason === 'background-launch') {
+        process.stderr.write(`[VERIFICATION_SEQ] A check started in the background is never observed; run it in the foreground to unlock the commit gate\n`);
+      }
       saveState(projectDir, state);
       return 0;
     }
@@ -172,7 +175,7 @@ function handleGate(hookData, projectDir) {
         : '';
       const output = {
         decision: 'block',
-        reason: `Git commit blocked: current source has no passing required check. Edited files: [${files}]. Run ${named} as the whole command and inspect its result before committing — \`cd <dir> &&\` before it and \`> file\` / \`2>&1\` after it are accepted; pipes (\`|\`), \`;\` and \`||\` are not, because the exit status would come from the other command.${fullNote}`
+        reason: `Git commit blocked: current source has no passing required check. Edited files: [${files}]. Run ${named} as the whole command and inspect its result before committing — \`cd <dir> &&\` before it and \`> file\` / \`2>&1\` after it are accepted; pipes (\`|\`), \`;\` and \`||\` are not, because the exit status would come from the other command. Run it in the foreground: a check started in the background is never observed.${fullNote}`
       };
       return { exitCode: 2, reason: output.reason };
     }

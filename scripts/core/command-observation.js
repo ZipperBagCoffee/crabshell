@@ -296,6 +296,8 @@ function commandObservation(hookData = {}, projectDir, options = {}) {
   const failed = isToolFailure(response) || isToolFailure(hookData)
     || hookData.tool_result_is_error === true || failureEvent;
   const running = isRunning(response);
+  // A Claude background launch never reports its end to a hook, so it is never observed.
+  const background = host === 'claude' && (hookData.tool_input?.run_in_background === true || response?.backgroundTaskId != null);
   const interrupted = hookData.is_interrupt === true || response?.interrupted === true;
   // Codex string output can be arbitrary stdout, even "Exit code: 0". Only
   // structured host evidence or the bound completion record supplies its code.
@@ -342,6 +344,7 @@ function commandObservation(hookData = {}, projectDir, options = {}) {
     evidenceSource: nativeResult?.evidenceSource || (failureEvent ? 'claude-failure-event' : 'hook-result'),
     checkKey: declarationKey(declaration),
     required: declaration.required !== false,
+    background,
     outcome: interrupted ? 'interrupted' : running ? 'running' : !conclusive ? 'unknown' : failed || exitCode !== 0 || !contractPassed ? 'failed' : 'passed',
   };
 }

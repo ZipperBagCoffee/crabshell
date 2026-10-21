@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.139.0)
+# Crabshell Architecture (v21.140.0)
 
 ## Overview
 
@@ -565,6 +565,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.140.0 | Commit gate: a check started in the background no longer blocks it forever. Claude never reports a background task's end to a hook, so its launch left a pending record and `currentCheck` ignored every later result; now a background launch is dropped (it still never counts as a pass), a newer result of the same check drops older pending runs, and the block reason says to run the check in the foreground. `_test-session-isolation.js` S7 (reason), S7b, S7c. |
 | 21.139.0 | Verification checks the diff only: the rules and the per-prompt checklist say routine updates run only the checks the changed files touch (`run-verify.js --changed`), the full suite runs only when the user asks, and a full run Claude thinks is needed (including a selector fallback to every check) is asked about first. The commit gate names the changed-file check first and accepts `run-verify.js --changed` even when the manifest declares no `tools.changed`; verify-guard runs `--changed`; the verifying skill drops "Run the full set before a release". This repo no longer lists the plugin manifests in `changed.global`, so a version bump adds only the version check (V009) instead of running all 97. `_test-rule-wording.js` W20–W21, `_test-gate-loosening.js` F3, H4–H5. |
 | 21.138.0 | Rule: **Take Pride** principle after Common Sense — do every piece of work at a quality Claude would be proud to put its name on; before handing it over, ask whether it is proud of it, and if not, improve it first. Not added to the per-prompt checklist (the user asked for a rule clause only). `_test-rule-wording.js` W19 checks the clause word for word. |
 | 21.137.0 | Rule: **Temporary files** — a file or folder made only for a test or a one-off step is deleted once that step is finished, without asking, and safely: only paths Claude created, by exact path, never by wildcard, a folder recursively only if Claude created it; anything that existed before or that Claude is not sure it made stays and is reported. Human Oversight and the per-prompt checklist exempt these files from confirm-before-delete, so the two instructions no longer contradict. `_test-rule-wording.js` W18; W13 now removes its own temp folder. |

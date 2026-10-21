@@ -101,6 +101,37 @@ const commit = (project, sid) => h.runHook(root, 'verification-sequence.js', ['g
   runCheck(project, A, { ...SUCCESS, stdout: '', backgroundTaskId: 'bk-test-1' });
   const gate = commit(project, A);
   report.check('S7 a check started in the background is not recorded as passing', gate.status === 2, `exit=${gate.status}`);
+  report.check('S7 ...and the block reason says to run it in the foreground', /Run it in the foreground/.test((gate.stdout || '') + (gate.stderr || '')));
+}
+// v21.140.0 (D129): a background launch left a pending record that no hook ever
+// resolved, so even a later passing foreground run never unlocked the commit.
+{
+  const project = projectWithCheck('s7b-background-then-foreground');
+  edit(project, A, 'src/x.js');
+  runCheck(project, A, { ...SUCCESS, stdout: '', backgroundTaskId: 'bk-test-2' });
+  runCheck(project, A, SUCCESS);
+  const gate = commit(project, A);
+  const pending = Object.keys(h.readJson(h.memoryPath(project, 'verification-state.json'))?.checkHistory?.pending || {});
+  report.check('S7b a background launch, then a passing foreground run: the commit is allowed and nothing stays pending',
+    gate.status === 0 && pending.length === 0, `exit=${gate.status} pending=${pending.length}`);
+}
+{
+  // A run that started and never reported (an older plugin's background record) is
+  // superseded by a newer result of the same check.
+  const project = projectWithCheck('s7c-stale-pending');
+  edit(project, A, 'src/x.js');
+  h.runHook(root, 'verification-sequence.js', ['gate'], { session_id: A, cwd: project, tool_name: 'Bash', tool_use_id: nextId('stale'),
+    tool_input: { command: 'node check.js' }, hook_event_name: 'PreToolUse' }, project);
+  runCheck(project, A, SUCCESS);
+  report.check('S7c a newer passing result of the same check drops the older pending run and unlocks the commit', commit(project, A).status === 0);
+  const { startCheck, recordCheck } = require('./core/check-history');
+  const state = {};
+  startCheck(state, { session_id: A, tool_use_id: 'other-1' }, 'other-check');
+  startCheck(state, { session_id: A, tool_use_id: 'mine-1' }, 'my-check');
+  startCheck(state, { session_id: A, tool_use_id: 'mine-2' }, 'my-check');
+  recordCheck(state, { session_id: A, tool_use_id: 'mine-2' }, { checkKey: 'my-check', conclusive: true, passed: true, outcome: 'passed' });
+  const left = Object.values(state.checkHistory.pending).map(entry => entry.checkKey);
+  report.check('S7c ...a different check\'s pending run stays', left.length === 1 && left[0] === 'other-check', left.join(','));
 }
 {
   const project = projectWithCheck('s8-read-no-write');
