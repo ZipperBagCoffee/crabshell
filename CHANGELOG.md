@@ -1,5 +1,15 @@
 # Changelog
 
+## [21.141.0] - 2026-10-21
+
+### feat: Depth and outside-judge rules
+
+- **Why.** The user asked what in felixrieseberg.com "How to be more ambitious: A tutorial for humans with models" belongs in the plugin's rules, saw two lines taken from its Depth section, and said "진행". The article: "models often switch vocabulary without actually switching methods"; "Do *not* ask the model to judge itself … insist on outside validation".
+- **Depth** (RULES PRINCIPLES, right after Take Pride): "when a task calls for expertise, use the methods and tools a top practitioner would use, starting from the rawest material available; changing vocabulary is not changing method." It changes the method, not the scope: Scope Preservation still bounds what is delivered, and Human Oversight still asks before external installs.
+- **Outside judge** (RULES VERIFICATION, after the first sentence): "Your own reading of your work is not verification; the evidence is a tool result or a check outside your judgment." A file opened with a tool is a tool result, so static inspection still counts.
+- **Not taken:** Altitude (conflicts with Scope Preservation), Range (a technique for the user), "keep going" ("Never recommend giving up" already says it). Not in the per-prompt checklist.
+- **Tests:** `_test-rule-wording.js` W22 (Depth word for word, right after Take Pride), W23 (the sentence right after the match-the-method sentence).
+
 ## [21.140.0] - 2026-10-20
 
 ### fix: a background check no longer blocks the commit gate
