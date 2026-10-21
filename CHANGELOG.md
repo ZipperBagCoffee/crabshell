@@ -1,5 +1,15 @@
 # Changelog
 
+## [21.140.0] - 2026-10-20
+
+### fix: a background check no longer blocks the commit gate
+
+- **Why.** In v21.139.0's release a `run-verify.js --changed` run started in the background left a pending record; Claude sends no hook event when a background task ends, and `check-history.js` `currentCheck` returns nothing while any record is pending, so a later passing foreground run never unlocked the commit. The user: "고쳐".
+- **Background launch** (`command-observation.js` sets `background` for a Claude `backgroundTaskId` or `run_in_background`): `recordCheck` drops its pending record and never counts it.
+- **Superseded runs:** a newer conclusive result drops older pending runs of the same check (their results would be rejected as superseded anyway); other checks' pending runs stay.
+- **Gate:** the block reason and a record notice say to run the check in the foreground.
+- **Tests:** `_test-session-isolation.js` S7 (reason), S7b, S7c.
+
 ## [21.139.0] - 2026-10-20
 
 ### feat: verification checks the diff only
