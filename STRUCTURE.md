@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.138.0)
+# Crabshell Plugin Structure (v21.139.0)
 
-**Version**: 21.138.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.139.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -157,11 +157,11 @@ crabshell/
 │   ├── _test-index-rows.js           # INDEX rows copied from this repository; every consumer; unfinished ticket sections (v21.131.0)
 │   ├── _test-compaction-skills.js    # Skill bodies within the compaction re-attach budget; docs-guard update-call hint (v21.132.0)
 │   ├── _test-memory-loading.js       # Hand-save path, SessionStart memory notes/dropped parts/knowledge, snippet de-duplication (v21.132.0)
-│   ├── _test-rule-wording.js         # Rule wording from I091 (v21.132.0); git-record rule (v21.134.0)
+│   ├── _test-rule-wording.js         # Rule wording from I091 (v21.132.0); git-record rule (v21.134.0); diff-only verification (v21.139.0)
 │   ├── _test-memory-save-directive.js # Mandatory memory-save/rotation notices, 20KB cadence, backlog parts (v21.133.0)
 │   ├── _test-plan-first-docs.js      # Plan section, ticket Implementation Details / Intent Fidelity, result-vs-discussion steps (v21.135.0)
 │   ├── _test-plan-first-guards.js    # No ticket before its discussion's plan; no verified without Intent Fidelity (v21.135.0)
-│   ├── _test-gate-loosening.js       # Commit gate: accepted and rejected check forms, block reason (v21.135.0)
+│   ├── _test-gate-loosening.js       # Commit gate: accepted and rejected check forms, block reason (v21.135.0); --changed unlocks, named first (v21.139.0)
 │   ├── _test-regressing-stale.js     # One regressing staleness decision; each caller's missing-time answer (v21.128.0)
 │   ├── _test-hook-wiring-cost.js     # Synchronous hook processes per tool call; Stop starts no child (v21.125.0)
 │   ├── _test-claude-dispatcher-parity.js # Old separate guards vs the PreToolUse dispatcher (v21.125.0)
@@ -468,6 +468,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.139.0 | Verification checks the diff only: the rules and the per-prompt checklist say routine updates run only the checks the changed files touch (`run-verify.js --changed`), the full suite runs only when the user asks, and a full run Claude thinks is needed (including a selector fallback to every check) is asked about first. The commit gate names the changed-file check first and accepts `run-verify.js --changed` even when the manifest declares no `tools.changed`; verify-guard runs `--changed`; the verifying skill drops "Run the full set before a release". This repo no longer lists the plugin manifests in `changed.global`, so a version bump adds only the version check (V009) instead of running all 97. `_test-rule-wording.js` W20–W21, `_test-gate-loosening.js` F3, H4–H5. |
 | 21.138.0 | Rule: **Take Pride** principle after Common Sense — do every piece of work at a quality Claude would be proud to put its name on; before handing it over, ask whether it is proud of it, and if not, improve it first. Not added to the per-prompt checklist (the user asked for a rule clause only). `_test-rule-wording.js` W19 checks the clause word for word. |
 | 21.137.0 | Rule: **Temporary files** — a file or folder made only for a test or a one-off step is deleted once that step is finished, without asking, and safely: only paths Claude created, by exact path, never by wildcard, a folder recursively only if Claude created it; anything that existed before or that Claude is not sure it made stays and is reported. Human Oversight and the per-prompt checklist exempt these files from confirm-before-delete, so the two instructions no longer contradict. `_test-rule-wording.js` W18; W13 now removes its own temp folder. |
 | 21.136.0 | Rule: **Common Sense** principle after Be Logical — picture the user using or reading the result and ask whether anything would look weird, before doing the work and before handing it over; a weird result is fixed first, never explained away, and no rule excuses it; every verification asks the same question (a weird result fails even when every check passes); a per-prompt line says it; Simple Communication cut from 1,567 to 1,128 characters with every rule kept |

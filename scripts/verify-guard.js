@@ -14,6 +14,10 @@ const { getProjectDir, ticketDocPattern } = require('./utils');
 // Ticket file pattern: <STORAGE_ROOT>/ticket/<D### or P###>_T###*
 const TICKET_FILE_PATTERN = new RegExp(ticketDocPattern());
 
+// The runner prints its results as a pretty JSON array whose brackets open and close
+// at line start; the summary lines after it (a --changed run's reason) may hold "]".
+const RESULTS_ARRAY = /^\[\]$|^\[\r?\n[\s\S]*?\r?\n\]$/m;
+
 /**
  * Check if the content being written contains Final Verification section.
  * For Write: check content field.
@@ -114,17 +118,17 @@ function evaluateVerifyGuard(hookData, projectDir) {
     };
   }
 
-  // Execute run-verify.js and check results
+  // Execute run-verify.js on the changed files only and check results
   let stdout;
   try {
-    stdout = execFileSync(process.execPath, [runVerifyPath], {
+    stdout = execFileSync(process.execPath, [runVerifyPath, '--changed'], {
       timeout: 60000,
       encoding: 'utf8',
       cwd: projectDir
     });
   } catch (execErr) {
     // Non-zero exit means FAILs exist — parse stdout from the error
-    const jsonMatch = execErr.stdout && execErr.stdout.match(/\[[\s\S]*\]/);
+    const jsonMatch = execErr.stdout && execErr.stdout.match(RESULTS_ARRAY);
     if (jsonMatch) {
       try {
         const results = JSON.parse(jsonMatch[0]);
@@ -136,7 +140,7 @@ function evaluateVerifyGuard(hookData, projectDir) {
   }
 
   // Parse JSON results (first JSON array in stdout)
-  const jsonMatch = stdout.match(/\[[\s\S]*\]/);
+  const jsonMatch = stdout.match(RESULTS_ARRAY);
   if (!jsonMatch) {
     return { log: `[VERIFY_GUARD] Allowed: ${filePath} — run-verify.js produced no parseable results` };
   }

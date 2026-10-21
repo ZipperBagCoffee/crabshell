@@ -42,10 +42,14 @@ function project(name, { packageTest = true, manifestEntriesOnly = false } = {})
 }
 {
   const dir = project('runner', { packageTest: false, manifestEntriesOnly: true });
-  report.check('F3 with a manifest and its runner, the runner is the full check; --changed is not',
+  // v21.139.0 (D128): routine updates verify only the diff, so the runner's --changed
+  // mode unlocks the gate even when the manifest declares no tools.changed.
+  report.check('F3 with a manifest and its runner, the runner and its --changed mode are both required checks',
     isRequiredCheck('node .crabshell/verification/run-verify.js', dir, dir)
-    && !isRequiredCheck('node .crabshell/verification/run-verify.js --changed', dir, dir)
-    && findDeclaration('node .crabshell/verification/run-verify.js', dir, dir)?.source === 'tools');
+    && isRequiredCheck('node .crabshell/verification/run-verify.js --changed', dir, dir)
+    && !isRequiredCheck('node .crabshell/verification/run-verify.js --changed --flat', dir, dir)
+    && findDeclaration('node .crabshell/verification/run-verify.js', dir, dir)?.source === 'tools'
+    && findDeclaration('node .crabshell/verification/run-verify.js --changed', dir, dir)?.source === 'tools');
 }
 
 // Through the hooks: edit, commit blocked, a loosened form passes, commit allowed;
@@ -78,6 +82,20 @@ const commit = dir => h.runHook(root, 'verification-sequence.js', ['gate'], bash
   const reason = (piped.stdout || '') + (piped.stderr || '');
   report.check('H3 after a piped run the commit stays blocked, and the reason names the command and the accepted forms',
     piped.status === 2 && /npm test/.test(reason) && /cd <dir> &&/.test(reason) && /pipes/.test(reason), reason.slice(0, 300));
+}
+{
+  // v21.139.0 (D128): the block names the changed-file check first, keeps the full
+  // check for when the user asks, and a passing --changed run unlocks the commit.
+  const dir = project('runner-flow', { packageTest: false, manifestEntriesOnly: true });
+  edit(dir, 2);
+  const blocked = commit(dir);
+  const reason = (blocked.stdout || '') + (blocked.stderr || '');
+  const changedAt = reason.indexOf('run-verify.js --changed');
+  const fullAt = reason.indexOf('`node .crabshell/verification/run-verify.js`');
+  report.check('H4 the block names the changed-file check before the full check, which is for when the user asks',
+    blocked.status === 2 && changedAt >= 0 && fullAt > changedAt && /only when the user asks/.test(reason) && /ask the user first/.test(reason), reason.slice(0, 400));
+  runCheck(dir, 'node .crabshell/verification/run-verify.js --changed');
+  report.check('H5 a passing `run-verify.js --changed` run unlocks the commit', commit(dir).status === 0);
 }
 
 report.finish();

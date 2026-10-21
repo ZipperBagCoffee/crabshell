@@ -1,5 +1,17 @@
 # Changelog
 
+## [21.139.0] - 2026-10-20
+
+### feat: verification checks the diff only
+
+- **Why.** The user: "왜 그 TEST를 FULL로 하는지 잘 모르겠네 DIFF test 하라고 하지 않았나", then "이 플러그인에서 지시를 그렇게 해줘야한다", and "기본적인 업데이트는 변경된 것만 검사 돌리고 유저가 요청할때만 전체 검사를 하고 아니면 전체검사가 정말 필요하다 할때는 유저에게 물어봐라". The last releases ran all 97 checks; nothing in the plugin said otherwise, and several places pointed at the full run.
+- **Rules** (RULES VERIFICATION and the per-prompt checklist): routine updates run only the checks the changed files touch (`run-verify.js --changed`); the full suite only when the user asks; a full run Claude thinks is needed — including a changed-file selector that would fall back to every check — is asked about first.
+- **Commit gate:** a manifest with its runner now also counts `run-verify.js --changed` as a required check, even without `tools.changed`; the block reason names the changed-file check first and says the full check is for when the user asks.
+- **verify-guard** runs the runner with `--changed`, and reads the results array only (a `--changed` summary line may contain `]`).
+- **Verifying skill:** `--changed` is the default; "Run the full set before a release." is gone; `changed.global` should list only files every check depends on.
+- **This repo's manifest:** `.claude-plugin/*.json` and `.codex-plugin/*.json` left `changed.global`; a version bump now adds only the version check (V009) instead of running all 97.
+- **Tests:** `_test-rule-wording.js` W20–W21; `_test-gate-loosening.js` F3 (now `--changed` is required too), H4–H5.
+
 ## [21.138.0] - 2026-10-08
 
 ### feat: a Take Pride rule

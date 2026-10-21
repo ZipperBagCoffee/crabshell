@@ -86,6 +86,23 @@ report.check('W16 every verification asks the common-sense question; a weird res
   report.check('W19 rules: Take Pride, word for word as the user chose it, is the principle right after Common Sense',
     at >= 0 && lines[at + 1] === clause && principles.split('\n').includes(clause), at >= 0 ? (lines[at + 1] || '').slice(0, 120) : 'no Common Sense line');
 }
+// v21.139.0 (D128): the user: "기본적인 업데이트는 변경된 것만 검사 돌리고 유저가 요청할때만 전체 검사를
+// 하고 아니면 전체검사가 정말 필요하다 할때는 유저에게 물어봐라". All three parts, in the rules and the checklist.
+{
+  const verification = (RULES.split('### VERIFICATION')[1] || '').split('\n###')[0];
+  const line = (COMPRESSED_CHECKLIST.match(/^- Verification = [^\n]*/m) || [''])[0];
+  report.check('W20 verify the diff only: routine updates run the changed files\' checks, the full suite only on request, and a needed full run is asked about first (rules and checklist)',
+    verification.includes('Verify the diff only: routine updates run only the checks the changed files touch (`node .crabshell/verification/run-verify.js --changed`')
+    && verification.includes('run the full suite only when the user asks for it')
+    && /when a full run seems truly needed — including when the changed-file selector would fall back to every check[^;.]*— ask the user first\./.test(verification)
+    && line.includes('routine updates run only the changed files\' checks — the full suite only when the user asks, and ask before a full run you think is needed'),
+    line.slice(0, 120));
+}
+{
+  const skill = fs.readFileSync(path.join(__dirname, '..', 'skills', 'verifying', 'SKILL.md'), 'utf8');
+  report.check('W21 the verifying skill makes --changed the default and no longer says to run the full set before a release',
+    !/Run the full set before a release/.test(skill) && /Routine updates run `--changed`/.test(skill) && /ask the user first/.test(skill));
+}
 {
   // The line reaches the model: run the prompt hook on a temp project, question and execution turns.
   const os = require('os');
