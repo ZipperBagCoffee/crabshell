@@ -689,9 +689,7 @@
     "global": [
       "hooks/*.json",
       "scripts/constants.js",
-      "scripts/utils.js",
-      ".claude-plugin/*.json",
-      ".codex-plugin/*.json"
+      "scripts/utils.js"
     ]
   }
 }

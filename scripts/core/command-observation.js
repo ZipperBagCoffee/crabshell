@@ -121,6 +121,14 @@ function declaredCommands(projectDir) {
       && canonicalToken(declaration.tokens[1], 1, declaration.cwd) === path.resolve(projectDir, runner))) {
     declarations.push({ tokens: ['node', runner.replace(/\\/g, '/')], cwd: projectDir, source: 'tools' });
   }
+  // Its changed-file mode is the default check, so it unlocks the gate too, even
+  // when the manifest declares no tools.changed (v21.139.0).
+  if (manifest.entries && fs.existsSync(path.join(projectDir, runner))
+    && !declarations.some(declaration => declaration.source === 'tools' && declaration.tokens.length === 3
+      && canonicalToken(declaration.tokens[1], 1, declaration.cwd) === path.resolve(projectDir, runner)
+      && declaration.tokens[2] === '--changed')) {
+    declarations.push({ tokens: ['node', runner.replace(/\\/g, '/'), '--changed'], cwd: projectDir, source: 'tools' });
+  }
   // Follow package scripts referenced by declared checks, including arbitrary
   // names. The project, rather than a maintained list of tool names, chooses.
   const expanded = new Set();

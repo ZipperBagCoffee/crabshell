@@ -79,7 +79,7 @@ Create `.crabshell/verification/manifest.json` using schema version 2:
 }
 ```
 
-`tools` commands (and the package.json `test` script) are the project's **required checks**: only they unlock the commit gate. A single entry's command still counts as evidence for that entry, but passing one entry does not unlock a commit. `changed.global` lists files whose change must run every check. Package manifests and lockfiles, the manifest, and the runner itself are always global.
+`tools` commands (and the package.json `test` script) are the project's **required checks**: only they unlock the commit gate. A single entry's command still counts as evidence for that entry, but passing one entry does not unlock a commit. `changed.global` lists files whose change must run every check. Package manifests and lockfiles, the manifest, and the runner itself are always global. List only files that every check really depends on: a file only some checks read (a version file one check compares) is selected through the load map, and listing it makes every change to it run everything.
 
 ### Step 5: Populate entries from current context
 
@@ -111,9 +111,11 @@ Read `.crabshell/verification/manifest.json`. If not found: "No manifest. Run `/
 ### Step 2: Execute verification runner
 
 ```bash
-node .crabshell/verification/run-verify.js            # every check; rebuilds the load map when all pass
-node .crabshell/verification/run-verify.js --changed  # only the checks the changed files touch
+node .crabshell/verification/run-verify.js --changed  # default: only the checks the changed files touch
+node .crabshell/verification/run-verify.js            # every check, only when the user asks; rebuilds the load map when all pass
 ```
+
+Routine updates run `--changed`; it also unlocks the commit gate. Run every check only when the user asks for it. When a full run seems truly needed — or `--dry-run` shows the selection falling back to every check — ask the user first and say why.
 
 A full run records `test-map.json` beside the manifest. The map lists, for each check, the repository files and folders it requires, reads, lists, or copies. Child processes are included, along with path strings and relative requires in the test file and the files its assertions read. The map is kept only when every check passed.
 
@@ -124,7 +126,7 @@ A full run records `test-map.json` beside the manifest. The map lists, for each 
 - a changed non-prose file is not in the map;
 - no changed file is found at all.
 
-Prose that no check reads selects nothing. A release that changes a version file listed in `changed.global` therefore always runs everything. Remaining blind spots: reads made by non-Node processes, and paths computed from data a check never touches. Files git ignores (runtime state such as `.crabshell/memory/`) never count as changed and do not make the map stale, so a check whose input is an ignored file is not re-selected when that file changes; the manifest, runner and test files are still checked even when ignored. Run the full set before a release.
+Prose that no check reads selects nothing. A release that changes a version file listed in `changed.global` therefore always runs everything — one more reason to keep such files out of it. Remaining blind spots: reads made by non-Node processes, and paths computed from data a check never touches. Files git ignores (runtime state such as `.crabshell/memory/`) never count as changed and do not make the map stale, so a check whose input is an ignored file is not re-selected when that file changes; the manifest, runner and test files are still checked even when ignored. These blind spots are not a reason to run the full set on your own: run it when the user asks, or ask the user when you think one of them applies.
 
 ### Step 2b: When an entry fails, decide what is wrong before touching anything
 

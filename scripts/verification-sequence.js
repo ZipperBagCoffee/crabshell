@@ -156,14 +156,23 @@ function handleGate(hookData, projectDir) {
       if (!declaredCommands(projectDir).some(declaration => declaration.source !== 'entry')) {
         // Single manifest entries never unlock a commit, so without a full check
         // this block could never clear: say what to declare.
-        return { exitCode: 2, reason: `Git commit blocked: the project declares no full check, and single manifest entries do not unlock commits. Edited files: [${files}]. Declare a full check as tools.test in .crabshell/verification/manifest.json ("tools": { "test": "node .crabshell/verification/run-verify.js" }) or as a package.json "test" script, run it, then commit.` };
+        return { exitCode: 2, reason: `Git commit blocked: the project declares no full check, and single manifest entries do not unlock commits. Edited files: [${files}]. Declare the project's checks as tools.test and tools.changed in .crabshell/verification/manifest.json ("tools": { "test": "node .crabshell/verification/run-verify.js", "changed": "node .crabshell/verification/run-verify.js --changed" }) or as a package.json "test" script, run the changed-file check, then commit.` };
       }
       // Name what counts, so a check run in an unaccepted form is not repeated blindly.
-      const full = [...new Set(declaredCommands(projectDir).filter(declaration => declaration.source !== 'entry')
-        .map(declaration => declaration.tokens.join(' ')))].slice(0, 3);
+      // The changed-file check comes first: routine commits verify only the diff.
+      const required = [...new Set(declaredCommands(projectDir).filter(declaration => declaration.source !== 'entry')
+        .map(declaration => declaration.tokens.join(' ')))];
+      const changed = required.filter(command => /(^| )--changed( |$)/.test(command));
+      const others = required.filter(command => !changed.includes(command)).slice(0, 3);
+      const named = changed.length > 0
+        ? `the changed-file check ${changed.map(command => `\`${command}\``).join(' or ')}`
+        : others.map(command => `\`${command}\``).join(' or ');
+      const fullNote = changed.length > 0 && others.length > 0
+        ? ` Run the full check (${others.map(command => `\`${command}\``).join(' or ')}) only when the user asks for it; if you think it is needed, ask the user first.`
+        : '';
       const output = {
         decision: 'block',
-        reason: `Git commit blocked: current source has no passing required check. Edited files: [${files}]. Run ${full.map(command => `\`${command}\``).join(' or ')} as the whole command and inspect its result before committing — \`cd <dir> &&\` before it and \`> file\` / \`2>&1\` after it are accepted; pipes (\`|\`), \`;\` and \`||\` are not, because the exit status would come from the other command.`
+        reason: `Git commit blocked: current source has no passing required check. Edited files: [${files}]. Run ${named} as the whole command and inspect its result before committing — \`cd <dir> &&\` before it and \`> file\` / \`2>&1\` after it are accepted; pipes (\`|\`), \`;\` and \`||\` are not, because the exit status would come from the other command.${fullNote}`
       };
       return { exitCode: 2, reason: output.reason };
     }
