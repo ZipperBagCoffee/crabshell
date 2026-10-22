@@ -514,21 +514,30 @@ function planChanged(manifest, entries, projectRoot, manifestPath, changedFiles)
   for (const record of Object.values(map.entries || {})) {
     for (const file of record.files || []) if (!file.endsWith('/') && file !== mapRelative && (!visible || visible.has(file))) recordedFiles.add(file);
   }
-  for (const file of [manifestRelative, runnerRelative, ...testFiles.values(), ...recordedFiles].filter(Boolean)) {
+  // A check with no record yet (a new, renamed or pulled test) runs anyway, so its own
+  // test file need not be compared with the map; nothing else can depend on a test
+  // that did not exist when the map was written.
+  const records = map.entries || {};
+  const unrecorded = new Set(runnable.filter(entry => !records[entry.id]).map(entry => entry.id));
+  const knownTests = [...testFiles].filter(([id]) => !unrecorded.has(id)).map(([, file]) => file);
+  for (const file of [manifestRelative, runnerRelative, ...knownTests, ...recordedFiles].filter(Boolean)) {
     if (!changedSet.has(file) && newer(file)) return everything(`load map is older than ${file}`);
   }
   const globals = [...DEFAULT_GLOBAL, ...((manifest.changed && Array.isArray(manifest.changed.global)) ? manifest.changed.global : [])].map(globRegex);
-  const selected = new Set();
+  const selected = new Set(unrecorded);
   for (const entry of runnable) {
-    const record = map.entries && map.entries[entry.id];
-    if (!record) return everything(`load map has no record for ${entry.id}`);
-    if (entry.always === true || (record.files || []).length === 0) selected.add(entry.id);
+    const record = records[entry.id];
+    if (record && (entry.always === true || (record.files || []).length === 0)) selected.add(entry.id);
   }
+  // A test the map knows that is gone from disk (deleted, or the old name of a renamed
+  // test) leaves nothing to run; a check that read it records it and is selected above.
+  const formerTests = new Set(Object.values(records).map(record => record.test).filter(Boolean));
   for (const file of changed) {
     if (file === manifestRelative || file === runnerRelative || globals.some(regex => regex.test(file))) return everything(`${file} affects every check`);
-    const users = runnable.filter(entry => testFiles.get(entry.id) === file || ((map.entries[entry.id] || {}).files || []).some(recorded => covers(recorded, file)));
+    const users = runnable.filter(entry => testFiles.get(entry.id) === file || ((records[entry.id] || {}).files || []).some(recorded => covers(recorded, file)));
     if (users.length > 0) { users.forEach(entry => selected.add(entry.id)); continue; }
     if (PROSE_EXTENSIONS.includes(path.extname(file).toLowerCase())) continue;
+    if (formerTests.has(file) && !fs.existsSync(path.join(projectRoot, file))) continue;
     return everything(`${file} is not in the load map`);
   }
   const chosen = runnable.filter(entry => selected.has(entry.id));
@@ -536,7 +545,8 @@ function planChanged(manifest, entries, projectRoot, manifestPath, changedFiles)
   for (const entry of chosen) if (testFiles.get(entry.id)) tests[entry.id] = testFiles.get(entry.id);
   // With nothing changed, only the checks that always run are left (an edit git cannot
   // see to the manifest, runner or a test was caught above as a stale map).
-  const reason = changed.length === 0 ? 'no changed files' : `${changed.length} changed file(s)`;
+  const reason = (changed.length === 0 ? 'no changed files' : `${changed.length} changed file(s)`)
+    + (unrecorded.size > 0 ? `, ${unrecorded.size} new check(s)` : '');
   return { mode: 'changed', full: false, reason, changed, selected: chosen.map(entry => entry.id), tests, total: runnable.length };
 }
 

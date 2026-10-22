@@ -450,6 +450,52 @@ function rewriteSameLater(dir, rel) {
   report.check('R44 no HEAD copy is left in the temp folder', left.length === 0, left.join(','));
 }
 
+// R46–R51: a check with no record yet (a new, renamed or pulled test file) runs by
+// itself instead of making --changed run everything, and a deleted test selects
+// nothing (D132). Nothing else can depend on a test that did not exist before.
+{
+  const nt = fixture('new-tests');
+  const built = runner(nt, []);
+  const testA = "if (require('./lib-a') !== 1) process.exit(1);\n";
+  write(nt, 'scripts/_test-c.js', "if (require('./lib-a') !== 1) process.exit(1);\n");
+  write(nt, 'scripts/lib-b.js', 'module.exports = 2; // edited\n');
+  let plan = dryRun(nt, null);
+  report.check('R46 a new test file runs by itself with the checks the other changed files touch, not everything',
+    built.status === 0 && plan.full === false && selectsTest(plan, '_test-c.js') && selectsTest(plan, '_test-b.js')
+      && !selectsTest(plan, '_test-a.js') && !selectsTest(plan, '_test-doc.js') && /new check/.test(String(plan.reason)), `built=${built.status} ${show(plan)}`);
+  const ran = runner(nt, ['--changed']);
+  git(nt, 'add', '-A'); git(nt, 'commit', '-q', '-m', 'test-c');
+  plan = dryRun(nt, ['scripts/lib-a.js']);
+  report.check('R47 after a passing run the new test has a record, so a change to what it reads selects it',
+    ran.status === 0 && plan.full === false && selectsTest(plan, '_test-a.js') && selectsTest(plan, '_test-c.js'), `ran=${ran.status} ${show(plan)}`);
+  write(nt, 'scripts/_test-d.js', "if (require('./lib-b') !== 2) process.exit(1);\n");
+  git(nt, 'add', '-A'); git(nt, 'commit', '-q', '-m', 'test-d arrives without a run');
+  plan = dryRun(nt, null);
+  report.check('R48 a committed test with no record (a pulled commit) runs by itself, not everything',
+    plan.full === false && selectsTest(plan, '_test-d.js') && !selectsTest(plan, '_test-a.js') && /no changed files, 1 new check/.test(String(plan.reason)), show(plan));
+  git(nt, 'mv', 'scripts/_test-b.js', 'scripts/_test-b2.js');
+  plan = dryRun(nt, null);
+  report.check('R49 a renamed test runs under its new name and its old name selects nothing',
+    plan.full === false && selectsTest(plan, '_test-b2.js') && !selectsTest(plan, '_test-a.js'), show(plan));
+  git(nt, 'mv', 'scripts/_test-b2.js', 'scripts/_test-b.js');
+  fs.rmSync(path.join(nt, 'scripts', '_test-a.js'));
+  plan = dryRun(nt, null);
+  report.check('R50 a deleted test selects nothing and does not run everything',
+    plan.full === false && !selectsTest(plan, '_test-a.js') && !selectsTest(plan, '_test-c.js'), show(plan));
+  write(nt, 'scripts/_test-a.js', testA);
+  const recorded = runner(nt, ['--changed']); // records _test-d, so R51 stands on its own
+  fs.rmSync(path.join(nt, 'scripts', 'child.js'));
+  plan = dryRun(nt, null);
+  const readSource = plan.full === false && selectsTest(plan, '_test-spawn.js');
+  write(nt, 'scripts/child.js', 'process.exit(0);\n');
+  write(nt, 'scripts/unused.js', 'module.exports = 0;\n');
+  git(nt, 'add', '-A'); git(nt, 'commit', '-q', '-m', 'unused');
+  fs.rmSync(path.join(nt, 'scripts', 'unused.js'));
+  const unread = dryRun(nt, null);
+  report.check('R51 control: a deleted source a test read selects that test; a deleted source nothing read runs everything',
+    recorded.status === 0 && readSource && unread.full === true && /unused\.js is not in the load map/.test(String(unread.reason)), `recorded=${recorded.status} ${show(plan)} ${show(unread)}`);
+}
+
 // R14: this repository — a counter.js change selects fewer than all checks but
 // every test that names counter.js (a static lower bound of "loads counter.js").
 {

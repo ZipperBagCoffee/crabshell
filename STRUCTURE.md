@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.142.0)
+# Crabshell Plugin Structure (v21.143.0)
 
-**Version**: 21.142.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.143.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -149,7 +149,7 @@ crabshell/
 │   ├── doc-watchdog.js              # Doc-update omission checks: recordEdit/gateEdit/stopReason, in-project files only (v21.18.0, v21.125.0)
 │   ├── _test-doc-watchdog.js        # doc-watchdog.js 12-test integration suite (v21.18.0)
 │   ├── _test-restriction-controls.js # Lifted restrictions paired with writes that stay blocked (v21.125.0)
-│   ├── _test-changed-runner.js      # Discovery, load map and --changed selection incl. review false-negative cases; git-ignored files; same-content rewrites; nothing changed, map refresh, fail-before (v21.126.0, v21.128.0, v21.129.0, v21.142.0)
+│   ├── _test-changed-runner.js      # Discovery, load map and --changed selection incl. review false-negative cases; git-ignored files; same-content rewrites; nothing changed, map refresh, fail-before; new, renamed and deleted tests (v21.126.0, v21.128.0, v21.129.0, v21.142.0, v21.143.0)
 │   ├── _test-gate-required-checks.js # Only tools/package.json test unlock the commit gate; entries stay evidence; dead-end guidance (v21.126.0, v21.127.0)
 │   ├── _test-single-source.js        # One definition per shared value across shipped scripts (v21.127.0)
 │   ├── _test-rules-and-injection.js  # Advisor line and unified rule wording; where the project description is injected (v21.127.0)
@@ -469,6 +469,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.143.0 | Verification: a new, renamed or pulled test file (a check with no load-map record yet) runs by itself instead of making `--changed` run everything; a deleted test selects nothing; a deleted source still selects the tests that read it |
 | 21.142.0 | Verification: a changed test that reads changed source must also fail on HEAD (fail-before: it runs on a temporary HEAD copy after its HEAD version passes there; `FAIL_BEFORE:<id>` is FAIL when it passes on HEAD too; hash-bound exemptions in `fail-before-exempt.json`; `--no-fail-before`, which verify-guard uses). `--changed` with nothing changed runs only the always-run checks, and a passing `--changed` run refreshes the load map for the checks it ran, so a commit verified with `--changed` no longer makes the next run full |
 | 21.141.0 | Rules: a Depth principle (right after Take Pride) — when a task calls for expertise, use the methods and tools a top practitioner would use, starting from the rawest material; changing vocabulary is not changing method. VERIFICATION adds: your own reading of your work is not verification; the evidence is a tool result or a check outside your judgment. Both from felixrieseberg.com "How to be more ambitious". `_test-rule-wording.js` W22, W23. |
 | 21.140.0 | Commit gate: a check started in the background no longer blocks it forever. Claude never reports a background task's end to a hook, so its launch left a pending record and `currentCheck` ignored every later result; now a background launch is dropped (it still never counts as a pass), a newer result of the same check drops older pending runs, and the block reason says to run the check in the foreground. `_test-session-isolation.js` S7 (reason), S7b, S7c. |
