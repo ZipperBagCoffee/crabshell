@@ -205,7 +205,8 @@ for (const file of ['scripts/constants.js', 'scripts/utils.js', 'hooks/hooks.jso
   report.check('R19 a staged rename lists the old path, so the test that read it is selected', Array.isArray(plan.changed) && plan.changed.includes('docs/guide.md') && selectsTest(plan, '_test-doc.js'), show(plan));
   git(rev, 'mv', 'docs/manual.md', 'docs/guide.md');
   plan = dryRun(rev, null);
-  report.check('R20 control: no changed files at all runs everything', plan.full === true && /no changed files/i.test(String(plan.reason)), show(plan));
+  report.check('R20 no changed files runs only the checks that always run (no test file)',
+    plan.full === false && /no changed files/i.test(String(plan.reason)) && Array.isArray(plan.selected) && plan.selected.includes('V001') && !plan.selected.some(id => id.startsWith('V002:')), show(plan));
   const later = new Date(Date.now() + 60 * 60 * 1000);
   fs.writeFileSync(path.join(rev, 'scripts', 'lib-a.js'), "require('./constants'); require('./lib-b');\nmodule.exports = 1;\n");
   fs.utimesSync(path.join(rev, 'scripts', 'lib-a.js'), later, later);
@@ -285,6 +286,9 @@ function touchLater(dir, rel) {
   const plan = dryRun(whole, ['scripts/lib-b.js']);
   report.check('R28 control: with .crabshell ignored, a manifest edit still runs everything',
     built.status === 0 && plan.full === true && /manifest\.json/.test(String(plan.reason)), `exit=${built.status} ${show(plan)}`);
+  const clean = dryRun(whole, null);
+  report.check('R32 control: with nothing changed in git, an edit to the ignored manifest still runs everything',
+    clean.full === true && /manifest\.json/.test(String(clean.reason)), show(clean));
 }
 
 // R29–R31: a file whose time moved but whose content did not (a revert, a checkout,
@@ -315,6 +319,135 @@ function rewriteSameLater(dir, rel) {
   plan = dryRun(same, ['scripts/lib-a.js']);
   report.check('R31 control: a map without content hashes keeps the time rule (a moved time runs everything)',
     plan.full === true && /older than/.test(String(plan.reason)), show(plan));
+}
+
+// R33–R34: a passing --changed run updates the load map for the checks it ran, so
+// the commit that follows does not make the next --changed run everything (D131).
+{
+  const re = fixture('refresh');
+  write(re, 'notes/a.md', 'a\n');
+  write(re, 'scripts/_test-list.js', "const fs = require('fs'); const path = require('path');\nfor (const f of fs.readdirSync(path.join(__dirname, '..', 'notes'))) fs.readFileSync(path.join(__dirname, '..', 'notes', f));\n");
+  git(re, 'add', '-A'); git(re, 'commit', '-q', '-m', 'notes');
+  const built = runner(re, []);
+  const mapFile = path.join(re, CRAB, 'verification', 'test-map.json');
+  const later = new Date(Date.now() + 60 * 60 * 1000);
+  fs.writeFileSync(path.join(re, 'scripts', 'lib-a.js'), "require('./constants'); require('./lib-b');\nmodule.exports = 1;\n");
+  fs.utimesSync(path.join(re, 'scripts', 'lib-a.js'), later, later);
+  const partial = runner(re, ['--changed']);
+  git(re, 'commit', '-q', '-am', 'lib-a now uses lib-b');
+  const plan = dryRun(re, ['scripts/lib-b.js']);
+  report.check('R33 after a passing --changed run and its commit, the next --changed run is not full and keeps the new dependency',
+    built.status === 0 && partial.status === 0 && /Changed-files run: \d+ of \d+ checks \((?!all)/.test(partial.stdout)
+      && plan.full === false && selectsTest(plan, '_test-a.js') && selectsTest(plan, '_test-b.js'),
+    `built=${built.status} partial=${partial.status} ${partial.stdout.slice(-120)} ${show(plan)}`);
+  const mapBefore = fs.readFileSync(mapFile, 'utf8');
+  fs.writeFileSync(path.join(re, 'scripts', 'lib-b.js'), 'module.exports = 3;\n');
+  const failing = runner(re, ['--changed']);
+  report.check('R34 a failing --changed run leaves the load map unchanged', failing.status === 1 && fs.readFileSync(mapFile, 'utf8') === mapBefore, `exit=${failing.status}`);
+  // Restore the committed bytes (a git checkout may rewrite line endings).
+  fs.writeFileSync(path.join(re, 'scripts', 'lib-b.js'), 'module.exports = 2;\n');
+  // R45: a --files list can leave out a new file that lies in a folder a check which
+  // did not run lists (_test-list reads notes/); the refresh must not record that
+  // file as checked, so after the commit it still counts as a later change.
+  fs.writeFileSync(path.join(re, 'scripts', 'lib-a.js'), "require('./constants'); require('./lib-b');\nrequire('fs').readFileSync(require('path').join(__dirname, '..', 'notes', 'new.md'));\nmodule.exports = 1;\n");
+  write(re, 'notes/new.md', 'new\n');
+  const listed = runner(re, ['--changed', '--files', 'scripts/lib-a.js']);
+  git(re, 'add', '-A'); git(re, 'commit', '-q', '-m', 'lib-a reads a new note');
+  const next = dryRun(re, ['docs/guide.md']);
+  report.check('R45 a partial run does not record a new file that a check which did not run lists in a folder',
+    listed.status === 0 && /Changed-files run: \d+ of \d+ checks \((?!all)/.test(listed.stdout) && next.full === true && /older than notes\/new\.md/.test(String(next.reason)),
+    `exit=${listed.status} ${listed.stdout.slice(-100)} ${show(next)}`);
+}
+
+// R35–R44: fail-before (D131). When a --changed run changes a test together with the
+// source it reads, that test also runs on HEAD and must fail there: a test that
+// passes on the old source too does not check the change.
+{
+  const tmpBefore = new Set(fs.readdirSync(os.tmpdir()).filter(name => name.startsWith('crabshell-fail-before-')));
+  const fb = fixture('fail-before');
+  const original = {
+    'scripts/lib-a.js': "require('./constants');\nmodule.exports = 1;\n",
+    'scripts/_test-a.js': "if (require('./lib-a') !== 1) process.exit(1);\n",
+    'scripts/_test-b.js': "if (require('./lib-b') !== 2) process.exit(1);\n",
+    'scripts/lib-b.js': 'module.exports = 2;\n',
+    'scripts/lib-c.js': 'module.exports = 3;\n',
+    'scripts/_test-state.js': "const fs = require('fs'); const path = require('path');\nfs.readFileSync(path.join(__dirname, '..', 'state', 'runtime.txt'), 'utf8');\nif (require('./lib-c') !== 3) process.exit(1);\n",
+    'scripts/lib-d.js': 'module.exports = 4;\n',
+    'scripts/_test-gitdir.js': "const fs = require('fs'); const path = require('path');\nif (!fs.existsSync(path.join(__dirname, '..', '.git'))) process.exit(1);\nif (require('./lib-d') !== 4) process.exit(1);\n",
+  };
+  write(fb, '.gitignore', 'state/\n');
+  write(fb, 'state/runtime.txt', 'boot\n');
+  for (const [rel, content] of Object.entries(original)) write(fb, rel, content);
+  git(fb, 'add', '-A'); git(fb, 'commit', '-q', '-m', 'fail-before cases');
+  const built = runner(fb, []);
+  // Restore the committed bytes (a git checkout may rewrite line endings).
+  const restore = () => { for (const [rel, content] of Object.entries(original)) write(fb, rel, content); };
+  const run = args => {
+    const result = runner(fb, ['--changed', ...(args || [])]);
+    let results = [];
+    try { results = JSON.parse(result.stdout.slice(0, result.stdout.indexOf('\n\n'))); } catch {}
+    const before = results.filter(item => String(item.id).startsWith('FAIL_BEFORE:'));
+    return { status: result.status, stdout: result.stdout, before, of: file => before.find(item => item.id.endsWith(file)) };
+  };
+  const brief = r => `exit=${r.status} ${JSON.stringify(r.before.map(item => ({ id: item.id, status: item.status, why: String(item.message || item.error || '').slice(0, 90) })))}`;
+  const exemptFile = path.join(fb, CRAB, 'verification', 'fail-before-exempt.json');
+  const sha = rel => require('crypto').createHash('sha256').update(fs.readFileSync(path.join(fb, rel))).digest('hex');
+
+  write(fb, 'scripts/lib-a.js', "require('./constants');\nmodule.exports = 5;\n");
+  write(fb, 'scripts/_test-a.js', "if (require('./lib-a') !== 5) process.exit(1);\n");
+  let r = run();
+  report.check('R35 a changed test that fails on HEAD and passes now is a PASS (it catches the change)',
+    built.status === 0 && r.status === 0 && r.of('_test-a.js') && r.of('_test-a.js').status === 'PASS', `built=${built.status} ${brief(r)}`);
+  restore();
+
+  write(fb, 'scripts/lib-a.js', "require('./constants');\nmodule.exports = 1; // reworded\n");
+  write(fb, 'scripts/_test-a.js', original['scripts/_test-a.js'] + '// reworded\n');
+  r = run();
+  report.check('R36 a changed test that passes on HEAD too fails the run (it does not catch the change)',
+    r.status === 1 && r.of('_test-a.js') && r.of('_test-a.js').status === 'FAIL' && /passes on HEAD/.test(r.of('_test-a.js').error), brief(r));
+  r = run(['--no-fail-before']);
+  report.check('R40 --no-fail-before skips the HEAD comparison', r.status === 0 && r.before.length === 0, brief(r));
+  fs.writeFileSync(exemptFile, JSON.stringify({ 'scripts/_test-a.js': { sha256: sha('scripts/_test-a.js'), reason: 'refactor keeps behavior' } }, null, 2));
+  r = run();
+  report.check('R38 an exemption that hashes the current test passes with its reason, and the exemption file selects nothing',
+    r.status === 0 && r.of('_test-a.js') && r.of('_test-a.js').status === 'PASS' && /exempt: refactor keeps behavior/.test(r.of('_test-a.js').message)
+      && /Changed-files run: \d+ of \d+ checks \((?!all)/.test(r.stdout), `${brief(r)} ${r.stdout.slice(-140)}`);
+  write(fb, 'scripts/_test-a.js', original['scripts/_test-a.js'] + '// reworded again\n');
+  r = run();
+  report.check('R39 an exemption for other content of the test no longer applies', r.status === 1 && r.of('_test-a.js') && r.of('_test-a.js').status === 'FAIL', brief(r));
+  fs.rmSync(exemptFile);
+  restore();
+
+  write(fb, 'scripts/_test-b.js', original['scripts/_test-b.js'] + '// a note\n');
+  r = run();
+  report.check('R37 a changed test with no changed source it reads is not compared with HEAD', r.status === 0 && r.before.length === 0, brief(r));
+  restore();
+
+  write(fb, 'scripts/lib-c.js', 'module.exports = 6;\n');
+  write(fb, 'scripts/_test-state.js', original['scripts/_test-state.js'].replace('!== 3', '!== 6'));
+  r = run();
+  report.check('R41 a test that reads a file git ignores gets that file on HEAD, so its baseline passes',
+    r.status === 0 && r.of('_test-state.js') && r.of('_test-state.js').status === 'PASS', brief(r));
+  restore();
+
+  write(fb, 'scripts/lib-d.js', 'module.exports = 7;\n');
+  write(fb, 'scripts/_test-gitdir.js', original['scripts/_test-gitdir.js'].replace('!== 4', '!== 7'));
+  r = run();
+  report.check('R42 when the old test fails on HEAD (baseline), the result is manual, not a pass',
+    r.status === 0 && r.of('_test-gitdir.js') && r.of('_test-gitdir.js').status === 'manual', brief(r));
+  restore();
+
+  write(fb, 'scripts/lib-b.js', 'module.exports = 9;\n');
+  write(fb, 'scripts/_test-b.js', original['scripts/_test-b.js'].replace('!== 2', '!== 9'));
+  write(fb, 'scripts/_test-new.js', "if (require('./lib-b') !== 9) process.exit(1);\n");
+  r = run();
+  report.check('R43 a new test file runs only on HEAD (no baseline) and passes when it fails there',
+    r.status === 0 && r.of('_test-new.js') && r.of('_test-new.js').status === 'PASS' && r.of('_test-b.js') && r.of('_test-b.js').status === 'PASS', brief(r));
+  fs.rmSync(path.join(fb, 'scripts', '_test-new.js'));
+  restore();
+
+  const left = fs.readdirSync(os.tmpdir()).filter(name => name.startsWith('crabshell-fail-before-') && !tmpBefore.has(name));
+  report.check('R44 no HEAD copy is left in the temp folder', left.length === 0, left.join(','));
 }
 
 // R14: this repository — a counter.js change selects fewer than all checks but

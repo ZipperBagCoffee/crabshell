@@ -118,10 +118,12 @@ function evaluateVerifyGuard(hookData, projectDir) {
     };
   }
 
-  // Execute run-verify.js on the changed files only and check results
+  // Execute run-verify.js on the changed files only and check results. The HEAD
+  // comparison of changed tests (fail-before) is left to the commit gate's own run:
+  // it runs each changed test twice more and could pass this hook's time limit.
   let stdout;
   try {
-    stdout = execFileSync(process.execPath, [runVerifyPath, '--changed'], {
+    stdout = execFileSync(process.execPath, [runVerifyPath, '--changed', '--no-fail-before'], {
       timeout: 60000,
       encoding: 'utf8',
       cwd: projectDir
