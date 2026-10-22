@@ -1,5 +1,14 @@
 # Changelog
 
+## [21.143.0] - 2026-10-22
+
+### feat: a new, renamed or deleted test no longer makes `--changed` run everything
+
+- **Why.** After v21.142.0 the user asked about the remaining item "새 테스트 파일도 전체로 안 넘어가게 고쳐", then said "응 고쳐 계획 보여줘" and "알아서 하시오". One empty new test file made `--changed` run all 98 checks ("load map has no record").
+- **New check** (`planChanged`): a check with no record yet — a new, renamed or pulled test file — is selected and runs by itself; its test file is left out of the stale-map comparison, since it runs anyway. Anything that reads the new file records it, so the changed-file rule still selects that check. A passing run records it (v21.142.0), and after that it is selected like any other test. The reason shows `N new check(s)`.
+- **Deleted test** (`planChanged`): a changed path that is gone from disk and was a test file in the map leaves nothing to run, so it no longer counts as "not in the load map". A deleted source file still selects the tests that read it, or runs everything when nothing read it.
+- **Tests:** `_test-changed-runner.js` R46–R51.
+
 ## [21.142.0] - 2026-10-22
 
 ### feat: a changed test must fail on HEAD; `--changed` stays narrow
