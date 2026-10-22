@@ -117,16 +117,17 @@ node .crabshell/verification/run-verify.js            # every check, only when t
 
 Routine updates run `--changed`; it also unlocks the commit gate. Run every check only when the user asks for it. When a full run seems truly needed — or `--dry-run` shows the selection falling back to every check — ask the user first and say why.
 
-A full run records `test-map.json` beside the manifest. The map lists, for each check, the repository files and folders it requires, reads, lists, or copies. Child processes are included, along with path strings and relative requires in the test file and the files its assertions read. The map is kept only when every check passed.
+A full run records `test-map.json` beside the manifest. The map lists, for each check, the repository files and folders it requires, reads, lists, or copies. Child processes are included, along with path strings and relative requires in the test file and the files its assertions read. The map is kept only when every check passed. A passing `--changed` run replaces the records of the checks it ran, so after its commit the next `--changed` run still selects only what changed.
 
 `--changed` looks at the working tree against HEAD, including renames by old and new path and untracked files. `--files a,b` names the files instead, and `--dry-run` prints the selection as JSON without running anything. It selects checks whose test file changed, or whose recorded files or folders contain a changed file. Checks that record no files, and entries marked `always: true`, always run. It runs **every** check when:
 - a changed file matches `changed.global` or the default globals;
-- there is no map, or the map cannot be read;
+- there is no map, the map cannot be read, or it has no record for a check (a new test file);
 - the manifest, the runner, a test, or any recorded file changed after the map was written (the map stores each file's content hash, so a file whose time moved but whose content is unchanged — a revert, a checkout — does not count);
-- a changed non-prose file is not in the map;
-- no changed file is found at all.
+- a changed non-prose file is not in the map.
 
-Prose that no check reads selects nothing. A release that changes a version file listed in `changed.global` therefore always runs everything — one more reason to keep such files out of it. Remaining blind spots: reads made by non-Node processes, and paths computed from data a check never touches. Files git ignores (runtime state such as `.crabshell/memory/`) never count as changed and do not make the map stale, so a check whose input is an ignored file is not re-selected when that file changes; the manifest, runner and test files are still checked even when ignored. These blind spots are not a reason to run the full set on your own: run it when the user asks, or ask the user when you think one of them applies.
+With no changed file at all, only the checks that always run are run; an edit git cannot see to the manifest, the runner or a test still runs everything through the rule above. Prose that no check reads selects nothing. A release that changes a version file listed in `changed.global` therefore always runs everything — one more reason to keep such files out of it. Remaining blind spots: reads made by non-Node processes, and paths computed from data a check never touches. Files git ignores (runtime state such as `.crabshell/memory/`) never count as changed and do not make the map stale, so a check whose input is an ignored file is not re-selected when that file changes; the manifest, runner and test files are still checked even when ignored. These blind spots are not a reason to run the full set on your own: run it when the user asks, or ask the user when you think one of them applies.
+
+**Fail-before.** In a `--changed` run, a changed test that passes and reads a changed file that is not a test also runs on a temporary copy of HEAD, where it must fail; a test that passes there too does not check the change, and its `FAIL_BEFORE:<id>` result fails the run. A refactor that keeps behavior is exempted in `fail-before-exempt.json` beside the manifest, bound to the test's content hash. How it runs, the exemption format, `--no-fail-before` and the limits: `references/fail-before.md`.
 
 ### Step 2b: When an entry fails, decide what is wrong before touching anything
 

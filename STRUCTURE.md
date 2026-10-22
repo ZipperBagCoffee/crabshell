@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.141.0)
+# Crabshell Plugin Structure (v21.142.0)
 
-**Version**: 21.141.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.142.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -42,8 +42,9 @@ crabshell/
 │   │   └── INDEX.md
 │   └── verification/                 # Project-local schema-v2 verification artifacts
 │       ├── manifest.json             # Portable command/assertion contracts; discover entry + tools.changed + changed.global (v21.126.0)
-│       ├── run-verify.js             # Generated from the tracked skill runner (--changed, load map, v21.126.0)
-│       ├── test-map.json             # Load map written by a passing full run: per-check files, file times and content hashes (generated, not tracked; v21.126.0, v21.129.0)
+│       ├── run-verify.js             # Generated from the tracked skill runner (--changed, load map, v21.126.0; fail-before, v21.142.0)
+│       ├── test-map.json             # Load map written by a passing full run and refreshed by a passing --changed run: per-check files, file times and content hashes (generated, not tracked; v21.126.0, v21.129.0, v21.142.0)
+│       ├── fail-before-exempt.json   # Optional: changed tests allowed to pass on HEAD, each with the test's sha256 and a reason (v21.142.0)
 │       ├── check-pipeline-wiring.js  # Copied from the tracked skill probe (v21.121.0; tracked in git since v21.126.0)
 │       ├── wiring-contract.json      # Parent-approved hook/trigger/agent hops (v21.121.0; tracked in git since v21.126.0)
 │       └── architecture/index.html   # Optional arch-explorer map — documentation only (v21.121.0)
@@ -148,7 +149,7 @@ crabshell/
 │   ├── doc-watchdog.js              # Doc-update omission checks: recordEdit/gateEdit/stopReason, in-project files only (v21.18.0, v21.125.0)
 │   ├── _test-doc-watchdog.js        # doc-watchdog.js 12-test integration suite (v21.18.0)
 │   ├── _test-restriction-controls.js # Lifted restrictions paired with writes that stay blocked (v21.125.0)
-│   ├── _test-changed-runner.js      # Discovery, load map and --changed selection incl. review false-negative cases; git-ignored files; same-content rewrites (v21.126.0, v21.128.0, v21.129.0)
+│   ├── _test-changed-runner.js      # Discovery, load map and --changed selection incl. review false-negative cases; git-ignored files; same-content rewrites; nothing changed, map refresh, fail-before (v21.126.0, v21.128.0, v21.129.0, v21.142.0)
 │   ├── _test-gate-required-checks.js # Only tools/package.json test unlock the commit gate; entries stay evidence; dead-end guidance (v21.126.0, v21.127.0)
 │   ├── _test-single-source.js        # One definition per shared value across shipped scripts (v21.127.0)
 │   ├── _test-rules-and-injection.js  # Advisor line and unified rule wording; where the project description is injected (v21.127.0)
@@ -205,7 +206,7 @@ crabshell/
 │   ├── verifying/SKILL.md            # /crabshell:verifying (schema-v2 behavioral verification; Step 2a wiring inventory v21.121.0)
 │   │   ├── scripts/run-verify.js      # Portable single-source verification runner (v21.106.0)
 │   │   ├── scripts/check-pipeline-wiring.js # Pipeline wiring probe: discover / check --contract (v21.121.0)
-│   │   └── references/                # wiring-inventory, manifest-entries (v21.132.0)
+│   │   └── references/                # wiring-inventory, manifest-entries (v21.132.0); fail-before (v21.142.0)
 │   ├── status/SKILL.md               # /crabshell:status (plugin healthcheck)
 │   ├── lint/SKILL.md                 # /crabshell:lint (Obsidian document lint checks) (v21.70.0)
 │   ├── search-docs/SKILL.md          # /crabshell:search-docs (BM25 document search) (v21.72.0)
@@ -373,7 +374,7 @@ PreToolUse ticket status check (v21.4.0; narrowed v21.131.0):
 PreToolUse Final Verification enforcement (v19.34.0, v19.39.0 deterministic, v20.3.0 behavioral AC, v21.16.0 hybrid):
 - Hybrid approach: Edit always enforces verification; Write enforces only for existing files (new file creation skips — fs.existsSync-based)
 - Block when ticket path (`.crabshell/ticket/P###_T###*`) contains `## Final Verification`
-- Directly executes the generated `run-verify.js` — blocks on failed command exits, structured assertions, or forbidden-path mutations
+- Directly executes the generated `run-verify.js --changed --no-fail-before` — blocks on failed command exits, structured assertions, or forbidden-path mutations (the HEAD comparison of changed tests is left to the commit gate's run, v21.142.0)
 - Require at least 1 schema-v2 `behavioral` entry with a structured contract; a legacy self-label or positive stdout substring is insufficient
 - "Verification tool N/A:" exception for projects without verification tools
 - Fail-open on parse errors (user experience protection)
@@ -468,6 +469,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.142.0 | Verification: a changed test that reads changed source must also fail on HEAD (fail-before: it runs on a temporary HEAD copy after its HEAD version passes there; `FAIL_BEFORE:<id>` is FAIL when it passes on HEAD too; hash-bound exemptions in `fail-before-exempt.json`; `--no-fail-before`, which verify-guard uses). `--changed` with nothing changed runs only the always-run checks, and a passing `--changed` run refreshes the load map for the checks it ran, so a commit verified with `--changed` no longer makes the next run full |
 | 21.141.0 | Rules: a Depth principle (right after Take Pride) — when a task calls for expertise, use the methods and tools a top practitioner would use, starting from the rawest material; changing vocabulary is not changing method. VERIFICATION adds: your own reading of your work is not verification; the evidence is a tool result or a check outside your judgment. Both from felixrieseberg.com "How to be more ambitious". `_test-rule-wording.js` W22, W23. |
 | 21.140.0 | Commit gate: a check started in the background no longer blocks it forever. Claude never reports a background task's end to a hook, so its launch left a pending record and `currentCheck` ignored every later result; now a background launch is dropped (it still never counts as a pass), a newer result of the same check drops older pending runs, and the block reason says to run the check in the foreground. `_test-session-isolation.js` S7 (reason), S7b, S7c. |
 | 21.139.0 | Verification checks the diff only: the rules and the per-prompt checklist say routine updates run only the checks the changed files touch (`run-verify.js --changed`), the full suite runs only when the user asks, and a full run Claude thinks is needed (including a selector fallback to every check) is asked about first. The commit gate names the changed-file check first and accepts `run-verify.js --changed` even when the manifest declares no `tools.changed`; verify-guard runs `--changed`; the verifying skill drops "Run the full set before a release". This repo no longer lists the plugin manifests in `changed.global`, so a version bump adds only the version check (V009) instead of running all 97. `_test-rule-wording.js` W20–W21, `_test-gate-loosening.js` F3, H4–H5. |

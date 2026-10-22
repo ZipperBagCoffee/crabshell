@@ -10,6 +10,9 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const MAP_FILE = 'test-map.json';
+// Tests that may pass on HEAD too (a refactor that keeps behavior), each with the
+// sha256 of the test content it covers and a reason.
+const EXEMPT_FILE = 'fail-before-exempt.json';
 // Changes to these always run every check; the manifest adds project files through
 // "changed": { "global": [globs] }.
 const DEFAULT_GLOBAL = ['package.json', 'package-lock.json', 'npm-shrinkwrap.json', 'yarn.lock', 'pnpm-lock.yaml'];
@@ -40,6 +43,7 @@ function parseArgs(argv) {
     changed: false,
     dryRun: false,
     files: null,
+    failBefore: true,
     error: null
   };
 
@@ -48,6 +52,7 @@ function parseArgs(argv) {
     if (arg === '--flat' || arg === '-f') parsed.flat = true;
     else if (arg === '--changed') parsed.changed = true;
     else if (arg === '--dry-run') parsed.dryRun = true;
+    else if (arg === '--no-fail-before') parsed.failBefore = false;
     else if (arg === '--files') {
       const value = argv[++index];
       if (!value) { parsed.error = '--files needs a comma-separated list'; break; }
@@ -442,6 +447,16 @@ function mapPath(manifestPath) {
   return path.join(path.dirname(manifestPath), MAP_FILE);
 }
 
+function exemptPath(manifestPath) {
+  return path.join(path.dirname(manifestPath), EXEMPT_FILE);
+}
+
+// The runner's own files (the load map, the exemptions) are not changes to check.
+function withoutRunnerFiles(files, projectRoot, manifestPath) {
+  const own = new Set([mapPath(manifestPath), exemptPath(manifestPath)].map(file => insideRoot(projectRoot, file)).filter(Boolean));
+  return files.map(toPosix).filter(file => !own.has(file));
+}
+
 // Files changed in the working tree against HEAD, plus untracked files.
 function gitChangedFiles(projectRoot) {
   const run = args => spawnSync('git', args, { cwd: projectRoot, encoding: 'utf8', windowsHide: true });
@@ -468,7 +483,7 @@ function planChanged(manifest, entries, projectRoot, manifestPath, changedFiles)
   const manifestRelative = insideRoot(projectRoot, manifestPath);
   const runnerRelative = insideRoot(projectRoot, __filename);
   const mapRelative = insideRoot(projectRoot, mapFile);
-  const changed = changedFiles.map(toPosix).filter(file => file !== mapRelative);
+  const changed = withoutRunnerFiles(changedFiles, projectRoot, manifestPath);
   if (!fs.existsSync(mapFile)) return everything('no load map yet (a full run creates it)');
   let map;
   try { map = JSON.parse(fs.readFileSync(mapFile, 'utf8')); } catch (error) { return everything(`load map unreadable: ${error.message}`); }
@@ -490,7 +505,6 @@ function planChanged(manifest, entries, projectRoot, manifestPath, changedFiles)
       return moved;
     } catch (_) { return false; }
   };
-  if (changed.length === 0) return everything('no changed files found (edits invisible to git, or nothing changed)');
   // A recorded file git ignores (runtime state a session keeps writing) can never be
   // in the change list, so its later change says nothing about the code: only files
   // git can report are checked. The manifest, runner and test files are always
@@ -520,7 +534,10 @@ function planChanged(manifest, entries, projectRoot, manifestPath, changedFiles)
   const chosen = runnable.filter(entry => selected.has(entry.id));
   const tests = {};
   for (const entry of chosen) if (testFiles.get(entry.id)) tests[entry.id] = testFiles.get(entry.id);
-  return { mode: 'changed', full: false, reason: `${changed.length} changed file(s)`, changed, selected: chosen.map(entry => entry.id), tests, total: runnable.length };
+  // With nothing changed, only the checks that always run are left (an edit git cannot
+  // see to the manifest, runner or a test was caught above as a stale map).
+  const reason = changed.length === 0 ? 'no changed files' : `${changed.length} changed file(s)`;
+  return { mode: 'changed', full: false, reason, changed, selected: chosen.map(entry => entry.id), tests, total: runnable.length };
 }
 
 function commandExecutable(command, projectRoot) {
@@ -590,6 +607,117 @@ function traceEnvironment(env, trace, projectRoot) {
   return { ...env, NODE_OPTIONS: env.NODE_OPTIONS ? `${require} ${env.NODE_OPTIONS}` : require, CRABSHELL_TRACE_FILE: trace.file, CRABSHELL_TRACE_ROOT: projectRoot, CRABSHELL_TRACE_REQUIRE: require };
 }
 
+// --- fail-before: a changed test must fail on the source it was written against ---
+
+// HEAD written into fresh folders through a temporary index, so the repository, its
+// index and the working tree are never touched.
+function headCheckout(projectRoot, workDir) {
+  const env = { ...process.env, GIT_INDEX_FILE: path.join(workDir, 'index') };
+  const git = args => spawnSync('git', args, { cwd: projectRoot, env, encoding: 'utf8', windowsHide: true });
+  const read = git(['read-tree', 'HEAD']);
+  if (read.status !== 0) return { error: `cannot read HEAD: ${(read.stderr || (read.error && read.error.message) || '').trim()}` };
+  const prefix = git(['rev-parse', '--show-prefix']);
+  const inside = prefix.status === 0 ? prefix.stdout.trim() : '';
+  let count = 0;
+  return {
+    extract() {
+      const dir = path.join(workDir, `head-${++count}`);
+      const result = git(['checkout-index', '--all', '--force', `--prefix=${toPosix(dir)}/`]);
+      if (result.status !== 0) throw new Error(`git checkout-index failed: ${(result.stderr || '').trim()}`);
+      return path.join(dir, inside);
+    }
+  };
+}
+
+function failureSummary(result) {
+  return String(result.error || '').split('; stderr:')[0].slice(0, 200);
+}
+
+// A changed test that passes now and reads a changed file that is not a test (source,
+// or a document the test checks) also runs on HEAD, where it must fail: a test that
+// passes on the old source too does not check this change. The HEAD version of the
+// test runs there first and must pass, so a failure on HEAD is the change's doing and
+// not the copy's.
+function failBeforeChecks({ entries, results, records, changedFiles, expanded, projectRoot, manifestPath }) {
+  const changed = new Set(withoutRunnerFiles(changedFiles, projectRoot, manifestPath));
+  const testFiles = new Set(expanded.map(entry => entryTestFile(entry, projectRoot)).filter(Boolean));
+  const passed = new Set(results.filter(result => result.status === 'PASS').map(result => result.id));
+  const targets = [];
+  for (const entry of entries) {
+    const test = entryTestFile(entry, projectRoot);
+    if (!test || !changed.has(test) || !passed.has(entry.id)) continue;
+    const files = (records[entry.id] || {}).files || [];
+    const sources = [...changed].filter(file => !testFiles.has(file) && files.some(recorded => covers(recorded, file)));
+    if (sources.length > 0) targets.push({ entry, test, files, sources });
+  }
+  if (targets.length === 0) return [];
+  let exemptions = {};
+  try { exemptions = JSON.parse(fs.readFileSync(exemptPath(manifestPath), 'utf8')) || {}; } catch (_) {}
+  const exemptRelative = insideRoot(projectRoot, exemptPath(manifestPath)) || EXEMPT_FILE;
+  const visible = gitVisibleFiles(projectRoot);
+  const workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'crabshell-fail-before-'));
+  const out = [];
+  try {
+    const head = headCheckout(projectRoot, workDir);
+    for (const { entry, test, files, sources } of targets) {
+      const report = (status, text) => out.push({
+        id: `FAIL_BEFORE:${entry.id}`, type: 'fail-before', status, test, sources,
+        ...(status === 'FAIL' ? { error: text } : { message: text }),
+        failureClass: status === 'FAIL' ? 'fail-before' : null
+      });
+      try {
+        const hash = hashBuffer(fs.readFileSync(path.join(projectRoot, test)));
+        const exemption = exemptions[test];
+        if (exemption && exemption.sha256 === hash && typeof exemption.reason === 'string' && exemption.reason.trim()) {
+          report('PASS', `exempt: ${exemption.reason.trim()}`);
+          continue;
+        }
+        if (head.error) { report('manual', `${head.error}, so it cannot be compared with HEAD`); continue; }
+        // Files git ignores that the test reads (runtime state, a generated manifest)
+        // are not in HEAD, so they are copied as they are now. New files are part of
+        // the change and stay out.
+        const prepare = () => {
+          const root = head.extract();
+          for (const file of files) {
+            if (file.endsWith('/') || !visible || visible.has(file)) continue;
+            const from = path.join(projectRoot, file);
+            if (!fs.existsSync(from) || !fs.statSync(from).isFile()) continue;
+            fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+            fs.copyFileSync(from, path.join(root, file));
+          }
+          return root;
+        };
+        let root = prepare();
+        let baseline = null;
+        if (fs.existsSync(path.join(root, test))) {
+          baseline = runEntry(entry, { projectRoot: root });
+          if (baseline.status !== 'PASS') {
+            report('manual', `the HEAD version of ${test} already fails on HEAD, so a failure there says nothing about this change: ${failureSummary(baseline)}`);
+            continue;
+          }
+          root = prepare();
+        }
+        fs.mkdirSync(path.dirname(path.join(root, test)), { recursive: true });
+        fs.copyFileSync(path.join(projectRoot, test), path.join(root, test));
+        const attempt = runEntry(entry, { projectRoot: root });
+        const stale = exemption ? ` (the exemption in ${exemptRelative} is for other content of this test)` : '';
+        if (attempt.status === 'PASS') {
+          report('FAIL', `passes on HEAD too, so it does not catch the change to ${sources.join(', ')}${stale}. If the change keeps behavior on purpose, record in ${exemptRelative}: {"${test}": {"sha256": "${hash}", "reason": "<why>"}}`);
+        } else if (!baseline && ['missing-file', 'env-incompatible'].includes(attempt.failureClass)) {
+          report('manual', `new test that cannot run on HEAD (${attempt.failureClass}), so whether it catches the change is unknown: ${failureSummary(attempt)}`);
+        } else {
+          report('PASS', `fails on HEAD${baseline ? ' (where its HEAD version passes)' : ''} and passes now, so it catches the change: ${failureSummary(attempt)}`);
+        }
+      } catch (error) {
+        report('manual', `could not run on HEAD: ${error.message}`);
+      }
+    }
+  } finally {
+    try { fs.rmSync(workDir, { recursive: true, force: true }); } catch (_) {}
+  }
+  return out;
+}
+
 function selectEntries(manifest, targetId) {
   const entries = Array.isArray(manifest.entries) ? manifest.entries : [];
   return targetId ? entries.filter(entry => entry.id === targetId) : entries.filter(entry => entry.type !== 'manual');
@@ -624,8 +752,10 @@ function main(argv = process.argv.slice(2), options = {}) {
   }
   let entries;
   let plan = null;
+  let changedList = [];
   if (args.changed) {
     const changed = args.files ? { files: args.files } : gitChangedFiles(projectRoot);
+    changedList = changed.files || [];
     plan = changed.error
       ? { mode: 'changed', full: true, reason: changed.error, changed: [], selected: expanded.filter(e => e.type !== 'manual').map(e => e.id), total: expanded.filter(e => e.type !== 'manual').length }
       : planChanged(manifest, expanded, projectRoot, manifestPath, changed.files);
@@ -640,11 +770,14 @@ function main(argv = process.argv.slice(2), options = {}) {
     if (args.targetId && entries.length === 0) return failRunner('RUNNER_TARGET', `Unknown entry id: ${args.targetId}`);
   }
 
-  // A run of every check records what each check loads (the map for --changed).
-  const buildMap = !args.targetId && (!plan || plan.full);
+  // A run of every check records what each check loads (the map for --changed); a
+  // --changed run that selected fewer refreshes the records of the checks it ran.
+  const fullMap = !args.targetId && (!plan || plan.full);
+  const partialMap = !args.targetId && Boolean(plan) && !plan.full && entries.length > 0;
+  const tracing = fullMap || partialMap;
   let traceDir = null;
   let tracer = null;
-  if (buildMap) {
+  if (tracing) {
     traceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'crabshell-verify-trace-'));
     tracer = path.join(traceDir, 'tracer.js');
     fs.writeFileSync(tracer, TRACER_SOURCE);
@@ -652,50 +785,77 @@ function main(argv = process.argv.slice(2), options = {}) {
   const startedAt = new Date().toISOString();
   const mapEntries = {};
   const results = entries.map((entry, index) => {
-    const trace = buildMap ? { tracer, file: path.join(traceDir, `trace-${index}.jsonl`) } : null;
+    const trace = tracing ? { tracer, file: path.join(traceDir, `trace-${index}.jsonl`) } : null;
     const result = runEntry(entry, { projectRoot, trace });
-    if (buildMap) {
+    if (tracing) {
       const files = new Set([...readTrace(trace.file, projectRoot), ...staticDependencies(entryTestFile(entry, projectRoot), projectRoot), ...contractPaths(entry)]);
       mapEntries[entry.id] = { test: entryTestFile(entry, projectRoot), files: [...files].sort() };
     }
     return result;
   });
   const allPassed = results.every(result => result.status !== 'FAIL');
-  if (buildMap && !allPassed) console.error('[VERIFY] load map not updated: a check failed or timed out, so its record may be incomplete');
-  if (buildMap && allPassed) {
+  if (tracing && !allPassed) console.error('[VERIFY] load map not updated: a check failed or timed out, so its record may be incomplete');
+  if (tracing && allPassed) {
     try {
       // Drop the map itself (checks may read it) and record every checked file's
       // time and content now, so files written during the run are not mistaken for
       // later changes and a later revert to the same content is not one either.
+      // A --changed run replaces only the records of the checks it ran: every check
+      // whose record covers a changed file was selected, so the others still hold.
       const mapRelative = insideRoot(projectRoot, mapPath(manifestPath));
-      const fileTimes = {};
-      const fileHashes = {};
+      const map = fullMap
+        ? { version: 2, createdAt: startedAt, fileTimes: {}, fileHashes: {}, entries: {} }
+        : JSON.parse(fs.readFileSync(mapPath(manifestPath), 'utf8'));
+      map.fileTimes = map.fileTimes || {};
+      map.fileHashes = map.fileHashes || {};
+      map.entries = map.entries || {};
+      // A changed file that a check which did not run records already made this run
+      // full; a new file inside a folder such a check lists does not (a --files list
+      // can leave it out), so it keeps its content unrecorded and still counts as a
+      // later change until that check runs.
+      const otherFolders = fullMap ? [] : Object.entries(map.entries).filter(([id]) => !Object.hasOwn(mapEntries, id))
+        .flatMap(([, record]) => record.files || []).filter(file => file.endsWith('/'));
+      const noted = new Set();
       const note = file => {
-        if (!file || file.endsWith('/') || file === mapRelative || Object.hasOwn(fileTimes, file)) return;
+        if (!file || file.endsWith('/') || file === mapRelative || noted.has(file)) return;
+        noted.add(file);
         try {
           const absolute = path.join(projectRoot, file);
-          fileTimes[file] = fs.statSync(absolute).mtimeMs;
-          fileHashes[file] = hashBuffer(fs.readFileSync(absolute));
+          const hash = hashBuffer(fs.readFileSync(absolute));
+          if (map.fileHashes[file] !== hash && otherFolders.some(folder => file.startsWith(folder))) return;
+          map.fileTimes[file] = fs.statSync(absolute).mtimeMs;
+          map.fileHashes[file] = hash;
         } catch (_) {}
       };
-      for (const record of Object.values(mapEntries)) {
+      for (const [id, record] of Object.entries(mapEntries)) {
         record.files = record.files.filter(file => file !== mapRelative);
         record.files.forEach(note);
         note(record.test);
+        map.entries[id] = record;
       }
-      note(insideRoot(projectRoot, manifestPath));
-      note(insideRoot(projectRoot, __filename));
-      fs.writeFileSync(mapPath(manifestPath), JSON.stringify({ version: 2, createdAt: startedAt, fileTimes, fileHashes, entries: mapEntries }, null, 2) + '\n');
+      if (fullMap) {
+        note(insideRoot(projectRoot, manifestPath));
+        note(insideRoot(projectRoot, __filename));
+      }
+      fs.writeFileSync(mapPath(manifestPath), JSON.stringify(map, null, 2) + '\n');
     } catch (error) {
       console.error(`[VERIFY] WARN: load map not written: ${error.message}`);
     }
   }
   if (traceDir) { try { fs.rmSync(traceDir, { recursive: true, force: true }); } catch (_) {} }
+  const failBefore = plan && args.failBefore
+    ? failBeforeChecks({ entries, results, records: mapEntries, changedFiles: changedList, expanded, projectRoot, manifestPath })
+    : [];
+  results.push(...failBefore);
   const passCount = results.filter(result => result.status === 'PASS').length;
   const failCount = results.filter(result => result.status === 'FAIL').length;
   const manualCount = results.filter(result => result.status === 'manual').length;
   console.log(JSON.stringify(results, null, 2));
   if (plan) console.log(`\nChanged-files run: ${entries.length} of ${plan.total} checks (${plan.full ? 'all — ' : ''}${plan.reason})`);
+  if (failBefore.length > 0) {
+    const count = status => failBefore.filter(result => result.status === status).length;
+    console.log(`\nFail-before: ${failBefore.length} changed test(s) also run on HEAD — PASS: ${count('PASS')} / FAIL: ${count('FAIL')} / Manual: ${count('manual')}`);
+  }
   console.log(`\nVerification Results: PASS: ${passCount} / FAIL: ${failCount} / Manual: ${manualCount} / Total: ${results.length}`);
 
   if (!args.flat) {

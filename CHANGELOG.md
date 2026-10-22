@@ -1,5 +1,16 @@
 # Changelog
 
+## [21.142.0] - 2026-10-22
+
+### feat: a changed test must fail on HEAD; `--changed` stays narrow
+
+- **Why.** After I092 (does a check measure the right thing), the user asked what is worth applying, added "다시말하지만 나는 뭐 전체검사를 단어 하나 고쳤다고 하고싶지는 않음 / 검증 검사도 좀 효율적으로 잘 하고싶음", and said "둘 다 진행해" to two items: a programmatic fail-before check, and two `--changed` holes that ran all 97 checks.
+- **Nothing changed** (`planChanged`): `--changed` runs only the checks that always run instead of every check. An edit git cannot see to the manifest, the runner or a test still runs everything through the stale-map rule.
+- **Map refresh** (`main`): a passing `--changed` run traces the checks it runs and replaces their records in `test-map.json` with fresh times and content hashes, so the commit after a `--changed`-only run no longer makes the next `--changed` run everything (the open item of D130_T001). A failing run leaves the map as it was. A new file inside a folder that a check which did not run lists stays unrecorded (a `--files` list can leave it out).
+- **Fail-before** (`failBeforeChecks`): in a `--changed` run, a changed test that passes and reads a changed file that is not a test also runs on HEAD, written into a temporary folder through a temporary git index (git-ignored files the test reads are copied in; the repository is not touched). The HEAD version of the test must pass there and the changed test must fail there. Result `FAIL_BEFORE:<id>`: PASS (it catches the change), FAIL (it passes on HEAD too; the run exits 1), manual (the HEAD version already fails there, or a new test cannot run there). Cost: two runs per such test, one for a new test file.
+- **Exemptions:** `.crabshell/verification/fail-before-exempt.json`, `{ "<test file>": { "sha256": "…", "reason": "…" } }`, valid only for the content it hashes; the FAIL message prints the line. `--no-fail-before` skips the comparison; verify-guard passes it (its hook has a 60-second limit), and it does not unlock the commit gate, which accepts only the declared command.
+- **Tests:** `_test-changed-runner.js` R20 (now: nothing changed runs only the always-run checks), R32–R34, R45 (map), R35–R44 (fail-before).
+
 ## [21.141.0] - 2026-10-21
 
 ### feat: Depth and outside-judge rules
