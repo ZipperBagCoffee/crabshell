@@ -5,53 +5,29 @@ const { spawnSync } = require('child_process');
 
 const repoRoot = path.resolve(__dirname, '..');
 
-const suites = [
-  {
-    file: '_test-cross-runtime-first-turn.js',
-    observations: [/three-field ending is retired/, /divergent-source mutation/, /forbidden-side-effect mutation/],
-  },
-  {
-    file: '_test-cross-runtime-session-memory.js',
-    observations: [/stale-memory mutation/, /sentinel-write mutation/],
-  },
-  {
-    file: '_test-cross-runtime-workflow-restart.js',
-    observations: [/stale state/, /lost-state/, /sentinel-write mutation/],
-  },
-  {
-    file: '_test-cross-runtime-subagent-context.js',
-    observations: [/wrong-event, removed-field/, /sentinel-write mutation/],
-  },
-  {
-    file: '_test-cross-runtime-parent-completion.js',
-    observations: [/child false-done/, /wrong-order mutation/, /owner and authority mutations/],
-  },
-  {
-    file: '_test-codex-hook-contract.js',
-    observations: [/hardcoded-command mutations/, /PASS-only stdout fixture/],
-  },
-  {
-    file: '_test-codex-windows-hook-command.js',
-    observations: [/retired percent-expansion command/],
-  },
-  {
-    file: '_test-codex-compaction.js',
-    observations: [/wrong event and missing context mutations/, /missing log mutation is rejected/],
-  },
-  {
-    file: '_test-alternating-host-continuity.js',
-    observations: [/missing-memory mutation/, /cross-host marker mutation/],
-  },
-  {
-    file: '_test-claude-lifecycle-preservation.js',
-    observations: [/Codex execution uses separate plugin data and never writes Claude surfaces/],
-  },
-  {
-    file: '_test-fail-open-edge-cases.js',
-    observations: [],
-    isolatedLast: true,
-  },
-];
+function loadSuites() {
+  const manifest = JSON.parse(require('fs').readFileSync(path.join(repoRoot, '.crabshell/verification/manifest.json'), 'utf8').replace(/^\uFEFF/, ''));
+  const entry = manifest.entries.find(item => item.id === 'V059');
+  if (!entry || !entry.fileAssertions || typeof entry.fileAssertions !== 'object' || Array.isArray(entry.fileAssertions)) {
+    throw new Error('V059.fileAssertions must supply the cross-runtime observations.');
+  }
+  const plan = [];
+  for (const [file, assertions] of Object.entries(entry.fileAssertions)) {
+    if (!Array.isArray(assertions)) throw new Error(`V059.fileAssertions for ${file} must be an assertion array`);
+    const observations = assertions.filter(assertion => assertion.kind === 'stdoutMatches').map(assertion => {
+      if (typeof assertion.pattern !== 'string' || (assertion.flags !== undefined && typeof assertion.flags !== 'string')) {
+        throw new Error(`V059.fileAssertions for ${file}: stdoutMatches requires a string pattern and optional string flags`);
+      }
+      return new RegExp(assertion.pattern, assertion.flags);
+    });
+    if (observations.length) plan.push({ file: path.posix.relative('scripts', file.replace(/\\/g, '/')), observations });
+  }
+  if (plan.length === 0) throw new Error('V059.fileAssertions has no cross-runtime observations.');
+  plan.push({ file: '_test-fail-open-edge-cases.js', observations: [], isolatedLast: true });
+  return plan;
+}
+
+const suites = loadSuites();
 
 function validatePlan(plan = suites) {
   const isolated = plan.filter((suite) => suite.isolatedLast);
@@ -77,7 +53,7 @@ function runSuite(suite) {
   const stdout = String(result.stdout || '');
   const stderr = String(result.stderr || '');
   const missingObservations = suite.observations
-    .filter((pattern) => !pattern.test(stdout))
+    .filter((pattern) => !new RegExp(pattern.source, pattern.flags).test(stdout))
     .map((pattern) => pattern.source);
   return {
     file: suite.file,

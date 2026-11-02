@@ -57,13 +57,17 @@ Entry shape:
 
 The first assertion is an invariant — the probe script decides pass/fail and reports it as a boolean, so the manifest holds no expected value at all. The second compares two files against each other, so it keeps working whatever the version becomes. Put the detailed checks inside the probe script, and keep the manifest holding only invariants.
 
-Supported assertions are `jsonEquals`, `jsonMatches`, `stdoutJsonEquals`, `fileExists`, and `fileContains`. Prefer JSON/state comparisons over stdout. Positive text such as `PASS` and the legacy `expected` field never decide success. Every behavioral entry must contain at least one assertion or `forbiddenChanges` path.
+Supported assertions are `jsonEquals`, `jsonMatches`, `stdoutJsonEquals`, `stdoutMatches`, `fileExists`, and `fileContains`. Prefer JSON/state comparisons over stdout. Positive text such as `PASS` and the legacy `expected` field never decide success. Every behavioral entry must contain at least one assertion or `forbiddenChanges` path.
+
+Use `{"kind": "stdoutMatches", "pattern": "named observation", "flags": "i"}` to require an observation in stdout. `pattern` is a regex source string; `flags` is optional. The runner tests `new RegExp(pattern, flags)` against stdout only, alongside the exit-code and other assertions. A mismatch reports `stdout: expected /<pattern>/`. Invalid patterns or flags are manifest errors, validated across expanded entries before any command runs.
 
 **Write the `ia` field as the outcome being proven, not as a release note.** Version numbers, ticket IDs, and "after feature X" phrasing go stale and force an edit that proves nothing.
 
 **Collect verification targets by convention, not by list.** When several scripts of the same kind must all run, have the probe discover them from the filesystem — a test file that exists but appears in no list is silently never executed. Assert that the discovered count is above zero so an empty glob fails loudly, and never hardcode how many were found.
 
 The runner does this for test files with a discovery entry. It runs one check per file matching `pattern` (a literal folder and a file-name glob), shares the entry's `contract`, and fails with `matched no files` when nothing matches. A file that an explicit entry already runs is not discovered again. Every `exclude` item needs a `reason`. `command` is optional, and `{file}` is replaced with each file; the default is `node <file>`.
+
+For file-specific checks, add `"fileAssertions": { "scripts/_test-example.js": [{ "kind": "stdoutMatches", "pattern": "named observation" }] }` to the discovery entry. Each array is appended to that file's `contract.assertions`; other files retain the shared contract. Keys are exact repo-relative discovered paths, accepting either slash style. Slash aliases of the same file append both arrays. A key absent after discovery exclusions and explicit-entry precedence is a manifest error naming the entry and file. The coverage restrictions below apply to the appended assertions too.
 
 Selected checks may reuse an unchanged PASS; selection alone does not mean the command ran. Set `"reuse": false` on an entry whose external tools, live services or other inputs cannot be tracked. On a discovery entry this disables reuse for every discovered check. To disable cached reuse for particular files, set `"reuseExclude": ["scripts/_test-live.js"]` on the discovery entry instead: paths are exact and repo-relative, with either slash style accepted. Unlike `discover.exclude`, these files remain eligible for selection; the setting does not itself select them. `always: true` both selects the entry and prevents reuse. Run mode in `SKILL.md` describes key validity, expiry and the other never-reuse cases.
 

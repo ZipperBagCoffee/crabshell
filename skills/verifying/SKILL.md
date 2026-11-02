@@ -117,7 +117,7 @@ node .crabshell/verification/run-verify.js            # selects every check, onl
 
 Routine updates run `--changed`; it also unlocks the commit gate. Run every check only when the user asks for it. When a full run seems truly needed — or `--dry-run` shows the selection falling back to every check — ask the user first and say why.
 
-`test-map.json` records each check's files and folders required, read, listed or copied. Passing checks refresh their records even in a failing run. Failures keep prior files (or their first trace), lose pass keys and get `lastFailedAt`; `--changed` retries them with reason `failed in the last run` until they execute and pass. Full runs record `manifestHash` even with failures.
+`test-map.json` records each check's files and folders required, read, listed or copied. Passing checks refresh their records even in a failing run. Failures keep prior files, lose pass keys and remain selected for retry; [failure marks](references/runner-reuse-output.md#reuse-and-timing) distinguish check failures from unresolved HEAD comparisons. Full runs record `manifestHash` even with failures.
 
 `--changed` compares the working tree with HEAD, including untracked files and both paths of a rename. `--files a,b` supplies that list instead. It selects checks whose test file changed or whose recorded inputs cover a changed file, plus new checks, empty records and `always: true` entries. It falls back to **selecting every check** when:
 

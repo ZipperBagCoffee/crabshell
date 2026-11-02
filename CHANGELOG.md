@@ -1,5 +1,13 @@
 # Changelog
 
+## [21.150.0] - 2026-11-02
+
+### fix: fail-before marks survive runs that do not compare; V013 split into per-test output checks
+
+- **Why.** The two items left after v21.149.0. A failed HEAD comparison (a changed test that also passes on the old code) marked the check, but an explicit-id run or the Final Verification guard's `--no-fail-before` run cleared the mark when the check itself passed, without comparing again. And V013 reran the 11 cross-runtime tests as one bundle to check named lines in their output, so changing one of them ran all 11.
+- **Runner** (`run-verify.js`, both copies): failure marks record their kind (`lastFailedKind`: `check` or `fail-before`); a `fail-before` mark is cleared only by a `--changed` run with fail-before on, when the comparison passes or the check is no longer compared (a hand-picked `--files` list is not taken as proof of that). New assertion `stdoutMatches` (`pattern`, optional `flags`); new discovery field `fileAssertions` adds assertions to one discovered file; an unknown file or an invalid pattern is a manifest error.
+- **Manifest:** V013 removed; V059 carries the 21 named-output checks on the 10 cross-runtime tests that print them; V059's `coveredBy` keeps only the Claude install test (V015). `scripts/verify-cross-runtime.js` stays for manual runs and reads its list from the manifest.
+
 ## [21.149.0] - 2026-11-02
 
 ### fix: failed checks run again; failing runs keep the passing records; estimates count HEAD comparisons
