@@ -55,7 +55,7 @@ report.check('W15 the per-prompt checklist carries the common-sense line',
 // v21.144.0 (D133): the user repeats corrections that stop at the spot pointed at, and "done" is
 // reported with nobody having tried the result.
 report.check('W24 a correction spreads to the whole work and an untried result is not reported as done (rules and per-prompt checklist)',
-  /^- A correction is a defect type, not one spot:[^\n]*how many places had it, how many were fixed, and which are left\.$/m.test(RULES)
+  /^- A correction is a defect type, not one spot:[^\n]*how many places had it, how many were fixed, and which are left\./m.test(RULES)
   && /^- If no person has used or read the result, report "own checks passed, not tried by a person", not "done"\.$/m.test(RULES)
   && /^- A correction is a defect type:[^\n]*own checks passed, not tried by a person[^\n]*structuring skill/m.test(COMPRESSED_CHECKLIST));
 // v21.145.0 (D134): the one idea worth keeping from the /crash-out skill; the user: "그 한줄 정돔나 규칙에 넣든가".
@@ -143,6 +143,18 @@ report.check('W16 every verification asks the common-sense question; a weird res
     workflow.endsWith('not role pairs or counts. ' + smallChange), workflow.slice(-160));
   report.check('W27 verification puts the exact check-once sentence immediately before Verify the diff only',
     verification.includes(' ' + checkOnce + ' Verify the diff only:'), verification.slice(-160));
+}
+// v21.147.0 (D136): another session relayed the user's report — the agent idled through
+// status-only check-ins while delegated work ran, and a repeated correction got an instance fix.
+{
+  const working = (RULES.split('### WORKING RULES')[1] || '').split('\n###')[0].split('\n');
+  const waiting = "- Waiting is not work: while delegated work or a long check runs, do the steps of the already confirmed plan or ticket that do not need its result — open its partial output, review work that is already final, write the next brief — but run no check on files that are still being written. Send a status-only reply only when no such step exists, and name in it what you checked. Supervision prompts you write (cron, heartbeat, loop) carry the same instruction, never 'if it is still running, reply with status only'.";
+  report.check('W30 working rules carry the exact waiting-is-not-work line',
+    working.includes(waiting), working.find(line => line.startsWith('- Waiting')) || 'no Waiting line');
+  const correction = working.find(line => line.startsWith('- A correction is a defect type')) || '';
+  report.check('W31 the defect-type rule ends with the repeated-correction sentence after its existing text',
+    correction.endsWith('how many were fixed, and which are left. When the same type of correction comes back, reopen the earlier fix (git log -S, or the memory logbook) and check whether it covered the type or only one instance; fix the type.'),
+    correction.slice(-160));
 }
 {
   const workflow = COMPRESSED_CHECKLIST.split('\n').find(line => line.startsWith('- Work that changes files starts in a discussion:')) || '';

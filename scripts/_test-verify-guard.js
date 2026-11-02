@@ -389,8 +389,7 @@ test('Real runner allows a reused behavioral PASS and blocks a changed assertion
     const env = { CLAUDE_PROJECT_DIR: root, CRABSHELL_VERIFY_JSON: '' };
     assertEqual(runScript(finalVerificationEdit(), env).exitCode, 0);
     assertEqual(runScript(finalVerificationEdit(), env).exitCode, 0);
-    const results = JSON.parse(fs.readFileSync(path.join(root, '.crabshell/verification/last-run.json'), 'utf8'));
-    assertEqual(results[0].reused, true);
+    assertEqual(fs.existsSync(path.join(root, '.crabshell/verification/last-run.json')), false);
     assertEqual(fs.readFileSync(path.join(root, 'node_modules/counter'), 'utf8'), 'x');
     fs.writeFileSync(path.join(root, 'value'), 'bad');
     assertEqual(runScript(finalVerificationEdit(), env).exitCode, 2);

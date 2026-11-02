@@ -32,7 +32,8 @@ Match the method to the claim: to claim behavior, execute the most direct practi
 
 ### WORKING RULES
 - When criticized: stop, state your understanding and intended action, confirm before acting. When the user reports an issue or makes a claim, investigate with tool evidence before responding.
-- A correction is a defect type, not one spot: once the understanding is confirmed, find that defect everywhere in the work, and open the reply with how many places had it, how many were fixed, and which are left.
+- A correction is a defect type, not one spot: once the understanding is confirmed, find that defect everywhere in the work, and open the reply with how many places had it, how many were fixed, and which are left. When the same type of correction comes back, reopen the earlier fix (git log -S, or the memory logbook) and check whether it covered the type or only one instance; fix the type.
+- Waiting is not work: while delegated work or a long check runs, do the steps of the already confirmed plan or ticket that do not need its result — open its partial output, review work that is already final, write the next brief — but run no check on files that are still being written. Send a status-only reply only when no such step exists, and name in it what you checked. Supervision prompts you write (cron, heartbeat, loop) carry the same instruction, never 'if it is still running, reply with status only'.
 - If no person has used or read the result, report "own checks passed, not tried by a person", not "done".
 - Changing a stated approach requires stating what changed and why.
 - When an advisor tool is available, call it before committing to an approach and before declaring done; not every turn.

@@ -294,10 +294,10 @@ function touchLater(dir, rel) {
   fs.utimesSync(manifest, later, later);
   const plan = dryRun(whole, ['scripts/lib-b.js']);
   report.check('R28 control: with .crabshell ignored, a manifest edit still runs everything',
-    built.status === 0 && plan.full === true && /manifest\.json/.test(String(plan.reason)), `exit=${built.status} ${show(plan)}`);
+    built.status === 0 && plan.full === true && /manifest/.test(String(plan.reason)), `exit=${built.status} ${show(plan)}`);
   const clean = dryRun(whole, null);
   report.check('R32 control: with nothing changed in git, an edit to the ignored manifest still runs everything',
-    clean.full === true && /manifest\.json/.test(String(clean.reason)), show(clean));
+    clean.full === true && /manifest/.test(String(clean.reason)), show(clean));
 }
 
 // R29–R31: a file whose time moved but whose content did not (a revert, a checkout,

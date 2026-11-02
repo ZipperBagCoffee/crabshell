@@ -79,7 +79,7 @@ Create `.crabshell/verification/manifest.json` using schema version 2:
 }
 ```
 
-`tools` commands and the package.json `test` script are **required checks** that unlock the commit gate; single entries provide evidence only for themselves. `changed.global` adds files every check depends on. Package manifests, lockfiles, the manifest and runner are already global. Files only some checks read belong in the load map, not this list.
+`tools` commands and the package.json `test` script are **required checks** that unlock the commit gate; single entries provide evidence only for themselves. `changed.global` adds files every check depends on. Package manifests, lockfiles and the runner are already global. Files only some checks read belong in the load map, not this list.
 
 ### Step 5: Populate entries from current context
 
@@ -119,17 +119,19 @@ Routine updates run `--changed`; it also unlocks the commit gate. Run every chec
 
 `test-map.json` beside the manifest records each check's files and folders required, read, listed or copied, including Node children, static paths and assertion inputs. Dependency records refresh only when all selected checks pass, for those selections. After mixed results, failures clear their keys and successful checks can retain eligible keys without replacing dependencies.
 
-`--changed` compares the working tree with HEAD, including untracked files and both paths of a rename. `--files a,b` supplies that list instead. It selects checks whose test file changed or whose recorded inputs cover a changed file, plus new checks, empty records and `always: true` entries. It falls back to **executing every check** when:
+`--changed` compares the working tree with HEAD, including untracked files and both paths of a rename. `--files a,b` supplies that list instead. It selects checks whose test file changed or whose recorded inputs cover a changed file, plus new checks, empty records and `always: true` entries. It falls back to **selecting every check** when:
 
 - a changed file matches `changed.global` or the default globals;
 - there is no map, or the map cannot be read;
-- the manifest, runner, test or recorded file changed after the map was written (hashes distinguish changed content from a timestamp-only change);
+- the runner, test or recorded file other than the manifest changed after the map was written (hashes distinguish changed content from a timestamp-only change);
 - a changed non-prose file is not in the map;
 - Git cannot supply the changed-file list.
 
+The manifest is compared with the load map even when absent from Git's changed-file list. Missing or different entry hashes select those checks and changed manifest content selects its readers; removed entries need no run. A missing top-level manifest hash or changed fields other than `entries`, `created` and `updated` cause a full fallback. This disables cached reuse; eligible covered checks may still be skipped after their covering check passes. Hash recording and reasons: [manifest changes](references/runner-reuse-output.md#manifest-changes-in-changed-file-mode).
+
 Absent a fallback, no changes select only new, empty-record and always-selected checks. Deleted tests and unread prose select nothing. Blind spots include non-Node reads and untraced computed paths. Ignored runtime files do not trigger selection or staleness; the manifest, runner and tests are still checked when ignored.
 
-**Reuse and timing.** Before executing checks, read [reuse eligibility and timing](references/runner-reuse-output.md#reuse-and-timing) for pass-key inputs, exclusions, controls and dry-run estimates.
+**Reuse and timing.** Before executing checks, read [reuse eligibility and timing](references/runner-reuse-output.md#reuse-and-timing) for pass-key inputs, exclusions, controls, `coveredBy` duplicate suppression and dry-run estimates.
 
 **Fail-before.** A changed test that passes and reads changed non-test files also runs on a temporary HEAD copy. Passing there produces a failing `FAIL_BEFORE:<id>` result. Intentional behavior-preserving changes can be exempted by test hash in `fail-before-exempt.json`. Details, format and `--no-fail-before`: `references/fail-before.md`.
 
@@ -157,6 +159,7 @@ For a wiring entry, a FAIL means either the source broke a parent-approved hop, 
 Type: `behavioral` = runtime execution observed (ran command, triggered feature, checked output)
 Type: `structural` = static check (grep, file read, code inspection)
 For `reused: true`, cite the earlier passing observation and unchanged inputs; do not describe it as a new execution. Manual results await a person.
+For `coveredBy: "<id>"`, cite that covering check's executed or reused PASS; the child did not run independently and has no separate pass key.
 
 - **Document-first rule:** If this verification run was invoked from within a T or P document context, append the P/O/G results to that document's verification section using the Edit tool FIRST. After the document is updated, report the summary in conversation. Standalone invocations may report conversation-only.
 
