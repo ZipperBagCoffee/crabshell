@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.149.0)
+# Crabshell Architecture (v21.150.0)
 
 ## Overview
 
@@ -404,7 +404,7 @@ Regressing retains document-cycle continuation but has no parallel-worker count 
 | `codex-memory.js` | Codex skills | Explicit load/save/search/status against the active project's shared `.crabshell/` store |
 | `core/orchestration-policy.js` | shared library | Build the 8-field task contract, apply question boundaries, resolve named references, and evaluate parent-owned completion evidence |
 | `run-orchestration-corpus.js` | regression CLI | Run baseline/current Codex conversation fixtures, reference perturbation, false-done rejection, and workspace side-effect checks |
-| `verify-cross-runtime.js` | regression CLI | Sequential shared-behavior and negative-mutation entry; fail-open suite runs alone and last |
+| `verify-cross-runtime.js` | manual regression CLI | Reads suites and stdout observation regexes from V059 `fileAssertions`; fail-open suite runs alone and last. Routine verification runs these tests individually through V059 |
 | `_test-cross-platform-native-hosts.js` | release smoke | Isolated Windows/Linux Claude Code CLI and Codex CLI install/activation matrix; app reported separately |
 | `skills/verifying/scripts/run-verify.js` | verification source | Canonical portable schema-v2 runner: repo-relative commands, structured assertions, and forbidden-path snapshots. v21.126.0: `discover` entries (one check per matching test file). A full run writes a load map (`test-map.json`) from a NODE_OPTIONS tracer that re-attaches to child processes (require, reads, listings, copies) plus a static path-string scan. `--changed` selects the checks the changed files touch, and falls back to all when it cannot know. v21.142.0: with nothing changed it runs only the always-run checks; a passing `--changed` run refreshes the records of the checks it ran; a changed test that reads changed source also runs on a temporary HEAD copy and must fail there (`FAIL_BEFORE:<id>`, hash-bound exemptions in `fail-before-exempt.json`, `--no-fail-before`). v21.143.0: a check with no record yet (a new, renamed or pulled test) runs by itself instead of making `--changed` run everything; a deleted test selects nothing |
 | `.crabshell/verification/run-verify.js` | generated project runner | Byte-equivalent generated runner consumed by `verify-guard.js`; stdout text is diagnostic, not a pass oracle |
@@ -565,6 +565,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.150.0 | Check runner: a mark left by a failed HEAD comparison (fail-before) is cleared only by a `--changed` run that compares again, not by an explicit-id or guard run; new assertion `stdoutMatches` and discovery field `fileAssertions`; V013 removed — its named-output checks now sit on the 11 cross-runtime tests themselves, so changing one test runs only that test |
 | 21.149.0 | Check runner: the dry-run estimate includes the HEAD comparison runs of changed tests; a timed-out check keeps its previous recorded duration; a run with a failing check still refreshes the records of the checks that passed, and a failed check is selected again by the next `--changed` ("failed in the last run") until it passes |
 | 21.148.0 | The Final Verification guard no longer runs a changed-file check it cannot finish in its 60 s limit (estimate over 40 s, e.g. every check after an uncommitted runner change); it allows the write and leaves the check to the commit gate. Subagent context cap 6,000 → 9,500 characters, so an active regressing task scope no longer cuts off the end of the checklist |
 | 21.147.0 | Fewer repeated checks: runs made by the guard (and runs with nothing selected) no longer overwrite `last-run.json`; a changed manifest selects only the entries changed since the load map was written; new entry field `coveredBy` skips a check whose test another selected check already runs, when that check passes (V005 and the Claude install test are covered by V015, the 11 cross-runtime tests by V013). Rules: "Waiting is not work" — while delegated work runs, do the confirmed steps that do not need its result instead of status-only replies; a repeated correction reopens the earlier fix and fixes the type |

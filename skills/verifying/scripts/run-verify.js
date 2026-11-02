@@ -112,6 +112,17 @@ function validatePortableStrings(value, label) {
   }
 }
 
+function validateStdoutAssertions(assertions, label) {
+  for (const assertion of Array.isArray(assertions) ? assertions : []) {
+    if (!assertion || assertion.kind !== 'stdoutMatches') continue;
+    if (typeof assertion.pattern !== 'string' || (assertion.flags !== undefined && typeof assertion.flags !== 'string')) {
+      throw new Error(`${label}: stdoutMatches requires a string pattern and optional string flags`);
+    }
+    try { new RegExp(assertion.pattern, assertion.flags); }
+    catch (error) { throw new Error(`${label}: invalid stdoutMatches regex: ${error.message}`); }
+  }
+}
+
 function validateEntry(entry) {
   if (!entry || typeof entry !== 'object') throw new Error('entry must be an object');
   if (!entry.id || typeof entry.id !== 'string') throw new Error('entry.id is required');
@@ -137,6 +148,7 @@ function validateEntry(entry) {
     throw new Error(`${entry.id}: contract.exitCode is required`);
   }
   const assertions = Array.isArray(entry.contract.assertions) ? entry.contract.assertions : [];
+  validateStdoutAssertions(assertions, entry.id);
   const forbidden = Array.isArray(entry.contract.forbiddenChanges) ? entry.contract.forbiddenChanges : [];
   if (entry.type === 'behavioral' && assertions.length === 0 && forbidden.length === 0) {
     throw new Error(`${entry.id}: behavioral contract requires an assertion or forbiddenChanges`);
@@ -182,6 +194,9 @@ function evaluateAssertion(assertion, context) {
       const parsed = JSON.parse(context.stdout || '');
       const actual = readJsonPointer(parsed, assertion.pointer || '');
       return { pass: deepEqual(actual, assertion.equals), message: `stdout${assertion.pointer || ''}: expected ${JSON.stringify(assertion.equals)}, observed ${JSON.stringify(actual)}` };
+    }
+    if (assertion.kind === 'stdoutMatches') {
+      return { pass: new RegExp(assertion.pattern, assertion.flags).test(context.stdout || ''), message: `stdout: expected /${assertion.pattern}/` };
     }
     if (assertion.kind === 'fileExists') {
       const resolved = resolveInside(context.projectRoot, assertion.path, 'assertion.path');
@@ -337,6 +352,9 @@ function expandEntries(manifest, projectRoot) {
   const explicitFiles = new Set(entries.filter(entry => !entry.discover).map(entry => entryTestFile(entry, projectRoot)).filter(Boolean));
   const expanded = [];
   for (const entry of entries) {
+    if (entry && entry.fileAssertions !== undefined && !entry.discover) {
+      throw new Error(`${entry.id}: fileAssertions requires discover`);
+    }
     if (!entry || !entry.discover) { expanded.push(entry); continue; }
     const rule = entry.discover;
     if (entry.reuseExclude !== undefined && (!Array.isArray(entry.reuseExclude)
@@ -351,6 +369,17 @@ function expandEntries(manifest, projectRoot) {
       resolveInside(projectRoot, file, `${entry.id}.coveredBy`);
       return [toPosix(file), id];
     }));
+    if (entry.fileAssertions !== undefined && (!entry.fileAssertions || typeof entry.fileAssertions !== 'object' || Array.isArray(entry.fileAssertions))) {
+      throw new Error(`${entry.id}: fileAssertions must map relative file paths to assertion arrays`);
+    }
+    const fileAssertions = new Map();
+    for (const [key, assertions] of Object.entries(entry.fileAssertions || {})) {
+      const file = toPosix(key);
+      resolveInside(projectRoot, file, `${entry.id}.fileAssertions`);
+      if (!Array.isArray(assertions)) throw new Error(`${entry.id}: fileAssertions for ${key} must be an assertion array`);
+      validateStdoutAssertions(assertions, `${entry.id}.fileAssertions ${key}`);
+      fileAssertions.set(file, [...(fileAssertions.get(file) || []), ...assertions]);
+    }
     const pattern = typeof rule.pattern === 'string' ? toPosix(rule.pattern) : '';
     const slash = pattern.lastIndexOf('/');
     const dir = slash >= 0 ? pattern.slice(0, slash) : '.';
@@ -368,6 +397,9 @@ function expandEntries(manifest, projectRoot) {
     const files = fs.existsSync(folder) ? fs.readdirSync(folder).filter(file => matcher.test(file)).sort() : [];
     const discovered = files.map(file => toPosix(path.join(dir, file)).replace(/^\.\//, ''))
       .filter(file => !explicitFiles.has(file) && !excluded.has(file));
+    for (const file of fileAssertions.keys()) {
+      if (!discovered.includes(file)) throw new Error(`${entry.id}: fileAssertions file is not discovered: ${file}`);
+    }
     if (discovered.length === 0) {
       expanded.push({ id: entry.id, type: entry.type, discoveryError: `discover pattern ${pattern} matched no files` });
       continue;
@@ -380,7 +412,9 @@ function expandEntries(manifest, projectRoot) {
         command: rule.command && typeof rule.command.file === 'string' && Array.isArray(rule.command.args)
           ? { ...rule.command, args: rule.command.args.map(arg => arg === '{file}' ? file : arg) }
           : { file: 'node', args: [file] },
-        contract: entry.contract,
+        contract: fileAssertions.has(file)
+          ? { ...entry.contract, assertions: [...(entry.contract && entry.contract.assertions || []), ...fileAssertions.get(file)] }
+          : entry.contract,
         timeout: entry.timeout,
         always: entry.always,
         reuse: reuseExcluded.has(file) ? false : entry.reuse,
@@ -390,6 +424,8 @@ function expandEntries(manifest, projectRoot) {
     }
   }
   const byId = new Map(expanded.map(entry => [entry.id, entry]));
+  // Reject malformed output patterns even on unselected entries, before any command.
+  for (const entry of expanded) validateStdoutAssertions(entry.contract && entry.contract.assertions, entry.id);
   // Validate even references for excluded discovery files: a typo must not
   // silently turn into a passing, skipped check when that file is later included.
   for (const entry of entries) {
@@ -398,7 +434,7 @@ function expandEntries(manifest, projectRoot) {
     for (const [childId, id] of targets) {
       if (typeof id !== 'string' || !id.trim()) throw new Error(`${childId}: coveredBy must name a check id`);
       if (!byId.has(id)) throw new Error(`${childId}: unknown coveredBy check id ${id}`);
-      const contract = entry.contract || {};
+      const contract = (byId.get(childId) || entry).contract || {};
       const coveringContract = byId.get(id).contract || {};
       if ((contract.assertions || []).length > 0) {
         throw new Error(`${childId}: coveredBy ${id} cannot preserve the child's contract.assertions`);
@@ -1020,8 +1056,12 @@ function main(argv = process.argv.slice(2), options = {}) {
   let entries;
   let plan = null;
   let changedList = [];
+  let changesKnown = true;
   if (args.changed) {
     const changed = args.files ? { files: args.files } : gitChangedFiles(projectRoot);
+    // A hand-picked --files list may leave out the test or its source, so it is no
+    // evidence that a fail-before comparison no longer applies.
+    changesKnown = !changed.error && !args.files;
     changedList = changed.files || [];
     plan = changed.error
       ? { mode: 'changed', full: true, reason: changed.error, changed: [], selected: expanded.filter(e => e.type !== 'manual').map(e => e.id), total: expanded.filter(e => e.type !== 'manual').length }
@@ -1178,8 +1218,13 @@ function main(argv = process.argv.slice(2), options = {}) {
   const failBefore = plan && args.failBefore
     ? failBeforeChecks({ entries, results, records: mapEntries, changedFiles: changedList, expanded, projectRoot, manifestPath })
     : [];
-  const failedIds = new Set(results.filter(result => result.status === 'FAIL').map(result => result.id));
+  const checkFailedIds = new Set(results.filter(result => result.status === 'FAIL').map(result => result.id));
+  const failedIds = new Set(checkFailedIds);
   for (const result of failBefore) if (result.status === 'FAIL') failedIds.add(result.id.slice('FAIL_BEFORE:'.length));
+  const comparisonEnabled = Boolean(plan && args.failBefore && changesKnown);
+  const comparisonTargets = new Set(comparisonEnabled ? failBeforeTargets({ entries, records: mapEntries,
+    changedFiles: changedList, expanded, projectRoot, manifestPath }).map(({ entry }) => entry.id) : []);
+  const comparisonPassed = new Set(failBefore.filter(result => result.status === 'PASS').map(result => result.id.slice('FAIL_BEFORE:'.length)));
   for (let index = 0; index < entries.length; index++) {
     const entry = entries[index];
     const record = mapEntries[entry.id];
@@ -1188,13 +1233,27 @@ function main(argv = process.argv.slice(2), options = {}) {
       const previous = previousRecords[entry.id] || {};
       const failed = { ...previous, test: previous.test || record.test,
         files: Array.isArray(previous.files) ? previous.files : record.files,
-        lastFailedAt: new Date().toISOString() };
+        lastFailedAt: new Date().toISOString(), lastFailedKind: checkFailedIds.has(entry.id) ? 'check' : 'fail-before' };
       if (record.lastDurationMs !== undefined) failed.lastDurationMs = record.lastDurationMs;
       delete failed.passKey;
       delete failed.passedAt;
       mapEntries[entry.id] = failed;
     } else if (results[index].status === 'PASS') {
-      record.entryHash = entryHashes.get(entry.discoveredBy || entry.id);
+      const previous = previousRecords[entry.id] || {};
+      if (previous.lastFailedKind === 'fail-before' && (!comparisonEnabled
+        || (comparisonTargets.has(entry.id) && !comparisonPassed.has(entry.id)))) {
+        // An ordinary PASS cannot resolve a failed HEAD comparison. Keep its
+        // dependencies and hashes until comparison succeeds or no longer applies.
+        const pending = { ...previous, test: previous.test || record.test,
+          files: Array.isArray(previous.files) ? previous.files : record.files };
+        if (record.lastDurationMs !== undefined) pending.lastDurationMs = record.lastDurationMs;
+        delete pending.passKey;
+        delete pending.passedAt;
+        mapEntries[entry.id] = pending;
+        failedIds.add(entry.id);
+      } else {
+        record.entryHash = entryHashes.get(entry.discoveredBy || entry.id);
+      }
     }
   }
   if (tracing) {

@@ -146,33 +146,6 @@
       "timeout": 300000
     },
     {
-      "id": "V013",
-      "reuse": false,
-      "ia": "Unified Claude and Codex lifecycle behavior rejects missing or malformed response contracts, stale memory, lost state, wrong order, false done, hardcoded path, host mismatch, and forbidden-side-effect mutations",
-      "type": "behavioral",
-      "command": {
-        "file": "node",
-        "args": [
-          "scripts/verify-cross-runtime.js",
-          "--json"
-        ]
-      },
-      "contract": {
-        "exitCode": 0,
-        "assertions": [
-          {
-            "kind": "stdoutJsonEquals",
-            "pointer": "/passed",
-            "equals": true
-          }
-        ],
-        "forbiddenChanges": [
-          ".crabshell/memory/logbook.md"
-        ]
-      },
-      "timeout": 180000
-    },
-    {
       "id": "V014",
       "ia": "Live doctor distinguishes installed, activated, trusted, behavior-verified, degraded, drifted, and unsupported states without a hardcoded compatibility table",
       "type": "behavioral",
@@ -683,18 +656,113 @@
         "scripts/_test-codex-windows-hook-command.js"
       ],
       "coveredBy": {
-        "scripts/_test-claude-native-install.js": "V015",
-        "scripts/_test-cross-runtime-first-turn.js": "V013",
-        "scripts/_test-cross-runtime-session-memory.js": "V013",
-        "scripts/_test-cross-runtime-workflow-restart.js": "V013",
-        "scripts/_test-cross-runtime-subagent-context.js": "V013",
-        "scripts/_test-cross-runtime-parent-completion.js": "V013",
-        "scripts/_test-codex-hook-contract.js": "V013",
-        "scripts/_test-codex-windows-hook-command.js": "V013",
-        "scripts/_test-codex-compaction.js": "V013",
-        "scripts/_test-alternating-host-continuity.js": "V013",
-        "scripts/_test-claude-lifecycle-preservation.js": "V013",
-        "scripts/_test-fail-open-edge-cases.js": "V013"
+        "scripts/_test-claude-native-install.js": "V015"
+      },
+      "fileAssertions": {
+        "scripts/_test-cross-runtime-first-turn.js": [
+          {
+            "kind": "stdoutMatches",
+            "pattern": "three-field ending is retired"
+          },
+          {
+            "kind": "stdoutMatches",
+            "pattern": "divergent-source mutation"
+          },
+          {
+            "kind": "stdoutMatches",
+            "pattern": "forbidden-side-effect mutation"
+          }
+        ],
+        "scripts/_test-cross-runtime-session-memory.js": [
+          {
+            "kind": "stdoutMatches",
+            "pattern": "stale-memory mutation"
+          },
+          {
+            "kind": "stdoutMatches",
+            "pattern": "sentinel-write mutation"
+          }
+        ],
+        "scripts/_test-cross-runtime-workflow-restart.js": [
+          {
+            "kind": "stdoutMatches",
+            "pattern": "stale state"
+          },
+          {
+            "kind": "stdoutMatches",
+            "pattern": "lost-state"
+          },
+          {
+            "kind": "stdoutMatches",
+            "pattern": "sentinel-write mutation"
+          }
+        ],
+        "scripts/_test-cross-runtime-subagent-context.js": [
+          {
+            "kind": "stdoutMatches",
+            "pattern": "wrong-event, removed-field"
+          },
+          {
+            "kind": "stdoutMatches",
+            "pattern": "sentinel-write mutation"
+          }
+        ],
+        "scripts/_test-cross-runtime-parent-completion.js": [
+          {
+            "kind": "stdoutMatches",
+            "pattern": "child false-done"
+          },
+          {
+            "kind": "stdoutMatches",
+            "pattern": "wrong-order mutation"
+          },
+          {
+            "kind": "stdoutMatches",
+            "pattern": "owner and authority mutations"
+          }
+        ],
+        "scripts/_test-codex-hook-contract.js": [
+          {
+            "kind": "stdoutMatches",
+            "pattern": "hardcoded-command mutations"
+          },
+          {
+            "kind": "stdoutMatches",
+            "pattern": "PASS-only stdout fixture"
+          }
+        ],
+        "scripts/_test-codex-windows-hook-command.js": [
+          {
+            "kind": "stdoutMatches",
+            "pattern": "retired percent-expansion command"
+          }
+        ],
+        "scripts/_test-codex-compaction.js": [
+          {
+            "kind": "stdoutMatches",
+            "pattern": "wrong event and missing context mutations"
+          },
+          {
+            "kind": "stdoutMatches",
+            "pattern": "missing log mutation is rejected"
+          }
+        ],
+        "scripts/_test-alternating-host-continuity.js": [
+          {
+            "kind": "stdoutMatches",
+            "pattern": "missing-memory mutation"
+          },
+          {
+            "kind": "stdoutMatches",
+            "pattern": "cross-host marker mutation"
+          }
+        ],
+        "scripts/_test-claude-lifecycle-preservation.js": [
+          {
+            "kind": "stdoutMatches",
+            "pattern": "Codex execution uses separate plugin data and never writes Claude surfaces"
+          }
+        ]
       },
       "ia": "Every scripts/_test-*.js test passes without touching this repository's own memory log (found by name; explicit entries keep their own arguments)",
       "type": "behavioral",
