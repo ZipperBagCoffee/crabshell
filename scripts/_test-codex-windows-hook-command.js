@@ -145,5 +145,6 @@ try {
 
   console.log(`RESULT: ${passed} passed, 0 failed`);
 } finally {
-  fs.rmSync(tempRoot, { recursive: true, force: true });
+  // A Codex or Claude child process can still hold the folder for a moment on Windows (EBUSY).
+  fs.rmSync(tempRoot, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 });
 }

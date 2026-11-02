@@ -396,6 +396,46 @@ test('Real runner allows a reused behavioral PASS and blocks a changed assertion
   } finally { cleanupGuardProject(root); }
 });
 
+// D137: a selection the runner estimates above the hook's budget is not run inside the
+// hook (it used to be killed at 60 s and then allowed); the commit gate's run checks it.
+test('Real runner: a selection estimated over the budget is allowed without running the check', () => {
+  const root = createGuardProject({ schemaVersion: 2, entries: [{
+    id: 'SLOW', type: 'behavioral',
+    command: { file: 'node', args: ['-e', 'require("fs").readFileSync("value");require("fs").appendFileSync("node_modules/counter", "x")'] },
+    contract: { exitCode: 0, assertions: [{ kind: 'fileContains', path: 'value', value: 'good' }] }
+  }] });
+  try {
+    fs.mkdirSync(path.join(root, 'node_modules'));
+    fs.writeFileSync(path.join(root, '.gitignore'), '.crabshell/\nnode_modules/\n');
+    fs.writeFileSync(path.join(root, 'value'), 'good');
+    const git = args => execFileSync('git', args, { cwd: root, encoding: 'utf8', windowsHide: true });
+    git(['init', '--quiet']);
+    git(['add', '.gitignore', 'value']);
+    git(['-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', '-c', 'commit.gpgSign=false', '-c', 'core.hooksPath=', 'commit', '--quiet', '-m', 'fixture baseline']);
+    // A full run records what the check reads; then its recorded duration says two minutes.
+    const runner = path.join(root, '.crabshell', 'verification', 'run-verify.js');
+    // The fixture's own root, not one inherited from an outer check run.
+    const full = spawnSync(process.execPath, [runner], { cwd: root, encoding: 'utf8', windowsHide: true, env: { ...process.env, CRABSHELL_VERIFY_RUNNING: '', PROJECT_ROOT: root, CLAUDE_PROJECT_DIR: root } });
+    assertEqual(full.status, 0);
+    assertEqual(fs.readFileSync(path.join(root, 'node_modules/counter'), 'utf8'), 'x');
+    const mapFile = path.join(root, '.crabshell', 'verification', 'test-map.json');
+    const map = JSON.parse(fs.readFileSync(mapFile, 'utf8'));
+    map.entries.SLOW.lastDurationMs = 120000;
+    fs.writeFileSync(mapFile, JSON.stringify(map, null, 2));
+    fs.writeFileSync(path.join(root, 'value'), 'good again');
+    const env = { CLAUDE_PROJECT_DIR: root, CRABSHELL_VERIFY_JSON: '' };
+    const result = runScript(finalVerificationEdit(), env);
+    assertEqual(result.exitCode, 0);
+    // The check did not run inside the hook.
+    assertEqual(fs.readFileSync(path.join(root, 'node_modules/counter'), 'utf8'), 'x');
+    // The model is told that no check ran and where it will run.
+    const decision = require('./verify-guard').evaluateVerifyGuard(finalVerificationEdit(), root);
+    assert(decision && !decision.reason && /without running the changed-file check/.test(decision.context || '') && /--changed/.test(decision.context || ''),
+      `expected an allow with model-visible context, got ${JSON.stringify(decision)}`);
+    assertEqual(fs.readFileSync(path.join(root, 'node_modules/counter'), 'utf8'), 'x');
+  } finally { cleanupGuardProject(root); }
+});
+
 fs.rmSync(projectDir, { recursive: true, force: true });
 
 console.log('');

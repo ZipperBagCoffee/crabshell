@@ -1,5 +1,14 @@
 # Changelog
 
+## [21.148.0] - 2026-11-02
+
+### fix: the Final Verification guard skips a check run it cannot finish; subagents get the whole checklist
+
+- **Why.** `verify-guard.js` runs the changed-file check (60 s limit) when a ticket's Final Verification is written. With an uncommitted runner or manifest change that selection is every check (about 6 minutes): the guard waited the full minute, was killed, allowed the write anyway, and on Windows could leave test processes running. Separately, the subagent context was cut at 6,000 characters; an active regressing task scope pushed it past that and cut off the end of the checklist (6,412 characters measured in D135).
+- **Guard:** before running, it asks the runner for the same `--changed --no-fail-before` selection as a dry run; when `estimatedSeconds` is over 40 s it allows the write without running and tells the model that no check ran there and that the commit gate's `--changed` run is the verification to cite. With no estimate (older runner copies, a failed dry run) it runs as before.
+- **Subagent context:** cap 9,500 characters, below the host's 10,000-character limit for hook context.
+- **Tests:** `_test-verify-guard.js` (an over-budget selection is not run), `_test-subagent-context.js` (a long regressing scope keeps the checklist's last line).
+
 ## [21.147.0] - 2026-11-02
 
 ### feat: fewer repeated checks — keep the person's results, select changed manifest entries, skip duplicate runs; rule: waiting is not work

@@ -11,7 +11,10 @@ const {
   readModelRouting,
 } = require('../shared-context');
 
-const MAX_CONTEXT_CHARS = 6000;
+// Below the host cap: Claude Code moves hook additionalContext over 10,000 characters
+// to a file (see SESSION_START_MAX_CHARS). At 6,000 an active regressing task scope
+// pushed the end of the checklist off the context.
+const MAX_CONTEXT_CHARS = 9500;
 
 function findDocument(storageRoot, directory, id) {
   if (!id || !/^[A-Z][A-Z0-9_]*$/.test(String(id))) return null;
