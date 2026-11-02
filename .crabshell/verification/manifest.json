@@ -13,6 +13,7 @@
     {
       "id": "V005",
       "reuse": false,
+      "coveredBy": "V015",
       "ia": "Native Codex clean install, cache, skill, restored prompt response contract, hook trust/hash, and spaces-path behavior",
       "type": "structural",
       "command": {
@@ -165,7 +166,9 @@
             "equals": true
           }
         ],
-        "forbiddenChanges": []
+        "forbiddenChanges": [
+          ".crabshell/memory/logbook.md"
+        ]
       },
       "timeout": 180000
     },
@@ -219,7 +222,9 @@
             "equals": "not-directly-exercised"
           }
         ],
-        "forbiddenChanges": []
+        "forbiddenChanges": [
+          ".crabshell/memory/logbook.md"
+        ]
       },
       "timeout": 660000
     },
@@ -677,6 +682,20 @@
         "scripts/_test-claude-native-install.js",
         "scripts/_test-codex-windows-hook-command.js"
       ],
+      "coveredBy": {
+        "scripts/_test-claude-native-install.js": "V015",
+        "scripts/_test-cross-runtime-first-turn.js": "V013",
+        "scripts/_test-cross-runtime-session-memory.js": "V013",
+        "scripts/_test-cross-runtime-workflow-restart.js": "V013",
+        "scripts/_test-cross-runtime-subagent-context.js": "V013",
+        "scripts/_test-cross-runtime-parent-completion.js": "V013",
+        "scripts/_test-codex-hook-contract.js": "V013",
+        "scripts/_test-codex-windows-hook-command.js": "V013",
+        "scripts/_test-codex-compaction.js": "V013",
+        "scripts/_test-alternating-host-continuity.js": "V013",
+        "scripts/_test-claude-lifecycle-preservation.js": "V013",
+        "scripts/_test-fail-open-edge-cases.js": "V013"
+      },
       "ia": "Every scripts/_test-*.js test passes without touching this repository's own memory log (found by name; explicit entries keep their own arguments)",
       "type": "behavioral",
       "discover": {
