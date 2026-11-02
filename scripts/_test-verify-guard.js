@@ -1,7 +1,7 @@
 // Integration tests for verify-guard.js hybrid fix
 'use strict';
 
-const { execSync } = require('child_process');
+const { execSync, execFileSync, spawnSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
@@ -40,13 +40,14 @@ function runScript(hookData, env) {
       `"${nodePath}" "${scriptPath}"`,
       {
         input: json,
-        env: { ...process.env, CLAUDE_PROJECT_DIR: projectDir, CRABSHELL_VERIFY_RUNNING: '', ...(env || {}) },
+        env: { ...process.env, CLAUDE_PROJECT_DIR: projectDir, CRABSHELL_VERIFY_RUNNING: '', ...(env || {}), PROJECT_ROOT: (env || {}).CLAUDE_PROJECT_DIR || projectDir },
         timeout: 5000,
         encoding: 'utf8'
       }
     );
     return { exitCode: 0, stdout: result };
   } catch (e) {
+    if (e.status == null) throw e;
     return { exitCode: e.status, stdout: e.stdout || '' };
   }
 }
@@ -71,7 +72,7 @@ function createGuardProject(manifest) {
   const ticketDir = path.join(root, '.crabshell', 'ticket');
   fs.mkdirSync(verificationDir, { recursive: true });
   fs.mkdirSync(ticketDir, { recursive: true });
-  fs.copyFileSync(path.join(__dirname, '..', 'skills', 'verifying', 'scripts', 'run-verify.js'), path.join(verificationDir, 'run-verify.js'));
+  fs.copyFileSync(process.env.CRABSHELL_TEST_RUNNER || path.join(__dirname, '..', 'skills', 'verifying', 'scripts', 'run-verify.js'), path.join(verificationDir, 'run-verify.js'));
   fs.writeFileSync(path.join(verificationDir, 'manifest.json'), JSON.stringify(manifest, null, 2), 'utf8');
   fs.writeFileSync(path.join(ticketDir, 'P900_T001-contract.md'), '# ticket\n', 'utf8');
   return root;
@@ -324,6 +325,79 @@ test('Passing schema-v2 behavioral assertion → ALLOW', () => {
 // ============================================================
 // SUMMARY
 // ============================================================
+
+for (const needsOptIn of [true, false]) {
+  test(`Guard parses ${needsOptIn ? 'JSON-opt-in' : 'legacy'} runner failures`, () => {
+    const root = createGuardProject({ schemaVersion: 2, entries: [] });
+    try {
+      fs.writeFileSync(path.join(root, '.crabshell', 'verification', 'run-verify.js'),
+        `if (${!needsOptIn} || process.env.CRABSHELL_VERIFY_JSON === '1') console.log(JSON.stringify([{id:'FIXTURE',status:'FAIL',error:'fixture failure'}], null, 2));\nprocess.exit(1);\n`);
+      const result = runScript(finalVerificationEdit(), { CLAUDE_PROJECT_DIR: root, CRABSHELL_VERIFY_JSON: '' });
+      assertEqual(result.exitCode, 2);
+      assert(result.stdout.includes('fixture failure'), 'guard must parse the failure');
+    } finally { cleanupGuardProject(root); }
+  });
+}
+
+test('Unparseable execution error stays fail-open', () => {
+  const root = createGuardProject({ schemaVersion: 2, entries: [] });
+  try {
+    fs.writeFileSync(path.join(root, '.crabshell', 'verification', 'run-verify.js'), 'process.exit(1);\n');
+    assertEqual(runScript(finalVerificationEdit(), { CLAUDE_PROJECT_DIR: root }).exitCode, 0);
+  } finally { cleanupGuardProject(root); }
+});
+
+test('Old guard args without JSON environment still expose a failing result array', () => {
+  const root = createGuardProject({ schemaVersion: 2, entries: [{
+    id: 'OLD_GUARD_FAIL', type: 'behavioral',
+    command: { file: 'node', args: ['-e', 'console.log(JSON.stringify({ok:false}))'] },
+    contract: { exitCode: 0, assertions: [{ kind: 'stdoutJsonEquals', pointer: '/ok', equals: true }] }
+  }] });
+  try {
+    const env = { ...process.env, PROJECT_ROOT: root, CLAUDE_PROJECT_DIR: root };
+    delete env.CRABSHELL_VERIFY_JSON;
+    delete env.CRABSHELL_VERIFY_RUNNING;
+    const result = spawnSync(nodePath, [path.join(root, '.crabshell/verification/run-verify.js'), '--changed', '--no-fail-before'], {
+      cwd: root, env, encoding: 'utf8', timeout: 30000, windowsHide: true,
+    });
+    if (result.error) throw result.error;
+    assertEqual(result.status, 1, 'failing fixture exit');
+    // The installed old guard extracts its result array from stdout on failure.
+    const match = result.stdout.match(/^\[\]$|^\[\r?\n[\s\S]*?\r?\n\]$/m);
+    assert(match, 'old guard must find a JSON array without an environment opt-in');
+    const failures = JSON.parse(match[0]).filter(item => item.status === 'FAIL');
+    assertEqual(failures.length, 1); assertEqual(failures[0].id, 'OLD_GUARD_FAIL');
+  } finally { cleanupGuardProject(root); }
+});
+
+test('Real runner allows a reused behavioral PASS and blocks a changed assertion', () => {
+  const root = createGuardProject({ schemaVersion: 2, entries: [{
+    id: 'REUSE', type: 'behavioral',
+    command: { file: 'node', args: ['-e', 'require("fs").appendFileSync("node_modules/counter", "x")'] },
+    contract: { exitCode: 0, assertions: [{ kind: 'fileContains', path: 'value', value: 'good' }] }
+  }] });
+  try {
+    fs.mkdirSync(path.join(root, 'node_modules'));
+    fs.writeFileSync(path.join(root, '.gitignore'), '.crabshell/\nnode_modules/\n');
+    fs.writeFileSync(path.join(root, 'value'), 'baseline');
+    const git = args => execFileSync('git', args, { cwd: root, encoding: 'utf8', windowsHide: true });
+    git(['init', '--quiet']);
+    git(['add', '.gitignore', 'value']);
+    git(['-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', '-c', 'commit.gpgSign=false', 'commit', '--quiet', '-m', 'fixture baseline']);
+    // Keep a known input in the git diff so the second guard call selects it.
+    fs.writeFileSync(path.join(root, 'value'), 'good');
+    const env = { CLAUDE_PROJECT_DIR: root, CRABSHELL_VERIFY_JSON: '' };
+    assertEqual(runScript(finalVerificationEdit(), env).exitCode, 0);
+    assertEqual(runScript(finalVerificationEdit(), env).exitCode, 0);
+    const results = JSON.parse(fs.readFileSync(path.join(root, '.crabshell/verification/last-run.json'), 'utf8'));
+    assertEqual(results[0].reused, true);
+    assertEqual(fs.readFileSync(path.join(root, 'node_modules/counter'), 'utf8'), 'x');
+    fs.writeFileSync(path.join(root, 'value'), 'bad');
+    assertEqual(runScript(finalVerificationEdit(), env).exitCode, 2);
+  } finally { cleanupGuardProject(root); }
+});
+
+fs.rmSync(projectDir, { recursive: true, force: true });
 
 console.log('');
 console.log(`Results: ${passed} passed, ${failed} failed`);

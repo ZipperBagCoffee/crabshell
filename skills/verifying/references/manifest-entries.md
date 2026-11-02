@@ -64,6 +64,9 @@ Supported assertions are `jsonEquals`, `jsonMatches`, `stdoutJsonEquals`, `fileE
 **Collect verification targets by convention, not by list.** When several scripts of the same kind must all run, have the probe discover them from the filesystem — a test file that exists but appears in no list is silently never executed. Assert that the discovered count is above zero so an empty glob fails loudly, and never hardcode how many were found.
 
 The runner does this for test files with a discovery entry. It runs one check per file matching `pattern` (a literal folder and a file-name glob), shares the entry's `contract`, and fails with `matched no files` when nothing matches. A file that an explicit entry already runs is not discovered again. Every `exclude` item needs a `reason`. `command` is optional, and `{file}` is replaced with each file; the default is `node <file>`.
+
+Selected checks may reuse an unchanged PASS; selection alone does not mean the command ran. Set `"reuse": false` on an entry whose external tools, live services or other inputs cannot be tracked. On a discovery entry this disables reuse for every discovered check. To force only particular files to execute, set `"reuseExclude": ["scripts/_test-live.js"]` on the discovery entry instead: paths are exact and repo-relative, with either slash style accepted. Unlike `discover.exclude`, these files remain selected and run. `always: true` both selects the entry and prevents reuse. Run mode in `SKILL.md` describes key validity, expiry and the other never-reuse cases.
+
 ```json
 {
   "id": "V100",

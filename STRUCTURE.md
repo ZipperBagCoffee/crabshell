@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.145.0)
+# Crabshell Plugin Structure (v21.146.0)
 
-**Version**: 21.145.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.146.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -470,6 +470,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.146.0 | Less checking waste: `run-verify.js` reuses a pass whose inputs (recorded files, test, runner, manifest entry, Node version) are unchanged, prints a short summary with failures and writes the full results to `last-run.json` (`--json` or `CRABSHELL_VERIFY_JSON=1` for the old stdout), records durations, and `--dry-run` shows why each check was chosen; rules add a small-change path (no discussion or ticket for a few lines with no hook/guard/gate behavior) and check once after the last edit |
 | 21.145.0 | Rules: Anti-Deception adds one sentence — for each claim the answer depends on, look for the evidence that would prove it wrong before the answer goes out, not only the evidence that fits it. Taken from the `/crash-out` skill in Jakeschincariol/claude-illegal-codes |
 | 21.144.0 | Structure for the reader: new `structuring` skill; a new discussion ticket needs a `**Reader Structure:**` line; a ticket needs `## Reader Check` before verified; corrections spread to the whole work; an untried result is not reported as done |
 | 21.143.0 | Verification: a new, renamed or pulled test file (a check with no load-map record yet) runs by itself instead of making `--changed` run everything; a deleted test selects nothing; a deleted source still selects the tests that read it |

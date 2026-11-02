@@ -36,7 +36,7 @@ report.check('W10 git is the record: missing git or repository is set up after c
 report.check('W11 rules: work that changes files is planned in a discussion first, the user confirms, tickets carry the specifics, the result is compared',
   !/record after doing/.test(RULES) && /work that changes files starts in a discussion: its Plan settles how[^.]*the user confirms it; each ticket carries that plan's specifics[^.]*compare the result with the discussion's Intent Anchor and Plan/.test(RULES));
 report.check('W12 the per-prompt checklist names the discussing and ticketing skills before the change and the comparison after it',
-  /Work that changes files starts in a discussion: its Plan \(discussing skill\)[^\n]*user confirms it, then its ticket \(ticketing skill\), then the change; before calling it done, compare the result with the discussion\./.test(COMPRESSED_CHECKLIST));
+  /Work that changes files starts in a discussion: its Plan \(discussing skill\)[^\n]*user confirms it, then its ticket \(ticketing skill\), then the change; before calling it done, compare the result with the discussion[.;]/.test(COMPRESSED_CHECKLIST));
 // v21.136.0 (D124): every step followed a rule and the result still looked weird to the
 // user; the check is the user's own question, asked before doing and before handing over.
 // The user rejected a "purpose" test (any result can be argued to fit a purpose).
@@ -109,7 +109,8 @@ report.check('W16 every verification asks the common-sense question; a weird res
     verification.includes('Verify the diff only: routine updates run only the checks the changed files touch (`node .crabshell/verification/run-verify.js --changed`')
     && verification.includes('run the full suite only when the user asks for it')
     && /when a full run seems truly needed — including when the changed-file selector would fall back to every check[^;.]*— ask the user first\./.test(verification)
-    && line.includes('routine updates run only the changed files\' checks — the full suite only when the user asks, and ask before a full run you think is needed'),
+    && line.includes('routine updates run only the changed files\' checks')
+    && line.includes(' — the full suite only when the user asks, and ask before a full run you think is needed'),
     line.slice(0, 120));
 }
 {
@@ -131,6 +132,28 @@ report.check('W16 every verification asks the common-sense question; a weird res
   report.check('W23 verification: self-judgment is not verification, right after the match-the-method sentence',
     verification.includes('say the check was static. ' + judge));
 }
+// v21.146.0 (D135): the user: "디스커션 리그레싱 해서 둘다 해" / "한줄 고치는데 총검사 이지랄".
+// Small changes skip documents; check once after the batch and reuse unchanged passes.
+{
+  const workflow = RULES.split('\n').find(line => line.startsWith('- **Workflows:**')) || '';
+  const verification = (RULES.match(/### VERIFICATION\n([^\n]*)/) || ['', ''])[1];
+  const smallChange = 'A small change — a few lines in one or two files that changes no hook, guard or gate behavior, including the code they run (version-bump files do not count toward the two) — skips the discussion and ticket: say in one line what will change, make it, run the changed-file check once (`--changed`, or the project\'s equivalent), and give the reason in the commit message.';
+  const checkOnce = 'Check once after the last edit of a batch, not after each edit; do not re-run a check that passed on unchanged inputs (`run-verify.js` reuses such a pass on its own), and read a result from a run you already made (its `Full results:` file) instead of running the check again.';
+  report.check('W26 Workflows ends with the exact small-change exception, after the existing delegation sentence',
+    workflow.endsWith('not role pairs or counts. ' + smallChange), workflow.slice(-160));
+  report.check('W27 verification puts the exact check-once sentence immediately before Verify the diff only',
+    verification.includes(' ' + checkOnce + ' Verify the diff only:'), verification.slice(-160));
+}
+{
+  const workflow = COMPRESSED_CHECKLIST.split('\n').find(line => line.startsWith('- Work that changes files starts in a discussion:')) || '';
+  const verification = COMPRESSED_CHECKLIST.split('\n').find(line => line.startsWith('- Verification = ')) || '';
+  report.check('W28 checklist keeps the existing workflow and verification phrases alongside the small-change and check-once additions',
+    workflow.startsWith('- Work that changes files starts in a discussion: its Plan (discussing skill) settles how and the user confirms it, then its ticket (ticketing skill), then the change; before calling it done, compare the result with the discussion;')
+    && workflow.endsWith('; a small change (a few lines in one or two files, no hook/guard/gate code) skips both — run the changed-file check once.')
+    && verification.startsWith('- Verification = match method to claim (execute to claim behavior, inspect to claim structure); predict → execute → compare; assert what survives the next release; classify a failure before editing either side; always ask whether the actual result would look weird to the user — if so, it fails even when every check passes;')
+    && verification.includes("routine updates run only the changed files' checks, once after the last edit — never re-run a check that passed on unchanged inputs — the full suite only when the user asks, and ask before a full run you think is needed;")
+    && verification.endsWith('in chat, report "M of N passed" plus the failed items in plain words.'));
+}
 {
   // The line reaches the model: run the prompt hook on a temp project, question and execution turns.
   const os = require('os');
@@ -138,15 +161,22 @@ report.check('W16 every verification asks the common-sense question; a weird res
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rule-wording-hook-'));
   try {
     fs.mkdirSync(path.join(dir, '.crabshell', 'memory'), { recursive: true });
+    const hookErrors = [];
     const outputs = ['이거 됐나?', '이 버그 고쳐줘'].map(prompt => {
       const r = spawnSync(process.execPath, [path.join(__dirname, 'inject-rules.js')], { cwd: dir, encoding: 'utf8',
         env: { ...process.env, CLAUDE_PROJECT_DIR: dir, CRABSHELL_BACKGROUND: '', HOOK_DATA: '' },
         input: JSON.stringify({ cwd: dir, session_id: 'wording-test', hook_event_name: 'UserPromptSubmit', prompt }) });
+      if (r.error || r.status !== 0) hookErrors.push(String(r.error || r.stderr || 'exit ' + r.status));
       try { return JSON.parse(r.stdout).hookSpecificOutput.additionalContext; } catch { return ''; }
     });
     report.check('W13 the prompt hook output carries the plan-first and common-sense lines on a question turn and an execution turn',
       outputs.every(context => context.includes('Work that changes files starts in a discussion') && context.includes('- Common sense:')),
       outputs.map(o => o.length).join(','));
+    report.check('W29 the prompt hook output carries both complete small-change and check-once clauses on a question turn and an execution turn without hook errors',
+      hookErrors.length === 0 && outputs.every(context =>
+        context.includes('; a small change (a few lines in one or two files, no hook/guard/gate code) skips both — run the changed-file check once.')
+        && context.includes(', once after the last edit — never re-run a check that passed on unchanged inputs')),
+      outputs.map(o => o.length).join(',') + (hookErrors.length ? '; ' + hookErrors.join('; ') : ''));
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

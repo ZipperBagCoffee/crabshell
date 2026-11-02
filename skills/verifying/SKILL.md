@@ -79,7 +79,7 @@ Create `.crabshell/verification/manifest.json` using schema version 2:
 }
 ```
 
-`tools` commands (and the package.json `test` script) are the project's **required checks**: only they unlock the commit gate. A single entry's command still counts as evidence for that entry, but passing one entry does not unlock a commit. `changed.global` lists files whose change must run every check. Package manifests and lockfiles, the manifest, and the runner itself are always global. List only files that every check really depends on: a file only some checks read (a version file one check compares) is selected through the load map, and listing it makes every change to it run everything.
+`tools` commands and the package.json `test` script are **required checks** that unlock the commit gate; single entries provide evidence only for themselves. `changed.global` adds files every check depends on. Package manifests, lockfiles, the manifest and runner are already global. Files only some checks read belong in the load map, not this list.
 
 ### Step 5: Populate entries from current context
 
@@ -91,7 +91,7 @@ Copy `${CLAUDE_PLUGIN_ROOT}/skills/verifying/scripts/run-verify.js` to `.crabshe
 
 Also copy `${CLAUDE_PLUGIN_ROOT}/skills/verifying/scripts/check-pipeline-wiring.js` to `.crabshell/verification/check-pipeline-wiring.js`. Keep both files next to the manifest; never retype either implementation.
 
-The runner resolves `node` from `process.execPath`, runs without a shell, rejects machine-specific absolute paths, evaluates assertions itself, snapshots `forbiddenChanges` before and after the command, and emits machine-readable results before its summary.
+The runner resolves `node` from `process.execPath`, runs without a shell, rejects machine-specific absolute paths, evaluates assertions itself, and snapshots `forbiddenChanges` before and after the command.
 
 ### Step 7: Confirm
 
@@ -111,23 +111,27 @@ Read `.crabshell/verification/manifest.json`. If not found: "No manifest. Run `/
 ### Step 2: Execute verification runner
 
 ```bash
-node .crabshell/verification/run-verify.js --changed  # default: only the checks the changed files touch
-node .crabshell/verification/run-verify.js            # every check, only when the user asks; rebuilds the load map when all pass
+node .crabshell/verification/run-verify.js --changed  # selects checks touched by changed files
+node .crabshell/verification/run-verify.js            # selects every check, only when requested
 ```
 
 Routine updates run `--changed`; it also unlocks the commit gate. Run every check only when the user asks for it. When a full run seems truly needed — or `--dry-run` shows the selection falling back to every check — ask the user first and say why.
 
-A full run records `test-map.json` beside the manifest. The map lists, for each check, the repository files and folders it requires, reads, lists, or copies. Child processes are included, along with path strings and relative requires in the test file and the files its assertions read. The map is kept only when every check passed. A passing `--changed` run replaces the records of the checks it ran, so after its commit the next `--changed` run still selects only what changed.
+`test-map.json` beside the manifest records each check's files and folders required, read, listed or copied, including Node children, static paths and assertion inputs. Dependency records refresh only when all selected checks pass, for those selections. After mixed results, failures clear their keys and successful checks can retain eligible keys without replacing dependencies.
 
-`--changed` looks at the working tree against HEAD, including renames by old and new path and untracked files. `--files a,b` names the files instead, and `--dry-run` prints the selection as JSON without running anything. It selects checks whose test file changed, or whose recorded files or folders contain a changed file. Checks that record no files, and entries marked `always: true`, always run. It runs **every** check when:
+`--changed` compares the working tree with HEAD, including untracked files and both paths of a rename. `--files a,b` supplies that list instead. It selects checks whose test file changed or whose recorded inputs cover a changed file, plus new checks, empty records and `always: true` entries. It falls back to **executing every check** when:
+
 - a changed file matches `changed.global` or the default globals;
 - there is no map, or the map cannot be read;
-- the manifest, the runner, a test, or any recorded file changed after the map was written (the map stores each file's content hash, so a file whose time moved but whose content is unchanged — a revert, a checkout — does not count);
-- a changed non-prose file is not in the map.
+- the manifest, runner, test or recorded file changed after the map was written (hashes distinguish changed content from a timestamp-only change);
+- a changed non-prose file is not in the map;
+- Git cannot supply the changed-file list.
 
-With no changed file at all, only the checks that always run are run; an edit git cannot see to the manifest, the runner or a test still runs everything through the rule above. A check with no record yet — a new, renamed or pulled test file — runs by itself, and a deleted test selects nothing. Prose that no check reads selects nothing. A release that changes a version file listed in `changed.global` therefore always runs everything — one more reason to keep such files out of it. Remaining blind spots: reads made by non-Node processes, and paths computed from data a check never touches. Files git ignores (runtime state such as `.crabshell/memory/`) never count as changed and do not make the map stale, so a check whose input is an ignored file is not re-selected when that file changes; the manifest, runner and test files are still checked even when ignored. These blind spots are not a reason to run the full set on your own: run it when the user asks, or ask the user when you think one of them applies.
+Absent a fallback, no changes select only new, empty-record and always-selected checks. Deleted tests and unread prose select nothing. Blind spots include non-Node reads and untraced computed paths. Ignored runtime files do not trigger selection or staleness; the manifest, runner and tests are still checked when ignored.
 
-**Fail-before.** In a `--changed` run, a changed test that passes and reads a changed file that is not a test also runs on a temporary copy of HEAD, where it must fail; a test that passes there too does not check the change, and its `FAIL_BEFORE:<id>` result fails the run. A refactor that keeps behavior is exempted in `fail-before-exempt.json` beside the manifest, bound to the test's content hash. How it runs, the exemption format, `--no-fail-before` and the limits: `references/fail-before.md`.
+**Reuse and timing.** Before executing checks, read [reuse eligibility and timing](references/runner-reuse-output.md#reuse-and-timing) for pass-key inputs, exclusions, controls and dry-run estimates.
+
+**Fail-before.** A changed test that passes and reads changed non-test files also runs on a temporary HEAD copy. Passing there produces a failing `FAIL_BEFORE:<id>` result. Intentional behavior-preserving changes can be exempted by test hash in `fail-before-exempt.json`. Details, format and `--no-fail-before`: `references/fail-before.md`.
 
 ### Step 2b: When an entry fails, decide what is wrong before touching anything
 
@@ -152,13 +156,13 @@ For a wiring entry, a FAIL means either the source broke a parent-approved hop, 
 
 Type: `behavioral` = runtime execution observed (ran command, triggered feature, checked output)
 Type: `structural` = static check (grep, file read, code inspection)
+For `reused: true`, cite the earlier passing observation and unchanged inputs; do not describe it as a new execution. Manual results await a person.
+
 - **Document-first rule:** If this verification run was invoked from within a T or P document context, append the P/O/G results to that document's verification section using the Edit tool FIRST. After the document is updated, report the summary in conversation. Standalone invocations may report conversation-only.
 
 ### Step 4: Summary
 
-```
-Verification Results: PASS: N / FAIL: N / Manual: N / Total: N
-```
+Read [output and saved results](references/runner-reuse-output.md#output-and-saved-results) before reporting; it defines the summary, saved JSON, compatibility flags and commit-gate constraints.
 
 ### Step 5: Against the discussion's Intent Anchor
 
