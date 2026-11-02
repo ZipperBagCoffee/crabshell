@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.148.0)
+# Crabshell Plugin Structure (v21.149.0)
 
-**Version**: 21.148.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.149.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -470,6 +470,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.149.0 | Check runner: the dry-run estimate includes the HEAD comparison runs of changed tests; a timed-out check keeps its previous recorded duration; a run with a failing check still refreshes the records of the checks that passed, and a failed check is selected again by the next `--changed` ("failed in the last run") until it passes |
 | 21.148.0 | The Final Verification guard no longer runs a changed-file check it cannot finish in its 60 s limit (estimate over 40 s, e.g. every check after an uncommitted runner change); it allows the write and leaves the check to the commit gate. Subagent context cap 6,000 → 9,500 characters, so an active regressing task scope no longer cuts off the end of the checklist |
 | 21.147.0 | Fewer repeated checks: runs made by the guard (and runs with nothing selected) no longer overwrite `last-run.json`; a changed manifest selects only the entries changed since the load map was written; new entry field `coveredBy` skips a check whose test another selected check already runs, when that check passes (V005 and the Claude install test are covered by V015, the 11 cross-runtime tests by V013). Rules: "Waiting is not work" — while delegated work runs, do the confirmed steps that do not need its result instead of status-only replies; a repeated correction reopens the earlier fix and fixes the type |
 | 21.146.0 | Less checking waste: `run-verify.js` reuses a pass whose inputs (recorded files, test, runner, manifest entry, Node version) are unchanged, prints a short summary with failures and writes the full results to `last-run.json` (`--json` or `CRABSHELL_VERIFY_JSON=1` for the old stdout), records durations, and `--dry-run` shows why each check was chosen; rules add a small-change path (no discussion or ticket for a few lines with no hook/guard/gate behavior) and check once after the last edit |

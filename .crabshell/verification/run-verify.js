@@ -650,16 +650,20 @@ function planChanged(manifest, entries, projectRoot, manifestPath, changedFiles)
   // git can report are checked. The manifest, runner and test files are always
   // checked, since a project may ignore its whole .crabshell folder.
   const visible = gitVisibleFiles(projectRoot);
+  // A check that failed last time runs again anyway (lastFailedAt below) and its files
+  // were never noted as passed, so they do not make the whole map stale; any other
+  // check that reads the same file has its own record and still compares it.
   const recordedFiles = new Set();
   for (const record of Object.values(map.entries || {})) {
+    if (record.lastFailedAt) continue;
     for (const file of record.files || []) if (!file.endsWith('/') && file !== mapRelative && (!visible || visible.has(file))) recordedFiles.add(file);
   }
   // A check with no record yet (a new, renamed or pulled test) runs anyway, so its own
   // test file need not be compared with the map; nothing else can depend on a test
-  // that did not exist when the map was written.
+  // that did not exist when the map was written. The same holds for a failed check.
   const records = map.entries || {};
   const unrecorded = new Set(runnable.filter(entry => !Array.isArray((records[entry.id] || {}).files)).map(entry => entry.id));
-  const knownTests = [...testFiles].filter(([id]) => !unrecorded.has(id)).map(([, file]) => file);
+  const knownTests = [...testFiles].filter(([id]) => !unrecorded.has(id) && !(records[id] || {}).lastFailedAt).map(([, file]) => file);
   for (const file of [runnerRelative, ...knownTests, ...recordedFiles].filter(file => file && file !== manifestRelative)) {
     if (!changedSet.has(file) && newer(file)) return everything(`load map is older than ${file}`);
   }
@@ -676,6 +680,10 @@ function planChanged(manifest, entries, projectRoot, manifestPath, changedFiles)
     if (record ? record.entryHash !== entryHashes.get(sourceId) : manifestChanged) {
       selected.add(entry.id);
       reasons[entry.id] = record ? `manifest entry ${sourceId} changed` : `new manifest entry ${sourceId}`;
+    }
+    if (record && record.lastFailedAt) {
+      selected.add(entry.id);
+      reasons[entry.id] = 'failed in the last run';
     }
   }
   // A test the map knows that is gone from disk (deleted, or the old name of a renamed
@@ -769,6 +777,7 @@ function executeEntry(entry, options = {}) {
       output,
       stderr: stderr.trim(),
       error,
+      ...(executed.error && executed.error.code === 'ETIMEDOUT' ? { timedOut: true } : {}),
       failureClass: status === 'FAIL' ? classify(error, `${stdout}\n${stderr}`) : null
     };
   } catch (error) {
@@ -813,21 +822,34 @@ function failureSummary(result) {
 // passes on the old source too does not check this change. The HEAD version of the
 // test runs there first and must pass, so a failure on HEAD is the change's doing and
 // not the copy's.
-function failBeforeChecks({ entries, results, records, changedFiles, expanded, projectRoot, manifestPath }) {
+function failBeforeTargets({ entries, records, changedFiles, expanded, projectRoot, manifestPath }) {
   const changed = new Set(withoutRunnerFiles(changedFiles, projectRoot, manifestPath));
   const testFiles = new Set(expanded.map(entry => entryTestFile(entry, projectRoot)).filter(Boolean));
-  const passed = new Set(results.filter(result => result.status === 'PASS').map(result => result.id));
   const targets = [];
   for (const entry of entries) {
     const test = entryTestFile(entry, projectRoot);
-    if (!test || !changed.has(test) || !passed.has(entry.id)) continue;
+    if (!test || !changed.has(test)) continue;
     const files = (records[entry.id] || {}).files || [];
     const sources = [...changed].filter(file => !testFiles.has(file) && files.some(recorded => covers(recorded, file)));
     if (sources.length > 0) targets.push({ entry, test, files, sources });
   }
+  return targets;
+}
+
+function failBeforeExemptions(manifestPath) {
+  try { return JSON.parse(fs.readFileSync(exemptPath(manifestPath), 'utf8')) || {}; } catch (_) { return {}; }
+}
+
+function matchingExemption(exemption, hash) {
+  return exemption && exemption.sha256 === hash && typeof exemption.reason === 'string' && exemption.reason.trim();
+}
+
+function failBeforeChecks({ entries, results, records, changedFiles, expanded, projectRoot, manifestPath }) {
+  const passed = new Set(results.filter(result => result.status === 'PASS').map(result => result.id));
+  const targets = failBeforeTargets({ entries: entries.filter(entry => passed.has(entry.id)), records,
+    changedFiles, expanded, projectRoot, manifestPath });
   if (targets.length === 0) return [];
-  let exemptions = {};
-  try { exemptions = JSON.parse(fs.readFileSync(exemptPath(manifestPath), 'utf8')) || {}; } catch (_) {}
+  const exemptions = failBeforeExemptions(manifestPath);
   const exemptRelative = insideRoot(projectRoot, exemptPath(manifestPath)) || EXEMPT_FILE;
   const visible = gitVisibleFiles(projectRoot);
   const workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'crabshell-fail-before-'));
@@ -845,7 +867,7 @@ function failBeforeChecks({ entries, results, records, changedFiles, expanded, p
       try {
         const hash = hashBuffer(fs.readFileSync(path.join(projectRoot, test)));
         const exemption = exemptions[test];
-        if (exemption && exemption.sha256 === hash && typeof exemption.reason === 'string' && exemption.reason.trim()) {
+        if (matchingExemption(exemption, hash)) {
           report('PASS', `exempt: ${exemption.reason.trim()}`);
           continue;
         }
@@ -1021,7 +1043,7 @@ function main(argv = process.argv.slice(2), options = {}) {
     if (!args.reuse || args.targetId || entry.type === 'manual' || entry.discoveryError
       || (plan && args.failBefore && changedTests.has(entryTestFile(entry, projectRoot)))) return undefined;
     const record = previousRecords[entry.id];
-    if (!record || !Array.isArray(record.files) || record.files.length === 0) return undefined;
+    if (!record || record.lastFailedAt || !Array.isArray(record.files) || record.files.length === 0) return undefined;
     // Covering must not hide an invalid contract that ordinary execution rejects.
     try { validateEntry(entry); } catch (_) { return undefined; }
     return selectedIndex.get(entry.coveredBy);
@@ -1044,7 +1066,7 @@ function main(argv = process.argv.slice(2), options = {}) {
       || entry.reuse === false || entry.always === true || entry.type === 'manual' || entry.discoveryError
       || (plan && args.failBefore && changedTests.has(entryTestFile(entry, projectRoot)))) return false;
     const age = Date.now() - Date.parse(record && record.passedAt || '');
-    return Boolean(record && record.passKey && Number.isFinite(age) && age >= 0 && age <= PASS_MAX_AGE_MS
+    return Boolean(record && !record.lastFailedAt && record.passKey && Number.isFinite(age) && age >= 0 && age <= PASS_MAX_AGE_MS
       && passKey(entry, record, projectRoot, runnerHash) === record.passKey);
   };
   if (args.dryRun) {
@@ -1070,6 +1092,23 @@ function main(argv = process.argv.slice(2), options = {}) {
       else {
         const duration = (previousRecords[entry.id] || {}).lastDurationMs;
         if (Number.isFinite(duration) && duration >= 0) estimatedMs += duration;
+      }
+    }
+    plan.failBeforeTargets = 0;
+    if (args.changed && args.failBefore) {
+      const exemptions = failBeforeExemptions(manifestPath);
+      for (const { entry, test } of failBeforeTargets({ entries, records: previousRecords,
+        changedFiles: changedList, expanded, projectRoot, manifestPath })) {
+        try {
+          if (matchingExemption(exemptions[test], hashBuffer(fs.readFileSync(path.join(projectRoot, test))))) continue;
+        } catch (_) {} // An unreadable test cannot authorize an exemption.
+        plan.failBeforeTargets++;
+        // ls-tree resolves paths from this project even inside a larger repo.
+        // Only a successful empty lookup proves there is no HEAD baseline.
+        const head = spawnSync('git', ['ls-tree', 'HEAD', '--', test], { cwd: projectRoot, encoding: 'utf8', windowsHide: true });
+        const runs = !head.error && head.status === 0 && head.stdout.trim() === '' ? 1 : 2;
+        const duration = (previousRecords[entry.id] || {}).lastDurationMs;
+        if (Number.isFinite(duration) && duration >= 0) estimatedMs += duration * runs;
       }
     }
     plan.estimatedSeconds = Math.round(estimatedMs / 100) / 10;
@@ -1125,8 +1164,10 @@ function main(argv = process.argv.slice(2), options = {}) {
     if (tracing && entry.type !== 'manual') {
       const files = new Set([...readTrace(trace.file, projectRoot), ...staticDependencies(entryTestFile(entry, projectRoot), projectRoot), ...contractPaths(entry)]);
       const generated = new Set([mapPath(manifestPath), path.join(__dirname, RESULTS_FILE)].map(file => insideRoot(projectRoot, file)));
-      const record = { test, files: [...files].filter(file => !generated.has(file)).sort(), lastDurationMs: result.durationMs };
-      const key = result.status === 'PASS'
+      const record = { test, files: [...files].filter(file => !generated.has(file)).sort() };
+      const duration = result.timedOut ? (previousRecords[entry.id] || {}).lastDurationMs : result.durationMs;
+      if (duration !== undefined) record.lastDurationMs = duration;
+      const key = result.status === 'PASS' && !result.timedOut
         ? unchangedPassKey(entry, record, projectRoot, runnerHash, before, checkStartedAt) : null;
       if (key) { record.passKey = key; record.passedAt = new Date().toISOString(); }
       mapEntries[entry.id] = record;
@@ -1134,14 +1175,29 @@ function main(argv = process.argv.slice(2), options = {}) {
     return result;
   };
   for (const index of executionOrder) results[index] = execute(entries[index], index);
+  const failBefore = plan && args.failBefore
+    ? failBeforeChecks({ entries, results, records: mapEntries, changedFiles: changedList, expanded, projectRoot, manifestPath })
+    : [];
+  const failedIds = new Set(results.filter(result => result.status === 'FAIL').map(result => result.id));
+  for (const result of failBefore) if (result.status === 'FAIL') failedIds.add(result.id.slice('FAIL_BEFORE:'.length));
   for (let index = 0; index < entries.length; index++) {
-    if (results[index].status === 'PASS' && mapEntries[entries[index].id]) {
-      mapEntries[entries[index].id].entryHash = entryHashes.get(entries[index].discoveredBy || entries[index].id);
+    const entry = entries[index];
+    const record = mapEntries[entry.id];
+    if (!record) continue;
+    if (failedIds.has(entry.id)) {
+      const previous = previousRecords[entry.id] || {};
+      const failed = { ...previous, test: previous.test || record.test,
+        files: Array.isArray(previous.files) ? previous.files : record.files,
+        lastFailedAt: new Date().toISOString() };
+      if (record.lastDurationMs !== undefined) failed.lastDurationMs = record.lastDurationMs;
+      delete failed.passKey;
+      delete failed.passedAt;
+      mapEntries[entry.id] = failed;
+    } else if (results[index].status === 'PASS') {
+      record.entryHash = entryHashes.get(entry.discoveredBy || entry.id);
     }
   }
-  const allPassed = results.every(result => result.status !== 'FAIL');
-  if (tracing && !allPassed) console.error('[VERIFY] load map dependency records not updated: a check failed or timed out, so its record may be incomplete');
-  if (tracing && allPassed) {
+  if (tracing) {
     try {
       // Drop the map itself (checks may read it) and record every checked file's
       // time and content now, so files written during the run are not mistaken for
@@ -1176,8 +1232,10 @@ function main(argv = process.argv.slice(2), options = {}) {
       };
       for (const [id, record] of Object.entries(mapEntries)) {
         record.files = record.files.filter(file => file !== mapRelative);
-        record.files.forEach(note);
-        note(record.test);
+        if (!failedIds.has(id)) {
+          record.files.forEach(note);
+          note(record.test);
+        }
         map.entries[id] = record;
       }
       if (fullMap || (plan && plan.changed.includes(insideRoot(projectRoot, manifestPath)))) {
@@ -1185,41 +1243,12 @@ function main(argv = process.argv.slice(2), options = {}) {
       }
       if (fullMap) note(insideRoot(projectRoot, __filename));
       fs.writeFileSync(mapPath(manifestPath), JSON.stringify(map, null, 2) + '\n');
+      if (failedIds.size) console.error(`[VERIFY] ${failedIds.size} failed check(s) will run again on the next --changed: ${[...failedIds].join(', ')}`);
     } catch (error) {
       console.error(`[VERIFY] WARN: load map not written: ${error.message}`);
     }
   }
-  if (tracing && !allPassed) {
-    try {
-      // Keep every dependency record and global hash from the last successful
-      // refresh. Only execution metadata changes on failure. A new check gets no
-      // trusted files yet, and cannot reuse until a successful refresh records it.
-      const map = previousMap || { version: 2, createdAt: startedAt, fileTimes: {}, fileHashes: {}, entries: {} };
-      map.entries = map.entries || {};
-      for (let index = 0; index < entries.length; index++) {
-        const result = results[index];
-        if (result.status === 'manual') continue;
-        const record = map.entries[result.id] || {};
-        if (result.status === 'PASS') record.entryHash = entryHashes.get(entries[index].discoveredBy || result.id);
-        if (result.reused) { map.entries[result.id] = record; continue; }
-        if (!result.coveredBy) record.lastDurationMs = result.durationMs;
-        const executed = mapEntries[result.id];
-        if (executed && executed.passKey && Array.isArray(record.files) && record.files.length) {
-          record.passKey = executed.passKey;
-          record.passedAt = executed.passedAt;
-        } else {
-          delete record.passKey;
-          delete record.passedAt;
-        }
-        map.entries[result.id] = record;
-      }
-      fs.writeFileSync(mapPath(manifestPath), JSON.stringify(map, null, 2) + '\n');
-    } catch (error) { console.error(`[VERIFY] WARN: pass metadata not written: ${error.message}`); }
-  }
   if (traceDir) { try { fs.rmSync(traceDir, { recursive: true, force: true }); } catch (_) {} }
-  const failBefore = plan && args.failBefore
-    ? failBeforeChecks({ entries, results, records: mapEntries, changedFiles: changedList, expanded, projectRoot, manifestPath })
-    : [];
   results.push(...failBefore);
   return printResults(results, { args, started, plan, selected: entries.length, failBefore });
 }

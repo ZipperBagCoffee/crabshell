@@ -152,15 +152,26 @@ check('failure clears pass key and must execute on the next run', () => {
   const before = counter(main); const next = run(main);
   assert.equal(next.status, 0); assert.notEqual(next.results[0].reused, true); assert.equal(counter(main), before + 1);
 });
-check('timeout clears pass key and records duration', () => {
+check('timeout clears pass key and preserves the previous execution duration', () => {
   const originalTimeout = readJson(manifestFile(main)).entries[0].timeout;
   run(main);
+  const previousDuration = readJson(mapFile(main)).entries.A.lastDurationMs;
   updateManifest(main, m => { m.entries[0].timeout = 200; });
   const timeout = run(main, ['--no-reuse'], { FIXTURE_HANG: '1' });
   assert.equal(timeout.status, 1); assert.match(timeout.results[0].error, /ETIMEDOUT/);
+  assert.equal(timeout.results[0].timedOut, true);
+  assert.equal(readJson(mapFile(main)).entries.A.lastDurationMs, previousDuration);
   assert(timeout.results[0].durationMs >= 150); assert(!readJson(mapFile(main)).entries.A.passKey);
   updateManifest(main, m => { m.entries[0].timeout = originalTimeout; });
   const next = run(main); assert.equal(next.status, 0); assert.notEqual(next.results[0].reused, true);
+});
+check('first timeout has no duration estimate or pass key', () => {
+  const dir = fixture('first-timeout', [entry('A', { timeout: 200 })]);
+  const result = run(dir, [], { FIXTURE_HANG: '1' });
+  assert.equal(result.status, 1); assert.equal(result.results[0].timedOut, true);
+  const record = readJson(mapFile(dir)).entries.A;
+  assert(!Object.hasOwn(record, 'lastDurationMs')); assert(!record.passKey); assert(!record.passedAt);
+  assert(Number.isFinite(Date.parse(record.lastFailedAt)));
 });
 const forbidden = fixture('forbidden', [entry('A'), entry('B', { reuse: false })]);
 run(forbidden);
@@ -231,25 +242,42 @@ for (const [name, args] of [['full', []], ['changed', ['--changed', '--files', '
     assert.equal(dry(dir).wouldReuse, 1);
   });
 }
-check('mixed failure stores successful key but preserves dependency records and global hashes', () => {
-  const dir = fixture('mixed', [entry('A'), entry('B')]); run(dir);
+for (const partial of [false, true]) check(`mixed ${partial ? 'partial' : 'full'} failure refreshes passing inputs and reuses that PASS next time`, () => {
+  const dir = fixture(`mixed-${partial}`, [entry('A'), entry('B')]);
+  write(dir, 'extra.data', 'newly read after input changes');
+  fs.appendFileSync(path.join(dir, 'scripts/_test-A.js'), "\nif (fs.readFileSync('input.data', 'utf8') === 'z') fs.readFileSync('extra.data');\n");
+  assert.equal(run(dir).status, 0);
   const before = readJson(mapFile(dir));
+  assert(!before.entries.A.files.includes('extra.data'));
   const testB = path.join(dir, 'scripts/_test-B.js');
   fs.appendFileSync(testB, '\nprocess.exit(1);\n');
   write(dir, 'input.data', 'z');
-  const failure = run(dir); const after = readJson(mapFile(dir));
+  const args = partial ? ['--changed', '--files', 'input.data,scripts/_test-B.js', '--no-fail-before'] : [];
+  const failure = run(dir, args); const after = readJson(mapFile(dir));
   assert.equal(failure.status, 1); assert(after.entries.A.passKey); assert.notEqual(after.entries.A.passKey, before.entries.A.passKey);
-  assert(!after.entries.B.passKey); assert.deepEqual(after.fileHashes, before.fileHashes); assert.deepEqual(after.fileTimes, before.fileTimes);
-  for (const id of ['A', 'B']) { assert.deepEqual(after.entries[id].files, before.entries[id].files); assert.equal(after.entries[id].test, before.entries[id].test); }
+  assert(after.entries.A.files.includes('extra.data')); assert(after.fileHashes['extra.data']);
+  assert.notEqual(after.fileHashes['input.data'], before.fileHashes['input.data']);
+  assert.equal(after.fileTimes['extra.data'], fs.statSync(path.join(dir, 'extra.data')).mtimeMs);
+  assert(!after.entries.B.passKey); assert(!after.entries.B.passedAt);
+  assert.deepEqual(after.entries.B.files, before.entries.B.files);
+  assert.equal(after.entries.B.entryHash, before.entries.B.entryHash);
+  assert(Number.isFinite(Date.parse(after.entries.B.lastFailedAt)));
+  assert.match(failure.stderr, /1 failed check\(s\) will run again on the next --changed: B/);
   const countA = counter(dir); const countB = counter(dir, 'B'); const next = run(dir);
   assert.equal(next.results[0].reused, true); assert.equal(counter(dir), countA); assert.equal(counter(dir, 'B'), countB + 1);
 });
-check('first failed run stores metadata without trusting incomplete dependency records', () => {
+check('first failed full run records manifestHash and passed inputs without a missing-manifest fallback', () => {
   const dir = fixture('first-failure', [entry('A'), entry('B')]);
   fs.appendFileSync(path.join(dir, 'scripts/_test-B.js'), '\nprocess.exit(1);\n');
   const result = run(dir); const map = readJson(mapFile(dir));
-  assert.equal(result.status, 1); assert(!map.entries.A.passKey); assert(!map.entries.A.files); assert(!map.entries.B.passKey);
-  const next = run(dir); assert.notEqual(next.results[0].reused, true);
+  assert.equal(result.status, 1); assert(map.entries.A.passKey); assert(map.entries.A.files.includes('input.data'));
+  assert(map.entries.B.files.includes('scripts/_test-B.js')); assert(!map.entries.B.passKey);
+  assert.match(map.manifestHash, /^[a-f0-9]{64}$/);
+  const plan = dry(dir, 'unread.md');
+  assert.equal(plan.full, false); assert.deepEqual(plan.selected, ['B']);
+  assert.equal(plan.reasons.B, 'failed in the last run');
+  assert(!plan.reason.includes('load map has no manifest record'));
+  const next = run(dir); assert.equal(next.results[0].reused, true);
 });
 check('failed output shows first FAIL and only the last five stderr lines', () => {
   const dir = fixture('failure-output'); const result = run(dir, [], { FIXTURE_FAIL: '1' });
@@ -446,9 +474,8 @@ check('person full, changed, JSON and explicit-id runs replace the preserved fil
   }
 });
 
-const gitHooks = fs.mkdtempSync(path.join(root, 'empty-git-hooks-'));
 const git = (dir, ...args) => {
-  const result = spawnSync('git', ['-c', 'commit.gpgSign=false', '-c', `core.hooksPath=${gitHooks}`,
+  const result = spawnSync('git', ['-c', 'commit.gpgSign=false', '-c', 'core.hooksPath=',
     '-c', 'user.name=runner fixture', '-c', 'user.email=fixture@example.com', ...args], {
     cwd: dir, encoding: 'utf8', windowsHide: true,
     env: { ...process.env, GIT_AUTHOR_NAME: 'runner fixture', GIT_AUTHOR_EMAIL: 'fixture@example.com',
@@ -470,6 +497,80 @@ function committedFixture(name, entries = [entry('A'), entry('B')], trackManifes
   return dir;
 }
 const manifestRelative = '.crabshell/verification/manifest.json';
+for (const newTest of [false, true]) check(`dry-run includes fail-before time for a test ${newTest ? 'new to' : 'present in'} HEAD and honors hash exemptions`, () => {
+  const dir = committedFixture(`fail-before-estimate-${newTest}`, [entry('A')]);
+  if (newTest) {
+    git(dir, 'rm', '--cached', 'scripts/_test-A.js');
+    git(dir, 'commit', '-q', '-m', 'test is new to HEAD');
+  }
+  const map = readJson(mapFile(dir));
+  const duration = 1200;
+  map.entries.A.lastDurationMs = duration;
+  fs.writeFileSync(mapFile(dir), JSON.stringify(map));
+  write(dir, 'input.data', 'b');
+  fs.appendFileSync(path.join(dir, 'scripts/_test-A.js'), "\nif (fs.readFileSync('input.data', 'utf8') !== 'b') process.exit(1);\n");
+  const count = counter(dir);
+  const args = ['--changed', '--dry-run'];
+  const plan = JSON.parse(run(dir, args).stdout);
+  assert.equal(plan.full, false); assert.deepEqual(plan.selected, ['A']);
+  assert.equal(plan.failBeforeTargets, 1);
+  assert.equal(plan.estimatedSeconds, duration * (newTest ? 2 : 3) / 1000);
+  const disabled = JSON.parse(run(dir, [...args, '--no-fail-before']).stdout);
+  assert.equal(disabled.failBeforeTargets, 0); assert.equal(disabled.estimatedSeconds, duration / 1000);
+  const exemptions = { 'scripts/_test-A.js': {
+    sha256: require('crypto').createHash('sha256').update(fs.readFileSync(path.join(dir, 'scripts/_test-A.js'))).digest('hex'),
+    reason: 'fixture exemption',
+  } };
+  write(dir, '.crabshell/verification/fail-before-exempt.json', JSON.stringify(exemptions));
+  const exempt = JSON.parse(run(dir, args).stdout);
+  assert.equal(exempt.failBeforeTargets, 0); assert.equal(exempt.estimatedSeconds, duration / 1000);
+  fs.appendFileSync(path.join(dir, 'scripts/_test-A.js'), '\n// invalidates the exemption\n');
+  const stale = JSON.parse(run(dir, args).stdout);
+  assert.equal(stale.failBeforeTargets, 1); assert.equal(stale.estimatedSeconds, plan.estimatedSeconds);
+  assert.equal(counter(dir), count, 'dry-run must not execute the check');
+});
+check('dry-run assumes both fail-before executions when HEAD cannot be read', () => {
+  const dir = fixture('fail-before-estimate-git-error');
+  assert.equal(run(dir).status, 0);
+  const map = readJson(mapFile(dir)); map.entries.A.lastDurationMs = 1000;
+  fs.writeFileSync(mapFile(dir), JSON.stringify(map));
+  write(dir, 'input.data', 'b');
+  fs.appendFileSync(path.join(dir, 'scripts/_test-A.js'), '\n// changed\n');
+  const plan = dry(dir, 'input.data,scripts/_test-A.js');
+  assert.equal(plan.failBeforeTargets, 1); assert.equal(plan.estimatedSeconds, 3);
+});
+check('failed check is selected without file changes until an executed PASS clears lastFailedAt', () => {
+  const dir = committedFixture('failed-reselection', [entry('A'), entry('B')], true, dir => {
+    fs.appendFileSync(path.join(dir, 'scripts/_test-B.js'), "\nif (process.env.FAIL_B === '1') process.exit(1);\n");
+  });
+  const failure = run(dir, ['B'], { FAIL_B: '1' });
+  assert.equal(failure.status, 1);
+  const record = readJson(mapFile(dir)).entries.B;
+  assert(!record.passKey); assert(!record.passedAt); assert(Number.isFinite(Date.parse(record.lastFailedAt)));
+  assert.equal(git(dir, 'status', '--porcelain').trim(), '');
+  const plan = JSON.parse(run(dir, ['--changed', '--dry-run']).stdout);
+  assert.equal(plan.full, false); assert.deepEqual(plan.changed, []); assert.deepEqual(plan.selected, ['B']);
+  assert.equal(plan.reasons.B, 'failed in the last run'); assert.equal(plan.wouldReuse, 0);
+  const before = counter(dir, 'B'); const passed = run(dir, ['--changed']);
+  assert.equal(passed.status, 0); assert.deepEqual(passed.results.map(item => item.id), ['B']);
+  assert(!passed.results[0].reused); assert.equal(counter(dir, 'B'), before + 1);
+  assert(!Object.hasOwn(readJson(mapFile(dir)).entries.B, 'lastFailedAt'));
+  const cleared = JSON.parse(run(dir, ['--changed', '--dry-run']).stdout);
+  assert.equal(cleared.full, false); assert.deepEqual(cleared.selected, []);
+  assert(!Object.values(cleared.reasons).includes('failed in the last run'));
+});
+check('fail-before failure clears the working-tree pass key and records the check for retry', () => {
+  const dir = committedFixture('fail-before-reselection', [entry('A')]);
+  fs.appendFileSync(path.join(dir, 'scripts/_test-A.js'), '\n// behavior stays the same\n');
+  write(dir, 'input.data', 'b');
+  const result = run(dir, ['--changed']);
+  assert.equal(result.status, 1);
+  assert.equal(result.results.find(item => item.id === 'FAIL_BEFORE:A').status, 'FAIL');
+  const record = readJson(mapFile(dir)).entries.A;
+  assert(!record.passKey); assert(!record.passedAt); assert(Number.isFinite(Date.parse(record.lastFailedAt)));
+  const plan = JSON.parse(run(dir, ['--changed', '--dry-run']).stdout);
+  assert.equal(plan.reasons.A, 'failed in the last run');
+});
 check('local manifest entry change selects only itself and manifest readers against the load map', () => {
   const dir = committedFixture('manifest-one', [entry('A'), entry('B'), entry('C')], true, dir => {
     fs.appendFileSync(path.join(dir, 'scripts/_test-C.js'), `\nrequire('fs').readFileSync('${manifestRelative}');\n`);
@@ -604,7 +705,7 @@ check('BOM manifest in a nested project compares with the load map', () => {
   const plan = dry(dir, manifestRelative);
   assert.equal(plan.full, false); assert.deepEqual(plan.selected, ['A']); assert.equal(plan.reasons.A, 'manifest entry A changed');
 });
-check('partial and failed runs retain manifestHash and update only passing entry hashes', () => {
+check('partial runs retain manifestHash and failed full runs refresh it with only passing entry hashes', () => {
   const dir = fixture('manifest-pass-records', [entry('A'), entry('B'), entry('C')]);
   fs.appendFileSync(path.join(dir, 'scripts/_test-B.js'), "\nif (process.env.FAIL_B === '1') process.exit(1);\n");
   assert.equal(run(dir).status, 0);
@@ -626,7 +727,7 @@ check('partial and failed runs retain manifestHash and update only passing entry
   assert.notEqual(failed.entries.A.entryHash, partial.entries.A.entryHash);
   assert.equal(failed.entries.B.entryHash, before.entries.B.entryHash);
   assert.equal(failed.entries.C.entryHash, before.entries.C.entryHash);
-  assert.equal(failed.manifestHash, before.manifestHash);
+  assert.notEqual(failed.manifestHash, before.manifestHash);
   assert.equal(run(dir).status, 0);
   const full = readJson(mapFile(dir));
   assert.notEqual(full.manifestHash, before.manifestHash);
@@ -653,6 +754,19 @@ function assertCovered(dir, result) {
   assert(!Object.hasOwn(covered, 'reused')); assert(!readJson(mapFile(dir)).entries.A.passKey);
   assert.match(result.stdout, /1 covered by B/);
 }
+check('previously failed child executes independently of a reused covering PASS', () => {
+  const dir = coverageFixture('coverage-failed-retry');
+  assert.equal(run(dir, ['--no-reuse']).status, 0);
+  const failed = run(dir, ['A'], { FIXTURE_FAIL: '1' });
+  assert.equal(failed.status, 1);
+  const plan = JSON.parse(run(dir, ['--dry-run']).stdout);
+  assert.equal(plan.wouldCover, 0); assert.equal(plan.wouldReuse, 1);
+  const before = counter(dir, 'A'); const result = run(dir);
+  assert.equal(result.status, 0); assert.equal(result.results[1].reused, true);
+  assert(!result.results[0].coveredBy); assert(!result.results[0].reused);
+  assert.equal(counter(dir, 'A'), before + 1);
+  assert(!Object.hasOwn(readJson(mapFile(dir)).entries.A, 'lastFailedAt'));
+});
 check('selected passing covering check runs first and avoids the duplicate command', () => {
   const dir = coverageFixture('coverage-pass');
   assert.equal(run(dir, ['--no-reuse']).status, 0);
@@ -851,7 +965,7 @@ for (const discovery of [false, true]) {
     assert.equal(result.status, 0); assert.equal(result.results[0].coveredBy, 'B');
   });
 }
-check('covered PASS updates entryHash during a mixed failure without replacing files or manifestHash', () => {
+check('covered PASS keeps files and updates entryHash while a mixed full run refreshes manifestHash', () => {
   const dir = coverageFixture('coverage-hash-mixed');
   write(dir, 'scripts/_test-C.js', "if (process.env.FAIL_C === '1') process.exit(1);\n");
   updateManifest(dir, m => { m.entries.push(entry('C')); });
@@ -864,7 +978,7 @@ check('covered PASS updates entryHash during a mixed failure without replacing f
   const after = readJson(mapFile(dir));
   assert.notEqual(after.entries.A.entryHash, before.entries.A.entryHash);
   assert.equal(after.entries.C.entryHash, before.entries.C.entryHash);
-  assert.equal(after.manifestHash, before.manifestHash);
+  assert.notEqual(after.manifestHash, before.manifestHash);
   assert.deepEqual(after.entries.A.files, before.entries.A.files); assert(!after.entries.A.passKey);
 });
 for (const [name, change, reason] of [
