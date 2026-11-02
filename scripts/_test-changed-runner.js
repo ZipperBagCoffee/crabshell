@@ -222,10 +222,17 @@ for (const file of ['scripts/constants.js', 'scripts/utils.js', 'hooks/hooks.jso
   git(rev, 'commit', '-q', '-am', 'lib-a now uses lib-b');
   plan = dryRun(rev, ['scripts/lib-b.js']);
   report.check('R21 control: a recorded source file changed after the map (new dependency) runs everything', plan.full === true && /older than scripts\/lib-a\.js/.test(String(plan.reason)), show(plan));
-  const mapBefore = dependencyMap(path.join(rev, CRAB, 'verification', 'test-map.json'));
   write(rev, 'scripts/_test-zfail.js', 'process.exit(1);\n');
   const failing = runner(rev, []);
-  report.check('R22 a full run with a failing check leaves dependency records in place', failing.status !== 0 && dependencyMap(path.join(rev, CRAB, 'verification', 'test-map.json')) === mapBefore, `exit=${failing.status}`);
+  // D138: a failing run still refreshes the checks that passed (_test-a now records the
+  // lib-b dependency added above) and marks the failed one so --changed runs it again.
+  const afterFail = JSON.parse(fs.readFileSync(path.join(rev, CRAB, 'verification', 'test-map.json'), 'utf8')).entries;
+  const failedIds = Object.entries(afterFail).filter(([, record]) => record.lastFailedAt).map(([id]) => id);
+  const aRecord = Object.entries(afterFail).find(([id]) => id.endsWith('_test-a.js'));
+  report.check('R22 a full run with a failing check refreshes the passing records and marks only the failed check',
+    failing.status !== 0 && failedIds.length === 1 && failedIds[0].endsWith('_test-zfail.js') && !afterFail[failedIds[0]].passKey
+      && Boolean(aRecord) && aRecord[1].files.includes('scripts/lib-b.js'),
+    `exit=${failing.status} failed=${failedIds.join(',')} a=${aRecord && aRecord[1].files.join(',')}`);
 }
 
 // R23: a file a check writes and reads back during the full run (evidence, the map
@@ -349,12 +356,22 @@ function rewriteSameLater(dir, rel) {
     built.status === 0 && partial.status === 0 && /Changed-files run: \d+ of \d+ checks \((?!all)/.test(partial.stdout)
       && plan.full === false && selectsTest(plan, '_test-a.js') && selectsTest(plan, '_test-b.js'),
     `built=${built.status} partial=${partial.status} ${partial.stdout.slice(-120)} ${show(plan)}`);
-  const mapBefore = dependencyMap(mapFile);
+  const recordsBefore = JSON.parse(fs.readFileSync(mapFile, 'utf8')).entries;
   fs.writeFileSync(path.join(re, 'scripts', 'lib-b.js'), 'module.exports = 3;\n');
   const failing = runner(re, ['--changed']);
-  report.check('R34 a failing --changed run leaves dependency records unchanged', failing.status === 1 && dependencyMap(mapFile) === mapBefore, `exit=${failing.status}`);
-  // Restore the committed bytes (a git checkout may rewrite line endings).
+  // D138: the failed check keeps its last good dependency record, loses its pass key and
+  // is marked so the next --changed runs it again.
+  const recordsAfter = JSON.parse(fs.readFileSync(mapFile, 'utf8')).entries;
+  const failedIds = Object.entries(recordsAfter).filter(([, record]) => record.lastFailedAt).map(([id]) => id);
+  const failedId = failedIds[0];
+  report.check('R34 a failing --changed run keeps the failed check\'s dependency record and marks it to run again',
+    failing.status === 1 && failedIds.length === 1 && failedId.endsWith('_test-b.js') && !recordsAfter[failedId].passKey
+      && JSON.stringify(recordsAfter[failedId].files) === JSON.stringify((recordsBefore[failedId] || {}).files),
+    `exit=${failing.status} failed=${failedIds.join(',')}`);
+  // Restore the committed bytes (a git checkout may rewrite line endings), then let
+  // --changed run the failed check again so the map matches the tree before R45.
   fs.writeFileSync(path.join(re, 'scripts', 'lib-b.js'), 'module.exports = 2;\n');
+  const resync = runner(re, ['--changed']);
   // R45: a --files list can leave out a new file that lies in a folder a check which
   // did not run lists (_test-list reads notes/); the refresh must not record that
   // file as checked, so after the commit it still counts as a later change.
@@ -364,8 +381,24 @@ function rewriteSameLater(dir, rel) {
   git(re, 'add', '-A'); git(re, 'commit', '-q', '-m', 'lib-a reads a new note');
   const next = dryRun(re, ['docs/guide.md']);
   report.check('R45 a partial run does not record a new file that a check which did not run lists in a folder',
-    listed.status === 0 && /Changed-files run: \d+ of \d+ checks \((?!all)/.test(listed.stdout) && next.full === true && /older than notes\/new\.md/.test(String(next.reason)),
-    `exit=${listed.status} ${listed.stdout.slice(-100)} ${show(next)}`);
+    resync.status === 0 && listed.status === 0 && /Changed-files run: \d+ of \d+ checks \((?!all)/.test(listed.stdout) && next.full === true && /older than notes\/new\.md/.test(String(next.reason)),
+    `resync=${resync.status} exit=${listed.status} ${listed.stdout.slice(-100)} ${show(next)}`);
+}
+
+// R46 (D138): a new check that fails on a --changed run and is committed while still
+// failing is run again by the next --changed ("failed in the last run"); its test file,
+// never noted as passed, must not make the whole map stale.
+{
+  const nf = fixture('failnew');
+  const built = runner(nf, []);
+  write(nf, 'scripts/_test-c.js', 'process.exit(1);\n');
+  git(nf, 'add', '-A'); git(nf, 'commit', '-q', '-m', 'a new check that fails');
+  const failing = runner(nf, ['--changed']);
+  const plan = dryRun(nf, null);
+  report.check('R46 a new check committed while failing is selected again without a full run',
+    built.status === 0 && failing.status === 1 && plan.full === false && selectsTest(plan, '_test-c.js')
+      && /failed in the last run/.test(String((plan.reasons || {})[plan.selected.find(id => id.endsWith('_test-c.js'))])),
+    `built=${built.status} failing=${failing.status} ${show(plan)}`);
 }
 
 // R35–R44: fail-before (D131). When a --changed run changes a test together with the

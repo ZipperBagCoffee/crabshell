@@ -1,5 +1,14 @@
 # Changelog
 
+## [21.149.0] - 2026-11-02
+
+### fix: failed checks run again; failing runs keep the passing records; estimates count HEAD comparisons
+
+- **Why.** Three gaps left from D137. A `--changed` run's estimate left out the HEAD comparison runs of changed tests (236 s estimated, 366.5 s real). A timed-out check stored its timeout as its duration, so later estimates stayed inflated and the Final Verification guard kept skipping. When any check failed, the runner kept none of the new dependency records — and nothing made the next `--changed` run a failed check again, so a check that failed without any change to what it reads could drop out of the next run.
+- **Runner** (`run-verify.js`, both copies): the dry run adds each changed test's HEAD comparison runs (twice its recorded duration, once for a test new to HEAD; exempt tests add nothing) and prints `failBeforeTargets`. A timed-out result keeps the previous `lastDurationMs`. A failing run still writes the fresh records of the checks that passed; a failed check keeps its old dependency record, loses its pass key and gets `lastFailedAt`, and `--changed` selects it ("failed in the last run") until it passes. A full run with failures still records `manifestHash`. A failed check's files and test are left out of the "load map is older than" comparison, so a new check committed while still failing does not turn the next `--changed` into a full run.
+- **Measured.** The release gate run took 501.6 s against a dry-run estimate of 495.4 s (the v21.147.0 estimate was 36% short).
+- **Tests:** `_test-runner-reuse.js` (estimate, timeout, failing-run records, re-selection, full-run manifest hash); `_test-changed-runner.js` R22/R34 now check the new failing-run records, R45 starts from a re-synced map, R46 covers a new check committed while failing.
+
 ## [21.148.0] - 2026-11-02
 
 ### fix: the Final Verification guard skips a check run it cannot finish; subagents get the whole checklist

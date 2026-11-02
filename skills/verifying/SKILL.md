@@ -117,7 +117,7 @@ node .crabshell/verification/run-verify.js            # selects every check, onl
 
 Routine updates run `--changed`; it also unlocks the commit gate. Run every check only when the user asks for it. When a full run seems truly needed — or `--dry-run` shows the selection falling back to every check — ask the user first and say why.
 
-`test-map.json` beside the manifest records each check's files and folders required, read, listed or copied, including Node children, static paths and assertion inputs. Dependency records refresh only when all selected checks pass, for those selections. After mixed results, failures clear their keys and successful checks can retain eligible keys without replacing dependencies.
+`test-map.json` records each check's files and folders required, read, listed or copied. Passing checks refresh their records even in a failing run. Failures keep prior files (or their first trace), lose pass keys and get `lastFailedAt`; `--changed` retries them with reason `failed in the last run` until they execute and pass. Full runs record `manifestHash` even with failures.
 
 `--changed` compares the working tree with HEAD, including untracked files and both paths of a rename. `--files a,b` supplies that list instead. It selects checks whose test file changed or whose recorded inputs cover a changed file, plus new checks, empty records and `always: true` entries. It falls back to **selecting every check** when:
 
@@ -129,7 +129,7 @@ Routine updates run `--changed`; it also unlocks the commit gate. Run every chec
 
 The manifest is compared with the load map even when absent from Git's changed-file list. Missing or different entry hashes select those checks and changed manifest content selects its readers; removed entries need no run. A missing top-level manifest hash or changed fields other than `entries`, `created` and `updated` cause a full fallback. This disables cached reuse; eligible covered checks may still be skipped after their covering check passes. Hash recording and reasons: [manifest changes](references/runner-reuse-output.md#manifest-changes-in-changed-file-mode).
 
-Absent a fallback, no changes select only new, empty-record and always-selected checks. Deleted tests and unread prose select nothing. Blind spots include non-Node reads and untraced computed paths. Ignored runtime files do not trigger selection or staleness; the manifest, runner and tests are still checked when ignored.
+Absent a fallback, no changes select only previously failed, new, empty-record and always-selected checks. Deleted tests and unread prose select nothing. Blind spots include non-Node reads and untraced computed paths. Ignored runtime files do not trigger selection or staleness; the manifest, runner and tests are still checked when ignored.
 
 **Reuse and timing.** Before executing checks, read [reuse eligibility and timing](references/runner-reuse-output.md#reuse-and-timing) for pass-key inputs, exclusions, controls, `coveredBy` duplicate suppression and dry-run estimates.
 
