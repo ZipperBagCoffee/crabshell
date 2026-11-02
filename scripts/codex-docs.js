@@ -6,7 +6,7 @@ const path = require('path');
 
 const { STORAGE_ROOT, DOC_TYPES, TICKET_PARENT_SOURCE } = require('./constants');
 const { ensureDir } = require('./utils');
-const { discussionHasPlan } = require('./core/plan-entry');
+const { discussionHasPlan, discussionHasReaderStructure } = require('./core/plan-entry');
 
 const TYPES = Object.fromEntries(DOC_TYPES.map(type => [type.dir, { dir: type.dir, prefix: type.prefix, title: type.title, index: type.indexColumns }]));
 
@@ -191,6 +191,10 @@ function createSimple(root, type, title, args) {
       console.error(`ERROR: ${parentId} has no plan yet. Fill its ## Plan (how it will be built: files and functions, order, rejected alternatives, risks) and get the user's confirmation before creating tickets.`);
       process.exit(1);
     }
+    if (parentId.startsWith('D') && !discussionHasReaderStructure(fs.readFileSync(path.join(parentDir, parentFile), 'utf8'))) {
+      console.error(`ERROR: ${parentId}'s plan has no **Reader Structure:** line. If a person will see or read the result, list what they will do (task → where they look → the words there) and every visible text (structuring skill), then show the user. If nobody will, write "none: <reason>".`);
+      process.exit(1);
+    }
     if (parentId.startsWith('D') && !(typeof args.details === 'string' && args.details.trim() && !/^TBD\.?$/i.test(args.details.trim()))) {
       console.error(`ERROR: a ticket under ${parentId} needs --details: its part of ${parentId}'s plan (each file → function/section → what changes).`);
       process.exit(1);
@@ -202,9 +206,9 @@ function createSimple(root, type, title, args) {
   const filename = `${id}-${slug}.md`;
   const filePath = path.join(dir, filename);
   const status = type === 'discussion' ? 'open' : type === 'ticket' ? 'todo' : 'draft';
-  const plan = type === 'discussion' ? `## Plan\n${typeof args.how === 'string' && args.how.trim() ? args.how : '(placeholder — plan before tickets: approach, each file → what changes, order, rejected alternatives, risks, intent check, user confirmation)'}\n\n` : '';
+  const plan = type === 'discussion' ? `## Plan\n${typeof args.how === 'string' && args.how.trim() ? args.how : '(placeholder — plan before tickets: approach, each file → what changes, order, rejected alternatives, risks, intent check, user confirmation)'}${typeof args.reader === 'string' && args.reader.trim() ? `\n**Reader Structure:** ${args.reader}` : ''}\n\n` : '';
   const details = type === 'ticket' ? `## Implementation Details\n${typeof args.details === 'string' && args.details.trim() ? args.details : 'TBD.'}\n\n` : '';
-  const fidelity = type === 'ticket' ? `## Intent Fidelity\n(placeholder — parent compares the result with the discussion's Intent Anchor and Plan here)\n\n` : '';
+  const fidelity = type === 'ticket' ? `## Reader Check\n(placeholder — person check: who used or read the result and what they did, or "not confirmed"; correction sweep: the user's words, defect type, same defect in N places, fixed, left, or "none")\n\n## Intent Fidelity\n(placeholder — parent compares the result with the discussion's Intent Anchor and Plan here)\n\n` : '';
   const body = `---\ntype: ${type}\nid: ${id}\ntitle: "${title}"\nstatus: ${status}\ncreated: ${t.date}\ntags: []\n---\n\n# ${id} - ${title}\n\n## Intent\n${args.intent || title}\n\n## Context\n${args.context || 'TBD.'}\n\n${plan}${details}## Acceptance Criteria\n${args.ac || '- TBD'}\n\n${fidelity}## Log\n### [${t.minute}] Created\nCreated from Codex ${type} skill.\n`;
   fs.writeFileSync(filePath, body, 'utf8');
   const link = `[[${wikiTarget(filename)}|${id}]]`;

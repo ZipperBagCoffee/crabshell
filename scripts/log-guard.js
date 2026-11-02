@@ -143,7 +143,8 @@ function findDocumentFile(projectDir, category, docId, target) {
 // "(Work Agent)"; a section is unfinished while that marker and empty
 // sub-headings are all it holds.
 // Intent Fidelity (D123): the result compared with the discussion before verified.
-const RESULT_SECTION = /^## (Execution Results|Verification Results|Intent Fidelity|Final Verification|Orchestrator Evaluation)\b[^\n]*$/gm;
+// Reader Check (D133): who tried the result, and how a correction spread.
+const RESULT_SECTION = /^## (Execution Results|Verification Results|Reader Check|Intent Fidelity|Final Verification|Orchestrator Evaluation)\b[^\n]*$/gm;
 const TEMPLATE_MARKER = /^\((?:pending|placeholder)\b/;
 
 function unfinishedSections(content) {

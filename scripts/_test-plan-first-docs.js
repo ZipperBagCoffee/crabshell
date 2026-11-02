@@ -18,7 +18,7 @@ const cycleVerification = read('skills/regressing/references/cycle-verification.
 const verifying = read('skills/verifying/SKILL.md');
 const codex = name => read(`codex-skills/${name}/SKILL.md`);
 
-const PLAN_FIELDS = ['Approach', 'Changes (file → what)', 'Order', 'Rejected alternatives', 'Risks', 'Analysis', 'Intent Check', 'User confirmation'];
+const PLAN_FIELDS = ['Approach', 'Changes (file → what)', 'Order', 'Rejected alternatives', 'Risks', 'Reader Structure', 'Analysis', 'Intent Check', 'User confirmation'];
 const createTemplate = (discussing.match(/```\n---\ntype: discussion[\s\S]*?```/) || [''])[0];
 const planBlock = (createTemplate.match(/## Plan\n[\s\S]*?(?=\n## )/) || [''])[0];
 

@@ -68,7 +68,7 @@ repeat until convergence or cap reached:
 
 #### Step 4a: Cycle plan — an entry in the D log
 - Invoke `/discussing D{NNN}` and append a `Cycle {n} plan` entry to the D document's log. The discussion carries the plan: new cycles create no plan document (existing P documents stay readable and searchable).
-- The entry contains: **Intent** (what this cycle improves), **Context** (cycle 2+: the previous cycle's Next Direction), **Scope** (included / excluded), **Steps**, **Analysis** (the evidence inspected — files, functions, measurements), **Intent Check** (against D's IA, at least one risk, approve or reject).
+- The entry contains: **Intent** (what this cycle improves), **Context** (cycle 2+: the previous cycle's Next Direction), **Scope** (included / excluded), **Steps**, **Reader Structure:** (structuring skill, or none: reason), **Analysis** (evidence inspected), **Intent Check** (against D's IA, at least one risk, approve or reject).
 - **Cycle 1**: the highest-impact improvements for the CURRENT state. MUST NOT pre-allocate or partition work across future cycles. The plan should be completable in this single cycle.
 - **Cycle 2+**: respond directly to the diagnosed problems from the previous cycle — not a pre-determined schedule.
 - The parent owns plan analysis: inspect the authoritative references, formulate the plan, and write the analysis into the entry. Optional review only for bounded independent work or a material risk; a reviewer receives the intent, scope and criteria, not your conclusions.

@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.143.0)
+# Crabshell Architecture (v21.144.0)
 
 ## Overview
 
@@ -565,6 +565,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.144.0 | Structure for the reader: new `structuring` skill; `plan-entry.discussionHasReaderStructure` gates new discussion tickets (docs-guard, codex-docs); `## Reader Check` joins the log-guard result sections |
 | 21.143.0 | Verification: a new, renamed or pulled test file (a check with no load-map record yet) runs by itself instead of making `--changed` run everything; a deleted test selects nothing; a deleted source still selects the tests that read it |
 | 21.142.0 | Verification: a changed test that reads changed source must also fail on HEAD (fail-before: it runs on a temporary HEAD copy after its HEAD version passes there; `FAIL_BEFORE:<id>` is FAIL when it passes on HEAD too; hash-bound exemptions in `fail-before-exempt.json`; `--no-fail-before`, which verify-guard uses). `--changed` with nothing changed runs only the always-run checks, and a passing `--changed` run refreshes the load map for the checks it ran, so a commit verified with `--changed` no longer makes the next run full |
 | 21.141.0 | Rules: a Depth principle (right after Take Pride) — when a task calls for expertise, use the methods and tools a top practitioner would use, starting from the rawest material; changing vocabulary is not changing method. VERIFICATION adds: your own reading of your work is not verification; the evidence is a tool result or a check outside your judgment. Both from felixrieseberg.com "How to be more ambitious". `_test-rule-wording.js` W22, W23. |

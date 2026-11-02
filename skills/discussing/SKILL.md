@@ -116,6 +116,7 @@ If NOT regressing: user's answer — observable conditions for "done", or "Not a
 **Order:** {which part first, and what depends on what}
 **Rejected alternatives:** {each alternative considered → why not}
 **Risks:** {what could break, and how it will be checked}
+**Reader Structure:** {if a person will see or read the result: what they will do (task → where they look → the words there) and every visible text, built with the structuring skill. If nobody will: "none: <reason>"}
 **Analysis:** {the evidence inspected — files, functions, measurements}
 **Intent Check:** {every IA item maps to a change; at least one risk; approve or reject}
 **User confirmation:** {the user's words approving this plan, with date — or "pending"}

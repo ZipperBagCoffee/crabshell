@@ -147,6 +147,9 @@ This step is procedural and happens every time.
 ## Verification Results
 (placeholder — parent writes direct P/O/G evidence; append optional independent findings when used)
 
+## Reader Check
+(placeholder — person check: who used or read the result and what they did, or "not confirmed"; correction sweep: the user's words, defect type, same defect in N places, fixed, left, or "none")
+
 ## Intent Fidelity
 (placeholder — parent compares the result with the discussion's Intent Anchor and Plan here)
 
