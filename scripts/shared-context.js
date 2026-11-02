@@ -45,6 +45,7 @@ const COMPRESSED_CHECKLIST = `
 - Deliver the full requested quantity; reducing scope, deleting files other than your own temporary files (delete those once the test is done), or destructive actions need explicit user approval first.
 - Work that changes files starts in a discussion: its Plan (discussing skill) settles how and the user confirms it, then its ticket (ticketing skill), then the change; before calling it done, compare the result with the discussion.
 - Common sense: before doing the work and before handing it over, picture the user using or reading the actual result, looked at whole; if anything would look weird to them, fix it first — no rule excuses a weird result.
+- A correction is a defect type: find it everywhere and open the reply with places found, fixed and left. If no person has tried the result, report "own checks passed, not tried by a person", not "done". Anything a person will see or read: open the structuring skill before building.
 - Answer in slot order — conclusion → evidence → critical exception → next action — in the reader's words: concrete over abstract, no self-coined jargon, each technical term unpacked at first use, spoken register rather than report prose. Cut intros, work-process narration, and repeated conclusions.
 - End with the verdict: the last paragraph states each work item — done, in progress, or not started — plus the user's next action if there is one; a CLI reader lands on the end of long output first.
 `;

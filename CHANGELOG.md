@@ -1,5 +1,17 @@
 # Changelog
 
+## [21.144.0] - 2026-11-01
+
+### feat: anything a person will see or read starts from what that person is trying to do
+
+- **Why.** The user kept correcting the same thing across screens and writing: the structure followed how the work was built, not how a person understands it, and corrections stopped at the spot pointed at. Written rules had not stopped it (I093), so this connects to the document gates.
+- **New skill** `structuring` (Claude and Codex): the person's tasks, what belongs under what, what stays, reading order, their words, the lists to show before building, who checked it, and how a correction spreads.
+- **Plan** (`discussing`, `regressing`, `scripts/core/plan-entry.js`, `docs-guard.js`, `codex-docs.js` with `--reader`): a new discussion ticket needs a filled `**Reader Structure:**` line, or `none: <reason>`. A Plan revision log entry counts.
+- **Ticket** (`ticket-template.md`, `log-guard.js`, `codex-docs.js`): new `## Reader Check` records who tried the result and how a correction spread. Its placeholder blocks `verified`. Older tickets without it pass.
+- **Rules** (`inject-rules.js`, `shared-context.js`): a correction is a defect type to find everywhere; an untried result is reported as "own checks passed, not tried by a person".
+- **Limit.** The gates see only that a field is filled in. Nothing judges whether a person will understand the result. The effect on repeated corrections has not been measured.
+- **Tests:** `_test-plan-first-guards.js` R1–R11, `_test-plan-first-docs.js` PF1, `_test-rule-wording.js` W24.
+
 ## [21.143.0] - 2026-10-22
 
 ### feat: a new, renamed or deleted test no longer makes `--changed` run everything

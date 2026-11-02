@@ -12,7 +12,7 @@ if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 const { getProjectDir, readJsonOrDefault, docDirsPattern } = require('./utils');
 const { getActiveSkill } = require('./core/skill-flag');
 const { leadingId } = require('./core/index-rows');
-const { discussionHasPlan, ticketHasDetails } = require('./core/plan-entry');
+const { discussionHasPlan, discussionHasReaderStructure, ticketHasDetails } = require('./core/plan-entry');
 
 // Document folders only a document skill may write (constants DOC_TYPES skillOnly)
 const PROTECTED_DOCS_PATTERN = new RegExp(`${docDirsPattern(type => type.skillOnly)}/`);
@@ -77,8 +77,12 @@ function checkTicketPlan(filePath, toolName, content, projectDir) {
     const discussionDir = path.join(projectDir, STORAGE_ROOT, 'discussion');
     const parentFile = fs.existsSync(discussionDir) && fs.readdirSync(discussionDir).find(name => name.startsWith(`${match[1]}-`) && name.endsWith('.md'));
     if (!parentFile) return null;
-    if (!discussionHasPlan(fs.readFileSync(path.join(discussionDir, parentFile), 'utf8'))) {
+    const discussion = fs.readFileSync(path.join(discussionDir, parentFile), 'utf8');
+    if (!discussionHasPlan(discussion)) {
       return `New ticket under ${match[1]} blocked: the discussion has no plan yet. Write its ## Plan first — how it will be built, files and functions, order, rejected alternatives, risks — show it to the user and record their confirmation (skill="discussing", args="${match[1]}"), then create the ticket.`;
+    }
+    if (!discussionHasReaderStructure(discussion)) {
+      return `New ticket under ${match[1]} blocked: its plan has no **Reader Structure:** line. If a person will see or read the result, list what they will do (task → where they look → the words there) and every visible text (skill="structuring"), then show the user. If nobody will, write "none: <reason>". Add it to ## Plan, or as a Plan revision log entry once tickets exist (skill="discussing", args="${match[1]}").`;
     }
     if (!ticketHasDetails(content)) {
       return `New ticket under ${match[1]} blocked: its ## Implementation Details is empty. Fill it with this ticket's part of ${match[1]}'s plan — each file → function/section → what changes — then write the ticket.`;

@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.143.0)
+# Crabshell User Manual (v21.144.0)
 
 ## Why Do You Need This?
 
@@ -130,6 +130,12 @@ All available skills (slash commands):
 | `/crabshell:load-memory` | Reload memory context (useful after manual edits or compaction) |
 | `/crabshell:search-memory keyword` | Search past sessions across L1/L2/L3 layers. Flags: `--regex`, `--context=N`, `--limit=N` |
 | `/crabshell:clear-memory` | Clean up old memory files |
+
+### Structure for the Reader
+
+| Command | What It Does |
+|---------|-------------|
+| `/crabshell:structuring` | The order for anything a person will see or read: their tasks, what belongs under what, what stays, reading order, their words, the lists to show before building, and who checked it. Opens by itself when the work matches |
 
 ### Structured Work (D-T Documents)
 
@@ -299,8 +305,8 @@ Guards run inside the Claude PreToolUse, PostToolUse and Stop hooks (one process
 
 | Guard | What It Protects Against |
 |-------|------------------------|
-| `docs-guard.js` | Writes to `.crabshell/` document folders without this session's document skill loaded (invoke the matching skill — for an existing document, in update mode with its ID); the flag clears at compaction and session end. A new discussion ticket also needs the discussion's Plan and its own Implementation Details (v21.135.0) |
-| `log-guard.js` | Marking a ticket done in INDEX.md while its Execution Results is still template text, or verified while any result section is — Intent Fidelity included since v21.135.0 (other documents are not checked) |
+| `docs-guard.js` | Writes to `.crabshell/` document folders without this session's document skill loaded (invoke the matching skill — for an existing document, in update mode with its ID); the flag clears at compaction and session end. A new discussion ticket also needs the discussion's Plan and its own Implementation Details (v21.135.0), and a filled `**Reader Structure:**` line: what a person will do and every visible text, or `none: <reason>` (v21.144.0). The guard sees only that the line is filled in; the user judges it when confirming the plan |
+| `log-guard.js` | Marking a ticket done in INDEX.md while its Execution Results is still template text, or verified while any result section is — Intent Fidelity included since v21.135.0, Reader Check since v21.144.0 (other documents are not checked) |
 | `verify-guard.js` | Writing "Final Verification" results to ticket files without actually running `/verifying` first. Hybrid: Edit always enforces; Write only enforces on existing files (new ticket creation is allowed) |
 | `path-guard.js` | Bash commands that write into another project's `.crabshell` (redirects, rm/mv/mkdir/tee, cp/rsync/ln destinations, sed -i, find -delete, xargs rm, tar/curl/dd, powershell/cmd, code that writes). Reading another project's `.crabshell` is allowed with a notice; prose, grep patterns, heredoc text, temp folders and unknown variables are never blocked (v21.125.0). Also: Edit or shrinking Write on `logbook.md`, direct skill-flag writes. Not covered: Write/Edit tool calls into another project, values from earlier commands |
 | `web-guard.js` | Built-in WebFetch/WebSearch small-model summarization (Anthropic docs: "lossy by design"; hallucinated citations in research). WebFetch is blocked with ready-to-run raw-fetch commands for the same URL; WebSearch is redirected to a search MCP this project can use (user-wide, this project's `~/.claude.json` entry, or `.mcp.json`; provider names such as tavily/brave/exa must be a whole word of the server name, v21.125.0) or, when none exists, allowed with a "snippets are pointers, fetch before citing" warning so machines without a search MCP never lose search entirely. Modes: `block` (default) / `warn` / `off` via `webGuard` in config.json (v21.114.0) |

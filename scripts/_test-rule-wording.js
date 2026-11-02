@@ -52,6 +52,12 @@ report.check('W12 the per-prompt checklist names the discussing and ticketing sk
 }
 report.check('W15 the per-prompt checklist carries the common-sense line',
   /- Common sense: before doing the work and before handing it over[^\n]*look weird to them, fix it first/.test(COMPRESSED_CHECKLIST));
+// v21.144.0 (D133): the user repeats corrections that stop at the spot pointed at, and "done" is
+// reported with nobody having tried the result.
+report.check('W24 a correction spreads to the whole work and an untried result is not reported as done (rules and per-prompt checklist)',
+  /^- A correction is a defect type, not one spot:[^\n]*how many places had it, how many were fixed, and which are left\.$/m.test(RULES)
+  && /^- If no person has used or read the result, report "own checks passed, not tried by a person", not "done"\.$/m.test(RULES)
+  && /^- A correction is a defect type:[^\n]*own checks passed, not tried by a person[^\n]*structuring skill/m.test(COMPRESSED_CHECKLIST));
 // v21.136.0: the user found Simple Communication too long ("이거 좀 긴거같은데"); it was cut
 // from 1,567 to 1,128 characters with every rule kept. The cap keeps it from growing back.
 {

@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.143.0)
+# Crabshell Plugin Structure (v21.144.0)
 
-**Version**: 21.143.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.144.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -211,6 +211,7 @@ crabshell/
 │   ├── lint/SKILL.md                 # /crabshell:lint (Obsidian document lint checks) (v21.70.0)
 │   ├── search-docs/SKILL.md          # /crabshell:search-docs (BM25 document search) (v21.72.0)
 │   ├── knowledge/SKILL.md            # /crabshell:knowledge (K-page creation + view) (v21.74.0)
+│   ├── structuring/SKILL.md          # /crabshell:structuring (structure for the person who receives the result) (v21.144.0)
 │   └── hotfix/SKILL.md              # /crabshell:hotfix (H-page lightweight fix recording) (v21.75.0)
 │
 ├── codex-skills/                     # Codex-native bundled skills (12 total)
@@ -469,6 +470,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.144.0 | Structure for the reader: new `structuring` skill; a new discussion ticket needs a `**Reader Structure:**` line; a ticket needs `## Reader Check` before verified; corrections spread to the whole work; an untried result is not reported as done |
 | 21.143.0 | Verification: a new, renamed or pulled test file (a check with no load-map record yet) runs by itself instead of making `--changed` run everything; a deleted test selects nothing; a deleted source still selects the tests that read it |
 | 21.142.0 | Verification: a changed test that reads changed source must also fail on HEAD (fail-before: it runs on a temporary HEAD copy after its HEAD version passes there; `FAIL_BEFORE:<id>` is FAIL when it passes on HEAD too; hash-bound exemptions in `fail-before-exempt.json`; `--no-fail-before`, which verify-guard uses). `--changed` with nothing changed runs only the always-run checks, and a passing `--changed` run refreshes the load map for the checks it ran, so a commit verified with `--changed` no longer makes the next run full |
 | 21.141.0 | Rules: a Depth principle (right after Take Pride) — when a task calls for expertise, use the methods and tools a top practitioner would use, starting from the rawest material; changing vocabulary is not changing method. VERIFICATION adds: your own reading of your work is not verification; the evidence is a tool result or a check outside your judgment. Both from felixrieseberg.com "How to be more ambitious". `_test-rule-wording.js` W22, W23. |

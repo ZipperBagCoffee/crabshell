@@ -30,4 +30,22 @@ function ticketHasDetails(content) {
   return isFilled(sectionBody(content, 'Implementation Details'));
 }
 
-module.exports = { discussionHasPlan, ticketHasDetails, sectionBody };
+// True when the plan says how the result is structured for the person who gets it
+// (D133): a filled "**Reader Structure:**" line in the Plan or a Plan revision,
+// or "none: <reason>" when nobody will see or read the result. This only sees that
+// the line is filled in; the user judges its content when they confirm the plan.
+function discussionHasReaderStructure(content) {
+  const lines = String(content || '').split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const label = lines[i].match(/^\s*\*\*Reader Structure:\*\*\s*(.*)$/);
+    if (!label) continue;
+    const value = [label[1]];
+    for (let j = i + 1; j < lines.length && lines[j].trim() && !/^\s*(?:\*\*|#|---)/.test(lines[j]); j++) value.push(lines[j]);
+    const filled = value.map(line => line.trim()).filter(Boolean).some(line =>
+      !/^\{.*\}$/.test(line) && !/^(?:TBD|pending)\.?$/i.test(line) && !/^\((?:pending|placeholder)\b/i.test(line) && !/^none\s*:?$/i.test(line));
+    if (filled) return true;
+  }
+  return false;
+}
+
+module.exports = { discussionHasPlan, discussionHasReaderStructure, ticketHasDetails, sectionBody };
