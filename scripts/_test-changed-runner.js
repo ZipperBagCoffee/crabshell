@@ -10,7 +10,7 @@ const { spawnSync } = require('child_process');
 const h = require('./testlib/hook-harness');
 
 const REPO = path.join(__dirname, '..');
-const RUNNER = path.join(REPO, 'skills', 'verifying', 'scripts', 'run-verify.js');
+const RUNNER = process.env.CRABSHELL_TEST_RUNNER || path.join(REPO, 'skills', 'verifying', 'scripts', 'run-verify.js');
 const root = h.makeWorkRoot('changed-runner');
 const report = h.createReporter('changed-runner');
 const CRAB = '.crab' + 'shell';
@@ -66,10 +66,12 @@ function fixture(name, manifestEntries) {
 }
 
 function runner(dir, args) {
-  const env = { ...process.env, PROJECT_ROOT: dir };
+  const env = { ...process.env, PROJECT_ROOT: dir, CRABSHELL_VERIFY_JSON: '1' };
   delete env.CLAUDE_PROJECT_DIR;
   delete env.CRABSHELL_VERIFY_RUNNING; // this test may itself run inside a declared check
-  return spawnSync(process.execPath, [path.join(dir, CRAB, 'verification', 'run-verify.js'), ...args], { cwd: dir, env, encoding: 'utf8', windowsHide: true, timeout: 120000 });
+  const result = spawnSync(process.execPath, [path.join(dir, CRAB, 'verification', 'run-verify.js'), ...args], { cwd: dir, env, encoding: 'utf8', windowsHide: true, timeout: 120000 });
+  if (result.error) throw result.error;
+  return result;
 }
 function dryRun(dir, files) {
   const result = runner(dir, ['--changed', ...(files ? ['--files', files.join(',')] : []), '--dry-run']);
@@ -77,6 +79,13 @@ function dryRun(dir, files) {
 }
 const selectsTest = (plan, file) => Array.isArray(plan.selected) && plan.selected.some(id => id.endsWith(file));
 const show = plan => JSON.stringify(plan).slice(0, 220);
+// Failure may refresh execution metadata, but never dependency records/hashes.
+function dependencyMap(file) {
+  const map = JSON.parse(fs.readFileSync(file, 'utf8'));
+  map.entries = Object.fromEntries(Object.entries(map.entries).filter(([, record]) => Array.isArray(record.files))
+    .map(([id, { passKey, lastDurationMs, passedAt, ...record }]) => [id, record]));
+  return JSON.stringify(map);
+}
 
 const dir = fixture('main');
 const mapPath = path.join(dir, CRAB, 'verification', 'test-map.json');
@@ -213,10 +222,10 @@ for (const file of ['scripts/constants.js', 'scripts/utils.js', 'hooks/hooks.jso
   git(rev, 'commit', '-q', '-am', 'lib-a now uses lib-b');
   plan = dryRun(rev, ['scripts/lib-b.js']);
   report.check('R21 control: a recorded source file changed after the map (new dependency) runs everything', plan.full === true && /older than scripts\/lib-a\.js/.test(String(plan.reason)), show(plan));
-  const mapBefore = fs.readFileSync(path.join(rev, CRAB, 'verification', 'test-map.json'), 'utf8');
+  const mapBefore = dependencyMap(path.join(rev, CRAB, 'verification', 'test-map.json'));
   write(rev, 'scripts/_test-zfail.js', 'process.exit(1);\n');
   const failing = runner(rev, []);
-  report.check('R22 a full run with a failing check leaves the previous map in place', failing.status !== 0 && fs.readFileSync(path.join(rev, CRAB, 'verification', 'test-map.json'), 'utf8') === mapBefore, `exit=${failing.status}`);
+  report.check('R22 a full run with a failing check leaves dependency records in place', failing.status !== 0 && dependencyMap(path.join(rev, CRAB, 'verification', 'test-map.json')) === mapBefore, `exit=${failing.status}`);
 }
 
 // R23: a file a check writes and reads back during the full run (evidence, the map
@@ -340,10 +349,10 @@ function rewriteSameLater(dir, rel) {
     built.status === 0 && partial.status === 0 && /Changed-files run: \d+ of \d+ checks \((?!all)/.test(partial.stdout)
       && plan.full === false && selectsTest(plan, '_test-a.js') && selectsTest(plan, '_test-b.js'),
     `built=${built.status} partial=${partial.status} ${partial.stdout.slice(-120)} ${show(plan)}`);
-  const mapBefore = fs.readFileSync(mapFile, 'utf8');
+  const mapBefore = dependencyMap(mapFile);
   fs.writeFileSync(path.join(re, 'scripts', 'lib-b.js'), 'module.exports = 3;\n');
   const failing = runner(re, ['--changed']);
-  report.check('R34 a failing --changed run leaves the load map unchanged', failing.status === 1 && fs.readFileSync(mapFile, 'utf8') === mapBefore, `exit=${failing.status}`);
+  report.check('R34 a failing --changed run leaves dependency records unchanged', failing.status === 1 && dependencyMap(mapFile) === mapBefore, `exit=${failing.status}`);
   // Restore the committed bytes (a git checkout may rewrite line endings).
   fs.writeFileSync(path.join(re, 'scripts', 'lib-b.js'), 'module.exports = 2;\n');
   // R45: a --files list can leave out a new file that lies in a folder a check which
@@ -385,9 +394,9 @@ function rewriteSameLater(dir, rel) {
   const run = args => {
     const result = runner(fb, ['--changed', ...(args || [])]);
     let results = [];
-    try { results = JSON.parse(result.stdout.slice(0, result.stdout.indexOf('\n\n'))); } catch {}
+    try { results = JSON.parse(result.stdout.match(/^\[\]$|^\[\r?\n[\s\S]*?\r?\n\]$/m)[0]); } catch {}
     const before = results.filter(item => String(item.id).startsWith('FAIL_BEFORE:'));
-    return { status: result.status, stdout: result.stdout, before, of: file => before.find(item => item.id.endsWith(file)) };
+    return { status: result.status, stdout: result.stdout, results, before, of: file => before.find(item => item.id.endsWith(file)) };
   };
   const brief = r => `exit=${r.status} ${JSON.stringify(r.before.map(item => ({ id: item.id, status: item.status, why: String(item.message || item.error || '').slice(0, 90) })))}`;
   const exemptFile = path.join(fb, CRAB, 'verification', 'fail-before-exempt.json');
@@ -398,6 +407,11 @@ function rewriteSameLater(dir, rel) {
   let r = run();
   report.check('R35 a changed test that fails on HEAD and passes now is a PASS (it catches the change)',
     built.status === 0 && r.status === 0 && r.of('_test-a.js') && r.of('_test-a.js').status === 'PASS', `built=${built.status} ${brief(r)}`);
+  const repeated = run();
+  report.check('R52 repeated fail-before comparison executes the changed test despite its cached pass',
+    repeated.status === 0 && repeated.of('_test-a.js') && repeated.of('_test-a.js').status === 'PASS'
+      && repeated.results.some(item => item.id === 'V002:scripts/_test-a.js' && item.reused !== true && item.durationMs > 0)
+      && repeated.of('_test-a.js').durationMs > 0, brief(repeated));
   restore();
 
   write(fb, 'scripts/lib-a.js', "require('./constants');\nmodule.exports = 1; // reworded\n");
@@ -500,7 +514,9 @@ function rewriteSameLater(dir, rel) {
 // every test that names counter.js (a static lower bound of "loads counter.js").
 {
   const realMap = path.join(REPO, CRAB, 'verification', 'test-map.json');
-  if (!fs.existsSync(realMap)) {
+  if (process.env.CRABSHELL_TEST_FIXTURES_ONLY === '1') {
+    console.log('NOTE: R14 not evaluated — fixture-only test run requested.');
+  } else if (!fs.existsSync(realMap)) {
     console.log('NOTE: R14 not evaluated — this repository has no load map yet (a full declared run creates it).');
   } else {
     const env = { ...process.env, PROJECT_ROOT: REPO };

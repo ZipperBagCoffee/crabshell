@@ -10,6 +10,8 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const MAP_FILE = 'test-map.json';
+const RESULTS_FILE = 'last-run.json';
+const PASS_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 // Tests that may pass on HEAD too (a refactor that keeps behavior), each with the
 // sha256 of the test content it covers and a reason.
 const EXEMPT_FILE = 'fail-before-exempt.json';
@@ -42,6 +44,8 @@ function parseArgs(argv) {
     flat: process.env.CRABSHELL_VERIFY_FLAT === '1',
     changed: false,
     dryRun: false,
+    json: process.env.CRABSHELL_VERIFY_JSON === '1',
+    reuse: true,
     files: null,
     failBefore: true,
     error: null
@@ -52,6 +56,8 @@ function parseArgs(argv) {
     if (arg === '--flat' || arg === '-f') parsed.flat = true;
     else if (arg === '--changed') parsed.changed = true;
     else if (arg === '--dry-run') parsed.dryRun = true;
+    else if (arg === '--json') parsed.json = true;
+    else if (arg === '--no-reuse') parsed.reuse = false;
     else if (arg === '--no-fail-before') parsed.failBefore = false;
     else if (arg === '--files') {
       const value = argv[++index];
@@ -197,6 +203,74 @@ function hashBuffer(buffer) {
   return crypto.createHash('sha256').update(buffer).digest('hex');
 }
 
+function normalizedJson(value) {
+  if (Array.isArray(value)) return value.map(normalizedJson);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.keys(value).sort().map(key => [key, normalizedJson(value[key])]));
+  }
+  return value;
+}
+
+function inputHash(projectRoot, file) {
+  try {
+    const absolute = resolveInside(projectRoot, file, 'recorded input');
+    return hashBuffer(file.endsWith('/')
+      ? JSON.stringify(fs.readdirSync(absolute).sort())
+      : fs.readFileSync(absolute));
+  } catch (error) {
+    if (error.code === 'ENOENT' || error.code === 'ENOTDIR') return 'MISSING';
+    throw error; // Unreadable inputs cannot authorize reuse.
+  }
+}
+
+function passKey(entry, record, projectRoot, runnerHash, hashes = null) {
+  if (!record || !Array.isArray(record.files) || record.files.length === 0) return null;
+  try {
+    const files = [...new Set(record.files.map(toPosix))].sort();
+    const hash = file => hashes ? hashes.get(file) : inputHash(projectRoot, file);
+    return hashBuffer(JSON.stringify([
+      normalizedJson(entry), runnerHash, process.version, process.platform, process.arch,
+      record.test ? hash(record.test) : null,
+      files.map(file => [file, hash(file)])
+    ]));
+  } catch (_) { return null; }
+}
+
+function fingerprintInputs(files, projectRoot) {
+  const hashes = new Map();
+  for (const file of files) {
+    try { hashes.set(file, inputHash(projectRoot, file)); }
+    catch (_) { hashes.set(file, null); }
+  }
+  return hashes;
+}
+
+function unchangedPassKey(entry, record, projectRoot, runnerHash, before, startedAt) {
+  try {
+    const files = new Set([...before.keys(), ...record.files, record.test].filter(Boolean));
+    const after = fingerprintInputs(files, projectRoot);
+    for (const file of files) {
+      if (after.get(file) === null) return null;
+      if (before.has(file)) {
+        if (before.get(file) !== after.get(file)) return null;
+      } else {
+        // Newly traced inputs were unknown before execution. Only trust them if
+        // they already existed and have not been written since the check began.
+        const stat = fs.statSync(resolveInside(projectRoot, file, 'recorded input'));
+        if (stat.mtimeMs >= startedAt) return null;
+      }
+    }
+    return passKey(entry, record, projectRoot, runnerHash, after);
+  } catch (_) { return null; }
+}
+
+function readMap(manifestPath) {
+  try {
+    const map = JSON.parse(fs.readFileSync(mapPath(manifestPath), 'utf8'));
+    return map && typeof map === 'object' && !Array.isArray(map) ? map : null;
+  } catch (_) { return null; }
+}
+
 function snapshotResolved(target) {
   if (!fs.existsSync(target)) return { kind: 'missing' };
   const stat = fs.statSync(target);
@@ -255,6 +329,11 @@ function expandEntries(manifest, projectRoot) {
   for (const entry of entries) {
     if (!entry || !entry.discover) { expanded.push(entry); continue; }
     const rule = entry.discover;
+    if (entry.reuseExclude !== undefined && (!Array.isArray(entry.reuseExclude)
+      || entry.reuseExclude.some(file => typeof file !== 'string'))) {
+      throw new Error(`${entry.id}: reuseExclude must be an array of relative file paths`);
+    }
+    const reuseExcluded = new Set((entry.reuseExclude || []).map(toPosix));
     const pattern = typeof rule.pattern === 'string' ? toPosix(rule.pattern) : '';
     const slash = pattern.lastIndexOf('/');
     const dir = slash >= 0 ? pattern.slice(0, slash) : '.';
@@ -287,6 +366,7 @@ function expandEntries(manifest, projectRoot) {
         contract: entry.contract,
         timeout: entry.timeout,
         always: entry.always,
+        reuse: reuseExcluded.has(file) ? false : entry.reuse,
         discoveredBy: entry.id,
       });
     }
@@ -363,7 +443,9 @@ if (out && root) {
 `;
 
 function insideRoot(projectRoot, absolute) {
-  const relative = path.relative(projectRoot, absolute);
+  // fs.cpSync can report Windows extended-length paths, including UNC shares.
+  const ordinary = value => value.replace(/^\\\\\?\\UNC\\/i, '\\\\').replace(/^\\\\\?\\/, '');
+  const relative = path.relative(ordinary(projectRoot), ordinary(absolute));
   if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) return null;
   const posix = toPosix(relative);
   if (IGNORED_DIRS.some(dir => posix === dir || posix.startsWith(dir + '/'))) return null;
@@ -378,7 +460,8 @@ function readTrace(traceFile, projectRoot) {
     try {
       for (const absolute of JSON.parse(line)) {
         const relative = insideRoot(projectRoot, absolute);
-        if (!relative || !fs.existsSync(absolute)) continue;
+        if (!relative) continue;
+        if (!fs.existsSync(absolute)) { files.add(relative); continue; }
         const stat = fs.statSync(absolute);
         if (stat.isFile()) files.add(relative);
         else if (stat.isDirectory()) files.add(relative + '/');
@@ -451,9 +534,9 @@ function exemptPath(manifestPath) {
   return path.join(path.dirname(manifestPath), EXEMPT_FILE);
 }
 
-// The runner's own files (the load map, the exemptions) are not changes to check.
+// Generated results, the load map and exemptions are not changes to check.
 function withoutRunnerFiles(files, projectRoot, manifestPath) {
-  const own = new Set([mapPath(manifestPath), exemptPath(manifestPath)].map(file => insideRoot(projectRoot, file)).filter(Boolean));
+  const own = new Set([mapPath(manifestPath), exemptPath(manifestPath), path.join(__dirname, RESULTS_FILE)].map(file => insideRoot(projectRoot, file)).filter(Boolean));
   return files.map(toPosix).filter(file => !own.has(file));
 }
 
@@ -478,7 +561,8 @@ function gitVisibleFiles(projectRoot) {
 // Decide which entries a set of changed files needs.
 function planChanged(manifest, entries, projectRoot, manifestPath, changedFiles) {
   const runnable = entries.filter(entry => entry.type !== 'manual');
-  const everything = reason => ({ mode: 'changed', full: true, reason, changed: changedFiles, selected: runnable.map(entry => entry.id), total: runnable.length });
+  const everything = reason => ({ mode: 'changed', full: true, reason, changed: changedFiles, selected: runnable.map(entry => entry.id), total: runnable.length,
+    reasons: Object.fromEntries(runnable.map(entry => [entry.id, reason])) });
   const mapFile = mapPath(manifestPath);
   const manifestRelative = insideRoot(projectRoot, manifestPath);
   const runnerRelative = insideRoot(projectRoot, __filename);
@@ -518,16 +602,20 @@ function planChanged(manifest, entries, projectRoot, manifestPath, changedFiles)
   // test file need not be compared with the map; nothing else can depend on a test
   // that did not exist when the map was written.
   const records = map.entries || {};
-  const unrecorded = new Set(runnable.filter(entry => !records[entry.id]).map(entry => entry.id));
+  const unrecorded = new Set(runnable.filter(entry => !Array.isArray((records[entry.id] || {}).files)).map(entry => entry.id));
   const knownTests = [...testFiles].filter(([id]) => !unrecorded.has(id)).map(([, file]) => file);
   for (const file of [manifestRelative, runnerRelative, ...knownTests, ...recordedFiles].filter(Boolean)) {
     if (!changedSet.has(file) && newer(file)) return everything(`load map is older than ${file}`);
   }
   const globals = [...DEFAULT_GLOBAL, ...((manifest.changed && Array.isArray(manifest.changed.global)) ? manifest.changed.global : [])].map(globRegex);
   const selected = new Set(unrecorded);
+  const reasons = Object.fromEntries([...unrecorded].map(id => [id, 'new check']));
   for (const entry of runnable) {
     const record = records[entry.id];
-    if (record && (entry.always === true || (record.files || []).length === 0)) selected.add(entry.id);
+    if (record && !unrecorded.has(entry.id) && (entry.always === true || (record.files || []).length === 0)) {
+      selected.add(entry.id);
+      reasons[entry.id] = entry.always === true ? 'always' : 'no recorded files';
+    }
   }
   // A test the map knows that is gone from disk (deleted, or the old name of a renamed
   // test) leaves nothing to run; a check that read it records it and is selected above.
@@ -535,7 +623,14 @@ function planChanged(manifest, entries, projectRoot, manifestPath, changedFiles)
   for (const file of changed) {
     if (file === manifestRelative || file === runnerRelative || globals.some(regex => regex.test(file))) return everything(`${file} affects every check`);
     const users = runnable.filter(entry => testFiles.get(entry.id) === file || ((records[entry.id] || {}).files || []).some(recorded => covers(recorded, file)));
-    if (users.length > 0) { users.forEach(entry => selected.add(entry.id)); continue; }
+    if (users.length > 0) {
+      for (const entry of users) {
+        selected.add(entry.id);
+        if (!reasons[entry.id]) reasons[entry.id] = testFiles.get(entry.id) === file ? file
+          : records[entry.id].files.find(recorded => covers(recorded, file));
+      }
+      continue;
+    }
     if (PROSE_EXTENSIONS.includes(path.extname(file).toLowerCase())) continue;
     if (formerTests.has(file) && !fs.existsSync(path.join(projectRoot, file))) continue;
     return everything(`${file} is not in the load map`);
@@ -547,7 +642,7 @@ function planChanged(manifest, entries, projectRoot, manifestPath, changedFiles)
   // see to the manifest, runner or a test was caught above as a stale map).
   const reason = (changed.length === 0 ? 'no changed files' : `${changed.length} changed file(s)`)
     + (unrecorded.size > 0 ? `, ${unrecorded.size} new check(s)` : '');
-  return { mode: 'changed', full: false, reason, changed, selected: chosen.map(entry => entry.id), tests, total: runnable.length };
+  return { mode: 'changed', full: false, reason, changed, selected: chosen.map(entry => entry.id), tests, total: runnable.length, reasons };
 }
 
 function commandExecutable(command, projectRoot) {
@@ -559,6 +654,13 @@ function commandExecutable(command, projectRoot) {
 }
 
 function runEntry(entry, options = {}) {
+  const started = process.hrtime.bigint();
+  const result = executeEntry(entry, options);
+  result.durationMs = Math.round(Number(process.hrtime.bigint() - started) / 1e6);
+  return result;
+}
+
+function executeEntry(entry, options = {}) {
   const projectRoot = path.resolve(options.projectRoot || process.env.PROJECT_ROOT || path.resolve(__dirname, '../..'));
   if (entry && entry.type === 'manual') {
     return { id: entry.id, type: 'manual', status: 'manual', message: 'Requires human verification', failureClass: null };
@@ -670,8 +772,10 @@ function failBeforeChecks({ entries, results, records, changedFiles, expanded, p
   try {
     const head = headCheckout(projectRoot, workDir);
     for (const { entry, test, files, sources } of targets) {
+      const started = process.hrtime.bigint();
       const report = (status, text) => out.push({
         id: `FAIL_BEFORE:${entry.id}`, type: 'fail-before', status, test, sources,
+        durationMs: Math.round(Number(process.hrtime.bigint() - started) / 1e6),
         ...(status === 'FAIL' ? { error: text } : { message: text }),
         failureClass: status === 'FAIL' ? 'fail-before' : null
       });
@@ -733,15 +837,77 @@ function selectEntries(manifest, targetId) {
   return targetId ? entries.filter(entry => entry.id === targetId) : entries.filter(entry => entry.type !== 'manual');
 }
 
-function failRunner(id, error) {
-  const result = { id, status: 'FAIL', error, output: '', failureClass: classify(error, '') };
-  console.log(JSON.stringify([result], null, 2));
-  console.log('\nVerification Results: PASS: 0 / FAIL: 1 / Manual: 0 / Total: 1');
-  return 1;
+function printResults(results, { args, started, plan = null, selected = results.length, failBefore = [] }) {
+  const fullPath = path.join(__dirname, RESULTS_FILE);
+  const json = JSON.stringify(results, null, 2);
+  const temporary = `${fullPath}.${process.pid}.${crypto.randomBytes(6).toString('hex')}.tmp`;
+  let saveError = null;
+  let temporaryCreated = false;
+  try {
+    const fd = fs.openSync(temporary, 'wx');
+    temporaryCreated = true;
+    try { fs.writeFileSync(fd, json + '\n'); }
+    finally { fs.closeSync(fd); }
+    fs.renameSync(temporary, fullPath);
+  } catch (error) { saveError = error.message; }
+  finally {
+    if (temporaryCreated) { try { fs.unlinkSync(temporary); } catch (_) {} }
+  }
+  const passCount = results.filter(result => result.status === 'PASS').length;
+  const failures = results.filter(result => result.status === 'FAIL');
+  const manualCount = results.filter(result => result.status === 'manual').length;
+  const selectedResults = results.slice(0, selected);
+  const reused = selectedResults.filter(result => result.reused === true).length;
+  const ran = selectedResults.filter(result => result.status !== 'manual' && !result.reused).length;
+  const passed = selectedResults.filter(result => result.status === 'PASS').length;
+  const parts = [];
+  if (ran) parts.push(`ran ${ran}`);
+  if (reused) parts.push(`reused ${reused} unchanged since they passed`);
+  if (manualCount) parts.push(`${manualCount} manual check${manualCount === 1 ? '' : 's'} waiting for a person`);
+  const counts = parts.length ? ` (${parts.join(', ')})` : '';
+  const seconds = (Number(process.hrtime.bigint() - started) / 1e9).toFixed(1);
+  // Older installed guards request this flag and parse an array without setting
+  // CRABSHELL_VERIFY_JSON. Keep failures visible to those guards too.
+  if (args.json || !args.failBefore) console.log(json);
+  console.log(selected === 0 && failures.length === 0
+    ? 'No checks selected — nothing changed that a check reads.'
+    : failures.length
+      ? `FAIL — ${failures.length} of ${selected} checks failed${counts}, ${seconds}s`
+      : `PASS — ${passed} of ${plan ? plan.total : selected} checks${counts}, ${seconds}s`);
+  for (const result of failures) {
+    const line = String(result.output || '').split(/\r?\n/).find(text => text.startsWith('FAIL'))
+      || String(result.error || 'Unknown error').split('; stderr:')[0].split(/\r?\n/)[0];
+    console.log(`FAIL ${result.id}: ${line}`);
+    const stderr = String(result.stderr || '').trim();
+    if (stderr) for (const tail of stderr.split(/\r?\n/).slice(-5)) console.log(`  ${tail}`);
+  }
+  if (plan) console.log(`\nChanged-files run: ${selected} of ${plan.total} checks (${plan.full ? 'all — ' : ''}${plan.reason})`);
+  if (failBefore.length > 0) {
+    const count = status => failBefore.filter(result => result.status === status).length;
+    console.log(`\nFail-before: ${failBefore.length} changed test(s) also run on HEAD — PASS: ${count('PASS')} / FAIL: ${count('FAIL')} / Manual: ${count('manual')}`);
+  }
+  console.log(`\nVerification Results: PASS: ${passCount} / FAIL: ${failures.length} / Manual: ${manualCount} / Total: ${results.length}`);
+  if (!args.flat && failures.length) {
+    const counts = {};
+    for (const result of failures) {
+      const category = result.failureClass || 'unknown';
+      counts[category] = (counts[category] || 0) + 1;
+    }
+    console.log('\nFailure Categories:');
+    for (const category of Object.keys(counts).sort()) console.log(`  ${category}: ${counts[category]}`);
+  }
+  const warning = shouldWarn(results);
+  if (warning.warn) console.error(`[VERIFY] WARN: ${warning.unknownCount}/${warning.failCount} (${warning.ratio}%) failures unclassified; classifier rules may need update`);
+  console.log(`Full results: ${saveError === null ? fullPath : `not saved (${saveError})`}`);
+  return failures.length > 0 ? 1 : 0;
 }
 
 function main(argv = process.argv.slice(2), options = {}) {
+  const started = process.hrtime.bigint();
   const args = parseArgs(argv);
+  const failRunner = (id, error) => printResults([
+    { id, status: 'FAIL', error, output: '', durationMs: 0, failureClass: classify(error, '') }
+  ], { args, started });
   if (args.error) return failRunner('RUNNER_ARGS', args.error);
   if (process.env.CRABSHELL_VERIFY_RUNNING === '1' && !args.targetId && !args.dryRun) {
     return failRunner('RUNNER_RECURSION', 'Nested full-manifest verification is blocked. Pass an explicit entry id.');
@@ -769,10 +935,6 @@ function main(argv = process.argv.slice(2), options = {}) {
     plan = changed.error
       ? { mode: 'changed', full: true, reason: changed.error, changed: [], selected: expanded.filter(e => e.type !== 'manual').map(e => e.id), total: expanded.filter(e => e.type !== 'manual').length }
       : planChanged(manifest, expanded, projectRoot, manifestPath, changed.files);
-    if (args.dryRun) {
-      console.log(JSON.stringify(plan, null, 2));
-      return 0;
-    }
     const chosen = new Set(plan.selected);
     entries = expanded.filter(entry => chosen.has(entry.id));
   } else {
@@ -780,10 +942,42 @@ function main(argv = process.argv.slice(2), options = {}) {
     if (args.targetId && entries.length === 0) return failRunner('RUNNER_TARGET', `Unknown entry id: ${args.targetId}`);
   }
 
+  const previousMap = readMap(manifestPath);
+  const previousRecords = previousMap && previousMap.entries || {};
+  const runnerHash = hashBuffer(fs.readFileSync(__filename));
+  const changedTests = new Set(changedList.map(toPosix));
+  const canReuse = entry => {
+    const record = previousRecords[entry.id];
+    // A changed test may be compared with HEAD. Its working-tree execution and
+    // both comparison runs must always be real executions.
+    if (!args.reuse || args.targetId || (args.changed && plan && plan.full)
+      || entry.reuse === false || entry.always === true || entry.type === 'manual' || entry.discoveryError
+      || (plan && args.failBefore && changedTests.has(entryTestFile(entry, projectRoot)))) return false;
+    const age = Date.now() - Date.parse(record && record.passedAt || '');
+    return Boolean(record && record.passKey && Number.isFinite(age) && age >= 0 && age <= PASS_MAX_AGE_MS
+      && passKey(entry, record, projectRoot, runnerHash) === record.passKey);
+  };
+  if (args.dryRun) {
+    if (!plan) plan = { mode: 'full', full: true, reason: 'all checks requested', selected: entries.map(entry => entry.id), total: entries.length };
+    if (!plan.reasons) plan.reasons = Object.fromEntries(entries.map(entry => [entry.id, plan.reason]));
+    let estimatedMs = 0;
+    plan.wouldReuse = 0;
+    for (const entry of entries) {
+      if (canReuse(entry)) plan.wouldReuse++;
+      else {
+        const duration = (previousRecords[entry.id] || {}).lastDurationMs;
+        if (Number.isFinite(duration) && duration >= 0) estimatedMs += duration;
+      }
+    }
+    plan.estimatedSeconds = Math.round(estimatedMs / 100) / 10;
+    console.log(JSON.stringify(plan, null, 2));
+    return 0;
+  }
+
   // A run of every check records what each check loads (the map for --changed); a
   // --changed run that selected fewer refreshes the records of the checks it ran.
   const fullMap = !args.targetId && (!plan || plan.full);
-  const partialMap = !args.targetId && Boolean(plan) && !plan.full && entries.length > 0;
+  const partialMap = !fullMap && entries.some(entry => entry.type !== 'manual');
   const tracing = fullMap || partialMap;
   let traceDir = null;
   let tracer = null;
@@ -795,16 +989,30 @@ function main(argv = process.argv.slice(2), options = {}) {
   const startedAt = new Date().toISOString();
   const mapEntries = {};
   const results = entries.map((entry, index) => {
+    if (canReuse(entry)) {
+      mapEntries[entry.id] = { ...previousRecords[entry.id] };
+      return { id: entry.id, type: entry.type, status: 'PASS', reused: true, durationMs: 0,
+        message: 'Unchanged since it passed', output: '', error: null, failureClass: null };
+    }
     const trace = tracing ? { tracer, file: path.join(traceDir, `trace-${index}.jsonl`) } : null;
+    const test = entryTestFile(entry, projectRoot);
+    const knownFiles = new Set([...((previousRecords[entry.id] || {}).files || []), ...staticDependencies(test, projectRoot), ...contractPaths(entry), test].filter(Boolean));
+    const checkStartedAt = Date.now();
+    const before = fingerprintInputs(knownFiles, projectRoot);
     const result = runEntry(entry, { projectRoot, trace });
-    if (tracing) {
+    if (tracing && entry.type !== 'manual') {
       const files = new Set([...readTrace(trace.file, projectRoot), ...staticDependencies(entryTestFile(entry, projectRoot), projectRoot), ...contractPaths(entry)]);
-      mapEntries[entry.id] = { test: entryTestFile(entry, projectRoot), files: [...files].sort() };
+      const generated = new Set([mapPath(manifestPath), path.join(__dirname, RESULTS_FILE)].map(file => insideRoot(projectRoot, file)));
+      const record = { test, files: [...files].filter(file => !generated.has(file)).sort(), lastDurationMs: result.durationMs };
+      const key = result.status === 'PASS'
+        ? unchangedPassKey(entry, record, projectRoot, runnerHash, before, checkStartedAt) : null;
+      if (key) { record.passKey = key; record.passedAt = new Date().toISOString(); }
+      mapEntries[entry.id] = record;
     }
     return result;
   });
   const allPassed = results.every(result => result.status !== 'FAIL');
-  if (tracing && !allPassed) console.error('[VERIFY] load map not updated: a check failed or timed out, so its record may be incomplete');
+  if (tracing && !allPassed) console.error('[VERIFY] load map dependency records not updated: a check failed or timed out, so its record may be incomplete');
   if (tracing && allPassed) {
     try {
       // Drop the map itself (checks may read it) and record every checked file's
@@ -813,9 +1021,9 @@ function main(argv = process.argv.slice(2), options = {}) {
       // A --changed run replaces only the records of the checks it ran: every check
       // whose record covers a changed file was selected, so the others still hold.
       const mapRelative = insideRoot(projectRoot, mapPath(manifestPath));
-      const map = fullMap
+      const map = fullMap || !previousMap
         ? { version: 2, createdAt: startedAt, fileTimes: {}, fileHashes: {}, entries: {} }
-        : JSON.parse(fs.readFileSync(mapPath(manifestPath), 'utf8'));
+        : previousMap;
       map.fileTimes = map.fileTimes || {};
       map.fileHashes = map.fileHashes || {};
       map.entries = map.entries || {};
@@ -852,36 +1060,37 @@ function main(argv = process.argv.slice(2), options = {}) {
       console.error(`[VERIFY] WARN: load map not written: ${error.message}`);
     }
   }
+  if (tracing && !allPassed) {
+    try {
+      // Keep every dependency record and global hash from the last successful
+      // refresh. Only execution metadata changes on failure. A new check gets no
+      // trusted files yet, and cannot reuse until a successful refresh records it.
+      const map = previousMap || { version: 2, createdAt: startedAt, fileTimes: {}, fileHashes: {}, entries: {} };
+      map.entries = map.entries || {};
+      for (let index = 0; index < entries.length; index++) {
+        const result = results[index];
+        if (result.reused || result.status === 'manual') continue;
+        const record = map.entries[result.id] || {};
+        record.lastDurationMs = result.durationMs;
+        const executed = mapEntries[result.id];
+        if (executed && executed.passKey && Array.isArray(record.files) && record.files.length) {
+          record.passKey = executed.passKey;
+          record.passedAt = executed.passedAt;
+        } else {
+          delete record.passKey;
+          delete record.passedAt;
+        }
+        map.entries[result.id] = record;
+      }
+      fs.writeFileSync(mapPath(manifestPath), JSON.stringify(map, null, 2) + '\n');
+    } catch (error) { console.error(`[VERIFY] WARN: pass metadata not written: ${error.message}`); }
+  }
   if (traceDir) { try { fs.rmSync(traceDir, { recursive: true, force: true }); } catch (_) {} }
   const failBefore = plan && args.failBefore
     ? failBeforeChecks({ entries, results, records: mapEntries, changedFiles: changedList, expanded, projectRoot, manifestPath })
     : [];
   results.push(...failBefore);
-  const passCount = results.filter(result => result.status === 'PASS').length;
-  const failCount = results.filter(result => result.status === 'FAIL').length;
-  const manualCount = results.filter(result => result.status === 'manual').length;
-  console.log(JSON.stringify(results, null, 2));
-  if (plan) console.log(`\nChanged-files run: ${entries.length} of ${plan.total} checks (${plan.full ? 'all — ' : ''}${plan.reason})`);
-  if (failBefore.length > 0) {
-    const count = status => failBefore.filter(result => result.status === status).length;
-    console.log(`\nFail-before: ${failBefore.length} changed test(s) also run on HEAD — PASS: ${count('PASS')} / FAIL: ${count('FAIL')} / Manual: ${count('manual')}`);
-  }
-  console.log(`\nVerification Results: PASS: ${passCount} / FAIL: ${failCount} / Manual: ${manualCount} / Total: ${results.length}`);
-
-  if (!args.flat) {
-    const counts = {};
-    for (const result of results.filter(item => item.status === 'FAIL')) {
-      const category = result.failureClass || 'unknown';
-      counts[category] = (counts[category] || 0) + 1;
-    }
-    if (Object.keys(counts).length > 0) {
-      console.log('\nFailure Categories:');
-      for (const category of Object.keys(counts).sort()) console.log(`  ${category}: ${counts[category]}`);
-    }
-  }
-  const warning = shouldWarn(results);
-  if (warning.warn) console.error(`[VERIFY] WARN: ${warning.unknownCount}/${warning.failCount} (${warning.ratio}%) failures unclassified; classifier rules may need update`);
-  return failCount > 0 ? 1 : 0;
+  return printResults(results, { args, started, plan, selected: entries.length, failBefore });
 }
 
 if (require.main === module) process.exit(main());

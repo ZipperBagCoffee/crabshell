@@ -126,6 +126,7 @@ function evaluateVerifyGuard(hookData, projectDir) {
     stdout = execFileSync(process.execPath, [runVerifyPath, '--changed', '--no-fail-before'], {
       timeout: 60000,
       encoding: 'utf8',
+      env: { ...process.env, CRABSHELL_VERIFY_JSON: '1' },
       cwd: projectDir
     });
   } catch (execErr) {

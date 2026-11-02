@@ -1,5 +1,16 @@
 # Changelog
 
+## [21.146.0] - 2026-11-02
+
+### feat: less checking waste — reuse unchanged passes, short output, small-change path
+
+- **Why.** A one-sentence rule change took two process documents (190 lines) and four 65-check runs; two runs repeated an unchanged check set because the 92 KB output was cut short. The user: "한줄 고치는데 총검사 이지랄", "디스커션 리그레싱 해서 둘다 해". Research: I095.
+- **Runner** (`run-verify.js`, both copies): a check whose key (manifest entry, runner hash, Node version, test file and recorded files' content, recorded folders' name lists) matches its last pass is reported PASS with `reused: true` and not run; failures and timeouts are never reused, and neither are a fallback full run (unknown dependencies), a check named explicitly, an `always` entry, a check with no recorded files, or a pass older than 7 days; the key is taken right before the check runs and stored only if its inputs did not change while it ran; `"reuse": false` on an entry or `"reuseExclude"` on a discovery entry, and `--no-reuse`, turn it off. Default output is a verdict line, failed checks, the `Verification Results` line and `Full results: <path>`; the full JSON goes to `last-run.json` and to stdout only with `--json` or `CRABSHELL_VERIFY_JSON=1` (`verify-guard.js` sets it; an older guard calling with `--no-fail-before` still gets the JSON). `last-run.json` is written through a temporary file, and its path is printed only when the write succeeded. Manual checks are counted as waiting for a person, not as run. Results carry `durationMs`; `--dry-run` adds `reasons` and `estimatedSeconds`.
+- **Manifest:** V005, V012, V013, V015 never reused (installed CLIs, live sessions, machine-dependent runs); V059 excludes `scripts/_test-claude-native-install.js` and `scripts/_test-codex-windows-hook-command.js`.
+- **Rules** (`inject-rules.js`, `shared-context.js`): a small change — a few lines in one or two files with no hook, guard or gate behavior, including the code they run — skips the discussion and ticket and runs the changed-file check once; check once after the last edit of a batch and do not re-run a check that passed on unchanged inputs.
+- **Limit.** Reuse trusts the load map: reads by programs the tracer cannot see are covered only by the never-reuse list.
+- **Tests:** `_test-runner-reuse.js` (new), `_test-changed-runner.js`, `_test-verification-runner.js`, `_test-verify-guard.js`, `_test-rule-wording.js` W26–W29.
+
 ## [21.145.0] - 2026-11-01
 
 ### feat: look for counter-evidence before answering

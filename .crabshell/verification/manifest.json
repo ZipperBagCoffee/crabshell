@@ -12,6 +12,7 @@
   "entries": [
     {
       "id": "V005",
+      "reuse": false,
       "ia": "Native Codex clean install, cache, skill, restored prompt response contract, hook trust/hash, and spaces-path behavior",
       "type": "structural",
       "command": {
@@ -118,6 +119,7 @@
     },
     {
       "id": "V012",
+      "reuse": false,
       "ia": "Actual ephemeral Codex A/B orchestration conversation corpus",
       "type": "manual",
       "command": {
@@ -144,6 +146,7 @@
     },
     {
       "id": "V013",
+      "reuse": false,
       "ia": "Unified Claude and Codex lifecycle behavior rejects missing or malformed response contracts, stale memory, lost state, wrong order, false done, hardcoded path, host mismatch, and forbidden-side-effect mutations",
       "type": "behavioral",
       "command": {
@@ -192,6 +195,7 @@
     },
     {
       "id": "V015",
+      "reuse": false,
       "ia": "Clean-profile Claude Code CLI and Codex CLI native plugin smoke runs on Windows and Linux while Codex app remains separately unverified",
       "type": "behavioral",
       "command": {
@@ -669,6 +673,10 @@
     },
     {
       "id": "V059",
+      "reuseExclude": [
+        "scripts/_test-claude-native-install.js",
+        "scripts/_test-codex-windows-hook-command.js"
+      ],
       "ia": "Every scripts/_test-*.js test passes without touching this repository's own memory log (found by name; explicit entries keep their own arguments)",
       "type": "behavioral",
       "discover": {

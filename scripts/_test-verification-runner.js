@@ -6,7 +6,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const repoRoot = path.resolve(__dirname, '..');
-const sourceRunner = path.join(repoRoot, 'skills', 'verifying', 'scripts', 'run-verify.js');
+const sourceRunner = process.env.CRABSHELL_TEST_RUNNER || path.join(repoRoot, 'skills', 'verifying', 'scripts', 'run-verify.js');
 const generatedRunner = path.join(repoRoot, '.crabshell', 'verification', 'run-verify.js');
 const jsonMode = process.argv.includes('--json');
 const checks = [];
@@ -36,7 +36,7 @@ function parseResults(stdout) {
   const marker = '\nVerification Results:';
   const end = stdout.indexOf(marker);
   if (end < 0) throw new Error(`runner summary missing: ${stdout}`);
-  return JSON.parse(stdout.slice(0, end).trim());
+  return JSON.parse(stdout.match(/^\[\]$|^\[\r?\n[\s\S]*?\r?\n\]$/m)[0]);
 }
 
 function runManifest(root, entries) {
@@ -44,7 +44,7 @@ function runManifest(root, entries) {
   fs.mkdirSync(verificationDir, { recursive: true });
   fs.copyFileSync(sourceRunner, path.join(verificationDir, 'run-verify.js'));
   writeJson(path.join(verificationDir, 'manifest.json'), { schemaVersion: 2, entries });
-  const env = { ...process.env, PROJECT_ROOT: root };
+  const env = { ...process.env, PROJECT_ROOT: root, CRABSHELL_VERIFY_JSON: '1' };
   delete env.CRABSHELL_VERIFY_RUNNING;
   const result = spawnSync(process.execPath, [path.join(verificationDir, 'run-verify.js')], {
     cwd: root,
@@ -53,6 +53,7 @@ function runManifest(root, entries) {
     timeout: 15000,
     windowsHide: true
   });
+  if (result.error) throw result.error;
   return { ...result, results: parseResults(result.stdout || '') };
 }
 
