@@ -294,6 +294,34 @@ test('missing model routing section handled gracefully', function() {
 });
 
 // ============================================================
+// D137: an active regressing task scope with long documents must not push the end of
+// the checklist off the context (the old 6,000-character cap did).
+// ============================================================
+test('Active regressing scope keeps the whole checklist under the cap', function() {
+  const tmpDir = makeTempDir('subagent-test');
+  try {
+    setupProject(tmpDir, { regressingState: { active: true, discussion: 'D900', cycle: 2, totalCycles: 10, phase: 'execution', ticketIds: ['D900_T001', 'D900_T002'] } });
+    const long = label => Array.from({ length: 60 }, (_, i) => `${label} sentence ${i} with enough words to fill the field.`).join(' ');
+    const crab = path.join(tmpDir, '.crabshell');
+    fs.mkdirSync(path.join(crab, 'discussion'), { recursive: true });
+    fs.mkdirSync(path.join(crab, 'ticket'), { recursive: true });
+    fs.writeFileSync(path.join(crab, 'discussion', 'D900-long.md'), `# D900\n\n## Intent\n${long('intent')}\n\n## Non-Goals\n${long('non-goal')}\n`);
+    for (const id of ['D900_T001', 'D900_T002']) {
+      fs.writeFileSync(path.join(crab, 'ticket', `${id}-long.md`), `# ${id}\n\n## Intent\n${long('task')}\n\n## Scope\nIncluded: ${long('included')}\nExcluded: ${long('excluded')}\n\n## Acceptance Criteria\n${long('criterion')}\n`);
+    }
+    const { buildSubagentContext } = require('./core/subagent-context');
+    const { COMPRESSED_CHECKLIST } = require('./shared-context');
+    const context = buildSubagentContext(tmpDir);
+    const lastLine = COMPRESSED_CHECKLIST.trim().split('\n').pop();
+    assert(context.includes('## Active Worker Task Scope'), 'task scope missing');
+    assert(context.includes(lastLine), `checklist end cut off at ${context.length} characters`);
+    assert(context.length <= MAX_CONTEXT_CHARS && MAX_CONTEXT_CHARS < 10000, `context ${context.length} over cap ${MAX_CONTEXT_CHARS}`);
+  } finally {
+    cleanupDir(tmpDir);
+  }
+});
+
+// ============================================================
 // Summary
 // ============================================================
 console.log('\n' + '='.repeat(50));

@@ -18,6 +18,29 @@ const TICKET_FILE_PATTERN = new RegExp(ticketDocPattern());
 // at line start; the summary lines after it (a --changed run's reason) may hold "]".
 const RESULTS_ARRAY = /^\[\]$|^\[\r?\n[\s\S]*?\r?\n\]$/m;
 
+// The hook's own run gets a minute; a selection estimated above the budget is not run.
+const GUARD_TIMEOUT_MS = 60000;
+const GUARD_BUDGET_SECONDS = 40;
+
+// The runner's --changed selection without running any check, or null when it cannot
+// be read (an old runner, a git error, a timeout) — the caller then runs as before.
+function changedPlan(runVerifyPath, projectDir) {
+  try {
+    // Same selection flags as the real run below, so covered and reused checks count alike.
+    const out = execFileSync(process.execPath, [runVerifyPath, '--changed', '--no-fail-before', '--dry-run'], {
+      timeout: 15000,
+      encoding: 'utf8',
+      env: { ...process.env, PROJECT_ROOT: projectDir },
+      cwd: projectDir,
+      windowsHide: true,
+    });
+    const start = out.indexOf('{');
+    return start >= 0 ? JSON.parse(out.slice(start)) : null;
+  } catch (_) {
+    return null;
+  }
+}
+
 /**
  * Check if the content being written contains Final Verification section.
  * For Write: check content field.
@@ -118,15 +141,34 @@ function evaluateVerifyGuard(hookData, projectDir) {
     };
   }
 
+  // A selection that cannot finish within this hook's time limit used to be killed at
+  // the limit and then allowed (fail-open), after spending the whole minute and, on
+  // Windows, leaving its test processes running. Ask the runner first; when its estimate
+  // is over the budget, leave the check to the commit gate's own --changed run. The
+  // budget sits well under the limit because estimates leave out process start-up.
+  // Older runner copies print no estimate: run them as before.
+  const plan = changedPlan(runVerifyPath, projectDir);
+  if (plan && Number.isFinite(plan.estimatedSeconds) && plan.estimatedSeconds > GUARD_BUDGET_SECONDS) {
+    const count = Array.isArray(plan.selected) ? plan.selected.length : 0;
+    const scope = plan.full ? `, all — ${plan.reason}` : '';
+    const estimate = `about ${plan.estimatedSeconds}s (${count} checks${scope}), over this hook's ${GUARD_TIMEOUT_MS / 1000}s limit`;
+    // The model must see that no check ran here, or it may treat the write as verified.
+    return {
+      context: `[CRABSHELL] This Final Verification was written without running the changed-file check: the runner estimates ${estimate}. The check still runs at the commit gate (\`node .crabshell/verification/run-verify.js --changed\`); cite that run's result as the verification, not this write.`,
+      log: `[VERIFY_GUARD] Allowed: ${filePath} — the changed-file check would take ${estimate}; the commit gate's --changed run checks it`,
+    };
+  }
+
   // Execute run-verify.js on the changed files only and check results. The HEAD
   // comparison of changed tests (fail-before) is left to the commit gate's own run:
   // it runs each changed test twice more and could pass this hook's time limit.
   let stdout;
   try {
     stdout = execFileSync(process.execPath, [runVerifyPath, '--changed', '--no-fail-before'], {
-      timeout: 60000,
+      timeout: GUARD_TIMEOUT_MS,
       encoding: 'utf8',
-      env: { ...process.env, CRABSHELL_VERIFY_JSON: '1' },
+      // The guard's project, not a root inherited from whoever started this process.
+      env: { ...process.env, CRABSHELL_VERIFY_JSON: '1', PROJECT_ROOT: projectDir },
       cwd: projectDir
     });
   } catch (execErr) {
