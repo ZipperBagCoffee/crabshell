@@ -1,5 +1,14 @@
 # Changelog
 
+## [21.145.0] - 2026-11-01
+
+### feat: look for counter-evidence before answering
+
+- **Why.** The user asked whether the five skills in Jakeschincariol/claude-illegal-codes were worth using. None was worth installing; the one idea the rules lacked came from `/crash-out`: search for evidence that would disprove a claim, not only evidence that confirms it. The user: "그 한줄 정돔나 규칙에 넣든가".
+- **Rules** (`inject-rules.js`): Anti-Deception adds "For each claim the answer depends on, look for the evidence that would prove it wrong before the answer goes out, not only the evidence that fits it." The per-prompt checklist is unchanged.
+- **Limit.** Whether answers change has not been measured; it shows only in later sessions.
+- **Tests:** `_test-rule-wording.js` W25.
+
 ## [21.144.0] - 2026-11-01
 
 ### feat: anything a person will see or read starts from what that person is trying to do

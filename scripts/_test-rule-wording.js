@@ -58,6 +58,14 @@ report.check('W24 a correction spreads to the whole work and an untried result i
   /^- A correction is a defect type, not one spot:[^\n]*how many places had it, how many were fixed, and which are left\.$/m.test(RULES)
   && /^- If no person has used or read the result, report "own checks passed, not tried by a person", not "done"\.$/m.test(RULES)
   && /^- A correction is a defect type:[^\n]*own checks passed, not tried by a person[^\n]*structuring skill/m.test(COMPRESSED_CHECKLIST));
+// v21.145.0 (D134): the one idea worth keeping from the /crash-out skill; the user: "그 한줄 정돔나 규칙에 넣든가".
+// Citing evidence that fits is not enough; the claims an answer depends on are tested against evidence that would prove them wrong.
+{
+  const line = RULES.split('\n').find(l => l.startsWith('- **Anti-Deception**:')) || '';
+  report.check('W25 Anti-Deception: look for evidence that would prove each load-bearing claim wrong, right after the audit sentence',
+    line.endsWith('audit each claim against a tool result from this session. For each claim the answer depends on, look for the evidence that would prove it wrong before the answer goes out, not only the evidence that fits it.'),
+    line.slice(-160));
+}
 // v21.136.0: the user found Simple Communication too long ("이거 좀 긴거같은데"); it was cut
 // from 1,567 to 1,128 characters with every rule kept. The cap keeps it from growing back.
 {
