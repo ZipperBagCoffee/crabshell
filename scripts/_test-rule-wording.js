@@ -156,6 +156,20 @@ report.check('W16 every verification asks the common-sense question; a weird res
     correction.endsWith('how many were fixed, and which are left. When the same type of correction comes back, reopen the earlier fix (git log -S, or the memory logbook) and check whether it covered the type or only one instance; fix the type.'),
     correction.slice(-160));
 }
+// v21.151.0 (D140): the user: "글을 쓰든 칸을 만들든 뭘하든 오와 열을 맞추라고" and "커밋을 요청을 하라고" —
+// "commit only when the user asks" left verified work uncommitted with nothing said. Both lines as the user approved them.
+{
+  const working = (RULES.split('### WORKING RULES')[1] || '').split('\n###')[0].split('\n');
+  const rows = '- **Rows and columns:** anything a person sees — text, tables, lists, code blocks, screens, images — keeps rows and columns: items of one kind share the same start edge, width, height and spacing. Check it on the rendered result by measuring (pixel edges; display columns, one Korean character = two), not by the settings or by eye. Fix it with fixed widths or one shared grid, never by deleting content.';
+  const at = working.indexOf(rows);
+  report.check('W32 working rules carry the exact rows-and-columns line, right after the no-whole-file-rewrite line',
+    at > 0 && working[at - 1].startsWith('- Never rewrite a whole file'), working.find(line => line.startsWith('- **Rows')) || 'no Rows line');
+  const additional = (RULES.split('### ADDITIONAL RULES')[1] || '').split('\n');
+  const gitAt = additional.findIndex(line => line.startsWith('- **Git is the record of changes:**'));
+  const commits = '- **Commits:** when finished, verified changes are still uncommitted, ask the user to commit them and say in one line what the commit would contain; never leave them uncommitted without saying so.';
+  report.check('W33 additional rules carry the exact ask-to-commit line, right after the git line',
+    gitAt >= 0 && additional[gitAt + 1] === commits, gitAt >= 0 ? (additional[gitAt + 1] || '').slice(0, 120) : 'no Git line');
+}
 {
   const workflow = COMPRESSED_CHECKLIST.split('\n').find(line => line.startsWith('- Work that changes files starts in a discussion:')) || '';
   const verification = COMPRESSED_CHECKLIST.split('\n').find(line => line.startsWith('- Verification = ')) || '';
