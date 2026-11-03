@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.150.0)
+# Crabshell Architecture (v21.151.0)
 
 ## Overview
 
@@ -565,6 +565,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.151.0 | Rules: **Rows and columns** (WORKING RULES) — anything a person sees (text, tables, lists, code blocks, screens, images) keeps rows and columns: items of one kind share the same start edge, width, height and spacing, checked on the rendered result by measuring, fixed with fixed widths or one shared grid, never by deleting content; **Commits** (ADDITIONAL RULES, after the git rule) — when finished, verified changes are still uncommitted, ask the user to commit them and say in one line what the commit would contain. Not added to the per-prompt checklist. `_test-rule-wording.js` W32 and W33 check both lines word for word. |
 | 21.150.0 | Check runner: a mark left by a failed HEAD comparison (fail-before) is cleared only by a `--changed` run that compares again, not by an explicit-id or guard run; new assertion `stdoutMatches` and discovery field `fileAssertions`; V013 removed — its named-output checks now sit on the 11 cross-runtime tests themselves, so changing one test runs only that test |
 | 21.149.0 | Check runner: the dry-run estimate includes the HEAD comparison runs of changed tests; a timed-out check keeps its previous recorded duration; a run with a failing check still refreshes the records of the checks that passed, and a failed check is selected again by the next `--changed` ("failed in the last run") until it passes |
 | 21.148.0 | The Final Verification guard no longer runs a changed-file check it cannot finish in its 60 s limit (estimate over 40 s, e.g. every check after an uncommitted runner change); it allows the write and leaves the check to the commit gate. Subagent context cap 6,000 → 9,500 characters, so an active regressing task scope no longer cuts off the end of the checklist |

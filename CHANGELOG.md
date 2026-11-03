@@ -1,5 +1,14 @@
 # Changelog
 
+## [21.151.0] - 2026-11-02
+
+### feat: rules for rows and columns, and asking to commit
+
+- **Why.** The user: "글을 쓰든 칸을 만들든 뭘하든 오와 열을 맞추라고" — rows and columns were left unaligned in text, tables and screens, checked by the settings or by eye; the only alignment rules were in a game-screen skill and project notes. And: "커밋을 요청을 하라고" — the host's "commit only when the user asks" left finished, verified work uncommitted with nothing said. The user approved both lines as worded.
+- **Rows and columns** (RULES WORKING RULES, after the no-whole-file-rewrite line): "anything a person sees — text, tables, lists, code blocks, screens, images — keeps rows and columns: items of one kind share the same start edge, width, height and spacing. Check it on the rendered result by measuring (pixel edges; display columns, one Korean character = two), not by the settings or by eye. Fix it with fixed widths or one shared grid, never by deleting content."
+- **Commits** (RULES ADDITIONAL RULES, right after the git rule): "when finished, verified changes are still uncommitted, ask the user to commit them and say in one line what the commit would contain; never leave them uncommitted without saying so."
+- **Not in the per-prompt checklist** (the subagent context limit, as in v21.147.0). `_test-rule-wording.js` W32 and W33 check both lines word for word and their position.
+
 ## [21.150.0] - 2026-11-02
 
 ### fix: fail-before marks survive runs that do not compare; V013 split into per-test output checks
