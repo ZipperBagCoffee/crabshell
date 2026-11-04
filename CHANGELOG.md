@@ -1,5 +1,13 @@
 # Changelog
 
+## [21.152.0] - 2026-11-03
+
+### feat: rule for a memory budget before code runs
+
+- **Why.** In another project a decoding function written for CPU was moved onto a GPU whose memory is system memory. It fed the model a new input width every step, and the caching allocator reserved 63 GB for 2.2 GB of live tensors until the system ran short and the run was stopped; the fixes after it were a cap and a stress test, not a design. The user: "메모리 좀 최적화 하면서 코딩하면 안됨?", and asked that it hold in every project. No plugin rule covered memory in code; the user's own memory rule covered running tests and processes only. The user approved the line as worded.
+- **Memory** (RULES WORKING RULES, after Temporary files): "anything you write or run has a memory budget before it runs — compute the peak from the largest input it will get (batch × length × bytes, weights, optimizer and cache state) and keep allocations inside it: no structure that grows with step or iteration count, one buffer reused instead of a new allocation per step, and a hard cap when the hardware is shared or GPU memory is system memory. Before moving a function to another device or a larger input, read how it allocates. Long runs log their peak and stop themselves above the budget. When memory runs out, read the kernel log and the process list before naming a cause."
+- **Not in the per-prompt checklist** (the subagent context limit, as in v21.147.0 and v21.151.0). `_test-rule-wording.js` W34 checks the line word for word and its position.
+
 ## [21.151.0] - 2026-11-02
 
 ### feat: rules for rows and columns, and asking to commit
