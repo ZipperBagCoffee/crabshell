@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.151.0)
+# Crabshell Plugin Structure (v21.152.0)
 
-**Version**: 21.151.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.152.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -470,6 +470,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.152.0 | Rules: **Memory** (WORKING RULES, after Temporary files) — anything Claude writes or runs has a memory budget before it runs: the peak from the largest input it will get (batch × length × bytes, weights, optimizer and cache state), allocations kept inside it (nothing that grows with step or iteration count, one reused buffer instead of a new allocation per step, a hard cap on shared hardware or when GPU memory is system memory); read how a function allocates before moving it to another device or a larger input; long runs log their peak and stop above the budget; a memory shortage is traced in the kernel log and the process list before a cause is named. Not added to the per-prompt checklist. `_test-rule-wording.js` W34 checks the line word for word. |
 | 21.151.0 | Rules: **Rows and columns** (WORKING RULES) — anything a person sees (text, tables, lists, code blocks, screens, images) keeps rows and columns: items of one kind share the same start edge, width, height and spacing, checked on the rendered result by measuring, fixed with fixed widths or one shared grid, never by deleting content; **Commits** (ADDITIONAL RULES, after the git rule) — when finished, verified changes are still uncommitted, ask the user to commit them and say in one line what the commit would contain. Not added to the per-prompt checklist. `_test-rule-wording.js` W32 and W33 check both lines word for word. |
 | 21.150.0 | Check runner: a mark left by a failed HEAD comparison (fail-before) is cleared only by a `--changed` run that compares again, not by an explicit-id or guard run; new assertion `stdoutMatches` and discovery field `fileAssertions`; V013 removed — its named-output checks now sit on the 11 cross-runtime tests themselves, so changing one test runs only that test |
 | 21.149.0 | Check runner: the dry-run estimate includes the HEAD comparison runs of changed tests; a timed-out check keeps its previous recorded duration; a run with a failing check still refreshes the records of the checks that passed, and a failed check is selected again by the next `--changed` ("failed in the last run") until it passes |

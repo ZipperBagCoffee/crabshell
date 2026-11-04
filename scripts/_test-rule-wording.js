@@ -170,6 +170,16 @@ report.check('W16 every verification asks the common-sense question; a weird res
   report.check('W33 additional rules carry the exact ask-to-commit line, right after the git line',
     gitAt >= 0 && additional[gitAt + 1] === commits, gitAt >= 0 ? (additional[gitAt + 1] || '').slice(0, 120) : 'no Git line');
 }
+// v21.152.0 (D141): in another project a CPU decoding function moved to a GPU whose memory is system
+// memory reserved 63 GB for 2.2 GB of live tensors; the user: "메모리 좀 최적화 하면서 코딩하면 안됨?" —
+// a memory budget before code runs, in every project. The line as the user approved it.
+{
+  const working = (RULES.split('### WORKING RULES')[1] || '').split('\n###')[0].split('\n');
+  const memory = '- **Memory:** anything you write or run has a memory budget before it runs — compute the peak from the largest input it will get (batch × length × bytes, weights, optimizer and cache state) and keep allocations inside it: no structure that grows with step or iteration count, one buffer reused instead of a new allocation per step, and a hard cap when the hardware is shared or GPU memory is system memory. Before moving a function to another device or a larger input, read how it allocates. Long runs log their peak and stop themselves above the budget. When memory runs out, read the kernel log and the process list before naming a cause.';
+  const at = working.indexOf(memory);
+  report.check('W34 working rules carry the exact memory-budget line, right after the temporary-files line',
+    at > 0 && working[at - 1].startsWith('- **Temporary files:**'), working.find(line => line.startsWith('- **Memory:**')) || 'no Memory line');
+}
 {
   const workflow = COMPRESSED_CHECKLIST.split('\n').find(line => line.startsWith('- Work that changes files starts in a discussion:')) || '';
   const verification = COMPRESSED_CHECKLIST.split('\n').find(line => line.startsWith('- Verification = ')) || '';
