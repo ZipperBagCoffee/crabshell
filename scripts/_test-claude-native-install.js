@@ -7,6 +7,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { validateSessionStartOutput } = require('./core/memory-context');
+const { STORAGE_ROOT, MEMORY_DIR, SESSION_STATE_DIR } = require('./constants');
 
 const sourceRoot = path.resolve(__dirname, '..');
 const testRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'crabshell claude install '));
@@ -36,12 +37,17 @@ function runClaude(args, cwd = projectRoot, timeout = 30000, requireSuccess = tr
   return result;
 }
 
+// Crabshell's per-session turn record is written on every prompt, questions included
+// (D147: approved contract change); the read-only rule covers the rest of the project.
+const SESSION_STATE = path.join(STORAGE_ROOT, MEMORY_DIR, SESSION_STATE_DIR);
+
 function treeSnapshot(root) {
   const snapshot = {};
   function visit(current, relative = '') {
     for (const entry of fs.readdirSync(current, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
       const childRelative = path.join(relative, entry.name);
       const child = path.join(current, entry.name);
+      if (childRelative === SESSION_STATE) continue;
       if (entry.isDirectory()) {
         snapshot[childRelative] = '<directory>';
         visit(child, childRelative);

@@ -123,14 +123,16 @@ test('content identity: a same-bytes rewrite keeps it, a changed byte does not, 
 test('doc-watchdog: README is a code edit, a ticket is a document update, an excluded path counts as nothing', () => {
   const watchdog = require('./doc-watchdog');
   const root = hookProject('watchdog', { exclude: ['generated/'], entries: [] });
-  const stateFile = path.join(root, '.crabshell', 'memory', 'doc-watchdog.json');
-  const count = () => (JSON.parse(fs.readFileSync(stateFile, 'utf8')).editsSinceDocUpdate || 0);
-  watchdog.recordEdit(edit(root, 'README.md', 'w1'), root);
+  // D147_T004: the edit record is per session; session state needs an id of 8+ characters.
+  const session = 'recstore-session';
+  const sessionEdit = (file, id) => ({ ...edit(root, file, id), session_id: session });
+  const count = () => ((require('./core/session-state').readSessionState(root, session, watchdog.STATE_NAME, {}) || {}).editsSinceDocUpdate || 0);
+  watchdog.recordEdit(sessionEdit('README.md', 'w1'), root);
   assert.strictEqual(count(), 1, 'README edit was not counted as a code edit');
-  watchdog.recordEdit(edit(root, 'generated/out.js', 'w2'), root);
+  watchdog.recordEdit(sessionEdit('generated/out.js', 'w2'), root);
   assert.strictEqual(count(), 1, 'an excluded path was counted');
   write(root, '.crabshell/ticket/D001_T001-x.md', 'x\n');
-  watchdog.recordEdit(edit(root, '.crabshell/ticket/D001_T001-x.md', 'w3'), root);
+  watchdog.recordEdit(sessionEdit('.crabshell/ticket/D001_T001-x.md', 'w3'), root);
   assert.strictEqual(count(), 0, 'a ticket edit did not reset the count');
 });
 

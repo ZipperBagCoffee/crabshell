@@ -1,5 +1,16 @@
 # Changelog
 
+## [21.154.0] - 2026-11-07
+
+### fix: hooks know the turn — one rule block per turn, no "continue" on question turns, the right ticket reminder
+
+- **Why.** In one session the per-turn rule block was added 2–24 times in a single turn (every queued or cross-session message re-ran UserPromptSubmit; 53 of 462 turns had more than one); the Stop hook demanded "continue" after the user asked a question or scolded; and the "Document update pending" reminder named a ticket nobody had started, compared no times and counted another session's edits (D147).
+- **One block per turn.** `scripts/core/turn-id.js` reads the host's turn number (Claude `prompt_id`, Codex `turn_id`; a message arriving mid-turn keeps its turn's number — captured on Claude Code 2.1.319, `scripts/fixtures/hook-payloads/native/claude-UserPromptSubmit-*.json`). `scripts/core/turn-state.js` keeps a per-session turn record; `inject-rules.js` adds the fixed block once per turn, and later prompts of the turn get only the changing notices (memory save, archive summaries, workflow and ticket notices, relevant memory).
+- **Text the user did not write issues no instructions.** `core/turn-intent.js` `userAuthoredText`: another session's message and task reports never count; pasted text counts only when it is all the user sent (paired by id). Another session's message can no longer authorize work.
+- **Stop follows the latest user message.** After an execution request, a later question or reprimand from the user in the same turn ends the turn without "continue" (`completion-control` and `doc-watchdog`); the authorization stays for the next "continue".
+- **Ticket reminder.** `doc-watchdog.js` keeps its edit record per session and reminds only in this session's execution turn, only about unfinished workflow tickets (status from the ticket INDEX) not updated after this session's last code edit, preferring tickets this session wrote; another session's workflow gives none. Message: "Document update pending: {IDs} was not updated after your code edit to {file} at {time}. Add a work log entry to it before ending the turn."
+- **Contract changes.** Question-turn hooks write Crabshell's per-session turn record (`.crabshell/memory/session-state/`) and nothing else; the old shared `doc-watchdog.json` is no longer read. After a question or reprimand the session waits for the user's next request instead of being pushed on ("계속" resumes the authorized work). Per-session records key on the first 8 characters of the session id (as since v21.124.0), so two Codex sessions whose time-ordered ids share that prefix share the turn and doc-watchdog records; Claude ids are random.
+
 ## [21.153.0] - 2026-11-07
 
 ### feat: checks run only when what they read changed; hooks and runner share one view; plans carry a design check

@@ -96,7 +96,7 @@ function main(argv = process.argv.slice(2), options = {}) {
     for (const entry of runnable) if (comparedWithHead(entry)) chosen.add(entry.id);
     plan = { mode: 'changed', selected: runnable.filter(entry => chosen.has(entry.id)).map(entry => entry.id), total, reasons: planned.reasons };
     // D143: heavy checks (declared slow, or a median pass time over slowAfterSeconds)
-    // stay out of routine --changed runs; --slow, --id or a full run includes them. Each
+    // stay out of routine --changed runs; --slow, an entry id argument or a full run includes them. Each
     // is named with whether its inputs changed, how often it ran and when it last failed.
     const slowState = id => {
       if (!planned.reasons[id]) return 'unchanged';

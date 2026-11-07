@@ -63,6 +63,28 @@ test('research and record request', classifyUserIntent('조사해서 문서로 �
 test('read discussion request', classifyUserIntent('d118 확인해봐'), 'question');
 test('explicit read-only constraint', classifyUserIntent('Do not change the code; explain it.'), 'question');
 
+// D147_T001: text the host wraps as not written by the user does not issue instructions.
+console.log('--- Host-wrapped text (D147_T001) ---');
+const { isStopRequest } = require('./core/turn-intent');
+const queuedCapture = require('./fixtures/hook-payloads/native/claude-UserPromptSubmit-queued.json');
+const pasted = (id, body) => `<pasted_content id="${id}">\n${body}\n</pasted_content id="${id}">`;
+const peer = body => `<cross-session-message from="uds:peer" from-name="peer" from-mode="bypass">\n${body}\n</cross-session-message>`;
+const pastedPlan = pasted('c99a', '1. 답 보내기 전에 점검해.\n2. 빠진 시험을 추가하고 구현해.');
+test('pasted plan plus a reprimand is not an execution request (transcript line 9734 shape)',
+  classifyUserIntent(`  ${pastedPlan}\n\n이런 임기응변 하지 말라고`) !== 'execution', true);
+test('pasted text alone is the request', classifyUserIntent(pasted('a1', '이 버그 수정해 주세요')), 'execution');
+test('another session\'s message is not the user\'s request', classifyUserIntent(peer('이 함수 구현해')), 'default');
+test('captured cross-session message is not the user\'s request', classifyUserIntent(queuedCapture.prompt), 'default');
+test('user text next to another session\'s message still counts', classifyUserIntent(`${peer('읽어 봐')}\n고쳐`), 'execution');
+test('a task notification is not the user\'s request', classifyUserIntent('<task-notification>\n<summary>implemented the fix</summary>\n</task-notification>'), 'default');
+test('pasted text ends at its own closing line, not another id\'s',
+  classifyUserIntent(`${pasted('a2', '구현해 </pasted_content id="zz"> 수정해')}\n왜 이렇게 됐어?`), 'question');
+test('an opening line without its closing line is left in place',
+  classifyUserIntent('<pasted_content id="a3">\n이 부분 수정해'), 'execution');
+test('"멈춰" inside pasted text next to user text is not a stop request',
+  isStopRequest(`${pasted('a4', '작업 멈춰')}\n이거 어떻게 생각해?`), false);
+test('"멈춰" in another session\'s message is not a stop request', isStopRequest(peer('작업 멈춰')), false);
+
 console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed`);
 if (failed > 0) {
   console.log('FAIL: some tests failed');

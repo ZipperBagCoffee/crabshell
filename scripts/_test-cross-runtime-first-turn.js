@@ -10,6 +10,9 @@ const {
   validateContextOutput,
 } = require('./core/first-turn-context');
 const { classifyUserIntent, CODEX_DELEGATION } = require('./inject-rules');
+const { STORAGE_ROOT, MEMORY_DIR, SESSION_STATE_DIR } = require('./constants');
+// Compared with forward slashes, as snapshotTree records paths.
+const SESSION_STATE = [STORAGE_ROOT, MEMORY_DIR, SESSION_STATE_DIR].join('/');
 
 const repoRoot = path.resolve(__dirname, '..');
 const claudeEntry = path.join(__dirname, 'inject-rules.js');
@@ -31,6 +34,9 @@ function snapshotTree(root) {
     for (const entry of fs.readdirSync(current, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
       const absolute = path.join(current, entry.name);
       const relative = path.relative(root, absolute).replace(/\\/g, '/');
+      // Crabshell's per-session turn record is written on every prompt, questions included
+      // (D147: approved contract change — the read-only rule covers everything else).
+      if (relative === SESSION_STATE) continue;
       if (entry.isDirectory()) visit(absolute);
       else snapshot[relative] = fs.readFileSync(absolute).toString('base64');
     }
@@ -86,7 +92,9 @@ try {
   const before = snapshotTree(projectRoot);
   const claudeOutput = run(claudeEntry, payload, { CLAUDE_PROJECT_DIR: projectRoot });
   const afterClaude = snapshotTree(projectRoot);
-  const codexOutput = run(codexEntry, payload);
+  // Each host is its own session: one turn's rule block is added once (D147_T002). Session
+  // state is keyed by the first 8 characters of the id, so the ids differ there.
+  const codexOutput = run(codexEntry, { ...payload, session_id: 'codexrun-cross-runtime-fixture' });
   const afterCodex = snapshotTree(projectRoot);
 
   test('question containing an execution word is classified as a question', () => {
