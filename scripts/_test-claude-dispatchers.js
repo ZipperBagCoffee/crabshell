@@ -56,7 +56,8 @@ const OTHER = fwd(path.join(os.homedir(), 'crabshell-test-other-project'));
   fs.mkdirSync(path.join(project, 'src'), { recursive: true });
   fs.writeFileSync(path.join(project, 'src', 'x.js'), 'module.exports = 1;\n');
   h.runHook(root, POST, [], { hook_event_name: 'PostToolUse', session_id: A, tool_name: 'Edit', tool_use_id: 'e1', tool_input: { file_path: fwd(path.join(project, 'src', 'x.js')), old_string: '1', new_string: '2' }, tool_response: {} }, project);
-  const watchdog = h.readJson(h.memoryPath(project, 'doc-watchdog.json'));
+  // D147_T004: the edit record is per session.
+  const watchdog = require('./core/session-state').readSessionState(project, A, require('./doc-watchdog').STATE_NAME, null);
   report.check('D3 a source edit is counted by doc-watchdog', watchdog && watchdog.editsSinceDocUpdate === 1, JSON.stringify(watchdog));
   const verification = h.readJson(h.memoryPath(project, 'verification-state.json'));
   // D143_T013: an edit writes no verification record; which checks it needs comes from the runner.

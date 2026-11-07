@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.153.0)
+# Crabshell Plugin Structure (v21.154.0)
 
-**Version**: 21.153.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.154.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -27,7 +27,7 @@ crabshell/
 │   │   ├── runner-unavailable.json   # Runner modules could not be loaded — named once (v21.153.0)
 │   │   ├── hook-hints.json, command-repeats.json, output-candidates.json, run-snapshots/ # Declaration hints, each shown once (v21.153.0)
 │   │   ├── counter.json              # Legacy PostToolUse counter for payloads without a session id
-│   │   ├── session-state/<sid8>/     # Per-session counter, L1 read position, skill flag (v21.124.0)
+│   │   ├── session-state/<sid8>/     # Per-session counter, L1 read position, skill flag (v21.124.0); turn record and doc-watchdog edits (v21.154.0)
 │   │   ├── project.md                # Preserved legacy description; copied to ../project.md only when absent
 │   │   ├── logs/                     # Refine logs
 │   │   └── sessions/                 # Per-session archive
@@ -109,6 +109,8 @@ crabshell/
 │   ├── core/codex-app-server.js      # Codex JSON-RPC/CLI capability client (v21.104.0)
 │   ├── core/orchestration-policy.js  # 8-field task contract + parent completion policy (v21.105.0)
 │   ├── core/first-turn-context.js     # Shared compact turn contract
+│   ├── core/turn-id.js                # The host's session and turn numbers (prompt_id / turn_id) (v21.154.0)
+│   ├── core/turn-state.js             # Per-session turn record: rule block added, latest user intent (v21.154.0)
 │   ├── core/memory-context.js         # Shared SessionStart selection with preserving legacy-description copy
 │   ├── core/execution-lifecycle.js    # Shared execution-authorized cleanup/reset with host data isolation
 │   ├── core/workflow-context.js       # Restart-safe active D/P/T/W recovery
@@ -158,8 +160,8 @@ crabshell/
 │   ├── _test-inject-rules.js        # inject-rules.js export + behavioral tests (v21.6.0)
 │   ├── _test-counter.js             # counter.js export + subprocess + lock + pruning + offset tests (v21.10.0)
 │   ├── _test-verify-guard.js        # verify-guard.js integration tests — Write/Edit new/existing distinction (v21.16.0)
-│   ├── doc-watchdog.js              # Doc-update omission checks: recordEdit/gateEdit/stopReason, in-project files only (v21.18.0, v21.125.0)
-│   ├── _test-doc-watchdog.js        # doc-watchdog.js 12-test integration suite (v21.18.0)
+│   ├── doc-watchdog.js              # Doc-update omission checks: recordEdit/gateEdit/stopReason, in-project files only, per-session record and unfinished INDEX tickets (v21.18.0, v21.125.0, v21.154.0)
+│   ├── _test-doc-watchdog.js        # doc-watchdog.js integration suite: per-session record, INDEX status, owner, execution turn (v21.18.0, v21.154.0)
 │   ├── _test-restriction-controls.js # Lifted restrictions paired with writes that stay blocked (v21.125.0)
 │   ├── _test-changed-runner.js      # Discovery and --changed selection on fixtures (git-ignored files, same-content rewrites); the real-records case moved to V060 (v21.153.0)
 │   ├── _test-gate-required-checks.js # Only manifest tools commands are required checks; git commit is never blocked (v21.126.0, v21.153.0)
@@ -180,6 +182,8 @@ crabshell/
 │   ├── _test-declaration-guidance.js # Hints to declare inputs/slow/outputs; repeated undeclared commands; --explain (v21.153.0)
 │   ├── _test-hook-fail-open.js      # Hooks without the runner's modules: path guard still decides, null is no evidence (v21.153.0)
 │   ├── _test-skill-text-contract.js # Skill texts match the plugin: removed steps absent, design lines, every manifest setting documented (v21.153.0)
+│   ├── _test-turn-state.js          # One rule block per host turn; latest user intent (real captured payloads) (v21.154.0)
+│   ├── _test-stop-latest-user.js    # A question or reprimand after a request ends the turn without "continue" (v21.154.0)
 │   ├── _test-single-source.js        # One definition per shared value across shipped scripts (v21.127.0)
 │   ├── _test-rules-and-injection.js  # Advisor line and unified rule wording; where the project description is injected (v21.127.0)
 │   ├── _test-d-parent-tickets.js     # Guards, the Codex document tool and phase changes treat D###_T### like P###_T### (v21.130.0)
@@ -501,6 +505,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.154.0 | Hooks know the turn (Claude `prompt_id`, Codex `turn_id`): the per-turn rule block is added once per turn even when messages queue up; text the user did not write (another session's message, task reports, pasted text next to the user's own words) issues no instructions and cannot authorize work; after a request, a later question or reprimand ends the turn without a "continue"; the ticket-update reminder uses only this session's edits and the unfinished tickets in the ticket INDEX. |
 | 21.153.0 | Checks run only when what they read changed. Nothing blocks a commit, writing a Final Verification runs nothing, and comparing a changed test with HEAD is opt-in (`--fail-before`). The runner (now a launcher and modules) reruns a check only when its fingerprint — entry run fields, program, decision code (comment lines excluded), platform, input contents — is not among its passes; inputs are traced (Node), declared (`inputs`) or unknown (whole project, that check only); `--changed` runs the last failure first, then new, then quickest, stops at a new failure, retries a check that fails on inputs it passed with (`Flaky:`), runs `slow` checks only with `--slow` or at release, and `--explain` prints why each check would run. Hooks know shell calls and file writes by their shape, count only manifest-declared commands (`wrappers`, environment prefixes), answer a hand rerun of a passed check from its record (`CRABSHELL_RERUN=1` runs it anyway), hint when an entry needs `inputs`/`slow`/`outputs`, share the runner's project view (git-ignored folders skipped: a 20,000-file folder cost each hook call a second, now under 2 ms) and stay fail-open without the runner's modules. Each session start keeps a project's runner copy current. Plans carry five design lines before their first ticket, and post-build verification is one check run after the last edit. RULES are shorter (2,080 → 1,792 words) with Skills and Code lines; the per-prompt checklist asks "Is this your best?". After updating, every non-slow check runs once; a package.json `test` check moves to manifest `tools`. |
 | 21.152.0 | Rules: **Memory** (WORKING RULES, after Temporary files) — anything Claude writes or runs has a memory budget before it runs: the peak from the largest input it will get (batch × length × bytes, weights, optimizer and cache state), allocations kept inside it (nothing that grows with step or iteration count, one reused buffer instead of a new allocation per step, a hard cap on shared hardware or when GPU memory is system memory); read how a function allocates before moving it to another device or a larger input; long runs log their peak and stop above the budget; a memory shortage is traced in the kernel log and the process list before a cause is named. Not added to the per-prompt checklist. `_test-rule-wording.js` W34 checks the line word for word. |
 | 21.151.0 | Rules: **Rows and columns** (WORKING RULES) — anything a person sees (text, tables, lists, code blocks, screens, images) keeps rows and columns: items of one kind share the same start edge, width, height and spacing, checked on the rendered result by measuring, fixed with fixed widths or one shared grid, never by deleting content; **Commits** (ADDITIONAL RULES, after the git rule) — when finished, verified changes are still uncommitted, ask the user to commit them and say in one line what the commit would contain. Not added to the per-prompt checklist. `_test-rule-wording.js` W32 and W33 check both lines word for word. |

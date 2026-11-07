@@ -34,8 +34,14 @@ function assertEqual(actual, expected, label) {
 
 // --- Integration test helper ---
 
+// D147_T004: the edit record is per session (core/session-state), so every hook call here
+// carries one session and one turn, as the host sends them.
+const { MEMORY_DIR, SESSION_STATE_DIR } = require('./constants');
+const TEST_SESSION = 'dwtest01-session';
+const TEST_TURN = 'dw-turn-1';
+
 function runScript(mode, hookData, env) {
-  const json = JSON.stringify(hookData);
+  const json = JSON.stringify({ session_id: TEST_SESSION, prompt_id: TEST_TURN, ...hookData });
   try {
     const result = execSync(
       `"${nodePath}" "${scriptPath}" ${mode}`,
@@ -67,18 +73,45 @@ function cleanupTmpProject(tmpDir) {
   try { fs.rmSync(tmpDir, { recursive: true }); } catch {}
 }
 
-function readWatchdogState(memDir) {
-  const f = path.join(memDir, 'doc-watchdog.json');
-  try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return null; }
+function sessionStateFile(memDir, sessionId = TEST_SESSION) {
+  return path.join(memDir, SESSION_STATE_DIR, sessionId.slice(0, 8), 'doc-watchdog.json');
 }
 
-function writeRegressingState(memDir, active, ticketIds) {
-  const state = { active, ticketIds: ticketIds || [], startedAt: new Date().toISOString() };
+function readWatchdogState(memDir, sessionId) {
+  try { return JSON.parse(fs.readFileSync(sessionStateFile(memDir, sessionId), 'utf8')); } catch { return null; }
+}
+
+function writeRegressingState(memDir, active, ticketIds, sessionId) {
+  const state = { active, ticketIds: ticketIds || [], startedAt: new Date().toISOString(), ...(sessionId ? { sessionId } : {}) };
   fs.writeFileSync(path.join(memDir, 'regressing-state.json'), JSON.stringify(state, null, 2));
 }
 
-function writeWatchdogState(memDir, state) {
-  fs.writeFileSync(path.join(memDir, 'doc-watchdog.json'), JSON.stringify(state, null, 2));
+function writeWatchdogState(memDir, state, sessionId) {
+  const file = sessionStateFile(memDir, sessionId);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify(state, null, 2));
+}
+
+// This session asked for work in this turn (as inject-rules records it on UserPromptSubmit).
+function authorize(tmpDir, sessionId = TEST_SESSION, turn = TEST_TURN, prompt = '고쳐') {
+  const ids = { session_id: sessionId, prompt_id: turn };
+  require('./core/completion-control').noteExecutionAuthorization(tmpDir, { ...ids, prompt });
+  require('./core/turn-state').notePrompt(tmpDir, ids, { intent: 'execution', userAuthored: true, injecting: true });
+}
+
+// Ticket INDEX rows: [[id, status], ...]
+function writeTicketIndex(ticketDir, rows) {
+  const lines = ['# Ticket Index', '', '| ID | Title | Status | Created | Parent |', '|----|-------|--------|---------|--------|',
+    ...rows.map(([id, status]) => `| [[${id}-test\\|${id}]] | t | ${status} | 2026-11-07 | |`)];
+  fs.writeFileSync(path.join(ticketDir, 'INDEX.md'), lines.join('\n') + '\n');
+}
+
+function writeTicket(ticketDir, id, { logs = 1, mtime = null } = {}) {
+  const file = path.join(ticketDir, `${id}-test.md`);
+  const entries = Array.from({ length: logs }, (_, i) => `### [2026-11-07 10:0${i}] Entry ${i}\n`).join('\n');
+  fs.writeFileSync(file, `---\nid: ${id}\nstatus: in-progress\n---\n# ${id}\n\n## Log\n\n${entries}`);
+  if (mtime) fs.utimesSync(file, mtime, mtime);
+  return file;
 }
 
 // ============================================================
@@ -299,11 +332,16 @@ test('stop: regressing + ticket with only "Created" log entry → exit 2 block',
   const { tmpDir, memDir, ticketDir } = makeTmpProject();
   try {
     writeRegressingState(memDir, true, ['P999_T001']);
-    writeWatchdogState(memDir, { editsSinceDocUpdate: 2, lastCodeEditAt: new Date().toISOString(), lastCodeEditFile: 'scripts/foo.js' });
+    authorize(tmpDir);
+    writeTicketIndex(ticketDir, [['P999_T001', 'in-progress']]);
 
-    // Ticket with only "Created" entry (single log timestamp)
+    // Ticket with only "Created" entry (single log timestamp), written before the code edit
     const ticketContent = `# P999_T001 - Test Ticket\n\n## Work Log\n\n### [2026-04-03 10:00]\n\nCreated.\n`;
-    fs.writeFileSync(path.join(ticketDir, 'P999_T001-test.md'), ticketContent, 'utf8');
+    const ticketFile = path.join(ticketDir, 'P999_T001-test.md');
+    fs.writeFileSync(ticketFile, ticketContent, 'utf8');
+    const earlier = new Date(Date.now() - 60000);
+    fs.utimesSync(ticketFile, earlier, earlier);
+    writeWatchdogState(memDir, { editsSinceDocUpdate: 2, lastCodeEditAt: new Date().toISOString(), lastCodeEditFile: 'scripts/foo.js', docsWritten: {} });
 
     const hookData = { stop_hook_active: false };
     const result = runScript('stop', hookData, { CLAUDE_PROJECT_DIR: tmpDir });
@@ -349,6 +387,119 @@ test('stop: stop_hook_active → exit 0', () => {
   } finally {
     cleanupTmpProject(tmpDir);
   }
+});
+
+// ============================================================
+// D147_T004: per-session record, INDEX status, logged-after-edit, owner and authorization
+// ============================================================
+
+const { stopReason } = require('./doc-watchdog');
+const stopIds = { session_id: TEST_SESSION, prompt_id: TEST_TURN, stop_hook_active: false };
+const before = () => new Date(Date.now() - 60000);
+function codeEdit(memDir, sessionId, extra = {}) {
+  writeWatchdogState(memDir, { editsSinceDocUpdate: 1, lastCodeEditAt: new Date().toISOString(), lastCodeEditFile: 'scripts/foo.js', docsWritten: {}, ...extra }, sessionId);
+}
+
+test('T004: another session\'s code edit does not remind this session', () => {
+  const { tmpDir, memDir, ticketDir } = makeTmpProject();
+  try {
+    writeRegressingState(memDir, true, ['D900_T001']);
+    writeTicketIndex(ticketDir, [['D900_T001', 'in-progress']]);
+    writeTicket(ticketDir, 'D900_T001', { mtime: before() });
+    authorize(tmpDir);
+    // The edit is recorded the way the old shared file kept it, and under another session.
+    fs.writeFileSync(path.join(memDir, 'doc-watchdog.json'), JSON.stringify({ editsSinceDocUpdate: 1, lastCodeEditAt: new Date().toISOString(), lastCodeEditFile: 'scripts/foo.js' }));
+    codeEdit(memDir, 'otherses-session');
+    assertEqual(stopReason(stopIds, tmpDir), null, 'no reminder');
+  } finally { cleanupTmpProject(tmpDir); }
+});
+
+test('T004: a ticket the INDEX marks verified is not a candidate, even if its file says in-progress', () => {
+  const { tmpDir, memDir, ticketDir } = makeTmpProject();
+  try {
+    writeRegressingState(memDir, true, ['D900_T001']);
+    writeTicketIndex(ticketDir, [['D900_T001', 'verified']]);
+    writeTicket(ticketDir, 'D900_T001', { mtime: before() });
+    authorize(tmpDir);
+    codeEdit(memDir);
+    assertEqual(stopReason(stopIds, tmpDir), null, 'no reminder');
+  } finally { cleanupTmpProject(tmpDir); }
+});
+
+test('T004: an unfinished ticket with several log entries but none after the code edit is named', () => {
+  const { tmpDir, memDir, ticketDir } = makeTmpProject();
+  try {
+    writeRegressingState(memDir, true, ['D900_T001']);
+    writeTicketIndex(ticketDir, [['D900_T001', 'in-progress']]);
+    writeTicket(ticketDir, 'D900_T001', { logs: 3, mtime: before() });
+    authorize(tmpDir);
+    codeEdit(memDir);
+    const reason = stopReason(stopIds, tmpDir) || '';
+    assert(reason.includes('D900_T001'), `names the ticket: ${reason}`);
+    assert(reason.includes('scripts/foo.js'), 'names the edited file');
+  } finally { cleanupTmpProject(tmpDir); }
+});
+
+test('T004: a ticket updated after the code edit is not named', () => {
+  const { tmpDir, memDir, ticketDir } = makeTmpProject();
+  try {
+    writeRegressingState(memDir, true, ['D900_T001']);
+    writeTicketIndex(ticketDir, [['D900_T001', 'in-progress']]);
+    authorize(tmpDir);
+    codeEdit(memDir, TEST_SESSION, { lastCodeEditAt: before().toISOString() });
+    writeTicket(ticketDir, 'D900_T001'); // written now, after the edit
+    assertEqual(stopReason(stopIds, tmpDir), null, 'no reminder');
+  } finally { cleanupTmpProject(tmpDir); }
+});
+
+test('T004: when this session wrote one of the tickets, an idle in-progress ticket is not named', () => {
+  const { tmpDir, memDir, ticketDir } = makeTmpProject();
+  try {
+    writeRegressingState(memDir, true, ['D900_T001', 'D900_T002']);
+    writeTicketIndex(ticketDir, [['D900_T001', 'in-progress'], ['D900_T002', 'in-progress']]);
+    writeTicket(ticketDir, 'D900_T001', { mtime: before() });
+    writeTicket(ticketDir, 'D900_T002', { mtime: before() });
+    authorize(tmpDir);
+    codeEdit(memDir, TEST_SESSION, { docsWritten: { '.crabshell/ticket/D900_T001-test.md': new Date(Date.now() - 120000).toISOString() } });
+    const reason = stopReason(stopIds, tmpDir) || '';
+    assert(reason.includes('D900_T001'), `names the session's ticket: ${reason}`);
+    assert(!reason.includes('D900_T002'), 'idle ticket not named');
+  } finally { cleanupTmpProject(tmpDir); }
+});
+
+test('T004: a workflow owned by another session gives no reminder', () => {
+  const { tmpDir, memDir, ticketDir } = makeTmpProject();
+  try {
+    writeRegressingState(memDir, true, ['D900_T001'], 'otherses-session');
+    writeTicketIndex(ticketDir, [['D900_T001', 'in-progress']]);
+    writeTicket(ticketDir, 'D900_T001', { mtime: before() });
+    authorize(tmpDir);
+    codeEdit(memDir);
+    assertEqual(stopReason(stopIds, tmpDir), null, 'no reminder');
+  } finally { cleanupTmpProject(tmpDir); }
+});
+
+test('T004: a turn without an execution request gives no reminder', () => {
+  const { tmpDir, memDir, ticketDir } = makeTmpProject();
+  try {
+    writeRegressingState(memDir, true, ['D900_T001']);
+    writeTicketIndex(ticketDir, [['D900_T001', 'in-progress']]);
+    writeTicket(ticketDir, 'D900_T001', { mtime: before() });
+    codeEdit(memDir);
+    assertEqual(stopReason(stopIds, tmpDir), null, 'not authorized → no reminder');
+    authorize(tmpDir);
+    require('./core/turn-state').notePrompt(tmpDir, { session_id: TEST_SESSION, prompt_id: TEST_TURN }, { intent: 'question', userAuthored: true, injecting: true });
+    assertEqual(stopReason(stopIds, tmpDir), null, 'latest user message is a question → no reminder');
+  } finally { cleanupTmpProject(tmpDir); }
+});
+
+test('T004: a recorded edit needs a session; a call without one records nothing', () => {
+  const { tmpDir, memDir } = makeTmpProject();
+  try {
+    require('./doc-watchdog').recordEdit({ tool_name: 'Write', tool_input: { file_path: path.join(tmpDir, 'scripts', 'foo.js'), content: 'x' } }, tmpDir);
+    assertEqual(fs.existsSync(path.join(memDir, SESSION_STATE_DIR)), false, 'no session state');
+    assertEqual(fs.existsSync(path.join(memDir, 'doc-watchdog.json')), false, 'no shared file');
+  } finally { cleanupTmpProject(tmpDir); }
 });
 
 // ============================================================

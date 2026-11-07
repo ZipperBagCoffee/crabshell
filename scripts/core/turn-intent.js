@@ -6,10 +6,34 @@ const KOREAN_QUESTION_PATTERNS = /(?:\?|？)|(?:뭐|왜|어떻게|무슨|어디|
 // "do" is interrogative ("do you...", "do we...") but NOT the imperative "do it"
 const ENGLISH_QUESTION_PATTERNS = /(?:\?|^(?:what|why|how|which|where|when|who|is|are|does|do(?!\s+it\b)|can|could|would|should)\b|\b(?:explain|tell me|what does)\b)/i;
 
+// Text the host wraps as not written by the user (D147_T001). Every shape is the host's:
+// another session's message arrives in <cross-session-message …> (captured on Claude Code
+// 2.1.319, scripts/fixtures/hook-payloads/native/claude-UserPromptSubmit-queued.json), a
+// background task's report in <task-notification>, and pasted text between a
+// <pasted_content id="X"> line and a </pasted_content id="X"> line
+// (https://code.claude.com/docs/en/hooks, "UserPromptSubmit input").
+const HOST_WRAPPERS = {
+  notFromUser: [
+    /<cross-session-message\b[^>]*>[\s\S]*?<\/cross-session-message>/g,
+    /<task-notification>[\s\S]*?<\/task-notification>/g,
+  ],
+  // Paired by id, so a closing line quoted inside the pasted text does not end it early.
+  pastedByUser: /<pasted_content id="([^"]*)">[\s\S]*?<\/pasted_content id="\1">/g,
+};
+
+// What the user wrote: another session's message and task reports never count; pasted
+// text counts only when it is all the user sent (the pasted text is then the request).
+function userAuthoredText(prompt) {
+  let text = String(prompt || '');
+  for (const pattern of HOST_WRAPPERS.notFromUser) text = text.replace(pattern, ' ');
+  const withoutPasted = text.replace(HOST_WRAPPERS.pastedByUser, ' ');
+  return withoutPasted.trim() ? withoutPasted : text;
+}
+
 function unquotedPrompt(userPrompt) {
   // This is a conservative lifecycle hint, not permission to exceed the user's
   // scope. Quoted references and punctuation alone do not issue instructions.
-  return String(userPrompt || '').replace(/```[\s\S]*?```/g, ' ')
+  return userAuthoredText(userPrompt).replace(/```[\s\S]*?```/g, ' ')
     .replace(/`[^`]*`/g, ' ').replace(/"(?:\\.|[^"\\])*"/g, ' ')
     .replace(/(?<!\w)'(?:\\.|[^'\\])*'/g, ' ').replace(/[“‘][^”’]*[”’]/g, ' ');
 }
@@ -52,6 +76,8 @@ module.exports = {
   ENGLISH_QUESTION_PATTERNS,
   KOREAN_EXECUTION_PATTERNS,
   KOREAN_QUESTION_PATTERNS,
+  HOST_WRAPPERS,
   classifyUserIntent,
   isStopRequest,
+  userAuthoredText,
 };

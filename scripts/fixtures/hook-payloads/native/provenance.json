@@ -56,6 +56,27 @@
       "version": "2.1.261",
       "source": ".crabshell/verification/D118/native-tools-Bu1TDL/project/.crabshell/captures/claude-PreToolUse-Bash-1788591865190-b6332953-da8a-41f4-b5d4-d88cd9e2290b.input.json",
       "sha256": "e9b82fabb28855fc40440ad44ef3be2c1f31d6be0a6cfc7b525d03a0363f648b"
+    },
+    {
+      "file": "claude-UserPromptSubmit-turn-start.json",
+      "host": "claude",
+      "version": "2.1.319",
+      "source": "interactive session capture via CRABSHELL_HOOK_CAPTURE_DIR (D147, 2026-11-07); claude-UserPromptSubmit-unknown-1794092458943-f94fb23c-466a-4213-b173-454441c8b3e6.input.json",
+      "sha256": "3b98042ee6b6683491e9b7e77fc14f6df34ccc0a7ffa7706f6cb1177345a0c0c"
+    },
+    {
+      "file": "claude-UserPromptSubmit-queued.json",
+      "host": "claude",
+      "version": "2.1.319",
+      "source": "interactive session capture via CRABSHELL_HOOK_CAPTURE_DIR (D147, 2026-11-07); claude-UserPromptSubmit-unknown-1794092545446-ef658ded-54a1-4ff1-be52-aa87fafc4034.input.json",
+      "sha256": "a9188b828710530bc8dbf7bc5e061e6bba0d02812e78db826008d7bfcb9588f5"
+    },
+    {
+      "file": "claude-Stop-turn-end.json",
+      "host": "claude",
+      "version": "2.1.319",
+      "source": "interactive session capture via CRABSHELL_HOOK_CAPTURE_DIR (D147, 2026-11-07); claude-Stop-unknown-1794092458525-e6311c9d-eeab-4ad4-ac6a-d35f55532165.input.json",
+      "sha256": "5469066a530b91fb1e58c2c9ccce4f3fe825fef61a4e176591e7d05f91b72f9c"
     }
   ]
 }

@@ -233,7 +233,8 @@ test('a notebook cell edit, a renamed patch tool and an MCP write each count as 
   runHook(['adapters', 'claude', 'post-tool-use.js'], root, { hook_event_name: 'PostToolUse', session_id: 'shape-session', cwd: root,
     tool_name: 'mcp__fs__write_file', tool_input: { path: path.join(root, 'tool.js'), content: 'x' }, tool_response: { content: [{ type: 'text', text: 'ok' }] } });
   // doc-watchdog counts code edits since the last document update, whatever the tool.
-  const watchdog = JSON.parse(fs.readFileSync(path.join(root, '.crabshell', 'memory', 'doc-watchdog.json'), 'utf8'));
+  // D147_T004: the edit record is per session.
+  const watchdog = require('./core/session-state').readSessionState(root, 'shape-session', require('./doc-watchdog').STATE_NAME, {});
   assert.strictEqual(watchdog.editsSinceDocUpdate, 3, JSON.stringify(watchdog));
   assert.ok(String(watchdog.lastCodeEditFile).replace(/\\/g, '/').endsWith('tool.js'), JSON.stringify(watchdog));
 });

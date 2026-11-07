@@ -7,6 +7,7 @@ const { getLastUserMessage } = require('../transcript-utils');
 const { getStorageRoot, readJsonOrDefault, writeJson } = require('../utils');
 const { SESSION_STATE_MAX_AGE_MS } = require('../constants');
 const { classifyUserIntent } = require('./turn-intent');
+const { turnId, sessionId } = require('./turn-id');
 const { commandObservation, checkKeyForCommand } = require('./command-observation');
 // The project's files as its runner sees them, identified by content (one definition of
 // the files for hooks and checks; a rewrite with the same bytes keeps the evidence).
@@ -99,13 +100,6 @@ function textHash(value) {
   return crypto.createHash('sha256').update(String(value || '').trim()).digest('hex');
 }
 
-function turnId(payload = {}) {
-  return payload.turn_id || payload.turnId || payload.prompt_id || null;
-}
-
-function sessionId(payload = {}) {
-  return payload.session_id || payload.sessionId || null;
-}
 
 // A regressing run owned by another session does not make this session continue;
 // this session's own worklogs and unowned workflows still do.
@@ -249,6 +243,10 @@ function decideStopUnlocked(projectDir, payload = {}) {
   if (payload.stop_hook_active === true) return { action: 'allow', reason: 'continuation-already-active' };
   const state = invalidateChangedObservation(projectDir, loadState(projectDir, payload), null, payload);
   if (!isExecutionAuthorized(state, payload, 'Stop')) return { action: 'allow', reason: 'not-authorized' };
+  // The latest text the user wrote in this turn decides (D147_T003): after a question or a
+  // reprimand the turn ends; the authorization stays for the user's next "continue".
+  const latest = require('./turn-state').latestUserIntent(projectDir, payload);
+  if (latest && latest !== 'execution') return { action: 'allow', reason: 'latest-user-message-not-execution' };
 
   if (state.pendingParentEvidence && !state.observation) {
     return block('A child report is not completion evidence. The parent must run the most direct acceptance check and inspect its actual result before claiming completion.');

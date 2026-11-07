@@ -22,7 +22,8 @@ const {
   buildFirstTurnContext,
   createContextOutput,
 } = require('./core/first-turn-context');
-const { classifyUserIntent } = require('./core/turn-intent');
+const { classifyUserIntent, userAuthoredText } = require('./core/turn-intent');
+const { notePrompt } = require('./core/turn-state');
 const { runExecutionLifecycle } = require('./core/execution-lifecycle');
 const { buildWorkflowContext } = require('./core/workflow-context');
 const { noteExecutionAuthorization, interruptWork } = require('./core/completion-control');
@@ -572,8 +573,13 @@ async function main(options = {}) {
     };
     if (!mayMutateState || !tryWithMemoryIndex(memoryDir, () => readAndUpdate(true)).ran) readAndUpdate(false);
 
-    // Check if should inject
-    if (count % frequency === 0 || frequency === 1) {
+    // Check if should inject. The turn record is kept for every prompt (the Stop hooks read
+    // the latest user intent); the fixed rule block is added once per host turn (D147_T002).
+    const injecting = count % frequency === 0 || frequency === 1;
+    const { sameTurn } = notePrompt(projectDir, hookData, {
+      intent, userAuthored: Boolean(userAuthoredText(userPrompt).trim()), injecting,
+    });
+    if (injecting) {
       // Check for pending delta - requires BOTH file existence AND deltaReady flag
       // deltaReady is set by counter.js when counter >= interval (or at session end)
       // This prevents stale delta files from triggering on every prompt
@@ -585,11 +591,13 @@ async function main(options = {}) {
       // Check for pending rotation summaries
       const pendingRotations = checkRotationPending(projectDir);
 
-      let context = buildFirstTurnContext(projectDir);
+      // A later prompt of the same turn already has the fixed block in context: only the
+      // changing notices below are added.
+      let context = sameTurn ? '' : buildFirstTurnContext(projectDir);
 
       // Codex delegation guidance — Claude host, execution turns only (I083 R2:
       // delegation guidance is only actionable when work is authorized)
-      if ((options.host || 'claude') === 'claude' && intent === 'execution') {
+      if (!sameTurn && (options.host || 'claude') === 'claude' && intent === 'execution') {
         context += CODEX_DELEGATION;
       }
 
@@ -617,7 +625,7 @@ async function main(options = {}) {
       }
 
       // Risk-based delegation reminder (after regressing reminder, before memory snippets)
-      if (shouldInjectDelegationReminder(userPrompt, !!workflowReminder)) {
+      if (!sameTurn && shouldInjectDelegationReminder(userPrompt, !!workflowReminder)) {
         context += DELEGATION_REMINDER;
       }
 
@@ -630,9 +638,9 @@ async function main(options = {}) {
       // Pressure levels are tracked for telemetry only — no model-visible
       // injection (I083 R4, retired v21.113.0).
 
-      // Output rules via additionalContext (hidden from user, seen by Claude)
-      const output = createContextOutput('UserPromptSubmit', context);
-      console.log(JSON.stringify(output));
+      // Output rules via additionalContext (hidden from user, seen by Claude); nothing at
+      // all when a later prompt of the turn has no changing notice.
+      if (context.trim()) console.log(JSON.stringify(createContextOutput('UserPromptSubmit', context)));
 
       // Explicit trigger patterns to stderr (visible to Claude)
       if (hasPendingDelta && claudeHost) {

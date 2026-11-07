@@ -85,7 +85,9 @@ const stopHook = project => h.runHook(root, 'completion-controller.js', [], { ho
   fs.mkdirSync(path.join(project, 'src'), { recursive: true });
   fs.writeFileSync(path.join(project, 'src', 'x.js'), 'module.exports = 1;\n');
   record(project, path.join(project, 'src', 'x.js'));
-  const result = stopHook(project);
+  // D147_T004: the reminder belongs to this session's execution turn — the user asked for work.
+  require('./core/completion-control').noteExecutionAuthorization(project, { session_id: A, prompt_id: 'dw-turn', prompt: 'Implement the fixture change.' });
+  const result = h.runHook(root, 'completion-controller.js', [], { hook_event_name: 'Stop', session_id: A, prompt_id: 'dw-turn', stop_hook_active: false }, project);
   report.check('DWc1 control: an in-project source edit with no ticket work log still makes Stop ask', result.status === 2 && /Document update pending/.test(result.stdout + result.stderr), `exit=${result.status}`);
 }
 {
