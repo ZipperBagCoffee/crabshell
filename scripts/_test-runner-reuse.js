@@ -8,6 +8,7 @@ const { spawnSync } = require('child_process');
 const h = require('./testlib/hook-harness');
 const source = process.env.CRABSHELL_TEST_RUNNER || path.join(__dirname, '..', 'skills', 'verifying', 'scripts', 'run-verify.js');
 const api = require(source);
+const { copyRunner } = require('../skills/verifying/scripts/runner/install');
 const root = h.makeWorkRoot('runner-reuse');
 const report = h.createReporter('runner-reuse');
 const check = (name, fn) => {
@@ -41,7 +42,7 @@ function fixture(name, entries = [entry('A')]) {
     "console.log('PASS fixture');",
   ].join('\n'));
   write(dir, '.crabshell/verification/manifest.json', JSON.stringify({ schemaVersion: 2, entries }));
-  fs.copyFileSync(source, path.join(dir, '.crabshell/verification/run-verify.js'));
+  copyRunner(source, path.join(dir, '.crabshell/verification'));
   return dir;
 }
 const mapFile = dir => path.join(dir, '.crabshell/verification/test-map.json');
@@ -61,9 +62,22 @@ function run(dir, args = [], extraEnv = {}) {
   return { ...result, results: match ? JSON.parse(match[0])
     : result.stdout.startsWith('No checks selected') ? [] : readJson(resultFile(dir)) || [] };
 }
-const dry = (dir, files = 'input.data', args = []) => {
-  const result = run(dir, ['--changed', '--files', files, '--dry-run', ...args]);
-  return JSON.parse(result.stdout);
+// D143_T009: checks are chosen by the content of their inputs, so a change is a real
+// edit. Each listed file (comma-separated) gets one more line, or is created when it
+// does not exist, for the dry run; afterwards its bytes are put back (or it is removed).
+const dry = (dir, files = null, args = []) => {
+  const undo = [];
+  for (const rel of (files ? files.split(',') : []).filter(Boolean)) {
+    const file = path.join(dir, rel);
+    if (fs.existsSync(file)) { undo.push([file, fs.readFileSync(file)]); fs.appendFileSync(file, '\n'); }
+    else { undo.push([file, null]); write(dir, rel, 'new\n'); }
+  }
+  try {
+    const result = run(dir, ['--changed', '--dry-run', ...args]);
+    return JSON.parse(result.stdout);
+  } finally {
+    for (const [file, bytes] of undo) { if (bytes) fs.writeFileSync(file, bytes); else fs.rmSync(file, { force: true }); }
+  }
 };
 const updateManifest = (dir, update) => {
   const manifest = readJson(manifestFile(dir));
@@ -71,18 +85,35 @@ const updateManifest = (dir, update) => {
   fs.writeFileSync(manifestFile(dir), JSON.stringify(manifest));
 };
 
-// Inspect private helpers without adding a test API to the portable runner.
-// path.win32 exercises extended-path handling on every host, not just Windows.
+// Inspect private helpers without adding a test API to the portable runner: the
+// runner's modules (runner/ beside the launcher) are loaded into a fresh context whose
+// built-in modules, process and console can be replaced. path.win32 exercises
+// extended-path handling on every host, not just Windows.
 function internals(overrides = {}) {
-  const mod = { exports: {} };
-  vm.runInNewContext(fs.readFileSync(source, 'utf8') + '\nmodule.exports = { passKey, readTrace, printResults };', {
-    module: mod, exports: mod.exports, __filename: source,
-    __dirname: overrides.dirname || path.dirname(source),
-    require: name => Object.hasOwn(overrides, name) ? overrides[name] : require(name),
-    process: overrides.process || { ...process, env: { ...process.env, CRABSHELL_VERIFY_JSON: '' } },
-    console: overrides.console || console, Buffer,
-  }, { filename: source });
-  return mod.exports;
+  const runnerDir = path.join(path.dirname(source), 'runner');
+  const loaded = new Map();
+  const load = file => {
+    if (loaded.has(file)) return loaded.get(file).exports;
+    const mod = { exports: {} };
+    loaded.set(file, mod);
+    vm.runInNewContext(fs.readFileSync(file, 'utf8'), {
+      module: mod, exports: mod.exports, __filename: file, __dirname: path.dirname(file),
+      require: name => (name.startsWith('./') || name.startsWith('../'))
+        ? load(require.resolve(path.resolve(path.dirname(file), name)))
+        : Object.hasOwn(overrides, name) ? overrides[name] : require(name),
+      process: overrides.process || { ...process, env: { ...process.env, CRABSHELL_VERIFY_JSON: '' } },
+      console: overrides.console || console, Buffer,
+    }, { filename: file });
+    return mod.exports;
+  };
+  const { printResults } = load(path.join(runnerDir, 'output.js'));
+  // The launcher writes last-run.json beside itself; overrides.dirname stands for that folder.
+  const resultsPath = path.join(overrides.dirname || path.dirname(source), 'last-run.json');
+  return {
+    entryFingerprint: load(path.join(runnerDir, 'fingerprint.js')).entryFingerprint,
+    readTrace: load(path.join(runnerDir, 'trace.js')).readTrace,
+    printResults: (results, options) => printResults(results, { resultsPath, ...options }),
+  };
 }
 
 check('runner accepts reuse and JSON switches', () => {
@@ -102,7 +133,7 @@ check('run duration and pass key persist without replacing duration on reuse', (
   const record = readJson(mapFile(main)).entries.A;
   assert(first.results[0].durationMs > 0);
   assert.equal(record.lastDurationMs, first.results[0].durationMs);
-  assert.match(record.passKey, /^[a-f0-9]{64}$/);
+  assert.match(record.passHistory[0], /^[a-f0-9]{64}$/);
   assert(Number.isFinite(Date.parse(record.passedAt)));
 });
 check('default stdout is summary only and full array is written beside runner', () => {
@@ -123,22 +154,39 @@ check('environment JSON mode prints current results and preserves the previous f
 check('--json prints the array too', () => {
   const result = run(main, ['--json']); assert.equal(result.status, 0); assert.match(result.stdout, /^\[/);
 });
+// Each case starts from its own fixture: a pass is reused for any input state it has
+// passed on before (D143_T009 pass history), so only a state never seen must run.
 for (const [name, mutate, prepare] of [
   ['recorded byte', dir => write(dir, 'input.data', 'b')],
   ['test byte', dir => fs.appendFileSync(path.join(dir, 'scripts/_test-A.js'), '\n')],
   ['manifest entry', dir => updateManifest(dir, m => { m.entries[0].timeout += 1; })],
-  ['runner byte', dir => fs.appendFileSync(path.join(dir, '.crabshell/verification/run-verify.js'), '\n')],
+  // D143_T009 (approved contract change): the runner modules that decide results count;
+  // the launcher only finds them.
+  // D143_T020: a code line of a deciding module; comment and blank lines do not count.
+  ['deciding runner module code line', dir => fs.appendFileSync(path.join(dir, '.crabshell/verification/runner/execute.js'), '\nmodule.exports.reuseMarker = 1;\n')],
   ['folder entry added', dir => write(dir, 'notes/second', 'two')],
-  ['folder entry removed', dir => fs.unlinkSync(path.join(dir, 'notes/second'))],
+  ['folder entry removed', dir => fs.unlinkSync(path.join(dir, 'notes/second')), dir => write(dir, 'notes/second', 'two')],
   ['previously missing input created', dir => write(dir, 'optional.data', 'present'), dir => fs.unlinkSync(path.join(dir, 'optional.data'))],
   ['recorded input deleted', dir => fs.unlinkSync(path.join(dir, 'optional.data'))],
 ]) check(`${name} invalidates the cached pass`, () => {
-  if (prepare) prepare(main);
-  run(main);
-  const before = counter(main); mutate(main);
-  const result = run(main); const reused = run(main);
-  assert.equal(result.status, 0); assert.notEqual(result.results[0].reused, true); assert.equal(counter(main), before + 1);
+  const dir = fixture(`invalidate-${name.replace(/ /g, '-')}`);
+  if (prepare) prepare(dir);
+  run(dir);
+  const before = counter(dir); mutate(dir);
+  const result = run(dir); const reused = run(dir);
+  assert.equal(result.status, 0); assert.notEqual(result.results[0].reused, true); assert.equal(counter(dir), before + 1);
   assert.equal(reused.results[0].reused, true);
+});
+check('a launcher edit or a return to an input state that passed before reuses the pass', () => {
+  const dir = fixture('reuse-history');
+  run(dir);
+  const before = counter(dir);
+  fs.appendFileSync(path.join(dir, '.crabshell/verification/run-verify.js'), '\n');
+  const launcher = run(dir);
+  write(dir, 'input.data', 'b'); run(dir);
+  write(dir, 'input.data', 'a');
+  const back = run(dir);
+  assert.equal(launcher.results[0].reused, true); assert.equal(back.results[0].reused, true); assert.equal(counter(dir), before + 1);
 });
 check('manifest property order does not invalidate a pass', () => {
   const before = counter(main);
@@ -148,7 +196,7 @@ check('manifest property order does not invalidate a pass', () => {
 check('failure clears pass key and must execute on the next run', () => {
   const failure = run(main, ['--no-reuse'], { FIXTURE_FAIL: '1' });
   assert.equal(failure.status, 1); assert.equal(failure.results[0].status, 'FAIL');
-  assert(!readJson(mapFile(main)).entries.A.passKey);
+  assert(Number.isFinite(Date.parse(readJson(mapFile(main)).entries.A.lastFailedAt)));
   const before = counter(main); const next = run(main);
   assert.equal(next.status, 0); assert.notEqual(next.results[0].reused, true); assert.equal(counter(main), before + 1);
 });
@@ -161,7 +209,7 @@ check('timeout clears pass key and preserves the previous execution duration', (
   assert.equal(timeout.status, 1); assert.match(timeout.results[0].error, /ETIMEDOUT/);
   assert.equal(timeout.results[0].timedOut, true);
   assert.equal(readJson(mapFile(main)).entries.A.lastDurationMs, previousDuration);
-  assert(timeout.results[0].durationMs >= 150); assert(!readJson(mapFile(main)).entries.A.passKey);
+  assert(timeout.results[0].durationMs >= 150); assert(readJson(mapFile(main)).entries.A.lastFailedAt);
   updateManifest(main, m => { m.entries[0].timeout = originalTimeout; });
   const next = run(main); assert.equal(next.status, 0); assert.notEqual(next.results[0].reused, true);
 });
@@ -170,7 +218,7 @@ check('first timeout has no duration estimate or pass key', () => {
   const result = run(dir, [], { FIXTURE_HANG: '1' });
   assert.equal(result.status, 1); assert.equal(result.results[0].timedOut, true);
   const record = readJson(mapFile(dir)).entries.A;
-  assert(!Object.hasOwn(record, 'lastDurationMs')); assert(!record.passKey); assert(!record.passedAt);
+  assert(!Object.hasOwn(record, 'lastDurationMs')); assert(!record.passHistory); assert(!record.passedAt);
   assert(Number.isFinite(Date.parse(record.lastFailedAt)));
 });
 const forbidden = fixture('forbidden', [entry('A'), entry('B', { reuse: false })]);
@@ -188,24 +236,26 @@ check('--no-reuse executes all selected checks', () => {
 check('dry-run gives path reasons, reuse count and duration estimate without executing', () => {
   const map = readJson(mapFile(forbidden)); map.entries.A.lastDurationMs = 1250; map.entries.B.lastDurationMs = 2350;
   fs.writeFileSync(mapFile(forbidden), JSON.stringify(map));
-  const before = counter(forbidden); const plan = dry(forbidden);
-  assert.equal(plan.full, false); assert.equal(plan.reasons.A, 'input.data'); assert.equal(plan.wouldReuse, 1);
-  assert.equal(plan.estimatedSeconds, 2.4); assert.equal(counter(forbidden), before);
-  const noReuse = dry(forbidden, 'input.data', ['--no-reuse']);
+  const before = counter(forbidden); const plan = dry(forbidden, 'input.data');
+  assert.equal(plan.full, true); assert.equal(plan.reasons.A, 'input.data changed'); assert.equal(plan.reasons.B, 'reuse:false');
+  assert.equal(plan.wouldReuse, 0); assert.equal(plan.estimatedSeconds, 3.6); assert.equal(counter(forbidden), before);
+  const quiet = dry(forbidden);
+  assert.deepEqual(quiet.selected, ['B']); assert.equal(quiet.wouldReuse, 1); assert.equal(quiet.estimatedSeconds, 2.4);
+  const noReuse = dry(forbidden, null, ['--no-reuse']);
   assert.equal(noReuse.wouldReuse, 0); assert.equal(noReuse.estimatedSeconds, 3.6);
-  assert.equal(dry(forbidden, 'notes/new').reasons.A, 'notes/');
+  assert.equal(dry(forbidden, 'notes/new').reasons.A, 'notes/ changed');
 });
 check('full dry-run explains each selection', () => {
   const dir = fixture('no-map'); const plan = dry(dir);
-  assert.equal(plan.reasons.A, plan.reason); assert.equal(plan.estimatedSeconds, 0); assert.equal(plan.wouldReuse, 0);
+  assert.equal(plan.reasons.A, 'new check'); assert.equal(plan.reason, '1 new'); assert.equal(plan.estimatedSeconds, 0); assert.equal(plan.wouldReuse, 0);
 });
-check('dry-run explains always, no recorded files, and new check selections', () => {
+check('dry-run explains always, a record that names no file (unknown inputs), and new check selections', () => {
   const dir = fixture('selection-reasons', [entry('A', { always: true }), entry('B')]); run(dir);
   const map = readJson(mapFile(dir));
   map.entries.B.files = [];
   fs.writeFileSync(mapFile(dir), JSON.stringify(map));
   const plan = dry(dir, 'unread.md');
-  assert.equal(plan.reasons.A, 'always'); assert.equal(plan.reasons.B, 'no recorded files');
+  assert.equal(plan.reasons.A, 'always'); assert.match(plan.reasons.B, /unknown inputs/);
   delete map.entries.B;
   fs.writeFileSync(mapFile(dir), JSON.stringify(map));
   assert.equal(dry(dir, 'unread.md').reasons.B, 'new check');
@@ -225,7 +275,7 @@ check('discovered entries inherit reuse:false', () => {
   assert.deepEqual(['A', 'B'].map(id => counter(dir, id)), [2, 2]);
   assert.equal(dry(dir).wouldReuse, 0);
 });
-for (const [name, args] of [['full', []], ['changed', ['--changed', '--files', 'input.data']]]) {
+for (const [name, args] of [['full', []], ['changed', ['--changed']]]) {
   check(`discovery reuseExclude reruns only the excluded file on an unchanged second ${name} run`, () => {
     const dir = fixture(`discovered-exclusion-${name}`, [entry('A'), entry('B')]);
     updateManifest(dir, m => { m.entries = [{ id: 'D', type: 'structural', reuseExclude: ['scripts/_test-B.js'], discover: { pattern: 'scripts/_test-*.js' }, contract: { exitCode: 0 } }]; });
@@ -234,9 +284,10 @@ for (const [name, args] of [['full', []], ['changed', ['--changed', '--files', '
     assert(first.results.every(item => item.status === 'PASS' && item.reused !== true));
     assert.deepEqual(['A', 'B'].map(id => counter(dir, id)), [1, 1]);
     const second = run(dir, args);
-    assert.equal(second.status, 0); assert.equal(second.results.length, 2);
+    // A --changed run lists only the checks it runs; a full run lists every check.
+    assert.equal(second.status, 0); assert.equal(second.results.length, name === 'full' ? 2 : 1);
     assert(second.results.every(item => item.status === 'PASS'));
-    assert.equal(second.results.find(item => item.id === 'D:scripts/_test-A.js').reused, true);
+    if (name === 'full') assert.equal(second.results.find(item => item.id === 'D:scripts/_test-A.js').reused, true);
     assert.notEqual(second.results.find(item => item.id === 'D:scripts/_test-B.js').reused, true);
     assert.deepEqual(['A', 'B'].map(id => counter(dir, id)), [1, 2]);
     assert.equal(dry(dir).wouldReuse, 1);
@@ -252,27 +303,33 @@ for (const partial of [false, true]) check(`mixed ${partial ? 'partial' : 'full'
   const testB = path.join(dir, 'scripts/_test-B.js');
   fs.appendFileSync(testB, '\nprocess.exit(1);\n');
   write(dir, 'input.data', 'z');
-  const args = partial ? ['--changed', '--files', 'input.data,scripts/_test-B.js', '--no-fail-before'] : [];
+  // D143: --changed runs the faster check first and stops at the first failure, so the
+  // recorded times are fixed here to run the passing A before the failing B.
+  if (partial) {
+    const map = readJson(mapFile(dir));
+    map.entries.A.lastDurationMs = 1; map.entries.B.lastDurationMs = 60000;
+    map.entries.A.durations = [1]; map.entries.B.durations = [60000]; // D143_T011: order by median pass time
+    fs.writeFileSync(mapFile(dir), JSON.stringify(map));
+  }
+  const args = partial ? ['--changed', '--no-fail-before'] : [];
   const failure = run(dir, args); const after = readJson(mapFile(dir));
-  assert.equal(failure.status, 1); assert(after.entries.A.passKey); assert.notEqual(after.entries.A.passKey, before.entries.A.passKey);
-  assert(after.entries.A.files.includes('extra.data')); assert(after.fileHashes['extra.data']);
-  assert.notEqual(after.fileHashes['input.data'], before.fileHashes['input.data']);
-  assert.equal(after.fileTimes['extra.data'], fs.statSync(path.join(dir, 'extra.data')).mtimeMs);
-  assert(!after.entries.B.passKey); assert(!after.entries.B.passedAt);
+  assert.equal(failure.status, 1); assert(after.entries.A.passHistory[0]); assert.notEqual(after.entries.A.passHistory[0], before.entries.A.passHistory[0]);
+  assert(after.entries.A.files.includes('extra.data')); assert(after.entries.A.inputHashes['extra.data']);
+  assert.notEqual(after.entries.A.inputHashes['input.data'], before.entries.A.inputHashes['input.data']);
+  assert.equal(after.entries.B.passedAt, before.entries.B.passedAt);
   assert.deepEqual(after.entries.B.files, before.entries.B.files);
-  assert.equal(after.entries.B.entryHash, before.entries.B.entryHash);
   assert(Number.isFinite(Date.parse(after.entries.B.lastFailedAt)));
   assert.match(failure.stderr, /1 failed check\(s\) will run again on the next --changed: B/);
   const countA = counter(dir); const countB = counter(dir, 'B'); const next = run(dir);
   assert.equal(next.results[0].reused, true); assert.equal(counter(dir), countA); assert.equal(counter(dir, 'B'), countB + 1);
 });
-check('first failed full run records manifestHash and passed inputs without a missing-manifest fallback', () => {
+check('first failed full run records the passing check and the failed check\'s inputs', () => {
   const dir = fixture('first-failure', [entry('A'), entry('B')]);
   fs.appendFileSync(path.join(dir, 'scripts/_test-B.js'), '\nprocess.exit(1);\n');
   const result = run(dir); const map = readJson(mapFile(dir));
-  assert.equal(result.status, 1); assert(map.entries.A.passKey); assert(map.entries.A.files.includes('input.data'));
-  assert(map.entries.B.files.includes('scripts/_test-B.js')); assert(!map.entries.B.passKey);
-  assert.match(map.manifestHash, /^[a-f0-9]{64}$/);
+  assert.equal(result.status, 1); assert(map.entries.A.passHistory[0]); assert(map.entries.A.files.includes('input.data'));
+  assert(map.entries.B.files.includes('scripts/_test-B.js')); assert(!map.entries.B.passHistory);
+  assert.equal(map.schema, 3);
   const plan = dry(dir, 'unread.md');
   assert.equal(plan.full, false); assert.deepEqual(plan.selected, ['B']);
   assert.equal(plan.reasons.B, 'failed in the last run');
@@ -297,13 +354,14 @@ check('argument errors also write full results and compact failure summary', () 
 for (const mixedFailure of [false, true]) check(`input edited during its check stores no key (${mixedFailure ? 'mixed failure' : 'all pass'})`, () => {
   const dir = fixture(`during-check-${mixedFailure}`, mixedFailure ? [entry('A'), entry('B')] : [entry('A')]);
   assert.equal(run(dir).status, 0);
-  assert(readJson(mapFile(dir)).entries.A.passKey);
+  const firstPass = readJson(mapFile(dir)).entries.A;
+  assert(firstPass.passHistory[0]);
   if (mixedFailure) fs.appendFileSync(path.join(dir, 'scripts/_test-B.js'), '\nprocess.exit(1);\n');
   const mutated = run(dir, ['--no-reuse'], { FIXTURE_MUTATE: 'A' });
   assert.equal(mutated.status, mixedFailure ? 1 : 0);
   assert.equal(mutated.results[0].status, 'PASS');
   const record = readJson(mapFile(dir)).entries.A;
-  assert(!record.passKey); assert(!record.passedAt);
+  assert.deepEqual(record.passHistory, firstPass.passHistory); assert.equal(record.passedAt, firstPass.passedAt);
   const before = counter(dir);
   const next = run(dir);
   assert.notEqual(next.results[0].reused, true); assert.equal(counter(dir), before + 1);
@@ -311,41 +369,36 @@ for (const mixedFailure of [false, true]) check(`input edited during its check s
 check('newly traced input written during the first check stores no key', () => {
   const dir = fixture('new-input-edited');
   const result = run(dir, [], { FIXTURE_MUTATE: 'A' });
-  assert.equal(result.status, 0); assert(!readJson(mapFile(dir)).entries.A.passKey);
+  assert.equal(result.status, 0); assert(!readJson(mapFile(dir)).entries.A.passHistory);
   const next = run(dir);
   assert.notEqual(next.results[0].reused, true); assert.equal(counter(dir), 2);
 });
 check('later check edits cannot give an earlier pass a key for untested content', () => {
   const dir = fixture('later-check-edit', [entry('A'), entry('B')]); run(dir);
-  const before = readJson(mapFile(dir)).entries.A.passKey;
-  assert(before);
+  const before = readJson(mapFile(dir)).entries.A;
+  assert(before.passHistory[0]);
   assert.equal(run(dir, ['--no-reuse'], { FIXTURE_MUTATE: 'B' }).status, 0);
   const after = readJson(mapFile(dir));
-  assert.equal(after.entries.A.passKey, before); assert(!after.entries.B.passKey);
+  assert.deepEqual(after.entries.A.passHistory, before.passHistory); assert.equal(after.entries.A.passedAt, before.passedAt);
+  assert.equal(after.entries.B.passHistory.length, 1);
   const count = counter(dir); const next = run(dir);
   assert.notEqual(next.results[0].reused, true); assert.equal(counter(dir), count + 1);
 });
 
-for (const [name, files, reason, prepare] of [
-  ['unknown dependency', 'unknown.js', /not in the load map/],
-  ['global dependency', 'package.json', /affects every check/],
-  ['stale map', 'unread.md', /load map is older than/, dir => {
-    const map = readJson(mapFile(dir));
-    map.fileTimes['scripts/_test-A.js'] = 0;
-    map.fileHashes['scripts/_test-A.js'] = 'older content';
-    fs.writeFileSync(mapFile(dir), JSON.stringify(map));
-  }],
-  ['git error', null, /git diff failed/],
-]) check(`full fallback runs every check without reuse: ${name}`, () => {
-  const dir = fixture(`fallback-${name.replace(/ /g, '-')}`, [entry('A'), entry('B')]); run(dir);
-  assert(readJson(mapFile(dir)).entries.A.passKey); assert(readJson(mapFile(dir)).entries.B.passKey);
-  if (prepare) prepare(dir);
-  const args = ['--changed', ...(files ? ['--files', files] : [])];
-  const plan = JSON.parse(run(dir, [...args, '--dry-run']).stdout);
-  assert.equal(plan.full, true); assert.match(plan.reason, reason); assert.equal(plan.wouldReuse, 0);
-  const result = run(dir, args);
-  assert.equal(result.status, 0); assert(result.results.every(item => !item.reused));
-  assert.deepEqual(['A', 'B'].map(id => counter(dir, id)), [2, 2]);
+// D143_T009: no file name, stale map or missing git makes checks run; only their own
+// inputs do. A file no check reads, a package.json and an unchanged tree run nothing.
+for (const [name, prepare] of [
+  ['unknown file', dir => write(dir, 'unknown.js', 'module.exports = 0;\n')],
+  ['package.json', dir => write(dir, 'package.json', '{"name":"fixture"}\n')],
+  ['nothing changed (no git)', () => {}],
+]) check(`checks whose inputs did not change are not selected: ${name}`, () => {
+  const dir = fixture(`fallback-${name.replace(/[^a-z]+/gi, '-')}`, [entry('A'), entry('B')]); run(dir);
+  prepare(dir);
+  const plan = JSON.parse(run(dir, ['--changed', '--dry-run']).stdout);
+  assert.equal(plan.full, false); assert.deepEqual(plan.selected, []); assert.equal(plan.wouldReuse, 2);
+  const result = run(dir, ['--changed']);
+  assert.equal(result.status, 0); assert.deepEqual(result.results, []);
+  assert.deepEqual(['A', 'B'].map(id => counter(dir, id)), [1, 1]);
 });
 
 for (const [label, project, absolute] of [
@@ -366,28 +419,25 @@ check('always:true executes even with an unchanged cached pass', () => {
   assert.equal(result.status, 0); assert.notEqual(result.results[0].reused, true);
   assert.equal(result.results[1].reused, true); assert.deepEqual(['A', 'B'].map(id => counter(dir, id)), [2, 1]);
 });
-check('empty recorded inputs never get a key and execute again', () => {
+check('a check that reads no project file uses the whole project as inputs and is not reused while it writes into it', () => {
   const item = entry('A', { command: { file: 'node', args: ['-e', "require('fs').appendFileSync('node_modules/counters/A', 'x')"] } });
   const dir = fixture('empty-inputs', [item]); run(dir);
   const record = readJson(mapFile(dir)).entries.A;
-  assert.deepEqual(record.files, []); assert(!record.passKey);
+  assert.deepEqual(record.files, []); assert.equal(record.kind, 'project'); assert(!record.passHistory);
   const next = run(dir); assert.notEqual(next.results[0].reused, true); assert.equal(counter(dir), 2);
 });
-check('passes older than seven days execute again and receive a fresh passedAt', () => {
+check('a pass does not expire: an old pass is reused while its inputs are unchanged', () => {
   const dir = fixture('expired'); run(dir);
   const map = readJson(mapFile(dir));
-  const expired = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString();
-  map.entries.A.passedAt = expired;
+  const old = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString();
+  map.entries.A.passedAt = old;
   fs.writeFileSync(mapFile(dir), JSON.stringify(map));
-  const next = run(dir); assert.notEqual(next.results[0].reused, true); assert.equal(counter(dir), 2);
-  assert(Date.parse(readJson(mapFile(dir)).entries.A.passedAt) > Date.parse(expired));
-  const passedAt = readJson(mapFile(dir)).entries.A.passedAt;
-  assert.equal(run(dir).results[0].reused, true);
-  assert.equal(readJson(mapFile(dir)).entries.A.passedAt, passedAt, 'reuse must not renew the expiry');
+  const next = run(dir); assert.equal(next.results[0].reused, true); assert.equal(counter(dir), 1);
+  assert.equal(readJson(mapFile(dir)).entries.A.passedAt, old, 'reuse does not rewrite the pass time');
 });
-check('platform and architecture each change the pass key', () => {
-  const dir = fixture('platform'); const record = { files: ['input.data'], test: 'scripts/_test-A.js' };
-  const key = (platform, arch) => internals({ process: { ...process, platform, arch } }).passKey(entry('A'), record, dir, 'runner');
+check('platform and architecture each change the fingerprint', () => {
+  const key = (platform, arch) => internals({ process: { ...process, platform, arch } })
+    .entryFingerprint({ entry: entry('A'), files: ['input.data'], identityOf: () => 'content', program: 'node', decision: 'runner' });
   const original = key(process.platform, process.arch);
   assert(original); assert.equal(original, key(process.platform, process.arch));
   assert.notEqual(original, key('another-platform', process.arch));
@@ -439,7 +489,7 @@ check('mixed verdict counts executed and reused passes separately from manual ch
 check('empty selection says no checks selected and exits successfully', () => {
   const dir = fixture('empty-selection'); run(dir);
   const previous = fs.readFileSync(resultFile(dir));
-  const before = counter(dir); const result = run(dir, ['--changed', '--files', 'unread.md']);
+  const before = counter(dir); const result = run(dir, ['--changed']);
   assert.equal(result.status, 0); assert.deepEqual(result.results, []); assert.equal(counter(dir), before);
   assert(fs.readFileSync(resultFile(dir)).equals(previous));
   assert(!result.stdout.includes('Full results:'));
@@ -447,13 +497,14 @@ check('empty selection says no checks selected and exits successfully', () => {
   assert(!result.stdout.includes('PASS —'));
 });
 
-for (const [name, args, env] of [
+for (const [name, args, env, prepare] of [
   ['legacy guard', ['--no-fail-before'], {}],
-  ['ticket guard', ['--changed', '--files', 'input.data', '--no-fail-before'], { CRABSHELL_VERIFY_JSON: '1' }],
+  ['ticket guard', ['--changed', '--no-fail-before'], { CRABSHELL_VERIFY_JSON: '1' }, dir => write(dir, 'input.data', 'edited for the guard run')],
 ]) check(`${name} leaves saved results byte-identical without a Full results line`, () => {
   const dir = fixture(`saved-${name.replace(/ /g, '-')}`);
   assert.equal(run(dir).status, 0);
   const previous = fs.readFileSync(resultFile(dir));
+  if (prepare) prepare(dir);
   const result = run(dir, args, env);
   assert.equal(result.status, 0); assert.equal(result.results[0].status, 'PASS');
   assert(fs.readFileSync(resultFile(dir)).equals(previous));
@@ -462,11 +513,13 @@ for (const [name, args, env] of [
 check('person full, changed, JSON and explicit-id runs replace the preserved file', () => {
   const dir = fixture('person-results');
   const previous = '[ { "id": "PERSON", "status": "PASS" } ]\n';
-  for (const args of [[], ['--changed', '--files', 'input.data'], ['--json'], ['A']]) {
+  for (const args of [[], ['--changed'], ['--json'], ['A']]) {
     fs.writeFileSync(resultFile(dir), previous);
     // Establish that an internal call leaves these exact bytes for the person.
     assert.equal(run(dir, ['--no-fail-before']).status, 0);
     assert.equal(fs.readFileSync(resultFile(dir), 'utf8'), previous);
+    // A --changed run needs a changed input to run (and save) anything.
+    if (args[0] === '--changed') write(dir, 'input.data', `edited ${Date.now()}`);
     const result = run(dir, args);
     assert.equal(result.status, 0); assert.match(result.stdout, /Full results: /);
     assert.notEqual(fs.readFileSync(resultFile(dir), 'utf8'), previous);
@@ -510,9 +563,9 @@ for (const newTest of [false, true]) check(`dry-run includes fail-before time fo
   write(dir, 'input.data', 'b');
   fs.appendFileSync(path.join(dir, 'scripts/_test-A.js'), "\nif (fs.readFileSync('input.data', 'utf8') !== 'b') process.exit(1);\n");
   const count = counter(dir);
-  const args = ['--changed', '--dry-run'];
+  const args = ['--changed', '--fail-before', '--dry-run'];
   const plan = JSON.parse(run(dir, args).stdout);
-  assert.equal(plan.full, false); assert.deepEqual(plan.selected, ['A']);
+  assert.deepEqual(plan.selected, ['A']);
   assert.equal(plan.failBeforeTargets, 1);
   assert.equal(plan.estimatedSeconds, duration * (newTest ? 2 : 3) / 1000);
   const disabled = JSON.parse(run(dir, [...args, '--no-fail-before']).stdout);
@@ -529,15 +582,16 @@ for (const newTest of [false, true]) check(`dry-run includes fail-before time fo
   assert.equal(stale.failBeforeTargets, 1); assert.equal(stale.estimatedSeconds, plan.estimatedSeconds);
   assert.equal(counter(dir), count, 'dry-run must not execute the check');
 });
-check('dry-run assumes both fail-before executions when HEAD cannot be read', () => {
+// D143_T009: fail-before learns which tests changed from git; with no readable HEAD it
+// compares nothing (and the run says so — runner-failure-kind).
+check('without a readable HEAD, --fail-before plans no comparison', () => {
   const dir = fixture('fail-before-estimate-git-error');
   assert.equal(run(dir).status, 0);
   const map = readJson(mapFile(dir)); map.entries.A.lastDurationMs = 1000;
   fs.writeFileSync(mapFile(dir), JSON.stringify(map));
-  write(dir, 'input.data', 'b');
   fs.appendFileSync(path.join(dir, 'scripts/_test-A.js'), '\n// changed\n');
-  const plan = dry(dir, 'input.data,scripts/_test-A.js');
-  assert.equal(plan.failBeforeTargets, 1); assert.equal(plan.estimatedSeconds, 3);
+  const plan = dry(dir, 'input.data', ['--fail-before']);
+  assert.equal(plan.failBeforeTargets, 0); assert.equal(plan.estimatedSeconds, 1);
 });
 check('failed check is selected without file changes until an executed PASS clears lastFailedAt', () => {
   const dir = committedFixture('failed-reselection', [entry('A'), entry('B')], true, dir => {
@@ -546,11 +600,11 @@ check('failed check is selected without file changes until an executed PASS clea
   const failure = run(dir, ['B'], { FAIL_B: '1' });
   assert.equal(failure.status, 1);
   const record = readJson(mapFile(dir)).entries.B;
-  assert(!record.passKey); assert(!record.passedAt); assert(Number.isFinite(Date.parse(record.lastFailedAt)));
+  assert(Number.isFinite(Date.parse(record.lastFailedAt)));
   assert.equal(git(dir, 'status', '--porcelain').trim(), '');
   const plan = JSON.parse(run(dir, ['--changed', '--dry-run']).stdout);
-  assert.equal(plan.full, false); assert.deepEqual(plan.changed, []); assert.deepEqual(plan.selected, ['B']);
-  assert.equal(plan.reasons.B, 'failed in the last run'); assert.equal(plan.wouldReuse, 0);
+  assert.equal(plan.full, false); assert.deepEqual(plan.selected, ['B']);
+  assert.equal(plan.reasons.B, 'failed in the last run'); assert.equal(plan.wouldReuse, 1);
   const before = counter(dir, 'B'); const passed = run(dir, ['--changed']);
   assert.equal(passed.status, 0); assert.deepEqual(passed.results.map(item => item.id), ['B']);
   assert(!passed.results[0].reused); assert.equal(counter(dir, 'B'), before + 1);
@@ -563,11 +617,11 @@ check('fail-before failure clears the working-tree pass key and records the chec
   const dir = committedFixture('fail-before-reselection', [entry('A')]);
   fs.appendFileSync(path.join(dir, 'scripts/_test-A.js'), '\n// behavior stays the same\n');
   write(dir, 'input.data', 'b');
-  const result = run(dir, ['--changed']);
+  const result = run(dir, ['--changed', '--fail-before']);
   assert.equal(result.status, 1);
   assert.equal(result.results.find(item => item.id === 'FAIL_BEFORE:A').status, 'FAIL');
   const record = readJson(mapFile(dir)).entries.A;
-  assert(!record.passKey); assert(!record.passedAt); assert(Number.isFinite(Date.parse(record.lastFailedAt)));
+  assert(Number.isFinite(Date.parse(record.lastFailedAt)));
   const plan = JSON.parse(run(dir, ['--changed', '--dry-run']).stdout);
   assert.equal(plan.reasons.A, 'failed in the last run');
 });
@@ -579,15 +633,14 @@ check('local manifest entry change selects only itself and manifest readers agai
   updateManifest(dir, m => { m.entries[0].timeout++; });
   const plan = dry(dir, manifestRelative);
   assert.equal(plan.full, false); assert.deepEqual(plan.selected, ['A', 'C']);
-  assert.equal(plan.reasons.A, 'manifest entry A changed');
-  assert.equal(plan.reasons.C, manifestRelative);
-  const result = run(dir, ['--changed', '--files', manifestRelative]);
+  assert.equal(plan.reasons.A, 'entry, program or runner changed');
+  assert.equal(plan.reasons.C, `${manifestRelative} changed`);
+  const result = run(dir, ['--changed']);
   assert.equal(result.status, 0); assert.equal(counter(dir, 'A'), 2); assert.equal(counter(dir, 'B'), 1);
   assert.equal(counter(dir, 'C'), 2);
   const afterMap = readJson(mapFile(dir));
-  assert.notEqual(afterMap.entries.A.entryHash, before.entries.A.entryHash);
+  assert.notEqual(afterMap.entries.A.passHistory[0], before.entries.A.passHistory[0]);
   assert.deepEqual(afterMap.entries.B, before.entries.B);
-  assert.equal(afterMap.manifestHash, before.manifestHash);
   git(dir, 'commit', '-q', '-am', 'one entry');
   const after = dry(dir, 'unread.md');
   assert.equal(after.full, false); assert.deepEqual(after.selected, []);
@@ -601,43 +654,42 @@ check('entry committed without a run and a later local entry change both select 
   updateManifest(dir, m => { m.entries[1].timeout++; });
   const plan = JSON.parse(run(dir, ['--changed', '--dry-run']).stdout);
   assert.equal(plan.full, false); assert.deepEqual(plan.selected, ['A', 'B']);
-  assert.equal(plan.reasons.A, 'manifest entry A changed'); assert.equal(plan.reasons.B, 'manifest entry B changed');
+  assert.equal(plan.reasons.A, 'entry, program or runner changed'); assert.equal(plan.reasons.B, 'entry, program or runner changed');
   const result = run(dir, ['--changed']);
   assert.equal(result.status, 0); assert.deepEqual(result.results.map(item => item.id), ['A', 'B']);
   assert.deepEqual(['A', 'B', 'C'].map(id => counter(dir, id)), [2, 2, 1]);
   git(dir, 'commit', '-q', '-am', 'verified B change');
   assert.deepEqual(JSON.parse(run(dir, ['--changed', '--dry-run']).stdout).selected, []);
 });
-check('manifest top-level field change falls back to full against the load map even outside the file list', () => {
+check('a manifest top-level field change reruns no check (it changes no check\'s fields)', () => {
   const dir = committedFixture('manifest-top');
   updateManifest(dir, m => { m.tools = { changed: 'node runner.js --changed' }; });
   const plan = dry(dir, 'unread.md');
-  assert.equal(plan.full, true); assert.equal(plan.reason, 'manifest field changed since the load map');
+  assert.equal(plan.full, false); assert.deepEqual(plan.selected, []);
 });
 check('an ignored manifest uses its load map without a committed manifest', () => {
   const dir = committedFixture('manifest-not-committed', undefined, false);
   updateManifest(dir, m => { m.entries[0].timeout++; });
   const plan = JSON.parse(run(dir, ['--changed', '--dry-run']).stdout);
   assert.equal(plan.full, false); assert.deepEqual(plan.selected, ['A']);
-  assert.equal(plan.reasons.A, 'manifest entry A changed');
+  assert.equal(plan.reasons.A, 'entry, program or runner changed');
 });
-check('older load map without manifestHash falls back to full even with no manifest edit', () => {
+check('a load map from an older runner (no schema) reruns every check once', () => {
   const dir = committedFixture('manifest-old-map');
-  const map = readJson(mapFile(dir)); delete map.manifestHash;
+  const map = readJson(mapFile(dir)); delete map.schema;
   fs.writeFileSync(mapFile(dir), JSON.stringify(map));
-  const plan = dry(dir, 'unread.md');
-  assert.equal(plan.full, true); assert.equal(plan.reason, 'load map has no manifest record');
+  const plan = dry(dir);
+  assert.equal(plan.full, true); assert.equal(plan.reasons.A, 'record from an older runner');
 });
-check('record without entryHash selects its check even with no manifest edit', () => {
+check('a record without pass history selects its check, and the run records one', () => {
   const dir = committedFixture('manifest-old-entry');
-  const map = readJson(mapFile(dir)); delete map.entries.A.entryHash;
+  const map = readJson(mapFile(dir)); delete map.entries.A.passHistory;
   fs.writeFileSync(mapFile(dir), JSON.stringify(map));
-  const plan = dry(dir, 'unread.md');
+  const plan = dry(dir);
   assert.equal(plan.full, false); assert.deepEqual(plan.selected, ['A']);
-  assert.equal(plan.reasons.A, 'manifest entry A changed');
-  const result = run(dir, ['--changed', '--files', 'unread.md']);
-  assert.equal(result.status, 0); assert.equal(result.results[0].reused, true);
-  assert.match(readJson(mapFile(dir)).entries.A.entryHash, /^[a-f0-9]{64}$/);
+  const result = run(dir, ['--changed']);
+  assert.equal(result.status, 0); assert.notEqual(result.results[0].reused, true);
+  assert.match(readJson(mapFile(dir)).entries.A.passHistory[0], /^[a-f0-9]{64}$/);
 });
 check('manifest metadata and removals select nothing while additions name the new entry', () => {
   const dir = committedFixture('manifest-add-remove');
@@ -645,7 +697,7 @@ check('manifest metadata and removals select nothing while additions name the ne
   let plan = dry(dir, manifestRelative);
   assert.equal(plan.full, false); assert.deepEqual(plan.selected, []);
   const saved = fs.readFileSync(resultFile(dir));
-  const empty = run(dir, ['--changed', '--files', manifestRelative]);
+  const empty = run(dir, ['--changed']);
   assert.equal(empty.status, 0); assert.deepEqual(empty.results, []);
   assert(fs.readFileSync(resultFile(dir)).equals(saved));
   git(dir, 'commit', '-q', '-am', 'metadata and removal');
@@ -653,7 +705,7 @@ check('manifest metadata and removals select nothing while additions name the ne
   updateManifest(dir, m => { m.entries.push(entry('C', { command: entry('B').command })); });
   plan = dry(dir, manifestRelative);
   assert.equal(plan.full, false); assert.deepEqual(plan.selected, ['C']);
-  assert.equal(plan.reasons.C, 'new manifest entry C');
+  assert.equal(plan.reasons.C, 'new check');
 });
 check('changed discovery entry selects its expanded checks and other changed-file readers', () => {
   const dir = fixture('manifest-discover', [entry('A'), entry('B'), entry('C')]);
@@ -664,14 +716,16 @@ check('changed discovery entry selects its expanded checks and other changed-fil
   git(dir, 'add', '.'); git(dir, 'add', '-f', manifestRelative); git(dir, 'commit', '-q', '-m', 'fixture');
   assert.equal(run(dir).status, 0);
   updateManifest(dir, m => { m.entries[1].timeout++; });
-  const plan = dry(dir, `${manifestRelative},input.data`);
-  assert.equal(plan.full, false);
-  assert.deepEqual(plan.selected, ['C', 'D:scripts/_test-A.js', 'D:scripts/_test-B.js']);
-  assert.equal(plan.reasons['D:scripts/_test-A.js'], 'manifest entry D changed');
-  assert.equal(plan.reasons['D:scripts/_test-B.js'], 'manifest entry D changed');
-  assert.equal(plan.reasons.C, 'input.data'); assert.equal(plan.wouldReuse, 1);
-  assert.equal(run(dir, ['--changed', '--files', manifestRelative]).status, 0);
-  assert.deepEqual(dry(dir, 'unread.md').selected, [], 'discovered records must store their discovery entry hash');
+  const plan = dry(dir, manifestRelative);
+  assert.deepEqual(plan.selected, ['D:scripts/_test-A.js', 'D:scripts/_test-B.js']);
+  assert.equal(plan.reasons['D:scripts/_test-A.js'], 'entry, program or runner changed');
+  assert.equal(plan.reasons['D:scripts/_test-B.js'], 'entry, program or runner changed');
+  assert.equal(plan.wouldReuse, 1);
+  const withInput = dry(dir, 'input.data');
+  assert.deepEqual(withInput.selected, ['C', 'D:scripts/_test-A.js', 'D:scripts/_test-B.js']);
+  assert.equal(withInput.reasons.C, 'input.data changed');
+  assert.equal(run(dir, ['--changed']).status, 0);
+  assert.deepEqual(dry(dir, 'unread.md').selected, [], 'discovered checks record their own fingerprints');
 });
 check('manifest readers still run when only metadata changes', () => {
   const dir = fixture('manifest-reader', [entry('A'), entry('B')]);
@@ -681,7 +735,7 @@ check('manifest readers still run when only metadata changes', () => {
   assert.equal(run(dir).status, 0);
   updateManifest(dir, m => { m.updated = 'metadata'; });
   const plan = dry(dir, manifestRelative);
-  assert.equal(plan.full, false); assert.deepEqual(plan.selected, ['B']); assert.equal(plan.reasons.B, manifestRelative);
+  assert.equal(plan.full, false); assert.deepEqual(plan.selected, ['B']); assert.equal(plan.reasons.B, `${manifestRelative} changed`);
 });
 check('committed metadata changes still select manifest readers from the load map', () => {
   const dir = committedFixture('manifest-committed-reader', [entry('A'), entry('B')], true, dir => {
@@ -690,7 +744,7 @@ check('committed metadata changes still select manifest readers from the load ma
   updateManifest(dir, m => { m.updated = 'committed metadata'; });
   git(dir, 'commit', '-q', '-am', 'unread metadata');
   const plan = JSON.parse(run(dir, ['--changed', '--dry-run']).stdout);
-  assert.equal(plan.full, false); assert.deepEqual(plan.selected, ['B']); assert.equal(plan.reasons.B, manifestRelative);
+  assert.equal(plan.full, false); assert.deepEqual(plan.selected, ['B']); assert.equal(plan.reasons.B, `${manifestRelative} changed`);
 });
 check('BOM manifest in a nested project compares with the load map', () => {
   const outer = path.join(root, 'nested-manifest-repo');
@@ -703,35 +757,25 @@ check('BOM manifest in a nested project compares with the load map', () => {
   manifest.entries[0].timeout++;
   fs.writeFileSync(manifestFile(dir), JSON.stringify(manifest));
   const plan = dry(dir, manifestRelative);
-  assert.equal(plan.full, false); assert.deepEqual(plan.selected, ['A']); assert.equal(plan.reasons.A, 'manifest entry A changed');
+  assert.deepEqual(plan.selected, ['A']); assert.equal(plan.reasons.A, 'entry, program or runner changed');
 });
-check('partial runs retain manifestHash and failed full runs refresh it with only passing entry hashes', () => {
+check('an explicit-id run updates only its own record; a failing full run keeps the passing checks\' records', () => {
   const dir = fixture('manifest-pass-records', [entry('A'), entry('B'), entry('C')]);
   fs.appendFileSync(path.join(dir, 'scripts/_test-B.js'), "\nif (process.env.FAIL_B === '1') process.exit(1);\n");
   assert.equal(run(dir).status, 0);
   const before = readJson(mapFile(dir));
-  assert.match(before.manifestHash, /^[a-f0-9]{64}$/);
-  for (const record of Object.values(before.entries)) assert.match(record.entryHash, /^[a-f0-9]{64}$/);
   updateManifest(dir, m => { m.tools = { changed: 'node runner.js --changed' }; m.entries[0].timeout++; m.entries[1].timeout++; });
   assert.equal(run(dir, ['A']).status, 0);
   const partial = readJson(mapFile(dir));
-  assert.equal(partial.manifestHash, before.manifestHash);
-  assert.notEqual(partial.entries.A.entryHash, before.entries.A.entryHash);
+  assert.notEqual(partial.entries.A.passHistory[0], before.entries.A.passHistory[0]);
   assert.deepEqual(partial.entries.B, before.entries.B); assert.deepEqual(partial.entries.C, before.entries.C);
-  // A's normalized entry still matches its pass key; changing JSON order must
-  // refresh entryHash even when that PASS is reused during a mixed failure.
+  // Reordered JSON keys are the same entry, so A's pass is reused during a mixed failure.
   updateManifest(dir, m => { m.entries[0] = Object.fromEntries(Object.entries(m.entries[0]).reverse()); });
   const failure = run(dir, [], { FAIL_B: '1' });
   assert.equal(failure.status, 1); assert.equal(failure.results[0].reused, true);
   const failed = readJson(mapFile(dir));
-  assert.notEqual(failed.entries.A.entryHash, partial.entries.A.entryHash);
-  assert.equal(failed.entries.B.entryHash, before.entries.B.entryHash);
-  assert.equal(failed.entries.C.entryHash, before.entries.C.entryHash);
-  assert.notEqual(failed.manifestHash, before.manifestHash);
+  assert(failed.entries.B.lastFailedAt); assert.deepEqual(failed.entries.C, before.entries.C);
   assert.equal(run(dir).status, 0);
-  const full = readJson(mapFile(dir));
-  assert.notEqual(full.manifestHash, before.manifestHash);
-  assert.notEqual(full.entries.B.entryHash, before.entries.B.entryHash);
   assert.deepEqual(dry(dir, 'unread.md').selected, []);
 });
 
@@ -751,7 +795,7 @@ function assertCovered(dir, result) {
   assert.deepEqual(result.results.map(item => item.id), ['A', 'B'], 'keep manifest order despite running B first');
   const covered = result.results[0];
   assert.equal(covered.status, 'PASS'); assert.equal(covered.coveredBy, 'B'); assert.equal(covered.durationMs, 0);
-  assert(!Object.hasOwn(covered, 'reused')); assert(!readJson(mapFile(dir)).entries.A.passKey);
+  assert(!Object.hasOwn(covered, 'reused'));
   assert.match(result.stdout, /1 covered by B/);
 }
 check('previously failed child executes independently of a reused covering PASS', () => {
@@ -780,7 +824,7 @@ check('selected passing covering check runs first and avoids the duplicate comma
 check('reused covering PASS covers without creating an independent pass key', () => {
   const dir = coverageFixture('coverage-reused');
   assert.equal(run(dir, ['--no-reuse']).status, 0);
-  assert(readJson(mapFile(dir)).entries.A.passKey);
+  assert(readJson(mapFile(dir)).entries.A.passHistory[0]);
   const before = ['A', 'B'].map(id => counter(dir, id));
   const result = run(dir); assertCovered(dir, result);
   assert.equal(result.results[1].reused, true);
@@ -807,7 +851,7 @@ check('covering check absent from selection leaves the child runnable', () => {
   const dir = coverageFixture('coverage-absent');
   assert.equal(run(dir, ['--no-reuse']).status, 0);
   assertCovered(dir, run(dir));
-  const before = counter(dir, 'A'); const result = run(dir, ['--changed', '--files', 'covered-only.data']);
+  write(dir, 'covered-only.data', 'edited'); const before = counter(dir, 'A'); const result = run(dir, ['--changed']);
   assert.equal(result.status, 0); assert.deepEqual(result.results.map(item => item.id), ['A']);
   assert(!result.results[0].coveredBy); assert.equal(counter(dir, 'A'), before + 1);
 });
@@ -833,7 +877,7 @@ check('changed child test executes independently for fail-before despite a selec
   assertCovered(dir, run(dir));
   write(dir, 'input.data', 'b');
   fs.appendFileSync(path.join(dir, 'scripts/_test-A.js'), "\nif (require('fs').readFileSync('input.data', 'utf8') !== 'b') process.exit(1);\n");
-  const result = run(dir, ['--changed', '--files', 'scripts/_test-A.js,input.data']);
+  const result = run(dir, ['--changed', '--fail-before']);
   assert.equal(result.status, 0);
   const child = result.results.find(item => item.id === 'A');
   assert.equal(child.status, 'PASS'); assert(!child.coveredBy); assert(!child.reused);
@@ -846,7 +890,7 @@ check('dry-run counts coverage separately and excludes its duration without chan
   updateManifest(dir, m => { m.entries[1].reuse = false; });
   const before = counter(dir, 'A'); const plan = JSON.parse(run(dir, ['--dry-run']).stdout);
   assert.equal(plan.wouldCover, 1); assert.equal(plan.wouldReuse, 0); assert.equal(plan.estimatedSeconds, 2);
-  assert.deepEqual(plan.reasons, { A: 'all checks requested', B: 'all checks requested' });
+  assert.deepEqual(plan.reasons, { B: 'reuse:false' });
   const forced = JSON.parse(run(dir, ['--dry-run', '--no-reuse']).stdout);
   assert.equal(forced.wouldCover, 0); assert.equal(forced.estimatedSeconds, 7); assert.equal(counter(dir, 'A'), before);
 });
@@ -965,7 +1009,7 @@ for (const discovery of [false, true]) {
     assert.equal(result.status, 0); assert.equal(result.results[0].coveredBy, 'B');
   });
 }
-check('covered PASS keeps files and updates entryHash while a mixed full run refreshes manifestHash', () => {
+check('a covered PASS keeps its files and its own pass history during a mixed failure', () => {
   const dir = coverageFixture('coverage-hash-mixed');
   write(dir, 'scripts/_test-C.js', "if (process.env.FAIL_C === '1') process.exit(1);\n");
   updateManifest(dir, m => { m.entries.push(entry('C')); });
@@ -976,10 +1020,9 @@ check('covered PASS keeps files and updates entryHash while a mixed full run ref
   assert.equal(result.status, 1); assert.equal(result.results[0].coveredBy, 'B');
   assert.equal(result.results[1].reused, true); assert.equal(result.results[2].status, 'FAIL');
   const after = readJson(mapFile(dir));
-  assert.notEqual(after.entries.A.entryHash, before.entries.A.entryHash);
-  assert.equal(after.entries.C.entryHash, before.entries.C.entryHash);
-  assert.notEqual(after.manifestHash, before.manifestHash);
-  assert.deepEqual(after.entries.A.files, before.entries.A.files); assert(!after.entries.A.passKey);
+  assert.deepEqual(after.entries.A.files, before.entries.A.files);
+  assert.deepEqual(after.entries.A.passHistory, before.entries.A.passHistory, 'a covered check adds no pass of its own');
+  assert(after.entries.C.lastFailedAt);
 });
 for (const [name, change, reason] of [
   ['unknown id', m => { m.entries[0].coveredBy = 'MISSING'; }, /unknown coveredBy check id MISSING/],

@@ -12,7 +12,8 @@ if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 const { getProjectDir, readJsonOrDefault, docDirsPattern } = require('./utils');
 const { getActiveSkill } = require('./core/skill-flag');
 const { leadingId } = require('./core/index-rows');
-const { discussionHasPlan, discussionHasReaderStructure, ticketHasDetails } = require('./core/plan-entry');
+const { planProblem, ticketHasDetails } = require('./core/plan-entry');
+const { fileWrites } = require('./core/tool-shape');
 
 // Document folders only a document skill may write (constants DOC_TYPES skillOnly)
 const PROTECTED_DOCS_PATTERN = new RegExp(`${docDirsPattern(type => type.skillOnly)}/`);
@@ -22,9 +23,9 @@ const PROTECTED_DOCS_PATTERN = new RegExp(`${docDirsPattern(type => type.skillOn
  * Approach B: full file-level block for any non-discussing skill during active regressing.
  * Returns null if allowed, error string if blocked.
  */
-function checkDiscussionRegressingBlock(filePath, toolName, activeSkill, projectDir) {
-  // Only apply to Edit tool on discussion/ paths
-  if (toolName !== 'Edit') return null;
+function checkDiscussionRegressingBlock(filePath, kind, activeSkill, projectDir) {
+  // Only apply to string edits (core/tool-shape kind 'edit') on discussion/ paths
+  if (kind !== 'edit') return null;
   if (!filePath.includes('discussion/') && !filePath.includes('discussion\\')) return null;
 
   // Absent or unreadable state → allow (fail-open)
@@ -41,12 +42,12 @@ function checkDiscussionRegressingBlock(filePath, toolName, activeSkill, project
  * For investigation documents: verify ## Constraints section exists.
  * Returns null if OK, error string if missing.
  */
-function checkInvestigationConstraints(filePath, toolName) {
+function checkInvestigationConstraints(filePath, kind) {
   if (!filePath.includes('investigation/') && !filePath.includes('investigation\\')) {
     return null;
   }
-  // Write to non-existent file = first creation → allow
-  if (toolName === 'Write') {
+  // A whole-file write to a non-existent file = first creation → allow
+  if (kind === 'whole') {
     try {
       if (!fs.existsSync(filePath)) return null;
     } catch { return null; }
@@ -68,8 +69,8 @@ function checkInvestigationConstraints(filePath, toolName) {
  * or unreadable file passes (the ticketing skill reports a missing parent).
  * Returns null if OK, error string if blocked.
  */
-function checkTicketPlan(filePath, toolName, content, projectDir) {
-  if (toolName !== 'Write') return null;
+function checkTicketPlan(filePath, kind, content, projectDir) {
+  if (kind !== 'whole') return null;
   const match = filePath.match(/(?:^|\/)ticket\/(D\d{3})_T\d{3}[^/]*\.md$/);
   if (!match) return null;
   try {
@@ -77,13 +78,8 @@ function checkTicketPlan(filePath, toolName, content, projectDir) {
     const discussionDir = path.join(projectDir, STORAGE_ROOT, 'discussion');
     const parentFile = fs.existsSync(discussionDir) && fs.readdirSync(discussionDir).find(name => name.startsWith(`${match[1]}-`) && name.endsWith('.md'));
     if (!parentFile) return null;
-    const discussion = fs.readFileSync(path.join(discussionDir, parentFile), 'utf8');
-    if (!discussionHasPlan(discussion)) {
-      return `New ticket under ${match[1]} blocked: the discussion has no plan yet. Write its ## Plan first — how it will be built, files and functions, order, rejected alternatives, risks — show it to the user and record their confirmation (skill="discussing", args="${match[1]}"), then create the ticket.`;
-    }
-    if (!discussionHasReaderStructure(discussion)) {
-      return `New ticket under ${match[1]} blocked: its plan has no **Reader Structure:** line. If a person will see or read the result, list what they will do (task → where they look → the words there) and every visible text (skill="structuring"), then show the user. If nobody will, write "none: <reason>". Add it to ## Plan, or as a Plan revision log entry once tickets exist (skill="discussing", args="${match[1]}").`;
-    }
+    const problem = planProblem(fs.readFileSync(path.join(discussionDir, parentFile), 'utf8'), match[1]);
+    if (problem) return `New ticket under ${match[1]} blocked: ${problem}`;
     if (!ticketHasDetails(content)) {
       return `New ticket under ${match[1]} blocked: its ## Implementation Details is empty. Fill it with this ticket's part of ${match[1]}'s plan — each file → function/section → what changes — then write the ticket.`;
     }
@@ -91,17 +87,21 @@ function checkTicketPlan(filePath, toolName, content, projectDir) {
   } catch { return null; }
 }
 
-// Returns { reason, log } when the write must be blocked, otherwise null.
+// Returns { reason, log } when a write of the call must be blocked, otherwise null.
+// Every file the call writes is checked, whatever the tool is named (core/tool-shape).
 function evaluateDocsGuard(hookData, projectDir) {
-  if (!hookData || !hookData.tool_name) return null;
+  if (!hookData) return null;
+  for (const write of fileWrites(hookData)) {
+    const result = evaluateWrite(hookData, write, projectDir);
+    if (result) return result;
+  }
+  return null;
+}
 
+function evaluateWrite(hookData, write, projectDir) {
   const toolName = hookData.tool_name;
-  if (toolName !== 'Write' && toolName !== 'Edit') return null;
-
-  const input = hookData.tool_input;
-  if (!input) return null;
-
-  const filePath = normalizePath(input.file_path || input.path || '');
+  const kind = write.kind;
+  const filePath = normalizePath(write.path);
   if (!filePath) return null;
 
   // Only guard protected .crabshell/ D/P/T/I paths
@@ -114,16 +114,16 @@ function evaluateDocsGuard(hookData, projectDir) {
   const activeSkill = getActiveSkill(projectDir, hookData.session_id);
   if (activeSkill) {
     // Skill is active — check Discussion body edit during regressing before allowing
-    const discussionRegressingError = checkDiscussionRegressingBlock(filePath, toolName, activeSkill, projectDir);
+    const discussionRegressingError = checkDiscussionRegressingBlock(filePath, kind, activeSkill, projectDir);
     if (discussionRegressingError) {
       return { reason: discussionRegressingError, log: `[DOCS_GUARD] Blocked ${toolName} to ${filePath} — discussion body edit during regressing` };
     }
     // Check investigation Constraints before allowing
-    const constraintError = checkInvestigationConstraints(filePath, toolName);
+    const constraintError = checkInvestigationConstraints(filePath, kind);
     if (constraintError) {
       return { reason: constraintError, log: `[DOCS_GUARD] Blocked ${toolName} to ${filePath} — ${constraintError}` };
     }
-    const planError = checkTicketPlan(filePath, toolName, input.content, projectDir);
+    const planError = checkTicketPlan(filePath, kind, write.content, projectDir);
     if (planError) {
       return { reason: planError, log: `[DOCS_GUARD] Blocked ${toolName} to ${filePath} — ticket before its discussion's plan or details` };
     }

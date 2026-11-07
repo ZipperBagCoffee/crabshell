@@ -14,7 +14,7 @@ function setup(host){
   fs.mkdirSync(path.join(root,'.crabshell','memory'),{recursive:true});
   fs.mkdirSync(path.join(root,'.crabshell','verification'),{recursive:true});
   fs.writeFileSync(path.join(root,'app.js'),'module.exports = 1;\n');
-  fs.writeFileSync(path.join(root,'package.json'),JSON.stringify({scripts:{test:'node check.js'}}));
+  fs.writeFileSync(path.join(root,'.crabshell','verification','manifest.json'),JSON.stringify({tools:{test:'node check.js'}})); // D143_T014: the manifest declares the check
   fs.writeFileSync(path.join(root,'check.js'),"require('assert').strictEqual(require('./app'),1);\n");
   fs.writeFileSync(path.join(root,'.crabshell','memory','regressing-state.json'),JSON.stringify({active:true,lastUpdatedAt:new Date().toISOString()}));
   const original=JSON.parse(fs.readFileSync(path.join(fixtures,host+'-PostToolUse-success.json')));
@@ -48,7 +48,10 @@ function finish(ctx,payload){
   sequence.recordVerification(payload,ctx.root,{host:ctx.host});
   return completion.recordParentObservation(ctx.root,payload,{host:ctx.host});
 }
-function gate(ctx){return sequence.gateVerification({...ctx.common,tool_name:'Bash',tool_input:{command:'git commit --dry-run'}},ctx.root).exitCode;}
+// D143: commits are no longer blocked, so 0/2 reports whether passing evidence is current:
+// the recorded last check passed and the parent's observation still matches the project's
+// files by content, as its runner sees them (D143_T013 — no TESTED/EDITED state).
+function gate(ctx){let st={};try{st=JSON.parse(fs.readFileSync(path.join(ctx.root,'.crabshell','memory','verification-state.json'),'utf8'));}catch{}const check=require('./core/check-history').currentCheck(st);const obs=completion.loadState(ctx.root,ctx.common).observation;const {contentIdentity}=require('./core/project-state');return check&&check.passed&&obs&&obs.passed&&require('./core/project-state').sameIdentity(obs.sourceFingerprint,contentIdentity(ctx.root))?0:2;}
 function state(ctx){return completion.loadState(ctx.root);}
 try{
   test('native Claude top-level errors and Codex completion records supply actual codes',()=>{
@@ -153,7 +156,7 @@ try{
     start(ctx,other);finish(ctx,other);
     assert.strictEqual(gate(ctx),2);
   });
-  test('Codex apply_patch file changes arm the commit gate without requiring a child claim',()=>{
+  test('Codex apply_patch file changes leave no current passing evidence without requiring a child claim',()=>{
     const ctx=setup('codex');
     completion.saveState(ctx.root,completion.defaultState());
     fs.writeFileSync(path.join(ctx.root,'new-source.js'),'module.exports = true;\n');

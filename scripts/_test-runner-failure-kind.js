@@ -7,6 +7,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const h = require('./testlib/hook-harness');
+const { copyRunner } = require('../skills/verifying/scripts/runner/install');
 const source = process.env.CRABSHELL_TEST_RUNNER || path.join(__dirname, '../skills/verifying/scripts/run-verify.js');
 const report = h.createReporter('runner-failure-kind');
 const write = (dir, file, text) => {
@@ -55,7 +56,7 @@ function fixture(dir) {
   write(dir, '.crabshell/verification/manifest.json', JSON.stringify({ schemaVersion: 2, entries: [{
     id: 'A', type: 'structural', command: { file: 'node', args: [testFile] }, contract: { exitCode: 0 },
   }] }));
-  fs.copyFileSync(source, path.join(dir, '.crabshell/verification/run-verify.js'));
+  copyRunner(source, path.join(dir, '.crabshell/verification'));
   git(dir, 'init', '-q');
   git(dir, 'add', '.');
   git(dir, 'add', '-f', '.crabshell/verification/manifest.json');
@@ -65,14 +66,14 @@ function fixture(dir) {
 function failBefore(dir) {
   write(dir, 'input.data', 'new');
   fs.appendFileSync(path.join(dir, testFile), '// changed test still accepts old input\n');
-  const result = run(dir, ['--changed']);
+  const result = run(dir, ['--changed', '--fail-before']);
   assert.equal(result.status, 1);
   assert.equal(result.results.find(item => item.id === 'A').status, 'PASS');
   assert.equal(result.results.find(item => item.id === 'FAIL_BEFORE:A').status, 'FAIL');
   const failed = record(dir);
   assert.equal(failed.lastFailedKind, 'fail-before');
   assert(Number.isFinite(Date.parse(failed.lastFailedAt)));
-  assert(!failed.passKey && !failed.passedAt);
+  assert(failed.failKey, 'a failure records the inputs it failed with');
   return failed;
 }
 function check(name, fn) {
@@ -87,7 +88,7 @@ function retained(dir, before) {
   assert.equal(after.lastFailedKind, 'fail-before');
   assert.deepEqual(after.files, before.files);
   assert.equal(after.entryHash, before.entryHash);
-  assert(!after.passKey && !after.passedAt);
+  assert.equal(after.passedAt, before.passedAt, 'no new pass is recorded');
   const plan = run(dir, ['--changed', '--no-fail-before', '--dry-run']).plan;
   assert(plan.selected.includes('A'));
   assert.equal(plan.reasons.A, 'failed in the last run');
@@ -120,7 +121,7 @@ for (const [name, args] of [
 check('fail-before mark clears when the changed test fails on HEAD and passes now', dir => {
   failBefore(dir);
   fs.appendFileSync(path.join(dir, testFile), "if (fs.readFileSync('input.data', 'utf8') !== 'new') process.exit(1);\n");
-  const result = run(dir, ['--changed']);
+  const result = run(dir, ['--changed', '--fail-before']);
   assert.equal(result.status, 0, result.stdout);
   assert.equal(result.results.find(item => item.id === 'FAIL_BEFORE:A').status, 'PASS');
   cleared(dir);
@@ -131,7 +132,7 @@ for (const action of ['commit', 'revert']) check(`fail-before mark clears when $
   if (action === 'commit') { git(dir, 'add', '.'); git(dir, 'commit', '-q', '-m', 'accept behavior-preserving change'); }
   else git(dir, 'checkout', '--', 'input.data', testFile);
   const executions = count(dir);
-  const result = run(dir, ['--changed']);
+  const result = run(dir, ['--changed', '--fail-before']);
   assert.equal(result.status, 0, result.stdout);
   assert.equal(count(dir), executions + 1);
   assert(!result.results.some(item => item.id.startsWith('FAIL_BEFORE:')));
@@ -142,11 +143,11 @@ check('hash-matched exemption clears a fail-before mark; stale exemption does no
   failBefore(dir);
   const exemptionFile = '.crabshell/verification/fail-before-exempt.json';
   write(dir, exemptionFile, JSON.stringify({ [testFile]: { sha256: 'stale', reason: 'behavior-preserving fixture' } }));
-  assert.equal(run(dir, ['--changed']).status, 1);
+  assert.equal(run(dir, ['--changed', '--fail-before']).status, 1);
   assert.equal(record(dir).lastFailedKind, 'fail-before');
   const sha256 = crypto.createHash('sha256').update(fs.readFileSync(path.join(dir, testFile))).digest('hex');
   write(dir, exemptionFile, JSON.stringify({ [testFile]: { sha256, reason: 'behavior-preserving fixture' } }));
-  const result = run(dir, ['--changed']);
+  const result = run(dir, ['--changed', '--fail-before']);
   assert.equal(result.status, 0, result.stdout);
   assert.match(result.results.find(item => item.id === 'FAIL_BEFORE:A').message, /^exempt:/);
   cleared(dir);
@@ -159,7 +160,7 @@ check('manual HEAD comparison preserves a fail-before mark', dir => {
   write(dir, testFile, working + 'process.exit(1);\n');
   git(dir, 'add', testFile); git(dir, 'commit', '-q', '-m', 'failing HEAD baseline');
   write(dir, testFile, working);
-  const result = run(dir, ['--changed']);
+  const result = run(dir, ['--changed', '--fail-before']);
   assert.equal(result.results.find(item => item.id === 'FAIL_BEFORE:A').status, 'manual');
   retained(dir, before);
 });
@@ -167,14 +168,14 @@ check('manual HEAD comparison preserves a fail-before mark', dir => {
 check('unknown Git diff cannot clear a fail-before mark', dir => {
   const before = failBefore(dir);
   fs.renameSync(path.join(dir, '.git'), path.join(dir, 'saved-git'));
-  const result = run(dir, ['--changed']);
+  const result = run(dir, ['--changed', '--fail-before']);
   assert.equal(result.status, 0, result.stdout);
   assert.match(result.stdout, /git diff failed/);
   const after = record(dir);
   assert.equal(after.lastFailedKind, before.lastFailedKind);
   assert.equal(after.lastFailedAt, before.lastFailedAt);
   assert.deepEqual(after.files, before.files);
-  assert(!after.passKey && !after.passedAt);
+  assert.equal(after.passedAt, before.passedAt, 'no new pass is recorded');
 });
 
 for (const args of [['A'], ['--no-fail-before'], ['--changed', '--no-fail-before']]) {
@@ -182,10 +183,10 @@ for (const args of [['A'], ['--no-fail-before'], ['--changed', '--no-fail-before
     failBefore(dir);
     const working = fs.readFileSync(path.join(dir, testFile), 'utf8');
     write(dir, testFile, working + 'process.exit(1);\n');
-    assert.equal(run(dir, ['--changed']).status, 1);
+    assert.equal(run(dir, ['--changed', '--fail-before']).status, 1);
     const failed = record(dir);
     assert.equal(failed.lastFailedKind, 'check');
-    assert(!failed.passKey && !failed.passedAt);
+    assert(failed.failKey, 'a failure records the inputs it failed with');
     write(dir, testFile, working);
     const executions = count(dir);
     assert.equal(run(dir, args).status, 0);

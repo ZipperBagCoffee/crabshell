@@ -7,7 +7,10 @@ const { getLastUserMessage } = require('../transcript-utils');
 const { getStorageRoot, readJsonOrDefault, writeJson } = require('../utils');
 const { SESSION_STATE_MAX_AGE_MS } = require('../constants');
 const { classifyUserIntent } = require('./turn-intent');
-const { commandObservation, projectFingerprint, checkKeyForCommand } = require('./command-observation');
+const { commandObservation, checkKeyForCommand } = require('./command-observation');
+// The project's files as its runner sees them, identified by content (one definition of
+// the files for hooks and checks; a rewrite with the same bytes keeps the evidence).
+const { contentIdentity, sameIdentity } = require('./project-state');
 const { startCheck, recordCheck, currentCheck } = require('./check-history');
 const { withStateLock } = require('./state-lock');
 const { buildWorkflowContext } = require('./workflow-context');
@@ -191,7 +194,7 @@ function recordParentObservationUnlocked(projectDir, payload = {}, options = {})
   if (!isExecutionAuthorized(state, payload, 'PostToolUse')) return { recorded: false, reason: 'not-authorized' };
   const observation = Object.hasOwn(options, 'observation') ? options.observation : commandObservation(payload, projectDir, options);
   if (!observation) {
-    if (['Write', 'Edit', 'apply_patch'].includes(payload.tool_name)) invalidateChangedObservation(projectDir, state,
+    if (require('./tool-shape').isFileWrite(payload)) invalidateChangedObservation(projectDir, state,
       options.getFingerprint && state.observation ? options.getFingerprint() : null, payload);
     return { recorded: false, reason: 'not-decisive-command' };
   }
@@ -209,8 +212,9 @@ function recordParentObservationUnlocked(projectDir, payload = {}, options = {})
     saveState(projectDir, { ...state, observation: null, repeatedFailure: null, reportIssued: false }, payload);
     return { recorded: false, reason: 'ambiguous-command-result' };
   }
-  candidate.sourceFingerprint = options.getFingerprint ? options.getFingerprint() : projectFingerprint(projectDir);
-  const sourceChanged = previousResult?.sourceFingerprint && previousResult.sourceFingerprint !== candidate.sourceFingerprint;
+  candidate.sourceFingerprint = options.getFingerprint ? options.getFingerprint() : contentIdentity(projectDir);
+  // An unknown fingerprint on either side counts as changed: two unknowns are not the same files.
+  const sourceChanged = Boolean(previousResult) && !sameIdentity(previousResult.sourceFingerprint, candidate.sourceFingerprint);
   const selected = currentCheck(state);
   let repeatedFailure = null;
   if (selected && !selected.passed) {
@@ -232,7 +236,8 @@ function recordParentObservationUnlocked(projectDir, payload = {}, options = {})
 
 function invalidateChangedObservation(projectDir, state, sourceFingerprint = null, payload = null) {
   if (!state.observation) return state;
-  if (state.observation.sourceFingerprint === (sourceFingerprint ?? projectFingerprint(projectDir))) return state;
+  // Evidence without a known fingerprint is no evidence (D143_T018: fail-closed).
+  if (sameIdentity(state.observation.sourceFingerprint, sourceFingerprint ?? contentIdentity(projectDir))) return state;
   return saveState(projectDir, { ...state, observation: null, repeatedFailure: null, reportIssued: false }, payload || state.authorizedSessionId);
 }
 
@@ -291,6 +296,22 @@ function recordParentObservation(projectDir, payload = {}, options = {}) {
   return withStateLock(statePath(projectDir), () => recordParentObservationUnlocked(projectDir, payload, options));
 }
 
+// A rerun answered from the runner's record (core/rerun-guard, D143_T014): that pass is
+// the parent's evidence, tied to the current contents like any observed check.
+function adoptRecordedPassUnlocked(projectDir, payload, observation) {
+  const state = loadState(projectDir, payload);
+  if (!state.pendingParentEvidence) return { recorded: false, reason: 'no-child-claim' };
+  if (!isExecutionAuthorized(state, payload, 'PreToolUse')) return { recorded: false, reason: 'not-authorized' };
+  const candidate = { ...observation, sourceFingerprint: contentIdentity(projectDir), observedAt: new Date().toISOString() };
+  const next = saveState(projectDir, { ...state, observation: candidate, repeatedFailure: null, reportIssued: false }, payload);
+  return { recorded: true, state: next, observation: candidate };
+}
+
+function adoptRecordedPass(projectDir, payload = {}, observation = {}) {
+  if (!fs.existsSync(statePath(projectDir)) || !loadState(projectDir, payload).pendingParentEvidence) return { recorded: false, reason: 'no-child-claim' };
+  return withStateLock(statePath(projectDir), () => adoptRecordedPassUnlocked(projectDir, payload, observation));
+}
+
 function decideStop(projectDir, payload = {}) {
   if (!fs.existsSync(statePath(projectDir))) return decideStopUnlocked(projectDir, payload);
   return withStateLock(statePath(projectDir), () => {
@@ -334,6 +355,7 @@ function validateStopDecision(decision, options = {}) {
 
 module.exports = {
   HOOK_AUTHORITY_BOUNDARY,
+  adoptRecordedPass,
   MAX_IDENTICAL_FAILURES,
   STATE_FILE,
   currentUserMessage,

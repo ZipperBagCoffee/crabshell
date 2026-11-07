@@ -7,6 +7,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const { commandObservation } = require('./core/command-observation');
 const completion = require('./core/completion-control');
+const { currentCheck } = require('./core/check-history');
 
 const fixtureDir = path.join(__dirname, 'fixtures', 'hook-payloads');
 const fixtures = Object.fromEntries(['claude-posttooluse-bash-success.json', 'claude-posttoolusefailure-bash.json']
@@ -54,28 +55,31 @@ function recordAndGate(root, payload) {
   const state = JSON.parse(fs.readFileSync(path.join(root, '.crabshell', 'memory', 'verification-state.json'), 'utf8'));
   const gate = run('gate', { hook_event_name: 'PreToolUse', tool_name: 'Bash', tool_input: { command: 'git commit -m "fixture only"' } });
   // The commit command is hook input only. No git commit is executed.
-  return { state, gate, parent: completion.recordParentObservation(root, payload) };
+  // D143_T013: the record keeps the declared check as it ran (checkHistory), no TESTED/EDITED.
+  return { state, check: currentCheck(state), gate, parent: completion.recordParentObservation(root, payload) };
 }
 
-test('captured Claude success clears EDITED and supplies passing parent evidence without an exit-code field', () => {
+test('captured Claude success is recorded as a passing check and supplies passing parent evidence without an exit-code field', () => {
   const root = setup('success');
   const payload = payloadFor(root, success);
   assert.deepStrictEqual(payload.tool_response, success.tool_response);
   const observed = recordAndGate(root, payload);
-  assert.strictEqual(observed.state.state, 'TESTED');
+  assert.strictEqual(observed.check && observed.check.passed, true);
+  assert.ok(!('state' in observed.state) && !('editsSinceTest' in observed.state), 'old edit-tracking fields were kept');
   assert.strictEqual(observed.gate.status, 0, observed.gate.stderr);
   assert.strictEqual(observed.parent.recorded, true);
   assert.strictEqual(observed.parent.observation.exitCode, 0);
   assert.strictEqual(observed.parent.observation.passed, true);
 });
 
-test('captured failure string cannot clear EDITED or supply passing parent evidence', () => {
+test('captured failure string is never a passing check or passing parent evidence', () => {
   const root = setup('failure');
   const payload = payloadFor(root, failure);
   assert.strictEqual(payload.tool_response, failure.tool_response);
   const observed = recordAndGate(root, payload);
-  assert.strictEqual(observed.state.state, 'EDITED');
-  assert.strictEqual(observed.gate.status, 2);
+  assert.ok(!(observed.check && observed.check.passed), JSON.stringify(observed.check));
+  // D143_T002: a commit is no longer blocked.
+  assert.strictEqual(observed.gate.status, 0);
   assert.strictEqual(observed.parent.observation.exitCode, 1);
   assert.ok(!observed.parent.observation?.passed);
   assert.ok(!completion.loadState(root).observation?.passed);
@@ -89,8 +93,8 @@ test('interrupted and running variants remain undetermined through both consumer
     const observation = commandObservation(payload, root);
     assert.strictEqual(observation.conclusive, false);
     const observed = recordAndGate(root, payload);
-    assert.strictEqual(observed.state.state, 'EDITED');
-    assert.strictEqual(observed.gate.status, 2);
+    assert.ok(!(observed.check && observed.check.passed), JSON.stringify(observed.check));
+    assert.strictEqual(observed.gate.status, 0); // D143_T002: commits are not blocked
     assert.strictEqual(observed.parent.recorded, false);
     assert.strictEqual(completion.loadState(root).observation, null);
   }
@@ -119,6 +123,9 @@ test('error indicators, missing responses and ordinary strings cannot inherit ev
   const responses = [undefined, null, 'passed', [], ...overrides.map(override => ({ ...success.tool_response, ...override }))];
   for (const response of responses) {
     const observation = commandObservation({ ...payload, tool_response: response }, root);
+    // A list response is a tool-content result, not a shell result (core/tool-shape,
+    // D143_T012): there is no observation at all, so nothing can pass.
+    if (Array.isArray(response)) { assert.strictEqual(observation, null); continue; }
     assert.strictEqual(observation.passed, false);
     assert.strictEqual(observation.conclusive, false);
   }

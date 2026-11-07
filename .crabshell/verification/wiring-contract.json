@@ -28,14 +28,14 @@
     {
       "id": "posttoolusefailure:post-tool-use",
       "event": "PostToolUseFailure",
-      "matcher": "Bash",
+      "matcher": "^(?!(?:Read|Grep|Glob)$).*",
       "script": "scripts/adapters/claude/post-tool-use.js",
       "args": []
     },
     {
       "id": "pretooluse:pre-tool-use",
       "event": "PreToolUse",
-      "matcher": "Bash|Write|Edit|WebFetch|WebSearch",
+      "matcher": "^(?!(?:Read|Grep|Glob)$).*",
       "script": "scripts/adapters/claude/pre-tool-use.js",
       "args": []
     },

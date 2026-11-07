@@ -5,6 +5,7 @@ const path = require('path');
 const os = require('os');
 const { normalizePath } = require('../transcript-utils');
 const { analyzeBashCommand } = require('./shell-writes');
+const { fileWrites, shellCommand } = require('./tool-shape');
 
 const WINDOWS = process.platform === 'win32';
 // Windows folders ignore case, so ".CRABSHELL" is the same folder there.
@@ -144,15 +145,19 @@ function advise(targetPath, projectDir, diagnostic) {
   };
 }
 
+// The call is read by its shape (core/tool-shape), whatever the tool is named: a shell
+// call, a file write, or — a call with a path that is neither — a read.
 function evaluatePathPolicy(hookData, projectDir) {
-  if (!hookData || !hookData.tool_name || !hookData.tool_input) return null;
-  const toolName = hookData.tool_name;
+  if (!hookData || !hookData.tool_input || typeof hookData.tool_input !== 'object') return null;
+  const toolName = hookData.tool_name || 'tool';
   const input = hookData.tool_input;
   const normalizedProject = normalizePath(projectDir);
+  const command = shellCommand(hookData);
+  const writes = command ? [] : fileWrites(hookData);
 
   // Reading another project's .crabshell is harmless; the model is only told.
-  if (toolName === 'Read' || toolName === 'Grep' || toolName === 'Glob') {
-    const filePath = input.file_path || input.path || '';
+  if (!command && writes.length === 0) {
+    const filePath = [input.file_path, input.path, input.notebook_path].find(value => typeof value === 'string' && value) || '';
     if (!filePath) return null;
     const result = checkPath(filePath, projectDir);
     if (!result.targets || result.valid || result.unresolved) return null;
@@ -161,10 +166,8 @@ function evaluatePathPolicy(hookData, projectDir) {
     return advise(normalizedFile, projectDir, `[PATH_GUARD] ${toolName} of another project's .crabshell: ${normalizedFile}`);
   }
 
-  // Bash: block only when another project's .crabshell path is a write target.
-  if (toolName === 'Bash') {
-    const command = input.command || '';
-    if (!command) return null;
+  // A shell call: block only when another project's .crabshell path is a write target.
+  if (command) {
     let advisory = null;
     for (const candidate of analyzeBashCommand(command)) {
       const result = checkPath(candidate.path, projectDir);
@@ -172,27 +175,35 @@ function evaluatePathPolicy(hookData, projectDir) {
       const normalizedMemoryPath = normalizePath(candidate.path);
       if (candidate.write) {
         return deny(
-          `Wrong .crabshell/ path in Bash command. The command writes "${normalizedMemoryPath}" but the project root is "${normalizedProject}". Use "${normalizedProject}/.crabshell/" instead.`,
-          `[PATH_GUARD] Blocked Bash write to another project's .crabshell: ${normalizedMemoryPath}`
+          `Wrong .crabshell/ path in ${toolName} command. The command writes "${normalizedMemoryPath}" but the project root is "${normalizedProject}". Use "${normalizedProject}/.crabshell/" instead.`,
+          `[PATH_GUARD] Blocked ${toolName} write to another project's .crabshell: ${normalizedMemoryPath}`
         );
       }
       if (!advisory && !isPluginGlobalConfig(normalizedMemoryPath)) {
-        advisory = advise(normalizedMemoryPath, projectDir, `[PATH_GUARD] Bash reads another project's .crabshell: ${normalizedMemoryPath}`);
+        advisory = advise(normalizedMemoryPath, projectDir, `[PATH_GUARD] ${toolName} reads another project's .crabshell: ${normalizedMemoryPath}`);
       }
     }
     return advisory;
   }
 
-  const filePath = normalizePath(input.file_path || '');
-  if (toolName === 'Edit' && filePath.endsWith('memory/logbook.md')) {
+  for (const write of writes) {
+    const result = evaluateWrite(write, toolName);
+    if (result) return result;
+  }
+  return null;
+}
+
+function evaluateWrite(write, toolName) {
+  const filePath = normalizePath(write.path);
+  if (write.kind === 'edit' && filePath.endsWith('memory/logbook.md')) {
     return deny(
       'logbook.md is append-only. Use Write tool to append content, not Edit. Edit modifies existing content which violates the append-only constraint.',
       `[PATH_GUARD] Blocked Edit on logbook.md: ${filePath}`
     );
   }
 
-  if (toolName === 'Write' && filePath.endsWith('memory/logbook.md')) {
-    const newLineCount = (input.content || '').split(/\r?\n/).length;
+  if (write.kind === 'whole' && filePath.endsWith('memory/logbook.md')) {
+    const newLineCount = write.content.split(/\r?\n/).length;
     const nativePath = filePath.replace(/\//g, path.sep);
     if (fs.existsSync(nativePath)) {
       try {
@@ -209,7 +220,7 @@ function evaluatePathPolicy(hookData, projectDir) {
     }
   }
 
-  if ((toolName === 'Write' || toolName === 'Edit') && require('./skill-flag').isSkillFlagPath(filePath)) {
+  if (require('./skill-flag').isSkillFlagPath(filePath)) {
     return deny(
       'skill-active.json is managed by the skill-tracker hook. Direct Write/Edit is not allowed.',
       `[PATH_GUARD] Blocked ${toolName} on skill-active.json`

@@ -6,6 +6,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { commandObservation, isTestExecution } = require('./core/command-observation');
+const { copyRunner } = require('../skills/verifying/scripts/runner/install');
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'crabshell-command-'));
 const verification = path.join(root, '.crabshell', 'verification');
@@ -35,7 +36,9 @@ function sequence(command, response) {
     cwd: root, env: { ...process.env, CLAUDE_PROJECT_DIR: root }, encoding: 'utf8', windowsHide: true,
   });
   assert.strictEqual(result.status, 0, result.stderr);
-  return JSON.parse(fs.readFileSync(stateFile, 'utf8')).state;
+  // D143_T013: the record keeps the declared check as it ran (no TESTED/EDITED state).
+  const check = require('./core/check-history').currentCheck(JSON.parse(fs.readFileSync(stateFile, 'utf8')));
+  return check && check.passed === true ? (check.required === false ? 'entry-pass' : 'required-pass') : 'no-pass';
 }
 
 test('official runner and arbitrary declared check are recognized without filename patterns', () => {
@@ -44,18 +47,18 @@ test('official runner and arbitrary declared check are recognized without filena
   assert.strictEqual(isTestExecution('node _test-undeclared.js', root), false);
 });
 // P179: a single manifest entry passing is evidence, but only the project's own check
-// (manifest tools / package.json test) unlocks the commit gate.
-test('real assertion exit and output pass the entry; the commit gate stays armed until a required check', () => {
+// (manifest tools / package.json test) marks the tree verified (D143: commits are not blocked).
+test('real assertion exit and output pass the entry, recorded as a single entry, not the required check', () => {
   const run = spawnSync(process.execPath, ['acceptance check.js'], { cwd: root, encoding: 'utf8', windowsHide: true });
   assert.strictEqual(run.status, 0, run.stderr);
   assert.match(run.stdout, /Arithmetic assertion passed/);
   const response = { exitCode: run.status, stdout: run.stdout, stderr: run.stderr };
   assert.strictEqual(observe('node "acceptance check.js"', response).passed, true);
   assert.strictEqual(observe('node "acceptance check.js"', response).required, false);
-  assert.strictEqual(sequence('node "acceptance check.js"', response), 'EDITED');
+  assert.strictEqual(sequence('node "acceptance check.js"', response), 'entry-pass');
 });
 test('official runner actually executes the declared check and supplies passing evidence', () => {
-  fs.copyFileSync(path.join(__dirname, '..', 'skills', 'verifying', 'scripts', 'run-verify.js'), path.join(verification, 'run-verify.js'));
+  copyRunner(path.join(__dirname, '..', 'skills', 'verifying', 'scripts', 'run-verify.js'), verification);
   manifest.entries[0].id = 'arithmetic';
   fs.writeFileSync(manifestPath, JSON.stringify(manifest));
   // This test can itself run inside the declared verification runner; the fixture's
@@ -68,7 +71,7 @@ test('official runner actually executes the declared check and supplies passing 
   assert.match(run.stdout, /Verification Results: PASS: 1 \/ FAIL: 0/);
   const response = { exitCode: run.status, stdout: run.stdout };
   assert.strictEqual(observe(manifest.tools.test, response).passed, true);
-  assert.strictEqual(sequence(manifest.tools.test, response), 'TESTED');
+  assert.strictEqual(sequence(manifest.tools.test, response), 'required-pass');
 });
 test('declared output assertions are required in addition to exit zero', () => {
   manifest.tools.direct = 'node "acceptance check.js"';
@@ -81,24 +84,32 @@ test('declared output assertions are required in addition to exit zero', () => {
   delete manifest.tools.direct;
   fs.writeFileSync(manifestPath, JSON.stringify(manifest));
 });
-test('package test configuration follows an arbitrary script name without a command-name list', () => {
+// D143_T014: the manifest alone declares checks — no package.json script is followed and
+// no package-manager spelling is known, whatever the project's language.
+test('package.json scripts are not declared checks; the manifest declares them', () => {
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ scripts: {
     test: 'npm run unusual-acceptance-name', 'unusual-acceptance-name': 'node package-acceptance.js',
   } }));
+  assert.strictEqual(isTestExecution('npm test', root), false);
+  assert.strictEqual(isTestExecution('npm run unusual-acceptance-name', root), false);
+  assert.strictEqual(isTestExecution('node package-acceptance.js', root), false);
+  manifest.tools.package = 'npm test';
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest));
   assert.strictEqual(isTestExecution('npm test', root), true);
-  assert.strictEqual(isTestExecution('npm run unusual-acceptance-name', root), true);
-  assert.strictEqual(isTestExecution('node package-acceptance.js', root), true);
+  delete manifest.tools.package;
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest));
+  fs.rmSync(path.join(root, 'package.json'));
 });
-test('executed test-name printer is not verification and stays EDITED', () => {
+test('executed test-name printer is not verification and records no pass', () => {
   const source = "console.log('npm test')";
   const run = spawnSync(process.execPath, ['-e', source], { encoding: 'utf8', windowsHide: true });
   assert.strictEqual(run.status, 0);
   const command = `node -e "${source}"`;
   const response = { exitCode: run.status, stdout: run.stdout };
   assert.strictEqual(observe(command, response), null);
-  assert.strictEqual(sequence(command, response), 'EDITED');
+  assert.strictEqual(sequence(command, response), 'no-pass');
 });
-test('missing, running, interrupted, failed and string-only responses stay EDITED', () => {
+test('missing, running, interrupted, failed and string-only responses record no pass', () => {
   const responses = [undefined, 'passed',
     { exitCode: 0, interrupted: true }, { exitCode: 0, is_error: true },
     { exitCode: 0, result: { status: 'failed' } }, { exitCode: 0, status: 'running' },
@@ -106,7 +117,7 @@ test('missing, running, interrupted, failed and string-only responses stay EDITE
     { exitCode: 0, signal: 'SIGTERM' }];
   for (const response of responses) {
     assert.strictEqual(observe('node "acceptance check.js"', response).passed, false, JSON.stringify(response));
-    assert.strictEqual(sequence('node "acceptance check.js"', response), 'EDITED');
+    assert.strictEqual(sequence('node "acceptance check.js"', response), 'no-pass');
   }
 });
 test('clean Claude PostToolUse objects use event success rather than requiring synthetic exit fields', () => {
@@ -117,7 +128,7 @@ test('clean Claude PostToolUse objects use event success rather than requiring s
   fs.writeFileSync(manifestPath, JSON.stringify(manifest));
   for (const response of [{ stdout: 'passed' }, { success: true, status: 'completed' }, { stdout: 'Exit code: 0' }]) {
     assert.strictEqual(observe('node "acceptance check.js"', response).passed, true);
-    assert.strictEqual(sequence('node "acceptance check.js"', response), 'TESTED');
+    assert.strictEqual(sequence('node "acceptance check.js"', response), 'required-pass');
     const withoutEvent = commandObservation({ tool_name: 'Bash', tool_input: { command: 'node "acceptance check.js"' }, tool_response: response }, root);
     assert.strictEqual(withoutEvent.conclusive, false);
   }

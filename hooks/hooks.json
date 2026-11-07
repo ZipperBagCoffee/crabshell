@@ -34,7 +34,7 @@
     ],
     "PostToolUseFailure": [
       {
-        "matcher": "Bash",
+        "matcher": "^(?!(?:Read|Grep|Glob)$).*",
         "hooks": [
           {
             "type": "command",
@@ -45,7 +45,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Bash|Write|Edit|WebFetch|WebSearch",
+        "matcher": "^(?!(?:Read|Grep|Glob)$).*",
         "hooks": [
           {
             "type": "command",

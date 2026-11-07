@@ -7,26 +7,26 @@ const fs = require('fs');
 // F1 mitigation: keep inline env check for fail-open invariant — D106 IA-10 RA2
 if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 
-const { readStdin, normalizePath } = require('./transcript-utils');
+const { readStdin } = require('./transcript-utils');
 const { getProjectDir, readJsonOrDefault, writeJson } = require('./utils');
 const { STORAGE_ROOT } = require('./constants');
-const { isGitCommit, commandObservation, projectFingerprint, checkKeyForCommand, declaredCommands, hasCheckConfiguration, isSourceFile, isRequiredCheck } = require('./core/command-observation');
+const { commandObservation, checkKeyForCommand } = require('./core/command-observation');
 const { startCheck, recordCheck, currentCheck } = require('./core/check-history');
 const { withStateLock } = require('./core/state-lock');
+const { shellCommand } = require('./core/tool-shape');
 
 // --- Constants ---
 const STATE_FILE = 'verification-state.json';
 
-// The working tree is shared by every session in the project, so this state is
-// tree-scoped: any session's source edit arms the commit gate and only a passing
-// declared check on the current source content disarms it. A session id is kept
-// only to scope suspension after an interrupt.
-const DEFAULT_STATE = {
-  lastUpdated: null,
-  state: 'CLEAN',
-  editsSinceTest: [],
-  lastTestTs: null
-};
+// The project's declared checks as they ran: started, passed, failed, interrupted
+// (checkHistory — the last one is shown after a restart). The working tree is shared by
+// every session, so the record is tree-scoped; a session id only scopes suspension after
+// an interrupt. Edits are not recorded (D143_T013): which checks a change needs comes from
+// the runner's records, and since the commit gate went (D143) nothing read the old
+// TESTED/EDITED state but /status, which now asks the runner.
+const DEFAULT_STATE = { lastUpdated: null };
+// Fields of the old edit-tracking state, dropped when a record is next written.
+const RETIRED_FIELDS = ['state', 'editsSinceTest', 'lastTestTs', 'lastTestFingerprint'];
 
 // --- Helpers ---
 
@@ -40,6 +40,7 @@ function loadState(projectDir) {
 }
 
 function saveState(projectDir, state) {
+  for (const field of RETIRED_FIELDS) delete state[field];
   state.lastUpdated = new Date().toISOString();
   const statePath = getStatePath(projectDir);
   writeJson(statePath, state);
@@ -53,135 +54,49 @@ function isSuspended(state, sessionId) {
 // --- Mode: record (PostToolUse) ---
 
 function handleRecord(hookData, projectDir, options = {}) {
-  const toolName = hookData.tool_name;
-  const input = hookData.tool_input || {};
-
+  // Only a declared check's result is recorded; edits, reads and other tools write nothing.
+  if (!shellCommand(hookData)) return 0;
+  const observation = Object.hasOwn(options, 'observation') ? options.observation : commandObservation(hookData, projectDir, options);
+  if (!observation) return 0;
   const state = loadState(projectDir);
   if (isSuspended(state, hookData.session_id)) return 0;
   const eventTurn = hookData.turn_id || hookData.prompt_id;
   if (eventTurn && state.interruptedTurns?.includes(JSON.stringify([hookData.session_id, eventTurn]))) return 0;
   delete state.sessionId; // legacy single-owner field; the state is tree-scoped
 
-  const editedPaths = ['Edit', 'Write'].includes(toolName) && input.file_path ? [input.file_path]
-    : toolName === 'apply_patch' && typeof input.command === 'string'
-      ? [...input.command.matchAll(/^\*\*\* (?:Add File|Update File|Delete File|Move to): (.+)$/gm)].map(match => match[1].trim()) : [];
-  if (editedPaths.length > 0) {
-    const relevant = editedPaths.filter(file => {
-      const relative = path.isAbsolute(file) ? path.relative(projectDir, file) : file;
-      return !relative.startsWith('..' + path.sep) && !path.isAbsolute(relative) && isSourceFile(relative);
-    });
-    // Non-source edits (docs, config, styles) leave the gate as it is.
-    if (relevant.length === 0) return 0;
-    if (state.state === 'TESTED' && state.lastTestFingerprint === (options.getFingerprint ? options.getFingerprint() : projectFingerprint(projectDir))) {
-      return 0;
-    }
-    state.state = 'EDITED';
-    for (const file of relevant) {
-      const normalized = normalizePath(file);
-      if (!state.editsSinceTest.includes(normalized)) state.editsSinceTest.push(normalized);
-      process.stderr.write(`[VERIFICATION_SEQ] Recorded source edit: ${normalized}\n`);
+  const merged = recordCheck(state, hookData, observation);
+  if (!merged.accepted) {
+    if (merged.reason === 'background-launch') {
+      process.stderr.write(`[VERIFICATION_SEQ] A check started in the background is never observed; run it in the foreground so it counts as completion evidence\n`);
     }
     saveState(projectDir, state);
     return 0;
   }
-
-  if (toolName === 'Bash' && input.command) {
-    const observation = Object.hasOwn(options, 'observation') ? options.observation : commandObservation(hookData, projectDir, options);
-    if (!observation) return 0;
-    const candidate = { ...observation, sourceFingerprint: observation.passed ? (options.getFingerprint ? options.getFingerprint() : projectFingerprint(projectDir)) : null };
-    const merged = recordCheck(state, hookData, candidate);
-    if (!merged.accepted) {
-      if (merged.reason === 'background-launch') {
-        process.stderr.write(`[VERIFICATION_SEQ] A check started in the background is never observed; run it in the foreground to unlock the commit gate\n`);
-      }
-      saveState(projectDir, state);
-      return 0;
-    }
-    const current = currentCheck(state);
-    if (!current?.passed) {
-      state.state = 'EDITED';
-      state.lastTestFingerprint = null;
-      process.stderr.write(`[VERIFICATION_SEQ] Latest required check failed, is running, or is undetermined; commit gate stays armed\n`);
-    } else if (current.required === false) {
-      // One manifest entry passing proves that entry, not the change: the gate
-      // waits for the project's own check (manifest tools or package.json "test").
-      process.stderr.write(`[VERIFICATION_SEQ] Passing single manifest entry recorded; the commit gate needs a manifest tools command or package.json test\n`);
-    } else {
-      state.state = 'TESTED';
-      state.editsSinceTest = [];
-      state.lastTestTs = new Date().toISOString();
-      state.lastTestFingerprint = current.sourceFingerprint;
-      process.stderr.write(`[VERIFICATION_SEQ] Recorded passing test execution, state → TESTED\n`);
-    }
-    saveState(projectDir, state);
-  }
-
-  // Reads and other tools change nothing, so nothing is written.
+  const current = currentCheck(state);
+  process.stderr.write(current?.passed
+    ? `[VERIFICATION_SEQ] Recorded passing check: ${current.command}\n`
+    : `[VERIFICATION_SEQ] Latest check failed, is running, or is undetermined\n`);
+  saveState(projectDir, state);
   return 0;
 }
 
 // --- Mode: gate (PreToolUse) ---
 
 function handleGate(hookData, projectDir) {
-  const toolName = hookData.tool_name;
   const input = hookData.tool_input || {};
+  const command = shellCommand(hookData);
 
   const state = loadState(projectDir);
 
-  if (toolName === 'Bash' && input.command) {
-    const key = checkKeyForCommand(input.command, projectDir, input.workdir || hookData.cwd || projectDir);
-    if (!isSuspended(state, hookData.session_id) && startCheck(state, hookData, key)) {
-      // Starting a single manifest entry does not re-lock a verified tree.
-      if (isRequiredCheck(input.command, projectDir, input.workdir || hookData.cwd || projectDir)) state.state = 'EDITED';
-      saveState(projectDir, state);
-    }
+  if (command) {
+    const key = checkKeyForCommand(command, projectDir, input.workdir || hookData.cwd || projectDir);
+    if (!isSuspended(state, hookData.session_id) && startCheck(state, hookData, key)) saveState(projectDir, state);
   }
 
-  // Gate: git commit without test
-  if (toolName === 'Bash' && input.command && isGitCommit(input.command)) {
-    if (state.state === 'TESTED' && (!state.lastTestFingerprint || state.lastTestFingerprint !== projectFingerprint(projectDir))) {
-      state.state = 'EDITED';
-      saveState(projectDir, state);
-    }
-    if (state.state === 'EDITED') {
-      const files = state.editsSinceTest.join(', ');
-      if (!hasCheckConfiguration(projectDir)) {
-        // No manifest and no package.json test script: nothing can ever satisfy
-        // the gate, so it advises instead of blocking.
-        return {
-          exitCode: 0,
-          notice: `Unverified source edits [${files}] are being committed, but this project declares no check command. Run /verifying to declare one so commits wait for a passing check.`,
-        };
-      }
-      if (declaredCommands(projectDir).length === 0) {
-        return { exitCode: 2, reason: `Git commit blocked: the project's check configuration declares no runnable single command (unreadable manifest, or only compound shell commands). Edited files: [${files}]. Fix .crabshell/verification/manifest.json or package.json "test", run it, then commit.` };
-      }
-      if (!declaredCommands(projectDir).some(declaration => declaration.source !== 'entry')) {
-        // Single manifest entries never unlock a commit, so without a full check
-        // this block could never clear: say what to declare.
-        return { exitCode: 2, reason: `Git commit blocked: the project declares no full check, and single manifest entries do not unlock commits. Edited files: [${files}]. Declare the project's checks as tools.test and tools.changed in .crabshell/verification/manifest.json ("tools": { "test": "node .crabshell/verification/run-verify.js", "changed": "node .crabshell/verification/run-verify.js --changed" }) or as a package.json "test" script, run the changed-file check, then commit.` };
-      }
-      // Name what counts, so a check run in an unaccepted form is not repeated blindly.
-      // The changed-file check comes first: routine commits verify only the diff.
-      const required = [...new Set(declaredCommands(projectDir).filter(declaration => declaration.source !== 'entry')
-        .map(declaration => declaration.tokens.join(' ')))];
-      const changed = required.filter(command => /(^| )--changed( |$)/.test(command));
-      const others = required.filter(command => !changed.includes(command)).slice(0, 3);
-      const named = changed.length > 0
-        ? `the changed-file check ${changed.map(command => `\`${command}\``).join(' or ')}`
-        : others.map(command => `\`${command}\``).join(' or ');
-      const fullNote = changed.length > 0 && others.length > 0
-        ? ` Run the full check (${others.map(command => `\`${command}\``).join(' or ')}) only when the user asks for it; if you think it is needed, ask the user first.`
-        : '';
-      const output = {
-        decision: 'block',
-        reason: `Git commit blocked: current source has no passing required check. Edited files: [${files}]. Run ${named} as the whole command and inspect its result before committing — \`cd <dir> &&\` before it and \`> file\` / \`2>&1\` after it are accepted; pipes (\`|\`), \`;\` and \`||\` are not, because the exit status would come from the other command. Run it in the foreground: a check started in the background is never observed.${fullNote}`
-      };
-      return { exitCode: 2, reason: output.reason };
-    }
-  }
-
-  // All other cases: allow
+  // A commit is never blocked here (D143): forcing the project's check before every
+  // commit ran the same check again at each commit, and outside a traced Node project
+  // that check ran everything. The check after the last edit and the full check at
+  // release are the agent's and the release checklist's to run.
   return { exitCode: 0 };
 }
 
@@ -216,14 +131,6 @@ function interruptVerification(projectDir, payload) {
       for (const [key, result] of Object.entries(state.checkHistory.results || {})) if (ownedByInterrupted(result.identity)) delete state.checkHistory.results[key];
       state.checkHistory.trackedStarts = true;
     }
-    const remaining = state.checkHistory ? currentCheck(state) : null;
-    if (remaining?.passed && remaining.sourceFingerprint && remaining.required !== false) {
-      state.state = 'TESTED';
-      state.lastTestFingerprint = remaining.sourceFingerprint;
-    } else {
-      state.state = 'EDITED';
-      state.lastTestFingerprint = null;
-    }
     saveState(projectDir, state);
   });
 }
@@ -240,9 +147,9 @@ function resumeVerification(projectDir, payload) {
 }
 
 function gateVerification(hookData, projectDir) {
-  const command = hookData.tool_input?.command;
-  if (hookData.tool_name !== 'Bash' || (!isGitCommit(command)
-      && !checkKeyForCommand(command, projectDir, hookData.tool_input?.workdir || hookData.cwd || projectDir))) {
+  const command = shellCommand(hookData);
+  // Only the start of a declared check is recorded here; nothing is blocked.
+  if (!command || !checkKeyForCommand(command, projectDir, hookData.tool_input?.workdir || hookData.cwd || projectDir)) {
     return { exitCode: 0 };
   }
   return withStateLock(getStatePath(projectDir), () => handleGate(hookData, projectDir));

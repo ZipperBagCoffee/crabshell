@@ -21,8 +21,8 @@ function project(name, discussion) {
 }
 const EMPTY_PLAN = '# D001 - topic\n\n## Intent\nx\n\n## Plan\n(placeholder — plan before tickets)\n\n## Discussion Log\n';
 const TEMPLATE_PLAN = '# D001 - topic\n\n## Plan\n{How it will be built}\n**Approach:** {how}\n**Changes (file → what):** {each file}\n**User confirmation:** {the user\'s words}\n\n## Discussion Log\n';
-const FILLED_PLAN = '# D001 - topic\n\n## Plan\n**Approach:** add a guard\n**Reader Structure:** none: no visible result\n**Changes (file → what):** scripts/a.js → check()\n**User confirmation:** "go" 2026-09-25\n\n## Discussion Log\n';
-const CYCLE_PLAN = '# D001 - topic\n\n## Discussion Log\n\n---\n### [2026-09-25 10:00] Cycle 1 plan\n**Approach:** x\n**Reader Structure:** none: no visible result\n';
+const FILLED_PLAN = '# D001 - topic\n\n## Plan\n**Approach:** add a guard\n**Reader Structure:** none: no visible result\n**Values:** none: no new names or numbers\n**Structure:** one function\n**Start state:** old discussions keep their tickets\n**User burden:** none: nothing to do\n**Design review:** none: low risk\n**Changes (file → what):** scripts/a.js → check()\n**User confirmation:** "go" 2026-09-25\n\n## Discussion Log\n';
+const CYCLE_PLAN = '# D001 - topic\n\n## Discussion Log\n\n---\n### [2026-09-25 10:00] Cycle 1 plan\n**Approach:** x\n**Reader Structure:** none: no visible result\n**Values:** none: no new names or numbers\n**Structure:** one function\n**Start state:** old discussions keep their tickets\n**User burden:** none: nothing to do\n**Design review:** none: low risk\n';
 const ticket = details => `# D001_T001 - t\n\n## Scope\nIncluded: a\n\n## Implementation Details\n${details}\n\n## Acceptance Criteria\n- AC-1\n`;
 
 // The docs guard runs with the ticketing skill active, as when the skill writes the ticket.
@@ -40,30 +40,30 @@ const { checkTicketPlan } = require('./docs-guard');
 {
   const dir = project('empty', EMPTY_PLAN);
   const file = path.join(dir, CRAB, 'ticket', 'D001_T001-t.md').replace(/\\/g, '/');
-  const reason = checkTicketPlan(file, 'Write', ticket('- scripts/a.js → check()'), dir);
+  const reason = checkTicketPlan(file, 'whole', ticket('- scripts/a.js → check()'), dir);
   report.check('G1 a new ticket under a discussion whose Plan is still a placeholder is blocked, naming /discussing D001',
     /no plan yet/.test(reason || '') && /args="D001"/.test(reason || ''), String(reason).slice(0, 160));
   const template = project('template', TEMPLATE_PLAN);
   report.check('G2 a Plan left as the unfilled template is not a plan',
-    /no plan yet/.test(checkTicketPlan(path.join(template, CRAB, 'ticket', 'D001_T001-t.md').replace(/\\/g, '/'), 'Write', ticket('- a'), template) || ''));
+    /no plan yet/.test(checkTicketPlan(path.join(template, CRAB, 'ticket', 'D001_T001-t.md').replace(/\\/g, '/'), 'whole', ticket('- a'), template) || ''));
   for (const [name, content] of [['filled', FILLED_PLAN], ['cycle', CYCLE_PLAN]]) {
     const ok = project(name, content);
     report.check(`G3 ${name}: a filled Plan${name === 'cycle' ? ' (a regressing "Cycle 1 plan" log entry)' : ''} lets the ticket through`,
-      checkTicketPlan(path.join(ok, CRAB, 'ticket', 'D001_T001-t.md').replace(/\\/g, '/'), 'Write', ticket('- scripts/a.js → check()'), ok) === null);
+      checkTicketPlan(path.join(ok, CRAB, 'ticket', 'D001_T001-t.md').replace(/\\/g, '/'), 'whole', ticket('- scripts/a.js → check()'), ok) === null);
   }
   const noDetails = project('nodetails', FILLED_PLAN);
   const noDetailsFile = path.join(noDetails, CRAB, 'ticket', 'D001_T001-t.md').replace(/\\/g, '/');
   report.check('G4 a new ticket with empty or TBD Implementation Details is blocked',
-    /Implementation Details is empty/.test(checkTicketPlan(noDetailsFile, 'Write', ticket(''), noDetails) || '')
-    && /Implementation Details is empty/.test(checkTicketPlan(noDetailsFile, 'Write', ticket('TBD.'), noDetails) || ''));
+    /Implementation Details is empty/.test(checkTicketPlan(noDetailsFile, 'whole', ticket(''), noDetails) || '')
+    && /Implementation Details is empty/.test(checkTicketPlan(noDetailsFile, 'whole', ticket('TBD.'), noDetails) || ''));
   const existingDir = project('existing', EMPTY_PLAN);
   const existingFile = path.join(existingDir, CRAB, 'ticket', 'D001_T001-t.md');
   fs.writeFileSync(existingFile, 'old');
   report.check('G5 control: an existing ticket, an Edit, a plan-parent ticket and a missing parent are not checked',
-    checkTicketPlan(existingFile.replace(/\\/g, '/'), 'Write', ticket(''), existingDir) === null
-    && checkTicketPlan(path.join(dir, CRAB, 'ticket', 'D001_T001-t.md').replace(/\\/g, '/'), 'Edit', '', dir) === null
-    && checkTicketPlan(path.join(dir, CRAB, 'ticket', 'P001_T001-t.md').replace(/\\/g, '/'), 'Write', ticket(''), dir) === null
-    && checkTicketPlan(path.join(dir, CRAB, 'ticket', 'D009_T001-t.md').replace(/\\/g, '/'), 'Write', ticket(''), dir) === null);
+    checkTicketPlan(existingFile.replace(/\\/g, '/'), 'whole', ticket(''), existingDir) === null
+    && checkTicketPlan(path.join(dir, CRAB, 'ticket', 'D001_T001-t.md').replace(/\\/g, '/'), 'edit', '', dir) === null
+    && checkTicketPlan(path.join(dir, CRAB, 'ticket', 'P001_T001-t.md').replace(/\\/g, '/'), 'whole', ticket(''), dir) === null
+    && checkTicketPlan(path.join(dir, CRAB, 'ticket', 'D009_T001-t.md').replace(/\\/g, '/'), 'whole', ticket(''), dir) === null);
   const through = guard(project('hook', EMPTY_PLAN), ticket('- scripts/a.js → check()'));
   report.check('G6 through the guard entry point with the ticketing skill active, the ticket is still blocked',
     Boolean(through) && /no plan yet/.test(through.reason), JSON.stringify(through).slice(0, 200));
@@ -95,7 +95,7 @@ const { checkTicketPlan } = require('./docs-guard');
   const refused = run(['ticket', 'Too early', '--parent=D001', '--details=- a.js → f()']);
   report.check('X2 a Codex ticket under a discussion with no plan is refused and nothing is written',
     refused.status === 1 && /no plan yet/.test(refused.stderr) && !fs.readdirSync(path.join(dir, CRAB, 'ticket')).some(f => f.startsWith('D001_T')), refused.stderr.slice(0, 160));
-  const planned = run(['discussion', 'With plan', '--how=**Approach:** add a guard; scripts/a.js → check()\n**Reader Structure:** none: no visible result']);
+  const planned = run(['discussion', 'With plan', '--how=**Approach:** add a guard; scripts/a.js → check()\n**Reader Structure:** none: no visible result\n**Values:** none: no new names\n**Structure:** one function\n**Start state:** unchanged\n**User burden:** none: nothing\n**Design review:** none: low risk']);
   const noDetails = run(['ticket', 'No details', '--parent=D002']);
   report.check('X3 --how fills the Plan; a ticket without --details is refused', planned.status === 0 && noDetails.status === 1 && /--details/.test(noDetails.stderr), noDetails.stderr.slice(0, 160));
   const made = run(['ticket', 'Made', '--parent=D002', '--details=scripts/a.js → check(): add the guard']);
@@ -103,12 +103,23 @@ const { checkTicketPlan } = require('./docs-guard');
   const ticketText = ticketFile ? fs.readFileSync(path.join(dir, CRAB, 'ticket', ticketFile), 'utf8') : '';
   report.check('X4 with a plan and --details the ticket is created with Implementation Details and an Intent Fidelity placeholder',
     made.status === 0 && /## Implementation Details\nscripts\/a\.js → check\(\): add the guard/.test(ticketText) && /## Intent Fidelity\n\(placeholder/.test(ticketText), made.stderr.slice(0, 160));
+  // D145_T003: each design line has its own argument (like --reader), named from DESIGN_FIELDS.
+  const { DESIGN_FIELDS, missingDesignFields } = require('./core/plan-entry');
+  const argName = field => field.toLowerCase().replace(/\s+/g, '-');
+  const designArgs = DESIGN_FIELDS.map(field => `--${argName(field)}=${field} line`);
+  run(['discussion', 'Design by arguments', '--how=**Approach:** one function', '--reader=none: no visible result', ...designArgs]);
+  run(['discussion', 'One line short', '--how=**Approach:** one function', '--reader=none: no visible result', ...designArgs.slice(0, -1)]);
+  const docOf = id => { const name = fs.readdirSync(path.join(dir, CRAB, 'discussion')).find(f => f.startsWith(`${id}-`)); return name ? fs.readFileSync(path.join(dir, CRAB, 'discussion', name), 'utf8') : ''; };
+  const full = missingDesignFields(docOf('D003'));
+  const short = missingDesignFields(docOf('D004'));
+  report.check('X5 the Codex discussion command writes each design line from its own argument; leaving one out leaves only that one missing',
+    full.length === 0 && short.length === 1 && short[0] === DESIGN_FIELDS[DESIGN_FIELDS.length - 1], `full=${full} short=${short}`);
 }
 
 // D133: a plan names who reads the result; a ticket records who tried it and how a correction spread.
 {
-  const NO_READER = '# D001 - topic\n\n## Plan\n**Approach:** add a screen\n**Changes (file → what):** ui.js → menu()\n**User confirmation:** "go"\n\n## Discussion Log\n';
-  const check = content => { const d = project('reader', content); return checkTicketPlan(path.join(d, CRAB, 'ticket', 'D001_T001-t.md').replace(/\\/g, '/'), 'Write', ticket('- a.js → f()'), d); };
+  const NO_READER = '# D001 - topic\n\n## Plan\n**Approach:** add a screen\n**Values:** none: no new names or numbers\n**Structure:** one function\n**Start state:** old discussions keep their tickets\n**User burden:** none: nothing to do\n**Design review:** none: low risk\n**Changes (file → what):** ui.js → menu()\n**User confirmation:** "go"\n\n## Discussion Log\n';
+  const check = content => { const d = project('reader', content); return checkTicketPlan(path.join(d, CRAB, 'ticket', 'D001_T001-t.md').replace(/\\/g, '/'), 'whole', ticket('- a.js → f()'), d); };
   const withField = line => NO_READER.replace('**Changes', `${line}\n**Changes`);
   const blocked = check(NO_READER) || '';
   report.check('R1 a filled Plan with no Reader Structure line blocks the ticket and names the skills to use',
@@ -133,13 +144,43 @@ const { checkTicketPlan } = require('./docs-guard');
   run(['discussion', 'No reader', '--how=**Approach:** add a screen']);
   const refused = run(['ticket', 'Too early', '--parent=D001', '--details=a.js → f()']);
   report.check('R8 Codex refuses a ticket when the plan has no Reader Structure line', refused.status === 1 && /Reader Structure/.test(refused.stderr), refused.stderr.slice(0, 160));
-  run(['discussion', 'Reader', '--how=**Approach:** x\n**Reader Structure:** none: no visible result']);
+  run(['discussion', 'Reader', '--how=**Approach:** x\n**Reader Structure:** none: no visible result\n**Values:** none: no new names\n**Structure:** one function\n**Start state:** unchanged\n**User burden:** none: nothing\n**Design review:** none: low risk']);
   const made = run(['ticket', 'Made', '--parent=D002', '--details=a.js → f()']);
-  const viaFlag = run(['discussion', 'Flag', '--how=**Approach:** x', '--reader=none: no visible result']);
+  const viaFlag = run(['discussion', 'Flag', '--how=**Approach:** x\n**Values:** none: no new names\n**Structure:** one function\n**Start state:** unchanged\n**User burden:** none: nothing\n**Design review:** none: low risk', '--reader=none: no visible result']);
   const flagTicket = run(['ticket', 'Via flag', '--parent=D003', '--details=a.js → f()']);
   report.check('R10 Codex --reader writes the line and the ticket goes through', viaFlag.status === 0 && flagTicket.status === 0, flagTicket.stderr.slice(0, 160));
   const file = fs.readdirSync(path.join(dir, CRAB, 'ticket')).find(f => f.startsWith('D002_T001-'));
   report.check('R9 a Codex ticket carries a Reader Check placeholder', made.status === 0 && Boolean(file) && /## Reader Check\n\(placeholder/.test(fs.readFileSync(path.join(dir, CRAB, 'ticket', file), 'utf8')));
+}
+
+// D145: the design is checked before building — a plan without the five design-check lines blocks a new ticket.
+{
+  const { DESIGN_FIELDS } = require('./core/plan-entry');
+  const FULL = FILLED_PLAN;
+  const check = content => { const d = project('design', content); return checkTicketPlan(path.join(d, CRAB, 'ticket', 'D001_T001-t.md').replace(/\\/g, '/'), 'whole', ticket('- a.js → f()'), d); };
+  const without = field => FULL.split('\n').filter(line => !line.startsWith(`**${field}:**`)).join('\n');
+  report.check('D0 plan-entry names the five design-check lines', Array.isArray(DESIGN_FIELDS) && DESIGN_FIELDS.join('|') === 'Values|Structure|Start state|User burden|Design review', String(DESIGN_FIELDS));
+  for (const field of ['Values', 'Structure', 'Start state', 'User burden', 'Design review']) {
+    const reason = check(without(field)) || '';
+    report.check(`D1 a plan without **${field}:** blocks the ticket and the message names that line and the discussing skill`,
+      reason.includes(`**${field}:**`) && /args="D001"/.test(reason), reason.slice(0, 160));
+  }
+  const missingTwo = check(without('Values').split('\n').filter(line => !line.startsWith('**Design review:**')).join('\n')) || '';
+  report.check('D2 every missing line is named, with what goes there', missingTwo.includes('**Values:**') && missingTwo.includes('**Design review:**') && /did not write the plan/.test(missingTwo), missingTwo.slice(0, 200));
+  report.check('D3 a template line ({...}), TBD or a bare "none" does not count',
+    ['**Design review:** {reviewer, findings → fixes}', '**Design review:** TBD', '**Design review:** none'].every(line =>
+      (check(FULL.replace('**Design review:** none: low risk', line)) || '').includes('**Design review:**')));
+  report.check('D4 "none: <reason>" on every line passes', check(FULL) === null);
+  report.check('D5 the lines in a Plan revision log entry pass (a discussion that already has tickets)',
+    check(`${without('Values').split('\n').filter(l => !/^\*\*(Structure|Start state|User burden|Design review):\*\*/.test(l)).join('\n')}\n---\n### [2026-11-07 10:00] Plan revision\n**Values:** none: no new names or numbers\n**Structure:** one function\n**Start state:** old discussions keep their tickets\n**User burden:** none: nothing to do\n**Design review:** none: low risk\n`) === null);
+  report.check('D6 a "**Reader Structure:**" line is not read as "**Structure:**"',
+    (check(without('Structure')) || '').includes('**Structure:**'));
+  const dir = project('codex-design', null);
+  const run = args => spawnSync(process.execPath, [path.join(__dirname, 'codex-docs.js'), ...args, `--project-dir=${dir}`], { cwd: dir, encoding: 'utf8', windowsHide: true });
+  run(['discussion', 'No design', '--how=**Approach:** x\n**Reader Structure:** none: no visible result']);
+  const refused = run(['ticket', 'Too early', '--parent=D001', '--details=a.js → f()']);
+  report.check('D7 Codex refuses a ticket when design-check lines are missing, naming them',
+    refused.status === 1 && refused.stderr.includes('**Design review:**') && !fs.readdirSync(path.join(dir, CRAB, 'ticket')).some(f => f.startsWith('D001_T')), refused.stderr.slice(0, 200));
 }
 
 // D133: the structuring skill reaches both hosts and stays general.

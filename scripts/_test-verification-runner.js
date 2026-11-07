@@ -4,6 +4,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { copyRunner } = require('../skills/verifying/scripts/runner/install');
 
 const repoRoot = path.resolve(__dirname, '..');
 const sourceRunner = process.env.CRABSHELL_TEST_RUNNER || path.join(repoRoot, 'skills', 'verifying', 'scripts', 'run-verify.js');
@@ -42,7 +43,7 @@ function parseResults(stdout) {
 function runManifest(root, entries) {
   const verificationDir = path.join(root, '.crabshell', 'verification');
   fs.mkdirSync(verificationDir, { recursive: true });
-  fs.copyFileSync(sourceRunner, path.join(verificationDir, 'run-verify.js'));
+  copyRunner(sourceRunner, verificationDir);
   writeJson(path.join(verificationDir, 'manifest.json'), { schemaVersion: 2, entries });
   const env = { ...process.env, PROJECT_ROOT: root, CRABSHELL_VERIFY_JSON: '1' };
   delete env.CRABSHELL_VERIFY_RUNNING;
@@ -131,10 +132,20 @@ try {
   )]);
   check('8 structural exit contract remains supported', structural.status === 0 && structural.results[0].status === 'PASS');
 
-  check('9 tracked source and generated runner are byte-identical', fs.readFileSync(sourceRunner).equals(fs.readFileSync(generatedRunner)));
+  // The runner is its launcher plus every module in the runner/ folder beside it.
+  const runnerFiles = launcher => {
+    const modules = path.join(path.dirname(launcher), 'runner');
+    return [launcher, ...(fs.existsSync(modules) ? fs.readdirSync(modules).filter(name => name.endsWith('.js')).sort().map(name => path.join(modules, name)) : [])];
+  };
+  const sourceFiles = runnerFiles(sourceRunner);
+  const generatedFiles = runnerFiles(generatedRunner);
+  check('9 tracked source and generated runner are byte-identical, modules included',
+    sourceFiles.length === generatedFiles.length
+      && sourceFiles.every((file, index) => path.basename(file) === path.basename(generatedFiles[index]) && fs.readFileSync(file).equals(fs.readFileSync(generatedFiles[index]))),
+    `${sourceFiles.length} vs ${generatedFiles.length} files`);
   const activeManifest = fs.readFileSync(path.join(repoRoot, '.crabshell', 'verification', 'manifest.json'), 'utf8');
   const skill = fs.readFileSync(path.join(repoRoot, 'skills', 'verifying', 'SKILL.md'), 'utf8');
-  const runnerSource = fs.readFileSync(sourceRunner, 'utf8');
+  const runnerSource = sourceFiles.map(file => fs.readFileSync(file, 'utf8')).join('\n');
   check('10 active sources contain no substring-pass or machine path',
     !runnerSource.includes('output.includes(entry.expected)')
       && !skill.includes('output.includes(entry.expected)')

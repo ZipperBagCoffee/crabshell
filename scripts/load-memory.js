@@ -29,10 +29,17 @@ async function main(options = {}) {
     // compaction is logged.
     try { require('./core/post-compact-effects').runPostCompactEffects(projectDir); } catch {}
   }
+  // The project's runner copy follows the installed plugin (D143_T016); only a
+  // SessionStart event does it, not a /load-memory call.
+  let notices = [];
+  if (hookData.hook_event_name === 'SessionStart') {
+    try { notices = [require('./core/runner-sync').runnerSyncNotice(projectDir)]; } catch {}
+  }
   const context = buildMemoryContext(projectDir, {
     source: hookData.source || 'unknown',
     sessionId: hookData.session_id,
     tailLines: options.tailLines,
+    notices,
   });
   const output = createSessionStartOutput(context);
   const nativeHook = options.nativeOutput === true || hookData.hook_event_name === 'SessionStart';

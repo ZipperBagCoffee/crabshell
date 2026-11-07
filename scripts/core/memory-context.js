@@ -154,7 +154,9 @@ function buildMemoryContext(projectDir, options = {}) {
   const header = hasMemory ? `=== Crabshell: ${projectName} ===` : `--- Crabshell: No memory for ${projectName} ---`;
   const warning = source === 'compact' && options.includeRecovery !== false ? getPostCompactWarning(projectDir).trim() : '';
   const footer = [MEMORY_NOTES.trim(), hasMemory ? '=== End of Memory ===' : ''].filter(Boolean);
-  let remaining = budget - [header, warning, ...footer].join('\n\n').length - 120;
+  // Lines a session start hook adds after the memory (the runner copy notice), inside the budget.
+  const notices = (Array.isArray(options.notices) ? options.notices : []).filter(Boolean);
+  let remaining = budget - [header, warning, ...footer, ...notices].join('\n\n').length - 120;
 
   const admitted = {};
   const leftOut = [];
@@ -190,7 +192,7 @@ function buildMemoryContext(projectDir, options = {}) {
   const render = () => {
     const memoryBody = ['project', 'previous', 'pending', 'recent', 'unreflected', 'knowledge', 'digest']
       .filter(name => admitted[name]).map(name => admitted[name]).join('\n\n---\n\n');
-    return [header, warning, memoryBody, admitted.workflow, admitted.recovery, leftOutLine, ...footer].filter(Boolean).join('\n\n') + '\n';
+    return [header, warning, memoryBody, admitted.workflow, admitted.recovery, leftOutLine, ...footer, ...notices].filter(Boolean).join('\n\n') + '\n';
   };
   let output = render();
   const overflow = output.length - budget;

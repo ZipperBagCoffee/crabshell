@@ -1,13 +1,16 @@
 'use strict';
 
-// Claude PostToolUse (every tool) and PostToolUseFailure (Bash): all observers in
-// this one process instead of one process per script.
+// Claude PostToolUse and PostToolUseFailure (every tool): all observers in this one
+// process instead of one process per script, routed by the call's shape
+// (core/tool-shape), not by the tool's name.
 if (process.env.CRABSHELL_BACKGROUND === '1') process.exit(0);
 
 const { readStdin } = require('../../transcript-utils');
-const { emit, runChecks } = require('./dispatch');
+const { emit } = require('./dispatch');
+const { runChecks } = require('../../core/dispatch');
+const { isFileWrite, isShellCall } = require('../../core/tool-shape');
 
-const WRITES = ['Write', 'Edit'];
+const shellOrWrite = payload => isShellCall(payload) || isFileWrite(payload);
 
 function recordVerification(payload, projectDir) {
   require('../../verification-sequence').recordVerification(payload, projectDir);
@@ -29,8 +32,18 @@ const POST_CHECKS = [
     },
   },
   { name: 'verification-record', run: recordVerification },
-  { name: 'completion-controller', tools: ['Bash', ...WRITES], run: controllerResult },
-  { name: 'doc-watchdog', tools: WRITES, run: (payload, projectDir) => { require('../../doc-watchdog').recordEdit(payload, projectDir); return null; } },
+  { name: 'completion-controller', accepts: shellOrWrite, run: controllerResult },
+  {
+    // What to declare after a shell run (D143_T015): inputs, slow or outputs for a declared
+    // entry; the manifest for an undeclared slow command that repeated on the same files.
+    name: 'declaration-after',
+    accepts: isShellCall,
+    run: (payload, projectDir) => {
+      const hint = require('../../core/declaration-guidance').afterRun(payload, projectDir, { host: 'claude' });
+      return hint ? { context: hint } : null;
+    },
+  },
+  { name: 'doc-watchdog', accepts: isFileWrite, run: (payload, projectDir) => { require('../../doc-watchdog').recordEdit(payload, projectDir); return null; } },
   {
     name: 'skill-tracker',
     tools: ['Skill'],
@@ -41,8 +54,10 @@ const POST_CHECKS = [
   },
   {
     // Reading another project's .crabshell is allowed; the model is told after the read.
+    // A read = a call with a path that is neither a shell call nor a write (a shell
+    // read was already advised before it ran).
     name: 'path-advisory',
-    tools: ['Read', 'Grep', 'Glob'],
+    accepts: payload => !shellOrWrite(payload),
     run: (payload, projectDir) => {
       const result = require('../../core/path-policy').evaluatePathPolicy(payload, projectDir);
       return result && result.advisory ? { context: result.advisory, log: result.diagnostic } : null;
@@ -51,8 +66,8 @@ const POST_CHECKS = [
 ];
 
 const FAILURE_CHECKS = [
-  { name: 'verification-record', tools: ['Bash'], run: recordVerification },
-  { name: 'completion-controller', tools: ['Bash'], run: controllerResult },
+  { name: 'verification-record', accepts: isShellCall, run: recordVerification },
+  { name: 'completion-controller', accepts: isShellCall, run: controllerResult },
 ];
 
 async function main() {

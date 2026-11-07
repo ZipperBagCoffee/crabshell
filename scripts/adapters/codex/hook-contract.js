@@ -19,18 +19,13 @@ function findProjectRoot(cwd) {
   }
 }
 
-function normalizeToolName(toolName) {
-  if (toolName === 'shell_command' || toolName === 'exec_command') return 'Bash';
-  return toolName;
-}
-
 function normalizePreToolUse(payload) {
   if (!payload || payload.hook_event_name !== 'PreToolUse') return null;
   if (typeof payload.tool_name !== 'string' || !payload.tool_input || typeof payload.tool_input !== 'object') return null;
   return {
     projectDir: findProjectRoot(payload.cwd),
     hookData: {
-      tool_name: normalizeToolName(payload.tool_name),
+      tool_name: payload.tool_name,
       tool_input: payload.tool_input,
     },
   };
@@ -85,6 +80,16 @@ function denyOutput(reason) {
   };
 }
 
+// Codex matchers: "*", "" or none = every tool, otherwise a regular expression on the
+// tool name; apply_patch also answers to Edit and Write (https://learn.chatgpt.com/docs/hooks).
+function codexMatcherReaches(matcher, tool) {
+  if (matcher === undefined || matcher === '' || matcher === '*') return true;
+  try {
+    const pattern = new RegExp(matcher);
+    return pattern.test(tool) || (tool === 'apply_patch' && (pattern.test('Edit') || pattern.test('Write')));
+  } catch { return false; }
+}
+
 function validateCodexHookConfig(config) {
   if (!config || !config.hooks || typeof config.hooks !== 'object') throw new Error('Codex hook config must contain hooks.');
   const events = Object.keys(config.hooks).sort();
@@ -127,7 +132,9 @@ function validateCodexHookConfig(config) {
     throw new Error('SubagentStart must use the shared Codex subagent adapter.');
   }
   const postToolHandlers = config.hooks.PostToolUse.flatMap(group => group.hooks);
-  if (!config.hooks.PostToolUse.every(group => group.matcher === 'Bash|Write|Edit')
+  // The adapter tells shell calls and file writes apart by their shape, so the matcher
+  // only has to reach Codex's canonical shell and patch tool names (D143 §6).
+  if (!['Bash', 'apply_patch'].every(tool => config.hooks.PostToolUse.some(group => codexMatcherReaches(group.matcher, tool)))
       || !postToolHandlers.every(handler => /adapters[\/]codex[\/]post-tool-use\.js/.test(String(handler.command)))) {
     throw new Error('PostToolUse must use the shared Codex parent-evidence adapter for commands and edits.');
   }
@@ -157,7 +164,6 @@ module.exports = {
   normalizePreToolUse,
   normalizeSessionStart,
   normalizeSubagentStart,
-  normalizeToolName,
   normalizeUserPromptSubmit,
   validateCodexHookConfig,
 };

@@ -59,7 +59,8 @@ const OTHER = fwd(path.join(os.homedir(), 'crabshell-test-other-project'));
   const watchdog = h.readJson(h.memoryPath(project, 'doc-watchdog.json'));
   report.check('D3 a source edit is counted by doc-watchdog', watchdog && watchdog.editsSinceDocUpdate === 1, JSON.stringify(watchdog));
   const verification = h.readJson(h.memoryPath(project, 'verification-state.json'));
-  report.check('D3 ...and arms the commit gate', verification && verification.state !== 'CLEAN', JSON.stringify(verification).slice(0, 120));
+  // D143_T013: an edit writes no verification record; which checks it needs comes from the runner.
+  report.check('D3 ...and writes no verification record', verification === null, JSON.stringify(verification).slice(0, 120));
 }
 
 // D2b: a module that prints to stdout inside the dispatcher does not corrupt its one

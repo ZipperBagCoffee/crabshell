@@ -8,6 +8,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const h = require('./testlib/hook-harness');
+const { copyRunner } = require('../skills/verifying/scripts/runner/install');
 
 const REPO = path.join(__dirname, '..');
 const RUNNER = process.env.CRABSHELL_TEST_RUNNER || path.join(REPO, 'skills', 'verifying', 'scripts', 'run-verify.js');
@@ -49,7 +50,7 @@ function fixture(name, manifestEntries) {
   ].join('\n') + '\n');
   write(dir, 'scripts/_test-doc.js', "const fs = require('fs'); const path = require('path');\nif (!fs.readFileSync(path.join(__dirname, '..', 'docs', 'guide.md'), 'utf8').includes('Guide')) process.exit(1);\n");
   fs.mkdirSync(path.join(dir, CRAB, 'verification'), { recursive: true });
-  fs.copyFileSync(RUNNER, path.join(dir, CRAB, 'verification', 'run-verify.js'));
+  copyRunner(RUNNER, path.join(dir, CRAB, 'verification'));
   const entries = manifestEntries || [
     { id: 'V001', ia: 'light non-test check', type: 'structural', command: { file: 'node', args: ['-e', 'process.exit(0)'] }, contract: { exitCode: 0 } },
     { id: 'V002', ia: 'every test file', type: 'behavioral', discover: { pattern: 'scripts/_test-*.js', exclude: [] }, contract: { exitCode: 0, assertions: [], forbiddenChanges: ['docs/guide.md'] }, timeout: 30000 },
@@ -73,10 +74,27 @@ function runner(dir, args) {
   if (result.error) throw result.error;
   return result;
 }
+// D143_T009: checks are chosen by the content of their inputs, so a change is a real
+// edit. Each listed file gets one more line for the dry run; afterwards its bytes and
+// modification time are put back so the next case starts from the same tree (a check
+// with unknown inputs counts a moved time as a change).
 function dryRun(dir, files) {
-  const result = runner(dir, ['--changed', ...(files ? ['--files', files.join(',')] : []), '--dry-run']);
-  try { return JSON.parse(result.stdout); } catch { return { parseError: true, stdout: result.stdout.slice(0, 200), stderr: result.stderr.slice(0, 200), status: result.status }; }
+  const saved = [];
+  for (const rel of files || []) {
+    const file = path.join(dir, rel);
+    if (!fs.existsSync(file)) continue;
+    const stat = fs.statSync(file);
+    saved.push([file, fs.readFileSync(file), stat.atime, stat.mtime]);
+    fs.appendFileSync(file, '\n');
+  }
+  try {
+    const result = runner(dir, ['--changed', '--dry-run']);
+    try { return JSON.parse(result.stdout); } catch { return { parseError: true, stdout: result.stdout.slice(0, 200), stderr: result.stderr.slice(0, 200), status: result.status }; }
+  } finally {
+    for (const [file, bytes, atime, mtime] of saved) { fs.writeFileSync(file, bytes); fs.utimesSync(file, atime, mtime); }
+  }
 }
+const reasonOf = (plan, file) => String((plan.reasons || {})[(plan.selected || []).find(id => id.endsWith(file))] || '');
 const selectsTest = (plan, file) => Array.isArray(plan.selected) && plan.selected.some(id => id.endsWith(file));
 const show = plan => JSON.stringify(plan).slice(0, 220);
 // Failure may refresh execution metadata, but never dependency records/hashes.
@@ -92,7 +110,7 @@ const mapPath = path.join(dir, CRAB, 'verification', 'test-map.json');
 
 {
   const plan = dryRun(dir, ['scripts/lib-a.js']);
-  report.check('R1 without a load map, --changed runs everything and says why', plan.full === true && /map/i.test(String(plan.reason)), show(plan));
+  report.check('R1 without a load map, --changed runs everything and says why (every check is new)', plan.full === true && /\b5 new\b/.test(String(plan.reason)), show(plan));
 }
 {
   const full = runner(dir, []);
@@ -119,22 +137,34 @@ const mapPath = path.join(dir, CRAB, 'verification', 'test-map.json');
   const plan = dryRun(dir, ['scripts/_test-b.js']);
   report.check('R6 a changed test file selects that test', plan.full === false && selectsTest(plan, '_test-b.js') && !selectsTest(plan, '_test-a.js'), show(plan));
 }
-for (const file of ['scripts/constants.js', 'scripts/utils.js', 'hooks/hooks.json', 'package.json', '.claude-plugin/plugin.json']) {
+// The project's changed.global files (an older manifest field) are inputs of every check.
+for (const file of ['scripts/constants.js', 'scripts/utils.js', 'hooks/hooks.json', '.claude-plugin/plugin.json']) {
   const plan = dryRun(dir, [file]);
-  report.check(`R7 control: a change to ${file} runs everything`, plan.full === true, show(plan));
+  report.check(`R7 control: a change to ${file} (changed.global) runs everything`, plan.full === true, show(plan));
+}
+{
+  // D143_T009: no file name is special any more; package.json is read by no check here,
+  // so only the check with unknown inputs (V001 reads no file) runs.
+  const plan = dryRun(dir, ['package.json']);
+  report.check('R7 package.json is not special: only the check with unknown inputs runs', plan.full === false && (plan.selected || []).join(',') === 'V001', show(plan));
 }
 {
   write(dir, 'scripts/new-lib.js', 'module.exports = 3;\n');
   const plan = dryRun(dir, ['scripts/new-lib.js']);
-  report.check('R8 control: a source file outside the load map runs everything', plan.full === true, show(plan));
+  // V001 reads no file, so the whole project is its input and any touch reruns it (the
+  // dry runs above touched files); no test reads the new file.
+  report.check('R8 a new file no check reads selects no test, only the check with unknown inputs',
+    plan.full === false && (plan.selected || []).join(',') === 'V001' && /unknown inputs/.test(reasonOf(plan, 'V001')), show(plan));
   fs.rmSync(path.join(dir, 'scripts', 'new-lib.js'));
 }
 {
+  const libB = fs.readFileSync(path.join(dir, 'scripts', 'lib-b.js'));
   fs.writeFileSync(path.join(dir, 'scripts', 'lib-b.js'), 'module.exports = 2; // edited\n');
   const plan = dryRun(dir, null);
-  report.check('R9 without --files, the working-tree change (lib-b.js) is found through git and selects its test',
+  report.check('R9 an edit in the working tree (lib-b.js) selects its test',
     plan.full === false && selectsTest(plan, '_test-b.js') && !selectsTest(plan, '_test-a.js'), show(plan));
-  git(dir, 'checkout', '--', 'scripts/lib-b.js');
+  // Put the bytes back (a git checkout may rewrite line endings, which is a real change).
+  fs.writeFileSync(path.join(dir, 'scripts', 'lib-b.js'), libB);
 }
 {
   // An edited test file (new content after the map); a moved time alone is not an
@@ -144,8 +174,9 @@ for (const file of ['scripts/constants.js', 'scripts/utils.js', 'hooks/hooks.jso
   const original = fs.readFileSync(testA);
   fs.appendFileSync(testA, '// edited after the map\n');
   fs.utimesSync(testA, future, future);
-  const plan = dryRun(dir, ['scripts/lib-b.js']);
-  report.check('R10 control: a load map older than a test file runs everything', plan.full === true && /stale|older/i.test(String(plan.reason)), show(plan));
+  const plan = dryRun(dir, null);
+  report.check('R10 an edited test file (whatever its time) selects that test, not everything',
+    plan.full === false && selectsTest(plan, '_test-a.js') && !selectsTest(plan, '_test-b.js') && /_test-a\.js changed/.test(reasonOf(plan, '_test-a.js')), show(plan));
   fs.writeFileSync(testA, original);
 }
 
@@ -211,17 +242,18 @@ for (const file of ['scripts/constants.js', 'scripts/utils.js', 'hooks/hooks.jso
   report.check('R18 a file read only by a manifest assertion selects that entry', plan.full === false && Array.isArray(plan.selected) && plan.selected.includes('V003'), show(plan));
   git(rev, 'mv', 'docs/guide.md', 'docs/manual.md');
   plan = dryRun(rev, null);
-  report.check('R19 a staged rename lists the old path, so the test that read it is selected', Array.isArray(plan.changed) && plan.changed.includes('docs/guide.md') && selectsTest(plan, '_test-doc.js'), show(plan));
+  report.check('R19 a renamed file is gone from its old path, so the test that read it is selected', selectsTest(plan, '_test-doc.js') && /docs\/guide\.md/.test(reasonOf(plan, '_test-doc.js')), show(plan));
   git(rev, 'mv', 'docs/manual.md', 'docs/guide.md');
   plan = dryRun(rev, null);
-  report.check('R20 no changed files runs only the checks that always run (no test file)',
-    plan.full === false && /no changed files/i.test(String(plan.reason)) && Array.isArray(plan.selected) && plan.selected.includes('V001') && !plan.selected.some(id => id.startsWith('V002:')), show(plan));
+  report.check('R20 with the content back as it was, no test is selected (only the check with unknown inputs may run after the touches)',
+    plan.full === false && Array.isArray(plan.selected) && !plan.selected.some(id => id.startsWith('V002:')) && !plan.selected.includes('V003'), show(plan));
   const later = new Date(Date.now() + 60 * 60 * 1000);
   fs.writeFileSync(path.join(rev, 'scripts', 'lib-a.js'), "require('./constants'); require('./lib-b');\nmodule.exports = 1;\n");
   fs.utimesSync(path.join(rev, 'scripts', 'lib-a.js'), later, later);
   git(rev, 'commit', '-q', '-am', 'lib-a now uses lib-b');
-  plan = dryRun(rev, ['scripts/lib-b.js']);
-  report.check('R21 control: a recorded source file changed after the map (new dependency) runs everything', plan.full === true && /older than scripts\/lib-a\.js/.test(String(plan.reason)), show(plan));
+  plan = dryRun(rev, null);
+  report.check('R21 a recorded source edited to use a new dependency selects the tests that read it, not everything',
+    plan.full === false && selectsTest(plan, '_test-a.js') && !selectsTest(plan, '_test-b.js') && /scripts\/lib-a\.js changed/.test(reasonOf(plan, '_test-a.js')), show(plan));
   write(rev, 'scripts/_test-zfail.js', 'process.exit(1);\n');
   const failing = runner(rev, []);
   // D138: a failing run still refreshes the checks that passed (_test-a now records the
@@ -230,7 +262,7 @@ for (const file of ['scripts/constants.js', 'scripts/utils.js', 'hooks/hooks.jso
   const failedIds = Object.entries(afterFail).filter(([, record]) => record.lastFailedAt).map(([id]) => id);
   const aRecord = Object.entries(afterFail).find(([id]) => id.endsWith('_test-a.js'));
   report.check('R22 a full run with a failing check refreshes the passing records and marks only the failed check',
-    failing.status !== 0 && failedIds.length === 1 && failedIds[0].endsWith('_test-zfail.js') && !afterFail[failedIds[0]].passKey
+    failing.status !== 0 && failedIds.length === 1 && failedIds[0].endsWith('_test-zfail.js') && !afterFail[failedIds[0]].passHistory
       && Boolean(aRecord) && aRecord[1].files.includes('scripts/lib-b.js'),
     `exit=${failing.status} failed=${failedIds.join(',')} a=${aRecord && aRecord[1].files.join(',')}`);
 }
@@ -267,15 +299,18 @@ function touchLater(dir, rel) {
   let plan = dryRun(ig, ['scripts/lib-a.js']);
   report.check('R25 control: before the ignored file changes, selection is by what each test loads',
     built.status === 0 && plan.full === false && selectsTest(plan, '_test-a.js') && !selectsTest(plan, '_test-state.js'), `exit=${built.status} ${show(plan)}`);
+  // D143_T009 (approved contract change): a file git ignores is an input like any other
+  // (a check reading a local .env must run again when it changes), and it never makes
+  // every check run.
   touchLater(ig, 'state/runtime.txt');
   plan = dryRun(ig, ['scripts/lib-b.js']);
-  report.check('R24 a later change to a file git ignores does not make --changed run everything',
-    plan.full === false && selectsTest(plan, '_test-b.js') && !selectsTest(plan, '_test-state.js'), show(plan));
+  report.check('R24 a later change to a file git ignores selects the test that reads it, not everything',
+    plan.full === false && selectsTest(plan, '_test-b.js') && selectsTest(plan, '_test-state.js') && !selectsTest(plan, '_test-a.js'), show(plan));
   fs.rmSync(path.join(ig, '.git'), { recursive: true, force: true });
   touchLater(ig, 'state/runtime.txt');
   plan = dryRun(ig, ['scripts/lib-b.js']);
-  report.check('R26 control: without git nothing is known to be ignored, so a later change still runs everything',
-    plan.full === true && /older than state\/runtime\.txt/.test(String(plan.reason)), show(plan));
+  report.check('R26 without git the same change selects the same tests',
+    plan.full === false && selectsTest(plan, '_test-state.js') && selectsTest(plan, '_test-b.js') && !selectsTest(plan, '_test-a.js'), show(plan));
 }
 {
   const fresh = ignoredFixture('uncommitted');
@@ -284,8 +319,8 @@ function touchLater(dir, rel) {
   const built = runner(fresh, []);
   touchLater(fresh, 'state/runtime.txt');
   const plan = dryRun(fresh, ['scripts/lib-b.js']);
-  report.check('R27 a repository with no commits still applies its ignore rules',
-    built.status === 0 && plan.full === false && selectsTest(plan, '_test-b.js'), `exit=${built.status} ${show(plan)}`);
+  report.check('R27 a repository with no commits chooses by content too',
+    built.status === 0 && plan.full === false && selectsTest(plan, '_test-b.js') && selectsTest(plan, '_test-state.js') && !selectsTest(plan, '_test-a.js'), `exit=${built.status} ${show(plan)}`);
 }
 
 {
@@ -299,12 +334,17 @@ function touchLater(dir, rel) {
   const later = new Date(Date.now() + 60 * 60 * 1000);
   fs.writeFileSync(manifest, JSON.stringify({ ...JSON.parse(fs.readFileSync(manifest, 'utf8')), note: 'edited after the map' }, null, 2));
   fs.utimesSync(manifest, later, later);
-  const plan = dryRun(whole, ['scripts/lib-b.js']);
-  report.check('R28 control: with .crabshell ignored, a manifest edit still runs everything',
-    built.status === 0 && plan.full === true && /manifest/.test(String(plan.reason)), `exit=${built.status} ${show(plan)}`);
+  // D143_T009: a manifest edit reruns the checks whose own fields changed (and checks
+  // that read the manifest), whether git ignores the folder or not.
+  const plan = dryRun(whole, null);
+  report.check('R28 a manifest edit that changes no check\'s fields reruns no test (only the check with unknown inputs)',
+    built.status === 0 && plan.full === false && !(plan.selected || []).some(id => id.startsWith('V002:')), `exit=${built.status} ${show(plan)}`);
+  const edited = JSON.parse(fs.readFileSync(manifest, 'utf8'));
+  edited.entries.find(entry => entry.id === 'V002').timeout = 31000;
+  fs.writeFileSync(manifest, JSON.stringify(edited, null, 2));
   const clean = dryRun(whole, null);
-  report.check('R32 control: with nothing changed in git, an edit to the ignored manifest still runs everything',
-    clean.full === true && /manifest/.test(String(clean.reason)), show(clean));
+  report.check('R32 a changed entry field (the discover rule\'s timeout) reruns every check that entry makes',
+    clean.full === true && (clean.selected || []).filter(id => id.startsWith('V002:')).length === 4, show(clean));
 }
 
 // R29–R31: a file whose time moved but whose content did not (a revert, a checkout,
@@ -327,14 +367,16 @@ function rewriteSameLater(dir, rel) {
   plan = dryRun(same, ['scripts/lib-a.js']);
   report.check('R30 a test file and the manifest rewritten with the same content do not either',
     plan.full === false && selectsTest(plan, '_test-a.js'), show(plan));
+  // D143_T009: with no stored hash for a file whose time moved, its content is read
+  // again; the same content is no change.
   const mapFile = path.join(same, CRAB, 'verification', 'test-map.json');
   const oldMap = JSON.parse(fs.readFileSync(mapFile, 'utf8'));
-  delete oldMap.fileHashes;
-  fs.writeFileSync(mapFile, JSON.stringify(oldMap, null, 2) + '\n');
+  for (const rel of Object.keys(oldMap.snapshot.files)) oldMap.snapshot.files[rel][4] = null;
+  fs.writeFileSync(mapFile, JSON.stringify(oldMap) + '\n');
   rewriteSameLater(same, 'scripts/lib-b.js');
   plan = dryRun(same, ['scripts/lib-a.js']);
-  report.check('R31 control: a map without content hashes keeps the time rule (a moved time runs everything)',
-    plan.full === true && /older than/.test(String(plan.reason)), show(plan));
+  report.check('R31 a moved time with no stored hash is read again, and the same content changes nothing',
+    plan.full === false && selectsTest(plan, '_test-a.js') && !selectsTest(plan, '_test-b.js'), show(plan));
 }
 
 // R33–R34: a passing --changed run updates the load map for the checks it ran, so
@@ -372,17 +414,18 @@ function rewriteSameLater(dir, rel) {
   // --changed run the failed check again so the map matches the tree before R45.
   fs.writeFileSync(path.join(re, 'scripts', 'lib-b.js'), 'module.exports = 2;\n');
   const resync = runner(re, ['--changed']);
-  // R45: a --files list can leave out a new file that lies in a folder a check which
-  // did not run lists (_test-list reads notes/); the refresh must not record that
-  // file as checked, so after the commit it still counts as a later change.
+  // R45 (D143_T009): a --changed run that adds a dependency (lib-a now reads a new note
+  // in a folder _test-list lists) records it, so the next run chooses by the new inputs.
   fs.writeFileSync(path.join(re, 'scripts', 'lib-a.js'), "require('./constants'); require('./lib-b');\nrequire('fs').readFileSync(require('path').join(__dirname, '..', 'notes', 'new.md'));\nmodule.exports = 1;\n");
   write(re, 'notes/new.md', 'new\n');
-  const listed = runner(re, ['--changed', '--files', 'scripts/lib-a.js']);
+  const listed = runner(re, ['--changed']);
   git(re, 'add', '-A'); git(re, 'commit', '-q', '-m', 'lib-a reads a new note');
-  const next = dryRun(re, ['docs/guide.md']);
-  report.check('R45 a partial run does not record a new file that a check which did not run lists in a folder',
-    resync.status === 0 && listed.status === 0 && /Changed-files run: \d+ of \d+ checks \((?!all)/.test(listed.stdout) && next.full === true && /older than notes\/new\.md/.test(String(next.reason)),
-    `resync=${resync.status} exit=${listed.status} ${listed.stdout.slice(-100)} ${show(next)}`);
+  const quiet = dryRun(re, null);
+  const next = dryRun(re, ['notes/new.md']);
+  report.check('R45 after a --changed run records a new dependency, the next run chooses by the new inputs',
+    resync.status === 0 && listed.status === 0 && /Changed-files run: \d+ of \d+ checks \((?!all)/.test(listed.stdout)
+      && (quiet.selected || []).length === 0 && next.full === false && selectsTest(next, '_test-a.js') && selectsTest(next, '_test-list.js') && !selectsTest(next, '_test-b.js'),
+    `resync=${resync.status} exit=${listed.status} ${listed.stdout.slice(-100)} quiet=${show(quiet)} next=${show(next)}`);
 }
 
 // R46 (D138): a new check that fails on a --changed run and is committed while still
@@ -424,8 +467,9 @@ function rewriteSameLater(dir, rel) {
   const built = runner(fb, []);
   // Restore the committed bytes (a git checkout may rewrite line endings).
   const restore = () => { for (const [rel, content] of Object.entries(original)) write(fb, rel, content); };
-  const run = args => {
-    const result = runner(fb, ['--changed', ...(args || [])]);
+  // D143: the HEAD comparison is opt-in, so these cases ask for it with --fail-before.
+  const run = (args, { optIn = true } = {}) => {
+    const result = runner(fb, ['--changed', ...(optIn ? ['--fail-before'] : []), ...(args || [])]);
     let results = [];
     try { results = JSON.parse(result.stdout.match(/^\[\]$|^\[\r?\n[\s\S]*?\r?\n\]$/m)[0]); } catch {}
     const before = results.filter(item => String(item.id).startsWith('FAIL_BEFORE:'));
@@ -454,6 +498,8 @@ function rewriteSameLater(dir, rel) {
     r.status === 1 && r.of('_test-a.js') && r.of('_test-a.js').status === 'FAIL' && /passes on HEAD/.test(r.of('_test-a.js').error), brief(r));
   r = run(['--no-fail-before']);
   report.check('R40 --no-fail-before skips the HEAD comparison', r.status === 0 && r.before.length === 0, brief(r));
+  r = run([], { optIn: false });
+  report.check('R40b without --fail-before a plain --changed run makes no HEAD comparison (D143 default)', r.status === 0 && r.before.length === 0, brief(r));
   fs.writeFileSync(exemptFile, JSON.stringify({ 'scripts/_test-a.js': { sha256: sha('scripts/_test-a.js'), reason: 'refactor keeps behavior' } }, null, 2));
   r = run();
   report.check('R38 an exemption that hashes the current test passes with its reason, and the exemption file selects nothing',
@@ -509,7 +555,7 @@ function rewriteSameLater(dir, rel) {
   let plan = dryRun(nt, null);
   report.check('R46 a new test file runs by itself with the checks the other changed files touch, not everything',
     built.status === 0 && plan.full === false && selectsTest(plan, '_test-c.js') && selectsTest(plan, '_test-b.js')
-      && !selectsTest(plan, '_test-a.js') && !selectsTest(plan, '_test-doc.js') && /new check/.test(String(plan.reason)), `built=${built.status} ${show(plan)}`);
+      && !selectsTest(plan, '_test-a.js') && !selectsTest(plan, '_test-doc.js') && /\b1 new\b/.test(String(plan.reason)) && reasonOf(plan, '_test-c.js') === 'new check', `built=${built.status} ${show(plan)}`);
   const ran = runner(nt, ['--changed']);
   git(nt, 'add', '-A'); git(nt, 'commit', '-q', '-m', 'test-c');
   plan = dryRun(nt, ['scripts/lib-a.js']);
@@ -519,7 +565,7 @@ function rewriteSameLater(dir, rel) {
   git(nt, 'add', '-A'); git(nt, 'commit', '-q', '-m', 'test-d arrives without a run');
   plan = dryRun(nt, null);
   report.check('R48 a committed test with no record (a pulled commit) runs by itself, not everything',
-    plan.full === false && selectsTest(plan, '_test-d.js') && !selectsTest(plan, '_test-a.js') && /no changed files, 1 new check/.test(String(plan.reason)), show(plan));
+    plan.full === false && selectsTest(plan, '_test-d.js') && !selectsTest(plan, '_test-a.js') && reasonOf(plan, '_test-d.js') === 'new check', show(plan));
   git(nt, 'mv', 'scripts/_test-b.js', 'scripts/_test-b2.js');
   plan = dryRun(nt, null);
   report.check('R49 a renamed test runs under its new name and its old name selects nothing',
@@ -539,41 +585,15 @@ function rewriteSameLater(dir, rel) {
   git(nt, 'add', '-A'); git(nt, 'commit', '-q', '-m', 'unused');
   fs.rmSync(path.join(nt, 'scripts', 'unused.js'));
   const unread = dryRun(nt, null);
-  report.check('R51 control: a deleted source a test read selects that test; a deleted source nothing read runs everything',
-    recorded.status === 0 && readSource && unread.full === true && /unused\.js is not in the load map/.test(String(unread.reason)), `recorded=${recorded.status} ${show(plan)} ${show(unread)}`);
+  // D143_T009: unused.js appeared and went again between two runs, so no test sees a
+  // change. (child.js was deleted and written again with the same bytes: only the check
+  // with unknown inputs, which counts a moved time, may run.)
+  report.check('R51 a deleted source a test read selects that test; a file added and deleted again between runs selects no test',
+    recorded.status === 0 && readSource && unread.full === false && Array.isArray(unread.selected) && !unread.selected.some(id => id.startsWith('V002:')),
+    `recorded=${recorded.status} readSource=${readSource} unread=${JSON.stringify(unread.reasons)}`);
 }
 
-// R14: this repository — a counter.js change selects fewer than all checks but
-// every test that names counter.js (a static lower bound of "loads counter.js").
-{
-  const realMap = path.join(REPO, CRAB, 'verification', 'test-map.json');
-  if (process.env.CRABSHELL_TEST_FIXTURES_ONLY === '1') {
-    console.log('NOTE: R14 not evaluated — fixture-only test run requested.');
-  } else if (!fs.existsSync(realMap)) {
-    console.log('NOTE: R14 not evaluated — this repository has no load map yet (a full declared run creates it).');
-  } else {
-    const env = { ...process.env, PROJECT_ROOT: REPO };
-    delete env.CRABSHELL_VERIFY_RUNNING;
-    const result = spawnSync(process.execPath, [path.join(REPO, CRAB, 'verification', 'run-verify.js'), '--changed', '--files', 'scripts/counter.js', '--dry-run'], { cwd: REPO, env, encoding: 'utf8', windowsHide: true, timeout: 60000 });
-    let plan = {};
-    try { plan = JSON.parse(result.stdout); } catch {}
-    const tests = fs.readdirSync(path.join(REPO, 'scripts')).filter(f => /^_test-.*\.js$/.test(f));
-    // Names counter.js as a module or a path (not the English word in a title).
-    const loadsCounter = /require\(\s*['"][^'"]*\bcounter(?:\.js)?['"]\s*\)|['"`](?:[^'"`\s]*\/)?counter\.js['"`]/;
-    const naming = tests.filter(f => loadsCounter.test(fs.readFileSync(path.join(REPO, 'scripts', f), 'utf8')));
-    // Explicit entries have plain ids, so match on the test file each selected entry runs.
-    const selectedFiles = new Set(Object.values(plan.tests || {}).map(file => path.basename(file)));
-    const missing = naming.filter(f => !selectedFiles.has(f));
-    if (plan.full === true && /map/i.test(String(plan.reason))) {
-      // The map predates the current tests, manifest or runner (it is rebuilt at the
-      // end of this full run); the selection is correctly "everything" for now.
-      console.log(`NOTE: R14 not evaluated — ${plan.reason}.`);
-    } else {
-      report.check('R14 counter.js change: fewer than all checks, and every test naming counter.js included',
-        plan.full === false && Array.isArray(plan.selected) && plan.selected.length < (plan.total || Infinity) && missing.length === 0,
-        `selected=${plan.selected && plan.selected.length} total=${plan.total} missing=${missing.join(',')}`);
-    }
-  }
-}
+// R14 (this repository's real records) lives in _test-real-repo-selection.js, a slow
+// manifest entry: it reads the whole working tree (D143_T017).
 
 report.finish();

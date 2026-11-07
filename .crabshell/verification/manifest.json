@@ -9,6 +9,9 @@
     "test": "node .crabshell/verification/run-verify.js",
     "changed": "node .crabshell/verification/run-verify.js --changed"
   },
+  "wrappers": [
+    "rtk"
+  ],
   "entries": [
     {
       "id": "V005",
@@ -27,7 +30,8 @@
         "assertions": [],
         "forbiddenChanges": []
       },
-      "timeout": 60000
+      "timeout": 60000,
+      "slow": true
     },
     {
       "id": "V006",
@@ -143,7 +147,8 @@
         "forbiddenChanges": []
       },
       "note": "Run explicitly because actual model sessions can exceed the Final Verification guard timeout.",
-      "timeout": 300000
+      "timeout": 300000,
+      "slow": true
     },
     {
       "id": "V014",
@@ -199,7 +204,11 @@
           ".crabshell/memory/logbook.md"
         ]
       },
-      "timeout": 660000
+      "timeout": 660000,
+      "slow": true,
+      "outputs": [
+        ".crabshell/verification/native-hosts/"
+      ]
     },
     {
       "id": "V016",
@@ -650,6 +659,24 @@
       "timeout": 30000
     },
     {
+      "id": "V060",
+      "ia": "In this repository's real records, a change to scripts/counter.js selects fewer than all checks but every test that names counter.js (run on a copy of the working tree)",
+      "type": "structural",
+      "command": {
+        "file": "node",
+        "args": [
+          "scripts/_test-real-repo-selection.js"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [],
+        "forbiddenChanges": []
+      },
+      "timeout": 120000,
+      "slow": true
+    },
+    {
       "id": "V059",
       "reuseExclude": [
         "scripts/_test-claude-native-install.js",
@@ -786,5 +813,8 @@
       "scripts/constants.js",
       "scripts/utils.js"
     ]
-  }
+  },
+  "exclude": [
+    ".crabshell/verification/D118/"
+  ]
 }

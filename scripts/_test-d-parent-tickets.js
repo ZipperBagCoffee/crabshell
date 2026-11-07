@@ -60,7 +60,7 @@ for (const parent of ['P001', 'D001']) {
   const dir = project('codex-docs');
   // Contract change (v21.135.0): a discussion-parent ticket needs the discussion's
   // plan and --details (its part of it); _test-plan-first-guards.js covers refusals.
-  doc(dir, 'discussion', 'D001-topic.md', '# D001 - topic\n\n## Plan\n**Approach:** probe\n**Reader Structure:** none: no visible result\n');
+  doc(dir, 'discussion', 'D001-topic.md', '# D001 - topic\n\n## Plan\n**Approach:** probe\n**Reader Structure:** none: no visible result\n**Values:** none: no new names or numbers\n**Structure:** one function\n**Start state:** old discussions keep their tickets\n**User burden:** none: nothing to do\n**Design review:** none: low risk\n');
   doc(dir, 'plan', 'P001-plan.md', '# P001 - plan\n');
   const run = args => spawnSync(process.execPath, [path.join(__dirname, 'codex-docs.js'), ...args, `--project-dir=${dir}`], { cwd: dir, encoding: 'utf8', windowsHide: true });
   const d = run(['ticket', 'Discussion child', '--parent=D001', '--details=scripts/a.js → probe']);

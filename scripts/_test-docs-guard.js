@@ -91,7 +91,7 @@ unitTest('TC1: Edit I doc WITH ## Constraints + active skill → allow (exit 0)'
     const filePath = createTempInvestigationFile(proj.dir, '# I001\n\n## Constraints\n- fail-open\n');
     const hookData = {
       tool_name: 'Edit',
-      tool_input: { file_path: filePath }
+      tool_input: { file_path: filePath, old_string: 'old', new_string: 'new' }
     };
     const code = runScript(hookData, { CLAUDE_PROJECT_DIR: proj.dir });
     assert(code === 0, `expected exit 0, got ${code}`);
@@ -105,7 +105,7 @@ unitTest('TC2: Edit I doc WITHOUT ## Constraints + active skill → block (exit 
     const filePath = createTempInvestigationFile(proj.dir, '# I001\n\nNo constraints section here.\n');
     const hookData = {
       tool_name: 'Edit',
-      tool_input: { file_path: filePath }
+      tool_input: { file_path: filePath, old_string: 'old', new_string: 'new' }
     };
     const code = runScript(hookData, { CLAUDE_PROJECT_DIR: proj.dir });
     assert(code === 2, `expected exit 2, got ${code}`);
@@ -123,7 +123,7 @@ unitTest('TC3: Write to non-existent I doc + active skill → allow (exit 0)', (
     try { fs.unlinkSync(filePath); } catch {}
     const hookData = {
       tool_name: 'Write',
-      tool_input: { file_path: filePath }
+      tool_input: { file_path: filePath, content: 'x' }
     };
     const code = runScript(hookData, { CLAUDE_PROJECT_DIR: proj.dir });
     assert(code === 0, `expected exit 0, got ${code}`);
@@ -137,7 +137,7 @@ unitTest('TC4: Write to existing I doc WITHOUT ## Constraints + active skill →
     const filePath = createTempInvestigationFile(proj.dir, '# I001\n\nExisting file, no constraints.\n');
     const hookData = {
       tool_name: 'Write',
-      tool_input: { file_path: filePath }
+      tool_input: { file_path: filePath, content: 'x' }
     };
     const code = runScript(hookData, { CLAUDE_PROJECT_DIR: proj.dir });
     assert(code === 2, `expected exit 2, got ${code}`);
@@ -154,7 +154,7 @@ unitTest('TC5: Edit plan/ doc (not investigation) + active skill → allow (exit
     fs.writeFileSync(filePath, '# P001\n\nNo constraints needed here.\n');
     const hookData = {
       tool_name: 'Edit',
-      tool_input: { file_path: filePath }
+      tool_input: { file_path: filePath, old_string: 'old', new_string: 'new' }
     };
     const code = runScript(hookData, { CLAUDE_PROJECT_DIR: proj.dir });
     assert(code === 0, `expected exit 0, got ${code}`);
@@ -171,7 +171,7 @@ unitTest('TC5b: Edit investigation/INDEX.md + active skill → allow (exit 0)', 
     fs.writeFileSync(filePath, '| ID | Topic | Status |\n| I001 | test | open |\n');
     const hookData = {
       tool_name: 'Edit',
-      tool_input: { file_path: filePath }
+      tool_input: { file_path: filePath, old_string: 'old', new_string: 'new' }
     };
     const code = runScript(hookData, { CLAUDE_PROJECT_DIR: proj.dir });
     assert(code === 0, `expected exit 0, got ${code}`);
@@ -188,7 +188,7 @@ unitTest('TC5c: Edit investigation/INDEX.md + NO skill-active → allow (exit 0)
     fs.writeFileSync(filePath, '| ID | Topic | Status |\n| I001 | test | open |\n');
     const hookData = {
       tool_name: 'Edit',
-      tool_input: { file_path: filePath }
+      tool_input: { file_path: filePath, old_string: 'old', new_string: 'new' }
     };
     const code = runScript(hookData, { CLAUDE_PROJECT_DIR: proj.dir });
     assert(code === 0, `expected exit 0, got ${code}`);
@@ -205,7 +205,7 @@ unitTest('TC5d: Edit discussion/INDEX.md + NO skill-active → allow (exit 0)', 
     fs.writeFileSync(filePath, '| ID | Topic | Status |\n| D001 | test | open |\n');
     const hookData = {
       tool_name: 'Edit',
-      tool_input: { file_path: filePath }
+      tool_input: { file_path: filePath, old_string: 'old', new_string: 'new' }
     };
     const code = runScript(hookData, { CLAUDE_PROJECT_DIR: proj.dir });
     assert(code === 0, `expected exit 0, got ${code}`);
@@ -222,7 +222,7 @@ unitTest('TC5e: Edit investigation/I001-test.md + NO skill-active → block (exi
     fs.writeFileSync(filePath, '# I001\n\n## Constraints\n- fail-open\n');
     const hookData = {
       tool_name: 'Edit',
-      tool_input: { file_path: filePath }
+      tool_input: { file_path: filePath, old_string: 'old', new_string: 'new' }
     };
     const code = runScript(hookData, { CLAUDE_PROJECT_DIR: proj.dir });
     assert(code === 2, `expected exit 2, got ${code}`);
@@ -236,7 +236,7 @@ unitTest('TC6: Edit I doc WITHOUT ## Constraints + NO active skill → block (ex
     const filePath = createTempInvestigationFile(proj.dir, '# I001\n\nNo constraints, no skill.\n');
     const hookData = {
       tool_name: 'Edit',
-      tool_input: { file_path: filePath }
+      tool_input: { file_path: filePath, old_string: 'old', new_string: 'new' }
     };
     const code = runScript(hookData, { CLAUDE_PROJECT_DIR: proj.dir });
     assert(code === 2, `expected exit 2, got ${code}`);
@@ -334,7 +334,7 @@ const { checkInvestigationConstraints } = require('./docs-guard.js');
 console.log('\n--- Unit: TC7 — checkInvestigationConstraints ---');
 
 unitTest('TC7a: non-investigation path → null (skip)', () => {
-  const result = checkInvestigationConstraints('/some/.crabshell/plan/P001.md', 'Edit');
+  const result = checkInvestigationConstraints('/some/.crabshell/plan/P001.md', 'edit');
   assert(result === null, `expected null, got ${result}`);
 });
 
@@ -343,13 +343,13 @@ unitTest('TC7b: investigation path with ## Constraints → null (OK)', () => {
   try {
     const fp = path.join(tmp, 'I001.md');
     fs.writeFileSync(fp, '# Test\n\n## Constraints\n- foo\n');
-    const result = checkInvestigationConstraints(fp.replace(/\\/g, '/') + '/../investigation/I001.md', 'Edit');
+    const result = checkInvestigationConstraints(fp.replace(/\\/g, '/') + '/../investigation/I001.md', 'edit');
     // Test with actual path containing 'investigation/'
     const invDir = path.join(tmp, 'investigation');
     fs.mkdirSync(invDir, { recursive: true });
     const invFile = path.join(invDir, 'I001.md');
     fs.writeFileSync(invFile, '# Test\n\n## Constraints\n- foo\n');
-    const r2 = checkInvestigationConstraints(invFile, 'Edit');
+    const r2 = checkInvestigationConstraints(invFile, 'edit');
     assert(r2 === null, `expected null for file with Constraints, got ${r2}`);
   } finally { try { fs.rmSync(tmp, { recursive: true }); } catch {} }
 });
@@ -361,7 +361,7 @@ unitTest('TC7c: investigation path WITHOUT ## Constraints → error string', () 
     fs.mkdirSync(invDir, { recursive: true });
     const fp = path.join(invDir, 'I001.md');
     fs.writeFileSync(fp, '# Test\n\nNo constraints section.\n');
-    const result = checkInvestigationConstraints(fp, 'Edit');
+    const result = checkInvestigationConstraints(fp, 'edit');
     assert(typeof result === 'string', `expected error string, got ${result}`);
     assert(result.includes('## Constraints'), `expected mention of ## Constraints in: ${result}`);
   } finally { try { fs.rmSync(tmp, { recursive: true }); } catch {} }
@@ -371,7 +371,7 @@ unitTest('TC7d: Write to non-existent investigation file → null (allow first c
   const fp = path.join(os.tmpdir(), 'investigation', 'I_nonexistent_xyz.md');
   // Ensure it doesn't exist
   try { fs.unlinkSync(fp); } catch {}
-  const result = checkInvestigationConstraints(fp, 'Write');
+  const result = checkInvestigationConstraints(fp, 'whole');
   assert(result === null, `expected null for non-existent file, got ${result}`);
 });
 
@@ -382,7 +382,7 @@ unitTest('TC7e: Write to existing investigation file WITHOUT ## Constraints → 
     fs.mkdirSync(invDir, { recursive: true });
     const fp = path.join(invDir, 'I001.md');
     fs.writeFileSync(fp, '# Test\n\nNo constraints.\n');
-    const result = checkInvestigationConstraints(fp, 'Write');
+    const result = checkInvestigationConstraints(fp, 'whole');
     assert(typeof result === 'string', `expected error string, got ${result}`);
   } finally { try { fs.rmSync(tmp, { recursive: true }); } catch {} }
 });
@@ -396,7 +396,7 @@ unitTest('TC7f: investigation path (backslash) WITHOUT ## Constraints → error 
     fs.writeFileSync(fp, '# Test\n\nNo constraints.\n');
     // Simulate Windows backslash path
     const backslashPath = fp.replace(/\//g, '\\');
-    const result = checkInvestigationConstraints(backslashPath, 'Edit');
+    const result = checkInvestigationConstraints(backslashPath, 'edit');
     assert(typeof result === 'string', `expected error string for backslash path, got ${result}`);
   } finally { try { fs.rmSync(tmp, { recursive: true }); } catch {} }
 });
@@ -408,7 +408,7 @@ unitTest('TC7g: investigation/INDEX.md without Constraints → error string (IND
     fs.mkdirSync(invDir, { recursive: true });
     const fp = path.join(invDir, 'INDEX.md');
     fs.writeFileSync(fp, '| ID | Topic | Status |\n| I001 | test | open |\n');
-    const result = checkInvestigationConstraints(fp, 'Edit');
+    const result = checkInvestigationConstraints(fp, 'edit');
     // INDEX.md exclusion is handled by main()'s early return (line ~101), not by this function.
     // The function itself sees a missing ## Constraints and returns an error string.
     assert(typeof result === 'string', `expected error string (no Constraints), got ${result}`);
@@ -417,7 +417,7 @@ unitTest('TC7g: investigation/INDEX.md without Constraints → error string (IND
 
 unitTest('TC7h: unreadable file (non-existent) on Edit → null (fail-open)', () => {
   const fp = '/nonexistent/investigation/I001.md';
-  const result = checkInvestigationConstraints(fp, 'Edit');
+  const result = checkInvestigationConstraints(fp, 'edit');
   assert(result === null, `expected null (fail-open) for unreadable file, got ${result}`);
 });
 

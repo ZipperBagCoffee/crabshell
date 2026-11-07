@@ -9,20 +9,15 @@ const { readStdin } = require('./transcript-utils');
 if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 
 const { getProjectDir, ticketDocPattern } = require('./utils');
+const { writtenPaths } = require('./core/tool-shape');
 
-// Returns { reason } when the write must be blocked, otherwise null.
+// Returns { reason } when the write must be blocked, otherwise null. Every file the call
+// writes counts, whatever the tool is named (core/tool-shape).
 function evaluateRegressingGuard(hookData, projectDir) {
-  if (!hookData || !hookData.tool_name) return null;
-
-  const toolName = hookData.tool_name;
-  if (toolName !== 'Write' && toolName !== 'Edit') return null;
-
-  const input = hookData.tool_input;
-  if (!input) return null;
-
-  const filePath = (input.file_path || input.path || '').replace(/\\/g, '/');
-  const isPlanDoc = /\.crabshell\/plan\/P\d{3}/.test(filePath);
-  const isTicketDoc = new RegExp(ticketDocPattern()).test(filePath);
+  if (!hookData) return null;
+  const filePaths = writtenPaths(hookData).map(file => file.replace(/\\/g, '/'));
+  const isPlanDoc = filePaths.some(file => /\.crabshell\/plan\/P\d{3}/.test(file));
+  const isTicketDoc = filePaths.some(file => new RegExp(ticketDocPattern()).test(file));
   if (!isPlanDoc && !isTicketDoc) return null;
 
   const { STORAGE_ROOT, MEMORY_DIR, REGRESSING_STATE_FILE } = require('./constants');

@@ -31,6 +31,7 @@ if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 const { getProjectDir, docDirsPattern } = require('./utils');
 const { STORAGE_ROOT, TICKET_ID_SOURCE } = require('./constants');
 const { parseIndexRow } = require('./core/index-rows');
+const { fileWrites } = require('./core/tool-shape');
 
 // --- Constants ---
 
@@ -183,17 +184,21 @@ function validatePendingSections(content, docId, toStatus) {
 
 // --- Main ---
 
-// Returns { reason, log } to block, { log } for a diagnostic only, or null.
+// Returns { reason, log } to block, { log } for a diagnostic only, or null. Every file
+// the call writes is checked, whatever the tool is named (core/tool-shape).
 function evaluateLogGuard(hookData, projectDir) {
-  if (!hookData || !hookData.tool_name) return null;
+  if (!hookData) return null;
+  const logs = [];
+  for (const write of fileWrites(hookData)) {
+    const result = evaluateWrite(write, projectDir);
+    if (result && result.reason) return result;
+    if (result && result.log) logs.push(result.log);
+  }
+  return logs.length ? { log: logs.join('\n') } : null;
+}
 
-  const toolName = hookData.tool_name;
-  if (toolName !== 'Write' && toolName !== 'Edit') return null;
-
-  const input = hookData.tool_input;
-  if (!input) return null;
-
-  const filePath = normalizePath(input.file_path || input.path || '');
+function evaluateWrite(write, projectDir) {
+  const filePath = normalizePath(write.path);
   if (!filePath) return null;
 
   // Edit or Write on INDEX.md — a ticket status change to done/verified
@@ -201,9 +206,11 @@ function evaluateLogGuard(hookData, projectDir) {
   if (!indexMatch) return null;
   const category = indexMatch[1]; // the document folder (constants DOC_TYPES)
 
-  const changes = toolName === 'Edit'
-    ? detectStatusChanges(input.old_string || '', input.new_string || '')
-    : detectStatusChangesWrite(filePath, input.content || '');
+  // A string edit is compared old → new; a write that carries the file's text, with the
+  // file on disk. A write whose text cannot be known (a patch hunk) shows no change.
+  const changes = write.kind === 'edit'
+    ? detectStatusChanges(write.oldString, write.newString)
+    : typeof write.content === 'string' ? detectStatusChangesWrite(filePath, write.content) : [];
 
   const ticketChanges = changes.filter(c =>
     TICKET_ID.test(c.docId) && TERMINAL_STATUSES.has(c.toStatus) && !isExemptTransition(c.fromStatus, c.toStatus)

@@ -31,12 +31,13 @@ Check if `.crabshell/verification/manifest.json` exists in the project root.
 
 ### Step 2: Analyze project runtime environment
 
-The parent inspects the project directly. Delegate a bounded read-only exploration only when it materially improves coverage; delegation is not a gate. Determine:
+The parent inspects the project directly (a bounded read-only helper only when it adds coverage). Determine:
 
 1. **Runtime type:** Web app (browser), Node CLI, Python, compiled binary, shell scripts, etc.
 2. **Entry points:** Main files, test runners, build commands
 3. **Test infrastructure:** Existing test framework (jest, pytest, mocha, etc.), existing test files
 4. **Build/run commands:** How to build, how to run, how to test
+5. **Checks the project already runs:** package.json scripts, Makefile targets, CI steps, README instructions — any language. Each becomes a `tools` command or an entry: Crabshell recognizes a check only from the manifest.
 
 Record the parent-owned analysis as:
 ```
@@ -55,7 +56,7 @@ For a Claude Code plugin project (`hooks/hooks.json` exists): copy the wiring pr
 
 ### Step 3: Review analysis
 
-The parent resolves entry points and decisive commands from inspected project evidence. For high-risk ambiguity, an optional read-only reviewer may independently inspect the project, but the parent must compare the finding with the actual files and remains responsible for the manifest.
+The parent resolves entry points and decisive commands from the inspected files; for high-risk ambiguity an optional read-only reviewer may look too, and the parent compares its finding with the files and owns the manifest.
 
 ### Step 4: Create verification manifest
 
@@ -79,7 +80,7 @@ Create `.crabshell/verification/manifest.json` using schema version 2:
 }
 ```
 
-`tools` commands and the package.json `test` script are **required checks** that unlock the commit gate; single entries provide evidence only for themselves. `changed.global` adds files every check depends on. Package manifests, lockfiles and the runner are already global. Files only some checks read belong in the load map, not this list.
+`tools` commands are **required checks**: a passing run is recorded as completion evidence (commits are never blocked); single entries are evidence only for themselves. `changed.global` adds files to every check's inputs; files only some checks read belong in their records. Optional top-level fields: `wrappers` (command prefixes such as `["rtk"]`: `rtk node x.js` counts as `node x.js`), `exclude` (paths left out of the project snapshot), `slowAfterSeconds`, `suggestAfterSeconds` (an undeclared command that takes longer and runs twice on the same files gets one hint to declare it; default 15).
 
 ### Step 5: Populate entries from current context
 
@@ -87,16 +88,16 @@ For each user-observable outcome in the current session, create one entry; comma
 
 ### Step 6: Create verification runner script
 
-Copy `${CLAUDE_PLUGIN_ROOT}/skills/verifying/scripts/run-verify.js` to `.crabshell/verification/run-verify.js`. This tracked file is the single runner implementation. Do not retype or fork it in the skill document.
+Copy `${CLAUDE_PLUGIN_ROOT}/skills/verifying/scripts/run-verify.js` and the `runner/` folder beside it into `.crabshell/verification/`. The launcher and its modules are the single runner implementation. Do not retype or fork them in the skill document. Session start keeps the copy current after plugin updates: changed modules are copied, a launcher Crabshell released is replaced, an edited launcher is kept and named once.
 
 Also copy `${CLAUDE_PLUGIN_ROOT}/skills/verifying/scripts/check-pipeline-wiring.js` to `.crabshell/verification/check-pipeline-wiring.js`. Keep both files next to the manifest; never retype either implementation.
 
-The runner resolves `node` from `process.execPath`, runs without a shell, rejects machine-specific absolute paths, evaluates assertions itself, and snapshots `forbiddenChanges` before and after the command.
+The runner runs `node` as its own Node, without a shell, rejects machine-specific absolute paths, evaluates assertions itself, and snapshots `forbiddenChanges` around the command.
 
 ### Step 7: Confirm
 
 Tell user: "Verification manifest created with N entries. Run `/verifying run` to execute."
-- **Document-first rule:** The manifest.json and run-verify.js files must be fully created before any confirmation is reported in conversation.
+- **Document-first rule:** the manifest and runner files exist before the confirmation is reported.
 
 ---
 
@@ -115,25 +116,20 @@ node .crabshell/verification/run-verify.js --changed  # selects checks touched b
 node .crabshell/verification/run-verify.js            # selects every check, only when requested
 ```
 
-Routine updates run `--changed`; it also unlocks the commit gate. Run every check only when the user asks for it. When a full run seems truly needed — or `--dry-run` shows the selection falling back to every check — ask the user first and say why.
+Routine updates run `--changed` once after the last edit. Run every check only when the user asks for it, or at the project's release step; when a full run seems truly needed, ask the user first and say why. A hand rerun of a declared check on the files it last passed with is blocked and answered from its record (`CRABSHELL_RERUN=1` before the command runs it anyway); after a hand run, Crabshell hints once each when the entry needs `inputs`, `slow` or `outputs`.
 
-`test-map.json` records each check's files and folders required, read, listed or copied. Passing checks refresh their records even in a failing run. Failures keep prior files, lose pass keys and remain selected for retry; [failure marks](references/runner-reuse-output.md#reuse-and-timing) distinguish check failures from unresolved HEAD comparisons. Full runs record `manifestHash` even with failures.
+`test-map.json` keeps each check's record: its inputs (files and folders required, read, listed or copied), the fingerprints it passed with, durations and failures. Passing checks refresh their records even in a failing run. Failures keep prior files, add no pass and remain selected for retry; [failure marks](references/runner-reuse-output.md#reuse-and-timing) distinguish check failures from unresolved HEAD comparisons.
 
-`--changed` compares the working tree with HEAD, including untracked files and both paths of a rename. `--files a,b` supplies that list instead. It selects checks whose test file changed or whose recorded inputs cover a changed file, plus new checks, empty records and `always: true` entries. It falls back to **selecting every check** when:
+**Entry fields that keep routine runs short (D143).**
+- `inputs: ["src/game/**", "tools/check_x.py"]` — the files, folders (ending in `/`) or globs a check reads. Required for any check the Node tracer cannot see (Python, Godot, shell, other languages): without it the check's inputs are unknown and any project change reruns it. Declared inputs enter its fingerprint and are recorded like traced files.
+- `outputs: ["build/"]` — files the check writes: its products, not its inputs.
+- `slow: true` — recordings, screenshots and golden renders, benchmarks, long simulations, real installs, whole-suite runs. `--changed` skips them and prints `Slow checks not run: … — run them with: node .crabshell/verification/run-verify.js --slow`; they run with `--slow`, on a full run (when the user asks) and at the project's release step.
 
-- a changed file matches `changed.global` or the default globals;
-- there is no map, or the map cannot be read;
-- the runner, test or recorded file other than the manifest changed after the map was written (hashes distinguish changed content from a timestamp-only change);
-- a changed non-prose file is not in the map;
-- Git cannot supply the changed-file list.
+`--changed` chooses by content, not Git: a check reruns only when its fingerprint (run fields, program, runner, platform, input contents) is not among those it passed with — new, failed last time, `always: true`, `reuse: false`, or changed inputs; unknown inputs mean the whole project. A changed file no check reads or declares runs the declared-input checks once. A record of another schema counts as none. Crabshell's storage (`.crabshell/` outside the verification folder) is never snapshotted. Records: [manifest changes](references/runner-reuse-output.md#manifest-changes-and-records). `--explain` prints each check `--changed` would run with its first reason, running nothing; `--dry-run` shows the selection (`/status` uses it). Blind spots: a non-Node check's reads outside its `inputs`, untraced computed paths.
 
-The manifest is compared with the load map even when absent from Git's changed-file list. Missing or different entry hashes select those checks and changed manifest content selects its readers; removed entries need no run. A missing top-level manifest hash or changed fields other than `entries`, `created` and `updated` cause a full fallback. This disables cached reuse; eligible covered checks may still be skipped after their covering check passes. Hash recording and reasons: [manifest changes](references/runner-reuse-output.md#manifest-changes-in-changed-file-mode).
+**Reuse and timing.** Before executing checks, read [reuse eligibility and timing](references/runner-reuse-output.md#reuse-and-timing) for fingerprint inputs, exclusions, controls, `coveredBy` duplicate suppression and dry-run estimates.
 
-Absent a fallback, no changes select only previously failed, new, empty-record and always-selected checks. Deleted tests and unread prose select nothing. Blind spots include non-Node reads and untraced computed paths. Ignored runtime files do not trigger selection or staleness; the manifest, runner and tests are still checked when ignored.
-
-**Reuse and timing.** Before executing checks, read [reuse eligibility and timing](references/runner-reuse-output.md#reuse-and-timing) for pass-key inputs, exclusions, controls, `coveredBy` duplicate suppression and dry-run estimates.
-
-**Fail-before.** A changed test that passes and reads changed non-test files also runs on a temporary HEAD copy. Passing there produces a failing `FAIL_BEFORE:<id>` result. Intentional behavior-preserving changes can be exempted by test hash in `fail-before-exempt.json`. Details, format and `--no-fail-before`: `references/fail-before.md`.
+**Fail-before (opt-in, `--fail-before`).** With the flag, a changed test that passes and reads changed non-test files also runs on a temporary HEAD copy; use it for a test written to catch a bug. Passing there produces a failing `FAIL_BEFORE:<id>` result. Intentional behavior-preserving changes can be exempted by test hash in `fail-before-exempt.json`. Details, format and `--no-fail-before`: `references/fail-before.md`.
 
 ### Step 2b: When an entry fails, decide what is wrong before touching anything
 
@@ -147,7 +143,7 @@ A failing verifier means one of two things, and they have opposite fixes. Ask:
 | The contract was deliberately changed this release | The old expectation is obsolete | Update the verifier, and say so explicitly in the report with what the new contract is and who approved it |
 | Neither — it was incidental output the verifier copied | The verifier was overspecified | Rewrite that assertion as structure, invariant, or relation so it stops breaking on unrelated changes |
 
-Code is the more likely culprit — in one industrial study of regression failures, roughly four out of five traced to a code defect rather than an obsolete test. Treat "fix the verifier" as the exception that must be named, never the reflex. Silently re-recording whatever the code now outputs is not verification.
+Code is the more likely culprit (about four in five regression failures in one industrial study traced to a code defect, not an obsolete test). Treat "fix the verifier" as the named exception, never the reflex; silently re-recording what the code now outputs is not verification.
 
 For a wiring entry, a FAIL means either the source broke a parent-approved hop, in which case fix the source, or the hop was deliberately removed or renamed in this release, in which case update `wiring-contract.json` and state the approved change in the report by naming the hop. Map staleness is never a wiring FAIL; it is only the documentation state recorded by Create Mode Step 2a(i).
 
@@ -159,7 +155,7 @@ For a wiring entry, a FAIL means either the source broke a parent-approved hop, 
 Type: `behavioral` = runtime execution observed (ran command, triggered feature, checked output)
 Type: `structural` = static check (grep, file read, code inspection)
 For `reused: true`, cite the earlier passing observation and unchanged inputs; do not describe it as a new execution. Manual results await a person.
-For `coveredBy: "<id>"`, cite that covering check's executed or reused PASS; the child did not run independently and has no separate pass key.
+For `coveredBy: "<id>"`, cite that covering check's executed or reused PASS; the child did not run independently and has no pass fingerprint of its own.
 
 - **Document-first rule:** If this verification run was invoked from within a T or P document context, append the P/O/G results to that document's verification section using the Edit tool FIRST. After the document is updated, report the summary in conversation. Standalone invocations may report conversation-only.
 
@@ -197,8 +193,6 @@ When invoked with `wiring`:
 3. Diff the candidate against the approved contract and present every new and removed hop to the parent for approval. Do not copy the candidate over the contract.
 4. After approval, update the contract, hop entries, completeness entry, and manifest `updated` timestamp together.
 5. Optionally regenerate the architecture map when `arch-explorer:build` is available. The map remains documentation only.
-
-`/verifying add` is unchanged and continues to add one IA entry as described above.
 
 ---
 

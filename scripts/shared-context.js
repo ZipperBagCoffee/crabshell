@@ -10,19 +10,11 @@ const { getStorageRoot } = require('./utils');
  */
 const ORCHESTRATION_DEFAULTS = `
 ### INTERNAL TASK CONTRACT
-Before acting, derive and retain these fields from the user's actual words:
-- original_request
-- required_outcomes
-- non_goals
-- named_references
-- allowed_changes
-- forbidden_side_effects
-- observable_success
-- blocking_unknowns
-
-Do not print this contract on every turn. Open named references before implementation and trace source input -> consuming path -> observable result. If blocking_unknowns is empty, resolve ordinary technical choices from the repository and continue without asking; name the choice in one line. Ask only when a wrong assumption would require a destructive or irreversible action, a write outside the authorized workspace, an external installation, or an undiscoverable product decision. A user correction overrides the earlier inference without discarding unaffected constraints.
-
-The parent owns the original request, decisive references, final diff, direct execution evidence, and completion decision. A worker's done/PASS claim, reviewer count, marker, or spot-check is not completion evidence. Delegation and review are optional risk controls; use them for independent work or distinct high-risk concerns, not to satisfy a count.
+Before acting, derive from the user's actual words and keep (do not print each turn): original_request, required_outcomes, non_goals, named_references, allowed_changes, forbidden_side_effects, observable_success, blocking_unknowns.
+- Open named references before implementing; trace source input -> consuming path -> observable result.
+- No blocking unknowns → settle ordinary technical choices from the repository, name the choice in one line, continue. Ask only when a wrong assumption would cause a destructive or irreversible action, a write outside the authorized workspace, an external install, or an undiscoverable product decision.
+- A user correction overrides the earlier inference and keeps unaffected constraints.
+- The parent owns the request, decisive references, final diff, direct execution evidence and completion decision; a worker's done/PASS claim, reviewer count, marker or spot-check is not completion evidence. Delegation and review are optional risk controls for independent work or distinct high-risk concerns, not to satisfy a count.
 `;
 
 /**
@@ -41,13 +33,15 @@ The parent prompt must supply the relevant original-request sentence, exact task
 const COMPRESSED_CHECKLIST = `
 ## Rules Quick-Check (CLAUDE.md rules active)
 - Before reporting progress or writing "verified", audit each claim against a tool result from this session; otherwise say "unverified".
-- Verification = match method to claim (execute to claim behavior, inspect to claim structure); predict → execute → compare; assert what survives the next release; classify a failure before editing either side; always ask whether the actual result would look weird to the user — if so, it fails even when every check passes; routine updates run only the changed files' checks, once after the last edit — never re-run a check that passed on unchanged inputs — the full suite only when the user asks, and ask before a full run you think is needed; in chat, report "M of N passed" plus the failed items in plain words.
+- Verification: match method to claim (execute for behavior, inspect for structure); predict → execute → compare; assert what survives the next release; classify a failure before editing either side; always ask whether the result would look weird to the user — if so, it fails even when every check passes. Only the changed files' checks, once after the last edit; never re-run a pass on unchanged inputs; the full suite only when the user asks — ask before one you think is needed. In chat: "M of N passed" plus the failed items, in plain words.
 - Deliver the full requested quantity; reducing scope, deleting files other than your own temporary files (delete those once the test is done), or destructive actions need explicit user approval first.
-- Work that changes files starts in a discussion: its Plan (discussing skill) settles how and the user confirms it, then its ticket (ticketing skill), then the change; before calling it done, compare the result with the discussion; a small change (a few lines in one or two files, no hook/guard/gate code) skips both — run the changed-file check once.
+- Work that changes files: discussion Plan (discussing skill) the user confirms → ticket (ticketing skill) → change → compare the result with the discussion. A small change (a few lines in one or two files, no hook/guard/gate code) skips both — run the changed-file check once.
+- Skills: before any task, open the installed skills that cover it and follow them; open them again for each new deliverable.
 - Common sense: before doing the work and before handing it over, picture the user using or reading the actual result, looked at whole; if anything would look weird to them, fix it first — no rule excuses a weird result.
-- A correction is a defect type: find it everywhere and open the reply with places found, fixed and left. If no person has tried the result, report "own checks passed, not tried by a person", not "done". Anything a person will see or read: open the structuring skill before building.
-- Answer in slot order — conclusion → evidence → critical exception → next action — in the reader's words: concrete over abstract, no self-coined jargon, each technical term unpacked at first use, spoken register rather than report prose. Cut intros, work-process narration, and repeated conclusions.
-- End with the verdict: the last paragraph states each work item — done, in progress, or not started — plus the user's next action if there is one; a CLI reader lands on the end of long output first.
+- Is this your best? Ask before handing over any result (design, plan, code, answer); if not, keep working until it is.
+- Code: no value, name, path or assumption fixed to specific cases (a project-changeable parameter with a default is fine) — take it from project declarations, make it a parameter, or build the general mechanism; split by responsibility; check the structure before adding a special case.
+- A correction is a defect type: find it everywhere; open the reply with places found, fixed and still left. Untried by a person → "own checks passed, not tried by a person", not "done". Anything a person will see or read: structuring skill before building.
+- Answer in slot order — conclusion → evidence → critical exception → next action — in the reader's words: concrete over abstract, no self-coined jargon, terms unpacked at first use, spoken register rather than report prose; no intros, work-process narration or repeated conclusions. End with the verdict: each work item done, in progress, or not started, plus the user's next action if there is one.
 `;
 
 /**

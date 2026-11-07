@@ -1,5 +1,7 @@
 'use strict';
 
+const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const utils = require('./utils');
 const jsonMode = process.argv.includes('--json');
@@ -38,7 +40,11 @@ utils.writeJson = () => {
 };
 
 const { main } = require('./inject-rules');
-const projectDir = path.resolve(__dirname, '..');
+// A temporary project (D143_T017): the repository's own Crabshell state changes every
+// turn, and a test that reads it reruns whenever memory is saved.
+const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'crabshell-bailout-'));
+fs.mkdirSync(path.join(projectDir, '.crabshell', 'memory'), { recursive: true });
+process.on('exit', () => { try { fs.rmSync(projectDir, { recursive: true, force: true }); } catch (_) {} });
 
 async function runPrompt(prompt, host) {
   let output = '';
