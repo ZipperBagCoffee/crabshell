@@ -5,7 +5,8 @@ const fs = require('fs');
 const path = require('path');
 const { readCodexCommandResult } = require('./host-tool-result');
 const { readJsonOrDefault } = require('../utils');
-const { NON_SOURCE_EXTENSIONS, NON_SOURCE_BASENAMES, SOURCE_EXCLUDED_DIRS, STORAGE_ROOT } = require('../constants');
+const { STORAGE_ROOT } = require('../constants');
+const { shellCommand } = require('./tool-shape');
 
 // Parse one invocation, never search quoted arguments for command names. Shell
 // composition needs per-process results, which a single tool result cannot prove.
@@ -39,27 +40,71 @@ function commandTokens(command) {
 }
 
 // A check run counts in the forms that keep its own exit status (v21.135.0): one
-// leading `cd <dir> &&`, trailing output redirection (`> file`, `2>&1`), and the
-// `rtk` pass-through wrapper that some setups put before every command. Pipes, `;`,
+// leading `cd <dir> &&`, trailing output redirection (`> file`, `2>&1`), environment
+// assignments before the command (POSIX `NAME=value`, PowerShell `$env:NAME = value;`)
+// and the wrappers the project declares (manifest `wrappers`, D143_T014). Pipes, `;`,
 // `||` and other chaining stay unaccepted: the exit status would belong to another
 // command, so a failing check could look like a pass.
 const LEADING_CD = /^\s*cd\s+(?:"([^"]+)"|'([^']+)'|([^\s"'&|;<>]+))\s*&&\s*/;
 const TRAILING_REDIRECT = /\s+(?:\d?>>?|&>>?)\s*(?:&\d|"[^"]*"|'[^']*'|[^\s"'&|;<>]+)\s*$/;
-const PASS_THROUGH = new Set(['rtk']);
+const LEADING_POWERSHELL_ENV = /^\s*\$env:([A-Za-z_][A-Za-z0-9_]*)\s*=\s*("[^"]*"|'[^']*'|[^;\s]+)\s*;\s*/i;
+const POSIX_ASSIGNMENT = /^([A-Za-z_][A-Za-z0-9_]*)=([\s\S]*)$/;
 
 function hostPath(dir) {
   // Git Bash spells C:\x as /c/x.
   return process.platform === 'win32' && /^\/[a-z]\//i.test(dir) ? `${dir[1]}:${dir.slice(2)}` : dir;
 }
 
-function checkInvocation(command, cwd) {
+function readJson(file) {
+  return readJsonOrDefault(file, {}) || {};
+}
+
+const manifestPath = projectDir => path.join(projectDir, STORAGE_ROOT, 'verification', 'manifest.json');
+
+function readManifest(projectDir) {
+  if (!projectDir) return {};
+  const manifest = readJson(manifestPath(projectDir));
+  return manifest && typeof manifest === 'object' && !Array.isArray(manifest) ? manifest : {};
+}
+
+// A program's name as the shell finds it: its file name, without an extension the
+// system runs by itself (PATHEXT, where the system has one), case-folded where file
+// names ignore case.
+function programName(token) {
+  let name = path.basename(String(token).replace(/\\/g, '/'));
+  const extension = path.extname(name).toLowerCase();
+  const runnable = String(process.env.PATHEXT || '').split(';').map(item => item.trim().toLowerCase()).filter(Boolean);
+  if (extension && runnable.includes(extension)) name = name.slice(0, -extension.length);
+  return process.platform === 'win32' ? name.toLowerCase() : name;
+}
+
+// The project's declared wrappers (manifest `wrappers`: a command string or a token list each).
+function wrapperList(manifest) {
+  const list = Array.isArray(manifest.wrappers) ? manifest.wrappers : [];
+  return list.map(item => (Array.isArray(item) ? item.filter(token => typeof token === 'string') : commandTokens(item)))
+    .filter(tokens => Array.isArray(tokens) && tokens.length > 0);
+}
+
+function startsWithWrapper(tokens, wrapper) {
+  return wrapper.length < tokens.length
+    && wrapper.every((token, index) => (index === 0 ? programName(token) === programName(tokens[0]) : token === tokens[index]));
+}
+
+// One invocation with the parts that do not change what runs taken off.
+// Returns { tokens, cwd, changedDir, env } or null for a form that hides the exit status.
+function checkInvocation(command, cwd, projectDir = null) {
   if (typeof command !== 'string') return null;
   let rest = command;
   let dir = null;
+  const env = {};
   const cd = rest.match(LEADING_CD);
   if (cd) {
     dir = path.resolve(cwd || '.', hostPath(cd[1] || cd[2] || cd[3]));
     rest = rest.slice(cd[0].length);
+  }
+  for (let assignment = rest.match(LEADING_POWERSHELL_ENV); assignment; assignment = rest.match(LEADING_POWERSHELL_ENV)) {
+    env[assignment[1]] = assignment[2].replace(/^(["'])([\s\S]*)\1$/, '$2');
+    rest = rest.slice(assignment[0].length);
   }
   for (let previous = null; previous !== rest;) {
     previous = rest;
@@ -67,8 +112,15 @@ function checkInvocation(command, cwd) {
   }
   const tokens = commandTokens(rest);
   if (!tokens) return null;
-  while (tokens.length > 1 && PASS_THROUGH.has(path.basename(tokens[0].replace(/\\/g, '/')).replace(/\.(exe|cmd)$/i, ''))) tokens.shift();
-  return { tokens, cwd: dir || cwd, changedDir: Boolean(dir) };
+  for (let assignment = tokens[0].match(POSIX_ASSIGNMENT); tokens.length > 1 && assignment; assignment = tokens[0].match(POSIX_ASSIGNMENT)) {
+    env[assignment[1]] = assignment[2];
+    tokens.shift();
+  }
+  const wrappers = wrapperList(readManifest(projectDir));
+  for (let wrapper = wrappers.find(item => startsWithWrapper(tokens, item)); wrapper; wrapper = wrappers.find(item => startsWithWrapper(tokens, item))) {
+    tokens.splice(0, wrapper.length);
+  }
+  return { tokens, cwd: dir || cwd, changedDir: Boolean(dir), env };
 }
 
 function samePath(a, b) {
@@ -76,42 +128,32 @@ function samePath(a, b) {
   return process.platform === 'win32' ? norm(a).toLowerCase() === norm(b).toLowerCase() : norm(a) === norm(b);
 }
 
-function readJson(file) {
-  return readJsonOrDefault(file, {}) || {};
-}
-
-// True when the project has any check configuration at all (a verification
-// manifest file or a package.json test script), even if nothing in it is runnable.
-function hasCheckConfiguration(projectDir) {
-  if (!projectDir) return false;
-  if (fs.existsSync(path.join(projectDir, STORAGE_ROOT, 'verification', 'manifest.json'))) return true;
-  return typeof (readJson(path.join(projectDir, 'package.json')).scripts || {}).test === 'string';
-}
-
+// The project's declared checks: manifest `tools` and entries — discovered ones expanded
+// by the runner, each with its entry id — plus the runner's own launcher forms. Nothing
+// else counts (no package.json script or package-manager table, D143_T014): a project
+// declares its checks in the manifest, whatever its language. One read per manifest
+// version and process.
+const declarationCache = new Map();
 function declaredCommands(projectDir) {
   if (!projectDir) return [];
-  const manifest = readJson(path.join(projectDir, STORAGE_ROOT, 'verification', 'manifest.json'));
+  let stamp = 'missing';
+  try { const stat = fs.statSync(manifestPath(projectDir)); stamp = `${stat.size}:${stat.mtimeMs}`; } catch (_) {}
+  const cached = declarationCache.get(projectDir);
+  if (cached && cached.stamp === stamp) return cached.declarations;
+  const manifest = readManifest(projectDir);
   const declarations = [];
   for (const command of Object.values(manifest.tools || {})) {
     const tokens = commandTokens(command);
     if (tokens) declarations.push({ tokens, cwd: projectDir, source: 'tools' });
   }
-  for (const entry of manifest.entries || []) {
-    if (entry.type === 'manual') continue;
+  let entries = Array.isArray(manifest.entries) ? manifest.entries : [];
+  try { entries = require('../../skills/verifying/scripts/runner/manifest').expandEntries(manifest, projectDir); } catch (_) {}
+  for (const entry of entries) {
+    if (!entry || entry.type === 'manual') continue;
     const command = entry.command;
     const tokens = typeof command === 'string' ? commandTokens(command)
       : command?.file && Array.isArray(command.args) ? [command.file, ...command.args] : null;
-    if (tokens) declarations.push({ tokens, cwd: path.resolve(projectDir, command.cwd || '.'), contract: entry.contract, source: 'entry' });
-  }
-  const scripts = readJson(path.join(projectDir, 'package.json')).scripts || {};
-  // Test lifecycle configuration is authoritative; custom names can be declared
-  // in manifest.tools/entries, without extending this recognizer.
-  if (typeof scripts.test === 'string') {
-    // Every package manager's spelling of the same "test" script (v21.135.0).
-    for (const tokens of [['npm', 'test'], ['npm', 'run', 'test'], ['pnpm', 'test'], ['pnpm', 'run', 'test'],
-      ['yarn', 'test'], ['yarn', 'run', 'test'], ['bun', 'run', 'test']]) {
-      declarations.push({ tokens, cwd: projectDir, source: 'package' });
-    }
+    if (tokens) declarations.push({ tokens, cwd: path.resolve(projectDir, command.cwd || '.'), contract: entry.contract, source: 'entry', entryId: entry.id });
   }
   // A manifest's own runner runs every entry, so it is the project's full check even
   // when the manifest declares no tools (v21.135.0).
@@ -129,52 +171,53 @@ function declaredCommands(projectDir) {
       && declaration.tokens[2] === '--changed')) {
     declarations.push({ tokens: ['node', runner.replace(/\\/g, '/'), '--changed'], cwd: projectDir, source: 'tools' });
   }
-  // Follow package scripts referenced by declared checks, including arbitrary
-  // names. The project, rather than a maintained list of tool names, chooses.
-  const expanded = new Set();
-  for (let index = 0; index < declarations.length; index++) {
-    const tokens = declarations[index].tokens;
-    const name = tokens[0] === 'npm' ? (tokens[1] === 'run' ? tokens[2] : tokens[1]) : null;
-    if (!name || expanded.has(name) || typeof scripts[name] !== 'string') continue;
-    expanded.add(name);
-    const command = commandTokens(scripts[name]);
-    if (command) declarations.push({ tokens: command, cwd: projectDir, source: declarations[index].source });
-  }
+  declarationCache.set(projectDir, { stamp, declarations });
   return declarations;
 }
 
 function canonicalToken(token, index, cwd) {
-  if (index === 0) return path.basename(token.replace(/\\/g, '/')).replace(/\.(exe|cmd)$/i, '');
+  if (index === 0) return programName(token);
   if (/^[\w./\\: -]+$/.test(token) && /[./\\]/.test(token) && !token.startsWith('-')) {
     return path.resolve(cwd, token);
   }
   return token;
 }
 
-function findDeclaration(command, projectDir, cwd = projectDir) {
-  const invocation = checkInvocation(command, cwd);
-  if (!invocation || !projectDir) return null;
-  const { tokens } = invocation;
+function matchingDeclarations(tokens, invocation, projectDir) {
   // A `cd` prefix must land where the check is declared; otherwise another
   // folder's tests would unlock this project's commit.
-  const matches = declaredCommands(projectDir).filter(declaration => tokens.length === declaration.tokens.length
+  return declaredCommands(projectDir).filter(declaration => tokens.length === declaration.tokens.length
     && (!invocation.changedDir || samePath(invocation.cwd, declaration.cwd))
     && tokens.every((token, index) => canonicalToken(token, index, invocation.cwd)
       === canonicalToken(declaration.tokens[index], index, declaration.cwd)));
-  // A generic tool alias must not bypass the same command's entry contract.
-  const chosen = matches.find(declaration => declaration.contract) || matches[0] || null;
-  // Required = the project's own check commands (manifest tools, package.json test);
-  // a single manifest entry is evidence but does not unlock the commit gate.
-  return chosen && { ...chosen, required: matches.some(declaration => declaration.source !== 'entry') };
 }
 
-function isTrivialTest(command) {
-  const invocation = checkInvocation(command, null);
-  return !invocation || /^(echo|printf)$/i.test(invocation.tokens[0]);
+function findDeclaration(command, projectDir, cwd = projectDir) {
+  const invocation = checkInvocation(command, cwd, projectDir);
+  if (!invocation || !projectDir) return null;
+  const matches = matchingDeclarations(invocation.tokens, invocation, projectDir);
+  // A generic tool alias must not bypass the same command's entry contract.
+  const chosen = matches.find(declaration => declaration.contract) || matches[0] || null;
+  // Required = the project's own check commands (manifest tools); a single manifest
+  // entry is evidence but does not stand for the project's check.
+  return chosen && { ...chosen, required: matches.some(declaration => declaration.source !== 'entry'), env: invocation.env };
+}
+
+// A declared check behind tokens the project did not declare as a wrapper (`rtk node x.js`
+// with no `wrappers: ["rtk"]`): { prefix, declaration }, or null. It does not count as the
+// check — the prefix could change what runs — but the project can declare the wrapper.
+function unwrappedDeclaration(command, projectDir, cwd = projectDir) {
+  const invocation = checkInvocation(command, cwd, projectDir);
+  if (!invocation || !projectDir || findDeclaration(command, projectDir, cwd)) return null;
+  for (let start = 1; start < invocation.tokens.length; start++) {
+    const matches = matchingDeclarations(invocation.tokens.slice(start), invocation, projectDir);
+    if (matches.length) return { prefix: invocation.tokens.slice(0, start), declaration: matches[0] };
+  }
+  return null;
 }
 
 function isTestExecution(command, projectDir, cwd = projectDir) {
-  return !isTrivialTest(command) && Boolean(findDeclaration(command, projectDir, cwd));
+  return Boolean(findDeclaration(command, projectDir, cwd));
 }
 
 function declarationKey(declaration) {
@@ -188,49 +231,11 @@ function checkKeyForCommand(command, projectDir, cwd = projectDir) {
   const declaration = findDeclaration(command, projectDir, cwd);
   return declaration ? declarationKey(declaration) : null;
 }
-// True when the command is one of the project's own checks (manifest tools,
-// package.json test) — the only checks that arm or unlock the commit gate.
+// True when the command is one of the project's own checks (manifest tools) — the
+// checks recorded as required (completion evidence).
 function isRequiredCheck(command, projectDir, cwd = projectDir) {
   const declaration = findDeclaration(command, projectDir, cwd);
   return Boolean(declaration && declaration.required !== false);
-}
-
-// A path (relative to the project, or absolute) whose edits need a passing check:
-// anything but prose, stylesheets and images outside generated/state directories.
-function isSourceFile(filePath) {
-  if (!filePath) return false;
-  const normalized = String(filePath).replace(/\\/g, '/').toLowerCase();
-  const segments = normalized.split('/');
-  if (segments.some(segment => SOURCE_EXCLUDED_DIRS.includes(segment))) return false;
-  const extension = path.extname(normalized);
-  if (NON_SOURCE_EXTENSIONS.includes(extension)) return false;
-  return !(extension === '' && NON_SOURCE_BASENAMES.includes(path.basename(normalized)));
-}
-
-// Keep the content identity with the existing observation, not in another
-// change journal. Only files that need verification count (a README or
-// stylesheet edit after a passing check leaves the evidence current), plus the
-// project's verification configuration: the manifest, its runner, package.json.
-function projectFingerprint(projectDir) {
-  const hash = crypto.createHash('sha256');
-  function visit(directory, relative = '') {
-    for (const entry of fs.readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
-      const name = relative ? `${relative}/${entry.name}` : entry.name;
-      if (entry.isSymbolicLink()) continue;
-      if (entry.isDirectory()) {
-        if (SOURCE_EXCLUDED_DIRS.includes(entry.name)) continue;
-        visit(path.join(directory, entry.name), name);
-      } else if (entry.isFile() && isSourceFile(name)) {
-        hash.update(JSON.stringify(name)).update(fs.readFileSync(path.join(directory, entry.name)));
-      }
-    }
-  }
-  visit(projectDir);
-  for (const file of [path.join(STORAGE_ROOT, 'verification', 'manifest.json'), path.join(STORAGE_ROOT, 'verification', 'run-verify.js'), 'package.json']) {
-    const absolute = path.join(projectDir, file);
-    if (fs.existsSync(absolute)) hash.update(file).update(fs.readFileSync(absolute));
-  }
-  return hash.digest('hex');
 }
 
 function isGitCommit(command) {
@@ -281,9 +286,10 @@ function isRunning(response) {
 }
 
 function commandObservation(hookData = {}, projectDir, options = {}) {
-  const command = hookData.tool_input?.command;
+  // A shell call by its shape (Bash, PowerShell, Codex exec, an MCP shell), not its name.
+  const command = shellCommand(hookData);
   const cwd = hookData.tool_input?.workdir || hookData.cwd || projectDir;
-  if (hookData.tool_name !== 'Bash' || isTrivialTest(command)) return null;
+  if (!command) return null;
   const declaration = findDeclaration(command, projectDir, cwd);
   if (!declaration) return null;
   const host = options.host || 'claude';
@@ -318,13 +324,16 @@ function commandObservation(hookData = {}, projectDir, options = {}) {
     // A post-tool event cannot reconstruct a before/after forbidden-change
     // assertion. Such entries need the declared verification runner.
     if (contract.forbiddenChanges?.length) conclusive = false;
-    const { evaluateAssertion } = require('../../skills/verifying/scripts/run-verify');
+    // Without the runner's assertion code (its modules unavailable) the result proves
+    // nothing either way (D143_T018: evidence is fail-closed).
+    let evaluateAssertion = null;
+    try { ({ evaluateAssertion } = require('../../skills/verifying/scripts/run-verify')); } catch (_) { conclusive = false; }
     const context = {
       projectRoot: projectDir, exitCode,
       stdout: typeof response === 'object' ? response?.stdout ?? response?.output ?? '' : responseText(response),
       stderr: typeof response === 'object' ? response?.stderr || '' : '',
     };
-    contractPassed = (contract.assertions || []).every(assertion => evaluateAssertion(assertion, context).pass);
+    if (evaluateAssertion) contractPassed = (contract.assertions || []).every(assertion => evaluateAssertion(assertion, context).pass);
   }
   const excerpt = text.slice(0, 500);
   const fingerprint = crypto.createHash('sha256')
@@ -356,13 +365,10 @@ module.exports = {
   findDeclaration,
   declaredCommands,
   getExitCode,
-  hasCheckConfiguration,
   isGitCommit,
   isTestExecution,
   isToolFailure,
-  isTrivialTest,
-  isSourceFile,
-  projectFingerprint,
+  unwrappedDeclaration,
   checkKeyForCommand,
   isRequiredCheck,
   responseText,

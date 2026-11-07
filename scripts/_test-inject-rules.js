@@ -1289,9 +1289,9 @@ test('RULES: P/O/G table routed to document, chat gets short report', function()
 });
 
 test('RULES: failure reporting limited to blocked tasks', function() {
-  assert(mod.RULES.includes('report only when the task is blocked'),
+  assert(mod.RULES.includes('report only when blocked'),
     'RULES missing blocked-only failure reporting');
-  assert(mod.RULES.includes('Do not narrate mistakes you already recovered from'),
+  assert(mod.RULES.includes('Do not narrate recovered mistakes'),
     'RULES missing recovered-mistake exclusion');
 });
 
@@ -1322,9 +1322,9 @@ test('RULES: closing verdict with work-item states present', function() {
 // v21.119.0: "unpack each term" alone let answers dump twenty unexplained terms —
 // the executable form is a decision rule on term COUNT, plus codename restating.
 test('RULES: Simple Communication term-discipline decision rule present', function() {
-  assert(mod.RULES.includes('you are using too many terms'),
+  assert(mod.RULES.includes('too many to unpack means too many terms'),
     'RULES missing the too-many-terms decision rule');
-  assert(mod.RULES.includes('internal codenames and IDs mean nothing to the reader'),
+  assert(mod.RULES.includes('say what internal codenames and IDs refer to'),
     'RULES missing the codename-restating clause');
 });
 
@@ -1333,7 +1333,7 @@ test('RULES: Simple Communication term-discipline decision rule present', functi
 // followed (I085). Restored as a directive; the permission form must not come back.
 // D119: bounded to one line that adds no length (user's global brevity rule).
 test('RULES: banter is a directive, not a permission', function() {
-  assert(/Mix in one light banter line[^.]*adds no length/.test(mod.RULES),
+  assert(/One light banter line[^.]*no added length/.test(mod.RULES),
     'RULES missing the one-line banter directive');
   assert(!mod.RULES.includes('banter (깐족 유머) is welcome'),
     'banter must not regress to permission form');

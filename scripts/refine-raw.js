@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
+const { fileWrites, shellCommand, transcriptCall } = require('./core/tool-shape');
 
 // Types to completely remove
 const JUNK_TYPES = [
@@ -80,30 +81,37 @@ function processToolUse(wrapper, toolContent) {
 
   const input = toolContent.input || {};
 
+  // Shell calls and file writes are summarized by their shape (core/tool-shape),
+  // whatever the tool is named.
+  const call = transcriptCall(toolContent);
+  const command = shellCommand(call);
+  if (command) {
+    tool.cmd = command.substring(0, 200);
+    return tool;
+  }
+  const writes = fileWrites(call);
+  if (writes.length) {
+    const write = writes[0];
+    tool.target = write.path;
+    if (write.kind === 'edit') {
+      // Create diff summary
+      if (write.oldString && write.newString) {
+        const oldLines = write.oldString.split(/\r?\n/).slice(0, 3).join('\n');
+        const newLines = write.newString.split(/\r?\n/).slice(0, 3).join('\n');
+        tool.diff = `-${oldLines.substring(0, 100)}\n+${newLines.substring(0, 100)}`;
+      }
+    } else if (typeof write.content === 'string') {
+      tool.size = write.content.length;
+    }
+    if (writes.length > 1) tool.targets = writes.map(each => each.path);
+    return tool;
+  }
+
     // Extract relevant info based on tool type
     switch (tool.name) {
       case 'Read':
         tool.target = input.file_path || input.path;
         if (input.offset) tool.lines = `${input.offset}-${input.offset + (input.limit || 100)}`;
-        break;
-
-      case 'Edit':
-        tool.target = input.file_path;
-        // Create diff summary
-        if (input.old_string && input.new_string) {
-          const oldLines = input.old_string.split(/\r?\n/).slice(0, 3).join('\n');
-          const newLines = input.new_string.split(/\r?\n/).slice(0, 3).join('\n');
-          tool.diff = `-${oldLines.substring(0, 100)}\n+${newLines.substring(0, 100)}`;
-        }
-        break;
-
-      case 'Write':
-        tool.target = input.file_path;
-        tool.size = input.content?.length || 0;
-        break;
-
-      case 'Bash':
-        tool.cmd = (input.command || '').substring(0, 200);
         break;
 
       case 'Grep':

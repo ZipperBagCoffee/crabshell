@@ -4,12 +4,11 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { classifyUserIntent } = require('./turn-intent');
+const { isFileWrite, transcriptCall } = require('./tool-shape');
 
-const MUTATING_TOOL_NAMES = new Set([
-  'Write',
-  'Edit',
-  'MultiEdit',
-  'NotebookEdit',
+// A file write is known by its shape (core/tool-shape), whatever the tool is named.
+// Handing work to an agent has no shape of its own yet, so these names stay.
+const DELEGATION_TOOL_NAMES = new Set([
   'Task',
   'TaskCreate',
 ]);
@@ -31,6 +30,7 @@ function inspectSessionTranscript(transcriptPath) {
 
   const userPrompts = [];
   const toolNames = [];
+  let writesFile = false;
   let validLines = 0;
   for (const line of text.split(/\r?\n/)) {
     if (!line.trim()) continue;
@@ -48,6 +48,7 @@ function inspectSessionTranscript(transcriptPath) {
     if (entry.type === 'assistant' && Array.isArray(entry.message && entry.message.content)) {
       for (const block of entry.message.content) {
         if (block && block.type === 'tool_use' && typeof block.name === 'string') toolNames.push(block.name);
+        if (block && block.type === 'tool_use' && isFileWrite(transcriptCall(block))) writesFile = true;
       }
     }
   }
@@ -59,7 +60,7 @@ function inspectSessionTranscript(transcriptPath) {
   const intents = userPrompts.map(classifyUserIntent);
   const hasExecutionPrompt = intents.includes('execution');
   const latestIntent = intents[intents.length - 1];
-  const hasMutatingTool = toolNames.some(name => MUTATING_TOOL_NAMES.has(name));
+  const hasMutatingTool = writesFile || toolNames.some(name => DELEGATION_TOOL_NAMES.has(name));
 
   if (hasExecutionPrompt) return { persist: true, reason: 'execution-prompt', userPrompts, toolNames, intents };
   if (latestIntent === 'question') return { persist: false, reason: 'question-only', userPrompts, toolNames, intents };
@@ -85,7 +86,7 @@ function resolveClaudeTranscript(hookData = {}, options = {}) {
 }
 
 module.exports = {
-  MUTATING_TOOL_NAMES,
+  DELEGATION_TOOL_NAMES,
   contentText,
   inspectSessionTranscript,
   resolveClaudeTranscript,

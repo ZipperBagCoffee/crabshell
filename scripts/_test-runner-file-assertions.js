@@ -8,6 +8,7 @@ const { spawnSync } = require('child_process');
 const h = require('./testlib/hook-harness');
 const source = process.env.CRABSHELL_TEST_RUNNER || path.join(__dirname, '../skills/verifying/scripts/run-verify.js');
 const api = require(source);
+const { copyRunner } = require('../skills/verifying/scripts/runner/install');
 const report = h.createReporter('runner-file-assertions');
 const observation = (pattern, flags) => ({ kind: 'stdoutMatches', pattern, ...(flags === undefined ? {} : { flags }) });
 const explicit = id => ({ id, type: 'structural', command: { file: 'node', args: [`scripts/_test-${id}.js`] }, contract: { exitCode: 0 } });
@@ -44,7 +45,7 @@ function check(name, fn) {
       `console.log('common observation\\n${id} observation');`,
       "console.error('stderr-only observation');",
     ].join('\n'));
-    write(dir, '.crabshell/verification/run-verify.js', fs.readFileSync(source));
+    copyRunner(source, path.join(dir, '.crabshell/verification'));
     fn(dir);
     report.check(name, true);
   } catch (error) { report.check(name, false, error.stack); }

@@ -7,9 +7,8 @@
 // patterns, OS-temp paths or unknown-variable paths; web-guard looks only at this
 // project's MCP servers and known web-search names; doc-watchdog counts only edits
 // inside the project; the verification gate is no longer run for Write/Edit (it
-// returned without effect for those tools); verify-guard (it runs the declared
-// checks and records nothing) is skipped once another guard has denied, so the
-// decision is the same deny with fewer reasons listed.
+// returned without effect for those tools); verify-guard is no longer wired (D143) —
+// no case here writes a Final Verification, so its old entry decides nothing.
 const fs = require('fs');
 const path = require('path');
 const h = require('./testlib/hook-harness');

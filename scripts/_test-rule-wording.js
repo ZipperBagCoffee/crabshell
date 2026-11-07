@@ -1,6 +1,7 @@
 'use strict';
-// D120 T3 (from I091): rule wording the model is given. The phrases checked here
-// are the contract of each rule, not incidental prose.
+// D120 T3 (from I091): rule wording the model is given. Each check pins the instruction of a
+// rule — its key phrases and position — not whole sentences, so a concise rewrite that keeps
+// the instruction passes (D146: the user had the rules rewritten concisely, nothing dropped).
 const fs = require('fs');
 const path = require('path');
 const h = require('./testlib/hook-harness');
@@ -10,188 +11,169 @@ const { RULES } = require('./inject-rules');
 const { ORCHESTRATION_DEFAULTS, COMPRESSED_CHECKLIST } = require('./shared-context');
 const regressing = fs.readFileSync(path.join(__dirname, '..', 'skills', 'regressing', 'SKILL.md'), 'utf8');
 
-report.check('W1 the chat report is plain words in the fixed format, the check named in full (no acronym in that sentence)',
-  /prediction.observation.gap check; in chat, say the result in plain words as "M of N passed" plus the failed items/.test(RULES) && !/Every task ends with a P\/O\/G check/.test(RULES));
-report.check('W2 a permission denial or policy block is reported, not routed around; a user-named alternative is allowed',
-  /permission denial or policy block is not a failure to route around/i.test(RULES) && /alternative the user named/i.test(RULES));
-report.check('W3 facts about the current state are looked up even when familiar; stable knowledge is not',
-  /current state of the world/i.test(RULES) && /even when (it|they) feels? familiar/i.test(RULES) && !/Search internet if unsure/.test(RULES));
+const section = name => (RULES.split(`### ${name}`)[1] || '').split('\n###')[0];
+const lines = text => text.split('\n');
+const lineOf = (text, prefix) => lines(text).find(line => line.startsWith(prefix)) || '';
+const indexOf = (text, prefix) => lines(text).findIndex(line => line.startsWith(prefix));
+const has = (text, phrases) => phrases.every(phrase => text.includes(phrase));
+const verification = section('VERIFICATION');
+const working = section('WORKING RULES');
+const additional = section('ADDITIONAL RULES');
+const checklistVerification = lineOf(COMPRESSED_CHECKLIST, '- Verification:');
+
+report.check('W1 every task ends with the prediction/observation/gap check, reported in chat as "M of N passed" plus the failed items, without the P/O/G acronym',
+  /Predict → execute → compare and record the gap; every task ends with this check, and in chat you say "M of N passed" plus the failed items, in plain words/.test(verification)
+  && !/P\/O\/G check/.test(RULES));
+report.check('W2 a permission denial or policy block is reported and the path stopped, never routed around; a user-named alternative is allowed',
+  has(working, ['permission denial or policy block is reported and that path stopped, never routed around', 'alternative the user named']));
+report.check('W3 current-world facts are looked up even when familiar; stable knowledge is not',
+  has(additional, ['Look up current-world facts', 'even when they feel familiar', 'stable knowledge needs no lookup']) && !/Search internet if unsure/.test(RULES));
 report.check('W4 no whole-file rewrite from filtered or truncated tool output',
-  /Never rewrite a whole file from filtered or truncated tool output/.test(RULES));
+  working.includes('Never rewrite a whole file from filtered or truncated tool output'));
 report.check('W5 the closing verdict names the next action only when there is one (rules and per-prompt checklist)',
-  /plus the user's next action if there is one/.test(RULES) && /plus the user's next action if there is one/.test(COMPRESSED_CHECKLIST));
-report.check('W6 banter: one line at the end, never inside factual sentences, lists or documents',
-  /Mix in one light banter line[^.]*adds no length/.test(RULES) && /at the end of the reply/.test(RULES) && /outside factual sentences, lists and documents/.test(RULES));
+  RULES.includes("plus the user's next action if there is one") && COMPRESSED_CHECKLIST.includes("plus the user's next action if there is one"));
+report.check('W6 banter: one line after the verdict, no added length, never inside factual sentences, lists or documents',
+  /One light banter line \(깐족 유머\) after the verdict: no added length, outside factual sentences, lists and documents, never at the user's expense/.test(RULES));
 report.check('W7 the turn contract says to name the chosen option in one line', /name the choice in one line/.test(ORCHESTRATION_DEFAULTS));
 report.check('W8 the per-prompt checklist keeps the report format without the P/O/G acronym',
-  /"M of N passed" plus the failed items/.test(COMPRESSED_CHECKLIST) && !/\(P\/O\/G\)/.test(COMPRESSED_CHECKLIST));
-// v21.134.0: a cause for a removed feature was once given from a nearby CHANGELOG
-// line instead of the commit that changed it; the user asked for this rule.
-report.check('W10 git is the record: missing git or repository is set up after confirming; history is checked and the commit cited before saying why; untracked files are backed up',
-  /\*\*Git is the record of changes:\*\* if git is not installed or the project is not a git repository, set it up — install git or run `git init` — after confirming with the user/.test(RULES)
-  && /before saying what changed, when, or why[^.]*check the git history first: find the commit that changed that text \(`git log -S`/.test(RULES)
-  && /Files git does not track[^.]*`<file>\.bak`/.test(RULES) && !/Non-git files →/.test(RULES) && !/say so — its history/.test(RULES));
-// v21.135.0 (D123): plan in the discussion before building, not "record after doing";
-// the per-prompt checklist says it, because RULES in CLAUDE.md alone did not get it done.
-report.check('W11 rules: work that changes files is planned in a discussion first, the user confirms, tickets carry the specifics, the result is compared',
-  !/record after doing/.test(RULES) && /work that changes files starts in a discussion: its Plan settles how[^.]*the user confirms it; each ticket carries that plan's specifics[^.]*compare the result with the discussion's Intent Anchor and Plan/.test(RULES));
-report.check('W12 the per-prompt checklist names the discussing and ticketing skills before the change and the comparison after it',
-  /Work that changes files starts in a discussion: its Plan \(discussing skill\)[^\n]*user confirms it, then its ticket \(ticketing skill\), then the change; before calling it done, compare the result with the discussion[.;]/.test(COMPRESSED_CHECKLIST));
-// v21.136.0 (D124): every step followed a rule and the result still looked weird to the
-// user; the check is the user's own question, asked before doing and before handing over.
-// The user rejected a "purpose" test (any result can be argued to fit a purpose).
+  checklistVerification.includes('"M of N passed" plus the failed items') && !/\(P\/O\/G\)/.test(COMPRESSED_CHECKLIST));
+// v21.134.0: a cause for a removed feature was once given from a nearby CHANGELOG line.
 {
-  const lines = RULES.split('\n');
-  const at = lines.findIndex(line => line.startsWith('- **Common Sense**:'));
-  const rule = at >= 0 ? lines[at] : '';
-  report.check('W14 rules: Common Sense follows Be Logical, asks whether the result would look weird to the user before doing and before handing over, no "purpose" test',
-    at > 0 && lines[at - 1].startsWith('- **Be Logical**:')
-    && ['would anything here look weird to them', 'before doing it', 'before handing it over', 'open the actual result', 'do not explain it away', 'never excuses']
-      .every(phrase => rule.includes(phrase))
-    && !/purpose/i.test(rule), rule.slice(0, 120));
+  const git = lineOf(additional, '- **Git is the record of changes:**');
+  report.check('W10 git is the record: missing git or repository is set up after the user confirms; the commit is found and cited before saying why; untracked files are backed up',
+    has(git, ['no git or no repository → set it up (install git or `git init`) after the user confirms', 'See what changed with `git status` and `git diff`',
+      'before saying what changed, when or why', 'find and cite the commit that changed that text (`git log -S`', 'Files git does not track → overwrite one backup (`<file>.bak`)']),
+    git.slice(0, 120));
+}
+// v21.135.0 (D123): plan in the discussion before building, in the rules and the per-prompt checklist.
+{
+  const workflow = lineOf(additional, '- **Workflows:**');
+  const checklist = lineOf(COMPRESSED_CHECKLIST, '- Work that changes files:');
+  report.check('W11 rules: work that changes files is planned in a discussion the user confirms, tickets carry the plan, the result is compared',
+    !/record after doing/.test(RULES) && has(workflow, ['work that changes files → a discussion whose Plan', 'the user confirms', 'tickets, each carrying its part of that plan',
+      "compare the result with the discussion's Intent Anchor and Plan and record any deviation before calling it done"]), workflow.slice(0, 120));
+  report.check('W12 the per-prompt checklist names the discussing and ticketing skills before the change and the comparison after it',
+    has(checklist, ['discussion Plan (discussing skill) the user confirms', 'ticket (ticketing skill)', 'change', 'compare the result with the discussion']), checklist.slice(0, 120));
+  // v21.146.0 (D135): small changes skip documents; check once after the batch and reuse unchanged passes.
+  report.check('W26 Workflows keeps the delegation sentence and ends with the small-change exception',
+    has(workflow, ['Delegate and review by actual risk, not role pairs or counts.', 'A small change (a few lines in one or two files, changing no hook, guard or gate behavior or the code they run; version-bump files do not count toward the two) skips both: say it in one line, make it, run the changed-file check once, give the reason in the commit message.']),
+    workflow.slice(-160));
+  report.check('W28 the checklist workflow line carries the small-change lane',
+    checklist.endsWith('A small change (a few lines in one or two files, no hook/guard/gate code) skips both — run the changed-file check once.'), checklist.slice(-120));
+}
+report.check('W27 verification checks once after the last edit, reuses unchanged passes and reads the saved results, before the diff-only rule',
+  indexOf(verification, '- Check once after the last edit of a batch; never re-run a check that passed on unchanged inputs (`run-verify.js` reuses such passes) — read the `Full results:` file of your run instead.') >= 0
+  && indexOf(verification, '- Check once') + 1 === indexOf(verification, '- Verify the diff only:'));
+// v21.136.0 (D124): the check is the user's own question, before doing and before handing over; no "purpose" test.
+{
+  const at = indexOf(RULES, '- **Common Sense**:');
+  const rule = at >= 0 ? lines(RULES)[at] : '';
+  report.check('W14 rules: Common Sense follows Be Logical, asks before doing and before handing over whether the result would look weird, no "purpose" test',
+    at > 0 && lines(RULES)[at - 1].startsWith('- **Be Logical**:')
+    && has(rule, ['of what you are about to do', 'actual result before handing it over', 'looked at whole, not recalled', 'would anything here look weird to the person who will use or read it',
+      'do not explain it away', 'No rule flags or excuses it']) && !/purpose/i.test(rule), rule.slice(0, 120));
 }
 report.check('W15 the per-prompt checklist carries the common-sense line',
-  /- Common sense: before doing the work and before handing it over[^\n]*look weird to them, fix it first/.test(COMPRESSED_CHECKLIST));
-// v21.144.0 (D133): the user repeats corrections that stop at the spot pointed at, and "done" is
-// reported with nobody having tried the result.
-report.check('W24 a correction spreads to the whole work and an untried result is not reported as done (rules and per-prompt checklist)',
-  /^- A correction is a defect type, not one spot:[^\n]*how many places had it, how many were fixed, and which are left\./m.test(RULES)
-  && /^- If no person has used or read the result, report "own checks passed, not tried by a person", not "done"\.$/m.test(RULES)
-  && /^- A correction is a defect type:[^\n]*own checks passed, not tried by a person[^\n]*structuring skill/m.test(COMPRESSED_CHECKLIST));
-// v21.145.0 (D134): the one idea worth keeping from the /crash-out skill; the user: "그 한줄 정돔나 규칙에 넣든가".
-// Citing evidence that fits is not enough; the claims an answer depends on are tested against evidence that would prove them wrong.
+  /- Common sense: before doing the work and before handing it over[^\n]*look weird to them, fix it first — no rule excuses a weird result/.test(COMPRESSED_CHECKLIST));
+// D144 / D146: asked every turn right after common sense — "Is this your best?", then the coding line.
 {
-  const line = RULES.split('\n').find(l => l.startsWith('- **Anti-Deception**:')) || '';
-  report.check('W25 Anti-Deception: look for evidence that would prove each load-bearing claim wrong, right after the audit sentence',
-    line.endsWith('audit each claim against a tool result from this session. For each claim the answer depends on, look for the evidence that would prove it wrong before the answer goes out, not only the evidence that fits it.'),
-    line.slice(-160));
+  const at = indexOf(COMPRESSED_CHECKLIST, '- Is this your best?');
+  const best = at >= 0 ? lines(COMPRESSED_CHECKLIST)[at] : '';
+  report.check('W35 the per-prompt checklist asks "Is this your best?" before any hand-over, right after the common-sense line',
+    at > 0 && lines(COMPRESSED_CHECKLIST)[at - 1].startsWith('- Common sense:') && has(best, ['before handing over any result', 'keep working until it is']), String(at));
+  const code = indexOf(COMPRESSED_CHECKLIST, '- Code:');
+  const line = code >= 0 ? lines(COMPRESSED_CHECKLIST)[code] : '';
+  report.check('W36 the per-prompt checklist carries the coding line (hardcoding defined, parameters allowed, general mechanism, modular, structure first) right after the best question',
+    code === at + 1 && has(line, ['no value, name, path or assumption fixed to specific cases', 'a project-changeable parameter with a default is fine',
+      'build the general mechanism', 'split by responsibility', 'check the structure before adding a special case']), line.slice(0, 120));
+  const rule = lineOf(working, '- **Code:**');
+  report.check('W38 the rules carry the same coding rule',
+    has(rule, ['no hardcoding — no value, name, path or assumption fixed to specific cases', 'a project-changeable parameter with a default is not hardcoding',
+      'build the general mechanism', 'Split code by responsibility', 'check whether the structure is the cause']), rule.slice(0, 120));
 }
-// v21.136.0: the user found Simple Communication too long ("이거 좀 긴거같은데"); it was cut
-// from 1,567 to 1,128 characters with every rule kept. The cap keeps it from growing back.
+// D146: the user — 「관련 스킬있으면 스킬쫌 쓰라는 말도 넣어라」.
+report.check('W37 skills: open and follow the skills that cover a task, open one when unsure, reopen for each new deliverable (rules and per-prompt checklist)',
+  has(lineOf(working, '- **Skills:**'), ['open the installed skills that cover it and follow them', 'when unsure whether one applies, open it', 'Open them again for each new deliverable'])
+  && has(lineOf(COMPRESSED_CHECKLIST, '- Skills:'), ['open the installed skills that cover it and follow them', 'open them again for each new deliverable']));
+// v21.144.0 (D133): corrections spread to the whole work; an untried result is not "done".
+report.check('W24 a correction is a defect type found everywhere, and an untried result is not reported as done (rules and per-prompt checklist)',
+  has(lineOf(working, '- When criticized:'), ['treat the correction as a defect type', 'find it everywhere in the work', 'places found, fixed and still left'])
+  && lineOf(working, '- Nobody has used or read the result').includes('"own checks passed, not tried by a person", not "done"')
+  && /^- A correction is a defect type:[^\n]*own checks passed, not tried by a person[^\n]*structuring skill/m.test(COMPRESSED_CHECKLIST));
+// v21.145.0 (D134): load-bearing claims are tested against evidence that would prove them wrong.
 {
-  const line = RULES.split('\n').find(l => l.startsWith('- **Simple Communication**:')) || '';
+  const line = lineOf(RULES, '- **Anti-Deception**:');
+  report.check('W25 Anti-Deception: audit claims against tool results, then seek evidence against each load-bearing claim before any answer goes out',
+    has(line, ['audit each claim against a tool result from this session', 'Before any answer goes out, seek evidence against each claim it depends on, not only evidence for it']), line.slice(-160));
+}
+// v21.136.0: the user found Simple Communication too long; the cap keeps it from growing back.
+{
+  const line = lineOf(RULES, '- **Simple Communication**:');
   report.check('W17 Simple Communication stays short (at most 1,200 characters)', line.length > 0 && line.length <= 1200, String(line.length));
 }
-// The user: "검증할때 항상 상식을 물어야할듯" — a weird result fails verification even when every check passes.
+// "검증할때 항상 상식을 물어야할듯" — a weird result fails verification even when every check passes.
 report.check('W16 every verification asks the common-sense question; a weird result fails even when checks pass (rules and per-prompt checklist)',
-  /### VERIFICATION\n[^\n]*Every verification also asks the Common Sense question about the actual result: would anything look weird to the user\? If so, it fails, even when every check passes\./.test(RULES)
-  && /^- Verification = [^\n]*always ask whether the actual result would look weird to the user — if so, it fails even when every check passes/m.test(COMPRESSED_CHECKLIST));
-// v21.137.0 (D125): the user asked that temporary files made for a test be deleted, safely,
-// once the test is done. The two "confirm before deleting" sentences exempt them, or the
-// model would be told to delete and to ask first on the same turn.
+  verification.includes('Every verification also asks the Common Sense question: a result that would look weird to the user fails even when every check passes.')
+  && checklistVerification.includes('always ask whether the result would look weird to the user — if so, it fails even when every check passes'));
+// v21.137.0 (D125): temporary files deleted safely once the test is done; the confirm-before-delete rules exempt them.
 {
-  const working = (RULES.split('### WORKING RULES')[1] || '').split('### ADDITIONAL RULES')[0];
-  const rule = (working.match(/^- \*\*Temporary files:\*\*[^\n]*/m) || [''])[0];
-  report.check('W18 temporary files: deleted once the test is done, safely (own paths only, exact path, no wildcard, own folders only, leave and report the rest); both confirm-before-delete sentences exempt them',
-    ['deleted once that test or step is finished', 'this needs no confirmation', 'Files the user asked for or will need are not temporary',
-      'note each path when you create it', 'by exact path, never by wildcard', 'recursively only if you created that folder',
-      'not sure you created, stays — tell the user about it'].every(phrase => rule.includes(phrase))
-    && /Before deleting a file other than your own temporary files \(see Temporary files\): state what it does, why deletion is safe, and confirm\./.test(RULES)
-    && /deleting files other than your own temporary files \(delete those once the test is done\)/.test(COMPRESSED_CHECKLIST),
-    rule.slice(0, 120));
+  const rule = lineOf(working, '- **Temporary files:**');
+  report.check('W18 temporary files: deleted when the step ends without asking, safely; anything else stays unless explained and confirmed; both confirm-before-delete rules exempt them',
+    has(rule, ['deleted when that step ends, before handover, without asking', 'files the user asked for or will need are not temporary', 'Note each path at creation',
+      'by exact path, never by wildcard', 'folders recursively only if you created them', 'Anything else (existed before, or not sure you created it) stays',
+      'state what it does and why deletion is safe, and get confirmation', 'tell the user what you left'])
+    && lineOf(RULES, '- **Human Oversight**:').includes('deleting anything that is not your own temporary file (see Temporary files)')
+    && COMPRESSED_CHECKLIST.includes('deleting files other than your own temporary files (delete those once the test is done)'), rule.slice(0, 120));
 }
-// v21.138.0 (D126): the user asked for work at a quality one is proud of ("결과물에 자부심이 있을
-// 퀄리티로") and chose this exact clause; it sits right after Common Sense, both hand-over checks.
+// v21.138.0 (D126) / v21.141.0 (D130): Take Pride right after Common Sense, Depth right after Take Pride.
 {
-  const lines = RULES.split('\n');
-  const at = lines.findIndex(line => line.startsWith('- **Common Sense**:'));
-  const principles = (RULES.split('### PRINCIPLES')[1] || '').split('\n###')[0];
-  const clause = '- **Take Pride**: do every piece of work at a quality you would be proud to put your name on. Before handing it over, ask: would I be proud of this? If not, it is not finished — improve it first.';
-  report.check('W19 rules: Take Pride, word for word as the user chose it, is the principle right after Common Sense',
-    at >= 0 && lines[at + 1] === clause && principles.split('\n').includes(clause), at >= 0 ? (lines[at + 1] || '').slice(0, 120) : 'no Common Sense line');
+  const at = indexOf(RULES, '- **Common Sense**:');
+  const pride = lines(RULES)[at + 1] || '';
+  report.check('W19 rules: Take Pride is the principle right after Common Sense',
+    pride.startsWith('- **Take Pride**:') && has(pride, ['a quality you would put your name on', 'Before handing it over', 'proud', 'it is not finished — improve it first']), pride.slice(0, 120));
+  const depth = '- **Depth**: when a task calls for expertise, use the methods and tools a top practitioner would use, starting from the rawest material available; changing vocabulary is not changing method.';
+  report.check('W22 rules: Depth, word for word as the user approved it, is the principle right after Take Pride',
+    lines(RULES)[at + 2] === depth, (lines(RULES)[at + 2] || '').slice(0, 120));
+  report.check('W23 verification: self-judgment is not verification, right after the match-the-method sentence',
+    verification.includes('say the check was static. Your own reading of your work is not verification; evidence is a tool result or a check outside your judgment.'));
 }
-// v21.139.0 (D128): the user: "기본적인 업데이트는 변경된 것만 검사 돌리고 유저가 요청할때만 전체 검사를
-// 하고 아니면 전체검사가 정말 필요하다 할때는 유저에게 물어봐라". All three parts, in the rules and the checklist.
-{
-  const verification = (RULES.split('### VERIFICATION')[1] || '').split('\n###')[0];
-  const line = (COMPRESSED_CHECKLIST.match(/^- Verification = [^\n]*/m) || [''])[0];
-  report.check('W20 verify the diff only: routine updates run the changed files\' checks, the full suite only on request, and a needed full run is asked about first (rules and checklist)',
-    verification.includes('Verify the diff only: routine updates run only the checks the changed files touch (`node .crabshell/verification/run-verify.js --changed`')
-    && verification.includes('run the full suite only when the user asks for it')
-    && /when a full run seems truly needed — including when the changed-file selector would fall back to every check[^;.]*— ask the user first\./.test(verification)
-    && line.includes('routine updates run only the changed files\' checks')
-    && line.includes(' — the full suite only when the user asks, and ask before a full run you think is needed'),
-    line.slice(0, 120));
-}
+// v21.139.0 (D128): changed files' checks routinely, the full suite on request, ask before a needed full run.
+report.check('W20 verify the diff only: routine updates run the changed files\' checks, the full suite only on request, and a needed full run is asked about first (rules and checklist)',
+  has(lineOf(verification, '- Verify the diff only:'), ["routine updates run the changed files' checks (`node .crabshell/verification/run-verify.js --changed`", "the full suite only on the user's request",
+    'a full run that seems needed (including a selector falling back to every check', '→ ask the user first'])
+  && has(checklistVerification, ["Only the changed files' checks, once after the last edit", 'never re-run a pass on unchanged inputs', 'the full suite only when the user asks — ask before one you think is needed']),
+  checklistVerification.slice(0, 120));
 {
   const skill = fs.readFileSync(path.join(__dirname, '..', 'skills', 'verifying', 'SKILL.md'), 'utf8');
   report.check('W21 the verifying skill makes --changed the default and no longer says to run the full set before a release',
     !/Run the full set before a release/.test(skill) && /Routine updates run `--changed`/.test(skill) && /ask the user first/.test(skill));
 }
-// v21.141.0 (D130): two lines the user approved from felixrieseberg.com "How to be more ambitious":
-// models switch vocabulary without switching methods, and a model must not judge its own work.
+// v21.147.0 (D136): no status-only idling while delegated work runs; a repeated correction is fixed as a type.
+report.check('W30 working rules: waiting is not work',
+  has(lineOf(working, '- Waiting is not work:'), ["do the confirmed plan's or ticket's steps that do not need its result", 'run no check on files still being written',
+    'Status-only replies only when no such step exists, naming what you checked', 'supervision prompts you write (cron, heartbeat, loop) say the same']));
+report.check('W31 the correction rule reopens the earlier fix and fixes the type when the same type comes back',
+  lineOf(working, '- When criticized:').includes('when the same type comes back, reopen the earlier fix (git log -S, memory logbook) and fix the type, not the instance.'));
+// v21.151.0 (D140): rows and columns right after the no-whole-file-rewrite line; ask to commit right after git.
 {
-  const lines = RULES.split('\n');
-  const at = lines.findIndex(line => line.startsWith('- **Take Pride**:'));
-  const principles = (RULES.split('### PRINCIPLES')[1] || '').split('\n###')[0];
-  const depth = '- **Depth**: when a task calls for expertise, use the methods and tools a top practitioner would use, starting from the rawest material available; changing vocabulary is not changing method.';
-  report.check('W22 rules: Depth, word for word as the user approved it, is the principle right after Take Pride',
-    at >= 0 && lines[at + 1] === depth && principles.split('\n').includes(depth), at >= 0 ? (lines[at + 1] || '').slice(0, 120) : 'no Take Pride line');
-  const verification = (RULES.split('### VERIFICATION')[1] || '').split('\n###')[0];
-  const judge = 'Your own reading of your work is not verification; the evidence is a tool result or a check outside your judgment.';
-  report.check('W23 verification: self-judgment is not verification, right after the match-the-method sentence',
-    verification.includes('say the check was static. ' + judge));
+  const at = indexOf(working, '- **Rows and columns:**');
+  report.check('W32 working rules: rows and columns, measured on the rendered result, right after the no-whole-file-rewrite line',
+    at > 0 && lines(working)[at - 1].startsWith('- Never rewrite a whole file')
+    && has(lines(working)[at], ['items of one kind share start edge, width, height and spacing', 'measured on the rendered result', 'one Korean character = two', 'never by deleting content']));
+  const gitAt = indexOf(additional, '- **Git is the record of changes:**');
+  const commits = lines(additional)[gitAt + 1] || '';
+  report.check('W33 additional rules: ask to commit verified changes, right after the git line',
+    commits.startsWith('- **Commits:**') && has(commits, ['ask the user to commit them', 'in one line what the commit would contain', 'never leave them uncommitted silently']), commits.slice(0, 120));
 }
-// v21.146.0 (D135): the user: "디스커션 리그레싱 해서 둘다 해" / "한줄 고치는데 총검사 이지랄".
-// Small changes skip documents; check once after the batch and reuse unchanged passes.
+// v21.152.0 (D141): a memory budget before code runs, right after the temporary-files line.
 {
-  const workflow = RULES.split('\n').find(line => line.startsWith('- **Workflows:**')) || '';
-  const verification = (RULES.match(/### VERIFICATION\n([^\n]*)/) || ['', ''])[1];
-  const smallChange = 'A small change — a few lines in one or two files that changes no hook, guard or gate behavior, including the code they run (version-bump files do not count toward the two) — skips the discussion and ticket: say in one line what will change, make it, run the changed-file check once (`--changed`, or the project\'s equivalent), and give the reason in the commit message.';
-  const checkOnce = 'Check once after the last edit of a batch, not after each edit; do not re-run a check that passed on unchanged inputs (`run-verify.js` reuses such a pass on its own), and read a result from a run you already made (its `Full results:` file) instead of running the check again.';
-  report.check('W26 Workflows ends with the exact small-change exception, after the existing delegation sentence',
-    workflow.endsWith('not role pairs or counts. ' + smallChange), workflow.slice(-160));
-  report.check('W27 verification puts the exact check-once sentence immediately before Verify the diff only',
-    verification.includes(' ' + checkOnce + ' Verify the diff only:'), verification.slice(-160));
-}
-// v21.147.0 (D136): another session relayed the user's report — the agent idled through
-// status-only check-ins while delegated work ran, and a repeated correction got an instance fix.
-{
-  const working = (RULES.split('### WORKING RULES')[1] || '').split('\n###')[0].split('\n');
-  const waiting = "- Waiting is not work: while delegated work or a long check runs, do the steps of the already confirmed plan or ticket that do not need its result — open its partial output, review work that is already final, write the next brief — but run no check on files that are still being written. Send a status-only reply only when no such step exists, and name in it what you checked. Supervision prompts you write (cron, heartbeat, loop) carry the same instruction, never 'if it is still running, reply with status only'.";
-  report.check('W30 working rules carry the exact waiting-is-not-work line',
-    working.includes(waiting), working.find(line => line.startsWith('- Waiting')) || 'no Waiting line');
-  const correction = working.find(line => line.startsWith('- A correction is a defect type')) || '';
-  report.check('W31 the defect-type rule ends with the repeated-correction sentence after its existing text',
-    correction.endsWith('how many were fixed, and which are left. When the same type of correction comes back, reopen the earlier fix (git log -S, or the memory logbook) and check whether it covered the type or only one instance; fix the type.'),
-    correction.slice(-160));
-}
-// v21.151.0 (D140): the user: "글을 쓰든 칸을 만들든 뭘하든 오와 열을 맞추라고" and "커밋을 요청을 하라고" —
-// "commit only when the user asks" left verified work uncommitted with nothing said. Both lines as the user approved them.
-{
-  const working = (RULES.split('### WORKING RULES')[1] || '').split('\n###')[0].split('\n');
-  const rows = '- **Rows and columns:** anything a person sees — text, tables, lists, code blocks, screens, images — keeps rows and columns: items of one kind share the same start edge, width, height and spacing. Check it on the rendered result by measuring (pixel edges; display columns, one Korean character = two), not by the settings or by eye. Fix it with fixed widths or one shared grid, never by deleting content.';
-  const at = working.indexOf(rows);
-  report.check('W32 working rules carry the exact rows-and-columns line, right after the no-whole-file-rewrite line',
-    at > 0 && working[at - 1].startsWith('- Never rewrite a whole file'), working.find(line => line.startsWith('- **Rows')) || 'no Rows line');
-  const additional = (RULES.split('### ADDITIONAL RULES')[1] || '').split('\n');
-  const gitAt = additional.findIndex(line => line.startsWith('- **Git is the record of changes:**'));
-  const commits = '- **Commits:** when finished, verified changes are still uncommitted, ask the user to commit them and say in one line what the commit would contain; never leave them uncommitted without saying so.';
-  report.check('W33 additional rules carry the exact ask-to-commit line, right after the git line',
-    gitAt >= 0 && additional[gitAt + 1] === commits, gitAt >= 0 ? (additional[gitAt + 1] || '').slice(0, 120) : 'no Git line');
-}
-// v21.152.0 (D141): in another project a CPU decoding function moved to a GPU whose memory is system
-// memory reserved 63 GB for 2.2 GB of live tensors; the user: "메모리 좀 최적화 하면서 코딩하면 안됨?" —
-// a memory budget before code runs, in every project. The line as the user approved it.
-{
-  const working = (RULES.split('### WORKING RULES')[1] || '').split('\n###')[0].split('\n');
-  const memory = '- **Memory:** anything you write or run has a memory budget before it runs — compute the peak from the largest input it will get (batch × length × bytes, weights, optimizer and cache state) and keep allocations inside it: no structure that grows with step or iteration count, one buffer reused instead of a new allocation per step, and a hard cap when the hardware is shared or GPU memory is system memory. Before moving a function to another device or a larger input, read how it allocates. Long runs log their peak and stop themselves above the budget. When memory runs out, read the kernel log and the process list before naming a cause.';
-  const at = working.indexOf(memory);
-  report.check('W34 working rules carry the exact memory-budget line, right after the temporary-files line',
-    at > 0 && working[at - 1].startsWith('- **Temporary files:**'), working.find(line => line.startsWith('- **Memory:**')) || 'no Memory line');
+  const at = indexOf(working, '- **Memory:**');
+  report.check('W34 working rules: memory budget, right after the temporary-files line',
+    at > 0 && lines(working)[at - 1].startsWith('- **Temporary files:**')
+    && has(lines(working)[at], ['compute its peak from the largest input', 'nothing that grows per step', 'one reused buffer', 'a hard cap', 'Long runs log their peak and stop above budget', 'read the kernel log and the process list']));
 }
 {
-  const workflow = COMPRESSED_CHECKLIST.split('\n').find(line => line.startsWith('- Work that changes files starts in a discussion:')) || '';
-  const verification = COMPRESSED_CHECKLIST.split('\n').find(line => line.startsWith('- Verification = ')) || '';
-  report.check('W28 checklist keeps the existing workflow and verification phrases alongside the small-change and check-once additions',
-    workflow.startsWith('- Work that changes files starts in a discussion: its Plan (discussing skill) settles how and the user confirms it, then its ticket (ticketing skill), then the change; before calling it done, compare the result with the discussion;')
-    && workflow.endsWith('; a small change (a few lines in one or two files, no hook/guard/gate code) skips both — run the changed-file check once.')
-    && verification.startsWith('- Verification = match method to claim (execute to claim behavior, inspect to claim structure); predict → execute → compare; assert what survives the next release; classify a failure before editing either side; always ask whether the actual result would look weird to the user — if so, it fails even when every check passes;')
-    && verification.includes("routine updates run only the changed files' checks, once after the last edit — never re-run a check that passed on unchanged inputs — the full suite only when the user asks, and ask before a full run you think is needed;")
-    && verification.endsWith('in chat, report "M of N passed" plus the failed items in plain words.'));
-}
-{
-  // The line reaches the model: run the prompt hook on a temp project, question and execution turns.
+  // The lines reach the model: run the prompt hook on a temp project, question and execution turns.
   const os = require('os');
   const { spawnSync } = require('child_process');
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rule-wording-hook-'));
@@ -205,13 +187,13 @@ report.check('W16 every verification asks the common-sense question; a weird res
       if (r.error || r.status !== 0) hookErrors.push(String(r.error || r.stderr || 'exit ' + r.status));
       try { return JSON.parse(r.stdout).hookSpecificOutput.additionalContext; } catch { return ''; }
     });
-    report.check('W13 the prompt hook output carries the plan-first and common-sense lines on a question turn and an execution turn',
-      outputs.every(context => context.includes('Work that changes files starts in a discussion') && context.includes('- Common sense:')),
+    report.check('W13 the prompt hook output carries the plan-first, common-sense, skills and coding lines on a question turn and an execution turn',
+      outputs.every(context => ['- Work that changes files:', '- Common sense:', '- Skills:', '- Code:'].every(line => context.includes(line))),
       outputs.map(o => o.length).join(','));
-    report.check('W29 the prompt hook output carries both complete small-change and check-once clauses on a question turn and an execution turn without hook errors',
+    report.check('W29 the prompt hook output carries the small-change and check-once clauses on both turns without hook errors',
       hookErrors.length === 0 && outputs.every(context =>
-        context.includes('; a small change (a few lines in one or two files, no hook/guard/gate code) skips both — run the changed-file check once.')
-        && context.includes(', once after the last edit — never re-run a check that passed on unchanged inputs')),
+        context.includes('A small change (a few lines in one or two files, no hook/guard/gate code) skips both — run the changed-file check once.')
+        && context.includes("Only the changed files' checks, once after the last edit; never re-run a pass on unchanged inputs")),
       outputs.map(o => o.length).join(',') + (hookErrors.length ? '; ' + hookErrors.join('; ') : ''));
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });

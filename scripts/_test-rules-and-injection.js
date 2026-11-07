@@ -16,11 +16,11 @@ const root = h.makeWorkRoot('rules-and-injection');
 const report = h.createReporter('rules-and-injection');
 const MARKER = 'Fixture concept: widget pipeline for rules-and-injection';
 
-const ADVISOR = /When an advisor tool is available[^\n]*before committing to an approach[^\n]*before declaring done[^\n]*not every turn/;
+const ADVISOR = /Advisor tool available[^\n]*before committing to an approach[^\n]*before declaring done[^\n]*not every turn/;
 const WORDING = {
-  'humor is one line that adds no length': /one (light )?(banter )?line[^.\n]*(adds no length|never adds length)/i,
-  'short, but never drop a required fact': /short, but never drop a required fact/i,
-  'at most 4 bullets, tables only on request': /max 4 per group[^.\n]*tables only when the user asks/i,
+  'humor is one line that adds no length': /one (light )?(banter )?line[^.\n]*(adds no length|never adds length|no added length)/i,
+  'short, but never drop a required fact': /short[^.\n]*but never drop a required fact/i,
+  'at most 4 bullets, tables only on request': /max 4 per group[^.\n]*tables only (when the user asks|on request)/i,
 };
 const count = (text, re) => (text.match(new RegExp(re.source, 'g')) || []).length;
 function wordingGaps(text) {

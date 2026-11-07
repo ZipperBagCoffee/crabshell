@@ -8,7 +8,8 @@ const { readStdin, normalizePath } = require('./transcript-utils');
 if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 
 const { getProjectDir, readJsonOrDefault, writeJson, docDirsPattern } = require('./utils');
-const { isSourceFile } = require('./core/command-observation');
+const { isProjectInput } = require('./core/project-state');
+const { writtenPaths } = require('./core/tool-shape');
 const { STORAGE_ROOT, MEMORY_DIR, TICKET_DIR, DOC_WATCHDOG_FILE, DOC_WATCHDOG_THRESHOLD, REGRESSING_STATE_FILE } = require('./constants');
 
 const DOC_PATTERN = new RegExp(`^${docDirsPattern(type => type.workflow)}\\/[^/]+\\.md$`, 'i');
@@ -33,10 +34,10 @@ function projectRelative(projectDir, filePath) {
   return normalizePath(relative);
 }
 
-// Same source definition as the commit gate (core/command-observation).
+// A project file as the runner sees it (core/project-state): inside the project, not
+// excluded by the manifest, not Crabshell's own storage — no extension list.
 function isCodeFile(projectDir, filePath) {
-  const relative = projectRelative(projectDir, filePath);
-  return relative !== null && isSourceFile(relative);
+  return projectRelative(projectDir, filePath) !== null && isProjectInput(projectDir, filePath);
 }
 
 // A D/P/T/I/H document of this project, excluding INDEX.md.
@@ -49,25 +50,27 @@ function readRegressingState(projectDir) {
   return readJsonOrDefault(path.join(projectDir, STORAGE_ROOT, MEMORY_DIR, REGRESSING_STATE_FILE), null);
 }
 
-// The edited file of a Write/Edit payload, or '' when there is none.
-function editedFile(hookData) {
-  if (!hookData || (hookData.tool_name !== 'Write' && hookData.tool_name !== 'Edit') || !hookData.tool_input) return '';
-  return normalizePath(hookData.tool_input.file_path || hookData.tool_input.path || '');
+// The files a call writes, whatever the tool is named (core/tool-shape).
+function editedFiles(hookData) {
+  return writtenPaths(hookData).map(normalizePath).filter(Boolean);
 }
 
-// PostToolUse: count code edits since the last document update.
+// PostToolUse: count code edits since the last document update. A call counts once:
+// a document it writes resets the count, otherwise a code file it writes adds one.
 function recordEdit(hookData, projectDir) {
-  const filePath = editedFile(hookData);
-  if (!filePath) return;
+  const filePaths = editedFiles(hookData);
+  if (!filePaths.length) return;
   const state = readState(projectDir);
-  if (isCodeFile(projectDir, filePath)) {
-    state.editsSinceDocUpdate = (state.editsSinceDocUpdate || 0) + 1;
-    state.lastCodeEditAt = new Date().toISOString();
-    state.lastCodeEditFile = filePath;
-  } else if (isDocFile(projectDir, filePath)) {
+  const doc = filePaths.find(filePath => isDocFile(projectDir, filePath));
+  const code = filePaths.find(filePath => isCodeFile(projectDir, filePath));
+  if (doc) {
     state.editsSinceDocUpdate = 0;
     state.lastDocUpdateAt = new Date().toISOString();
-    state.lastDocUpdateFile = filePath;
+    state.lastDocUpdateFile = doc;
+  } else if (code) {
+    state.editsSinceDocUpdate = (state.editsSinceDocUpdate || 0) + 1;
+    state.lastCodeEditAt = new Date().toISOString();
+    state.lastCodeEditFile = code;
   }
   writeState(projectDir, state);
 }
@@ -75,9 +78,8 @@ function recordEdit(hookData, projectDir) {
 // PreToolUse: a soft warning (never a block) after too many code edits during regressing.
 // Returns { context, log } or null.
 function gateEdit(hookData, projectDir) {
-  const filePath = editedFile(hookData);
   // Only gate code files (doc files are the solution, not the problem)
-  if (!filePath || !isCodeFile(projectDir, filePath)) return null;
+  if (!editedFiles(hookData).some(filePath => isCodeFile(projectDir, filePath))) return null;
   const regressing = readRegressingState(projectDir);
   if (!regressing || regressing.active !== true) return null;
   const threshold = DOC_WATCHDOG_THRESHOLD;

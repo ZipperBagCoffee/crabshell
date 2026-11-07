@@ -45,7 +45,9 @@ function setup(root) {
     lastUpdatedAt: new Date().toISOString(),
   }, null, 2));
   fs.writeFileSync(path.join(root, '_test-parent-observation.js'), "process.stderr.write('INDEPENDENT_FAILURE_MARKER\\n'); process.exit(7);\n");
-  fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ scripts: { test: 'node _test-parent-observation.js' } }));
+  // D143_T014: the manifest declares the check (no package.json script is followed).
+  fs.mkdirSync(path.join(root, '.crabshell', 'verification'), { recursive: true });
+  fs.writeFileSync(path.join(root, '.crabshell', 'verification', 'manifest.json'), JSON.stringify({ tools: { test: 'node _test-parent-observation.js' } }));
 }
 
 function run(script, cwd, payload, env = {}) {
@@ -285,7 +287,9 @@ try {
     assert.strictEqual(blocked.decision, 'block');
     assert.match(blocked.reason, /must run the most direct acceptance check/);
     const config = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'hooks', host === 'claude' ? 'hooks.json' : 'codex-hooks.json'), 'utf8'));
-    assert.ok(config.hooks.PostToolUse.some(group => new RegExp(`^(?:${group.matcher})$`).test('Write')
+    // Both hosts: "*", "" or no matcher selects every tool; otherwise a regular expression.
+    const reaches = (matcher, tool) => matcher === undefined || matcher === '' || matcher === '*' || new RegExp(`^(?:${matcher})$`).test(tool);
+    assert.ok(config.hooks.PostToolUse.some(group => reaches(group.matcher, 'Write')
       && group.hooks.some(hook => /completion-controller|post-tool-use/.test(hook.command))));
   });
 
@@ -349,10 +353,12 @@ try {
     for (let attempt = 0; attempt < 2; attempt++) {
       const recorded = recordWithReadCount(root, payload, file);
       assert.strictEqual(recorded.result.observation.passed, true);
-      assert.strictEqual(recorded.reads, 1, 'one result must not read the same source twice');
+      // At most once: the content-hash cache (D143_T013) skips a file whose size and times
+      // are unchanged, so a repeated result may not read it at all.
+      assert.ok(recorded.reads <= 1, `one result must not read the same source twice (read ${recorded.reads})`);
     }
     const previous = loadState(root).observation;
-    const edit = { ...payload, tool_name: 'Write', tool_input: { file_path: file } };
+    const edit = { ...payload, tool_name: 'Write', tool_input: { file_path: file, content: 'x' } };
     fs.writeFileSync(file, 'module.exports = 42;\n');
     assert.strictEqual(recordWithReadCount(root, edit, file).reads, 1);
     assert.deepStrictEqual(loadState(root).observation, previous);
@@ -366,7 +372,7 @@ try {
     const { root, file, common, core, payload } = capturedResultSetup('single-scan-failure', 'claude-posttoolusefailure-bash.json');
     for (const count of [1, 2]) {
       const recorded = recordWithReadCount(root, payload, file);
-      assert.strictEqual(recorded.reads, 1);
+      assert.ok(recorded.reads <= 1, `read ${recorded.reads} times`);
       assert.strictEqual(recorded.result.observation.passed, false);
       assert.strictEqual(loadState(root).repeatedFailure.count, count);
     }

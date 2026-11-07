@@ -45,12 +45,21 @@ function runCheck(project, sid, response, eventName = 'PostToolUse') {
 const commit = (project, sid) => h.runHook(root, 'verification-sequence.js', ['gate'], {
   hook_event_name: 'PreToolUse', session_id: sid, cwd: project, tool_name: 'Bash', tool_use_id: nextId('commit'), tool_input: { command: 'git commit -m "change"' },
 }, project);
+// D143: a commit is never blocked. D143_T013: edits are not recorded; the record keeps
+// declared checks as they ran, and these cases check that no passing check is on record.
+const lastCheck = project => { const state = h.readJson(h.memoryPath(project, 'verification-state.json')); return state ? require('./core/check-history').currentCheck(state) : null; };
+const unverifiedAndAllowed = (project, sid) => {
+  const gate = commit(project, sid);
+  const check = lastCheck(project);
+  return { ok: gate.status === 0 && !(check && check.passed === true), detail: `exit=${gate.status} last=${JSON.stringify(check && { command: check.command, passed: check.passed })}` };
+};
 
 // --- Commit gate ---
 {
   const project = projectWithCheck('s1-control-edit');
   edit(project, A, 'src/x.js');
-  report.check('S1 control: unverified source edit blocks the same session\'s commit', commit(project, A).status === 2);
+  const result = unverifiedAndAllowed(project, A);
+  report.check('S1 control: an unchecked source edit leaves no passing check on record; the commit is not blocked', result.ok, result.detail);
 }
 {
   const project = projectWithCheck('s2-other-session-read');
@@ -59,14 +68,15 @@ const commit = (project, sid) => h.runHook(root, 'verification-sequence.js', ['g
   const state = h.readJson(stateFile);
   if (state) { state.lastUpdated = new Date(Date.now() - 6 * 60 * 1000).toISOString(); fs.writeFileSync(stateFile, JSON.stringify(state, null, 2)); }
   read(project, B);
-  const gate = commit(project, A);
-  report.check('S2 (E5) another session\'s Read does not clear A\'s unverified edit — commit still blocked', gate.status === 2, `exit=${gate.status}`);
+  const result = unverifiedAndAllowed(project, A);
+  report.check('S2 (E5) another session\'s Read records no passing check for A\'s unchecked edit', result.ok, result.detail);
 }
 {
   const project = projectWithCheck('s3-control-failed-check');
   edit(project, A, 'src/x.js');
   runCheck(project, A, 'Error: Exit code 1\nfailed', 'PostToolUseFailure');
-  report.check('S3 control: a failed declared check keeps the commit blocked', commit(project, A).status === 2);
+  const result = unverifiedAndAllowed(project, A);
+  report.check('S3 control: a failed declared check is on record as failed', result.ok, result.detail);
 }
 {
   const project = projectWithCheck('s4-docs-after-pass');
@@ -84,7 +94,7 @@ const commit = (project, sid) => h.runHook(root, 'verification-sequence.js', ['g
   edit(project, A, 'src/x.js');
   const gate = commit(project, A);
   report.check('S5 (R2) a project with no declared check is not permanently blocked', gate.status === 0, `exit=${gate.status}`);
-  report.check('S5 (R2) the allowed commit says how to declare a check', /\/verifying/.test(gate.stderr), gate.stderr.slice(0, 200));
+  report.check('S5 (R2) the allowed commit prints no advisory (D143: no per-commit check prompt)', !/\/verifying/.test(gate.stderr + gate.stdout), gate.stderr.slice(0, 200));
 }
 {
   const project = projectWithCheck('s6-css');
@@ -98,10 +108,10 @@ const commit = (project, sid) => h.runHook(root, 'verification-sequence.js', ['g
 {
   const project = projectWithCheck('s7-background');
   edit(project, A, 'src/x.js');
-  runCheck(project, A, { ...SUCCESS, stdout: '', backgroundTaskId: 'bk-test-1' });
-  const gate = commit(project, A);
-  report.check('S7 a check started in the background is not recorded as passing', gate.status === 2, `exit=${gate.status}`);
-  report.check('S7 ...and the block reason says to run it in the foreground', /Run it in the foreground/.test((gate.stdout || '') + (gate.stderr || '')));
+  const record = runCheck(project, A, { ...SUCCESS, stdout: '', backgroundTaskId: 'bk-test-1' });
+  const result = unverifiedAndAllowed(project, A);
+  report.check('S7 a check started in the background is not recorded as passing', result.ok, result.detail);
+  report.check('S7 ...and the record says to run it in the foreground', /run it in the foreground/i.test((record.stdout || '') + (record.stderr || '')));
 }
 // v21.140.0 (D129): a background launch left a pending record that no hook ever
 // resolved, so even a later passing foreground run never unlocked the commit.
@@ -135,7 +145,7 @@ const commit = (project, sid) => h.runHook(root, 'verification-sequence.js', ['g
 }
 {
   const project = projectWithCheck('s8-read-no-write');
-  edit(project, A, 'src/x.js');
+  runCheck(project, A, SUCCESS); // a record to compare against (edits write none)
   const stateFile = h.memoryPath(project, 'verification-state.json');
   const before = fs.statSync(stateFile).mtimeMs;
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 30);
@@ -162,8 +172,8 @@ const commit = (project, sid) => h.runHook(root, 'verification-sequence.js', ['g
     hook_event_name: 'PostToolUse', session_id: A, tool_name: 'Bash', tool_use_id: nextId('int'),
     tool_input: { command: 'node check.js' }, tool_response: { ...SUCCESS, interrupted: true },
   }, project);
-  const gate = commit(project, A);
-  report.check('S16b a session\'s own interrupt invalidates its passing check — commit blocked', gate.status === 2, `exit=${gate.status}`);
+  const result = unverifiedAndAllowed(project, A);
+  report.check('S16b a session\'s own interrupt invalidates its passing check — none is on record', result.ok, result.detail);
 }
 {
   const project = projectWithCheck('s18-config-edit');
@@ -172,16 +182,18 @@ const commit = (project, sid) => h.runHook(root, 'verification-sequence.js', ['g
   fs.mkdirSync(path.join(project, 'hooks'), { recursive: true });
   fs.writeFileSync(path.join(project, 'hooks', 'hooks.json'), '{"hooks":{}}\n');
   edit(project, A, 'hooks/hooks.json');
-  const gate = commit(project, A);
-  report.check('S18 a configuration file edit after a passing check needs a new check', gate.status === 2, `exit=${gate.status}`);
+  // The edited configuration is a project input, so the runner reruns what read it;
+  // the record of the earlier pass is not rewritten by an edit.
+  const input = require('./core/project-state').isProjectInput(project, path.join(project, 'hooks', 'hooks.json'));
+  report.check('S18 a configuration file edit after a passing check is a project input the runner sees, and the commit is allowed', input && commit(project, A).status === 0, `input=${input}`);
 }
 {
   const project = projectWithCheck('s19-unrunnable-manifest', { declared: false });
   fs.mkdirSync(path.join(project, '.crabshell', 'verification'), { recursive: true });
   fs.writeFileSync(path.join(project, '.crabshell', 'verification', 'manifest.json'), JSON.stringify({ tools: { unit: 'node check.js && node other.js' }, entries: [] }));
   edit(project, A, 'src/x.js');
-  const gate = commit(project, A);
-  report.check('S19 a manifest with no runnable single command blocks with its own reason, not the advisory', gate.status === 2 && /no runnable single command/.test(gate.stdout + gate.stderr), `exit=${gate.status}`);
+  const result = unverifiedAndAllowed(project, A);
+  report.check('S19 a manifest with no runnable single command neither blocks nor counts as a check (the tree stays EDITED)', result.ok, result.detail);
   const bom = projectWithCheck('s19b-bom-manifest', { declared: false });
   fs.mkdirSync(path.join(bom, '.crabshell', 'verification'), { recursive: true });
   fs.writeFileSync(path.join(bom, '.crabshell', 'verification', 'manifest.json'), '﻿' + JSON.stringify({ tools: { unit: 'node check.js' }, entries: [] }));
@@ -198,7 +210,7 @@ const commit = (project, sid) => h.runHook(root, 'verification-sequence.js', ['g
   }, project);
   let context = '';
   try { context = JSON.parse(result.stdout.trim().split('\n').pop()).hookSpecificOutput.additionalContext; } catch {}
-  report.check('S22 Codex also tells the model to declare a check when none exists', result.status === 0 && /\/verifying/.test(context), `exit=${result.status} stdout=${result.stdout.slice(0, 160)}`);
+  report.check('S22 Codex allows the commit and adds no declare-a-check prompt (D143)', result.status === 0 && !/\/verifying/.test(context), `exit=${result.status} stdout=${result.stdout.slice(0, 160)}`);
 }
 
 // --- Completion decision ---

@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.152.0)
+# Crabshell Plugin Structure (v21.153.0)
 
-**Version**: 21.152.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.153.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -21,7 +21,11 @@ crabshell/
 │   │   ├── memory-index.json         # Rotation tracking & delta state
 │   │   ├── delta-jobs/               # Fixed delta inputs and attempt-specific summaries
 │   │   ├── completion-control.json   # Parent evidence plus bounded recovery information, one entry per session (v21.124.0)
-│   │   ├── verification-state.json   # Required checks, content identity and interruption state
+│   │   ├── verification-state.json   # Declared check runs (start and result per check); edits write nothing (v21.153.0)
+│   │   ├── project-index.json        # Hooks' content-hash cache for the project identity (v21.153.0)
+│   │   ├── runner-sync.json          # The edited launcher already named once (v21.153.0)
+│   │   ├── runner-unavailable.json   # Runner modules could not be loaded — named once (v21.153.0)
+│   │   ├── hook-hints.json, command-repeats.json, output-candidates.json, run-snapshots/ # Declaration hints, each shown once (v21.153.0)
 │   │   ├── counter.json              # Legacy PostToolUse counter for payloads without a session id
 │   │   ├── session-state/<sid8>/     # Per-session counter, L1 read position, skill flag (v21.124.0)
 │   │   ├── project.md                # Preserved legacy description; copied to ../project.md only when absent
@@ -42,7 +46,9 @@ crabshell/
 │   │   └── INDEX.md
 │   └── verification/                 # Project-local schema-v2 verification artifacts
 │       ├── manifest.json             # Portable command/assertion contracts; discover entry + tools.changed + changed.global (v21.126.0)
-│       ├── run-verify.js             # Generated from the tracked skill runner (--changed, load map, v21.126.0; fail-before, v21.142.0)
+│       ├── run-verify.js             # Launcher copied from the skill runner; kept current at session start (v21.153.0)
+│       ├── runner/                   # Runner modules copied beside the launcher (v21.153.0)
+│       ├── ignored-folders.json      # Git-ignored folders the walk skips, with what the list was built from (v21.153.0)
 │       ├── test-map.json             # Load map written by a passing full run and refreshed by a passing --changed run: per-check files, file times and content hashes (generated, not tracked; v21.126.0, v21.129.0, v21.142.0)
 │       ├── fail-before-exempt.json   # Optional: changed tests allowed to pass on HEAD, each with the test's sha256 and a reason (v21.142.0)
 │       ├── check-pipeline-wiring.js  # Copied from the tracked skill probe (v21.121.0; tracked in git since v21.126.0)
@@ -108,8 +114,14 @@ crabshell/
 │   ├── core/workflow-context.js       # Restart-safe active D/P/T/W recovery
 │   ├── core/compaction-context.js     # Shared compact/restart recovery context
 │   ├── core/subagent-context.js       # Shared task-specific child context
-│   ├── core/command-observation.js    # Declared checks, host-specific results, and project content fingerprint
-│   ├── core/completion-control.js     # Current-content parent evidence; one fingerprint per result event
+│   ├── core/command-observation.js    # Declared checks only (manifest tools/entries, wrappers, environment prefixes) and host-specific results (v21.153.0)
+│   ├── core/completion-control.js     # Current-content parent evidence; identities compared only when both are known (v21.153.0)
+│   ├── core/tool-shape.js             # Shell calls and file writes known by payload shape, whatever the tool is named (v21.153.0)
+│   ├── core/dispatch.js               # One check runner for Claude and Codex hooks: lazy load and try per check (v21.153.0)
+│   ├── core/project-state.js          # The runner's project view for hooks, loaded on first use; null = no judgment (v21.153.0)
+│   ├── core/rerun-guard.js            # A hand rerun of a check that passed on the same files is answered from its record (v21.153.0)
+│   ├── core/declaration-guidance.js   # Hints to declare inputs/slow/outputs and repeated undeclared commands (v21.153.0)
+│   ├── core/runner-sync.js            # Session start keeps the project's runner copy current (v21.153.0)
 │   ├── core/host-tool-result.js       # Bind native Codex completion records to the hook invocation
 │   ├── core/check-history.js          # Per-check ordering, duplicate and late-result handling
 │   ├── core/state-lock.js             # Serialize verification/completion state writers
@@ -134,7 +146,7 @@ crabshell/
 │   ├── run-orchestration-corpus.js   # Live Codex A/B orchestration behavior runner (v21.105.0)
 │   ├── _test-orchestration-defaults.js # Deterministic orchestration policy tests (v21.105.0)
 │   ├── docs-guard.js                # PreToolUse D/P/T/I skill bypass prevention (v19.33.0); a new discussion ticket needs the Plan (v21.135.0)
-│   ├── verify-guard.js              # PreToolUse Final Verification + behavioral AC (v19.34.0, v20.3.0)
+│   ├── verify-guard.js              # Final Verification check runner — not wired since v21.153.0 (v19.34.0, v20.3.0)
 │   ├── log-guard.js                # PreToolUse ticket status check — done/verified need filled result sections (v21.131.0; Intent Fidelity v21.135.0)
 │   ├── verification-sequence.js     # PostToolUse state tracker + PreToolUse commit/edit gate (v21.0.0)
 │   ├── skill-tracker.js             # Per-session skill flag setter, run inline by the PostToolUse dispatcher (v19.33.0, v21.124.0, v21.125.0)
@@ -149,8 +161,25 @@ crabshell/
 │   ├── doc-watchdog.js              # Doc-update omission checks: recordEdit/gateEdit/stopReason, in-project files only (v21.18.0, v21.125.0)
 │   ├── _test-doc-watchdog.js        # doc-watchdog.js 12-test integration suite (v21.18.0)
 │   ├── _test-restriction-controls.js # Lifted restrictions paired with writes that stay blocked (v21.125.0)
-│   ├── _test-changed-runner.js      # Discovery, load map and --changed selection incl. review false-negative cases; git-ignored files; same-content rewrites; nothing changed, map refresh, fail-before; new, renamed and deleted tests (v21.126.0, v21.128.0, v21.129.0, v21.142.0, v21.143.0)
-│   ├── _test-gate-required-checks.js # Only tools/package.json test unlock the commit gate; entries stay evidence; dead-end guidance (v21.126.0, v21.127.0)
+│   ├── _test-changed-runner.js      # Discovery and --changed selection on fixtures (git-ignored files, same-content rewrites); the real-records case moved to V060 (v21.153.0)
+│   ├── _test-gate-required-checks.js # Only manifest tools commands are required checks; git commit is never blocked (v21.126.0, v21.153.0)
+│   ├── _test-runner-layout.js       # Launcher + runner/ modules; every derived location (v21.153.0)
+│   ├── _test-runner-fingerprint.js  # A check reruns only when its fingerprint is not among its passes (v21.153.0)
+│   ├── _test-runner-trace.js        # Traced vs unknown inputs: what the tracer saw across child processes (v21.153.0)
+│   ├── _test-runner-policy.js       # Retries, heavy checks, order, stop at a new failure, parallel jobs (v21.153.0)
+│   ├── _test-runner-any-project.js  # Non-Node (Python) checks with inputs, slow, and a folder without git (v21.153.0)
+│   ├── _test-runner-state-warning.js # A check reading Crabshell state is named; outside-snapshot inputs judged by time (v21.153.0)
+│   ├── _test-runner-new-file-input.js # A changed file that now requires a new file selects its reader (v21.153.0)
+│   ├── _test-runner-decision-code.js # Comment-only decision-code changes rerun nothing; code changes are named (v21.153.0)
+│   ├── _test-runner-ignored-folders.js # Git-ignored folders skipped via a kept list; worktree, subfolder, later git init (v21.153.0)
+│   ├── _test-runner-sync.js         # Session start copies runner modules; released launchers replaced, edited ones named once (v21.153.0)
+│   ├── _test-real-repo-selection.js # This repository's real records: a counter.js change (slow entry V060, v21.153.0)
+│   ├── _test-record-store.js        # One record store; edits write no TESTED/EDITED state (v21.153.0)
+│   ├── _test-tool-shape.js          # Shell calls and file writes known by shape; hook routing (v21.153.0)
+│   ├── _test-declared-commands.js   # Manifest-only check recognition, wrappers, environment prefixes, rerun answered from the record (v21.153.0)
+│   ├── _test-declaration-guidance.js # Hints to declare inputs/slow/outputs; repeated undeclared commands; --explain (v21.153.0)
+│   ├── _test-hook-fail-open.js      # Hooks without the runner's modules: path guard still decides, null is no evidence (v21.153.0)
+│   ├── _test-skill-text-contract.js # Skill texts match the plugin: removed steps absent, design lines, every manifest setting documented (v21.153.0)
 │   ├── _test-single-source.js        # One definition per shared value across shipped scripts (v21.127.0)
 │   ├── _test-rules-and-injection.js  # Advisor line and unified rule wording; where the project description is injected (v21.127.0)
 │   ├── _test-d-parent-tickets.js     # Guards, the Codex document tool and phase changes treat D###_T### like P###_T### (v21.130.0)
@@ -204,7 +233,9 @@ crabshell/
 │   │   └── references/                # session-start, anti-patterns, cycle-verification, final-report, document-structure, user-interaction (v21.132.0)
 │   ├── (light-workflow retired v21.112.0 — one-pass work records via hotfix)
 │   ├── verifying/SKILL.md            # /crabshell:verifying (schema-v2 behavioral verification; Step 2a wiring inventory v21.121.0)
-│   │   ├── scripts/run-verify.js      # Portable single-source verification runner (v21.106.0)
+│   │   ├── scripts/run-verify.js      # Launcher of the portable verification runner (v21.106.0; split into runner/ v21.153.0)
+│   │   ├── scripts/runner/            # Runner modules: manifest, fingerprint, snapshot, ignored, select, schedule, execute, contract, trace, store, output, install, project-state (v21.153.0)
+│   │   ├── scripts/released-launchers.json # Every launcher Crabshell released (LF sha256), built by scripts/build-released-launchers.js (v21.153.0)
 │   │   ├── scripts/check-pipeline-wiring.js # Pipeline wiring probe: discover / check --contract (v21.121.0)
 │   │   └── references/                # wiring-inventory, manifest-entries (v21.132.0); fail-before (v21.142.0)
 │   ├── status/SKILL.md               # /crabshell:status (plugin healthcheck)
@@ -372,7 +403,7 @@ PreToolUse ticket status check (v21.4.0; narrowed v21.131.0):
 - Fail-open on parse errors (user experience protection)
 
 ### scripts/verify-guard.js
-PreToolUse Final Verification enforcement (v19.34.0, v19.39.0 deterministic, v20.3.0 behavioral AC, v21.16.0 hybrid):
+Not wired since v21.153.0 (it re-ran the check the work had just run); kept for tests and audits. Former PreToolUse Final Verification enforcement (v19.34.0, v19.39.0 deterministic, v20.3.0 behavioral AC, v21.16.0 hybrid):
 - Hybrid approach: Edit always enforces verification; Write enforces only for existing files (new file creation skips — fs.existsSync-based)
 - Block when ticket path (`.crabshell/ticket/P###_T###*`) contains `## Final Verification`
 - Directly executes the generated `run-verify.js --changed --no-fail-before` — blocks on failed command exits, structured assertions, or forbidden-path mutations (the HEAD comparison of changed tests is left to the commit gate's run, v21.142.0)
@@ -420,7 +451,7 @@ L1 generation:
        └─> Output indicator: [rules injected], [rules + delta pending], [rules + rotation pending]
 
 3. PreToolUse (Bash|Write|Edit|WebFetch|WebSearch) — one process: adapters/claude/pre-tool-use.js (v21.125.0)
-   Each guard in its own try/catch; all run even after a deny (verify-guard is skipped after a deny); stdout redirected to stderr while they run; one JSON object out (deny = exit 0 + permissionDecision "deny")
+   Each guard in its own try/catch; all run even after a deny; stdout redirected to stderr while they run; one JSON object out (deny = exit 0 + permissionDecision "deny")
    ├─> completion-controller (Bash) — prepare the parent's check
    ├─> path-guard (Bash|Write|Edit) — block writes into another project's .crabshell; notice reads; logbook Edit/shrink block
    ├─> web-guard (WebFetch|WebSearch) — raw-source enforcement (v21.114.0); only this project's search MCP servers count
@@ -470,6 +501,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.153.0 | Checks run only when what they read changed. Nothing blocks a commit, writing a Final Verification runs nothing, and comparing a changed test with HEAD is opt-in (`--fail-before`). The runner (now a launcher and modules) reruns a check only when its fingerprint — entry run fields, program, decision code (comment lines excluded), platform, input contents — is not among its passes; inputs are traced (Node), declared (`inputs`) or unknown (whole project, that check only); `--changed` runs the last failure first, then new, then quickest, stops at a new failure, retries a check that fails on inputs it passed with (`Flaky:`), runs `slow` checks only with `--slow` or at release, and `--explain` prints why each check would run. Hooks know shell calls and file writes by their shape, count only manifest-declared commands (`wrappers`, environment prefixes), answer a hand rerun of a passed check from its record (`CRABSHELL_RERUN=1` runs it anyway), hint when an entry needs `inputs`/`slow`/`outputs`, share the runner's project view (git-ignored folders skipped: a 20,000-file folder cost each hook call a second, now under 2 ms) and stay fail-open without the runner's modules. Each session start keeps a project's runner copy current. Plans carry five design lines before their first ticket, and post-build verification is one check run after the last edit. RULES are shorter (2,080 → 1,792 words) with Skills and Code lines; the per-prompt checklist asks "Is this your best?". After updating, every non-slow check runs once; a package.json `test` check moves to manifest `tools`. |
 | 21.152.0 | Rules: **Memory** (WORKING RULES, after Temporary files) — anything Claude writes or runs has a memory budget before it runs: the peak from the largest input it will get (batch × length × bytes, weights, optimizer and cache state), allocations kept inside it (nothing that grows with step or iteration count, one reused buffer instead of a new allocation per step, a hard cap on shared hardware or when GPU memory is system memory); read how a function allocates before moving it to another device or a larger input; long runs log their peak and stop above the budget; a memory shortage is traced in the kernel log and the process list before a cause is named. Not added to the per-prompt checklist. `_test-rule-wording.js` W34 checks the line word for word. |
 | 21.151.0 | Rules: **Rows and columns** (WORKING RULES) — anything a person sees (text, tables, lists, code blocks, screens, images) keeps rows and columns: items of one kind share the same start edge, width, height and spacing, checked on the rendered result by measuring, fixed with fixed widths or one shared grid, never by deleting content; **Commits** (ADDITIONAL RULES, after the git rule) — when finished, verified changes are still uncommitted, ask the user to commit them and say in one line what the commit would contain. Not added to the per-prompt checklist. `_test-rule-wording.js` W32 and W33 check both lines word for word. |
 | 21.150.0 | Check runner: a mark left by a failed HEAD comparison (fail-before) is cleared only by a `--changed` run that compares again, not by an explicit-id or guard run; new assertion `stdoutMatches` and discovery field `fileAssertions`; V013 removed — its named-output checks now sit on the 11 cross-runtime tests themselves, so changing one test runs only that test |

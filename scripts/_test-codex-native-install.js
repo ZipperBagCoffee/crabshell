@@ -90,7 +90,9 @@ async function main() {
   try {
     fs.mkdirSync(fixtureRoot, { recursive: true });
     fs.mkdirSync(codexHome, { recursive: true });
-    for (const relativePath of ['.codex-plugin', '.agents', 'codex-skills', 'hooks', 'scripts']) copy(relativePath);
+    // The hooks share the verification runner's modules (D143 v2 §7: one snapshot and
+    // fingerprint for hooks and runner), so the runner folder ships with the hooks.
+    for (const relativePath of ['.codex-plugin', '.agents', 'codex-skills', 'hooks', 'scripts', 'skills/verifying/scripts']) copy(relativePath);
 
     const sentinelPath = path.join(testRoot, 'claude-hook-sentinel.txt');
     fs.writeFileSync(path.join(fixtureRoot, 'hooks', 'hooks.json'), JSON.stringify({

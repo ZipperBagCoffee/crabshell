@@ -143,15 +143,17 @@ test('record: non-code non-doc file → no change to counter', () => {
   try {
     writeWatchdogState(memDir, { editsSinceDocUpdate: 2, lastCodeEditAt: null, lastCodeEditFile: null });
 
+    // D143_T013: a code file is any project file the runner sees (README included); a
+    // file in Crabshell's own storage that is not a workflow document is neither.
     const hookData = {
       tool_name: 'Write',
-      tool_input: { file_path: 'README.md', content: '# Hello' }
+      tool_input: { file_path: '.crabshell/memory/notes.md', content: '# Hello' }
     };
     const result = runScript('record', hookData, { CLAUDE_PROJECT_DIR: tmpDir });
     assertEqual(result.exitCode, 0, 'exit code');
 
     const state = readWatchdogState(memDir);
-    // README.md is neither code nor .crabshell doc — counter should stay at 2
+    // neither code nor a workflow document — counter should stay at 2
     assertEqual(state.editsSinceDocUpdate, 2, 'editsSinceDocUpdate should be unchanged');
   } finally {
     cleanupTmpProject(tmpDir);

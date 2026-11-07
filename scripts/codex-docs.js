@@ -6,7 +6,20 @@ const path = require('path');
 
 const { STORAGE_ROOT, DOC_TYPES, TICKET_PARENT_SOURCE } = require('./constants');
 const { ensureDir } = require('./utils');
-const { discussionHasPlan, discussionHasReaderStructure } = require('./core/plan-entry');
+const { planProblem, DESIGN_FIELDS } = require('./core/plan-entry');
+
+// One argument per design line of the Plan (D145_T003), named from the same field list the
+// ticket check reads: --values, --structure, --start-state, --user-burden, --design-review.
+const designArgName = field => field.toLowerCase().replace(/\s+/g, '-');
+function designLines(args) {
+  return DESIGN_FIELDS.map(field => {
+    const value = args[designArgName(field)];
+    return typeof value === 'string' && value.trim() ? `\n**${field}:** ${value}` : '';
+  }).join('');
+}
+
+// Codex runs a skill by name; a discussion log entry goes through the discussing skill.
+const codexSkillRef = (name, args) => `the ${name} skill${args ? ` for ${args}` : ''}`;
 
 const TYPES = Object.fromEntries(DOC_TYPES.map(type => [type.dir, { dir: type.dir, prefix: type.prefix, title: type.title, index: type.indexColumns }]));
 
@@ -187,12 +200,12 @@ function createSimple(root, type, title, args) {
       process.exit(1);
     }
     // A discussion parent carries the plan: no ticket before it, none without its part.
-    if (parentId.startsWith('D') && !discussionHasPlan(fs.readFileSync(path.join(parentDir, parentFile), 'utf8'))) {
-      console.error(`ERROR: ${parentId} has no plan yet. Fill its ## Plan (how it will be built: files and functions, order, rejected alternatives, risks) and get the user's confirmation before creating tickets.`);
-      process.exit(1);
-    }
-    if (parentId.startsWith('D') && !discussionHasReaderStructure(fs.readFileSync(path.join(parentDir, parentFile), 'utf8'))) {
-      console.error(`ERROR: ${parentId}'s plan has no **Reader Structure:** line. If a person will see or read the result, list what they will do (task → where they look → the words there) and every visible text (structuring skill), then show the user. If nobody will, write "none: <reason>".`);
+    // The check and its words are the Claude docs guard's (plan-entry planProblem).
+    const problem = parentId.startsWith('D')
+      ? planProblem(fs.readFileSync(path.join(parentDir, parentFile), 'utf8'), parentId, { skillRef: codexSkillRef })
+      : null;
+    if (problem) {
+      console.error(`ERROR: new ticket under ${parentId} refused: ${problem}`);
       process.exit(1);
     }
     if (parentId.startsWith('D') && !(typeof args.details === 'string' && args.details.trim() && !/^TBD\.?$/i.test(args.details.trim()))) {
@@ -206,7 +219,7 @@ function createSimple(root, type, title, args) {
   const filename = `${id}-${slug}.md`;
   const filePath = path.join(dir, filename);
   const status = type === 'discussion' ? 'open' : type === 'ticket' ? 'todo' : 'draft';
-  const plan = type === 'discussion' ? `## Plan\n${typeof args.how === 'string' && args.how.trim() ? args.how : '(placeholder — plan before tickets: approach, each file → what changes, order, rejected alternatives, risks, intent check, user confirmation)'}${typeof args.reader === 'string' && args.reader.trim() ? `\n**Reader Structure:** ${args.reader}` : ''}\n\n` : '';
+  const plan = type === 'discussion' ? `## Plan\n${typeof args.how === 'string' && args.how.trim() ? args.how : '(placeholder — plan before tickets: approach, each file → what changes, order, rejected alternatives, risks, intent check, user confirmation)'}${typeof args.reader === 'string' && args.reader.trim() ? `\n**Reader Structure:** ${args.reader}` : ''}${designLines(args)}\n\n` : '';
   const details = type === 'ticket' ? `## Implementation Details\n${typeof args.details === 'string' && args.details.trim() ? args.details : 'TBD.'}\n\n` : '';
   const fidelity = type === 'ticket' ? `## Reader Check\n(placeholder — person check: who used or read the result and what they did, or "not confirmed"; correction sweep: the user's words, defect type, same defect in N places, fixed, left, or "none")\n\n## Intent Fidelity\n(placeholder — parent compares the result with the discussion's Intent Anchor and Plan here)\n\n` : '';
   const body = `---\ntype: ${type}\nid: ${id}\ntitle: "${title}"\nstatus: ${status}\ncreated: ${t.date}\ntags: []\n---\n\n# ${id} - ${title}\n\n## Intent\n${args.intent || title}\n\n## Context\n${args.context || 'TBD.'}\n\n${plan}${details}## Acceptance Criteria\n${args.ac || '- TBD'}\n\n${fidelity}## Log\n### [${t.minute}] Created\nCreated from Codex ${type} skill.\n`;

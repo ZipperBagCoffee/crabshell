@@ -1,0 +1,48 @@
+{
+  "launchers": [
+    {
+      "sha256": "b00b5db9a3a87ff2a3cdd00adcc018e93dc700bfc6485ed695398f2cea424d61",
+      "commit": "16073e84e59c"
+    },
+    {
+      "sha256": "3b691e6501a8745ca0ddf7907873b7ab6ed833271799e8b31bb1c5cdcc16e637",
+      "commit": "13a3fdcf4fa4"
+    },
+    {
+      "sha256": "0ddf06fa382d07b9b4f41c970dc1552fa2a79aec321c20b9ab64df7b3148e6e6",
+      "commit": "441cf7c925a0"
+    },
+    {
+      "sha256": "6304d1009db7e2beebf7d53ae355be5f8d557e05e14db4600155b090383deae6",
+      "commit": "6adcb42d6868"
+    },
+    {
+      "sha256": "65eed214449d26061754b8d836a62c3a443546ffc3a065eeb533b994720807ac",
+      "commit": "0ad28f98d988"
+    },
+    {
+      "sha256": "f420e3d6a834fdc92a28a898fe0249d94d2c0eec3e51d279c4b590415eaaeff6",
+      "commit": "1b381f66043d"
+    },
+    {
+      "sha256": "dbfe781fd66e6fbae706241c0e5daf7409802657d6529285729b3d582cfce0ab",
+      "commit": "b9bb56cafc21"
+    },
+    {
+      "sha256": "2f900e7d8ec197c9087b9450504bf3ea9b63290200d7ddb29f42bf829141f1f1",
+      "commit": "3d1fc8b5a93c"
+    },
+    {
+      "sha256": "c8a936f2f25d24940c72f4e2906455470a024075a66d6bf591b723251253bbcc",
+      "commit": "8bc5176b4fd6"
+    },
+    {
+      "sha256": "6bd012ad79f54abe65fa8041be09fb33f9288874b40d2d37c2cd067e3deaba89",
+      "commit": "420201bec28c"
+    },
+    {
+      "sha256": "992d8b0fee8f58f2fc1305223f2dfd8c044730afb1dd58922a49a3215733a0bf",
+      "commit": "working-tree"
+    }
+  ]
+}

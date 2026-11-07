@@ -1,0 +1,137 @@
+{
+  "_captured": {
+    "host": "Claude Code",
+    "version": "2.1.319",
+    "platform": "win32",
+    "date": "2026-11-07",
+    "source": "session transcript b3997acb-1307-464a-a82a-59bcb9df9dd6.jsonl (assistant tool_use blocks, user tool_result blocks and their toolUseResult)",
+    "note": "Transcript evidence, not raw hook stdin: PostToolUse receives toolUseResult as tool_response. Edit/Write toolUseResult omitted (whole file contents); their tool_use input is complete. PowerShell failure: PostToolUseFailure did not fire because the installed matcher was Bash."
+  },
+  "records": {
+    "edit": {
+      "tool_use": {
+        "type": "tool_use",
+        "id": "toolu_01LoXArDXtTt67D7tLr3PsDa",
+        "name": "Edit",
+        "input": {
+          "replace_all": false,
+          "file_path": "C:\\Users\\chulg\\Documents\\memory-keeper-plugin\\scripts\\docs-guard.js",
+          "old_string": "const { discussionHasPlan, discussionHasReaderStructure, ticketHasDetails } = require('./core/plan-entry');",
+          "new_string": "const { planProblem, ticketHasDetails } = require('./core/plan-entry');"
+        },
+        "caller": {
+          "type": "direct"
+        }
+      },
+      "tool_result": {
+        "tool_use_id": "toolu_01LoXArDXtTt67D7tLr3PsDa",
+        "type": "tool_result",
+        "content": "The file C:\\Users\\chulg\\Documents\\memory-keeper-plugin\\scripts\\docs-guard.js has been updated successfully."
+      },
+      "toolUseResult": {
+        "_omitted": "file contents; keys: filePath, oldString, newString, originalFile, structuredPatch, userModified, replaceAll, contentNotInModelContext"
+      }
+    },
+    "write": {
+      "tool_use": {
+        "type": "tool_use",
+        "id": "toolu_013zgFm2PNnfBJisTFrhbpfM",
+        "name": "Write",
+        "input": {
+          "file_path": "C:\\Users\\chulg\\AppData\\Local\\Temp\\claude\\e5d0fc7bbd5f4550\\b3997acb-1307-464a-a82a-59bcb9df9dd6\\scratchpad\\fn.js",
+          "content": "const fs = require('fs');\nconst [file, name] = process.argv.slice(2);\nconst s = fs.readFileSync(file, 'utf8');\nconst i = s.indexOf(`\\nfunction ${name}(`);\nif (i < 0) { console.log('NOTFOUND'); process.exit(0); }\nlet depth = 0;\nconst j = s.indexOf('{', i);\nfor (let k = j; k < s.length; k++) {\n  if (s[k] === '{') depth++;\n  else if (s[k] === '}') { depth--; if (!depth) { console.log(s.slice(i + 1, k + 1)); break; } }\n}\n"
+        },
+        "caller": {
+          "type": "direct"
+        }
+      },
+      "tool_result": {
+        "tool_use_id": "toolu_013zgFm2PNnfBJisTFrhbpfM",
+        "type": "tool_result",
+        "content": "The file C:\\Users\\chulg\\AppData\\Local\\Temp\\claude\\e5d0fc7bbd5f4550\\b3997acb-1307-464a-a82a-59bcb9df9dd6\\scratchpad\\fn.js has been updated successfully. (file state is current in your context — no need to Read it back)"
+      },
+      "toolUseResult": {
+        "_omitted": "file contents; keys: type, filePath, content, structuredPatch, originalFile, userModified"
+      }
+    },
+    "powershell-success": {
+      "tool_use": {
+        "type": "tool_use",
+        "id": "toolu_01T4Jstv1FvV3TToFNKksLfb",
+        "name": "PowerShell",
+        "input": {
+          "command": "Get-Date -Format \"yyyy-MM-dd HH:mm:ss\"",
+          "description": "Run a harmless command to capture the PowerShell tool payload shape"
+        },
+        "caller": {
+          "type": "direct"
+        }
+      },
+      "tool_result": {
+        "tool_use_id": "toolu_01T4Jstv1FvV3TToFNKksLfb",
+        "type": "tool_result",
+        "content": "2026-11-07 03:20:59",
+        "is_error": false
+      },
+      "toolUseResult": {
+        "stdout": "2026-11-07 03:20:59",
+        "stderr": "",
+        "interrupted": false,
+        "isImage": false
+      }
+    },
+    "powershell-failure": {
+      "tool_use": {
+        "type": "tool_use",
+        "id": "toolu_014n6QCPrGCSP6AaDEQjAES2",
+        "name": "PowerShell",
+        "input": {
+          "command": "cmd /c exit 3",
+          "description": "Run a failing command to capture the PowerShell failure shape"
+        },
+        "caller": {
+          "type": "direct"
+        }
+      },
+      "tool_result": {
+        "type": "tool_result",
+        "content": "Exit code 3",
+        "is_error": true,
+        "tool_use_id": "toolu_014n6QCPrGCSP6AaDEQjAES2"
+      },
+      "toolUseResult": "Error: Exit code 3"
+    },
+    "notebook-edit": {
+      "tool_use": {
+        "type": "tool_use",
+        "id": "toolu_01Y39Kv3zVZeZCNreapVpf3e",
+        "name": "NotebookEdit",
+        "input": {
+          "notebook_path": "C:\\Users\\chulg\\AppData\\Local\\Temp\\claude\\e5d0fc7bbd5f4550\\b3997acb-1307-464a-a82a-59bcb9df9dd6\\scratchpad\\shape.ipynb",
+          "cell_id": "c1",
+          "new_source": "x = 2"
+        },
+        "caller": {
+          "type": "direct"
+        }
+      },
+      "tool_result": {
+        "tool_use_id": "toolu_01Y39Kv3zVZeZCNreapVpf3e",
+        "type": "tool_result",
+        "content": "Updated cell c1 with x = 2"
+      },
+      "toolUseResult": {
+        "new_source": "x = 2",
+        "old_source": "x = 1",
+        "cell_type": "code",
+        "language": "python",
+        "edit_mode": "replace",
+        "cell_id": "c1",
+        "error": "",
+        "notebook_path": "C:\\Users\\chulg\\AppData\\Local\\Temp\\claude\\e5d0fc7bbd5f4550\\b3997acb-1307-464a-a82a-59bcb9df9dd6\\scratchpad\\shape.ipynb",
+        "original_file": "{\"cells\":[{\"cell_type\":\"code\",\"execution_count\":null,\"id\":\"c1\",\"metadata\":{},\"outputs\":[],\"source\":[\"x = 1\"]}],\"metadata\":{},\"nbformat\":4,\"nbformat_minor\":5}\n",
+        "updated_file": "{\n \"cells\": [\n  {\n   \"cell_type\": \"code\",\n   \"execution_count\": null,\n   \"id\": \"c1\",\n   \"metadata\": {},\n   \"outputs\": [],\n   \"source\": \"x = 2\"\n  }\n ],\n \"metadata\": {},\n \"nbformat\": 4,\n \"nbformat_minor\": 5\n}"
+      }
+    }
+  }
+}

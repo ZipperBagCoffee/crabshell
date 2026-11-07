@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.152.0)
+# Crabshell Architecture (v21.153.0)
 
 ## Overview
 
@@ -33,7 +33,7 @@ Two meta-principles guide Claude's approach to obstacles:
 
 ### Dual Injection Optimization
 - **CLAUDE.md** (session start): Full RULES text (~940 tokens, 3.8KB measured v21.113.0 — compressed from ~2,530 tokens in I083 R3) synced via `syncRulesToClaudeMd()` with marker-based replacement
-- **additionalContext** (every prompt): compact turn contract + 7-line Rules Quick-Check (1,914 characters on a question prompt, measured v21.127.0; the project description is no longer repeated per prompt — SessionStart loads it as the project overview, SubagentStart gives it to workers) — per-response 3-field ending and pressure texts retired
+- **additionalContext** (every prompt): compact turn contract + 10-line Rules Quick-Check (1,914 characters on a question prompt, measured v21.127.0, before v21.153.0 added two lines; the project description is no longer repeated per prompt — SessionStart loads it as the project overview, SubagentStart gives it to workers) — per-response 3-field ending and pressure texts retired
 - **Error fallback**: FIRST_TURN_RULES injected via additionalContext only when the normal path throws an exception
 
 ## System Architecture
@@ -50,7 +50,7 @@ Two meta-principles guide Claude's approach to obstacles:
 |  |  post-compact |  +-------------------+  | adapters/claude/pre-tool-use ||
 |  |  effects)     |                         | path·web·regressing·docs·log·||
 |  +---------------+  +-------------------+  | verification gate·watchdog·  ||
-|  | Stop/SubStop  |  | PostToolUse(.*) + |  | verify-guard                 ||
+|  | Stop/SubStop  |  | PostToolUse(.*) + |  | (verify-guard unwired 21.153)||
 |  | completion-   |  | PostToolUseFailure|  +------------------------------+|
 |  | controller    |  | adapters/claude/  |  +------------+                  |
 |  | (doc-watchdog |  | post-tool-use     |  | SessionEnd |                  |
@@ -184,7 +184,7 @@ Codex marketplace -> installed cache -> .codex-plugin/plugin.json
 Several host sessions may work in one project. State is split by what it describes:
 
 - Per session: the save counter, L1 read position and document skill flag (`memory/session-state/<sid8>/`, sid8 = first 8 characters of session_id, the L1 file key), the delta watermark (`memory-index.json` `sessionDelta[sid8]`), and the completion-control entry (`completion-control.json` `sessions[session_id]`, full id because JSON keys need no file-name form and Codex ids share time-ordered prefixes). Payloads without a session id use the legacy project-wide fields or the `_` entry.
-- Per working tree: the commit gate (`verification-state.json`). Any session's source edit arms it. Only a passing *required* check on the current content disarms it: a manifest `tools` command or package.json `test`, and since v21.126.0 no longer a single entry. Each declaration carries its source (`tools`, `package`, `entry`), and the observation carries `required`.
+- Per working tree: the check record (`verification-state.json`) — since v21.153.0 only declared check runs (a start and its result per check); edits write nothing and nothing blocks a commit. Whether evidence is current is the project's content identity as the runner sees it (`core/project-state.js` over the runner's snapshot). A manifest `tools` command is a required check; a single entry is evidence only for itself; package.json is not read.
 - Per workflow: `regressing-state.json` records the owning session; the session that runs the workflow's next skill takes ownership.
 
 Locks carry an owner token and are taken over only from a dead or stale owner, one process at a time. SessionStart memory is assembled within `SESSION_START_MAX_CHARS` (9,500) by priority, below Claude Code's 10,000-character inline limit.
@@ -267,10 +267,10 @@ Claude `PostToolUseFailure` is wired to both verification-state and parent-evide
    │   ├─> Deny a ticket → done while Execution Results is still template text
    │   └─> Deny a ticket → verified while any result section is still template text
    ├─> verification gate (Bash) — v21.0.0+
-   │   ├─> Deny git commit while source edits have no passing declared check (working-tree scoped)
+   │   ├─> (git commit no longer denied since v21.153.0)
    │   └─> Record the start of a declared check
    ├─> doc-watchdog gate (Write|Edit) — soft notice when in-project code edits >= 5 without a D/P/T doc update (regressing only)
-   └─> verify-guard (Write|Edit) — Final Verification writes run the declared checks; skipped once another guard denied
+   (verify-guard unwired in v21.153.0 — Final Verification writes no longer run checks)
    (pressure-guard and sycophancy-guard unwired from PreToolUse in v21.113.0 — I083 R4/R5; deleted v21.130.0)
    Read|Grep|Glob have no PreToolUse hook since v21.125.0; the other-project notice comes from PostToolUse.
 
@@ -387,16 +387,16 @@ Regressing retains document-cycle continuation but has no parallel-worker count 
 | `regressing-guard.js` | PreToolUse (Write\|Edit) | Block direct plan/ticket writes during active regressing; force Skill tool; validate P doc agent sections before ticketing (v21.41.0) |
 | `docs-guard.js` | PreToolUse (Write\|Edit) | Block writes to .crabshell/ D/P/T/I/H subdirectories without active skill flag; block a new `D###_T###` ticket whose discussion has no plan or whose Implementation Details is empty (`core/plan-entry.js`, v21.135.0) |
 | `log-guard.js` | PreToolUse (Write\|Edit) | Block a ticket marked done (Execution Results) or verified (every result section, Intent Fidelity included since v21.135.0) in INDEX.md while those sections still hold template text; rows read with `core/index-rows.js` |
-| `verify-guard.js` | PreToolUse (Write\|Edit) | Hybrid: Edit always enforces verification; Write enforces only for existing files (new file creation skips). Block Final Verification without /verifying run; require behavioral AC in manifest |
+| `verify-guard.js` | not wired (v21.153.0) | Formerly blocked Final Verification writes until the declared checks ran; unwired because it re-ran the check the work had just run. File kept for tests and audits |
 | `path-guard.js` | PreToolUse via `adapters/claude/pre-tool-use.js` (Bash\|Write\|Edit); Read\|Grep\|Glob notice via `post-tool-use.js` | Block Bash writes into another project's .crabshell (v21.125.0: reads get a notice; prose, patterns, heredoc text, temp folders and unknown variables are not blocked); block Edit on logbook.md; block Write shrink on logbook.md (v20.6.0); block direct skill-flag writes. Runs alone too |
 | `web-guard.js` | PreToolUse (WebFetch\|WebSearch) | Block WebFetch (small-model summarization, lossy by design) with URL-substituted raw-fetch redirect (trafilatura → r.jina.ai → curl); block WebSearch only when a search MCP is configured in ~/.claude.json or .mcp.json, else allow with snippet-verification warning; modes block/warn/off via `webGuard` config (v21.114.0, I084) |
 | `core/path-policy.js` | shared library | Host-neutral memory path decisions used by Claude and Codex wrappers |
 | `core/shell-writes.js` | shared library | Static Bash analysis: which .crabshell paths a command names and whether each is written (quotes, heredocs, pipelines, redirects, substitutions, interpreter code, powershell/cmd) |
-| `adapters/claude/pre-tool-use.js`, `adapters/claude/post-tool-use.js`, `adapters/claude/dispatch.js` | Claude PreToolUse / PostToolUse / PostToolUseFailure | One process per event: each guard in its own try/catch, all guards run, stdout redirected to stderr while they run, one JSON object out (v21.125.0) |
+| `adapters/claude/pre-tool-use.js`, `adapters/claude/post-tool-use.js`, `adapters/claude/dispatch.js`, `core/dispatch.js` | Claude PreToolUse / PostToolUse / PostToolUseFailure (Codex PreToolUse shares `core/dispatch.js`) | One process per event: each check loads its module inside its own try/catch, stdout redirected to stderr while they run, one JSON object out (v21.125.0). Since v21.153.0 checks route by the call's shape (`core/tool-shape.js`: a shell call or a file write, whatever the tool is named); the check runner is `core/dispatch.js` for both hosts and each adapter builds its own output; PreToolUse/PostToolUseFailure match every tool but Read, Grep and Glob |
 | `core/post-compact-effects.js` | shared library | Post-compaction effects: pressure notice re-injection reset and compaction log; Claude runs it at SessionStart(compact), Codex from its PostCompact hook |
 | `core/first-turn-context.js`, `core/memory-context.js`, `core/workflow-context.js` | shared libraries | Shared compact turn contract, memory with preserving legacy-description copy, and restart-safe workflow context |
 | `core/compaction-context.js`, `core/subagent-context.js` | shared libraries | Recovery context and bounded task-specific child context for both hosts |
-| `core/command-observation.js`, `core/completion-control.js` | shared libraries | Declared checks and host-specific results; current-content parent evidence with one fingerprint per result event |
+| `core/command-observation.js`, `core/completion-control.js`, `core/project-state.js`, `core/rerun-guard.js`, `core/declaration-guidance.js` | shared libraries | Declared checks only (manifest `tools`, entries, `wrappers`, environment prefixes) and host-specific results; current-content parent evidence (identity compared only when both sides are known); the runner's project view for hooks, loaded on first use (no runner modules → no judgment: blocking checks do not block, evidence is none); a hand rerun of a check that passed on the same files answered from its record; hints to declare `inputs`/`slow`/`outputs` and repeated undeclared commands (v21.153.0) |
 | `core/support-state.js` | shared library | Derive the seven live doctor states without a version compatibility table |
 | `adapters/codex/*` | Codex native lifecycle | Normalize native lifecycle/Interrupt payloads and emit Codex-native results without Claude exit-code semantics |
 | `completion-controller.js` | Claude Stop/SubagentStop; called in-process by the Pre/PostToolUse dispatchers | Single completion owner; runs the retained Claude Stop check (doc-watchdog) in the same process |
@@ -406,8 +406,8 @@ Regressing retains document-cycle continuation but has no parallel-worker count 
 | `run-orchestration-corpus.js` | regression CLI | Run baseline/current Codex conversation fixtures, reference perturbation, false-done rejection, and workspace side-effect checks |
 | `verify-cross-runtime.js` | manual regression CLI | Reads suites and stdout observation regexes from V059 `fileAssertions`; fail-open suite runs alone and last. Routine verification runs these tests individually through V059 |
 | `_test-cross-platform-native-hosts.js` | release smoke | Isolated Windows/Linux Claude Code CLI and Codex CLI install/activation matrix; app reported separately |
-| `skills/verifying/scripts/run-verify.js` | verification source | Canonical portable schema-v2 runner: repo-relative commands, structured assertions, and forbidden-path snapshots. v21.126.0: `discover` entries (one check per matching test file). A full run writes a load map (`test-map.json`) from a NODE_OPTIONS tracer that re-attaches to child processes (require, reads, listings, copies) plus a static path-string scan. `--changed` selects the checks the changed files touch, and falls back to all when it cannot know. v21.142.0: with nothing changed it runs only the always-run checks; a passing `--changed` run refreshes the records of the checks it ran; a changed test that reads changed source also runs on a temporary HEAD copy and must fail there (`FAIL_BEFORE:<id>`, hash-bound exemptions in `fail-before-exempt.json`, `--no-fail-before`). v21.143.0: a check with no record yet (a new, renamed or pulled test) runs by itself instead of making `--changed` run everything; a deleted test selects nothing |
-| `.crabshell/verification/run-verify.js` | generated project runner | Byte-equivalent generated runner consumed by `verify-guard.js`; stdout text is diagnostic, not a pass oracle |
+| `skills/verifying/scripts/run-verify.js`, `skills/verifying/scripts/runner/` | verification source | A small launcher and the runner modules (v21.153.0): manifest and its settings tables, fingerprint (entry run fields, program, decision code without comment lines, platform, input contents), snapshot (one walk; git-ignored folders skipped via a kept list, `ignored.js`), select (pass history, change reasons), schedule (order, stop at a new failure, retries, `jobs`), store (`test-map.json` schema 3), trace (NODE_OPTIONS tracer across child processes), output, install (copy with temp file + rename) |
+| `.crabshell/verification/run-verify.js`, `.crabshell/verification/runner/` | project runner copy | Copied from the skill runner; kept current at each session start (`core/runner-sync.js`: changed modules copied, a released launcher replaced — the list is `skills/verifying/scripts/released-launchers.json`, built by `scripts/build-released-launchers.js` — an edited launcher kept and named once); stdout text is diagnostic, not a pass oracle |
 | (deleted v21.130.0) | — | `sycophancy-guard.js`, `pressure-guard.js`, `scope-guard.js` (unwired v21.113.0, I083 R4/R5) and `regressing-loop-guard.js` (unwired v21.107.0) were removed with their tests; git history keeps them. Regressing continuation is goal-driven (v21.110.0) with `completion-controller.js` bounded continuation. |
 | `skill-tracker.js` | PostToolUse (Skill) via `post-tool-use.js` (inline since v21.125.0) | Set the calling session's skill flag on Skill tool calls (no timer; cleared on compaction and SessionEnd; payloads without a session id use the legacy 15-minute project flag) |
 | `regressing-state.js` | (library) | Phase tracker: getState, buildReminder, detectSkillCall, advancePhase |
@@ -551,13 +551,13 @@ Separated from memory-index.json to eliminate Write race condition during delta 
 
 ### Guard Consolidation (IA-6 Analysis, revised v21.125.0)
 Until v21.124.0 each guard was its own hook process; one Edit started 10 synchronous processes. v21.125.0 runs each Claude event's guards in one process. The four reasons for keeping them separate were checked against measurements:
-- **Fail-open isolation** — kept inside the process: each guard is loaded lazily and runs in its own try/catch, so a guard that fails to load or throws is skipped and the others still decide (`_test-claude-dispatcher-parity.js` P3 deletes `docs-guard.js` and the logbook Edit is still denied). What is lost: a guard that hangs now cancels every guard's decision at the 90-second hook timeout; a timed-out PreToolUse does not block the tool (fail-open). verify-guard, the only guard that runs something long, is capped at 60 seconds and runs last.
+- **Fail-open isolation** — kept inside the process: each guard is loaded lazily and runs in its own try/catch, so a guard that fails to load or throws is skipped and the others still decide (`_test-claude-dispatcher-parity.js` P3 deletes `docs-guard.js` and the logbook Edit is still denied). What is lost: a guard that hangs now cancels every guard's decision at the 90-second hook timeout; a timed-out PreToolUse does not block the tool (fail-open). Since verify-guard was unwired (v21.153.0) no guard runs checks.
 - **Different dependencies** — irrelevant inside one process; each guard still reads its own state file.
 - **Different complexity** — guards stay separate modules exporting an evaluation function; the dispatcher only routes.
 - **Parallel is faster** — measured false for this workload: node start-up dominates. Medians on a 16-core machine: Edit 240 → 189 ms, Bash 188 → 186 ms, Read 153 → 96 ms (old = separate processes started in parallel, new = one dispatcher).
 
 Invariants of the one-process dispatchers:
-- All guards run even after one denies, because some record state (a declared check's start); verify-guard, which records nothing, is skipped after a deny.
+- All guards run even after one denies, because some record state (a declared check's start).
 - stdout printed by any module while guards run goes to stderr: the host reads stdout as one JSON object, and any other leading line turns the whole output into plain text (found by independent review when memory rotation printed during a concurrent session's lock).
 - Each guard script keeps a standalone entry point for tests and audits.
 
@@ -565,6 +565,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.153.0 | Checks run only when what they read changed. Nothing blocks a commit, writing a Final Verification runs nothing, and comparing a changed test with HEAD is opt-in (`--fail-before`). The runner (now a launcher and modules) reruns a check only when its fingerprint — entry run fields, program, decision code (comment lines excluded), platform, input contents — is not among its passes; inputs are traced (Node), declared (`inputs`) or unknown (whole project, that check only); `--changed` runs the last failure first, then new, then quickest, stops at a new failure, retries a check that fails on inputs it passed with (`Flaky:`), runs `slow` checks only with `--slow` or at release, and `--explain` prints why each check would run. Hooks know shell calls and file writes by their shape, count only manifest-declared commands (`wrappers`, environment prefixes), answer a hand rerun of a passed check from its record (`CRABSHELL_RERUN=1` runs it anyway), hint when an entry needs `inputs`/`slow`/`outputs`, share the runner's project view (git-ignored folders skipped: a 20,000-file folder cost each hook call a second, now under 2 ms) and stay fail-open without the runner's modules. Each session start keeps a project's runner copy current. Plans carry five design lines before their first ticket, and post-build verification is one check run after the last edit. RULES are shorter (2,080 → 1,792 words) with Skills and Code lines; the per-prompt checklist asks "Is this your best?". After updating, every non-slow check runs once; a package.json `test` check moves to manifest `tools`. |
 | 21.152.0 | Rules: **Memory** (WORKING RULES, after Temporary files) — anything Claude writes or runs has a memory budget before it runs: the peak from the largest input it will get (batch × length × bytes, weights, optimizer and cache state), allocations kept inside it (nothing that grows with step or iteration count, one reused buffer instead of a new allocation per step, a hard cap on shared hardware or when GPU memory is system memory); read how a function allocates before moving it to another device or a larger input; long runs log their peak and stop above the budget; a memory shortage is traced in the kernel log and the process list before a cause is named. Not added to the per-prompt checklist. `_test-rule-wording.js` W34 checks the line word for word. |
 | 21.151.0 | Rules: **Rows and columns** (WORKING RULES) — anything a person sees (text, tables, lists, code blocks, screens, images) keeps rows and columns: items of one kind share the same start edge, width, height and spacing, checked on the rendered result by measuring, fixed with fixed widths or one shared grid, never by deleting content; **Commits** (ADDITIONAL RULES, after the git rule) — when finished, verified changes are still uncommitted, ask the user to commit them and say in one line what the commit would contain. Not added to the per-prompt checklist. `_test-rule-wording.js` W32 and W33 check both lines word for word. |
 | 21.150.0 | Check runner: a mark left by a failed HEAD comparison (fail-before) is cleared only by a `--changed` run that compares again, not by an explicit-id or guard run; new assertion `stdoutMatches` and discovery field `fileAssertions`; V013 removed — its named-output checks now sit on the 11 cross-runtime tests themselves, so changing one test runs only that test |

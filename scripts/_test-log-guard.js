@@ -58,6 +58,9 @@ function runScript(hookData) {
       `"${nodePath}" "${scriptPath}"`,
       {
         input: json,
+        // Relative paths in the payload resolve inside the temporary project, never the
+        // repository's own tickets (D143_T006: the guard read the real INDEX.md).
+        cwd: projectDir,
         env: { ...process.env, CLAUDE_PROJECT_DIR: projectDir },
         timeout: 5000,
         encoding: 'utf8'

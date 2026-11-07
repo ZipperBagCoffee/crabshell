@@ -166,7 +166,7 @@ runTest('Empty input',
 );
 
 runTest('Unknown tool',
-  { tool_name: 'Write', tool_input: { file_path: 'C:/Users/chulg/Documents/YesPresident/.crabshell/memory/file.md' } },
+  { tool_name: 'Write', tool_input: { file_path: 'C:/Users/chulg/Documents/YesPresident/.crabshell/memory/file.md', content: 'x' } },
   false
 );
 

@@ -52,17 +52,6 @@ module.exports = {
   LOCK_STALE_MS: 60000,  // 60 seconds
   LOCK_WAIT_MS: 250,     // how long a hook waits for a live lock holder before skipping
 
-  // Edits to these files never need a passing check before commit: prose,
-  // stylesheets and images. Every other file — code, configuration (JSON, YAML,
-  // hooks manifests), build files, unknown or no extension — arms the commit gate.
-  NON_SOURCE_EXTENSIONS: [
-    '.md', '.markdown', '.mdx', '.txt', '.rst', '.adoc',
-    '.css', '.scss', '.sass', '.less',
-    '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.webp', '.bmp', '.pdf',
-  ],
-  NON_SOURCE_BASENAMES: ['readme', 'license', 'licence', 'changelog', 'changes', 'notice', 'authors', 'contributors', 'contributing', 'copying'],
-  SOURCE_EXCLUDED_DIRS: ['.crabshell', '.claude', 'node_modules', '.git', 'dist', 'build'],
-
   // SessionStart context budget. Claude Code moves additionalContext over 10,000
   // characters to a file and passes only a 2,000-character preview, so the
   // injected memory must stay below the host cap to reach the model.
@@ -81,6 +70,8 @@ module.exports = {
   SKILL_ACTIVE_TTL_MS: 15 * 60 * 1000,
   // Regressing state not updated for this long is reported as possibly stale.
   REGRESSING_STALE_MS: 24 * 60 * 60 * 1000,
+  // A before-run file record (core/declaration-guidance) older than this is a run that never finished.
+  RUN_SNAPSHOT_MAX_AGE_MS: 24 * 60 * 60 * 1000,
 
   DOC_TYPES,
   // Ticket IDs are <parent>_T<NNN>. The parent is a discussion (D###, the current

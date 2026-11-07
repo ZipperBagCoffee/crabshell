@@ -52,10 +52,12 @@ Read `{PROJECT_DIR}/.crabshell/memory/skill-active.json`.
 
 ## Step 6: Verification State
 
-Read `{PROJECT_DIR}/.crabshell/memory/verification-state.json`.
-- CLEAN: `✓ Verification: CLEAN`
-- EDITED: `! Verification: EDITED — unverified: {editsSinceTest.join(', ')}`
-- BLOCKED or missing: `✗ Verification: {state or 'not found'}`
+The runner's records decide which checks the current changes need (hooks no longer keep an edited/tested flag).
+- If `{PROJECT_DIR}/.crabshell/verification/run-verify.js` exists, run `node "{PROJECT_DIR}/.crabshell/verification/run-verify.js" --changed --dry-run` and read its JSON:
+  - `selected` empty: `✓ Verification: no check waiting for the current changes`
+  - otherwise: `! Verification: {selected.length} checks to rerun — {the distinct values of reasons}`
+- If it does not exist: `! Verification: no runner (run /verifying)`
+- Last observed check: in `{PROJECT_DIR}/.crabshell/memory/verification-state.json`, the `checkHistory.results` entry with the highest `order` → `  last check: {observation.command} — {observation.outcome}`; nothing recorded → `  last check: none recorded`
 
 ## Step 7: Verification Manifest
 

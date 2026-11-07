@@ -27,7 +27,7 @@ Then add a `## Convergence Criteria` section to the D document. Every item must 
 
 Goal mode keeps Codex looping plan-execute-verify cycles until its evaluator confirms the D is concluded. Starting it is the user's choice; without it, continue cycles manually per step 4. Because the evaluator judges only by reading the D document, write each cycle's results into the documents before ending a cycle.
 
-2. For each cycle, append a "Cycle N plan" entry to the D document's log with the same fields as a discussion's `## Plan`: context from the previous cycle, approach, each file → what changes, order, rejected alternatives and why, risks, the evidence you inspected, and an intent check against the Intent Anchor (approve or reject). There is no separate plan document.
+2. For each cycle, append a "Cycle N plan" entry to the D document's log with the same fields as a discussion's `## Plan`: context from the previous cycle, approach, each file → what changes, order, rejected alternatives and why, risks, the evidence you inspected, and an intent check against the Intent Anchor (approve or reject). There is no separate plan document. The design lines (**Values:**, **Structure:**, **Start state:**, **User burden:**, **Design review:**) live once in the discussion's `## Plan`, where the ticket command requires them; a cycle that changes the design adds a `Plan revision` entry carrying them, and the design review is done by a reviewer who did not write the plan, reading only the plan.
 
 3. Create one or more tickets under the discussion:
 
@@ -37,6 +37,6 @@ node "{SKILL_DIR}/scripts/codex-docs.js" ticket "ticket title" --parent="D001" -
 
 Ticket IDs continue within the discussion (`D001_T001`, `D001_T002`, …) across cycles; the D log's cycle entries record which tickets belong to which cycle.
 
-4. Execute, verify, then compare the result with the discussion: fill each ticket's `## Intent Fidelity` table (one row per Intent Anchor item and cycle-plan decision it touches — result, deviation none/partial/departed, evidence, reason or user approval). A ticket can pass its own checks and still drift from the discussion; a departure without the user's approval keeps it from verified. Write the verification gaps, every partial or departed row, and the next direction into the ticket and into the next cycle's plan entry in the D log before starting another cycle.
+4. Execute, verify (the project's checks once after each ticket's last edit; later steps read that result), then compare the result with the discussion: fill each ticket's `## Intent Fidelity` table (one row per Intent Anchor item and cycle-plan decision it touches — result, deviation none/partial/departed, evidence, reason or user approval). A ticket can pass its own checks and still drift from the discussion; a departure without the user's approval keeps it from verified. Write the verification gaps, every partial or departed row, and the next direction into the ticket and into the next cycle's plan entry in the D log before starting another cycle.
 
 Do not pre-partition future cycles. Each cycle should respond to the previous cycle's verification results.
