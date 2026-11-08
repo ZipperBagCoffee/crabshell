@@ -76,11 +76,13 @@ report.check('W27 verification checks once after the last edit, reuses unchanged
 report.check('W15 the per-prompt checklist carries the common-sense line',
   /- Common sense: before doing the work and before handing it over[^\n]*look weird to them, fix it first — no rule excuses a weird result/.test(COMPRESSED_CHECKLIST));
 // D144 / D146: asked every turn right after common sense — "Is this your best?", then the coding line.
+// D150: the user — 「대답하기전에 이 대답이 최선인가? 이 대답은 간단명료한가를 계속 물어보게 만들어라」.
 {
   const at = indexOf(COMPRESSED_CHECKLIST, '- Is this your best?');
   const best = at >= 0 ? lines(COMPRESSED_CHECKLIST)[at] : '';
-  report.check('W35 the per-prompt checklist asks "Is this your best?" before any hand-over, right after the common-sense line',
-    at > 0 && lines(COMPRESSED_CHECKLIST)[at - 1].startsWith('- Common sense:') && has(best, ['before handing over any result', 'keep working until it is']), String(at));
+  report.check('W35 the per-prompt checklist asks "Is this your best? Is it simple and clear?" before every answer and hand-over, right after the common-sense line',
+    at > 0 && lines(COMPRESSED_CHECKLIST)[at - 1].startsWith('- Common sense:')
+      && has(best, ['Is it simple and clear', 'only what the reader needs', 'before every answer', 'fix it before sending']), String(at));
   const code = indexOf(COMPRESSED_CHECKLIST, '- Code:');
   const line = code >= 0 ? lines(COMPRESSED_CHECKLIST)[code] : '';
   report.check('W36 the per-prompt checklist carries the coding line (hardcoding defined, parameters allowed, general mechanism, modular, structure first) right after the best question',

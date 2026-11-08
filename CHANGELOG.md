@@ -1,5 +1,14 @@
 # Changelog
 
+## [21.157.0] - 2026-11-07
+
+### feat: before every answer — "Is this your best? Is it simple and clear?"
+
+- **Why.** The per-prompt checklist asked "Is this your best?" only before handing over a result and never asked whether the answer was simple and clear; long status reports went out where one line would have done. The user: 「대답하기전에 이 대답이 최선인가? 이 대답은 간단명료한가를 계속 물어보게 만들어라」.
+- **Change.** The Rules Quick-Check line (`scripts/shared-context.js` `COMPRESSED_CHECKLIST`, added to every turn's first prompt and to subagents) now reads: "Is this your best? Is it simple and clear — only what the reader needs, nothing they must ask back about? Ask both before every answer and before handing over any result (design, plan, code); if either is no, fix it before sending."
+- **Contract change.** `_test-rule-wording.js` W35 checks the new wording (same place: after the common-sense line, before the coding line).
+- **Repository.** The root CLAUDE.md project rules (a development file, not plugin context) drop an old line and add the release step that rebuilds `released-launchers.json`, the `/plugin` reload note and two hooks missing from the model-upgrade audit list.
+
 ## [21.156.0] - 2026-11-07
 
 ### fix: memory notices — once per turn, and a question gets its answer before the save
