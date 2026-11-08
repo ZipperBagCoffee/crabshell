@@ -1,8 +1,10 @@
 const fs = require('fs');
 const { withMemoryIndex, tryWithMemoryRotation } = require('./core/memory-lock');
 const path = require('path');
-const { estimateTokensFromFile, extractTailByTokens, updateIndex, getProjectDir, getStorageRoot } = require('./utils');
-const { ROTATION_THRESHOLD_TOKENS, CARRYOVER_TOKENS, getTimestamp, MEMORY_DIR, ARCHIVE_PREFIX } = require('./constants');
+const { getProjectDir, getStorageRoot } = require('./utils');
+const { estimateTokensFromFile, extractTailByTokens, updateIndex } = require('./core/memory-index-file');
+const { MEMORY_DIR, ARCHIVE_PREFIX } = require('./constants');
+const { ROTATION_THRESHOLD_TOKENS, CARRYOVER_TOKENS, getTimestamp } = require('./core/memory-budgets');
 
 const SAFETY_MARGIN = 0.95;
 

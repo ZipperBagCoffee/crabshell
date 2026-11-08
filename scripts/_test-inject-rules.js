@@ -247,14 +247,11 @@ test('SYNC: creates CLAUDE.md with all key sections', function() {
   try {
     mod.syncRulesToClaudeMd(tmpDir);
     const content = fs.readFileSync(path.join(tmpDir, 'CLAUDE.md'), 'utf8');
-    // All key sections from RULES constant must be present
-    assert(content.includes('### VERIFICATION'), 'missing VERIFICATION');
-    assert(content.includes('### INTERNAL TASK CONTRACT'), 'missing INTERNAL TASK CONTRACT');
-    assert(content.includes('blocking_unknowns'), 'missing blocking_unknowns');
+    // Every line of RULES reaches CLAUDE.md (taken from the source, so a reworded rule still passes).
+    const ruleLines = mod.RULES.split('\n').map(line => line.trim()).filter(Boolean);
+    const missingLines = ruleLines.filter(line => !content.includes(line));
+    assert(ruleLines.length > 10 && missingLines.length === 0, 'RULES lines missing from CLAUDE.md: ' + missingLines.slice(0, 2).join(' | '));
     assert(!content.includes('State **to the user** what you believe they intend'), 'stale visible intent ritual remains');
-    assert(content.includes('### PRINCIPLES'), 'missing PRINCIPLES');
-    assert(content.includes('### WORKING RULES'), 'missing WORKING RULES');
-    assert(content.includes('### ADDITIONAL RULES'), 'missing ADDITIONAL RULES');
     // v21.113.0 (I083 R2/R3): enumerated sections retired from RULES
     assert(!content.includes('### PROHIBITED PATTERNS'), 'PROHIBITED PATTERNS should be retired');
     assert(!content.includes('### SCOPE DEFINITIONS'), 'SCOPE DEFINITIONS should be retired');
@@ -782,20 +779,6 @@ test('INTEGRATION: RULES constant starts with MARKER_START text', function() {
   assert(mod.RULES.trim().startsWith('## CRITICAL RULES'), 'RULES starts with marker');
 });
 
-test('INTEGRATION: syncRulesToClaudeMd output includes RULES principles', function() {
-  const tmpDir = makeTempDir('sync-principles');
-  try {
-    mod.syncRulesToClaudeMd(tmpDir);
-    const content = fs.readFileSync(path.join(tmpDir, 'CLAUDE.md'), 'utf8');
-    assert(content.includes('Anti-Deception'), 'Anti-Deception in output');
-    assert(content.includes('Human Oversight'), 'Human Oversight in output');
-    assert(content.includes('Scope Preservation'), 'Scope Preservation in output');
-    assert(content.includes('audit each claim against a tool result'), 'grounding instruction in output');
-  } finally {
-    cleanupDir(tmpDir);
-  }
-});
-
 // ============================================================
 // 13. Subprocess: inject-rules.js outputs valid JSON with hookData
 // ============================================================
@@ -867,14 +850,9 @@ test('SUBPROCESS: output contains key context items', function() {
     // v21.113.0 (I083 R2/R8): the per-response three-field ending is retired.
     assert(!ctx.includes('Mandatory Response Ending'), 'response-ending block retired (v21.113.0)');
     assert(!ctx.includes('[의도]:'), 'intent field retired');
-    assert(ctx.includes('Answer in slot order'), 'conclusion-first guidance present');
     assert(ctx.includes('TZ_OFFSET'), 'TZ_OFFSET present');
-    // v21.117.0 (D115): the verification-method guidance must reach a turn that never
-    // invokes the verifying skill. Asserted on the hook's actual emitted context, not on
-    // the module constant — the constant existing does not prove the hook emits it.
-    assert(/match method to claim/i.test(ctx), 'method-to-claim guidance reaches the turn');
-    assert(/survives the next release/i.test(ctx), 'release-stable assertion guidance reaches the turn');
-    assert(/classify a failure before editing/i.test(ctx), 'failure-classification guidance reaches the turn');
+    // v21.117.0 (D115): the checklist's guidance (slot order, verification method) must reach
+    // the turn itself — _test-rule-wording.js W1 checks every checklist line in the hook output.
   } finally {
     cleanupDir(tmpDir);
   }
@@ -1137,6 +1115,8 @@ test('PRESSURE: decayCounter resets on negative', function() {
 // 21. Constants integrity
 // ============================================================
 test('CONSTANTS: MARKER_END is correct string', function() {
+  // The spelling is the contract: users' CLAUDE.md files hold this exact line, and their own
+  // rules below it are found by it.
   assertEqual(mod.MARKER_END, '---Add your project-specific rules below this line---');
 });
 
@@ -1260,101 +1240,21 @@ test('TICKET_STATUS: missing INDEX.md -> null (fail-open)', function() {
 });
 
 // ============================================================
-// 23. RULES Simple Communication keyword anchors (D105 P137_T002 AC1)
+// 23. RULES: retired wording stays out (D151_T005)
 // ============================================================
-// Locks the four Simple Communication property keywords into RULES so future
-// edits cannot silently regress to "analogy" wording.
-test('RULES: Simple Communication keyword "reader\'s words" present', function() {
-  assert(mod.RULES.includes("reader's words"), 'RULES missing "reader\'s words" keyword');
-});
-
-test('RULES: Simple Communication conclusion-first slot order present', function() {
-  assert(mod.RULES.includes('answer in slot order'), 'RULES missing slot-order anchor');
-  assert(/\[conclusion\][^]*\[evidence\][^]*\[critical exception\][^]*\[next action\]/.test(mod.RULES),
-    'RULES missing the four response slots in order');
-});
-
-// v21.115.0 (I085): the P/O/G table is routed to the D/P/T/I/H document and the chat
-// report is a short fixed slot. Research finding — format-specified rules are followed,
-// format-free ones ("keep it short") are not, so the long format was replaced, not deleted.
-test('RULES: P/O/G table routed to document, chat gets short report', function() {
-  // v21.115.1: state the wanted format only. No table destination (the goal was to keep
-  // it off the screen, so it needs no home) and no prohibition list (specifying the
-  // format already excludes everything else).
-  assert(!mod.RULES.includes('D/P/T/I/H document, not in chat'),
-    'RULES must not route the table to a document');
-  assert(!/no table, no/.test(mod.RULES),
-    'RULES must not carry a prohibition list next to the report format');
-  assert(mod.RULES.includes('"M of N passed"'), 'RULES missing short chat report format');
-});
-
-test('RULES: failure reporting limited to blocked tasks', function() {
-  assert(mod.RULES.includes('report only when blocked'),
-    'RULES missing blocked-only failure reporting');
-  assert(mod.RULES.includes('Do not narrate recovered mistakes'),
-    'RULES missing recovered-mistake exclusion');
-});
-
-test('RULES: Simple Communication keyword "concrete" + "abstract" present', function() {
-  // The spec phrase "concrete (file/code/value) over abstract (categories/labels)"
-  // — we lock the keyword pair, which is the structural anchor.
-  // Case-insensitive: the contract is the pairing's presence, not its sentence position
-  // (v21.119.0 moved it to sentence-initial "Concrete", which broke the lowercase lock).
-  assert(/concrete[^]*abstract/i.test(mod.RULES), 'RULES missing concrete/abstract pairing');
-});
-
-// v21.118.0: slot order alone still produced report prose, so the register itself
-// is part of the rule — spoken, as said aloud, not written-report style.
-test('RULES: Simple Communication spoken-register clause present', function() {
-  assert(mod.RULES.includes('spoken register, not report prose'),
-    'RULES missing spoken-register clause');
-});
-
-// v21.120.0: the CLI shows the reader the END of long output first, so the verdict
-// (per-item state + next action) must close the message, not open it only.
-test('RULES: closing verdict with work-item states present', function() {
-  assert(mod.RULES.includes('done, in progress, or not started'),
-    'RULES missing the done/in-progress/not-started verdict states');
-  assert(mod.RULES.includes('lands on the end of long output first'),
-    'RULES missing the CLI end-first rationale');
-});
-
-// v21.119.0: "unpack each term" alone let answers dump twenty unexplained terms —
-// the executable form is a decision rule on term COUNT, plus codename restating.
-test('RULES: Simple Communication term-discipline decision rule present', function() {
-  assert(mod.RULES.includes('too many to unpack means too many terms'),
-    'RULES missing the too-many-terms decision rule');
-  assert(mod.RULES.includes('say what internal codenames and IDs refer to'),
-    'RULES missing the codename-restating clause');
-});
-
-// v21.119.0: banter was a directive ("mix in") until the v21.115.0 rewrite demoted it
-// to a permission ("is welcome") — and permissions are ignored while directives are
-// followed (I085). Restored as a directive; the permission form must not come back.
-// D119: bounded to one line that adds no length (user's global brevity rule).
-test('RULES: banter is a directive, not a permission', function() {
-  assert(/One light banter line[^.]*no added length/.test(mod.RULES),
-    'RULES missing the one-line banter directive');
-  assert(!mod.RULES.includes('banter (깐족 유머) is welcome'),
-    'banter must not regress to permission form');
-});
-
-test('RULES: Simple Communication keyword "self-coined" present', function() {
-  assert(mod.RULES.includes('self-coined'), 'RULES missing "self-coined" keyword');
-});
-
-test('RULES: enumerated PROHIBITED PATTERNS list retired (v21.113.0, I083 R2)', function() {
-  assert(!mod.RULES.includes('PROHIBITED PATTERNS'),
-    'laundry-list PROHIBITED PATTERNS should be retired from RULES');
-  assert(mod.RULES.includes('Scope Preservation'),
-    'scope principle must survive the compression');
-});
-
-test('RULES: zero "analogy" wording (regression lock against analogy default)', function() {
-  // D105 cycle 1 spec correction: "analogy" was the externalized default that
-  // caused repeated regression. Lock count = 0 in RULES body.
-  const matches = (mod.RULES.match(/analogy/gi) || []).length;
-  assertEqual(matches, 0, 'RULES should contain zero "analogy" tokens, found ' + matches);
+// The rule sentences themselves are not pinned here: a check that a rule holds certain
+// words fails on every rewording that keeps the instruction (D151). What a rewording must
+// not do is bring back wording the user retired.
+test('RULES: retired wording stays out', function() {
+  const retired = [
+    'D/P/T/I/H document, not in chat', // v21.115.1: no destination for the P/O/G table
+    /no table, no/,                    // v21.115.1: no prohibition list next to the report format
+    'banter (깐족 유머) is welcome',   // v21.119.0: banter is a directive, not a permission (I085)
+    'PROHIBITED PATTERNS',             // v21.113.0 (I083 R2): the enumerated list
+    /analogy/i,                        // D105: the externalized default that kept coming back
+  ];
+  const back = retired.filter(item => (item instanceof RegExp ? item.test(mod.RULES) : mod.RULES.includes(item)));
+  assert(back.length === 0, 'retired wording is back in RULES: ' + back.join(' | '));
 });
 
 // ============================================================

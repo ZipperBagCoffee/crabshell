@@ -35,11 +35,13 @@ function currentRecords(map) {
 
 // Replace the map in one rename: the records of the checks that still exist, updated by
 // this run, and the snapshot taken before it.
-function writeMap({ manifestPath, startedAt, snapshot, records, ids }) {
+function writeMap({ manifestPath, startedAt, snapshot, records, ids, runs = null }) {
   try {
     const entries = {};
     for (const id of ids) if (records[id]) entries[id] = records[id];
     const map = { schema: SCHEMA_VERSION, createdAt: startedAt, snapshot, entries };
+    // D151_T002: the latest runs (the commit each ran on, checks run, milliseconds).
+    if (Array.isArray(runs)) map.runs = runs;
     const target = mapPath(manifestPath);
     const temporary = `${target}.${process.pid}.tmp`;
     fs.writeFileSync(temporary, JSON.stringify(map) + '\n');

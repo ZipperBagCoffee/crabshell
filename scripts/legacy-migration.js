@@ -1,7 +1,8 @@
 const fs = require('fs');
 const path = require('path');
-const { ROTATION_THRESHOLD_TOKENS, CARRYOVER_TOKENS, ARCHIVE_PREFIX } = require('./constants');
-const { estimateTokens, extractTailByTokens, updateIndex } = require('./utils');
+const { ARCHIVE_PREFIX } = require('./constants');
+const { ROTATION_THRESHOLD_TOKENS, CARRYOVER_TOKENS } = require('./core/memory-budgets');
+const { estimateTokens, extractTailByTokens, updateIndex } = require('./core/memory-index-file');
 
 function parseDateSections(content) {
   const lines = content.split(/\r?\n/);

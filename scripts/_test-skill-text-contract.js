@@ -11,7 +11,8 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 const { DESIGN_FIELDS } = require('./core/plan-entry');
-const { MANIFEST_SETTINGS, ENTRY_SETTINGS } = require('../skills/verifying/scripts/runner/manifest');
+const { ENTRY_SETTINGS } = require('../skills/verifying/scripts/runner/manifest');
+const { MANIFEST_SETTINGS } = require('../skills/verifying/scripts/runner/settings');
 
 const REPO = path.join(__dirname, '..');
 let passed = 0;

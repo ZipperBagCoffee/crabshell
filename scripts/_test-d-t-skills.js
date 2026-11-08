@@ -30,7 +30,7 @@ const read = rel => fs.readFileSync(path.join(ROOT, rel), 'utf8');
   const rule13 = (claude.match(/^13\. \*\*Regressing state update:\*\*[^\n]*/m) || [''])[0];
   report.check('TK3 Claude ticketing Rule 13 decides by the ticket parent, not by a session ID the model cannot see', /parent is the state's `discussion` or `planId`/.test(rule13) && !/sessionId/.test(rule13), rule13.slice(0, 200));
   const header = (claude.match(/^# Ticket Index\s*\n\s*\n(\|[^\n]*)/m) || [])[1] || '';
-  const { DOC_TYPES } = require('./constants');
+  const { DOC_TYPES } = require('./core/doc-types');
   const toolHeader = DOC_TYPES.find(type => type.dir === 'ticket').indexColumns;
   report.check('TK4 a new ticket INDEX names its last column Parent (Claude template and the Codex document tool)', /\| Parent \|\s*$/.test(header) && toolHeader[toolHeader.length - 1] === 'Parent', `${header} / ${toolHeader.join(',')}`);
 }

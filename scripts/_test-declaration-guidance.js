@@ -105,10 +105,34 @@ test('the output record drops entries the manifest no longer has', () => {
   assert.deepStrictEqual(Object.keys(stored), ['WRITER'], JSON.stringify(stored));
 });
 
-test('a declared, fast, non-writing entry gets no hint', () => {
+// D151_T002 contract change: a declared entry run by hand now gets one hint to run it
+// through the runner (its pass is not recorded otherwise); nothing else for a fast,
+// non-writing entry, and nothing on the next run.
+test('a declared, fast, non-writing entry gets only the run-it-through-the-runner hint, once', () => {
   const root = project('quiet');
-  assert.strictEqual(run(root, 'git --help').after.context, '');
+  const first = run(root, 'node check-node.js').after.context;
+  assert.ok(first.includes('run-verify.js') && first.includes('NODE') && first.split('\n').length === 1, first);
   assert.strictEqual(run(root, 'node check-node.js').after.context, '');
+});
+
+test('a commit after files changed since the checks passed gets one reminder; right after a check run, none; a change no check reads, none', () => {
+  const nodeOnly = [ENTRIES.find(entry => entry.id === 'NODE')];
+  const root = project('commit');
+  write(root, '.crabshell/verification/manifest.json', JSON.stringify({ schemaVersion: 2, entries: nodeOnly }, null, 2));
+  write(root, 'check-node.js', "require('fs').readFileSync(require('path').join(__dirname, 'src', 'a.txt'));\n");
+  copyRunner(RUNNER, path.join(root, '.crabshell', 'verification'));
+  // The runner of this temporary project, not of whatever runner started this test.
+  const env = { ...process.env };
+  for (const key of ['PROJECT_ROOT', 'CLAUDE_PROJECT_DIR', 'CRABSHELL_VERIFY_RUNNING']) delete env[key];
+  const runner = spawnSync(process.execPath, [path.join(root, '.crabshell', 'verification', 'run-verify.js')], { cwd: root, encoding: 'utf8', windowsHide: true, env });
+  assert.strictEqual(runner.status, 0, runner.stdout + runner.stderr);
+  assert.strictEqual(run(root, 'git commit -m "after the run"').before.context, '', 'reminded right after a passing run');
+  write(root, 'README.md', 'notes no check reads\n');
+  assert.strictEqual(run(root, 'git commit -m "notes only"').before.context, '', 'reminded for a file no check reads');
+  write(root, 'src/a.txt', 'a changed\n');
+  const reminded = run(root, 'git commit -m "after a change"').before.context;
+  assert.ok(reminded.includes('NODE') && reminded.includes('--changed'), reminded);
+  assert.strictEqual(run(root, 'git commit -m "again"').before.context, '', 'reminded twice for the same files');
 });
 
 test('an undeclared long command run twice on the same files gets one hint; a file change or a short run gets none', () => {

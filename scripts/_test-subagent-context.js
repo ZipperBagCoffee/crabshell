@@ -135,11 +135,12 @@ test('additionalContext contains worker contract and COMPRESSED_CHECKLIST conten
     const { stdout } = runScript(tmpDir);
     const parsed = JSON.parse(stdout.trim());
     const ctx = parsed.hookSpecificOutput.additionalContext;
-    assert(ctx.includes('Worker Contract'), 'should contain worker contract, got: ' + ctx.substring(0, 600));
-    assert(ctx.includes('claim, evidence from direct observation, and remaining gap'),
-      'should contain evidence return contract, got: ' + ctx.substring(0, 900));
-    assert(ctx.includes('Rules Quick-Check'),
-      'should contain checklist content, got: ' + ctx.substring(0, 300));
+    // Every line of the worker contract and the checklist reaches the worker (taken from the
+    // source, so a reworded line still passes — D151_T005).
+    const { WORKER_PROMPT_CONTRACT, COMPRESSED_CHECKLIST } = require('./shared-context');
+    const expected = (WORKER_PROMPT_CONTRACT + '\n' + COMPRESSED_CHECKLIST).split('\n').map(line => line.trim()).filter(Boolean);
+    const missing = expected.filter(line => !ctx.includes(line));
+    assert(expected.length > 5 && missing.length === 0, 'missing from the worker context: ' + missing.slice(0, 2).join(' | '));
   } finally {
     cleanupDir(tmpDir);
   }

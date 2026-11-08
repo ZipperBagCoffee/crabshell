@@ -7,7 +7,8 @@ const { readStdin, normalizePath } = require('./transcript-utils');
 // F1 mitigation: keep inline env check for fail-open invariant — D106 IA-10 RA2
 if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 
-const { getProjectDir, readJsonOrDefault, docDirsPattern } = require('./utils');
+const { getProjectDir, readJsonOrDefault } = require('./utils');
+const { docDirsPattern } = require('./core/doc-types');
 const { isProjectInput } = require('./core/project-state');
 const { writtenPaths } = require('./core/tool-shape');
 const { readSessionState, writeSessionState } = require('./core/session-state');

@@ -2,16 +2,21 @@
 
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const { spawnSync } = require('child_process');
 const { runCodex } = require('./core/codex-app-server');
 
 const repoRoot = path.resolve(__dirname, '..');
 let evidenceDir = null;
 let evidenceSequence = 0;
+// D151_T003: the host runs work in a temporary folder, not in this repository, so another
+// session writing this repository's memory cannot fail them; each host test checks its own
+// temporary consumer project for changes.
+let workDir = null;
 
 function execute(command, args, options = {}) {
   const result = spawnSync(command, args, {
-    cwd: repoRoot,
+    cwd: workDir || repoRoot,
     env: { ...process.env, ...options.env },
     encoding: 'utf8',
     timeout: options.timeout || 300000,
@@ -72,6 +77,16 @@ function runMatrix() {
   fs.mkdirSync(evidenceRoot, { recursive: true });
   evidenceDir = fs.mkdtempSync(path.join(evidenceRoot, 'run-'));
   evidenceSequence = 0;
+  workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'crabshell-native-hosts-'));
+  try {
+    return runHosts();
+  } finally {
+    try { fs.rmSync(workDir, { recursive: true, force: true }); } catch (_) {}
+    workDir = null;
+  }
+}
+
+function runHosts() {
   const results = [];
 
   results.push(observe(

@@ -79,7 +79,7 @@ for (const parent of ['P001', 'D001']) {
 // A discussion-based cycle has no /planning step: recording the cycle plan in the
 // discussion (a /discussing call) moves the phase from planning to ticketing.
 {
-  const { advancePhase } = require('./regressing-state');
+  const { advancePhase } = require('./core/regressing-phase');
   const viaDiscussion = project('phase-discussing');
   regressing(viaDiscussion, 'planning');
   report.check('A1 planning phase + /discussing naming the workflow discussion moves to ticketing', advancePhase('discussing', viaDiscussion, undefined, 'D001') === 'ticketing');

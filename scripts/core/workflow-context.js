@@ -5,7 +5,7 @@ const path = require('path');
 const { getStorageRoot, readJsonOrDefault } = require('../utils');
 const { REGRESSING_STATE_FILE } = require('../constants');
 const { isRegressingStale } = require('../regressing-state');
-const { findDocument, readSection } = require('./subagent-context');
+const { findDocument, readSection } = require('./doc-lookup');
 
 const TERMINAL_STATUSES = new Set(['done', 'verified', 'concluded', 'abandoned', 'closed']);
 const MAX_WORKFLOW_CONTEXT_CHARS = 5000;

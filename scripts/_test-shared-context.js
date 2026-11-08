@@ -1,7 +1,8 @@
 'use strict';
 
 /**
- * _test-shared-context.js — Unit tests for shared-context.js
+ * _test-shared-context.js — Unit tests for shared-context.js and the readers moved out of it
+ * (core/first-turn-context getPostCompactWarning, core/project-memory readProjectConcept)
  */
 
 const path = require('path');
@@ -28,7 +29,9 @@ function cleanupDir(dirPath) {
   try { fs.rmSync(dirPath, { recursive: true, force: true }); } catch (e) {}
 }
 
-const { COMPRESSED_CHECKLIST, getPostCompactWarning, readProjectConcept } = require('./shared-context');
+const { COMPRESSED_CHECKLIST } = require('./shared-context');
+const { getPostCompactWarning } = require('./core/first-turn-context');
+const { readProjectConcept } = require('./core/project-memory');
 
 // ============================================================
 // 1. COMPRESSED_CHECKLIST
@@ -38,14 +41,8 @@ test('COMPRESSED_CHECKLIST is a non-empty string', function() {
   assert(COMPRESSED_CHECKLIST.length > 0, 'should not be empty');
 });
 
-test('COMPRESSED_CHECKLIST contains key rules', function() {
-  assert(COMPRESSED_CHECKLIST.includes('audit each claim against a tool result'), 'should carry the grounding instruction');
-  // Contract change (D120 T3, from I091): the per-prompt checklist states the
-  // predict → execute → compare check without the P/O/G acronym, which stays in documents.
-  assert(COMPRESSED_CHECKLIST.includes('predict → execute → compare'), 'should carry the predict/execute/compare check');
-  assert(COMPRESSED_CHECKLIST.includes('user approval'), 'should carry the scope/destructive approval rule');
-});
-
+// The checklist's sentences are not pinned (D151_T005): a check that they hold certain words
+// fails on every rewording. _test-rule-wording.js checks that every line reaches the model.
 // ============================================================
 // 2. getPostCompactWarning
 // ============================================================
@@ -62,8 +59,8 @@ test('getPostCompactWarning contains POST-COMPACTION WARNING header', function()
 
 test('getPostCompactWarning preserves scoped continuation and working rules', function() {
   const warning = getPostCompactWarning('/test/dir');
-  assert(warning.includes('currently authorized task'), 'should preserve authorized continuation');
-  assert(warning.includes('Rules Quick-Check'), 'should preserve core rules');
+  const missing = COMPRESSED_CHECKLIST.split('\n').map(line => line.trim()).filter(Boolean).filter(line => !warning.includes(line));
+  assert(missing.length === 0, 'checklist lines missing after compaction: ' + missing.slice(0, 2).join(' | '));
   assert(!warning.includes("Wait for user's next instruction"), 'compaction alone is not a new approval gate');
 });
 
@@ -148,81 +145,16 @@ test('readProjectConcept returns empty string for empty file', function() {
 });
 
 // ============================================================
-// 4. COMPRESSED_CHECKLIST item #10 wording lock (D105 P137_T002 AC1)
+// 4. Retired wording stays out of the checklist (D105, v21.115.0; D151_T005)
 // ============================================================
-// Locks Simple Communication 4 keyword properties into checklist item #10.
-// POSITIVE: each of the 4 keywords appears at least once.
-// NEGATIVE: "analogy" must NOT appear (regression guard).
-test('COMPRESSED_CHECKLIST item #10 contains "reader\'s words" keyword', function() {
-  assert(COMPRESSED_CHECKLIST.includes("reader's words"),
-    'item #10 missing "reader\'s words" keyword');
-});
-
-test('COMPRESSED_CHECKLIST contains conclusion-first slot order', function() {
-  assert(COMPRESSED_CHECKLIST.includes('Answer in slot order'),
-    'missing conclusion-first slot order');
-  assert(COMPRESSED_CHECKLIST.includes('conclusion → evidence'),
-    'slot order must start with conclusion');
-});
-
-// v21.115.0 (I085): the chat report format is a fixed short slot, not the P/O/G table.
-// Research finding — format-specified rules are followed, unspecified ones ("keep it
-// short") are not; so the long format was replaced, not deleted.
-test('COMPRESSED_CHECKLIST routes the P/O/G table to the document, not chat', function() {
-  assert(!COMPRESSED_CHECKLIST.includes('D/P/T/I/H'),
-    'checklist must not mention documents — unrelated to report length');
-  assert(!/no table, no/.test(COMPRESSED_CHECKLIST),
-    'checklist must not carry a prohibition list next to the report format');
-  assert(COMPRESSED_CHECKLIST.includes('M of N passed'),
-    'missing short chat report format');
-});
-
-test('COMPRESSED_CHECKLIST forbids work-process narration', function() {
-  assert(COMPRESSED_CHECKLIST.includes('work-process narration'),
-    'missing work-process narration cut');
-});
-
-test('COMPRESSED_CHECKLIST carries the spoken-register clause', function() {
-  assert(COMPRESSED_CHECKLIST.includes('spoken register rather than report prose'),
-    'missing spoken-register clause');
-});
-
-test('COMPRESSED_CHECKLIST carries the term-unpacking clause', function() {
-  assert(COMPRESSED_CHECKLIST.includes('unpacked at first use'),
-    'missing term-unpacking clause');
-});
-
-test('COMPRESSED_CHECKLIST carries the closing-verdict clause', function() {
-  assert(COMPRESSED_CHECKLIST.includes('done, in progress, or not started'),
-    'missing closing-verdict states');
-});
-
-// v21.117.0 (D115): the per-turn checklist carries the verification *method*, not just
-// the P/O/G ritual — most turns never invoke the verifying skill, and those are exactly
-// the turns where a value-copying check gets written.
-test('COMPRESSED_CHECKLIST carries the verification method', function() {
-  assert(/match method to claim/i.test(COMPRESSED_CHECKLIST),
-    'missing method-to-claim guidance');
-  assert(/survives the next release/i.test(COMPRESSED_CHECKLIST),
-    'missing release-stable assertion guidance');
-  assert(/classify a failure before editing/i.test(COMPRESSED_CHECKLIST),
-    'missing failure-classification guidance');
-});
-
-test('COMPRESSED_CHECKLIST item #10 contains "concrete over abstract" keyword', function() {
-  assert(COMPRESSED_CHECKLIST.includes('concrete over abstract'),
-    'item #10 missing "concrete over abstract" keyword');
-});
-
-test('COMPRESSED_CHECKLIST item #10 contains "self-coined" keyword', function() {
-  assert(COMPRESSED_CHECKLIST.includes('self-coined'),
-    'item #10 missing "self-coined" keyword');
-});
-
-test('COMPRESSED_CHECKLIST contains zero "analogy" wording (regression guard)', function() {
-  const matches = (COMPRESSED_CHECKLIST.match(/analogy/gi) || []).length;
-  assert(matches === 0,
-    'COMPRESSED_CHECKLIST should contain zero "analogy" tokens, found ' + matches);
+test('COMPRESSED_CHECKLIST: retired wording stays out', function() {
+  const retired = [
+    'D/P/T/I/H',    // v21.115.0: the report format is not routed to documents
+    /no table, no/, // v21.115.1: no prohibition list next to the report format
+    /analogy/i,     // D105: the externalized default that kept coming back
+  ];
+  const back = retired.filter(item => (item instanceof RegExp ? item.test(COMPRESSED_CHECKLIST) : COMPRESSED_CHECKLIST.includes(item)));
+  assert(back.length === 0, 'retired wording is back in the checklist: ' + back.join(' | '));
 });
 
 // ============================================================

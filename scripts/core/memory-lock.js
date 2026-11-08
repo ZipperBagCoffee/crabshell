@@ -2,7 +2,7 @@
 const fs=require('fs');
 const path=require('path');
 const {STORAGE_ROOT,MEMORY_DIR,INDEX_FILE}=require('../constants');
-const {acquireIndexLock,releaseIndexLock,ownsIndexLock,acquireLock,releaseLock}=require('../utils');
+const {acquireIndexLock,releaseIndexLock,ownsIndexLock,acquireLock,releaseLock}=require('./file-lock');
 
 function memoryDirectory(projectDir){
   const root=path.resolve(projectDir),directory=path.join(root,STORAGE_ROOT,MEMORY_DIR);

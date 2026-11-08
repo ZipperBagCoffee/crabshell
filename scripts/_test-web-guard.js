@@ -13,8 +13,19 @@ const nodePath = process.execPath;
 let passed = 0;
 let failed = 0;
 
+// Every temp folder this test creates is removed when the process exits, pass or fail.
+const tempDirs = [];
+function makeTempDir(prefix) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+  tempDirs.push(dir);
+  return dir;
+}
+process.on('exit', () => {
+  for (const dir of tempDirs) { try { fs.rmSync(dir, { recursive: true, force: true }); } catch {} }
+});
+
 function makeTempProject(config) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'webguard-test-'));
+  const dir = makeTempDir('webguard-test-');
   if (config) {
     const memDir = path.join(dir, '.crabshell', 'memory');
     fs.mkdirSync(memDir, { recursive: true });
@@ -24,7 +35,7 @@ function makeTempProject(config) {
 }
 
 function makeUserConfig(mcpServers) {
-  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'webguard-cfg-')), 'claude.json');
+  const file = path.join(makeTempDir('webguard-cfg-'), 'claude.json');
   fs.writeFileSync(file, JSON.stringify({ mcpServers: mcpServers || {} }));
   return file;
 }

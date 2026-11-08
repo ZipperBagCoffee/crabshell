@@ -7,7 +7,9 @@
 // hook can require it.
 const fs = require('fs');
 const path = require('path');
-const { STORAGE_ROOT, MEMORY_DIR, SESSION_STATE_DIR, SKILL_ACTIVE_FILE, SKILL_ACTIVE_TTL_MS, DOC_SKILLS, DOC_TYPES } = require('../constants');
+const { STORAGE_ROOT, MEMORY_DIR, SESSION_STATE_DIR, SKILL_ACTIVE_FILE } = require('../constants');
+const { SKILL_ACTIVE_TTL_MS } = require('./limits');
+const { DOC_SKILLS, DOC_TYPES } = require('./doc-types');
 const { writeJson } = require('../utils');
 const { readSessionState, writeSessionState, removeSessionState, sessionKey } = require('./session-state');
 
@@ -24,7 +26,7 @@ function skillCallName(hookData) {
   return skill.includes(':') ? skill.split(':').pop() : skill;
 }
 
-// A document skill call (constants DOC_SKILLS), or null.
+// A document skill call (core/doc-types DOC_SKILLS), or null.
 function detectDocsSkillCall(hookData) {
   const name = skillCallName(hookData);
   return name && DOC_SKILLS.includes(name) ? name : null;

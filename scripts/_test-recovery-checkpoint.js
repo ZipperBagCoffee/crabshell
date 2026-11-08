@@ -21,4 +21,7 @@ test('explicit user stop takes effect through both prompt adapters; quoted stops
 test('paused state stays visible in large compaction input on both hosts',()=>{const f=fixture();c.interruptWork(f.root,f.payload);fs.writeFileSync(path.join(f.memory,'logbook.md'),'x'.repeat(40000));const native=buildCompactionContext(f.root,{sessionId:f.payload.session_id});assert(native.length<=9000);assert(native.includes('Do not resume from this record'));assert(hook('pre-compact.js',f,'PreCompact').includes('Do not resume from this record'));});
 test('unrelated session interrupt cannot revoke another session',()=>{const f=fixture();const before=fs.readFileSync(c.statePath(f.root));handlePayload({...f.payload,session_id:'other',hook_event_name:'Interrupt'},{projectDir:f.root,host:'codex'});assert.deepEqual(fs.readFileSync(c.statePath(f.root)),before);});
 test('active document parsing follows actual wiki-linked index status',()=>{const f=fixture(),dir=path.join(f.root,'.crabshell','ticket');fs.mkdirSync(dir);fs.writeFileSync(path.join(dir,'INDEX.md'),'| ID | Title | Status |\n| [[P001_T001-file|P001_T001]] | Done item | done |\n| [[P001_T002-file\\|P001_T002]] | Work item | in-progress |\n');const rows=getActiveDocs(f.root);assert.equal(rows.length,1);assert.equal(rows[0].status,'in-progress');assert(rows[0].id.includes('P001_T002'));});
-console.log(`${passed} passed, ${failed} failed; retained evidence: ${base}`);process.exitCode=failed?1:0;
+// A passing run deletes its own folder; a failing run keeps it and names it for diagnosis.
+if(failed)console.log(`${passed} passed, ${failed} failed; retained evidence: ${base}`);
+else{fs.rmSync(base,{recursive:true,force:true});console.log(`${passed} passed, ${failed} failed`);}
+process.exitCode=failed?1:0;

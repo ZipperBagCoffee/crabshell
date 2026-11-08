@@ -98,6 +98,6 @@ Remaining: M (list types)
 
 1. **Read before reporting.** Always read the actual script output — never invent violation counts.
 2. **Safe fixes only.** Auto-fix = frontmatter addition and INDEX sync. Never auto-delete files or rewrite content.
-3. **P/O/G required.** Every lint run that claims "no violations" must show tool output as Observation.
+3. **Output required.** Every lint run that claims "no violations" shows the command run and its output line.
 4. **Script missing = report, not error.** If lint-obsidian.js is absent, inform the user and stop gracefully.
 5. **Document-first rule.** If invoked within a T or P document context, append lint results to that document's verification section before reporting in conversation.

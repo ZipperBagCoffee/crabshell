@@ -5,6 +5,8 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const h = require('./testlib/hook-harness');
+// The owner-token file lock (memory index lock) lives here; in-process and spawned checks load it.
+const LOCK_MODULE = path.join(__dirname, 'core', 'file-lock.js');
 
 const A = 'aaaaaaaa-1111-4111-8111-111111111111';
 const B = 'bbbbbbbb-2222-4222-8222-222222222222';
@@ -106,14 +108,14 @@ const setMtime = (file, ms) => fs.utimesSync(file, new Date(ms), new Date(ms));
   const project = h.makeProject(root, 'm6-lock');
   const memoryDir = h.memoryPath(project);
   const lock = path.join(memoryDir, '.memory-index.lock');
-  const utils = require('./utils');
-  const first = utils.acquireIndexLock(memoryDir);
+  const fileLock = require(LOCK_MODULE);
+  const first = fileLock.acquireIndexLock(memoryDir);
   const old = new Date(Date.now() - 120000);
   fs.utimesSync(lock, old, old);
   const takeover = spawnSync(process.execPath, ['-e',
-    `const u=require(${JSON.stringify(path.join(__dirname, 'utils.js'))});process.stdout.write(String(u.acquireIndexLock(${JSON.stringify(memoryDir)})));`],
+    `const u=require(${JSON.stringify(LOCK_MODULE)});process.stdout.write(String(u.acquireIndexLock(${JSON.stringify(memoryDir)})));`],
     { encoding: 'utf8', env: h.hookEnv(project, root), windowsHide: true });
-  utils.releaseIndexLock(memoryDir);
+  fileLock.releaseIndexLock(memoryDir);
   const stillLocked = fs.existsSync(lock);
   report.check('M6 control: first holder acquired, second process took over the stale lock', first === true && takeover.stdout === 'true', `first=${first} takeover=${takeover.stdout} ${takeover.stderr.slice(0, 120)}`);
   report.check('M6 first holder releasing does not delete the second holder\'s lock', stillLocked === true, `lockExists=${stillLocked}`);
@@ -210,10 +212,10 @@ const setMtime = (file, ms) => fs.utimesSync(file, new Date(ms), new Date(ms));
   const tA = path.join(root, 'm15-A.jsonl');
   h.writeTranscript(tA, [h.userLine('Implement the A fixture change.', new Date(BASE).toISOString()), ...entries('A', 1, 2)]); check(project, A, tA);
   h.writeTranscript(tA, entries('A', 3, 3), true);
-  const utils = require('./utils');
-  const held = utils.acquireIndexLock(h.memoryPath(project));
+  const fileLock = require(LOCK_MODULE);
+  const held = fileLock.acquireIndexLock(h.memoryPath(project));
   h.runHook(root, 'counter.js', ['final'], { hook_event_name: 'SessionEnd', session_id: A, transcript_path: tA, reason: 'other' }, project);
-  utils.releaseIndexLock(h.memoryPath(project));
+  fileLock.releaseIndexLock(h.memoryPath(project));
   h.writeTranscript(tA, entries('A', 4, 4), true);
   check(project, A, tA);
   const counts = h.markerCounts(h.sessionL1Lines(project, A), 'A');
@@ -243,7 +245,7 @@ const setMtime = (file, ms) => fs.utimesSync(file, new Date(ms), new Date(ms));
   const old = new Date(Date.now() - 120000);
   fs.utimesSync(lock, old, old);
   const script = `const fs=require('fs');const real=fs.unlinkSync;fs.unlinkSync=p=>{if(String(p).endsWith('.memory-index.lock')){const e=new Error('EPERM');e.code='EPERM';throw e;}return real(p);};`
-    + `const u=require(${JSON.stringify(path.join(__dirname, 'utils.js'))});const t=Date.now();const ok=u.acquireIndexLock(${JSON.stringify(memoryDir)});process.stdout.write(JSON.stringify({ok,ms:Date.now()-t}));`;
+    + `const u=require(${JSON.stringify(LOCK_MODULE)});const t=Date.now();const ok=u.acquireIndexLock(${JSON.stringify(memoryDir)});process.stdout.write(JSON.stringify({ok,ms:Date.now()-t}));`;
   const started = Date.now();
   const child = spawnSync(process.execPath, ['-e', script], { encoding: 'utf8', timeout: 8000, env: h.hookEnv(project, root), windowsHide: true });
   let result = {};
@@ -267,8 +269,15 @@ const setMtime = (file, ms) => fs.utimesSync(file, new Date(ms), new Date(ms));
   const lockDir = h.memoryPath(lockProject);
   const exited = spawnSync(process.execPath, ['-e', 'process.stdout.write(String(process.pid))'], { encoding: 'utf8' });
   fs.writeFileSync(path.join(lockDir, '.memory-index.lock'), `${exited.stdout}:dead-owner`);
-  const contender = `const u=require(${JSON.stringify(path.join(__dirname, 'utils.js'))});const got=u.acquireIndexLock(${JSON.stringify(lockDir)});`
-    + `Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,600);process.stdout.write(JSON.stringify({got,still:got&&u.ownsIndexLock(${JSON.stringify(lockDir)})}));if(got)u.releaseIndexLock(${JSON.stringify(lockDir)});`;
+  // Each contender keeps what it got until both have tried, however far apart they start (a
+  // fixed 600 ms hold let a late second contender find the lock already released on a busy
+  // machine — D151_T007); the loser's wait for the lock ends within the lock's own wait time.
+  const barrier = path.join(lockDir, 'm11-tried');
+  fs.mkdirSync(barrier, { recursive: true });
+  const contender = `const fs=require('fs');const path=require('path');const u=require(${JSON.stringify(LOCK_MODULE)});const got=u.acquireIndexLock(${JSON.stringify(lockDir)});`
+    + `fs.writeFileSync(path.join(${JSON.stringify(barrier)},String(process.pid)),'');const until=Date.now()+15000;`
+    + `while(fs.readdirSync(${JSON.stringify(barrier)}).length<2&&Date.now()<until)Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,50);`
+    + `process.stdout.write(JSON.stringify({got,still:got&&u.ownsIndexLock(${JSON.stringify(lockDir)})}));if(got)u.releaseIndexLock(${JSON.stringify(lockDir)});`;
   const race = await Promise.all([0, 1].map(() => new Promise(resolve => {
     const child = require('child_process').spawn(process.execPath, ['-e', contender], { windowsHide: true });
     let out = '';

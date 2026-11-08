@@ -1,7 +1,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const { acquireFileLock, releaseFileLock } = require('../utils');
+const { acquireFileLock, releaseFileLock } = require('./file-lock');
 
 // Serializes read-modify-write of one state file across processes. Uses the same
 // owner-token lock as the memory index (dead or stale owners are taken over one

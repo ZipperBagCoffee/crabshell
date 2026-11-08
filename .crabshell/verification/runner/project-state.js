@@ -7,7 +7,8 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { runnerLayout } = require('./layout');
-const { exclusion, patternList, planRun } = require('./select');
+const { exclusion, patternList, planRun, reasonGroup } = require('./select');
+const { routineChoice } = require('./routine');
 const { expandEntries } = require('./manifest');
 const { takeSnapshot } = require('./snapshot');
 const { ignoredFolders } = require('./ignored');
@@ -45,6 +46,23 @@ function entryUpToDate(projectRoot, launcherDir, entryId, view = null) {
   if (!view.trusted || !record || !Array.isArray(record.passHistory) || record.passHistory.length === 0) return null;
   const plan = planRun({ entries: [entry], records: view.records, olderRecords: false, ctx: view.ctx, reuse: true });
   return plan.selected.length === 0 ? { entry, record, recordPath: mapPath(state.layout.manifestPath) } : null;
+}
+
+// D151_T002: the checks a routine --changed run would run now (heavy checks left out, as
+// that run leaves them), or null when the manifest cannot be read. A hook asks before a
+// commit whether the files to commit were checked.
+function pendingChecks(projectRoot, launcherDir, view = null) {
+  const state = projectState(projectRoot, launcherDir);
+  let entries;
+  try { entries = expandEntries(state.manifest, state.root).filter(entry => entry.type !== 'manual'); } catch (_) { return null; }
+  if (!entries.length) return [];
+  if (!view) view = selectionView({ projectRoot: state.root, layout: state.layout, manifestPath: state.layout.manifestPath, manifest: state.manifest });
+  const plan = planRun({ entries, records: view.records, olderRecords: view.olderRecords, ctx: view.ctx, reuse: true });
+  // The same routine choice as --changed (routine.js): heavy checks wait unless a risk path
+  // changed, quarantined flaky checks stay out.
+  const inputsChanged = id => Boolean(plan.reasons[id]) && reasonGroup(plan.reasons[id]) === 'with changed inputs';
+  return routineChoice({ entries, selected: plan.selected, records: view.records, manifest: state.manifest,
+    snapshot: view.snapshot, stateOf: () => null, inputsChanged }).selected;
 }
 
 // A missing or unreadable manifest leaves only the runner's own exclusions.
@@ -110,4 +128,4 @@ function isProjectInput(projectRoot, launcherDir, file, state = null) {
   return Boolean(rel) && !current.isExcluded(rel);
 }
 
-module.exports = { contentIdentity, entryUpToDate, isProjectInput, projectIdentity, projectState, selectionView };
+module.exports = { contentIdentity, entryUpToDate, isProjectInput, pendingChecks, projectIdentity, projectState, selectionView };

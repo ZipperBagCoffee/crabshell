@@ -3,7 +3,7 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const { getLastUserMessage } = require('../transcript-utils');
+const { getLastUserMessage } = require('./transcript');
 const { getStorageRoot, readJsonOrDefault, writeJson } = require('../utils');
 const { SESSION_STATE_MAX_AGE_MS } = require('../constants');
 const { classifyUserIntent } = require('./turn-intent');

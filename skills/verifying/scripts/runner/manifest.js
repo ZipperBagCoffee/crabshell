@@ -79,9 +79,11 @@ function validateRelativePaths(values, label) {
   }
 }
 
-// The optional settings of a manifest and of its entries, each with the kind of value it
-// takes. Validation reads these tables, and the verifying skill must document every name
-// in them (D145_T002), so a new setting is added here once.
+// The optional settings of an entry, each with the kind of value it takes (the manifest's
+// own run settings are in settings.js: they decide no result, so a new one does not change
+// the runner identity this module is part of). Validation reads these tables, and the
+// verifying skill must document every name in them (D145_T002), so a new setting is added
+// in one place.
 const SETTING_KINDS = {
   paths: { message: 'must be an array of repo-relative paths, folders or globs', valid: value => Array.isArray(value) && value.every(item => typeof item === 'string' && item.length > 0) },
   names: { message: 'must be an array of non-empty names', valid: value => Array.isArray(value) && value.every(item => typeof item === 'string' && item.length > 0) },
@@ -93,10 +95,6 @@ const SETTING_KINDS = {
   name: { message: 'must be a non-empty name', valid: value => typeof value === 'string' && value.length > 0 },
   // Read by the runner and documented, with checks of their own elsewhere.
   other: { message: '', valid: () => true },
-};
-const MANIFEST_SETTINGS = {
-  exclude: 'paths', wrappers: 'names', passHistory: 'count', jobs: 'count', retries: 'whole',
-  slowAfterSeconds: 'seconds', suggestAfterSeconds: 'seconds', memoryShare: 'share',
 };
 const ENTRY_SETTINGS = {
   inputs: 'paths', outputs: 'paths', slow: 'flag', exclusive: 'flag', group: 'name',
@@ -110,10 +108,6 @@ function validateSettings(object, settings, label, pathLabel) {
     if (!SETTING_KINDS[kind].valid(object[field])) throw new Error(`${label} ${field} ${SETTING_KINDS[kind].message}`);
     if (kind === 'paths') validateRelativePaths(object[field], `${pathLabel}.${field}`);
   }
-}
-
-function validateManifestSettings(manifest) {
-  validateSettings(manifest, MANIFEST_SETTINGS, 'manifest', 'manifest');
 }
 
 function validateEntry(entry) {
@@ -309,6 +303,6 @@ function selectEntries(manifest, targetId) {
 
 module.exports = {
   RUNNER_NODE, toPosix, isAbsolutePath, looksMachineAbsolute, resolveInside, validatePortableStrings, validateRelativePaths, validateStdoutAssertions, validateEntry,
-  validateManifestSettings, MANIFEST_SETTINGS, ENTRY_SETTINGS,
+  validateSettings, ENTRY_SETTINGS,
   globRegex, entryTestFile, expandEntries, selectEntries,
 };

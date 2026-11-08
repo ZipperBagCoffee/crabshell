@@ -117,7 +117,6 @@ test('7 Claude and Codex hotfix share direct-work scope and no count policy', ()
   assert.ok(!fs.existsSync(path.join(__dirname, '..', 'codex-skills', 'light-workflow')), 'codex light-workflow skill not retired');
   const active = claude + '\n' + codex + '\n' + WORKER_PROMPT_CONTRACT;
   assert.ok(!/1:1|10-20|3-5|80-100K|7-file|multiple WAs/i.test(active), 'fixed-count policy remains');
-  assert.ok(active.includes('claim / evidence / gap') || active.includes('claim, evidence from direct observation, and remaining gap'));
 });
 
 test('8 live corpus parser uses command event exit rather than response prose', () => {

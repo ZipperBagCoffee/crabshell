@@ -19,7 +19,7 @@ if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 const { readStdin } = require('./transcript-utils');
 const { getProjectDir, getStorageRoot, readJsonOrDefault } = require('./utils');
 const { REGRESSING_STATE_FILE } = require('./constants');
-const { getProjectMemoryPath } = require('./shared-context');
+const { getProjectMemoryPath } = require('./core/project-memory');
 
 // Caps for the active-docs listing (I083 R1 / D113): compaction happens when
 // context is scarcest, so this injection must stay bounded no matter how many

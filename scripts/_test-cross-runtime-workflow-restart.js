@@ -9,6 +9,8 @@ const { spawnSync } = require('child_process');
 const { buildWorkflowContext, validateWorkflowContext } = require('./core/workflow-context');
 const { validateSessionStartOutput } = require('./core/memory-context');
 const { validateContextOutput } = require('./core/first-turn-context');
+// The parallel work reminder follows the workflow block; its heading comes from the source.
+const REMINDER_HEADING = require('./inject-rules').DELEGATION_REMINDER.split('\n').find(line => line.startsWith('## '));
 
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'crabshell workflow restart '));
 const projectRoot = path.join(tempRoot, 'restart project');
@@ -94,7 +96,7 @@ function output(result, validator) {
 function workflowPart(context) {
   const start = context.indexOf('## Active Crabshell Workflow');
   if (start === -1) return '';
-  const endCandidates = ['\n## Delegation Check', '\n## Active Ticket Status', '\n## Relevant Memory'];
+  const endCandidates = [`\n${REMINDER_HEADING}`, '\n## Active Ticket Status', '\n## Relevant Memory'];
   const ends = endCandidates.map(marker => context.indexOf(marker, start + 1)).filter(index => index !== -1);
   return context.slice(start, ends.length > 0 ? Math.min(...ends) : context.length).trim();
 }

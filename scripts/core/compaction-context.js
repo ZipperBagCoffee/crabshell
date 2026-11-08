@@ -3,10 +3,11 @@
 const fs = require('fs');
 const path = require('path');
 const { getStorageRoot, readJsonOrDefault } = require('../utils');
-const { REGRESSING_STATE_FILE, DOC_TYPES } = require('../constants');
+const { REGRESSING_STATE_FILE } = require('../constants');
+const { DOC_TYPES } = require('./doc-types');
 const { isRegressingStale } = require('../regressing-state');
 const { buildMemoryContext } = require('./memory-context');
-const { getPostCompactWarning } = require('../shared-context');
+const { getPostCompactWarning } = require('./first-turn-context');
 const { readIndexRows } = require('./index-rows');
 
 const MAX_CONTEXT_CHARS = 9000;

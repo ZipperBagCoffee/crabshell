@@ -677,6 +677,26 @@
       "slow": true
     },
     {
+      "id": "V061",
+      "ia": "Four completion-evidence writers started at once all keep their results; the test starts its own parallel writers, so it runs alone (other checks' load pushed a writer past the state lock's wait — D151_T007)",
+      "type": "behavioral",
+      "command": {
+        "file": "node",
+        "args": [
+          "scripts/_test-native-result-evidence.js"
+        ]
+      },
+      "contract": {
+        "exitCode": 0,
+        "assertions": [],
+        "forbiddenChanges": [
+          ".crabshell/memory/logbook.md"
+        ]
+      },
+      "timeout": 180000,
+      "exclusive": true
+    },
+    {
       "id": "V059",
       "reuseExclude": [
         "scripts/_test-claude-native-install.js",
@@ -809,9 +829,7 @@
   ],
   "changed": {
     "global": [
-      "hooks/*.json",
-      "scripts/constants.js",
-      "scripts/utils.js"
+      "hooks/*.json"
     ]
   },
   "exclude": [

@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.157.0)
+# Crabshell Architecture (v21.158.0)
 
 ## Overview
 
@@ -15,7 +15,7 @@ Before claiming any result verified, Claude must:
 2. **Execute** — run code, trigger behavior, use tools
 3. **Compare** — prediction vs observation; the gap is where findings live
 
-Every verification item requires a P/O/G (Prediction/Observation/Gap) check. The chat report is `"M of N passed"` plus failed items — no table, no passing-item list, no raw observations (v21.115.0/.1, I085 — screen output only, verification depth unchanged). "File contains X" is never verification. "Can verify but didn't" is a violation.
+The document record holds, per acceptance criterion, the command run or file read, its output line, and pass/fail; a behavior claim is backed by an execution result, a structure claim by what was read (v21.158.0, replacing the Prediction/Observation/Gap table). The chat report is `"M of N passed"` plus failed items — no table, no passing-item list, no raw observations (v21.115.0/.1, I085 — screen output only, verification depth unchanged). "File contains X" is never verification. "Can verify but didn't" is a violation.
 
 Observation resolution levels (v21.2.0): L1 (direct execution) > L2 (indirect execution) > L3 (structural check) > L4 (claim without evidence, prohibited). L3 alone is insufficient when L1 is possible.
 
@@ -33,7 +33,7 @@ Two meta-principles guide Claude's approach to obstacles:
 
 ### Dual Injection Optimization
 - **CLAUDE.md** (compared at session start and on each execution prompt, rewritten when it differs; v21.155.0): Full RULES text (~940 tokens, 3.8KB measured v21.113.0 — compressed from ~2,530 tokens in I083 R3) synced via `syncRulesToClaudeMd()` with marker-based replacement
-- **additionalContext** (every prompt): compact turn contract + 10-line Rules Quick-Check (1,914 characters on a question prompt, measured v21.127.0, before v21.153.0 added two lines; the project description is no longer repeated per prompt — SessionStart loads it as the project overview, SubagentStart gives it to workers) — per-response 3-field ending and pressure texts retired
+- **additionalContext** (every prompt): compact turn contract + 11-line Rules Quick-Check (1,914 characters on a question prompt, measured v21.127.0, before v21.153.0 added two lines and v21.158.0 one; the project description is no longer repeated per prompt — SessionStart loads it as the project overview, SubagentStart gives it to workers) — per-response 3-field ending and pressure texts retired
 - **Error fallback**: FIRST_TURN_RULES injected via additionalContext only when the normal path throws an exception
 
 ## System Architecture
@@ -85,11 +85,11 @@ Two meta-principles guide Claude's approach to obstacles:
 |  |   regressing phase |  +--------------------------------------------+  |
 |  | - final: last L1   |                                                  |
 |  | - search-memory    |  +--------------------------------------------+  |
-|  | - generate-l3      |  | regressing-state.js                       |  |
+|  | - generate-l3      |  | regressing-state.js + core/regressing-*   |  |
 |  +--------------------+  | - getRegressingState()                    |  |
-|                          | - buildRegressingReminder()               |  |
-|  +--------------------+  | - detectRegressingSkillCall()             |  |
-|  | extract-delta.js   |  | - advancePhase() (planning→ticketing→    |  |
+|                          | - regressing-reminder: build reminder     |  |
+|  +--------------------+  | - regressing-phase: detect skill call,    |  |
+|  | extract-delta.js   |  |   advancePhase (planning→ticketing→      |  |
 |  | - extractDelta()   |  |   execution)                              |  |
 |  | - markMemoryUpdated|  +--------------------------------------------+  |
 |  | - cleanupDeltaTemp |                                                  |
@@ -108,7 +108,7 @@ Two meta-principles guide Claude's approach to obstacles:
 |                          | lint-obsidian.js   |  | migrate-obsidian.js|   |
 |  +--------------------+  | - 5-check linter  |  | - frontmatter+wiki |   |
 |  | shared-context.js  |  | - report output   |  | - --generate-moc   |   |
-|  | - readProjectConcept|  +-------------------+  | - --generate-digest|   |
+|  | - rule texts       |  +-------------------+  | - --generate-digest|   |
 |  +--------------------+                          +--------------------+   |
 +--------------------------------------------------------------------------+
           |                    |                    |
@@ -567,6 +567,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.158.0 | Checks sized to the change: one `run-verify.js --changed --slow` after the release's last edit replaces the `--no-reuse` full run; a hint for hand-run declared checks and a commit-time reminder (neither blocks); several check ids per run; side by side by default (`jobs`, `minFreeMemoryMB`, `startSpacingMs`); `riskPaths`, quarantine of flaky checks, a re-check of forbidden-file failures; `--replay N` estimates past commits from the records; `changed.global` no longer lists `scripts/constants.js`/`scripts/utils.js` and a folder a check only lists counts by its names; copy detector (`copyLiteralMinChars`); tests that copied rule and message wording rewritten; the VERIFICATION rules center on one sentence and a ticket records per criterion the command, its output line and pass/fail; the "Parallel Work Check" reminder and a per-prompt parallel line restore parallel work for independent parts; shared modules split into `scripts/core/` |
 | 21.157.0 | Before every answer the per-prompt checklist asks two questions — "Is this your best?" and "Is it simple and clear — only what the reader needs, nothing they must ask back about?" — and says to fix the answer before sending if either is no (before, it asked only the first, and only before handing over a result). |
 | 21.156.0 | Memory notices come once per turn and let a question be answered first: the pending-save and archive-summary notices go on a turn's first prompt only (queued messages and task reports of the same turn no longer repeat them); on a non-execution turn Claude answers first and runs the save in the same response, and a save skipped that way comes back on the next turn before other work; execution requests still save first; the notices no longer depend on the injection frequency and survive the hook's error fallback (`core/memory-notice.js`). |
 | 21.155.0 | CLAUDE.md follows the installed rules: its managed block is compared at every Claude session start and on every execution prompt and rewritten only when it differs (since 21.107.0 it was rewritten only on a session's first execution prompt, so updates could leave old rules in place); session start replaces only an existing marked block and creates nothing; the new text applies from the next session (Claude Code reads CLAUDE.md before session-start hooks run); a plugin's own source checkout is not rewritten by an installed copy at another path, and this repository's CLAUDE.md must match the source RULES (`_test-rules-and-injection.js` R10/R11). |

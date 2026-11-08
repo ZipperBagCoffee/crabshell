@@ -8,10 +8,11 @@ const {
   SESSIONS_DIR,
   INDEX_FILE,
   MEMORY_FILE,
-  SESSION_START_MAX_CHARS,
-  DOC_TYPES,
 } = require('../constants');
-const { getPostCompactWarning, getProjectMemoryPath } = require('../shared-context');
+const { SESSION_START_MAX_CHARS } = require('./memory-budgets');
+const { DOC_TYPES } = require('./doc-types');
+const { getPostCompactWarning } = require('./first-turn-context');
+const { getProjectMemoryPath } = require('./project-memory');
 const { buildWorkflowContext } = require('./workflow-context');
 const { readIndexRows } = require('./index-rows');
 

@@ -38,48 +38,28 @@ Excluded: {excluded}
 
 ## Ticket Execution
 
-The parent owns implementation, decisive verification, and completion. Delegation is optional and bounded by independent value or material risk.
+The parent owns implementation, decisive verification, the final diff, completion and each worker's brief. Independent parts go to parallel workers by default.
 
 ### Step A: Parent — Execution
 - Execute tasks according to the plan (P)
-- **Scope Note (from project RULES):** Conciseness applies to communication style, not to verification steps. P/O/G tables and evidence citations are required work product, not verbose output. Evidence IS the answer — "verified" without tool output is not verification. Fill Prediction before looking; fill Observation only from tool output.
 - Record results for each work item
 - **Document-first rule:** Write execution results to `## Execution Results` in the T document FIRST using Write/Edit tool. After the document is updated, provide a brief summary to the user. The document update is the primary output; the conversation summary is secondary.
 
-**Optional bounded delegation:**
-- Delegate only independent work whose risk or latency benefit justifies it.
+**Parallel workers:**
+- Parts that touch different files and need no result from each other go to parallel workers.
 - Every prompt names the exact task, non-goals, authoritative references, allowed scope, expected observation, and verification command.
 - Delegates do not fan out. Agent count is never progress or completion evidence.
 
 ### Step B: Parent Verification + Optional Independent Review
 - The parent runs the ticket's direct verification regardless of delegation.
+- **Record in `## Verification Results`:** for each acceptance criterion, the command run (or the file read), its output line, and pass/fail. A behavior claim is backed by an execution result, a structure claim by what was read.
 - Use independent review when change risk, shared contracts, security, data loss, or user-visible behavior warrants it. Reviewer count never follows worker count.
-- **Independence Protocol:** When review is used, the prompt MUST NOT include implementation conclusions as its observation source. Provide the ticket Acceptance Criteria and Verification sections plus the P/O/G template. The parent records each finding and what it did about it.
+- **Independence Protocol:** When review is used, the prompt MUST NOT include implementation conclusions as its observation source. Provide the ticket Acceptance Criteria and Verification sections and ask for the same record (command or file read, output line, pass/fail per criterion). The parent records each finding and what it did about it.
 - **Deletion Check (MANDATORY first step):** Run `git diff` (or `git diff HEAD` if changes are staged/committed) on all modified files BEFORE any other verification. Scan deleted lines — any function, class, or export that disappeared without being mentioned in the ticket Acceptance Criteria is a finding. Unintended deletion of existing code = automatic FAIL. If diff is empty (new files only, or already committed), use an available baseline diff. If no diff is obtainable, state "Deletion Check: N/A — {reason}" and proceed.
 - Verify runtime behavior of each work item (trigger → path → result)
-- **Scope Note (from project RULES):** Conciseness applies to communication style, not to verification steps. P/O/G tables and evidence citations are required work product, not verbose output. Evidence IS the answer — "verified" without tool output is not verification. Fill Prediction before looking; fill Observation only from tool output.
-- **Any independent review prompt MUST include this verification context and output template:**
-  ```
-  Verification = closing the gap between belief and reality through observation.
-  Fill Prediction BEFORE looking at the code. Fill Observation ONLY from tool output.
-  The Gap column is where real findings live — if Gap is always "none", you are confirming, not verifying.
-
-  For each verification item, provide ALL fields:
-  | Item | Type | Prediction (before observation) | Observation (tool output required) | Gap |
-  |------|------|-------------------------------|-----------------------------------|-----|
-
-  Type: `behavioral` = runtime execution observed (ran command, triggered feature, checked output)
-  Type: `structural` = static check (grep, file read, code inspection)
-
-  Rules:
-  - Observation MUST include tool output (Bash execution, Read result, diff, etc.)
-  - If Prediction and Observation are identical text → INVALID (no actual observation occurred)
-  - If direct execution is impossible: state "Indirect: {method}" + why direct is impossible
-  - Empty Observation or Gap fields → entire verification is INVALID
-  ```
 - Confirm changes do not break existing functionality (the Deletion Check above — `git diff` — enforces this)
 - Confirm edge case and exception handling
-- **Check run — once, after the ticket's last edit:** if `.crabshell/verification/manifest.json` exists, run `node .crabshell/verification/run-verify.js --changed` (or the project's equivalent) once and record the command and its result line; with no manifest, invoke `/verifying` to create one, then run it; a project with nothing executable records "Verification tool N/A: {reason}". The runner reuses passes whose inputs did not change; do not run it again on unchanged files.
+- **Check run — once, after the discussion's last edit, before the commit:** with several tickets, the last one runs it and an earlier ticket records that it waits for that run; while editing, run only the test of the part being written, by name through the runner (`node .crabshell/verification/run-verify.js <id>`) so its pass is kept. If `.crabshell/verification/manifest.json` exists, run `node .crabshell/verification/run-verify.js --changed` (or the project's equivalent) once and record the command and its result line; with no manifest, invoke `/verifying` to create one, then run it; a project with nothing executable records "Verification tool N/A: {reason}". The runner reuses passes whose inputs did not change; do not run it again on unchanged files.
 - **Document-first rule:** Write verification results to `## Verification Results` in the T document FIRST using Write/Edit tool. After the document is updated, provide a brief summary to the user. The document update is the primary output; the conversation summary is secondary.
 
 ### Step B.5: Multiple Independent Reviews (when useful)
@@ -89,22 +69,14 @@ The parent owns implementation, decisive verification, and completion. Delegatio
 ### Step C: Parent — Final Verification
 **Performed by:** The parent — reads direct execution evidence and any optional independent findings, then evaluates independently.
 - **Document-first rule:** Write your evaluation to `## Final Verification` in the T document FIRST using Write/Edit tool. After the document is updated, provide a brief summary to the user. The document update is the primary output; the conversation summary is secondary.
-- Read the recorded evidence (the check run's result, the P/O/G observations); a worker's or reviewer's claim is not completion evidence. Observe again only what changed after it was observed.
-- Catch cases where "verification was claimed but not actually performed"
+- Read the recorded evidence (the check run's result line, each criterion's command and output line); a worker's or reviewer's claim is not completion evidence. Observe again only what changed after it was observed.
 - **Intent Fidelity (BLOCKING — the result against the discussion):** Before the 4-factor evaluation, write `## Intent Fidelity`: one row per discussion item this ticket touches — each IA item and each Plan decision in its Implementation Details:
   ```
   | Discussion item (IA-n / Plan decision) | Result | Deviation (none/partial/departed) | Evidence | Reason / user approval |
   |---|---|---|---|---|
   ```
   Evidence is tool output or a file/line, as in Verification Results. A row marked departed without the user's approval means the ticket is not verified: fix the result, or ask the user and record their answer. In regressing, every partial or departed row goes into Next Direction. The log guard blocks `verified` while this section still holds its placeholder.
-- **Evidence Gate (BLOCKING — check BEFORE evaluating content):**
-  Agents can generate text that looks like verification without actual observation. Apply this gate to parent and delegated evidence alike.
-  □ Does each verification item have Prediction, Observation, AND Gap fields?
-  □ Does Observation contain tool output evidence? (for directly-executable items)
-  □ Is Prediction ≠ Observation? (copy detection)
-  □ For indirect verification: is the reason stated?
-  □ Does at least 1 verification item have Type = behavioral? (structural-only = insufficient for runtime features)
-  → If ANY check fails: reject that evidence and observe it once — run it, or read its saved result.
+- **Evidence (BLOCKING — before evaluating content):** each criterion has its Step B record — the parent's and a worker's alike. A criterion without one (verification claimed but not performed) is observed once — run it, or read its saved result — before it counts.
 - 4-factor evaluation:
   1. **Correctness**: Was it done correctly? Cite specific evidence (command output, observed behavior).
   2. **Coherence**: Do the changes work together as a whole? Individual ACs may each pass, but the combined result may have inconsistencies, contradictions, or integration gaps. The Orchestrator MUST verify that the parts form a coherent whole — not just that each part individually passes. (If only 1 AC exists, state "Single AC — coherence N/A" with brief justification.)
@@ -130,7 +102,7 @@ The parent owns implementation, decisive verification, and completion. Delegatio
 (placeholder — parent writes implementation evidence here)
 
 ## Verification Results
-(placeholder — parent writes direct P/O/G evidence; append optional independent findings when used)
+(placeholder — per acceptance criterion: the command run or file read, its output line, pass/fail; append optional independent findings when used)
 
 ## Reader Check
 (placeholder — person check: who used or read the result and what they did, or "not confirmed"; correction sweep: the user's words, defect type, same defect in N places, fixed, left, or "none")

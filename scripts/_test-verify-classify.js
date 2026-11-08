@@ -109,16 +109,18 @@ assert('case14-data-drift-order', classify('FAIL:count_drift=expected 5 got 3', 
 
   function assertParsed(label, argv, expected) {
     const actual = parseArgs(argv);
-    assertBool(label + '-targetId', actual.targetId === expected.targetId, true);
+    // D151_T001 contract change: entry ids are a list (several ids in one call).
+    assertBool(label + '-targetIds', JSON.stringify(actual.targetIds) === JSON.stringify(expected.targetIds), true);
     assertBool(label + '-flat', actual.flat === expected.flat, true);
     assertBool(label + '-error', actual.error === expected.error, true);
   }
 
-  assertParsed('case15-f-flag', ['-f'], { targetId: null, flat: true, error: null });
-  assertParsed('case15-flat-flag', ['--flat'], { targetId: null, flat: true, error: null });
-  assertParsed('case15-target-only', ['AC-D109-1'], { targetId: 'AC-D109-1', flat: false, error: null });
-  assertParsed('case15-flat-before-target', ['--flat', 'AC-D109-1'], { targetId: 'AC-D109-1', flat: true, error: null });
-  assertParsed('case15-flat-after-target', ['AC-D109-1', '--flat'], { targetId: 'AC-D109-1', flat: true, error: null });
+  assertParsed('case15-f-flag', ['-f'], { targetIds: [], flat: true, error: null });
+  assertParsed('case15-flat-flag', ['--flat'], { targetIds: [], flat: true, error: null });
+  assertParsed('case15-target-only', ['AC-D109-1'], { targetIds: ['AC-D109-1'], flat: false, error: null });
+  assertParsed('case15-flat-before-target', ['--flat', 'AC-D109-1'], { targetIds: ['AC-D109-1'], flat: true, error: null });
+  assertParsed('case15-flat-after-target', ['AC-D109-1', '--flat'], { targetIds: ['AC-D109-1'], flat: true, error: null });
+  assertParsed('case15-two-targets', ['AC-D109-1', '--flat', 'AC-D109-2'], { targetIds: ['AC-D109-1', 'AC-D109-2'], flat: true, error: null });
 
   const badFlag = parseArgs(['--bad']);
   assertBool('case15-unknown-flag', typeof badFlag.error === 'string' && badFlag.error.includes('--bad'), true);

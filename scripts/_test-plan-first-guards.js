@@ -4,13 +4,13 @@
 // result is compared with the discussion (Intent Fidelity). Runs the docs guard,
 // the log guard and the Codex document tool on temp projects.
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const h = require('./testlib/hook-harness');
 
 const report = h.createReporter('plan-first-guards');
-const base = fs.mkdtempSync(path.join(os.tmpdir(), 'plan-first-guards-'));
+// The harness work root is removed on exit, with every project made under it.
+const base = h.makeWorkRoot('plan-first-guards');
 const CRAB = '.crabshell';
 
 function project(name, discussion) {

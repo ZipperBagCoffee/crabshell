@@ -39,6 +39,15 @@ const CHECKS = [
   },
   { name: 'completion-controller', accepts: isShellCall, when: allowed, run: controllerResult },
   {
+    // D151_T002: before a commit, one line when files changed since the checks last passed.
+    name: 'commit-reminder',
+    accepts: isShellCall,
+    run: (payload, projectDir) => {
+      const text = require('../../core/commit-reminder').commitReminder(payload, projectDir);
+      return text ? { context: text } : null;
+    },
+  },
+  {
     name: 'path-guard',
     accepts: shellOrWrite,
     run: (payload, projectDir) => {

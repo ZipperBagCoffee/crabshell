@@ -6,25 +6,36 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const { runnerLayout } = require('./layout');
+const { runnerLayout, MODULE_DIR, DECISION_MODULES } = require('./layout');
 const { parseArgs } = require('./args');
-const { toPosix, validateEntry, validateManifestSettings, entryTestFile, expandEntries } = require('./manifest');
+const { toPosix, validateEntry, entryTestFile, expandEntries } = require('./manifest');
+const { validateManifestSettings } = require('./settings');
+const { copyNotices } = require('./test-hygiene');
 const { hashBuffer, runsOnRunnerNode } = require('./fingerprint');
-const { TRACER_SOURCE, insideRoot, readTrace, readChildren, incompleteChildren, contractPaths } = require('./trace');
+const { TRACER_SOURCE, insideRoot, readTrace, readDeep, filesUnder, readChildren, incompleteChildren, contractPaths } = require('./trace');
 const { mapPath, writeMap } = require('./store');
 const { selectionView } = require('./project-state');
-const { patternList, inputPatterns, matchesInput, filesMatching, inputSet, fingerprintOf, planRun, gitChangedFiles, isSlow, medianDuration, declarationKey, crabshellState, DECISION_CHANGED } = require('./select');
+const { patternList, inputPatterns, matchesInput, filesMatching, inputSet, fingerprintOf, planRun, gitChangedFiles, medianDuration, declarationKey, crabshellState, DECISION_CHANGED, currentHead, reasonGroup } = require('./select');
+const { routineChoice, quarantineMark, markHolds } = require('./routine');
+const { forbiddenOnly, recheckForbidden, clearedNotice } = require('./recheck');
 const { runEntry, runEntryAsync } = require('./execute');
-const { runInOrder, runSideBySide } = require('./schedule');
+const { runInOrder, runSideBySide, defaultJobs, runsAlone } = require('./schedule');
+const { commitChanges, replay, replayLines } = require('./replay');
 const { failBeforeTargets, failBeforeExemptions, matchingExemption, failBeforeChecks } = require('./fail-before');
 const { printResults } = require('./output');
 const { classify } = require('./classify');
 
 const DEFAULT_PASS_HISTORY = 10;
-// A failure on inputs a check passed with runs once more by default (Rare); side-by-side
-// runs stay within two thirds of memory by default (Bazel's local resource share).
+// A failure on inputs a check passed with runs once more by default (Rare).
 const DEFAULT_RETRIES = 1;
-const DEFAULT_MEMORY_SHARE = 0.67;
+// Side by side (D151_T001): a further check starts only while this much memory is free —
+// free memory, not the machine's usage share, because other programs on a shared machine
+// would otherwise hold every run to one at a time. A manifest `memoryShare` still applies.
+const DEFAULT_MIN_FREE_MEMORY_MB = 2048;
+// Pause between two starts, so the memory a started check takes is seen before the next.
+const DEFAULT_START_SPACING_MS = 250;
+// Runs kept in the record map (for the count of runs since the last commit).
+const RUN_LOG_LIMIT = 50;
 
 // Continue with fn once a value is ready: now, or when its promise settles.
 const then = (value, fn) => (value && typeof value.then === 'function' ? value.then(fn) : fn(value));
@@ -46,7 +57,8 @@ function main(argv = process.argv.slice(2), options = {}) {
   const projectRoot = path.resolve(options.projectRoot || process.env.PROJECT_ROOT || layout.defaultProjectRoot);
   const running = process.env.CRABSHELL_VERIFY_RUNNING;
   const nested = running === '1' || (Boolean(running) && path.resolve(running).toLowerCase() === projectRoot.toLowerCase());
-  if (nested && !args.targetId && !args.dryRun) {
+  const named = args.targetIds.length > 0;
+  if (nested && !named && !args.dryRun) {
     return failRunner('RUNNER_RECURSION', 'Nested full-manifest verification is blocked. Pass an explicit entry id.');
   }
   const manifestPath = options.manifestPath || layout.manifestPath;
@@ -64,12 +76,30 @@ function main(argv = process.argv.slice(2), options = {}) {
     return failRunner('RUNNER_DISCOVERY', error.message);
   }
   if (args.files) console.error('[VERIFY] --files is no longer used: checks are chosen by the content of their inputs.');
-  if (args.targetId && !expanded.some(entry => entry.id === args.targetId)) return failRunner('RUNNER_TARGET', `Unknown entry id: ${args.targetId}`);
+  const unknownIds = args.targetIds.filter(id => !expanded.some(entry => entry.id === id));
+  if (unknownIds.length) return failRunner('RUNNER_TARGET', `Unknown entry id: ${unknownIds.join(', ')}`);
 
   // Records of this schema (an older map counts as none: every check runs once), the
   // snapshot and the selection context — built by project-state, as for the hooks.
   const { previousMap, records: previousRecords, olderRecords, snapshot, ctx } = selectionView({ projectRoot, layout, manifestPath, manifest });
   const runnable = expanded.filter(entry => entry.type !== 'manual');
+  // D151_T001: side by side by default. With no `jobs` setting only recorded traced Node
+  // checks share the machine; any other check (a first run, declared inputs, another
+  // program such as a game engine that may share a cache) runs alone unless its entry says
+  // `exclusive: false`. A manifest that sets `jobs` keeps the older rule: every check may share.
+  const jobsDeclared = Number.isInteger(manifest.jobs);
+  const jobs = jobsDeclared ? manifest.jobs : defaultJobs();
+  // D151: --replay N estimates past commits' routine runs from the records; nothing runs.
+  if (args.replay) {
+    const moduleDir = path.join(path.dirname(layout.launcherFile), MODULE_DIR);
+    const decisionFiles = DECISION_MODULES.map(name => insideRoot(projectRoot, path.join(moduleDir, name))).filter(Boolean);
+    let commits;
+    try { commits = commitChanges(projectRoot, args.replay); } catch (error) { return failRunner('RUNNER_REPLAY', error.message); }
+    const rows = replay({ commits, entries: runnable, records: previousRecords, manifest, jobs, decisionFiles,
+      isExclusive: entry => runsAlone(entry, previousRecords[entry.id], jobsDeclared) });
+    console.log(args.json ? JSON.stringify(rows) : replayLines(rows, jobs).join('\n'));
+    return 0;
+  }
   const planned = planRun({ entries: runnable, records: previousRecords, olderRecords, ctx, reuse: args.reuse });
   const total = runnable.length;
 
@@ -88,8 +118,8 @@ function main(argv = process.argv.slice(2), options = {}) {
 
   let entries;
   let plan = null;
-  if (args.targetId) {
-    entries = expanded.filter(entry => entry.id === args.targetId);
+  if (named) {
+    entries = expanded.filter(entry => args.targetIds.includes(entry.id));
   } else if (args.changed) {
     const chosen = new Set(planned.selected);
     // A changed test compared with HEAD always gets a real execution.
@@ -98,19 +128,17 @@ function main(argv = process.argv.slice(2), options = {}) {
     // D143: heavy checks (declared slow, or a median pass time over slowAfterSeconds)
     // stay out of routine --changed runs; --slow, an entry id argument or a full run includes them. Each
     // is named with whether its inputs changed, how often it ran and when it last failed.
+    // D151_T006 (routine.js): a changed file under `riskPaths` brings in the heavy checks whose
+    // inputs changed, and quarantined flaky checks are left out and named.
+    const inputsChanged = id => Boolean(planned.reasons[id]) && reasonGroup(planned.reasons[id]) === 'with changed inputs';
     const slowState = id => {
       if (!planned.reasons[id]) return 'unchanged';
       const group = reasonGroup(planned.reasons[id]);
       return group === 'with changed inputs' ? 'inputs changed' : group;
     };
     if (!args.slow) {
-      const heavy = runnable.filter(entry => isSlow(entry, previousRecords[entry.id], manifest));
-      const heavyIds = new Set(heavy.map(entry => entry.id));
-      plan.slowSkipped = heavy.map(entry => entry.id);
-      plan.slowStates = Object.fromEntries(heavy.map(entry => [entry.id, slowState(entry.id)]));
-      plan.slowHistory = heavy.map(entry => ({ id: entry.id, runs: (previousRecords[entry.id] || {}).runs || 0, lastFailure: (previousRecords[entry.id] || {}).lastFailure || null }));
+      Object.assign(plan, routineChoice({ entries: runnable, selected: plan.selected, records: previousRecords, manifest, snapshot, stateOf: slowState, inputsChanged }));
       plan.slowCommand = `node ${insideRoot(projectRoot, layout.launcherFile) || layout.launcherFile} --slow`;
-      plan.selected = plan.selected.filter(id => !heavyIds.has(id));
     }
     const keep = new Set(plan.selected);
     entries = runnable.filter(entry => keep.has(entry.id));
@@ -120,14 +148,14 @@ function main(argv = process.argv.slice(2), options = {}) {
   const reusable = new Set(planned.reused);
   const selectedIndex = new Map(entries.map((entry, index) => [entry.id, index]));
   const coveringIndex = entry => {
-    if (!args.reuse || args.targetId || entry.type === 'manual' || entry.discoveryError || comparedWithHead(entry)) return undefined;
+    if (!args.reuse || named || entry.type === 'manual' || entry.discoveryError || comparedWithHead(entry)) return undefined;
     const record = previousRecords[entry.id];
     if (!record || record.lastFailedAt || !Array.isArray(record.files) || record.files.length === 0) return undefined;
     // Covering must not hide an invalid contract that ordinary execution rejects.
     try { validateEntry(entry); } catch (_) { return undefined; }
     return selectedIndex.get(entry.coveredBy);
   };
-  const canReuse = entry => args.reuse && !args.targetId && reusable.has(entry.id) && !comparedWithHead(entry);
+  const canReuse = entry => args.reuse && !named && reusable.has(entry.id) && !comparedWithHead(entry);
   const executionOrder = [];
   const ordered = new Set();
   const order = index => {
@@ -155,7 +183,7 @@ function main(argv = process.argv.slice(2), options = {}) {
   runOrder.forEach(index => order(index));
 
   if (args.dryRun) {
-    if (!plan) plan = { mode: args.targetId ? 'id' : 'full', selected: entries.filter(entry => !canReuse(entry)).map(entry => entry.id), total, reasons: planned.reasons };
+    if (!plan) plan = { mode: named ? 'id' : 'full', selected: entries.filter(entry => !canReuse(entry)).map(entry => entry.id), total, reasons: planned.reasons };
     let estimatedMs = 0;
     // Checks that would run with no recorded time add nothing to the estimate; they are
     // counted so the estimate does not read as the whole run (D143_T006).
@@ -215,9 +243,11 @@ function main(argv = process.argv.slice(2), options = {}) {
     if (args.explain) {
       if (plan.selected.length) console.log(`Estimated ${plan.estimatedSeconds}s${runWithoutTime ? ` for the checks with a recorded time; ${plan.estimateNote.replace(' and are not in estimatedSeconds', '')}` : ''}.`);
       // One line per check a --changed run would run: its id and the first reason.
-      const lines = plan.selected.map(id => `${id}: ${planned.reasons[id] || 'selected'}`);
+      const risky = new Set(plan.riskIncluded ? plan.riskIncluded.ids : []);
+      const lines = plan.selected.map(id => `${id}: ${planned.reasons[id] || 'selected'}${risky.has(id) ? `; heavy, runs because ${plan.riskIncluded.file} changed (riskPaths)` : ''}`);
       console.log(lines.length ? lines.join('\n') : 'No check would run for the current changes.');
       if (plan.slowSkipped && plan.slowSkipped.length) console.log(`Slow checks left to --slow: ${plan.slowSkipped.map(id => `${id} (${plan.slowStates[id]})`).join(', ')}`);
+      if (plan.quarantined && plan.quarantined.length) console.log(`Left out as flaky: ${plan.quarantined.map(item => `${item.id} (until ${item.test} changes)`).join(', ')}`);
       if (plan.selected.some(id => planned.reasons[id] === DECISION_CHANGED)) console.log("The runner's decision code changed: every non-slow check runs once; slow checks wait for --slow.");
       return 0;
     }
@@ -240,8 +270,12 @@ function main(argv = process.argv.slice(2), options = {}) {
   const generated = new Set([mapPath(manifestPath), layout.resultsPath].map(file => insideRoot(projectRoot, file)));
   const historyLimit = Number.isInteger(manifest.passHistory) ? manifest.passHistory : DEFAULT_PASS_HISTORY;
   const retries = Number.isInteger(manifest.retries) ? manifest.retries : DEFAULT_RETRIES;
-  const jobs = Number.isInteger(manifest.jobs) ? manifest.jobs : 1;
-  const memoryShare = typeof manifest.memoryShare === 'number' ? manifest.memoryShare : DEFAULT_MEMORY_SHARE;
+  const minFreeMemoryMB = typeof manifest.minFreeMemoryMB === 'number' ? manifest.minFreeMemoryMB : DEFAULT_MIN_FREE_MEMORY_MB;
+  const memoryShare = typeof manifest.memoryShare === 'number' ? manifest.memoryShare : null;
+  const startSpacingMs = typeof manifest.startSpacingMs === 'number' ? manifest.startSpacingMs : DEFAULT_START_SPACING_MS;
+  const memoryAllows = () => os.freemem() / (1024 * 1024) >= minFreeMemoryMB
+    && (memoryShare === null || 1 - os.freemem() / os.totalmem() <= memoryShare);
+  const isExclusive = index => runsAlone(entries[index], previousRecords[entries[index].id], jobsDeclared);
   const notices = [...earlyNotices];
   const distrusted = new Set();
   // A covered or reused check needs no run.
@@ -280,6 +314,13 @@ function main(argv = process.argv.slice(2), options = {}) {
     }
     const retriable = Boolean(before) && previous.passHistory.includes(before);
     const step = (attempt, firstFailure) => then(runFn(traceFor(entry, index, attempt)), result => {
+      // D151_T006 (recheck.js): a failure that is only a forbidden-file change runs once
+      // more, in place of a retry; its outcome is never a flaky verdict.
+      const forbidden = forbiddenOnly(entry, result);
+      if (forbidden.length) {
+        return then(recheckForbidden({ entry, projectRoot, failure: result, files: forbidden, run: () => runFn(traceFor(entry, index, attempt + 1)) }),
+          ({ result: settled, cleared }) => ({ result: settled, runs: attempt + 2, firstFailure, trace: traceFor(entry, index, cleared ? attempt + 1 : attempt), retriable, cleared }));
+      }
       if (result.status === 'FAIL' && retriable && attempt < retries) return step(attempt + 1, firstFailure || result);
       return { result, runs: attempt + 1, firstFailure, trace: traceFor(entry, index, attempt), retriable };
     });
@@ -297,7 +338,12 @@ function main(argv = process.argv.slice(2), options = {}) {
       // saw everything: a started program that works in the project unseen makes the
       // whole project its input.
       const outputs = patternList(entry.outputs);
-      const files = new Set([...readTrace(trace.file, projectRoot), ...contractPaths(entry), ...filesMatching(inputPatterns(entry), snapshot)]);
+      // A folder it copied or listed recursively stands for every file under it; one it only
+      // listed or probed, for its names (D151_T007) — `folders: 'names'` marks the format.
+      const deepFolders = [...readDeep(trace.file, projectRoot)].filter(item => item.endsWith('/'));
+      const files = new Set([...readTrace(trace.file, projectRoot), ...filesUnder(deepFolders, () => snapshot.list()),
+        ...contractPaths(entry), ...filesMatching(inputPatterns(entry), snapshot)]);
+      record.folders = 'names';
       record.files = [...files].filter(file => !generated.has(file) && !outputs.some(pattern => matchesInput(pattern, file))).sort();
       const incomplete = incompleteChildren(readChildren(trace.file), projectRoot);
       record.kind = record.files.length > 0 && incomplete.length === 0 ? 'traced' : 'project';
@@ -320,9 +366,17 @@ function main(argv = process.argv.slice(2), options = {}) {
     else if (previous.lastFailure) record.lastFailure = previous.lastFailure;
     // A distrust of declared inputs holds until the declaration changes.
     if (previous.inputsDistrusted && previous.inputsDistrusted === declarationKey(entry)) record.inputsDistrusted = previous.inputsDistrusted;
+    // A quarantine (routine.js) holds until the test file changes.
+    if (markHolds(previous.quarantine, test, snapshot)) record.quarantine = previous.quarantine;
     if (outcome.firstFailure && result.status === 'PASS') {
       result.flaky = true;
-      notices.push(`Flaky: ${entry.id} failed and then passed on the same inputs.`);
+      const mark = quarantineMark(test, snapshot);
+      if (mark) record.quarantine = mark;
+      notices.push(`Flaky: ${entry.id} failed and then passed on the same inputs.${mark ? ` It is left out of --changed runs until ${test} changes.` : ''}`);
+    }
+    if (outcome.cleared && result.status === 'PASS') {
+      result.forbiddenRechecked = outcome.cleared;
+      notices.push(clearedNotice(entry.id, outcome.cleared));
     }
     if (outcome.retriable && outcome.runs > 1 && result.status === 'FAIL' && record.kind === 'declared' && inputPatterns(entry).length > 0) {
       record.inputsDistrusted = declarationKey(entry);
@@ -387,12 +441,12 @@ function main(argv = process.argv.slice(2), options = {}) {
   };
   // D143 §4: `jobs` above 1 runs checks side by side (schedule.js); otherwise one at a time.
   const scheduled = jobs > 1
-    ? runSideBySide({ order: executionOrder, entries, after, jobs, memoryShare,
+    ? runSideBySide({ order: executionOrder, entries, after, jobs, memoryAllows, isExclusive, startSpacingMs,
       waitsFor: index => coveringIndex(entries[index]),
       start: index => startOne(index, trace => runEntryAsync(entries[index], { projectRoot, trace })) })
     : runInOrder({ order: executionOrder, after, start: index => startOne(index, trace => runEntry(entries[index], { projectRoot, trace })) });
   const conclude = () => {
-  const failBefore = args.failBefore && !args.targetId
+  const failBefore = args.failBefore && !named
     ? failBeforeChecks({ entries, results, records, changedFiles: changedList, expanded, projectRoot, manifestPath, layout })
     : [];
   const checkFailedIds = new Set(results.filter(result => result && result.status === 'FAIL').map(result => result.id));
@@ -458,7 +512,14 @@ function main(argv = process.argv.slice(2), options = {}) {
     record.passHistory = [pass.fingerprint, ...(record.passHistory || []).filter(key => key !== pass.fingerprint)].slice(0, historyLimit);
     record.passedAt = new Date().toISOString();
   }
-  writeMap({ manifestPath, startedAt, snapshot: snapshot.serialize(), records, ids: expanded.map(entry => entry.id) });
+  // D151_T002: one line per run — the commit it ran on, checks run, milliseconds — so
+  // runs repeated on work in progress show as a count (a guard run is not counted).
+  const head = args.guardRun ? null : currentHead(projectRoot);
+  const runs = previousMap && Array.isArray(previousMap.runs) ? [...previousMap.runs] : [];
+  if (!args.guardRun) runs.push({ head, at: startedAt, ran: entries.length, ms: Math.round(Number(process.hrtime.bigint() - started) / 1e6) });
+  const runsSinceCommit = head ? runs.filter(item => item.head === head).length : 0;
+  const runLine = runsSinceCommit ? `Check run ${runsSinceCommit} since the last commit${runsSinceCommit > 1 ? ' — run checks once, after the last edit, before committing' : ''}.` : null;
+  writeMap({ manifestPath, startedAt, snapshot: snapshot.serialize(), records, ids: expanded.map(entry => entry.id), runs: runs.slice(-RUN_LOG_LIMIT) });
   if (failedIds.size) console.error(`[VERIFY] ${failedIds.size} failed check(s) will run again on the next --changed: ${[...failedIds].join(', ')}`);
   if (traceDir) { try { fs.rmSync(traceDir, { recursive: true, force: true }); } catch (_) {} }
   if (plan) {
@@ -480,22 +541,21 @@ function main(argv = process.argv.slice(2), options = {}) {
     const stateFile = (records[result.id].files || []).find(file => !file.endsWith('/') && isState(file));
     if (stateFile) notices.push(`${result.id} read Crabshell state ${stateFile} — give it a temporary project so the state does not rerun it.`);
   }
+  // D151_T004: a changed test that ran and holds its inputs' text word for word is named.
+  const ranTests = results.filter(result => result && !result.reused && !result.coveredBy && result.status !== 'NOT_RUN'
+    && records[result.id] && records[result.id].test).map(result => result.id);
+  if (ranTests.length) {
+    notices.push(...copyNotices({ ran: ranTests, records, changed: snapshot.changedFiles(), minChars: manifest.copyLiteralMinChars,
+      read: file => fs.readFileSync(path.join(projectRoot, file), 'utf8') }));
+  }
   if (blockedBy.size) {
     const files = [...blockedBy].sort();
     notices.push(`Inputs written while checks ran (their passes were not recorded): ${files.slice(0, 5).join(', ')}${files.length > 5 ? `, … (${files.length})` : ''} — if a check writes them, declare them in its "outputs".`);
   }
   results.push(...failBefore);
-  return printResults(results, { args, started, resultsPath: layout.resultsPath, plan, selected: entries.length, failBefore, stoppedAt, notRun, stillFailing, notices });
+  return printResults(results, { args, started, resultsPath: layout.resultsPath, plan, selected: entries.length, failBefore, stoppedAt, notRun, stillFailing, notices, runLine });
   };
   return then(scheduled, conclude);
-}
-
-// The kind of reason a check was chosen for.
-function reasonGroup(reason) {
-  if (reason === DECISION_CHANGED) return 'after a runner change';
-  return / changed( \(unknown inputs\))?$| is no longer an input$|^entry, program or runner changed$/.test(reason) ? 'with changed inputs'
-    : reason === 'new check' ? 'new' : reason === 'failed in the last run' ? 'failed last time'
-      : reason === 'record from an older runner' ? 'recorded by an older runner' : reason;
 }
 
 // "N with changed inputs, M new, …; R reused" for the summary line.
@@ -507,7 +567,8 @@ function summaryReason(plan, planned) {
   }
   const parts = [...groups].map(([group, count]) => `${count} ${group}`);
   const reused = planned.reused.length;
-  return `${parts.length ? parts.join(', ') : 'nothing changed'}${reused ? `; ${reused} reused` : ''}`;
+  const none = plan.leftOut ? `${plan.leftOut} left out` : 'nothing changed';
+  return `${parts.length ? parts.join(', ') : none}${reused ? `; ${reused} reused` : ''}`;
 }
 
 module.exports = { main };

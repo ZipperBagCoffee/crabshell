@@ -9,7 +9,8 @@ const { readStdin, normalizePath } = require('./transcript-utils');
 // F1 mitigation: keep inline env check for fail-open invariant — D106 IA-10 RA2
 if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 
-const { getProjectDir, ticketDocPattern } = require('./utils');
+const { getProjectDir } = require('./utils');
+const { ticketDocPattern } = require('./core/doc-types');
 
 // Ticket file pattern: <STORAGE_ROOT>/ticket/<D### or P###>_T###*
 const TICKET_FILE_PATTERN = new RegExp(ticketDocPattern());

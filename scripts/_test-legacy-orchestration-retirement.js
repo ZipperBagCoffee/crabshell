@@ -135,10 +135,9 @@ const rules = ruleFiles.map(file => fs.readFileSync(file, 'utf8')).join('\n');
 const fixedRitual = /RA Count Rule|WA Count Rule|MUST launch 2\+ Work Agents|MUST each be launched as separate Task tool|Single-WA is the EXCEPTION|Each role is a separate Task tool invocation/;
 test(
   'planning, ticketing, and regressing rules contain no fixed-count or mandatory-pair gate',
+  // Only the retired gates are checked; the current wording is not pinned (D151_T005 — a
+  // reworded rule once had its words reordered just to keep this test passing).
   !fixedRitual.test(rules)
-    && rules.includes('Parent-owned orchestration')
-    && rules.includes('parent owns implementation')
-    && rules.includes('parent owns plan analysis')
 );
 
 const counterSource = fs.readFileSync(path.join(__dirname, 'counter.js'), 'utf8');
