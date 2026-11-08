@@ -116,7 +116,7 @@ node .crabshell/verification/run-verify.js --changed  # selects checks touched b
 node .crabshell/verification/run-verify.js            # selects every check, only when requested
 ```
 
-Routine updates run `--changed` once after the last edit. Run every check only when the user asks for it, or at the project's release step; when a full run seems truly needed, ask the user first and say why. A hand rerun of a declared check on the files it last passed with is blocked and answered from its record (`CRABSHELL_RERUN=1` before the command runs it anyway); after a hand run, Crabshell hints once each when the entry needs `inputs`, `slow` or `outputs`.
+Routine updates run `--changed` once after the last edit. Run every check only when the user asks; a release runs `--changed --slow` (passes kept). If a full run seems needed, ask first and say why. A hand rerun of a declared check on the files it last passed with is blocked and answered from its record (`CRABSHELL_RERUN=1` before the command runs it anyway); after a hand run, Crabshell hints once each when the entry needs `inputs`, `slow` or `outputs`.
 
 `test-map.json` keeps each check's record: its inputs (files and folders required, read, listed or copied), the fingerprints it passed with, durations and failures. Passing checks refresh their records even in a failing run. Failures keep prior files, add no pass and remain selected for retry; [failure marks](references/runner-reuse-output.md#reuse-and-timing) distinguish check failures from unresolved HEAD comparisons.
 
@@ -147,17 +147,13 @@ Code is the more likely culprit (about four in five regression failures in one i
 
 For a wiring entry, a FAIL means either the source broke a parent-approved hop, in which case fix the source, or the hop was deliberately removed or renamed in this release, in which case update `wiring-contract.json` and state the approved change in the report by naming the hop. Map staleness is never a wiring FAIL; it is only the documentation state recorded by Create Mode Step 2a(i).
 
-### Step 3: Parse and report as P/O/G
+### Step 3: Parse and record each result
 
-| Item | Type | Prediction (from manifest contract) | Observation (from runner output/state/hash) | Gap |
-|------|------|-------------------------------------|----------------------------------|-----|
-
-Type: `behavioral` = runtime execution observed (ran command, triggered feature, checked output)
-Type: `structural` = static check (grep, file read, code inspection)
+For each entry, record the command run (or file read), its output line (runner output, state or hash) and pass/fail against its contract. A behavior claim needs an execution result; a structure claim (grep, file read, code inspection), what was read — say it was static.
 For `reused: true`, cite the earlier passing observation and unchanged inputs; do not describe it as a new execution. Manual results await a person.
 For `coveredBy: "<id>"`, cite that covering check's executed or reused PASS; the child did not run independently and has no pass fingerprint of its own.
 
-- **Document-first rule:** If this verification run was invoked from within a T or P document context, append the P/O/G results to that document's verification section using the Edit tool FIRST. After the document is updated, report the summary in conversation. Standalone invocations may report conversation-only.
+- **Document-first rule:** If this verification run was invoked from within a T or P document context, append these records to that document's verification section using the Edit tool FIRST. After the document is updated, report the summary in conversation. Standalone invocations may report conversation-only.
 
 ### Step 4: Summary
 
@@ -204,7 +200,7 @@ When invoked with `wiring`:
 4. **A failing entry means the code is wrong until shown otherwise.** Editing the verifier to make it pass is allowed only when the contract deliberately changed, and that must be stated in the report.
 5. **Discover targets, do not list them.** Assert `discovered > 0` and `failures == 0`; never hardcode a count.
 6. **Manifest is source of truth.** All entries live in `manifest.json`.
-7. **P/O/G alignment.** Run mode produces P/O/G table rows.
+7. **Ticket record form.** Run mode records each result as a ticket's `## Verification Results` does.
 8. **No git commit.** `.crabshell/verification/` is local — do NOT commit.
 9. **Timeout safety.** Default 30s. Destructive commands (rm, drop) PROHIBITED.
 10. **Idempotent create.** Existing manifest is NOT overwritten.

@@ -1,9 +1,5 @@
 'use strict';
 
-const fs = require('fs');
-const path = require('path');
-const { getStorageRoot } = require('./utils');
-
 /**
  * ORCHESTRATION_DEFAULTS — host-neutral working contract for the parent agent.
  * This is internal workflow state, not a response template.
@@ -14,7 +10,7 @@ Before acting, derive from the user's actual words and keep (do not print each t
 - Open named references before implementing; trace source input -> consuming path -> observable result.
 - No blocking unknowns → settle ordinary technical choices from the repository, name the choice in one line, continue. Ask only when a wrong assumption would cause a destructive or irreversible action, a write outside the authorized workspace, an external install, or an undiscoverable product decision.
 - A user correction overrides the earlier inference and keeps unaffected constraints.
-- The parent owns the request, decisive references, final diff, direct execution evidence and completion decision; a worker's done/PASS claim, reviewer count, marker or spot-check is not completion evidence. Delegation and review are optional risk controls for independent work or distinct high-risk concerns, not to satisfy a count.
+- The parent owns the request, decisive references, final diff, direct execution evidence and completion decision; a worker's done/PASS claim, reviewer count, marker or spot-check is not completion evidence. Independent parts (different files, no shared result) run in parallel; review is delegated by actual risk, never to satisfy a count.
 `;
 
 /**
@@ -33,9 +29,10 @@ The parent prompt must supply the relevant original-request sentence, exact task
 const COMPRESSED_CHECKLIST = `
 ## Rules Quick-Check (CLAUDE.md rules active)
 - Before reporting progress or writing "verified", audit each claim against a tool result from this session; otherwise say "unverified".
-- Verification: match method to claim (execute for behavior, inspect for structure); predict → execute → compare; assert what survives the next release; classify a failure before editing either side; always ask whether the result would look weird to the user — if so, it fails even when every check passes. Only the changed files' checks, once after the last edit; never re-run a pass on unchanged inputs; the full suite only when the user asks — ask before one you think is needed. In chat: "M of N passed" plus the failed items, in plain words.
+- Verification: after the last edit, run once the checks that touch what changed and read their output; unchanged inputs are not run again; the full suite only when the user asks (ask before one). Execute for behavior, inspect for structure; predict → run → compare; assert what survives the next release; classify a failure before editing either side; a result that would look weird to the user fails even when every check passes. In chat: "M of N passed" plus the failed items, in plain words.
 - Deliver the full requested quantity; reducing scope, deleting files other than your own temporary files (delete those once the test is done), or destructive actions need explicit user approval first.
 - Work that changes files: discussion Plan (discussing skill) the user confirms → ticket (ticketing skill) → change → compare the result with the discussion. A small change (a few lines in one or two files, no hook/guard/gate code) skips both — run the changed-file check once.
+- Parallel: parts that touch different files and need no result from each other run at the same time (background workers; a workflow when the user asked for one); only dependent or shared-file parts wait.
 - Skills: before any task, open the installed skills that cover it and follow them; open them again for each new deliverable.
 - Common sense: before doing the work and before handing it over, picture the user using or reading the actual result, looked at whole; if anything would look weird to them, fix it first — no rule excuses a weird result.
 - Is this your best? Is it simple and clear — only what the reader needs, nothing they must ask back about? Ask both before every answer and before handing over any result (design, plan, code); if either is no, fix it before sending.
@@ -44,86 +41,8 @@ const COMPRESSED_CHECKLIST = `
 - Answer in slot order — conclusion → evidence → critical exception → next action — in the reader's words: concrete over abstract, no self-coined jargon, terms unpacked at first use, spoken register rather than report prose; no intros, work-process narration or repeated conclusions. End with the verdict: each work item done, in progress, or not started, plus the user's next action if there is one.
 `;
 
-/**
- * Returns the post-compaction warning text injected into load-memory output when
- * source === 'compact'. Warns about PROJECT ROOT ANCHOR and continuation bias.
- * @param {string} projectDir
- * @returns {string}
- */
-function getPostCompactWarning(projectDir) {
-  const { FIRST_TURN_RULES } = require('./core/first-turn-context');
-  return `
-## [POST-COMPACTION WARNING]
-Context was compacted. Continue the currently authorized task from its remaining outcomes. Respect the latest correction or explicit stop; remembered work is not new user authority.
-Project root: \`${projectDir}\`. Resolve project files from this root even when a tool uses a subdirectory. Reopen the current task's references and verification gaps as needed.
-${FIRST_TURN_RULES}
-`;
-}
-
-/**
- * Resolves the shared project description, preserving legacy data on migration.
- * @param {string} projectDir
- * @returns {string}
- */
-function getProjectMemoryPath(projectDir) {
-  const storageRoot = getStorageRoot(projectDir);
-  const canonical = path.join(storageRoot, 'project.md');
-  const legacy = path.join(storageRoot, 'memory', 'project.md');
-  if (!fs.existsSync(canonical) && fs.existsSync(legacy)) {
-    // Copy exclusively: concurrent readers cannot overwrite a setter or each
-    // other. Keep the legacy bytes, including when both paths already exist.
-    try { fs.copyFileSync(legacy, canonical, fs.constants.COPYFILE_EXCL); }
-    catch (error) { if (error.code !== 'EEXIST') throw error; }
-  }
-  return canonical;
-}
-
-/** Read the first maxLines/maxChars, or return an empty string when unavailable. */
-function readProjectConcept(projectDir, maxLines = 20, maxChars = 1000) {
-  try {
-    const projectMdPath = getProjectMemoryPath(projectDir);
-    if (!fs.existsSync(projectMdPath)) return '';
-    const content = fs.readFileSync(projectMdPath, 'utf8').trim();
-    if (!content) return '';
-    const lines = content.split(/\r?\n/).slice(0, maxLines).join('\n');
-    return lines.substring(0, maxChars);
-  } catch (e) {
-    return '';
-  }
-}
-
-/**
- * Reads the `## Model Routing` section from .crabshell/project.md.
- * Returns section content (including the header) up to maxChars.
- * Returns empty string if section not found or file doesn't exist.
- * @param {string} projectDir
- * @param {number} maxChars
- * @returns {string}
- */
-function readModelRouting(projectDir, maxChars = 300) {
-  try {
-    const projectMdPath = getProjectMemoryPath(projectDir);
-    if (!fs.existsSync(projectMdPath)) return '';
-    const content = fs.readFileSync(projectMdPath, 'utf8');
-    const headerIndex = content.indexOf('## Model Routing');
-    if (headerIndex === -1) return '';
-    // Find the next ## header after the Model Routing header
-    const afterHeader = content.indexOf('\n## ', headerIndex + 1);
-    const section = afterHeader === -1
-      ? content.substring(headerIndex)
-      : content.substring(headerIndex, afterHeader);
-    return section.trim().substring(0, maxChars);
-  } catch (e) {
-    return '';
-  }
-}
-
 module.exports = {
   ORCHESTRATION_DEFAULTS,
   WORKER_PROMPT_CONTRACT,
   COMPRESSED_CHECKLIST,
-  getPostCompactWarning,
-  getProjectMemoryPath,
-  readProjectConcept,
-  readModelRouting
 };

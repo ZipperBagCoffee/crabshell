@@ -207,18 +207,18 @@ function statePath(sandbox) {
 //   - releaseIndexLock → no throw
 //   - third acquireIndexLock after release → true (lock available again)
 //
-// In-process L1 — direct execution of utils.js exports, no spawn needed.
+// In-process L1 — direct execution of the lock module (core/file-lock.js) exports, no spawn needed.
 (function() {
-  // Use a fresh sandbox; require utils.js fresh against a clean temp dir.
+  // Use a fresh sandbox; require the lock module fresh against a clean temp dir.
   const sb = makeSandbox('c3');
   const memoryDir = path.join(sb, '.crabshell', 'memory');
   // POISON: make lock-contention.json a directory so writeJson temp+rename fails.
   fs.mkdirSync(path.join(memoryDir, 'lock-contention.json'));
 
-  // Require utils with cleared cache so it picks up no stale module state.
-  const utilsPath = path.join(SCRIPTS_DIR, 'utils.js');
-  delete require.cache[utilsPath];
-  const { acquireIndexLock, releaseIndexLock } = require(utilsPath);
+  // Require the lock module with cleared cache so it picks up no stale module state.
+  const lockModulePath = path.join(SCRIPTS_DIR, 'core', 'file-lock.js');
+  delete require.cache[lockModulePath];
+  const { acquireIndexLock, releaseIndexLock } = require(lockModulePath);
 
   let r1, r2, r3;
   let releaseThrew = false;

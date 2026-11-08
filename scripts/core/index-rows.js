@@ -4,7 +4,7 @@
 // [[slug\|ID]], so a row is split on unescaped pipes, a cell cut inside [[...]]
 // is joined back, and \| is unescaped.
 
-const { DOC_TYPES } = require('../constants');
+const { DOC_TYPES } = require('./doc-types');
 
 const ID_SHAPE = `[${DOC_TYPES.map(type => type.prefix).join('')}]\\d{3}(?:_T\\d{3})?`;
 const BARE_ID = new RegExp(`^${ID_SHAPE}$`);

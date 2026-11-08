@@ -15,7 +15,7 @@ VERIFICATION_CONTRACT          = {PROJECT_ROOT}/.crabshell/verification/wiring-c
 
 #### (i) Architecture map (optional, documentation only)
 
-If a skill named `arch-explorer:build` appears in the available skills, invoke it with scope set to the whole repository and output path set to `VERIFICATION_ARCHITECTURE_INDEX`. Its README goes next to the HTML file. Record exactly one state in the P/O/G report:
+If a skill named `arch-explorer:build` appears in the available skills, invoke it with scope set to the whole repository and output path set to `VERIFICATION_ARCHITECTURE_INDEX`. Its README goes next to the HTML file. Record exactly one state in the verification record:
 
 - `generated` — the skill was invoked and `VERIFICATION_ARCHITECTURE_INDEX` exists
 - `unavailable` — the skill is not installed, or the current runtime such as Codex has no such skill
@@ -29,7 +29,7 @@ For a Claude Code plugin project where `hooks/hooks.json` exists:
 
 1. Copy `${CLAUDE_PLUGIN_ROOT}/skills/verifying/scripts/check-pipeline-wiring.js` to `VERIFICATION_PROBE`. Copy it; never retype or fork it.
 2. Run `node .crabshell/verification/check-pipeline-wiring.js discover` and save its stdout as `VERIFICATION_CANDIDATE`.
-3. The parent reviews every candidate hop against the architecture map when available, the source, and the user's IA. Remove candidates that are not part of an approved pipeline, or list them under `ignore` and record the reason in the P/O/G notes.
+3. The parent reviews every candidate hop against the architecture map when available, the source, and the user's IA. Remove candidates that are not part of an approved pipeline, or list them under `ignore` and record the reason in the verification record.
 4. Save the parent-approved list as `VERIFICATION_CONTRACT`.
 
 The contract is approved by the parent, not copied from discovery. Discovery reflects the current source, so a deleted hop vanishes from discovery too; only an approved contract can catch a deletion.

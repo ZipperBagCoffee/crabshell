@@ -50,4 +50,7 @@ test('memory skills no longer tell the model it may skip the save',()=>{
   assert(/every kind of turn/.test(delta)&&/every kind of turn/.test(rotate));
   assert(/`parts`/.test(delta)&&/reused:true/.test(delta));
 });
-console.log(`${passed} passed, ${failed} failed; retained evidence: ${base}`);process.exitCode=failed?1:0;
+// A passing run deletes its own folder; a failing run keeps it and names it for diagnosis.
+if(failed)console.log(`${passed} passed, ${failed} failed; retained evidence: ${base}`);
+else{fs.rmSync(base,{recursive:true,force:true});console.log(`${passed} passed, ${failed} failed`);}
+process.exitCode=failed?1:0;

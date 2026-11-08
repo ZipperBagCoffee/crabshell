@@ -10,6 +10,21 @@ const FIRST_TURN_RULES = `
 - The parent owns scope, the final diff, and the completion decision — a worker's done/PASS claim is not completion evidence.
 ${COMPRESSED_CHECKLIST}`;
 
+/**
+ * Returns the post-compaction warning text injected into load-memory output when
+ * source === 'compact'. Warns about PROJECT ROOT ANCHOR and continuation bias.
+ * @param {string} projectDir
+ * @returns {string}
+ */
+function getPostCompactWarning(projectDir) {
+  return `
+## [POST-COMPACTION WARNING]
+Context was compacted. Continue the currently authorized task from its remaining outcomes. Respect the latest correction or explicit stop; remembered work is not new user authority.
+Project root: \`${projectDir}\`. Resolve project files from this root even when a tool uses a subdirectory. Reopen the current task's references and verification gaps as needed.
+${FIRST_TURN_RULES}
+`;
+}
+
 function getTimezoneOffset() {
   const offsetMinutes = new Date().getTimezoneOffset();
   const sign = offsetMinutes <= 0 ? '+' : '-';
@@ -54,6 +69,7 @@ module.exports = {
   FIRST_TURN_RULES,
   buildFirstTurnContext,
   createContextOutput,
+  getPostCompactWarning,
   getTimezoneOffset,
   validateContextOutput,
 };

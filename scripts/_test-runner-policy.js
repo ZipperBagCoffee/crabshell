@@ -3,6 +3,9 @@
 // (`retries`), heavy checks are told apart by their median pass time
 // (`slowAfterSeconds`), --changed runs the likeliest failures and the quickest checks
 // first, and `jobs` runs checks side by side within the CPUs and `memoryShare`.
+// D151_T006: `riskPaths` brings heavy checks in, flaky checks are left out until their test
+// changes, and a failure that is only a forbidden-file change is run once more.
+const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -70,6 +73,20 @@ const overlap = (log, a, b) => {
 };
 const record = (dir, id) => JSON.parse(fs.readFileSync(path.join(dir, '.crabshell', 'verification', 'test-map.json'), 'utf8')).entries[id];
 const show = r => `status=${r.status} ran=[${r.ran}] ${r.stdout.slice(-300).replace(/\s+/g, ' ')}`;
+// A record holds a value outside its input hashes (where every input's hash already is).
+const holdsOutsideInputs = (rec, value) => { const { inputHashes, ...rest } = rec || {}; return JSON.stringify(rest).includes(value); };
+// The stdout lines that name every one of `words`: a check id as a whole word, a path as written.
+const lines = (r, ...words) => r.stdout.split(/\r?\n/)
+  .filter(line => words.every(word => (word.includes('/') ? line.includes(word) : new RegExp(`\\b${word}\\b`).test(line))));
+// A check with `src/f.txt` as a forbidden path that writes it every run (`always`), or once
+// while a flag file named after it exists outside the project — the one-time write stands in
+// for another process writing the file while the check runs.
+const forbiddenCheck = (id, { always = false } = {}) => [
+  "const fs = require('fs'); const path = require('path');",
+  `fs.appendFileSync(path.join(process.env.POLICY_OUTSIDE, process.env.POLICY_NAME + '.log'), '${id} 0 0\\n');`,
+  `const flag = path.join(process.env.POLICY_OUTSIDE, '${id}.fail');`,
+  `if (${always} || fs.existsSync(flag)) { fs.writeFileSync(path.join(process.env.PROJECT_ROOT, 'src', 'f.txt'), 'written by ${id}\\n'); fs.rmSync(flag, { force: true }); }`,
+].join('\n') + '\n';
 
 try {
   attempt('P1 a failure on inputs the check passed with is retried; a pass on retry is PASS and named flaky', () => {
@@ -124,11 +141,16 @@ try {
     write(dir, 'scripts/_test-N.js', nodeCheck('N', 'src/b.txt', { ms: 50 }));
     write(dir, 'src/a.txt', 'a changed\n');
     const ordered = run(dir, 'p4', ['--changed']);
-    check('P4 --changed runs the check that failed last time first, then new checks, then the quickest', ordered.ran.join(',') === 'F,N,Q,S', show(ordered));
+    // Start order (D151_T001: checks may run side by side by default, so the log's finish
+    // order is not the order they were started in).
+    const started = [...ordered.log].sort((a, b) => a.start - b.start).map(item => item.id).join(',');
+    check('P4 --changed runs the check that failed last time first, then new checks, then the quickest', started === 'F,N,Q,S', `started=${started} ${show(ordered)}`);
   });
 
   attempt('P5 jobs runs checks side by side; exclusive and group keep them apart; a low memoryShare starts one at a time', () => {
-    const scripts = { A: nodeCheck('A', 'src/a.txt', { ms: 600 }), B: nodeCheck('B', 'src/b.txt', { ms: 600 }) };
+    // Long enough that two checks started side by side still overlap when the machine is busy
+    // (at 600 ms, startup delays under load once kept them apart — D151_T007).
+    const scripts = { A: nodeCheck('A', 'src/a.txt', { ms: 1500 }), B: nodeCheck('B', 'src/b.txt', { ms: 1500 }) };
     const dir = project('p5', [entry('A'), entry('B')], scripts, { jobs: 2, memoryShare: 1 });
     const together = run(dir, 'p5', ['--no-reuse']);
     setManifest(dir, m => { m.entries[1].exclusive = true; });
@@ -147,7 +169,8 @@ try {
 
   attempt('P6 after a new failure no new check starts; the running one finishes and is recorded', () => {
     const dir = project('p6', [entry('X'), entry('Y'), entry('Z')], {
-      X: nodeCheck('X', 'src/a.txt', { ms: 50 }), Y: nodeCheck('Y', 'src/a.txt', { ms: 700 }), Z: nodeCheck('Z', 'src/a.txt', { ms: 900 }),
+      // X runs long enough for Y to start beside it (starts are spaced, D151_T001) before X fails.
+      X: nodeCheck('X', 'src/a.txt', { ms: 600 }), Y: nodeCheck('Y', 'src/a.txt', { ms: 900 }), Z: nodeCheck('Z', 'src/a.txt', { ms: 1500 }),
     }, { jobs: 2, memoryShare: 1 });
     run(dir, 'p6');
     flag('X', true);
@@ -163,6 +186,246 @@ try {
     const machine = typeof os.availableParallelism === 'function' ? os.availableParallelism() : os.cpus().length;
     check('P7 jobs above what this machine can run in parallel is capped there',
       concurrencyLimit(machine + 100) === machine && concurrencyLimit(1) === 1, `limit=${concurrencyLimit(machine + 100)} machine=${machine}`);
+  });
+
+  // D151_T001 — several names in one call; side by side by default for recorded traced Node
+  // checks only; a free-memory floor; one start at a time.
+  attempt('P8 several check names in one call run exactly those; an unknown name stops the run and is named', () => {
+    const scripts = { A: nodeCheck('A', 'src/a.txt'), B: nodeCheck('B', 'src/a.txt'), C: nodeCheck('C', 'src/a.txt') };
+    const dir = project('p8', [entry('A'), entry('B'), entry('C')], scripts);
+    const two = run(dir, 'p8', ['A', 'C']);
+    const unknown = run(dir, 'p8', ['A', 'NOPE']);
+    check('P8 several check names in one call run exactly those; an unknown name stops the run and is named',
+      two.status === 0 && [...two.ran].sort().join(',') === 'A,C' && unknown.status !== 0 && unknown.ran.length === 0
+      && /NOPE/.test(unknown.stdout + unknown.stderr), `${show(two)} | ${show(unknown)}`);
+  });
+
+  const scheduleModule = require(path.join(path.dirname(RUNNER), 'runner', 'schedule.js'));
+  const canRunTwo = typeof scheduleModule.defaultJobs === 'function' ? scheduleModule.defaultJobs() >= 2 : true;
+  attempt('P9 with no jobs setting, recorded traced Node checks run side by side; a check run by another program runs alone', () => {
+    if (!canRunTwo) { check('P9 skipped: this machine runs one check at a time by default', true); return; }
+    // C is run by another program (Python here): the runner cannot trace it, so by default
+    // it never shares the machine (it might share a cache, as a game engine does).
+    const pyCheck = 'import os, time\nstart = int(time.time() * 1000)\ntime.sleep(0.7)\n'
+      + 'open(os.path.join(os.environ["POLICY_OUTSIDE"], os.environ["POLICY_NAME"] + ".log"), "a").write("C %d %d\\n" % (start, int(time.time() * 1000)))\n';
+    const scripts = { A: nodeCheck('A', 'src/a.txt', { ms: 700 }), B: nodeCheck('B', 'src/b.txt', { ms: 700 }) };
+    const entries = [entry('A'), entry('B')];
+    if (hasPython) {
+      scripts['tools/c.py'] = pyCheck;
+      entries.push({ id: 'C', type: 'structural', command: { file: PYTHON, args: ['-B', 'tools/c.py'] }, contract: { exitCode: 0 }, inputs: ['tools/c.py'] });
+    }
+    const dir = project('p9', entries, scripts, { minFreeMemoryMB: 0 });
+    const first = run(dir, 'p9', ['--no-reuse']);
+    const second = run(dir, 'p9', ['--no-reuse']);
+    const cAlone = !hasPython || (second.ran.includes('C') && !overlap(second.log, 'A', 'C') && !overlap(second.log, 'B', 'C'));
+    check('P9 with no jobs setting, recorded traced Node checks run side by side; a check run by another program runs alone',
+      first.status === 0 && !overlap(first.log, 'A', 'B') && second.status === 0 && overlap(second.log, 'A', 'B') && cAlone,
+      `first A/B=${overlap(first.log, 'A', 'B')} second A/B=${overlap(second.log, 'A', 'B')} A/C=${overlap(second.log, 'A', 'C')} B/C=${overlap(second.log, 'B', 'C')} ${show(second)}`);
+  });
+
+  attempt('P10 a free-memory floor above the free memory runs checks one at a time', () => {
+    const scripts = { A: nodeCheck('A', 'src/a.txt', { ms: 600 }), B: nodeCheck('B', 'src/b.txt', { ms: 600 }) };
+    // memoryShare 1 takes the older usage gate out of the way: only the floor can hold B back.
+    const dir = project('p10', [entry('A'), entry('B')], scripts, { jobs: 2, memoryShare: 1, minFreeMemoryMB: 1e9 });
+    const tight = run(dir, 'p10', ['--no-reuse']);
+    check('P10 a free-memory floor above the free memory runs checks one at a time',
+      tight.status === 0 && tight.ran.length === 2 && !overlap(tight.log, 'A', 'B'), show(tight));
+  });
+
+  attempt('P11 side-by-side checks start one at a time, spaced, and still overlap', () => {
+    const scripts = { A: nodeCheck('A', 'src/a.txt', { ms: 1200 }), B: nodeCheck('B', 'src/a.txt', { ms: 1200 }), C: nodeCheck('C', 'src/a.txt', { ms: 1200 }) };
+    const dir = project('p11', [entry('A'), entry('B'), entry('C')], scripts, { jobs: 3, minFreeMemoryMB: 0, startSpacingMs: 300 });
+    const spaced = run(dir, 'p11', ['--no-reuse']);
+    const starts = spaced.log.map(item => item.start).sort((a, b) => a - b);
+    const [first, , last] = [...spaced.log].sort((a, b) => a.start - b.start);
+    check('P11 side-by-side checks start one at a time, spaced, and still overlap',
+      spaced.status === 0 && starts.length === 3 && starts[1] - starts[0] >= 200 && starts[2] - starts[1] >= 200
+      && Boolean(first && last) && overlap(spaced.log, first.id, last.id),
+      `starts=${starts.map(s => s - starts[0]).join(',')} ${show(spaced)}`);
+  });
+  attempt('P12 each run says how many check runs there were since the last commit; a commit starts the count again', () => {
+    const git = (dir, args) => spawnSync('git', args, { cwd: dir, encoding: 'utf8', windowsHide: true });
+    const dir = project('p12', [entry('A')], { A: nodeCheck('A', 'src/a.txt') });
+    if (git(dir, ['init', '-q']).status !== 0) { check('P12 skipped: git is not available', true); return; }
+    const commit = message => { git(dir, ['add', '-A']); git(dir, ['-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '-m', message]); };
+    commit('first');
+    const one = run(dir, 'p12', ['--changed']);
+    write(dir, 'src/a.txt', 'a changed\n');
+    const two = run(dir, 'p12', ['--changed']);
+    commit('second');
+    const again = run(dir, 'p12', ['--changed']);
+    const count = r => (r.stdout.match(/Check run (\d+) since the last commit/) || [])[1];
+    check('P12 each run says how many check runs there were since the last commit; a commit starts the count again',
+      count(one) === '1' && count(two) === '2' && count(again) === '1', `one=${count(one)} two=${count(two)} again=${count(again)} ${show(again)}`);
+  });
+  attempt('P13 a changed test that holds its input\'s text word for word is named once; derived, own or short text is not', () => {
+    const sentence = 'The quick brown fox jumps over the lazy dog every day';
+    const own = 'this sentence is written only inside the test file itself';
+    const reads = id => "const fs = require('fs'); const path = require('path');\n"
+      + `fs.appendFileSync(path.join(process.env.POLICY_OUTSIDE, process.env.POLICY_NAME + '.log'), '${id} 0 0\\n');\n`
+      + "const text = fs.readFileSync(path.join(process.env.PROJECT_ROOT, 'src/msg.txt'), 'utf8');\n";
+    const dir = project('p13', [entry('C'), entry('D')], {
+      C: `${reads('C')}const own = '${own}';\nif (!own || !text.includes('${sentence}')) process.exit(1);\n`,
+      D: `${reads('D')}if (text.trim().split(' ').length < 3) process.exit(1);\n`,
+    });
+    write(dir, 'src/msg.txt', `${sentence}\n`);
+    const named = (r, test) => r.stdout.split(/\r?\n/).filter(line => line.includes(test) && line.includes('src/msg.txt'));
+    const first = run(dir, 'p13', ['--changed']);
+    const quiet = run(dir, 'p13', ['--changed']);
+    setManifest(dir, manifest => { manifest.copyLiteralMinChars = sentence.length + 1; });
+    write(dir, 'scripts/_test-C.js', `${fs.readFileSync(path.join(dir, 'scripts', '_test-C.js'), 'utf8')}// edited\n`);
+    const longer = run(dir, 'p13', ['--changed']);
+    const copied = named(first, 'scripts/_test-C.js');
+    check('P13 a changed test that holds its input\'s text word for word is named once; derived, own or short text is not',
+      first.status === 0 && copied.length === 1 && copied[0].includes(sentence.slice(0, 19)) && !first.stdout.includes(own.slice(0, 19))
+      && named(first, 'scripts/_test-D.js').length === 0 && named(quiet, 'scripts/_test-C.js').length === 0
+      && longer.status === 0 && longer.ran.includes('C') && named(longer, 'scripts/_test-C.js').length === 0,
+      `first=${show(first)} | quiet=${show(quiet)} | longer=${show(longer)}`);
+    // The run settings added with D151 are checked like the others: a wrong value is a manifest error naming it.
+    const wrong = { copyLiteralMinChars: 0, minFreeMemoryMB: -1, startSpacingMs: 'soon' };
+    const refused = Object.entries(wrong).filter(([name, value]) => {
+      setManifest(dir, manifest => { delete manifest.copyLiteralMinChars; manifest[name] = value; });
+      const r = run(dir, 'p13', ['--changed']);
+      setManifest(dir, manifest => { delete manifest[name]; });
+      return r.status !== 0 && `${r.stdout}${r.stderr}`.includes(name);
+    }).map(([name]) => name);
+    check('P13b a wrong value of a D151 run setting is a manifest error naming the setting',
+      refused.length === Object.keys(wrong).length, `refused=${refused.join(',')}`);
+  });
+
+  // D151_T006 — heavy checks by declared risk paths; flaky checks quarantined; a failure
+  // that is only a forbidden-file change is checked again.
+  attempt('P14 a changed file under riskPaths brings heavy checks whose inputs changed into --changed; otherwise they wait for --slow', () => {
+    const dir = project('p14', [entry('H', { slow: true }), entry('G', { slow: true }), entry('L')], {
+      H: nodeCheck('H', 'src/a.txt'), G: nodeCheck('G', 'src/b.txt'), L: nodeCheck('L', 'src/a.txt'),
+    }, { riskPaths: ['src/risk/'] });
+    write(dir, 'src/risk/core.txt', 'core\n');
+    run(dir, 'p14');
+    write(dir, 'src/a.txt', 'a changed\n');
+    const quiet = run(dir, 'p14', ['--changed']);
+    write(dir, 'src/a.txt', 'a changed again\n');
+    write(dir, 'src/risk/core.txt', 'core changed\n');
+    const risky = run(dir, 'p14', ['--changed']);
+    check('P14 a changed file under riskPaths brings heavy checks whose inputs changed into --changed; otherwise they wait for --slow',
+      quiet.status === 0 && quiet.ran.join(',') === 'L' && lines(quiet, 'H').length > 0
+      && risky.status === 0 && [...risky.ran].sort().join(',') === 'H,L' && lines(risky, 'H', 'src/risk/core.txt').length === 1
+      && lines(risky, 'G').length > 0,
+      `quiet=${show(quiet)} | risky=${show(risky)}`);
+  });
+
+  attempt('P15 a check that failed and then passed on the same inputs is left out of --changed until its test file changes', () => {
+    const testFile = 'scripts/_test-R.js';
+    const dir = project('p15', [entry('R'), entry('M')], { R: nodeCheck('R', 'src/a.txt', { once: true }), M: nodeCheck('M', 'src/b.txt') });
+    run(dir, 'p15');
+    flag('R', true);
+    const flaky = run(dir, 'p15', ['--no-reuse']);
+    flag('R', false);
+    // The record keeps the mark with the test file's content identity (beyond its input hashes).
+    const testHash = crypto.createHash('sha256').update(fs.readFileSync(path.join(dir, testFile))).digest('hex');
+    const marked = holdsOutsideInputs(record(dir, 'R'), testHash);
+    write(dir, 'src/a.txt', 'a changed\n');
+    const left = run(dir, 'p15', ['--changed']);
+    const slow = run(dir, 'p15', ['--changed', '--slow']);
+    write(dir, 'src/a.txt', 'a changed again\n');
+    const leftAgain = run(dir, 'p15', ['--changed']);
+    const full = run(dir, 'p15');
+    const byName = run(dir, 'p15', ['R']);
+    write(dir, testFile, `${fs.readFileSync(path.join(dir, testFile), 'utf8')}// edited\n`);
+    const back = run(dir, 'p15', ['--changed']);
+    check('P15 a check that failed and then passed on the same inputs is left out of --changed until its test file changes',
+      flaky.status === 0 && flaky.ran.filter(id => id === 'R').length === 2 && marked
+      && left.status === 0 && !left.ran.includes('R') && lines(left, 'R', testFile).length === 1
+      && slow.ran.includes('R') && !leftAgain.ran.includes('R') && full.ran.includes('R') && byName.ran.includes('R')
+      && back.status === 0 && back.ran.includes('R') && lines(back, 'R', testFile).length === 0,
+      `marked=${marked} flaky=${show(flaky)} | left=${show(left)} | slow=${slow.ran} leftAgain=${leftAgain.ran} full=${full.ran} byName=${byName.ran} | back=${show(back)}`);
+  });
+
+  attempt('P16 a failure that is only a forbidden-file change runs once more: unchanged then is PASS and named; written again stays FAIL', () => {
+    const contract = { exitCode: 0, forbiddenChanges: ['src/f.txt'] };
+    const other = project('p16-other', [entry('OTHER', { contract })], { OTHER: forbiddenCheck('OTHER') });
+    const self = project('p16-self', [entry('SELF', { contract })], { SELF: forbiddenCheck('SELF', { always: true }) });
+    for (const dir of [other, self]) write(dir, 'src/f.txt', 'seed\n');
+    flag('OTHER', true);
+    const cleared = run(other, 'p16');
+    flag('OTHER', false);
+    const stands = run(self, 'p16');
+    const lastRun = dir => JSON.parse(fs.readFileSync(path.join(dir, '.crabshell', 'verification', 'last-run.json'), 'utf8'));
+    const selfResult = lastRun(self).find(result => result.id === 'SELF') || {};
+    const testHash = crypto.createHash('sha256').update(fs.readFileSync(path.join(other, 'scripts', '_test-OTHER.js'))).digest('hex');
+    check('P16 a failure that is only a forbidden-file change runs once more: unchanged then is PASS and named; written again stays FAIL',
+      cleared.status === 0 && cleared.ran.join(',') === 'OTHER,OTHER' && lines(cleared, 'OTHER', 'src/f.txt').length === 1
+      && !lines(cleared, 'OTHER').some(line => /flaky/i.test(line)) && !holdsOutsideInputs(record(other, 'OTHER'), testHash)
+      && stands.status !== 0 && stands.ran.join(',') === 'SELF,SELF' && selfResult.status === 'FAIL'
+      && Boolean(selfResult.observation) && selfResult.observation.changedForbidden.includes('src/f.txt'),
+      `cleared=${show(cleared)} | stands=${show(stands)}`);
+  });
+
+  attempt('P17 a wrong riskPaths value is a manifest error naming the setting', () => {
+    const dir = project('p17', [entry('A')], { A: nodeCheck('A', 'src/a.txt') });
+    const wrong = ['src/', ['C:/outside/'], ['']];
+    const refused = wrong.filter(value => {
+      setManifest(dir, manifest => { manifest.riskPaths = value; });
+      const r = run(dir, 'p17', ['--changed']);
+      return r.status !== 0 && r.ran.length === 0 && `${r.stdout}${r.stderr}`.includes('riskPaths');
+    });
+    check('P17 a wrong riskPaths value is a manifest error naming the setting', refused.length === wrong.length, `refused=${JSON.stringify(refused)}`);
+  });
+  attempt('P18 a changed test holding a command, a code line or a code span from its input is not named; only prose is', () => {
+    // Long quoted text that is not prose: a command line, a code statement, and a code span in
+    // backticks inside a comment. Each is word for word in the input the test reads.
+    const command = 'node scripts/run-thing.js --flag value --other';
+    const code = "const { spawnSync } = require('child_process');";
+    const span = "process.env.SOME_LONG_FLAG_NAME === 'enabled'";
+    const dir = project('p18', [entry('E')], {
+      E: "const fs = require('fs'); const path = require('path');\n"
+        + `fs.appendFileSync(path.join(process.env.POLICY_OUTSIDE, process.env.POLICY_NAME + '.log'), 'E 0 0\\n');\n`
+        + "const text = fs.readFileSync(path.join(process.env.PROJECT_ROOT, 'src/cmd.txt'), 'utf8');\n"
+        + `// The source checks \`${span}\` first.\n`
+        + `const lines = ['${command}', ${JSON.stringify(code)}];\n`
+        + 'if (!lines.every(line => text.includes(line))) process.exit(1);\n',
+    });
+    write(dir, 'src/cmd.txt', `${command}\n${code}\n${span}\n`);
+    const first = run(dir, 'p18', ['--changed']);
+    const named = first.stdout.split(/\r?\n/).filter(line => line.includes('scripts/_test-E.js') && line.includes('src/cmd.txt'));
+    check('P18 a changed test holding a command, a code line or a code span from its input is not named; only prose is',
+      first.status === 0 && first.ran.includes('E') && named.length === 0, `named=${named.join(' | ').slice(0, 200)} ${show(first)}`);
+  });
+  attempt('P19 a folder a check only lists or probes stands for its names; a folder it copies, for every file in it', () => {
+    const logLine = id => `fs.appendFileSync(path.join(process.env.POLICY_OUTSIDE, process.env.POLICY_NAME + '.log'), '${id} 0 0\\n');\n`;
+    const head = "const fs = require('fs'); const os = require('os'); const path = require('path');\nconst src = path.join(process.env.PROJECT_ROOT, 'src');\n";
+    const dir = project('p19', [entry('L'), entry('X'), entry('C')], {
+      L: `${head}${logLine('L')}fs.readdirSync(src);\n`,
+      X: `${head}${logLine('X')}if (!fs.existsSync(src)) process.exit(1);\n`,
+      C: `${head}${logLine('C')}const t = fs.mkdtempSync(path.join(os.tmpdir(), 'policy-copy-'));\nfs.cpSync(src, path.join(t, 'src'), { recursive: true });\nfs.rmSync(t, { recursive: true, force: true });\n`,
+    });
+    const first = run(dir, 'p19', ['--changed']);
+    write(dir, 'src/b.txt', 'b edited\n');
+    const edited = run(dir, 'p19', ['--changed']);
+    write(dir, 'src/c.txt', 'c\n');
+    const added = run(dir, 'p19', ['--changed']);
+    const same = (r, ids) => r.status === 0 && [...r.ran].sort().join(',') === [...ids].sort().join(',');
+    check('P19 a folder a check only lists or probes stands for its names; a folder it copies, for every file in it',
+      same(first, ['L', 'X', 'C']) && same(edited, ['C']) && same(added, ['L', 'X', 'C']),
+      `first=[${first.ran}] edited=[${edited.ran}] added=[${added.ran}] ${show(added)}`);
+  });
+  attempt('P20 --replay N estimates from the records which checks each of the last N commits would run; nothing runs', () => {
+    const git = (dir, args) => spawnSync('git', args, { cwd: dir, encoding: 'utf8', windowsHide: true });
+    const dir = project('p20', [entry('A'), entry('B')], { A: nodeCheck('A', 'src/a.txt'), B: nodeCheck('B', 'src/b.txt') });
+    if (git(dir, ['init', '-q']).status !== 0) { check('P20 skipped: git is not available', true); return; }
+    const commit = message => { git(dir, ['add', '-A']); git(dir, ['-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '-m', message]); };
+    commit('first');
+    run(dir, 'p20', ['--changed']);
+    write(dir, 'src/a.txt', 'a changed\n');
+    commit('touch a');
+    const head = git(dir, ['rev-parse', '--short', 'HEAD']).stdout.trim();
+    const replayed = run(dir, 'p20', ['--replay', '1', '--json']);
+    let rows = null;
+    try { rows = JSON.parse(replayed.stdout); } catch (_) {}
+    const row = Array.isArray(rows) ? rows[0] : null;
+    check('P20 --replay N estimates from the records which checks each of the last N commits would run; nothing runs',
+      replayed.status === 0 && replayed.ran.length === 0 && Array.isArray(rows) && rows.length === 1 && Boolean(row)
+      && head.startsWith(row.commit) && row.selected === 1 && Number.isFinite(row.estimatedMs),
+      `rows=${JSON.stringify(rows)} head=${head} ${show(replayed)}`);
   });
 } finally {
   fs.rmSync(base, { recursive: true, force: true });

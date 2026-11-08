@@ -8,16 +8,18 @@ const os = require('os');
 // F1 mitigation: keep inline env check for fail-open invariant — D106 IA-10 RA2
 if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 
-const { getProjectDir, getProjectName, getStorageRoot, readFileOrDefault, writeFile, readJsonOrDefault, readIndexSafe, writeJson, ensureDir, getTimestamp } = require('./utils');
+const { getProjectDir, getProjectName, getStorageRoot, readFileOrDefault, writeFile, readJsonOrDefault, writeJson, ensureDir } = require('./utils');
+const { readIndexSafe, getTimestamp } = require('./core/memory-index-file');
 const { tryWithMemoryIndex } = require('./core/memory-lock');
 const { refineRaw, refineRawSync } = require('./refine-raw');
 const { checkAndRotate } = require('./memory-rotation');
 const { extractDelta } = require('./extract-delta');
 const { STORAGE_ROOT, MEMORY_DIR, MEMORY_FILE, SESSIONS_DIR, COUNTER_FILE, INDEX_FILE } = require('./constants');
-const { detectRegressingSkillCall, advancePhase } = require('./regressing-state');
-const { readStdin, findTranscriptPath } = require('./transcript-utils');
+const { detectRegressingSkillCall, advancePhase } = require('./core/regressing-phase');
+const { readStdin } = require('./transcript-utils');
+const { findTranscriptPath } = require('./core/transcript');
 const { inspectSessionTranscript, resolveClaudeTranscript } = require('./core/session-intent');
-const { getProjectMemoryPath } = require('./shared-context');
+const { getProjectMemoryPath } = require('./core/project-memory');
 const { readSessionState, writeSessionState, removeSessionState, pruneSessionStates, sessionKey } = require('./core/session-state');
 const { markSessionStarted } = require('./core/session-delta');
 

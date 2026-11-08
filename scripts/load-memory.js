@@ -39,7 +39,7 @@ async function main(options = {}) {
     // the file, so the new text applies from the next session. Only the block
     // between the markers is replaced; no file is created and nothing is prepended.
     try {
-      const synced = require('./inject-rules').syncClaudeMdRules(projectDir, { updateOnly: true });
+      const synced = require('./core/rules-text').syncClaudeMdRules(projectDir, { updateOnly: true });
       if (synced.error) process.stderr.write(`[CRABSHELL SESSION START] Claude rule synchronization failed: ${synced.error}\n`);
     } catch (error) {
       process.stderr.write(`[CRABSHELL SESSION START] Claude rule synchronization failed: ${error.message}\n`);

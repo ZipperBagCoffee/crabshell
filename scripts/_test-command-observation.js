@@ -9,6 +9,8 @@ const { commandObservation, isTestExecution } = require('./core/command-observat
 const { copyRunner } = require('../skills/verifying/scripts/runner/install');
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'crabshell-command-'));
+// The fixture project is removed when the process exits, pass or fail.
+process.on('exit', () => { try { fs.rmSync(root, { recursive: true, force: true }); } catch {} });
 const verification = path.join(root, '.crabshell', 'verification');
 fs.mkdirSync(verification, { recursive: true });
 const manifestPath = path.join(verification, 'manifest.json');

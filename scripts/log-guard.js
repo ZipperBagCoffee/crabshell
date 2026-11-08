@@ -28,8 +28,9 @@ const { readStdin, normalizePath } = require('./transcript-utils');
 // F1 mitigation: keep inline env check for fail-open invariant — D106 IA-10 RA2
 if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 
-const { getProjectDir, docDirsPattern } = require('./utils');
-const { STORAGE_ROOT, TICKET_ID_SOURCE } = require('./constants');
+const { getProjectDir } = require('./utils');
+const { STORAGE_ROOT } = require('./constants');
+const { TICKET_ID_SOURCE, docDirsPattern } = require('./core/doc-types');
 const { parseIndexRow } = require('./core/index-rows');
 const { fileWrites } = require('./core/tool-shape');
 
@@ -163,7 +164,7 @@ function unfinishedSections(content) {
  * Check that a ticket's result sections are filled in for the target status:
  * done needs Execution Results (verification comes after done); verified —
  * or an unspecified status — needs every result section.
- * Only applies to ticket documents (constants TICKET_ID_SOURCE).
+ * Only applies to ticket documents (core/doc-types TICKET_ID_SOURCE).
  * Returns {valid: boolean, reason: string}.
  */
 function validatePendingSections(content, docId, toStatus) {
@@ -204,7 +205,7 @@ function evaluateWrite(write, projectDir) {
   // Edit or Write on INDEX.md — a ticket status change to done/verified
   const indexMatch = filePath.match(INDEX_PATTERN);
   if (!indexMatch) return null;
-  const category = indexMatch[1]; // the document folder (constants DOC_TYPES)
+  const category = indexMatch[1]; // the document folder (core/doc-types DOC_TYPES)
 
   // A string edit is compared old → new; a write that carries the file's text, with the
   // file on disk. A write whose text cannot be known (a patch hunk) shows no change.

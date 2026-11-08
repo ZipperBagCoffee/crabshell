@@ -11,9 +11,23 @@ const installed = path.join(temp, 'plugin location with spaces');
 const consumer = path.join(temp, 'ordinary project with spaces');
 fs.mkdirSync(path.join(installed, 'scripts'), { recursive: true });
 fs.mkdirSync(consumer);
-// codex-docs.js reads core/plan-entry.js since v21.135.0 (a ticket needs its discussion's plan).
-fs.mkdirSync(path.join(installed, 'scripts', 'core'), { recursive: true });
-for (const file of ['codex-docs.js', 'constants.js', 'utils.js', 'core/plan-entry.js']) {
+// codex-docs.js and every project module it loads, followed through its relative
+// require calls, so the copy matches what the installed tool needs.
+function requireClosure(entry) {
+  const found = new Set();
+  const visit = file => {
+    const relative = path.relative(__dirname, file);
+    if (found.has(relative)) return;
+    found.add(relative);
+    for (const match of fs.readFileSync(file, 'utf8').matchAll(/require\(\s*['"](\.{1,2}\/[^'"]+)['"]\s*\)/g)) {
+      visit(require.resolve(path.resolve(path.dirname(file), match[1])));
+    }
+  };
+  visit(path.join(__dirname, entry));
+  return [...found];
+}
+for (const file of requireClosure('codex-docs.js')) {
+  fs.mkdirSync(path.dirname(path.join(installed, 'scripts', file)), { recursive: true });
   fs.copyFileSync(path.join(__dirname, file), path.join(installed, 'scripts', file));
 }
 const skills = ['discussing', 'planning', 'ticketing', 'investigating', 'hotfix', 'knowledge', 'regressing'];

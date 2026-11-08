@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const { shouldWarn } = require('./classify');
 
-function printResults(results, { args, started, resultsPath, plan = null, selected = results.length, failBefore = [], stoppedAt = null, notRun = [], stillFailing = [], notices = [] }) {
+function printResults(results, { args, started, resultsPath, plan = null, selected = results.length, failBefore = [], stoppedAt = null, notRun = [], stillFailing = [], notices = [], runLine = null }) {
   const fullPath = resultsPath;
   const json = JSON.stringify(results, null, 2);
   const save = process.env.CRABSHELL_VERIFY_JSON !== '1' && !args.guardRun && results.length > 0;
@@ -43,11 +43,13 @@ function printResults(results, { args, started, resultsPath, plan = null, select
   // Older installed guards request this flag and parse an array without setting
   // CRABSHELL_VERIFY_JSON. Keep failures visible to those guards too.
   if (args.json || args.guardRun) console.log(json);
+  const leftOut = plan && plan.leftOut ? plan.leftOut : 0;
   console.log(selected === 0 && failures.length === 0
-    ? 'No checks selected — nothing changed that a check reads.'
+    ? (leftOut ? `No checks selected — the ${leftOut === 1 ? 'check' : `${leftOut} checks`} chosen for the changes ${leftOut === 1 ? 'is' : 'are'} left out (named below).` : 'No checks selected — nothing changed that a check reads.')
     : failures.length
       ? `FAIL — ${failures.length} of ${selected} checks failed${counts}, ${seconds}s`
       : `PASS — ${passed} of ${plan ? plan.total : selected} checks${counts}, ${seconds}s`);
+  if (runLine) console.log(runLine);
   for (const result of failures) {
     const line = String(result.output || '').split(/\r?\n/).find(text => text.startsWith('FAIL'))
       || String(result.error || 'Unknown error').split('; stderr:')[0].split(/\r?\n/)[0];
@@ -59,6 +61,12 @@ function printResults(results, { args, started, resultsPath, plan = null, select
   if (stoppedAt) console.log(`Stopped after a new failure (${stoppedAt}); ${notRun.length} check${notRun.length === 1 ? '' : 's'} not run — they run again after the fix.`);
   if (stillFailing.length) console.log(`Still failing on the inputs they failed with last time (the run went on): ${stillFailing.join(', ')}`);
   for (const notice of notices) console.log(notice);
+  // D151_T006: heavy checks a changed risk path brought in; quarantined flaky checks.
+  if (plan && plan.riskIncluded) console.log(`Heavy checks run because ${plan.riskIncluded.file} changed (riskPaths): ${plan.riskIncluded.ids.join(', ')}`);
+  if (plan && Array.isArray(plan.quarantined) && plan.quarantined.length > 0) {
+    const names = plan.quarantined.map(item => `${item.id} (${item.test})`);
+    console.log(`Left out as flaky (failed, then passed on the same inputs): ${names.join(', ')} — each runs again once its test file changes; by name, --slow and a full run still run it.`);
+  }
   if (plan && Array.isArray(plan.slowSkipped) && plan.slowSkipped.length > 0) {
     const states = plan.slowStates || {};
     const names = plan.slowSkipped.map(id => (states[id] ? `${id} (${states[id]})` : id));

@@ -4,7 +4,8 @@
 const fs = require('fs');
 const path = require('path');
 
-const { STORAGE_ROOT, DOC_TYPES, TICKET_PARENT_SOURCE } = require('./constants');
+const { STORAGE_ROOT } = require('./constants');
+const { DOC_TYPES, TICKET_PARENT_SOURCE } = require('./core/doc-types');
 const { ensureDir } = require('./utils');
 const { planProblem, DESIGN_FIELDS } = require('./core/plan-entry');
 

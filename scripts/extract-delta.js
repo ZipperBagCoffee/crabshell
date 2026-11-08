@@ -2,8 +2,10 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const { getProjectDir, getStorageRoot, readJsonOrDefault, readIndexSafe, writeJson, estimateTokens, extractTailByTokens } = require('./utils');
-const { SESSIONS_DIR, MEMORY_DIR, MEMORY_FILE, INDEX_FILE, DELTA_TEMP_FILE, HAIKU_SAFE_TOKENS, FIRST_RUN_MAX_ENTRIES, DELTA_OUTPUT_TRUNCATE } = require('./constants');
+const { getProjectDir, getStorageRoot, readJsonOrDefault, writeJson } = require('./utils');
+const { readIndexSafe, estimateTokens, extractTailByTokens } = require('./core/memory-index-file');
+const { SESSIONS_DIR, MEMORY_DIR, MEMORY_FILE, INDEX_FILE, DELTA_TEMP_FILE } = require('./constants');
+const { HAIKU_SAFE_TOKENS, FIRST_RUN_MAX_ENTRIES, DELTA_OUTPUT_TRUNCATE } = require('./core/memory-budgets');
 const { withMemoryIndex, readMemoryIndex } = require('./core/memory-lock');
 const { preparedInputExists } = require('./core/delta-transaction');
 const { deltaBaseline, recordPending, commitPending, pendingSnapshot, registerExistingSession } = require('./core/session-delta');

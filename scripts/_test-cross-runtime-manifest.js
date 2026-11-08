@@ -17,70 +17,28 @@ const check = (name, fn) => {
   catch (error) { report.check(name, false, error.stack); }
 };
 
-// Historical observation contract before the split; deliberately independent of
-// the consuming script, so deleting or changing a migrated observation is caught.
-const original = {
-  "scripts/_test-cross-runtime-first-turn.js": [
-    "three-field ending is retired",
-    "divergent-source mutation",
-    "forbidden-side-effect mutation"
-  ],
-  "scripts/_test-cross-runtime-session-memory.js": [
-    "stale-memory mutation",
-    "sentinel-write mutation"
-  ],
-  "scripts/_test-cross-runtime-workflow-restart.js": [
-    "stale state",
-    "lost-state",
-    "sentinel-write mutation"
-  ],
-  "scripts/_test-cross-runtime-subagent-context.js": [
-    "wrong-event, removed-field",
-    "sentinel-write mutation"
-  ],
-  "scripts/_test-cross-runtime-parent-completion.js": [
-    "child false-done",
-    "wrong-order mutation",
-    "owner and authority mutations"
-  ],
-  "scripts/_test-codex-hook-contract.js": [
-    "hardcoded-command mutations",
-    "PASS-only stdout fixture"
-  ],
-  "scripts/_test-codex-windows-hook-command.js": [
-    "retired percent-expansion command"
-  ],
-  "scripts/_test-codex-compaction.js": [
-    "wrong event and missing context mutations",
-    "missing log mutation is rejected"
-  ],
-  "scripts/_test-alternating-host-continuity.js": [
-    "missing-memory mutation",
-    "cross-host marker mutation"
-  ],
-  "scripts/_test-claude-lifecycle-preservation.js": [
-    "Codex execution uses separate plugin data and never writes Claude surfaces"
-  ]
-};
-
-check('V059 preserves all 21 original observation sources and removes V013 coverage', () => {
+// The named observations live in the manifest's V059 fileAssertions (verify-cross-runtime.js
+// reads them from there; the next check confirms it), and each child check fails when its
+// test stops printing one. This check is about the runner: every file with named
+// observations becomes its own V059 check that carries them. It takes them from the
+// manifest instead of a copied list (D151_T005), so removing an observation on purpose
+// is a manifest edit only.
+check('V059 runs each file with named observations as its own check, carrying them; V013 is gone', () => {
   assert(!manifest.entries.some(item => item.id === 'V013'));
-  assert.deepEqual(Object.fromEntries(Object.entries(entry.fileAssertions).map(([file, assertions]) =>
-    [file, assertions.map(assertion => {
-      assert.equal(assertion.kind, 'stdoutMatches');
-      assert.equal(assertion.flags || '', '');
-      return assertion.pattern;
-    })])), original);
-  assert.deepEqual(Object.values(entry.fileAssertions).map(assertions => assertions.length), [3, 2, 3, 2, 3, 2, 1, 2, 2, 1]);
-  assert.equal(Object.values(entry.fileAssertions).flat().length, 21);
-  assert.deepEqual(entry.coveredBy, { 'scripts/_test-claude-native-install.js': 'V015' });
+  const named = Object.entries(entry.fileAssertions || {});
+  assert(named.length > 0, 'V059 has no named observations');
   const expanded = runner.expandEntries(manifest, root);
-  for (const [file, patterns] of Object.entries(original)) {
+  for (const [file, assertions] of named) {
+    for (const assertion of assertions) {
+      assert.equal(assertion.kind, 'stdoutMatches', file);
+      assert.equal(assertion.flags || '', '', file);
+    }
     const child = expanded.find(item => item.id === `V059:${file}`);
     assert(child, file);
     assert(!child.coveredBy, file);
-    assert.deepEqual(child.contract.assertions.map(assertion => assertion.pattern), patterns, file);
-    assert(child.contract.forbiddenChanges.includes('.crabshell/memory/logbook.md'));
+    const patterns = child.contract.assertions.map(assertion => assertion.pattern);
+    assert.deepEqual(assertions.map(assertion => assertion.pattern).filter(pattern => !patterns.includes(pattern)), [], file);
+    for (const forbidden of entry.contract.forbiddenChanges || []) assert(child.contract.forbiddenChanges.includes(forbidden), file);
   }
   const failOpen = expanded.find(item => item.id === 'V059:scripts/_test-fail-open-edge-cases.js');
   assert(failOpen && !failOpen.coveredBy);

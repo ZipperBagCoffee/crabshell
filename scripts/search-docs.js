@@ -1,7 +1,8 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const { STORAGE_ROOT, DOC_TYPES } = require('./constants');
+const { STORAGE_ROOT } = require('./constants');
+const { DOC_TYPES } = require('./core/doc-types');
 
 // ---------------------------------------------------------------------------
 // CLI argument parsing

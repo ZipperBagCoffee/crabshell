@@ -53,6 +53,16 @@ const CHECKS = [
     run: (payload, projectDir) => { require('../../core/completion-control').prepareParentCheck(projectDir, withCommand(payload)); return null; },
   },
   {
+    // D151_T002: before a commit, one line when files changed since the checks last passed.
+    name: 'commit-reminder',
+    accepts: isShell,
+    when: allowed,
+    run: (payload, projectDir) => {
+      const text = require('../../core/commit-reminder').commitReminder(withCommand(payload), projectDir);
+      return text ? { context: text } : null;
+    },
+  },
+  {
     // The project's files before an allowed declared run (D143_T015 after-run hints).
     name: 'declaration-before',
     accepts: isShell,

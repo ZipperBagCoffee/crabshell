@@ -493,7 +493,8 @@ check('empty selection says no checks selected and exits successfully', () => {
   assert.equal(result.status, 0); assert.deepEqual(result.results, []); assert.equal(counter(dir), before);
   assert(fs.readFileSync(resultFile(dir)).equals(previous));
   assert(!result.stdout.includes('Full results:'));
-  assert.equal(result.stdout.split(/\r?\n/)[0], 'No checks selected — nothing changed that a check reads.');
+  // The message's wording is not pinned (D151_T005); the run said something and reported no checks.
+  assert(result.stdout.trim().length > 0);
   assert(!result.stdout.includes('PASS —'));
 });
 

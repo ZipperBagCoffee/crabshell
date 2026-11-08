@@ -17,7 +17,8 @@ const path = require('path');
 if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 
 const { readStdin } = require('./transcript-utils');
-const { getProjectDir, getStorageRoot, readJsonOrDefault, writeJson, acquireIndexLock, releaseIndexLock } = require('./utils');
+const { getProjectDir, getStorageRoot, readJsonOrDefault, writeJson } = require('./utils');
+const { acquireIndexLock, releaseIndexLock } = require('./core/file-lock');
 const { REGRESSING_STATE_FILE } = require('./constants');
 
 async function main() {
@@ -71,7 +72,7 @@ async function main() {
         // Inner throw is caught here too — but outer try/catch is our backstop.
         process.stderr.write('[CRABSHELL] PostCompact: lastShownLevel write failed: ' + (innerErr.message || innerErr) + '\n');
       } finally {
-        // releaseIndexLock is silent-on-error per utils.js — safe inside finally.
+        // releaseIndexLock is silent-on-error per core/file-lock.js — safe inside finally.
         releaseIndexLock(memoryDir);
       }
     }

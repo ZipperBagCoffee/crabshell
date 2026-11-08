@@ -6,7 +6,8 @@
 const fs = require('fs');
 const path = require('path');
 const h = require('./testlib/hook-harness');
-const { REGRESSING_STALE_MS, REGRESSING_STATE_FILE, MEMORY_DIR, STORAGE_ROOT } = require('./constants');
+const { REGRESSING_STATE_FILE, MEMORY_DIR, STORAGE_ROOT } = require('./constants');
+const { REGRESSING_STALE_MS } = require('./core/limits');
 
 const root = h.makeWorkRoot('regressing-stale');
 const report = h.createReporter('regressing-stale');
@@ -57,25 +58,33 @@ function project(name, lastUpdatedAt) {
 {
   // buildRegressingReminder compares with the real clock.
   const realOld = new Date(Date.now() - REGRESSING_STALE_MS - 60 * 1000).toISOString();
-  const { buildRegressingReminder } = require('./regressing-state');
+  const { buildRegressingReminder } = require('./core/regressing-reminder');
   const warns = value => /may be stale/.test(buildRegressingReminder(project('rem', value)));
   report.check('C4 prompt reminder: only a readable old timestamp warns',
     warns(realOld) === true && warns(new Date().toISOString()) === false && warns('garbage') === false && warns(undefined) === false);
 }
 
-// 3. One definition: the limit is compared only inside regressing-state.js.
+// 3. One definition: the limit is defined in one module (found in the code as
+// "REGRESSING_STALE_MS: <number>") and compared only inside regressing-state.js.
 {
   const users = [];
+  const definers = [];
   const walk = dir => {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) { if (!['fixtures', 'testlib', 'node_modules'].includes(entry.name)) walk(full); continue; }
       if (!/\.js$/.test(entry.name) || /^_test-|^_v0/.test(entry.name)) continue;
-      if (/\bREGRESSING_STALE_MS\b/.test(fs.readFileSync(full, 'utf8'))) users.push(path.relative(__dirname, full).replace(/\\/g, '/'));
+      const body = fs.readFileSync(full, 'utf8');
+      if (!/\bREGRESSING_STALE_MS\b/.test(body)) continue;
+      const file = path.relative(__dirname, full).replace(/\\/g, '/');
+      users.push(file);
+      if (/\bREGRESSING_STALE_MS\s*[:=]\s*\d/.test(body)) definers.push(file);
     }
   };
   walk(__dirname);
-  report.check('S4 only constants.js and regressing-state.js use REGRESSING_STALE_MS', users.sort().join(',') === 'constants.js,regressing-state.js', users.join(' '));
+  const comparers = users.filter(file => !definers.includes(file));
+  report.check('S4 REGRESSING_STALE_MS is defined once and used only in regressing-state.js',
+    definers.length === 1 && comparers.join(',') === 'regressing-state.js', `defined in: ${definers.join(' ')} | used in: ${users.join(' ')}`);
 }
 
 report.finish();

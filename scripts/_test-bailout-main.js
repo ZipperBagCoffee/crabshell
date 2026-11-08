@@ -3,7 +3,11 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+// The hook destructures these at load time, so each owner module is patched before
+// inject-rules is required.
 const utils = require('./utils');
+const memoryIndexFile = require('./core/memory-index-file');
+const fileLock = require('./core/file-lock');
 const jsonMode = process.argv.includes('--json');
 
 let passed = 0;
@@ -26,13 +30,13 @@ let lockCount = 0;
 let releaseCount = 0;
 let writeCount = 0;
 
-utils.readIndexSafe = () => currentState;
+memoryIndexFile.readIndexSafe = () => currentState;
 utils.readJsonOrDefault = (_filePath, fallback) => fallback;
-utils.acquireIndexLock = () => {
+fileLock.acquireIndexLock = () => {
   lockCount++;
   return true;
 };
-utils.releaseIndexLock = () => {
+fileLock.releaseIndexLock = () => {
   releaseCount++;
 };
 utils.writeJson = () => {

@@ -8,7 +8,8 @@ const { readStdin } = require('./transcript-utils');
 // F1 mitigation: keep inline env check for fail-open invariant — D106 IA-10 RA2
 if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 
-const { getProjectDir, ticketDocPattern } = require('./utils');
+const { getProjectDir } = require('./utils');
+const { ticketDocPattern } = require('./core/doc-types');
 const { writtenPaths } = require('./core/tool-shape');
 
 // Returns { reason } when the write must be blocked, otherwise null. Every file the call

@@ -3,7 +3,8 @@
 
 function parseArgs(argv) {
   const parsed = {
-    targetId: null,
+    // Entry ids named on the command line (D151_T001: several in one call).
+    targetIds: [],
     flat: process.env.CRABSHELL_VERIFY_FLAT === '1',
     changed: false,
     dryRun: false,
@@ -31,6 +32,12 @@ function parseArgs(argv) {
     else if (arg === '--no-fail-before') { parsed.failBefore = false; parsed.guardRun = true; }
     else if (arg === '--fail-before') parsed.failBefore = true;
     else if (arg === '--slow') parsed.slow = true;
+    // D151: what routine runs would have cost on the last N commits, from the records.
+    else if (arg === '--replay') {
+      const count = Number(argv[++index]);
+      if (!Number.isInteger(count) || count < 1) { parsed.error = '--replay needs a number of commits (1 or more)'; break; }
+      parsed.replay = count;
+    }
     else if (arg === '--files') {
       const value = argv[++index];
       if (!value) { parsed.error = '--files needs a comma-separated list'; break; }
@@ -38,11 +45,7 @@ function parseArgs(argv) {
     } else if (arg.startsWith('-')) {
       parsed.error = `Unknown flag: ${arg}`;
       break;
-    } else if (!parsed.targetId) parsed.targetId = arg;
-    else {
-      parsed.error = `Unexpected extra argument: ${arg}`;
-      break;
-    }
+    } else parsed.targetIds.push(arg);
   }
   return parsed;
 }

@@ -2,20 +2,21 @@
 
 const path = require('path');
 const fs = require('fs');
-const { STORAGE_ROOT, MEMORY_DIR, REGRESSING_STATE_FILE, DOC_TYPES } = require('./constants');
+const { STORAGE_ROOT, MEMORY_DIR, REGRESSING_STATE_FILE } = require('./constants');
 const { readStdin, normalizePath } = require('./transcript-utils');
 
 // Skip processing during background memory summarization
 // F1 mitigation: keep inline env check for fail-open invariant — D106 IA-10 RA2
 if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 
-const { getProjectDir, readJsonOrDefault, docDirsPattern } = require('./utils');
+const { getProjectDir, readJsonOrDefault } = require('./utils');
+const { DOC_TYPES, docDirsPattern } = require('./core/doc-types');
 const { getActiveSkill } = require('./core/skill-flag');
 const { leadingId } = require('./core/index-rows');
 const { planProblem, ticketHasDetails } = require('./core/plan-entry');
 const { fileWrites } = require('./core/tool-shape');
 
-// Document folders only a document skill may write (constants DOC_TYPES skillOnly)
+// Document folders only a document skill may write (core/doc-types DOC_TYPES skillOnly)
 const PROTECTED_DOCS_PATTERN = new RegExp(`${docDirsPattern(type => type.skillOnly)}/`);
 
 /**

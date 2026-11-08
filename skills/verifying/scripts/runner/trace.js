@@ -10,9 +10,11 @@ const { findExecutable, programName } = require('./fingerprint');
 // Tracer loaded into every checked Node process through NODE_OPTIONS: records the repo
 // files and folders each process requires, reads, lists, copies or opens, and every
 // program it starts (file, arguments, working folder, whether through a shell), and
-// appends them to CRABSHELL_TRACE_FILE on exit. It re-adds itself to child processes
-// whose callers build a fresh environment or their own NODE_OPTIONS, so Node children
-// are traced too.
+// appends them to CRABSHELL_TRACE_FILE on exit. Paths whose whole content the process
+// took — a copy source, a recursive listing — are also recorded as "deep" (D151_T007): a
+// folder only listed or probed depends on its names, a copied one on every file in it.
+// It re-adds itself to child processes whose callers build a fresh environment or their
+// own NODE_OPTIONS, so Node children are traced too.
 const TRACER_SOURCE = `'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -22,24 +24,32 @@ const root = process.env.CRABSHELL_TRACE_ROOT;
 const requireFlag = process.env.CRABSHELL_TRACE_REQUIRE;
 if (out && root) {
   const seen = new Set();
+  const deep = new Set();
   const children = [];
-  const note = target => {
+  const note = (target, whole) => {
     try {
       if (target instanceof URL) target = fileURLToPath(target);
       else if (typeof target === 'string' && target.startsWith('file:')) target = fileURLToPath(target);
-      if (typeof target === 'string') seen.add(path.resolve(target));
+      if (typeof target === 'string') {
+        seen.add(path.resolve(target));
+        if (whole) deep.add(path.resolve(target));
+      }
     } catch (_) {}
   };
-  const wrap = (object, name, positions = [0]) => {
+  // whole(args): whether this call takes the path's whole content (a copy, a recursive listing).
+  const wrap = (object, name, whole = () => false) => {
     const original = object && object[name];
     if (typeof original !== 'function') return;
-    object[name] = function (...args) { for (const index of positions) note(args[index]); return original.apply(this, args); };
+    object[name] = function (...args) { note(args[0], whole(args)); return original.apply(this, args); };
   };
-  for (const name of ['readFileSync', 'readFile', 'createReadStream', 'existsSync', 'statSync', 'lstatSync', 'readdirSync', 'readdir', 'opendirSync', 'openSync', 'open']) wrap(fs, name);
-  for (const name of ['copyFileSync', 'copyFile', 'cpSync', 'cp']) wrap(fs, name, [0]);
+  const recursive = args => Boolean(args[1] && typeof args[1] === 'object' && args[1].recursive);
+  for (const name of ['readFileSync', 'readFile', 'createReadStream', 'existsSync', 'statSync', 'lstatSync', 'openSync', 'open']) wrap(fs, name);
+  for (const name of ['readdirSync', 'readdir', 'opendirSync']) wrap(fs, name, recursive);
+  for (const name of ['copyFileSync', 'copyFile', 'cpSync', 'cp']) wrap(fs, name, () => true);
   if (fs.promises) {
-    for (const name of ['readFile', 'readdir', 'open', 'stat', 'opendir']) wrap(fs.promises, name);
-    for (const name of ['copyFile', 'cp']) wrap(fs.promises, name, [0]);
+    for (const name of ['readFile', 'open', 'stat']) wrap(fs.promises, name);
+    for (const name of ['readdir', 'opendir']) wrap(fs.promises, name, recursive);
+    for (const name of ['copyFile', 'cp']) wrap(fs.promises, name, () => true);
   }
   const cp = require('child_process');
   const remember = (file, args, options, shell) => {
@@ -86,6 +96,7 @@ if (out && root) {
     try {
       const files = new Set([...seen, ...Object.keys(require.cache)]);
       fs.appendFileSync(out, JSON.stringify([...files]) + '\\n');
+      if (deep.size) fs.appendFileSync(out, JSON.stringify({ deep: [...deep] }) + '\\n');
       if (children.length) fs.appendFileSync(out, JSON.stringify({ children }) + '\\n');
     } catch (_) {}
   });
@@ -132,6 +143,38 @@ function readTrace(traceFile, projectRoot) {
     }
   }
   return files;
+}
+
+// The project files and folders ("x/") whose whole content a traced process took (a copy
+// source, a recursive listing); a folder here stands for every file under it.
+function readDeep(traceFile, projectRoot) {
+  const paths = new Set();
+  for (const line of traceLines(traceFile)) {
+    if (!line || Array.isArray(line) || !Array.isArray(line.deep)) continue;
+    for (const absolute of line.deep) {
+      try {
+        const relative = insideRoot(projectRoot, absolute);
+        if (!relative) continue;
+        paths.add(fs.existsSync(absolute) && fs.statSync(absolute).isDirectory() ? relative + '/' : relative);
+      } catch (_) {}
+    }
+  }
+  return paths;
+}
+
+// Every file under the given folders, and the folders between (each stands for its names,
+// so a file added anywhere inside changes one of them).
+function filesUnder(folders, listFiles) {
+  if (!folders.length) return [];
+  const out = new Set();
+  for (const file of listFiles()) {
+    const folder = folders.find(item => file.startsWith(item));
+    if (!folder) continue;
+    out.add(file);
+    const parts = file.slice(folder.length).split('/');
+    for (let depth = 1; depth < parts.length; depth++) out.add(folder + parts.slice(0, depth).join('/') + '/');
+  }
+  return [...out];
 }
 
 // The programs the traced processes started.
@@ -188,4 +231,4 @@ function traceEnvironment(env, trace, projectRoot) {
   return { ...env, NODE_OPTIONS: env.NODE_OPTIONS ? `${require} ${env.NODE_OPTIONS}` : require, CRABSHELL_TRACE_FILE: trace.file, CRABSHELL_TRACE_ROOT: projectRoot, CRABSHELL_TRACE_REQUIRE: require };
 }
 
-module.exports = { TRACER_SOURCE, insideRoot, readTrace, readChildren, incompleteChildren, commandWords, contractPaths, traceEnvironment };
+module.exports = { TRACER_SOURCE, insideRoot, readTrace, readDeep, filesUnder, readChildren, incompleteChildren, commandWords, contractPaths, traceEnvironment };

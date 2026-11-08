@@ -36,4 +36,7 @@ test('extract skips retained queued entries and leaves newer entries outside the
   assert(!fs.readFileSync(f.queue,'utf8').includes('first'));
   finish(f,j);assert(fs.existsSync(f.queue));
 });
-console.log(`${passed} passed, ${failed} failed; retained evidence: ${evidence}`);process.exitCode=failed?1:0;
+// A passing run deletes its own folder; a failing run keeps it and names it for diagnosis.
+if(failed)console.log(`${passed} passed, ${failed} failed; retained evidence: ${evidence}`);
+else{fs.rmSync(evidence,{recursive:true,force:true});console.log(`${passed} passed, ${failed} failed`);}
+process.exitCode=failed?1:0;

@@ -16,7 +16,7 @@ description: "Runs convergence-based iterative optimization cycles wrapped by a 
 | Philosophy | Source | Role in regressing |
 |------|------|----------------------|
 | **Iterative Optimization** | autoresearch | Each cycle: feedback → improvement. Output becomes input |
-| **Parent-Owned Orchestration + Verification** | workflow | Parent-owned decisions, bounded delegation, runtime verification |
+| **Parent-Owned Orchestration + Verification** | workflow | Parent-owned decisions, parallel workers for independent parts, runtime verification |
 | **Document Tracing** | D/P/T | Every step is documented, enabling full traceability |
 
 ## Anti-Patterns (PROHIBITED)
@@ -88,10 +88,10 @@ After each /ticketing invocation, update regressing state:
 - Execute each T(n,m) using ticketing's parent-owned execution and verification flow.
 - Each ticket is an independent execution cycle
 - **Ticket execution ordering:** Dependent tickets (e.g., T002 depends on T001's file changes) MUST execute sequentially — T001 completes before T002 starts. Independent tickets MAY execute in parallel. The Orchestrator determines dependency order before execution begins.
-- **Agent flow:** The parent owns each phase and delegates only bounded independent work when risk or latency justifies it. No worker count or WA:RA pairing is a completion condition.
-- Parent executes in-scope work and appends execution evidence to the T document. Delegation is optional and bounded by the ticket contract.
+- **Agent flow:** The parent owns each phase; parts that touch different files and need no result from each other run as parallel workers. No worker count or WA:RA pairing is a completion condition.
+- Parent executes in-scope work and appends execution evidence to the T document. Delegation follows the ticket contract.
   - **Framing:** Any delegated prompt follows ticketing framing and verification standards, names exact scope and non-goals, and forbids fan-out.
-- Optional independent review, the check run (once per ticket, after its last edit), and the parent's final verification — Correctness, Coherence, Improvement Opportunities, the Evidence Gate, Intent Fidelity (the result against D's IA and the cycle plan) and Next Direction — follow `references/cycle-verification.md`; read it before each ticket's final verification. Default posture: skepticism; a worker/reviewer claim is never the completion condition.
+- Optional independent review, the check run (once per ticket, after its last edit), and the parent's final verification — Correctness, Coherence, Improvement Opportunities, the evidence record, Intent Fidelity (the result against D's IA and the cycle plan) and Next Direction — follow `references/cycle-verification.md`; read it before each ticket's final verification. Default posture: skepticism; a worker/reviewer claim is never the completion condition.
 
 After ticket execution completes, update regressing state:
 - Set `"phase": "feedback"`, `"lastUpdatedAt": "{ISO}"` using: `"{NODE_PATH}" -e "const f='{PROJECT_DIR}/.crabshell/memory/regressing-state.json';const s=JSON.parse(require('fs').readFileSync(f,'utf8'));s.phase='feedback';s.lastUpdatedAt=new Date().toISOString();require('fs').writeFileSync(f,JSON.stringify(s,null,2))"`
@@ -138,7 +138,7 @@ At start confirm the topic and cap; during the cycles work autonomously (Rule 5,
 
 ## Rules
 
-1. **1 cycle = 1 plan entry in the D log + 1..M T.** Each cycle produces exactly one plan entry and one or more tickets. Ticket sizing: 3-5 acceptance criteria per ticket, independent work items are separate tickets. No steps may be skipped.
+1. **1 cycle = 1 plan entry in the D log + 1..M T.** Each cycle produces exactly one plan entry and one or more tickets (sized as Step 4b says). No steps may be skipped.
 2. **One D wraps all cycles.** D opens at start, closes with final report at end. Do NOT create a new D per cycle.
 3. **Verification-based Optimization.** No iteration without verification. Must verify at the end of each cycle, and verification results determine the next cycle.
 4. **Context transfer between cycles is mandatory.** The Orchestrator must explicitly pass cycle n's final verification results as the Context of cycle n+1's plan entry.
@@ -147,7 +147,7 @@ At start confirm the topic and cap; during the cycles work autonomously (Rule 5,
 7. **Early termination on convergence.** If the Orchestrator's verification finds no improvement opportunities — naming what was examined and why further cycles would not improve the result — the session terminates early; a bare "ALL PASS" is rubber-stamping, not convergence. **When the wrapping D document contains a `## Convergence Criteria` section, the Orchestrator MUST evaluate each criterion explicitly — convergence is only valid when all listed criteria are met or explicitly declared out-of-scope with rationale.**
 8. **A one-ticket discussion is the lightweight alternative.** Regressing is the primary mode; standalone one-off tasks are done directly and recorded as a discussion with one ticket.
 9. **D's IA is the constant anchor.** Every cycle plan entry and T document references D's IA as read-only evaluation criteria throughout all cycles.
-10. **Parent-owned orchestration.** The parent owns intent, implementation decisions, decisive verification, and completion. Delegate only bounded independent work when risk or latency justifies it; do not require a worker/reviewer pair or use agent count as evidence. Delegates do not fan out.
+10. **Parent-owned orchestration.** The parent owns intent, implementation decisions, decisive verification, and completion. Independent parts (different files, no shared result) run as parallel workers; do not require a worker/reviewer pair or use agent count as evidence. Delegates do not fan out.
 11. **Orchestrator anti-rubber-stamp.** Each cycle gets a substantive evaluation: "No improvement opportunities" or "ALL PASS" is valid only with what was specifically examined and why the output cannot be improved.
 12. **Cycles are for result improvement, not sequential work progression.** Each cycle produces a complete result and verifies it. The next cycle's purpose is to improve the previous cycle's output based on verified gaps — not to continue with remaining work. Cycle 1's plan MUST NOT pre-allocate work across cycles. If a cycle plan divides total work into equal parts or references "what cycle N+1 will do," it is INVALID. The scope of cycle N+1 is unknown until cycle N's verification reveals what needs improvement. Cycle count is emergent — N is a safety cap, not a quota to fill. **Sequential tasks (version bump, cache sync, deploy) belong in the SAME cycle as the code change, as separate tickets — NOT as separate cycles.** A cycle is incomplete if it produces a code change without its operational follow-through.
 13. **Distinct-risk review.** When multiple reviewers are useful, assign different risks rather than duplicating a checklist. The parent compares their independent evidence and resolves discrepancies; no reviewer count or cross-review ritual is a completion condition.

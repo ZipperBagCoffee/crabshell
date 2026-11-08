@@ -1,5 +1,5 @@
 'use strict';
-// Unit tests for risk-based delegation reminder in scripts/inject-rules.js
+// Tests for the parallel work reminder (DELEGATION_REMINDER) in scripts/inject-rules.js
 // Run: node tests/_test-parallel-reminder.js
 
 const assert = require('assert');
@@ -83,11 +83,37 @@ test('shouldInjectDelegationReminder("", true) → true (regressing overrides em
   assert.strictEqual(result, true, 'regressing active should override empty prompt');
 });
 
-// 10. Reminder carries the D110 task/evidence boundary without fixed counts
-test('DELEGATION_REMINDER carries worker contract and no count-driven default', () => {
-  assert.ok(typeof DELEGATION_REMINDER === 'string', 'DELEGATION_REMINDER should be a string');
-  assert.ok(DELEGATION_REMINDER.includes('claim/evidence/gap'), 'should contain return contract');
-  assert.ok(DELEGATION_REMINDER.includes('parent must reopen decisive references'), 'should contain parent evidence ownership');
+// 10. The prompt hook adds the reminder when shouldInjectDelegationReminder says so, and only then.
+// The expected text is the exported constant, so a reworded reminder still passes.
+test('the prompt hook injects the reminder on a parallel-work prompt and not on a plain one', () => {
+  const fs = require('fs');
+  const os = require('os');
+  const { spawnSync } = require('child_process');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'parallel-reminder-hook-'));
+  try {
+    fs.mkdirSync(path.join(dir, '.crabshell', 'memory'), { recursive: true });
+    const contextFor = (prompt, turn) => {
+      const r = spawnSync(process.execPath, [path.join(__dirname, 'inject-rules.js')], { cwd: dir, encoding: 'utf8',
+        env: { ...process.env, CLAUDE_PROJECT_DIR: dir, CRABSHELL_BACKGROUND: '', HOOK_DATA: '' },
+        input: JSON.stringify({ cwd: dir, session_id: 'parallel-reminder-test', prompt_id: `turn-${turn}`, hook_event_name: 'UserPromptSubmit', prompt }) });
+      assert.strictEqual(r.status, 0, String(r.error || r.stderr));
+      return JSON.parse(r.stdout).hookSpecificOutput.additionalContext;
+    };
+    const parallelPrompt = 'Fix these two files in parallel.';
+    const plainPrompt = 'What does this function return?';
+    assert.ok(shouldInjectDelegationReminder(parallelPrompt, false) && !shouldInjectDelegationReminder(plainPrompt, false), 'fixture prompts no longer split the trigger');
+    const reminder = DELEGATION_REMINDER.trim();
+    const heading = reminder.split('\n').find(line => line.startsWith('## '));
+    assert.ok(heading, 'the reminder has a heading');
+    assert.ok(contextFor(parallelPrompt, 0).includes(reminder), 'the reminder is missing on a parallel-work prompt');
+    assert.ok(!contextFor(plainPrompt, 1).includes(heading), 'the reminder appeared on a plain prompt');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// 11. D110: no fixed worker counts or pairings in the reminder
+test('DELEGATION_REMINDER carries no count-driven default', () => {
   assert.ok(!/multiple WAs|1:1|single-file|reviewer count/i.test(DELEGATION_REMINDER), 'must not contain fixed-count delegation policy');
 });
 

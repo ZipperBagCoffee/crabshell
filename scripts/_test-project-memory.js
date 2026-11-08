@@ -5,7 +5,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const { readProjectConcept } = require('./shared-context');
+const { readProjectConcept } = require('./core/project-memory');
 
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'crabshell project memory '));
 let passed = 0;

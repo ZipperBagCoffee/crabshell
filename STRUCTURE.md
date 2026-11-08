@@ -1,10 +1,10 @@
-# Crabshell Plugin Structure (v21.157.0)
+# Crabshell Plugin Structure (v21.158.0)
 
-**Version**: 21.157.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.158.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
-Crabshell is a dual-runtime Claude Code/Codex plugin. Both hosts use native lifecycle hooks backed by shared first-turn, memory, workflow, compaction, subagent, and parent-completion cores. Claude retains automatic SessionEnd capture and pressure telemetry; Codex supplies synchronous native lifecycle and Interrupt events. Both share the D/P/T/I/W/K document system and `.crabshell/` storage. Version 21.127.0 adds the document-type table (`DOC_TYPES` in `scripts/constants.js`), `scripts/core/skill-flag.js` and the lock wrappers in `scripts/core/memory-lock.js`; Version 21.126.0 adds test discovery, the load map and `--changed` to the verification runner; Version 21.125.0 runs each Claude hook event in one process (`scripts/adapters/claude/`) and narrows the path guard to writes (`scripts/core/shell-writes.js`); Version 21.124.0 added per-session state (`scripts/core/session-state.js`, `scripts/core/session-delta.js`) and the SessionStart budget; Version 21.123.0 added the failure/capture/finalization/recovery components listed below.
+Crabshell is a dual-runtime Claude Code/Codex plugin. Both hosts use native lifecycle hooks backed by shared first-turn, memory, workflow, compaction, subagent, and parent-completion cores. Claude retains automatic SessionEnd capture and pressure telemetry; Codex supplies synchronous native lifecycle and Interrupt events. Both share the D/P/T/I/W/K document system and `.crabshell/` storage. Version 21.127.0 adds the document-type table (`DOC_TYPES`, in `scripts/constants.js` until v21.158.0 moved it to `scripts/core/doc-types.js`), `scripts/core/skill-flag.js` and the lock wrappers in `scripts/core/memory-lock.js`; Version 21.126.0 adds test discovery, the load map and `--changed` to the verification runner; Version 21.125.0 runs each Claude hook event in one process (`scripts/adapters/claude/`) and narrows the path guard to writes (`scripts/core/shell-writes.js`); Version 21.124.0 added per-session state (`scripts/core/session-state.js`, `scripts/core/session-delta.js`) and the SessionStart budget; Version 21.123.0 added the failure/capture/finalization/recovery components listed below.
 
 Codex compatibility is provided in the same repository through a separate `.codex-plugin/plugin.json`, `codex-skills/`, and explicit wrapper scripts. Claude Code and Codex ship from the same repo but activate different manifests; both can share the `.crabshell/` memory and document store.
 
@@ -124,7 +124,19 @@ crabshell/
 │   ├── core/dispatch.js                     # One check runner for Claude and Codex hooks: lazy load and try per check (v21.153.0)
 │   ├── core/project-state.js                # The runner's project view for hooks, loaded on first use; null = no judgment (v21.153.0)
 │   ├── core/rerun-guard.js                  # A hand rerun of a check that passed on the same files is answered from its record (v21.153.0)
-│   ├── core/declaration-guidance.js         # Hints to declare inputs/slow/outputs and repeated undeclared commands (v21.153.0)
+│   ├── core/declaration-guidance.js         # Hints to declare inputs/slow/outputs and repeated undeclared commands; a declared check run by hand → run it through the runner (v21.153.0, v21.158.0)
+│   ├── core/commit-reminder.js              # A git commit with files changed since the checks last passed gets one reminder to run --changed (v21.158.0)
+│   ├── core/rules-text.js                   # RULES and the CLAUDE.md sync wrapper, so load-memory does not load the prompt hook (v21.158.0)
+│   ├── core/doc-types.js                    # DOC_TYPES, ticket sources, document skills and document path patterns (from constants/utils, v21.158.0)
+│   ├── core/limits.js                       # Time limits: skill-active TTL, regressing staleness, run snapshot age (from constants, v21.158.0)
+│   ├── core/memory-budgets.js               # Memory size budgets and archive timestamps (from constants, v21.158.0)
+│   ├── core/memory-index-file.js            # Memory index read/update, token estimates, L1 timestamps (from utils, v21.158.0)
+│   ├── core/file-lock.js                    # The memory index lock (from utils, v21.158.0)
+│   ├── core/transcript.js                   # Transcript path and last user message (from transcript-utils, v21.158.0)
+│   ├── core/regressing-phase.js             # Regressing skill-call detection and phase advance (from regressing-state, v21.158.0)
+│   ├── core/regressing-reminder.js          # The regressing reminder for UserPromptSubmit (from regressing-state, v21.158.0)
+│   ├── core/doc-lookup.js                   # findDocument/readSection (from subagent-context, v21.158.0)
+│   ├── core/project-memory.js               # project.md readers (from shared-context, v21.158.0)
 │   ├── core/runner-sync.js                  # Session start keeps the project's runner copy current (v21.153.0)
 │   ├── core/host-tool-result.js             # Bind native Codex completion records to the hook invocation
 │   ├── core/check-history.js                # Per-check ordering, duplicate and late-result handling
@@ -243,7 +255,7 @@ crabshell/
 │   ├── (light-workflow retired v21.112.0 — one-pass work records via hotfix)
 │   ├── verifying/SKILL.md            # /crabshell:verifying (schema-v2 behavioral verification; Step 2a wiring inventory v21.121.0)
 │   │   ├── scripts/run-verify.js      # Launcher of the portable verification runner (v21.106.0; split into runner/ v21.153.0)
-│   │   ├── scripts/runner/            # Runner modules: manifest, fingerprint, snapshot, ignored, select, schedule, execute, contract, trace, store, output, install, project-state (v21.153.0)
+│   │   ├── scripts/runner/            # Runner modules: manifest, fingerprint, snapshot, ignored, select, schedule, execute, contract, trace, store, output, install, project-state (v21.153.0); settings (manifest run settings), test-hygiene (copy detector), routine (risk paths, flaky quarantine), recheck (forbidden-file re-check), replay (--replay) (v21.158.0)
 │   │   ├── scripts/released-launchers.json # Every launcher Crabshell released (LF sha256), built by scripts/build-released-launchers.js (v21.153.0)
 │   │   ├── scripts/check-pipeline-wiring.js # Pipeline wiring probe: discover / check --contract (v21.121.0)
 │   │   └── references/                # wiring-inventory, manifest-entries (v21.132.0); fail-before (v21.142.0)
@@ -310,10 +322,8 @@ Fallback Node.js locator utility:
 
 ### scripts/regressing-state.js
 Regressing phase tracker (v19.23.0):
-- `getRegressingState()`: Read `.crabshell/memory/regressing-state.json`, return null if inactive
-- `buildRegressingReminder()`: Build phase-specific reminder for UserPromptSubmit injection
-- `detectRegressingSkillCall()`: Detect Skill tool calls for planning/ticketing/discussing from PostToolUse hookData
-- `advancePhase()`: Auto-advance regressing phase on skill detection (planning→ticketing→execution)
+- `getRegressingState()`: Read `.crabshell/memory/regressing-state.json`, return null if inactive; `isRegressingStale()`
+- Since v21.158.0 the rest lives in `scripts/core/`, so a check that only reads the state does not read them: `regressing-reminder.js` `buildRegressingReminder()` (phase-specific reminder for UserPromptSubmit), `regressing-phase.js` `detectRegressingSkillCall()` (Skill calls for planning/ticketing/discussing in PostToolUse) and `advancePhase()` (planning→ticketing→execution)
 
 ### scripts/counter.js
 Main automation engine with commands:
@@ -361,7 +371,7 @@ UserPromptSubmit hook:
 - Inject critical rules every prompt via `additionalContext`
 - Append the `## Codex Delegation` guidance block (`CODEX_DELEGATION`) on Claude execution turns — /codex:rescue usage, model example, project-root launch, prompt-carried constraints, captured hook payload handoff, completion re-verification, and platform notes
 - `RULES` Simple Communication is a four-slot response contract (v21.115.0, I085): `[conclusion] → [evidence] → [critical exception] → [next action]` in the reader's words, first sentence is the direct answer, keep-vs-cut list on shortening, bullets only for 3+ parallel items with max 4 per group, one term unpacked per sentence (비유 금지), concrete over abstract, no self-coined acronyms, accuracy outranks brevity, banter never as padding
-- `RULES` VERIFICATION: chat report is `"M of N passed"` plus failed items — no table, no passing-item list, no raw observations (v21.115.0/.1, I085)
+- `RULES` VERIFICATION: after the last edit, run once the checks that touch what changed and read their output; unchanged inputs are not run again (v21.158.0); the chat report is `"M of N passed"` plus failed items, in plain words (v21.115.0/.1, I085)
 - Configurable frequency via `rulesInjectionFrequency`
 - Auto-sync rules to CLAUDE.md via `syncClaudeMdRules()` (marker-based; every execution prompt, and SessionStart through `load-memory.js`, when it differs; v21.155.0)
 - Reset and persist all pressure counters when `봉인해제` / `UNLEASH` appears, regardless of question/execution classification (v21.110.1)
@@ -509,6 +519,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.158.0 | Checks sized to the change: one `run-verify.js --changed --slow` after the release's last edit replaces the `--no-reuse` full run; a hint for hand-run declared checks and a commit-time reminder (neither blocks); several check ids per run; side by side by default (`jobs`, `minFreeMemoryMB`, `startSpacingMs`); `riskPaths`, quarantine of flaky checks, a re-check of forbidden-file failures; `--replay N` estimates past commits from the records; `changed.global` no longer lists `scripts/constants.js`/`scripts/utils.js` and a folder a check only lists counts by its names; copy detector (`copyLiteralMinChars`); tests that copied rule and message wording rewritten; the VERIFICATION rules center on one sentence and a ticket records per criterion the command, its output line and pass/fail; the "Parallel Work Check" reminder and a per-prompt parallel line restore parallel work for independent parts; shared modules split into `scripts/core/` |
 | 21.157.0 | Before every answer the per-prompt checklist asks two questions — "Is this your best?" and "Is it simple and clear — only what the reader needs, nothing they must ask back about?" — and says to fix the answer before sending if either is no (before, it asked only the first, and only before handing over a result). |
 | 21.156.0 | Memory notices come once per turn and let a question be answered first: the pending-save and archive-summary notices go on a turn's first prompt only (queued messages and task reports of the same turn no longer repeat them); on a non-execution turn Claude answers first and runs the save in the same response, and a save skipped that way comes back on the next turn before other work; execution requests still save first; the notices no longer depend on the injection frequency and survive the hook's error fallback (`core/memory-notice.js`). |
 | 21.155.0 | CLAUDE.md follows the installed rules: its managed block is compared at every Claude session start and on every execution prompt and rewritten only when it differs (since 21.107.0 it was rewritten only on a session's first execution prompt, so updates could leave old rules in place); session start replaces only an existing marked block and creates nothing; the new text applies from the next session (Claude Code reads CLAUDE.md before session-start hooks run); a plugin's own source checkout is not rewritten by an installed copy at another path, and this repository's CLAUDE.md must match the source RULES (`_test-rules-and-injection.js` R10/R11). |

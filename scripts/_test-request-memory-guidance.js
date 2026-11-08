@@ -11,4 +11,7 @@ for(const host of ['claude','codex'])test(host+' actual prompt hook keeps core g
 test('Codex pending notice never emits unavailable skill trigger on either stream',()=>{const f=project(),r=inject(f,'codex','진행해봐');assert(r.context.includes('summaries are pending'));assert(!/CRABSHELL_DELTA|CRABSHELL_ROTATE|skill="memory-delta"|skill="memory-rotate"/.test(r.context+r.stderr));});
 test('Claude prepared snapshot remains retryable after queue moved away',()=>{const f=project();prepareDelta(f.root);assert(!fs.existsSync(path.join(f.memory,'delta_temp.txt')));const r=inject(f,'claude','진행해봐');assert(r.context.includes('[CRABSHELL_DELTA]'));assert(r.context.includes('skill="memory-delta"'));});
 test('compaction keeps all core rules under a large memory context',()=>{const f=project();fs.writeFileSync(path.join(f.memory,'logbook.md'),'x'.repeat(40000));const output=buildCompactionContext(f.root);assert(output.length<=9000);assert(output.includes(FIRST_TURN_RULES.trim()));assert(!output.includes('Wait for explicit'));});
-console.log(`${passed} passed, ${failed} failed; retained evidence: ${base}`);process.exitCode=failed?1:0;
+// A passing run deletes its own folder; a failing run keeps it and names it for diagnosis.
+if(failed)console.log(`${passed} passed, ${failed} failed; retained evidence: ${base}`);
+else{fs.rmSync(base,{recursive:true,force:true});console.log(`${passed} passed, ${failed} failed`);}
+process.exitCode=failed?1:0;

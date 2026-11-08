@@ -140,9 +140,10 @@ function inputSet(entry, record, ctx) {
   const extra = [...contractPaths(entry), ...(program.file ? [program.file] : []), ...ctx.globalFiles];
   const isNode = runsOnRunnerNode(entry.command);
   if (isNode && record && record.kind === 'traced' && Array.isArray(record.files) && record.files.length > 0) {
-    // A traced folder was listed or copied; a copy reads every file in it, so the
-    // folder stands for its names and all the files under it.
-    const folders = record.files.filter(file => file.endsWith('/'));
+    // A record made before D151_T007 does not say whether a traced folder was listed or
+    // copied, so its folders stand for their names and every file under them; a newer
+    // record (folders: 'names') already lists the files of the folders it copied.
+    const folders = record.folders === 'names' ? [] : record.files.filter(file => file.endsWith('/'));
     const inside = folders.length ? ctx.snapshot.list().filter(file => folders.some(folder => file.startsWith(folder))) : [];
     return { kind: 'traced', program: program.id, files: [...new Set([...record.files, ...inside, ...declared, ...extra, ...(record.test ? [record.test] : [])])] };
   }
@@ -165,6 +166,15 @@ function fingerprintOf(entry, set, ctx) {
 // Why a check whose fingerprint is new runs: the first input that differs from its
 // last pass, or the project file that changed for a check with unknown inputs.
 const DECISION_CHANGED = 'runner decision code changed';
+
+// The kind of reason a check was chosen for (the runner's summary, the routine choice and the
+// hooks' view of what --changed would run all group reasons the same way).
+function reasonGroup(reason) {
+  if (reason === DECISION_CHANGED) return 'after a runner change';
+  return / changed( \(unknown inputs\))?$| is no longer an input$|^entry, program or runner changed$/.test(reason) ? 'with changed inputs'
+    : reason === 'new check' ? 'new' : reason === 'failed in the last run' ? 'failed last time'
+      : reason === 'record from an older runner' ? 'recorded by an older runner' : reason;
+}
 
 function changeReason(set, record, ctx) {
   if (set.kind !== 'project' && record && record.inputHashes && typeof record.inputHashes === 'object') {
@@ -257,6 +267,14 @@ function gitChangedFiles(projectRoot) {
   return { files: [...files] };
 }
 
+// The commit the working tree is on, or null without git (D151_T002: runs are counted per
+// commit; git still plays no part in choosing checks).
+function currentHead(projectRoot) {
+  const result = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: projectRoot, encoding: 'utf8', windowsHide: true });
+  const head = result.status === 0 ? String(result.stdout || '').trim() : '';
+  return head || null;
+}
+
 // Files git can report as changed (tracked, or untracked and not ignored), or null
 // when git is unavailable.
 function gitVisibleFiles(projectRoot) {
@@ -268,5 +286,5 @@ function gitVisibleFiles(projectRoot) {
 module.exports = {
   covers, patternList, inputPatterns, matchesInput, inputsCover, crabshellState, exclusion, filesMatching, argumentFiles,
   declarationKey, medianDuration, isSlow, DEFAULT_SLOW_AFTER_SECONDS,
-  inputSet, fingerprintOf, changeReason, DECISION_CHANGED, planRun, withoutRunnerFiles, gitChangedFiles, gitVisibleFiles,
+  inputSet, fingerprintOf, changeReason, DECISION_CHANGED, reasonGroup, planRun, withoutRunnerFiles, gitChangedFiles, gitVisibleFiles, currentHead,
 };

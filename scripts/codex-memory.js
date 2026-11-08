@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 
-const { getProjectMemoryPath } = require('./shared-context');
+const { getProjectMemoryPath } = require('./core/project-memory');
 const fs = require('fs');
 const path = require('path');
 

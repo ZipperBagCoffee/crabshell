@@ -13,7 +13,11 @@ const { spawnSync } = require('child_process');
 
 const turnStart = require('./fixtures/hook-payloads/native/claude-UserPromptSubmit-turn-start.json');
 const queued = require('./fixtures/hook-payloads/native/claude-UserPromptSubmit-queued.json');
-const CONTRACT = '## Crabshell Turn Contract';
+// The fixed rule block is recognized by its heading, taken from the block itself so a
+// reworded heading needs no test change.
+const { FIRST_TURN_RULES } = require('./core/first-turn-context');
+const CONTRACT = FIRST_TURN_RULES.split('\n').find(line => line.startsWith('## '));
+assert.ok(CONTRACT, 'the fixed rule block has a "## " heading to recognize it by');
 const claudeEntry = path.join(__dirname, 'inject-rules.js');
 const codexEntry = path.join(__dirname, 'adapters', 'codex', 'user-prompt-submit.js');
 

@@ -9,7 +9,8 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const { STORAGE_ROOT, MEMORY_DIR, RUN_SNAPSHOT_MAX_AGE_MS } = require('../constants');
+const { STORAGE_ROOT, MEMORY_DIR } = require('../constants');
+const { RUN_SNAPSHOT_MAX_AGE_MS } = require('./limits');
 const { readJsonOrDefault, writeJson } = require('../utils');
 const { shellCommand } = require('./tool-shape');
 const { findDeclaration, checkInvocation, isToolFailure } = require('./command-observation');
@@ -111,6 +112,10 @@ function entryHints(payload, projectDir, declaration, durationMs) {
   if (!entry) return [];
   const id = declaration.entryId;
   const hints = [];
+  // D151_T002: a pass run by hand is not in the runner's record, so the check run before the
+  // commit runs it again; run through the runner by name, it is kept.
+  const launcher = path.posix.join(STORAGE_ROOT, 'verification', 'run-verify.js');
+  hints.push({ key: `${id}:runner`, text: `[CRABSHELL] ${id} was run by hand, so the runner kept no record of this pass and the check run before the commit will run it again. Run it through the runner to keep the pass: node ${launcher} "${id}"` });
   const { runsOnRunnerNode } = require('../../skills/verifying/scripts/runner/fingerprint');
   if (!runsOnRunnerNode(entry.command) && !(Array.isArray(entry.inputs) && entry.inputs.length)) {
     hints.push({ key: `${id}:inputs`, text: `[CRABSHELL] ${id} runs a program other than the runner's Node, so its inputs are unknown and any project change reruns it. Declare "inputs" for it in the manifest (the files it reads) so it reruns only when they change.` });
