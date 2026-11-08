@@ -79,7 +79,6 @@ function runExecutionLifecycle(projectDir, hookData = {}, options = {}) {
     staleSkillFlagRemoved: false,
     pressureReset: false,
     claudeMemoryWarningEnsured: false,
-    rulesSynchronized: false,
     diagnostics: [],
   };
   const storageRoot = getStorageRoot(projectDir);
@@ -142,14 +141,6 @@ function runExecutionLifecycle(projectDir, hookData = {}, options = {}) {
       result.claudeMemoryPath = warning.memoryPath;
     } catch (error) {
       result.diagnostics.push(`Claude built-in memory warning failed: ${error.message}`);
-    }
-    if (typeof options.syncRules === 'function') {
-      try {
-        result.rulesSynchronized = options.syncRules(projectDir) !== false;
-        if (!result.rulesSynchronized) result.diagnostics.push('Claude rule synchronization failed');
-      } catch (error) {
-        result.diagnostics.push(`Claude rule synchronization failed: ${error.message}`);
-      }
     }
   }
 

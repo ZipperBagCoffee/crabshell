@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.154.0)
+# Crabshell Plugin Structure (v21.155.0)
 
-**Version**: 21.154.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.155.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -77,138 +77,140 @@ crabshell/
 │   └── codex-hooks.json              # Codex-native lifecycle + Interrupt, fail-open launchers
 │
 ├── scripts/                          # Core implementation (Node.js)
-│   ├── find-node.sh                  # Fallback Node.js locator utility (v18.0.0, hardened v21.99.3)
-│   ├── counter.js                    # Main engine
-│   ├── load-memory.js                # Load memory on session start
-│   ├── inject-rules.js               # Rules injection + intent-independent pressure bailout
-│   ├── _test-bailout-main.js         # Real-main bailout reset/read-only regression
-│   ├── _test-check-pipeline-wiring.js # Wiring probe: discover/check/mutation sensitivity on a tmpdir fixture (v21.121.0)
-│   ├── _test-command-observation.js  # Declared commands, actual exits, assertions, and rejected lookalikes
-│   ├── _test-hook-payload-shapes.js  # Captured Claude outputs and host-specific success handling
-│   ├── _test-project-memory.js       # Setter-to-reader continuity and legacy/conflict preservation
-│   ├── _test-codex-docs.js           # Installed document launchers targeting separate consumer projects
-│   ├── fixtures/hook-payloads/       # Captured success/failure JSON and provenance README
-│   ├── shared-context.js              # Shared project context + orchestration defaults
-│   ├── subagent-context.js            # Bounded worker contract injection
-│   ├── extract-delta.js              # L1 delta extraction
-│   ├── constants.js                  # Centralized configuration
-│   ├── init.js                       # Project initialization
-│   ├── search.js                     # L1/L2/L3 integrated search
-│   ├── memory-rotation.js            # Token-based rotation
-│   ├── legacy-migration.js           # Large file splitting
-│   ├── transcript-utils.js           # Shared stdin/transcript utilities (v21.0.0)
-│   ├── refine-raw.js                 # raw.jsonl -> l1.jsonl conversion
-│   ├── regressing-state.js            # Regressing phase tracker (v19.23.0)
-│   ├── append-memory.js              # Prepare/finalize CLI and legacy summary append
-│   ├── regressing-guard.js           # PreToolUse regressing skill enforcement (v19.23.0)
-│   ├── path-guard.js                # Path guard entry: blocks Bash writes into another project's .crabshell, notices reads, logbook Edit/shrink block (v19.31.0, v20.6.0, v21.125.0)
-│   ├── web-guard.js                 # PreToolUse WebFetch/WebSearch guard — raw-fetch redirect, conditional WebSearch block, block/warn/off modes (v21.114.0, I084)
-│   ├── core/path-policy.js           # Host-neutral memory path policy (v21.104.0)
-│   ├── core/shell-writes.js          # Static Bash analysis: .crabshell paths named and whether written (v21.125.0)
-│   ├── core/post-compact-effects.js  # Pressure re-injection reset + compaction log; Claude SessionStart(compact), Codex PostCompact (v21.125.0)
-│   ├── core/codex-app-server.js      # Codex JSON-RPC/CLI capability client (v21.104.0)
-│   ├── core/orchestration-policy.js  # 8-field task contract + parent completion policy (v21.105.0)
-│   ├── core/first-turn-context.js     # Shared compact turn contract
-│   ├── core/turn-id.js                # The host's session and turn numbers (prompt_id / turn_id) (v21.154.0)
-│   ├── core/turn-state.js             # Per-session turn record: rule block added, latest user intent (v21.154.0)
-│   ├── core/memory-context.js         # Shared SessionStart selection with preserving legacy-description copy
-│   ├── core/execution-lifecycle.js    # Shared execution-authorized cleanup/reset with host data isolation
-│   ├── core/workflow-context.js       # Restart-safe active D/P/T/W recovery
-│   ├── core/compaction-context.js     # Shared compact/restart recovery context
-│   ├── core/subagent-context.js       # Shared task-specific child context
-│   ├── core/command-observation.js    # Declared checks only (manifest tools/entries, wrappers, environment prefixes) and host-specific results (v21.153.0)
-│   ├── core/completion-control.js     # Current-content parent evidence; identities compared only when both are known (v21.153.0)
-│   ├── core/tool-shape.js             # Shell calls and file writes known by payload shape, whatever the tool is named (v21.153.0)
-│   ├── core/dispatch.js               # One check runner for Claude and Codex hooks: lazy load and try per check (v21.153.0)
-│   ├── core/project-state.js          # The runner's project view for hooks, loaded on first use; null = no judgment (v21.153.0)
-│   ├── core/rerun-guard.js            # A hand rerun of a check that passed on the same files is answered from its record (v21.153.0)
-│   ├── core/declaration-guidance.js   # Hints to declare inputs/slow/outputs and repeated undeclared commands (v21.153.0)
-│   ├── core/runner-sync.js            # Session start keeps the project's runner copy current (v21.153.0)
-│   ├── core/host-tool-result.js       # Bind native Codex completion records to the hook invocation
-│   ├── core/check-history.js          # Per-check ordering, duplicate and late-result handling
-│   ├── core/state-lock.js             # Serialize verification/completion state writers
-│   ├── core/hook-capture.js           # Optional raw inputs and separate capture metadata
-│   ├── core/delta-transaction.js      # Fixed input, retry-aware finalization and owned-file cleanup
-│   ├── core/memory-lock.js            # Shared index/rotation locks; tryWithMemoryIndex/tryWithMemoryRotation skip when busy (v21.127.0)
-│   ├── core/skill-flag.js             # Document-skill flag: set, read, clear, path check; no load-time side effects (v21.127.0)
-│   ├── core/index-rows.js             # One reader for INDEX.md rows: bare or wikilinked ID, status, cells, link target (v21.131.0)
-│   ├── core/plan-entry.js             # Does a discussion have a plan / a ticket its Implementation Details (v21.135.0)
-│   ├── core/memory-entry.js           # Shared summary timestamp format
-│   ├── core/recovery-context.js       # Bounded historical request/check/pause context
-│   ├── core/support-state.js          # Seven-state live doctor model
-│   ├── adapters/codex/               # Native synchronous lifecycle and Interrupt adapters
-│   ├── adapters/claude/              # One process per Claude event: pre-tool-use.js, post-tool-use.js, dispatch.js (v21.125.0)
-│   ├── completion-controller.js       # Single Claude Stop/SubagentStop owner retaining existing guards
-│   ├── codex-doctor.js               # Cross-runtime source/cache/hook/trust/behavior/drift diagnostics
-│   ├── codex-memory.js               # Manual Codex memory load/save/search/status
-│   ├── verify-cross-runtime.js        # Manual runner from V059 fileAssertions; fail-open last
+│   ├── find-node.sh                         # Fallback Node.js locator utility (v18.0.0, hardened v21.99.3)
+│   ├── counter.js                           # Main engine
+│   ├── load-memory.js                       # Load memory on session start
+│   ├── inject-rules.js                      # Rules injection + intent-independent pressure bailout
+│   ├── _test-bailout-main.js                # Real-main bailout reset/read-only regression
+│   ├── _test-check-pipeline-wiring.js       # Wiring probe: discover/check/mutation sensitivity on a tmpdir fixture (v21.121.0)
+│   ├── _test-command-observation.js         # Declared commands, actual exits, assertions, and rejected lookalikes
+│   ├── _test-hook-payload-shapes.js         # Captured Claude outputs and host-specific success handling
+│   ├── _test-project-memory.js              # Setter-to-reader continuity and legacy/conflict preservation
+│   ├── _test-codex-docs.js                  # Installed document launchers targeting separate consumer projects
+│   ├── fixtures/hook-payloads/              # Captured success/failure JSON and provenance README
+│   ├── shared-context.js                    # Shared project context + orchestration defaults
+│   ├── subagent-context.js                  # Bounded worker contract injection
+│   ├── extract-delta.js                     # L1 delta extraction
+│   ├── constants.js                         # Centralized configuration
+│   ├── init.js                              # Project initialization
+│   ├── search.js                            # L1/L2/L3 integrated search
+│   ├── memory-rotation.js                   # Token-based rotation
+│   ├── legacy-migration.js                  # Large file splitting
+│   ├── transcript-utils.js                  # Shared stdin/transcript utilities (v21.0.0)
+│   ├── refine-raw.js                        # raw.jsonl -> l1.jsonl conversion
+│   ├── regressing-state.js                  # Regressing phase tracker (v19.23.0)
+│   ├── append-memory.js                     # Prepare/finalize CLI and legacy summary append
+│   ├── regressing-guard.js                  # PreToolUse regressing skill enforcement (v19.23.0)
+│   ├── path-guard.js                        # Path guard entry: blocks Bash writes into another project's .crabshell, notices reads, logbook Edit/shrink block (v19.31.0, v20.6.0, v21.125.0)
+│   ├── web-guard.js                         # PreToolUse WebFetch/WebSearch guard — raw-fetch redirect, conditional WebSearch block, block/warn/off modes (v21.114.0, I084)
+│   ├── core/path-policy.js                  # Host-neutral memory path policy (v21.104.0)
+│   ├── core/shell-writes.js                 # Static Bash analysis: .crabshell paths named and whether written (v21.125.0)
+│   ├── core/post-compact-effects.js         # Pressure re-injection reset + compaction log; Claude SessionStart(compact), Codex PostCompact (v21.125.0)
+│   ├── core/codex-app-server.js             # Codex JSON-RPC/CLI capability client (v21.104.0)
+│   ├── core/orchestration-policy.js         # 8-field task contract + parent completion policy (v21.105.0)
+│   ├── core/first-turn-context.js           # Shared compact turn contract
+│   ├── core/turn-id.js                      # The host's session and turn numbers (prompt_id / turn_id) (v21.154.0)
+│   ├── core/turn-state.js                   # Per-session turn record: rule block added, latest user intent (v21.154.0)
+│   ├── core/memory-context.js               # Shared SessionStart selection with preserving legacy-description copy
+│   ├── core/execution-lifecycle.js          # Shared execution-authorized cleanup/reset with host data isolation
+│   ├── core/claude-md-rules.js              # CLAUDE.md managed rules block: sync when it differs, own-source-checkout guard (v21.155.0)
+│   ├── core/workflow-context.js             # Restart-safe active D/P/T/W recovery
+│   ├── core/compaction-context.js           # Shared compact/restart recovery context
+│   ├── core/subagent-context.js             # Shared task-specific child context
+│   ├── core/command-observation.js          # Declared checks only (manifest tools/entries, wrappers, environment prefixes) and host-specific results (v21.153.0)
+│   ├── core/completion-control.js           # Current-content parent evidence; identities compared only when both are known (v21.153.0)
+│   ├── core/tool-shape.js                   # Shell calls and file writes known by payload shape, whatever the tool is named (v21.153.0)
+│   ├── core/dispatch.js                     # One check runner for Claude and Codex hooks: lazy load and try per check (v21.153.0)
+│   ├── core/project-state.js                # The runner's project view for hooks, loaded on first use; null = no judgment (v21.153.0)
+│   ├── core/rerun-guard.js                  # A hand rerun of a check that passed on the same files is answered from its record (v21.153.0)
+│   ├── core/declaration-guidance.js         # Hints to declare inputs/slow/outputs and repeated undeclared commands (v21.153.0)
+│   ├── core/runner-sync.js                  # Session start keeps the project's runner copy current (v21.153.0)
+│   ├── core/host-tool-result.js             # Bind native Codex completion records to the hook invocation
+│   ├── core/check-history.js                # Per-check ordering, duplicate and late-result handling
+│   ├── core/state-lock.js                   # Serialize verification/completion state writers
+│   ├── core/hook-capture.js                 # Optional raw inputs and separate capture metadata
+│   ├── core/delta-transaction.js            # Fixed input, retry-aware finalization and owned-file cleanup
+│   ├── core/memory-lock.js                  # Shared index/rotation locks; tryWithMemoryIndex/tryWithMemoryRotation skip when busy (v21.127.0)
+│   ├── core/skill-flag.js                   # Document-skill flag: set, read, clear, path check; no load-time side effects (v21.127.0)
+│   ├── core/index-rows.js                   # One reader for INDEX.md rows: bare or wikilinked ID, status, cells, link target (v21.131.0)
+│   ├── core/plan-entry.js                   # Does a discussion have a plan / a ticket its Implementation Details (v21.135.0)
+│   ├── core/memory-entry.js                 # Shared summary timestamp format
+│   ├── core/recovery-context.js             # Bounded historical request/check/pause context
+│   ├── core/support-state.js                # Seven-state live doctor model
+│   ├── adapters/codex/                      # Native synchronous lifecycle and Interrupt adapters
+│   ├── adapters/claude/                     # One process per Claude event: pre-tool-use.js, post-tool-use.js, dispatch.js (v21.125.0)
+│   ├── completion-controller.js             # Single Claude Stop/SubagentStop owner retaining existing guards
+│   ├── codex-doctor.js                      # Cross-runtime source/cache/hook/trust/behavior/drift diagnostics
+│   ├── codex-memory.js                      # Manual Codex memory load/save/search/status
+│   ├── verify-cross-runtime.js              # Manual runner from V059 fileAssertions; fail-open last
 │   ├── _test-cross-platform-native-hosts.js # Windows/Linux clean-profile CLI matrix
-│   ├── _test-codex-windows-hook-command.js # Windows hook output + loader/rejection fail-open regression
-│   ├── _test-linux-native-hosts.sh    # Disposable Linux Node/current-CLI provisioner
-│   ├── run-orchestration-corpus.js   # Live Codex A/B orchestration behavior runner (v21.105.0)
-│   ├── _test-orchestration-defaults.js # Deterministic orchestration policy tests (v21.105.0)
-│   ├── docs-guard.js                # PreToolUse D/P/T/I skill bypass prevention (v19.33.0); a new discussion ticket needs the Plan (v21.135.0)
-│   ├── verify-guard.js              # Final Verification check runner — not wired since v21.153.0 (v19.34.0, v20.3.0)
-│   ├── log-guard.js                # PreToolUse ticket status check — done/verified need filled result sections (v21.131.0; Intent Fidelity v21.135.0)
-│   ├── verification-sequence.js     # PostToolUse state tracker + PreToolUse commit/edit gate (v21.0.0)
-│   ├── skill-tracker.js             # Per-session skill flag setter, run inline by the PostToolUse dispatcher (v19.33.0, v21.124.0, v21.125.0)
-│   ├── _test-path-guard.js           # Path-guard unit tests + shell var resolution tests (v20.0.0, v21.8.0)
-│   ├── _test-web-guard.js            # Web-guard subprocess + unit tests — block/warn/off, MCP detection, fail-open (v21.114.0)
-│   ├── _test-verification-sequence.js # Verification-sequence unit/integration tests (v21.0.0)
-│   ├── _test-log-guard.js           # Log-guard unit/integration tests (v21.4.0, v21.11.0)
-│   ├── _test-feedback-detection.js  # Feedback detection + pressure system tests (v21.5.0)
-│   ├── _test-inject-rules.js        # inject-rules.js export + behavioral tests (v21.6.0)
-│   ├── _test-counter.js             # counter.js export + subprocess + lock + pruning + offset tests (v21.10.0)
-│   ├── _test-verify-guard.js        # verify-guard.js integration tests — Write/Edit new/existing distinction (v21.16.0)
-│   ├── doc-watchdog.js              # Doc-update omission checks: recordEdit/gateEdit/stopReason, in-project files only, per-session record and unfinished INDEX tickets (v21.18.0, v21.125.0, v21.154.0)
-│   ├── _test-doc-watchdog.js        # doc-watchdog.js integration suite: per-session record, INDEX status, owner, execution turn (v21.18.0, v21.154.0)
-│   ├── _test-restriction-controls.js # Lifted restrictions paired with writes that stay blocked (v21.125.0)
-│   ├── _test-changed-runner.js      # Discovery and --changed selection on fixtures (git-ignored files, same-content rewrites); the real-records case moved to V060 (v21.153.0)
-│   ├── _test-gate-required-checks.js # Only manifest tools commands are required checks; git commit is never blocked (v21.126.0, v21.153.0)
-│   ├── _test-runner-layout.js       # Launcher + runner/ modules; every derived location (v21.153.0)
-│   ├── _test-runner-fingerprint.js  # A check reruns only when its fingerprint is not among its passes (v21.153.0)
-│   ├── _test-runner-trace.js        # Traced vs unknown inputs: what the tracer saw across child processes (v21.153.0)
-│   ├── _test-runner-policy.js       # Retries, heavy checks, order, stop at a new failure, parallel jobs (v21.153.0)
-│   ├── _test-runner-any-project.js  # Non-Node (Python) checks with inputs, slow, and a folder without git (v21.153.0)
-│   ├── _test-runner-state-warning.js # A check reading Crabshell state is named; outside-snapshot inputs judged by time (v21.153.0)
-│   ├── _test-runner-new-file-input.js # A changed file that now requires a new file selects its reader (v21.153.0)
-│   ├── _test-runner-decision-code.js # Comment-only decision-code changes rerun nothing; code changes are named (v21.153.0)
-│   ├── _test-runner-ignored-folders.js # Git-ignored folders skipped via a kept list; worktree, subfolder, later git init (v21.153.0)
-│   ├── _test-runner-sync.js         # Session start copies runner modules; released launchers replaced, edited ones named once (v21.153.0)
-│   ├── _test-real-repo-selection.js # This repository's real records: a counter.js change (slow entry V060, v21.153.0)
-│   ├── _test-record-store.js        # One record store; edits write no TESTED/EDITED state (v21.153.0)
-│   ├── _test-tool-shape.js          # Shell calls and file writes known by shape; hook routing (v21.153.0)
-│   ├── _test-declared-commands.js   # Manifest-only check recognition, wrappers, environment prefixes, rerun answered from the record (v21.153.0)
-│   ├── _test-declaration-guidance.js # Hints to declare inputs/slow/outputs; repeated undeclared commands; --explain (v21.153.0)
-│   ├── _test-hook-fail-open.js      # Hooks without the runner's modules: path guard still decides, null is no evidence (v21.153.0)
-│   ├── _test-skill-text-contract.js # Skill texts match the plugin: removed steps absent, design lines, every manifest setting documented (v21.153.0)
-│   ├── _test-turn-state.js          # One rule block per host turn; latest user intent (real captured payloads) (v21.154.0)
-│   ├── _test-stop-latest-user.js    # A question or reprimand after a request ends the turn without "continue" (v21.154.0)
-│   ├── _test-single-source.js        # One definition per shared value across shipped scripts (v21.127.0)
-│   ├── _test-rules-and-injection.js  # Advisor line and unified rule wording; where the project description is injected (v21.127.0)
-│   ├── _test-d-parent-tickets.js     # Guards, the Codex document tool and phase changes treat D###_T### like P###_T### (v21.130.0)
-│   ├── _test-d-t-skills.js           # Skill instructions for D (with the plan) -> T; existing P/H updates kept (v21.130.0)
-│   ├── _test-index-rows.js           # INDEX rows copied from this repository; every consumer; unfinished ticket sections (v21.131.0)
-│   ├── _test-compaction-skills.js    # Skill bodies within the compaction re-attach budget; docs-guard update-call hint (v21.132.0)
-│   ├── _test-memory-loading.js       # Hand-save path, SessionStart memory notes/dropped parts/knowledge, snippet de-duplication (v21.132.0)
-│   ├── _test-rule-wording.js         # Rule wording from I091 (v21.132.0); git-record rule (v21.134.0); diff-only verification (v21.139.0)
-│   ├── _test-memory-save-directive.js # Mandatory memory-save/rotation notices, 20KB cadence, backlog parts (v21.133.0)
-│   ├── _test-plan-first-docs.js      # Plan section, ticket Implementation Details / Intent Fidelity, result-vs-discussion steps (v21.135.0)
-│   ├── _test-plan-first-guards.js    # No ticket before its discussion's plan; no verified without Intent Fidelity (v21.135.0)
-│   ├── _test-gate-loosening.js       # Commit gate: accepted and rejected check forms, block reason (v21.135.0); --changed unlocks, named first (v21.139.0)
-│   ├── _test-regressing-stale.js     # One regressing staleness decision; each caller's missing-time answer (v21.128.0)
-│   ├── _test-hook-wiring-cost.js     # Synchronous hook processes per tool call; Stop starts no child (v21.125.0)
-│   ├── _test-claude-dispatcher-parity.js # Old separate guards vs the PreToolUse dispatcher (v21.125.0)
-│   ├── _test-claude-dispatchers.js   # Moved behavior: compact effects, Read notice, inline observers, stdout, fail-open (v21.125.0)
-│   ├── shared-context.js            # Shared constants/functions for cross-hook reuse (v21.21.0)
-│   ├── pre-compact.js               # Compaction context script; unwired from Claude v21.125.0 (its output reaches no model)
-│   ├── post-compact.js              # Post-compaction script; unwired from Claude v21.125.0 (effects run at SessionStart compact)
-│   ├── subagent-context.js          # SubagentStart hook — inject project constraints + rules into sub-agents (v21.21.0)
-│   ├── _test-shared-context.js      # shared-context.js test suite (v21.21.0)
-│   ├── _test-pre-compact.js         # pre-compact.js test suite (v21.21.0)
-│   ├── _test-post-compact.js        # post-compact.js test suite (v21.21.0)
-│   ├── _test-subagent-context.js    # subagent-context.js test suite (v21.21.0)
-│   ├── _test-regressing-guard.js    # regressing-guard.js 7-test suite — phase gates + IA-2 agent section validation (v21.41.0)
+│   ├── _test-codex-windows-hook-command.js  # Windows hook output + loader/rejection fail-open regression
+│   ├── _test-linux-native-hosts.sh          # Disposable Linux Node/current-CLI provisioner
+│   ├── run-orchestration-corpus.js          # Live Codex A/B orchestration behavior runner (v21.105.0)
+│   ├── _test-orchestration-defaults.js      # Deterministic orchestration policy tests (v21.105.0)
+│   ├── docs-guard.js                        # PreToolUse D/P/T/I skill bypass prevention (v19.33.0); a new discussion ticket needs the Plan (v21.135.0)
+│   ├── verify-guard.js                      # Final Verification check runner — not wired since v21.153.0 (v19.34.0, v20.3.0)
+│   ├── log-guard.js                         # PreToolUse ticket status check — done/verified need filled result sections (v21.131.0; Intent Fidelity v21.135.0)
+│   ├── verification-sequence.js             # PostToolUse state tracker + PreToolUse commit/edit gate (v21.0.0)
+│   ├── skill-tracker.js                     # Per-session skill flag setter, run inline by the PostToolUse dispatcher (v19.33.0, v21.124.0, v21.125.0)
+│   ├── _test-path-guard.js                  # Path-guard unit tests + shell var resolution tests (v20.0.0, v21.8.0)
+│   ├── _test-web-guard.js                   # Web-guard subprocess + unit tests — block/warn/off, MCP detection, fail-open (v21.114.0)
+│   ├── _test-verification-sequence.js       # Verification-sequence unit/integration tests (v21.0.0)
+│   ├── _test-log-guard.js                   # Log-guard unit/integration tests (v21.4.0, v21.11.0)
+│   ├── _test-feedback-detection.js          # Feedback detection + pressure system tests (v21.5.0)
+│   ├── _test-inject-rules.js                # inject-rules.js export + behavioral tests (v21.6.0)
+│   ├── _test-counter.js                     # counter.js export + subprocess + lock + pruning + offset tests (v21.10.0)
+│   ├── _test-verify-guard.js                # verify-guard.js integration tests — Write/Edit new/existing distinction (v21.16.0)
+│   ├── doc-watchdog.js                      # Doc-update omission checks: recordEdit/gateEdit/stopReason, in-project files only, per-session record and unfinished INDEX tickets (v21.18.0, v21.125.0, v21.154.0)
+│   ├── _test-doc-watchdog.js                # doc-watchdog.js integration suite: per-session record, INDEX status, owner, execution turn (v21.18.0, v21.154.0)
+│   ├── _test-restriction-controls.js        # Lifted restrictions paired with writes that stay blocked (v21.125.0)
+│   ├── _test-changed-runner.js              # Discovery and --changed selection on fixtures (git-ignored files, same-content rewrites); the real-records case moved to V060 (v21.153.0)
+│   ├── _test-gate-required-checks.js        # Only manifest tools commands are required checks; git commit is never blocked (v21.126.0, v21.153.0)
+│   ├── _test-runner-layout.js               # Launcher + runner/ modules; every derived location (v21.153.0)
+│   ├── _test-runner-fingerprint.js          # A check reruns only when its fingerprint is not among its passes (v21.153.0)
+│   ├── _test-runner-trace.js                # Traced vs unknown inputs: what the tracer saw across child processes (v21.153.0)
+│   ├── _test-runner-policy.js               # Retries, heavy checks, order, stop at a new failure, parallel jobs (v21.153.0)
+│   ├── _test-runner-any-project.js          # Non-Node (Python) checks with inputs, slow, and a folder without git (v21.153.0)
+│   ├── _test-runner-state-warning.js        # A check reading Crabshell state is named; outside-snapshot inputs judged by time (v21.153.0)
+│   ├── _test-runner-new-file-input.js       # A changed file that now requires a new file selects its reader (v21.153.0)
+│   ├── _test-runner-decision-code.js        # Comment-only decision-code changes rerun nothing; code changes are named (v21.153.0)
+│   ├── _test-runner-ignored-folders.js      # Git-ignored folders skipped via a kept list; worktree, subfolder, later git init (v21.153.0)
+│   ├── _test-runner-sync.js                 # Session start copies runner modules; released launchers replaced, edited ones named once (v21.153.0)
+│   ├── _test-real-repo-selection.js         # This repository's real records: a counter.js change (slow entry V060, v21.153.0)
+│   ├── _test-record-store.js                # One record store; edits write no TESTED/EDITED state (v21.153.0)
+│   ├── _test-tool-shape.js                  # Shell calls and file writes known by shape; hook routing (v21.153.0)
+│   ├── _test-declared-commands.js           # Manifest-only check recognition, wrappers, environment prefixes, rerun answered from the record (v21.153.0)
+│   ├── _test-declaration-guidance.js        # Hints to declare inputs/slow/outputs; repeated undeclared commands; --explain (v21.153.0)
+│   ├── _test-hook-fail-open.js              # Hooks without the runner's modules: path guard still decides, null is no evidence (v21.153.0)
+│   ├── _test-skill-text-contract.js         # Skill texts match the plugin: removed steps absent, design lines, every manifest setting documented (v21.153.0)
+│   ├── _test-turn-state.js                  # One rule block per host turn; latest user intent (real captured payloads) (v21.154.0)
+│   ├── _test-stop-latest-user.js            # A question or reprimand after a request ends the turn without "continue" (v21.154.0)
+│   ├── _test-single-source.js               # One definition per shared value across shipped scripts (v21.127.0)
+│   ├── _test-rules-and-injection.js         # Advisor line and unified rule wording; where the project description is injected (v21.127.0); this repository's CLAUDE.md matches RULES (v21.155.0)
+│   ├── _test-claude-md-sync.js              # CLAUDE.md follows the installed rules at SessionStart and every execution prompt; questions read-only; own source checkout kept (v21.155.0)
+│   ├── _test-d-parent-tickets.js            # Guards, the Codex document tool and phase changes treat D###_T### like P###_T### (v21.130.0)
+│   ├── _test-d-t-skills.js                  # Skill instructions for D (with the plan) -> T; existing P/H updates kept (v21.130.0)
+│   ├── _test-index-rows.js                  # INDEX rows copied from this repository; every consumer; unfinished ticket sections (v21.131.0)
+│   ├── _test-compaction-skills.js           # Skill bodies within the compaction re-attach budget; docs-guard update-call hint (v21.132.0)
+│   ├── _test-memory-loading.js              # Hand-save path, SessionStart memory notes/dropped parts/knowledge, snippet de-duplication (v21.132.0)
+│   ├── _test-rule-wording.js                # Rule wording from I091 (v21.132.0); git-record rule (v21.134.0); diff-only verification (v21.139.0)
+│   ├── _test-memory-save-directive.js       # Mandatory memory-save/rotation notices, 20KB cadence, backlog parts (v21.133.0)
+│   ├── _test-plan-first-docs.js             # Plan section, ticket Implementation Details / Intent Fidelity, result-vs-discussion steps (v21.135.0)
+│   ├── _test-plan-first-guards.js           # No ticket before its discussion's plan; no verified without Intent Fidelity (v21.135.0)
+│   ├── _test-gate-loosening.js              # Commit gate: accepted and rejected check forms, block reason (v21.135.0); --changed unlocks, named first (v21.139.0)
+│   ├── _test-regressing-stale.js            # One regressing staleness decision; each caller's missing-time answer (v21.128.0)
+│   ├── _test-hook-wiring-cost.js            # Synchronous hook processes per tool call; Stop starts no child (v21.125.0)
+│   ├── _test-claude-dispatcher-parity.js    # Old separate guards vs the PreToolUse dispatcher (v21.125.0)
+│   ├── _test-claude-dispatchers.js          # Moved behavior: compact effects, Read notice, inline observers, stdout, fail-open (v21.125.0)
+│   ├── shared-context.js                    # Shared constants/functions for cross-hook reuse (v21.21.0)
+│   ├── pre-compact.js                       # Compaction context script; unwired from Claude v21.125.0 (its output reaches no model)
+│   ├── post-compact.js                      # Post-compaction script; unwired from Claude v21.125.0 (effects run at SessionStart compact)
+│   ├── subagent-context.js                  # SubagentStart hook — inject project constraints + rules into sub-agents (v21.21.0)
+│   ├── _test-shared-context.js              # shared-context.js test suite (v21.21.0)
+│   ├── _test-pre-compact.js                 # pre-compact.js test suite (v21.21.0)
+│   ├── _test-post-compact.js                # post-compact.js test suite (v21.21.0)
+│   ├── _test-subagent-context.js            # subagent-context.js test suite (v21.21.0)
+│   ├── _test-regressing-guard.js            # regressing-guard.js 7-test suite — phase gates + IA-2 agent section validation (v21.41.0)
 │   ├── _test-regressing-guard-edge-cases.js # regressing-guard.js 14 edge-case tests — absent heading, fail-open paths (v21.41.0)
 │   ├── _test-inject-rules-classification.js
 │   ├── _test-parallel-reminder.js
@@ -358,7 +360,7 @@ UserPromptSubmit hook:
 - `RULES` Simple Communication is a four-slot response contract (v21.115.0, I085): `[conclusion] → [evidence] → [critical exception] → [next action]` in the reader's words, first sentence is the direct answer, keep-vs-cut list on shortening, bullets only for 3+ parallel items with max 4 per group, one term unpacked per sentence (비유 금지), concrete over abstract, no self-coined acronyms, accuracy outranks brevity, banter never as padding
 - `RULES` VERIFICATION: chat report is `"M of N passed"` plus failed items — no table, no passing-item list, no raw observations (v21.115.0/.1, I085)
 - Configurable frequency via `rulesInjectionFrequency`
-- Auto-sync rules to CLAUDE.md via `syncRulesToClaudeMd()` (marker-based)
+- Auto-sync rules to CLAUDE.md via `syncClaudeMdRules()` (marker-based; every execution prompt, and SessionStart through `load-memory.js`, when it differs; v21.155.0)
 - Reset and persist all pressure counters when `봉인해제` / `UNLEASH` appears, regardless of question/execution classification (v21.110.1)
 - Detect pending delta → inject DELTA_INSTRUCTION (run memory-delta now on every turn, summarizers in the background; v21.133.0)
 - Detect pending rotation → inject ROTATION_INSTRUCTION
@@ -505,6 +507,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.155.0 | CLAUDE.md follows the installed rules: its managed block is compared at every Claude session start and on every execution prompt and rewritten only when it differs (since 21.107.0 it was rewritten only on a session's first execution prompt, so updates could leave old rules in place); session start replaces only an existing marked block and creates nothing; the new text applies from the next session (Claude Code reads CLAUDE.md before session-start hooks run); a plugin's own source checkout is not rewritten by an installed copy at another path, and this repository's CLAUDE.md must match the source RULES (`_test-rules-and-injection.js` R10/R11). |
 | 21.154.0 | Hooks know the turn (Claude `prompt_id`, Codex `turn_id`): the per-turn rule block is added once per turn even when messages queue up; text the user did not write (another session's message, task reports, pasted text next to the user's own words) issues no instructions and cannot authorize work; after a request, a later question or reprimand ends the turn without a "continue"; the ticket-update reminder uses only this session's edits and the unfinished tickets in the ticket INDEX. |
 | 21.153.0 | Checks run only when what they read changed. Nothing blocks a commit, writing a Final Verification runs nothing, and comparing a changed test with HEAD is opt-in (`--fail-before`). The runner (now a launcher and modules) reruns a check only when its fingerprint — entry run fields, program, decision code (comment lines excluded), platform, input contents — is not among its passes; inputs are traced (Node), declared (`inputs`) or unknown (whole project, that check only); `--changed` runs the last failure first, then new, then quickest, stops at a new failure, retries a check that fails on inputs it passed with (`Flaky:`), runs `slow` checks only with `--slow` or at release, and `--explain` prints why each check would run. Hooks know shell calls and file writes by their shape, count only manifest-declared commands (`wrappers`, environment prefixes), answer a hand rerun of a passed check from its record (`CRABSHELL_RERUN=1` runs it anyway), hint when an entry needs `inputs`/`slow`/`outputs`, share the runner's project view (git-ignored folders skipped: a 20,000-file folder cost each hook call a second, now under 2 ms) and stay fail-open without the runner's modules. Each session start keeps a project's runner copy current. Plans carry five design lines before their first ticket, and post-build verification is one check run after the last edit. RULES are shorter (2,080 → 1,792 words) with Skills and Code lines; the per-prompt checklist asks "Is this your best?". After updating, every non-slow check runs once; a package.json `test` check moves to manifest `tools`. |
 | 21.152.0 | Rules: **Memory** (WORKING RULES, after Temporary files) — anything Claude writes or runs has a memory budget before it runs: the peak from the largest input it will get (batch × length × bytes, weights, optimizer and cache state), allocations kept inside it (nothing that grows with step or iteration count, one reused buffer instead of a new allocation per step, a hard cap on shared hardware or when GPU memory is system memory); read how a function allocates before moving it to another device or a larger input; long runs log their peak and stop above the budget; a memory shortage is traced in the kernel log and the process list before a cause is named. Not added to the per-prompt checklist. `_test-rule-wording.js` W34 checks the line word for word. |

@@ -34,6 +34,16 @@ async function main(options = {}) {
   let notices = [];
   if (hookData.hook_event_name === 'SessionStart') {
     try { notices = [require('./core/runner-sync').runnerSyncNotice(projectDir)]; } catch {}
+    // The managed rules block of an existing CLAUDE.md follows the installed
+    // plugin as soon as a session starts (D148). Claude Code has already read
+    // the file, so the new text applies from the next session. Only the block
+    // between the markers is replaced; no file is created and nothing is prepended.
+    try {
+      const synced = require('./inject-rules').syncClaudeMdRules(projectDir, { updateOnly: true });
+      if (synced.error) process.stderr.write(`[CRABSHELL SESSION START] Claude rule synchronization failed: ${synced.error}\n`);
+    } catch (error) {
+      process.stderr.write(`[CRABSHELL SESSION START] Claude rule synchronization failed: ${error.message}\n`);
+    }
   }
   const context = buildMemoryContext(projectDir, {
     source: hookData.source || 'unknown',

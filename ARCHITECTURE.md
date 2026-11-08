@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.154.0)
+# Crabshell Architecture (v21.155.0)
 
 ## Overview
 
@@ -32,7 +32,7 @@ Two meta-principles guide Claude's approach to obstacles:
 - **Cross-Domain Translation**: Before substituting a same-domain tool, characterize the problem's abstract structure first. This enables finding solutions from adjacent domains that may fit better.
 
 ### Dual Injection Optimization
-- **CLAUDE.md** (session start): Full RULES text (~940 tokens, 3.8KB measured v21.113.0 — compressed from ~2,530 tokens in I083 R3) synced via `syncRulesToClaudeMd()` with marker-based replacement
+- **CLAUDE.md** (compared at session start and on each execution prompt, rewritten when it differs; v21.155.0): Full RULES text (~940 tokens, 3.8KB measured v21.113.0 — compressed from ~2,530 tokens in I083 R3) synced via `syncRulesToClaudeMd()` with marker-based replacement
 - **additionalContext** (every prompt): compact turn contract + 10-line Rules Quick-Check (1,914 characters on a question prompt, measured v21.127.0, before v21.153.0 added two lines; the project description is no longer repeated per prompt — SessionStart loads it as the project overview, SubagentStart gives it to workers) — per-response 3-field ending and pressure texts retired
 - **Error fallback**: FIRST_TURN_RULES injected via additionalContext only when the normal path throws an exception
 
@@ -65,7 +65,7 @@ Two meta-principles guide Claude's approach to obstacles:
 |                                                                           |
 |  +--------------------+  +--------------------------------------------+  |
 |  | load-memory.js     |  | inject-rules.js                           |  |
-|  | - Load logbook.md  |  | - syncRulesToClaudeMd() (RULES→CLAUDE.md) |  |
+|  | - Load logbook.md  |  | - syncClaudeMdRules() (RULES→CLAUDE.md)   |  |
 |  | - Load L3 summaries|  | - Inject COMPRESSED_CHECKLIST per prompt   |  |
 |  | - Load project.md  |  |   (~300 tokens via additionalContext)      |  |
 |  | - Load moc-digest  |  | - Project description: SessionStart only  |  |
@@ -223,14 +223,16 @@ Claude `PostToolUseFailure` is wired to both verification-state and parent-evide
    └─> load-memory.js
        ├─> Read logbook.md + summaries + project files through core/memory-context.js
        ├─> Recover current active D/P/T/W context through core/workflow-context.js
-       └─> Return native SessionStart context without project/plugin-data writes
+       ├─> CLAUDE.md managed block rewritten when it differs (existing marked block only; core/claude-md-rules.js, v21.155.0)
+       └─> Return native SessionStart context (other project writes: the runner copy, v21.153.0)
 
 2. UserPromptSubmit (every prompt)
    └─> inject-rules.js
        ├─> Classify question vs execution through core/turn-intent.js
        ├─> Explicit 봉인해제 / UNLEASH: reset and persist pressure before the intent gate
        ├─> Other questions: inject read-only shared contract, perform no lifecycle writes
-       ├─> First execution prompt: cleanup/reset + syncRulesToClaudeMd() + MEMORY.md warning
+       ├─> First execution prompt: cleanup/reset + MEMORY.md warning
+       ├─> Every execution prompt: CLAUDE.md managed block rewritten when it differs (v21.155.0; not in the plugin's own source checkout)
        ├─> Inject COMPRESSED_CHECKLIST (~380 tokens measured) via additionalContext
        │   (Full RULES ~2,530 tokens only on error fallback)
        ├─> Inject prompt-aware memory snippets (keyword-match top 3 sections)
@@ -381,7 +383,7 @@ Regressing retains document-cycle continuation but has no parallel-worker count 
 | Script | Hook | Purpose |
 |--------|------|---------|
 | `find-node.sh` | (fallback utility) | Cross-platform Node.js locator retained for fallback use; direct hooks run `node` from `hooks.json` in v21.99.3 |
-| `load-memory.js` | SessionStart | Load memory hierarchy, MEMORY.md warning |
+| `load-memory.js` | SessionStart | Load memory hierarchy, MEMORY.md warning, CLAUDE.md managed block when it differs (v21.155.0) |
 | `inject-rules.js` | UserPromptSubmit | Dual injection (CLAUDE.md + additionalContext), Claude-host-only Codex delegation guidance, intent-independent pressure bailout, delta/rotation/regressing detection |
 | `counter.js` | PostToolUse, SessionEnd | Main engine: counter, L1 creation, rotation, regressing phase detection |
 | `regressing-guard.js` | PreToolUse (Write\|Edit) | Block direct plan/ticket writes during active regressing; force Skill tool; validate P doc agent sections before ticketing (v21.41.0) |
@@ -565,6 +567,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.155.0 | CLAUDE.md follows the installed rules: its managed block is compared at every Claude session start and on every execution prompt and rewritten only when it differs (since 21.107.0 it was rewritten only on a session's first execution prompt, so updates could leave old rules in place); session start replaces only an existing marked block and creates nothing; the new text applies from the next session (Claude Code reads CLAUDE.md before session-start hooks run); a plugin's own source checkout is not rewritten by an installed copy at another path, and this repository's CLAUDE.md must match the source RULES (`_test-rules-and-injection.js` R10/R11). |
 | 21.154.0 | Hooks know the turn (Claude `prompt_id`, Codex `turn_id`): the per-turn rule block is added once per turn even when messages queue up; text the user did not write (another session's message, task reports, pasted text next to the user's own words) issues no instructions and cannot authorize work; after a request, a later question or reprimand ends the turn without a "continue"; the ticket-update reminder uses only this session's edits and the unfinished tickets in the ticket INDEX. |
 | 21.153.0 | Checks run only when what they read changed. Nothing blocks a commit, writing a Final Verification runs nothing, and comparing a changed test with HEAD is opt-in (`--fail-before`). The runner (now a launcher and modules) reruns a check only when its fingerprint — entry run fields, program, decision code (comment lines excluded), platform, input contents — is not among its passes; inputs are traced (Node), declared (`inputs`) or unknown (whole project, that check only); `--changed` runs the last failure first, then new, then quickest, stops at a new failure, retries a check that fails on inputs it passed with (`Flaky:`), runs `slow` checks only with `--slow` or at release, and `--explain` prints why each check would run. Hooks know shell calls and file writes by their shape, count only manifest-declared commands (`wrappers`, environment prefixes), answer a hand rerun of a passed check from its record (`CRABSHELL_RERUN=1` runs it anyway), hint when an entry needs `inputs`/`slow`/`outputs`, share the runner's project view (git-ignored folders skipped: a 20,000-file folder cost each hook call a second, now under 2 ms) and stay fail-open without the runner's modules. Each session start keeps a project's runner copy current. Plans carry five design lines before their first ticket, and post-build verification is one check run after the last edit. RULES are shorter (2,080 → 1,792 words) with Skills and Code lines; the per-prompt checklist asks "Is this your best?". After updating, every non-slow check runs once; a package.json `test` check moves to manifest `tools`. |
 | 21.152.0 | Rules: **Memory** (WORKING RULES, after Temporary files) — anything Claude writes or runs has a memory budget before it runs: the peak from the largest input it will get (batch × length × bytes, weights, optimizer and cache state), allocations kept inside it (nothing that grows with step or iteration count, one reused buffer instead of a new allocation per step, a hard cap on shared hardware or when GPU memory is system memory); read how a function allocates before moving it to another device or a larger input; long runs log their peak and stop above the budget; a memory shortage is traced in the kernel log and the process list before a cause is named. Not added to the per-prompt checklist. `_test-rule-wording.js` W34 checks the line word for word. |

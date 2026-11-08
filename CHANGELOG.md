@@ -1,5 +1,16 @@
 # Changelog
 
+## [21.155.0] - 2026-11-07
+
+### fix: CLAUDE.md follows the installed rules — at session start and on every request, not once per session
+
+- **Why.** After `/plugin` updated the rules (21.153.0, 21.154.0), CLAUDE.md kept the old rules block: since 21.107.0 the block was rewritten only on the first execution prompt of a session, so a session that had already used it, a new session that only got questions, and every project in between stayed stale. The 21.153.0 commit itself shipped this repository's CLAUDE.md with the old block (D148).
+- **When it updates.** The managed block (between `## CRITICAL RULES (Core Principles Alignment)` and `---Add your project-specific rules below this line---`) is compared with the installed rules at every Claude session start and on every execution prompt, and rewritten only when it differs. Claude Code reads CLAUDE.md before session-start hooks run (measured), so a session that rewrites it runs on the text it already read; the next session gets the new rules.
+- **Contract change.** Session start may now write one thing: the managed block of an existing CLAUDE.md that has both markers. It never creates CLAUDE.md and never prepends to a file without markers (an execution prompt still does both). Question turns still write nothing to CLAUDE.md.
+- **Behaviour changes.** A deleted CLAUDE.md or one without markers is recreated or gets the rules prepended on every execution prompt, not once per session; edits inside the managed block are reverted on the next session start or request. A failed rewrite prints `Claude rule synchronization failed: …` on stderr and no longer makes the whole per-session lifecycle (cleanup, pressure reset) run again on each request.
+- **A plugin's own source checkout.** When the project declares the same plugin name in `.claude-plugin/plugin.json` as the running plugin and lives at another path, the installed copy does not rewrite its CLAUDE.md (during a release the checkout's rules are the newer ones). `scripts/_test-rules-and-injection.js` R10/R11 fail when this repository's CLAUDE.md block differs from the source RULES.
+- **Code.** CLAUDE.md handling moved to `scripts/core/claude-md-rules.js` (`syncRulesToClaudeMd(projectDir, { rules, pluginRoot, updateOnly })` → `{ written, skipped, error }`, `isOwnSourceCheckout`); `inject-rules.js` keeps `syncRulesToClaudeMd(projectDir)` (boolean) and adds `syncClaudeMdRules`; `execution-lifecycle.js` no longer takes `syncRules`. New test `scripts/_test-claude-md-sync.js`.
+
 ## [21.154.0] - 2026-11-07
 
 ### fix: hooks know the turn — one rule block per turn, no "continue" on question turns, the right ticket reminder

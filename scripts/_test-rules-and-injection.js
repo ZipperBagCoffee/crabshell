@@ -66,5 +66,27 @@ for (const script of ['inject-rules.js', 'adapters/codex/user-prompt-submit.js']
   report.check('R9 control: SubagentStart still gives workers the project concept',
     /## Project Concept/.test(out.stdout) && out.stdout.includes(MARKER), `status=${out.status}`);
 }
+// 3. D148: this repository's CLAUDE.md carries the source RULES. A RULES change
+// must sync CLAUDE.md in the same change (21.153.0 shipped the old block). The
+// real sync function judges a temp copy, so the block format is not restated here.
+{
+  const repoClaudeMd = path.join(__dirname, '..', 'CLAUDE.md');
+  const content = fs.readFileSync(repoClaudeMd, 'utf8');
+  const copyDir = path.join(root, 'repo-claude-md');
+  fs.mkdirSync(copyDir, { recursive: true });
+  const copy = path.join(copyDir, 'CLAUDE.md');
+  fs.writeFileSync(copy, content);
+  const past = new Date(Date.now() - 60000);
+  fs.utimesSync(copy, past, past);
+  const mtime = fs.statSync(copy).mtimeMs;
+  const { RULES } = require('./inject-rules');
+  const result = require('./core/claude-md-rules').syncRulesToClaudeMd(copyDir, { rules: RULES });
+  const after = fs.readFileSync(copy, 'utf8');
+  const firstDiff = after.split('\n').findIndex((line, i) => line !== content.split('\n')[i]);
+  report.check('R10 repository CLAUDE.md has no CR line endings (the hook would rewrite the rules block)', !content.includes('\r'));
+  report.check('R11 repository CLAUDE.md rules block equals RULES (run syncRulesToClaudeMd from the source checkout)',
+    !result.error && result.written === false && after === content && fs.statSync(copy).mtimeMs === mtime,
+    `written=${result.written} error=${result.error} firstDifferentLine=${firstDiff + 1}`);
+}
 
 report.finish();
