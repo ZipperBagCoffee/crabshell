@@ -1,8 +1,9 @@
 'use strict';
 // When each chosen check starts (D143 §4, D151_T001): one at a time, or side by side
 // within `jobs` and the CPUs, keeping an exclusive check alone, a `group` in turn, and a
-// covered check after the check that covers it. Side by side, checks start one at a time:
-// the next one starts only after a check finishes or `startSpacingMs` has passed, and only
+// check after the checks it waits for (waitsFor: an index, a list of them, or undefined — the
+// check that covers it, the gates of a check narrowed by its report). Side by side, checks
+// start one at a time: the next one starts only after a check finishes or `startSpacingMs` has passed, and only
 // while memoryAllows() — so the memory a started check takes is seen before the next start
 // (starting several in one pass let all of them past the memory gate). One check always
 // runs. After a stop no new check starts; the running ones finish.
@@ -29,12 +30,14 @@ function defaultJobs() {
 }
 
 // Whether a check runs alone (D151_T001): its entry's `exclusive` decides; with a declared
-// `jobs` every check may share; otherwise only a check its last run traced as running on the
-// runner's Node shares — a first run, declared inputs or another program runs alone.
+// `jobs` every check may share; otherwise only a check its last run traced completely as
+// running on the runner's Node shares — a first run, declared inputs or another program runs alone.
 function runsAlone(entry, record, jobsDeclared) {
   if (typeof entry.exclusive === 'boolean') return entry.exclusive;
   if (jobsDeclared) return false;
-  return !(record && record.kind === 'traced' && runsOnRunnerNode(entry.command));
+  // A check that reports what it used keeps the kind its trace gave it as `base` (D152).
+  const traced = Boolean(record) && (record.kind === 'traced' || (record.kind === 'reported' && record.base === 'traced'));
+  return !(traced && runsOnRunnerNode(entry.command));
 }
 
 function runInOrder({ order, start, after }) {
@@ -52,10 +55,10 @@ async function runSideBySide({ order, entries, start, after, jobs, waitsFor,
   const pending = [...order];
   const running = new Map();
   const finished = new Set();
+  const ready = index => [].concat(waitsFor(index) === undefined ? [] : waitsFor(index)).every(parent => finished.has(parent));
   const fits = index => {
     const entry = entries[index];
-    const parent = waitsFor(index);
-    if (parent !== undefined && !finished.has(parent)) return false;
+    if (!ready(index)) return false;
     if (running.size === 0) return true;
     if (running.size >= limit || isExclusive(index)) return false;
     for (const other of running.keys()) {
@@ -79,8 +82,7 @@ async function runSideBySide({ order, entries, start, after, jobs, waitsFor,
       let position = -1;
       for (let at = 0; at < pending.length; at++) {
         if (fits(pending[at])) { position = at; break; }
-        const parent = waitsFor(pending[at]);
-        if (isExclusive(pending[at]) && (parent === undefined || finished.has(parent))) break;
+        if (isExclusive(pending[at]) && ready(pending[at])) break;
       }
       if (position >= 0) { launch(pending.splice(position, 1)[0]); launched = true; }
     }

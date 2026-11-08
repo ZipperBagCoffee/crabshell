@@ -5,6 +5,9 @@
 // declared); the first such text is named once, in the run's notices. Unchanged tests are
 // not read, so a run pays only for the tests that changed.
 
+const { inputsUnknown } = require('./select');
+const { pathOf } = require('./used-report');
+
 const DEFAULT_MIN_CHARS = 40;
 const PREVIEW_CHARS = 40;
 
@@ -56,11 +59,11 @@ function copyNotices({ ran, records, changed, minChars = DEFAULT_MIN_CHARS, read
   for (const id of ran) {
     const record = records[id];
     // A check whose inputs are unknown would mean searching the whole project: skipped.
-    if (!record || !record.test || record.kind === 'project' || !changedFiles.has(record.test) || looked.has(record.test)) continue;
+    if (!record || !record.test || inputsUnknown(record) || !changedFiles.has(record.test) || looked.has(record.test)) continue;
     looked.add(record.test);
     const source = text(record.test);
     if (source === null) continue;
-    const inputs = (record.files || []).filter(file => !file.endsWith('/') && !tests.has(file));
+    const inputs = [...new Set((record.files || []).map(pathOf))].filter(file => !file.endsWith('/') && !tests.has(file));
     const copies = [];
     for (const piece of quotedTexts(source, minChars)) {
       const where = inputs.find(file => { const content = text(file); return content !== null && forms(piece).some(form => content.includes(form)); });

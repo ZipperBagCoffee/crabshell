@@ -6,7 +6,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const { runnerLayout, MODULE_DIR, DECISION_MODULES } = require('./layout');
+const { runnerLayout, MODULE_DIR, DECISION_FILES } = require('./layout');
 const { parseArgs } = require('./args');
 const { toPosix, validateEntry, entryTestFile, expandEntries } = require('./manifest');
 const { validateManifestSettings } = require('./settings');
@@ -15,7 +15,9 @@ const { hashBuffer, runsOnRunnerNode } = require('./fingerprint');
 const { TRACER_SOURCE, insideRoot, readTrace, readDeep, filesUnder, readChildren, incompleteChildren, contractPaths } = require('./trace');
 const { mapPath, writeMap } = require('./store');
 const { selectionView } = require('./project-state');
-const { patternList, inputPatterns, matchesInput, filesMatching, inputSet, fingerprintOf, planRun, gitChangedFiles, medianDuration, declarationKey, crabshellState, DECISION_CHANGED, currentHead, reasonGroup } = require('./select');
+const { patternList, inputPatterns, matchesInput, filesMatching, inputSet, fingerprintOf, planRun, gitChangedFiles, medianDuration, declarationKey, crabshellState, DECISION_CHANGED, currentHead, reasonGroup,
+  recordKind, inputsUnknown, reportScope, scopeKey, inScope, keyIdentity, knownItems, reportedInputs, refreshedItemHashes } = require('./select');
+const { readReport, hasCases, pathOf, isItemKey } = require('./used-report');
 const { routineChoice, quarantineMark, markHolds } = require('./routine');
 const { forbiddenOnly, recheckForbidden, clearedNotice } = require('./recheck');
 const { runEntry, runEntryAsync } = require('./execute');
@@ -80,8 +82,9 @@ function main(argv = process.argv.slice(2), options = {}) {
   if (unknownIds.length) return failRunner('RUNNER_TARGET', `Unknown entry id: ${unknownIds.join(', ')}`);
 
   // Records of this schema (an older map counts as none: every check runs once), the
-  // snapshot and the selection context — built by project-state, as for the hooks.
-  const { previousMap, records: previousRecords, olderRecords, snapshot, ctx } = selectionView({ projectRoot, layout, manifestPath, manifest });
+  // snapshot and the selection context — built by project-state, as for the hooks; the
+  // runner alone may run the project's itemIdentity command.
+  const { previousMap, records: previousRecords, olderRecords, snapshot, ctx } = selectionView({ projectRoot, layout, manifestPath, manifest, runCommands: true });
   const runnable = expanded.filter(entry => entry.type !== 'manual');
   // D151_T001: side by side by default. With no `jobs` setting only recorded traced Node
   // checks share the machine; any other check (a first run, declared inputs, another
@@ -92,7 +95,7 @@ function main(argv = process.argv.slice(2), options = {}) {
   // D151: --replay N estimates past commits' routine runs from the records; nothing runs.
   if (args.replay) {
     const moduleDir = path.join(path.dirname(layout.launcherFile), MODULE_DIR);
-    const decisionFiles = DECISION_MODULES.map(name => insideRoot(projectRoot, path.join(moduleDir, name))).filter(Boolean);
+    const decisionFiles = DECISION_FILES.map(name => insideRoot(projectRoot, path.join(moduleDir, name))).filter(Boolean);
     let commits;
     try { commits = commitChanges(projectRoot, args.replay); } catch (error) { return failRunner('RUNNER_REPLAY', error.message); }
     const rows = replay({ commits, entries: runnable, records: previousRecords, manifest, jobs, decisionFiles,
@@ -140,12 +143,15 @@ function main(argv = process.argv.slice(2), options = {}) {
       Object.assign(plan, routineChoice({ entries: runnable, selected: plan.selected, records: previousRecords, manifest, snapshot, stateOf: slowState, inputsChanged }));
       plan.slowCommand = `node ${insideRoot(projectRoot, layout.launcherFile) || layout.launcherFile} --slow`;
     }
-    const keep = new Set(plan.selected);
+    // D152 P11: checks narrowed by their reports join the run to wait for the gate; they are
+    // reused when it passes and not run when it fails.
+    const keep = new Set([...plan.selected, ...planned.awaitingGate]);
     entries = runnable.filter(entry => keep.has(entry.id));
   } else {
     entries = runnable;
   }
   const reusable = new Set(planned.reused);
+  const awaiting = new Set(planned.awaitingGate);
   const selectedIndex = new Map(entries.map((entry, index) => [entry.id, index]));
   const coveringIndex = entry => {
     if (!args.reuse || named || entry.type === 'manual' || entry.discoveryError || comparedWithHead(entry)) return undefined;
@@ -156,13 +162,21 @@ function main(argv = process.argv.slice(2), options = {}) {
     return selectedIndex.get(entry.coveredBy);
   };
   const canReuse = entry => args.reuse && !named && reusable.has(entry.id) && !comparedWithHead(entry);
+  // The gates a check narrowed by its report waits for (their places in this run), or null
+  // when one is not in this run (then the check runs itself).
+  const gatesOf = entry => {
+    if (!awaiting.has(entry.id) || !canReuse(entry)) return [];
+    const indexes = planned.gatesPending.map(id => selectedIndex.get(id));
+    return indexes.includes(undefined) ? null : indexes;
+  };
+  // What a check waits for: the check that covers it, and the gates.
+  const waitsOn = index => [coveringIndex(entries[index]), ...(gatesOf(entries[index]) || [])].filter(parent => parent !== undefined);
   const executionOrder = [];
   const ordered = new Set();
   const order = index => {
     if (ordered.has(index)) return;
     ordered.add(index);
-    const parent = coveringIndex(entries[index]);
-    if (parent !== undefined) order(parent);
+    for (const parent of waitsOn(index)) order(parent);
     executionOrder.push(index);
   };
   // D143: a routine --changed run starts with the check that failed last time, then
@@ -204,7 +218,7 @@ function main(argv = process.argv.slice(2), options = {}) {
         plan.wouldCover++;
         continue;
       }
-      if (parent === undefined && canReuse(entry)) { reused.add(index); plan.wouldReuse++; }
+      if (parent === undefined && canReuse(entry) && gatesOf(entry) !== null) { reused.add(index); plan.wouldReuse++; }
       else {
         const duration = (previousRecords[entry.id] || {}).lastDurationMs;
         runCount++;
@@ -237,6 +251,8 @@ function main(argv = process.argv.slice(2), options = {}) {
     plan.full = plan.selected.length === total && total > 0;
     plan.reason = summaryReason(plan, planned);
     plan.unknownInputs = planned.unknownInputs;
+    if (planned.awaitingGate.length) plan.awaitingGate = { gates: planned.gatesPending, checks: planned.awaitingGate };
+    if (planned.cases.size) plan.cases = Object.fromEntries(planned.cases);
     plan.estimatedSeconds = Math.round(estimatedMs / 100) / 10;
     plan.withoutRecordedTime = runWithoutTime;
     if (runWithoutTime) plan.estimateNote = `${runWithoutTime} of the ${runCount} checks that would run have no recorded time and are not in estimatedSeconds`;
@@ -257,12 +273,19 @@ function main(argv = process.argv.slice(2), options = {}) {
 
   let traceDir = null;
   let tracer = null;
+  const ensureTraceDir = () => {
+    if (!traceDir) traceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'crabshell-verify-trace-'));
+    return traceDir;
+  };
   const ensureTracer = () => {
     if (tracer) return;
-    traceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'crabshell-verify-trace-'));
-    tracer = path.join(traceDir, 'tracer.js');
+    tracer = path.join(ensureTraceDir(), 'tracer.js');
     fs.writeFileSync(tracer, TRACER_SOURCE);
   };
+  // The file a check may write what it used to (D152 P1), one per attempt, outside the project.
+  const reportFor = (index, attempt) => path.join(ensureTraceDir(), `used-${index}-${attempt}.txt`);
+  // The cases a narrowed run passes for `{cases}` (D152 P4); a run by name runs every case.
+  const casesFor = entry => (args.reuse && !named ? planned.cases.get(entry.id) || null : null);
   const startedAt = new Date().toISOString();
   const records = { ...previousRecords };
   const pendingPasses = new Map();
@@ -291,6 +314,19 @@ function main(argv = process.argv.slice(2), options = {}) {
       return { id: entry.id, type: entry.type, status: 'PASS', coveredBy: entry.coveredBy, durationMs: 0,
         message: `Covered by ${entry.coveredBy}`, output: '', error: null, failureClass: null };
     }
+    // D152 P11: a check narrowed by its report is reused once every gate passed in this run,
+    // and not run when one did not; a gate missing from this run leaves it to run itself.
+    const gates = gatesOf(entry);
+    if (gates === null) return null;
+    if (parent === undefined && gates.length) {
+      const blocking = gates.find(at => !results[at] || results[at].status !== 'PASS');
+      if (blocking === undefined) {
+        return { id: entry.id, type: entry.type, status: 'PASS', reused: true, durationMs: 0,
+          message: `Unchanged since it passed; gate ${gates.map(at => entries[at].id).join(', ')} passed`, output: '', error: null, failureClass: null };
+      }
+      return { id: entry.id, type: entry.type, status: 'NOT_RUN', gateBlocked: entries[blocking].id, durationMs: 0,
+        message: `Not run: gate ${entries[blocking].id} did not pass`, output: '', error: null, failureClass: null };
+    }
     // If the selected covering check failed (or was only covered itself), get fresh
     // evidence from this command even when it has an older pass.
     if (parent === undefined && canReuse(entry)) {
@@ -304,8 +340,11 @@ function main(argv = process.argv.slice(2), options = {}) {
     ensureTracer();
     return { tracer, file: path.join(traceDir, `trace-${index}-${attempt}.jsonl`) };
   };
+  // How attempt N of a check is run and observed: its trace, its report file, its cases.
+  const observe = (entry, index, attempt) => ({ projectRoot, trace: traceFor(entry, index, attempt), report: reportFor(index, attempt), cases: casesFor(entry) });
   // D143 §2: a check that fails on inputs it passed with runs again, up to `retries`
-  // times. runFn(trace) returns the result, or a promise of it when checks run side by side.
+  // times. runFn(attempt) returns the result, or a promise of it when checks run side by side;
+  // the outcome names the attempt whose result it keeps.
   const attempts = (entry, index, runFn) => {
     const previous = previousRecords[entry.id] || {};
     let before = null;
@@ -313,26 +352,75 @@ function main(argv = process.argv.slice(2), options = {}) {
       try { before = fingerprintOf(entry, inputSet(entry, previous, ctx), ctx); } catch (_) {}
     }
     const retriable = Boolean(before) && previous.passHistory.includes(before);
-    const step = (attempt, firstFailure) => then(runFn(traceFor(entry, index, attempt)), result => {
+    const step = (attempt, firstFailure) => then(runFn(attempt), result => {
       // D151_T006 (recheck.js): a failure that is only a forbidden-file change runs once
       // more, in place of a retry; its outcome is never a flaky verdict.
       const forbidden = forbiddenOnly(entry, result);
       if (forbidden.length) {
-        return then(recheckForbidden({ entry, projectRoot, failure: result, files: forbidden, run: () => runFn(traceFor(entry, index, attempt + 1)) }),
-          ({ result: settled, cleared }) => ({ result: settled, runs: attempt + 2, firstFailure, trace: traceFor(entry, index, cleared ? attempt + 1 : attempt), retriable, cleared }));
+        return then(recheckForbidden({ entry, projectRoot, failure: result, files: forbidden, run: () => runFn(attempt + 1) }),
+          ({ result: settled, cleared }) => ({ result: settled, runs: attempt + 2, firstFailure, attempt: cleared ? attempt + 1 : attempt, retriable, cleared }));
       }
       if (result.status === 'FAIL' && retriable && attempt < retries) return step(attempt + 1, firstFailure || result);
-      return { result, runs: attempt + 1, firstFailure, trace: traceFor(entry, index, attempt), retriable };
+      return { result, runs: attempt + 1, firstFailure, attempt, retriable };
     });
     return step(0, null);
   };
+  // D152 P1–P4: a complete report narrows a check's inputs inside its report's scope (what it
+  // read or declared outside stays). Only a passing run narrows. A failing run of a `{cases}`
+  // entry whose report names failed cases records each case's result, so the next run starts
+  // with those, and removes nothing: it keeps every input and case the last report named, and
+  // a case it was to run and does not name counts as failed. A broken report leaves the
+  // record as it is without one and says why (reportProblem).
+  // Returns the identities the report gives its items, or null.
+  const applyReport = (entry, record, previous, report, result) => {
+    if (!report) return null;
+    if (report.problem) { record.reportProblem = report.problem; return null; }
+    const scope = reportScope(entry);
+    if (scope.length === 0) { record.reportProblem = 'no reportScope or inputs: the report decides nothing'; return null; }
+    const withCases = hasCases(entry);
+    const passed = result.status === 'PASS';
+    if (!passed && !(withCases && [...report.results.values()].includes('fail'))) return null;
+    const used = reportedInputs(report, ctx);
+    const before = previous.kind === 'reported' ? previous : null;
+    const keys = new Set([...record.files.filter(file => !inScope(scope, file)), ...used.shared,
+      ...(!passed && before && Array.isArray(before.files) ? before.files : [])]);
+    for (const keysOfCase of used.cases.values()) for (const key of keysOfCase) keys.add(key);
+    let keptCases = {};
+    if (withCases && used.cases.size) {
+      const fresh = {};
+      for (const [name, keysOfCase] of used.cases) {
+        fresh[name] = { files: [...new Set([...used.shared, ...keysOfCase])].sort(), result: used.results.get(name) || 'fail' };
+      }
+      // A run of some cases keeps the others' records. A case it was to run (every case, on a
+      // whole run) that the report does not name is gone from the test after a pass, and
+      // counts as failed after a failure.
+      const ran = casesFor(entry);
+      if (before && before.cases && (ran || !passed)) {
+        keptCases = { ...before.cases };
+        for (const name of ran || Object.keys(before.cases)) {
+          if (passed) delete keptCases[name];
+          else if (keptCases[name]) keptCases[name] = { ...keptCases[name], result: 'fail' };
+        }
+      }
+      record.cases = { ...keptCases, ...fresh };
+      for (const kept of Object.values(record.cases)) for (const key of kept.files) keys.add(key);
+    }
+    record.base = record.kind;
+    record.kind = 'reported';
+    record.scope = scopeKey(entry);
+    record.files = [...keys].sort();
+    // Inputs kept from the last record keep the identities it holds for their items.
+    return { ...(before && (!passed || Object.keys(keptCases).length) ? knownItems(before, ctx) : {}), ...used.known };
+  };
   // What a run leaves in the record: its inputs, its time, its passes and failures.
   const complete = (entry, index, outcome) => {
-    const { result, trace } = outcome;
+    const { result } = outcome;
     if (entry.type === 'manual' || entry.discoveryError) return result;
+    const trace = traceFor(entry, index, outcome.attempt);
     const test = entryTestFile(entry, projectRoot);
     const previous = previousRecords[entry.id] || {};
     const record = { test };
+    let incomplete = [];
     if (trace) {
       // What it read (its own `outputs` are products, not inputs) and whether the trace
       // saw everything: a started program that works in the project unseen makes the
@@ -345,13 +433,14 @@ function main(argv = process.argv.slice(2), options = {}) {
         ...contractPaths(entry), ...filesMatching(inputPatterns(entry), snapshot)]);
       record.folders = 'names';
       record.files = [...files].filter(file => !generated.has(file) && !outputs.some(pattern => matchesInput(pattern, file))).sort();
-      const incomplete = incompleteChildren(readChildren(trace.file), projectRoot);
-      record.kind = record.files.length > 0 && incomplete.length === 0 ? 'traced' : 'project';
+      incomplete = incompleteChildren(readChildren(trace.file), projectRoot);
       if (incomplete.length) record.incomplete = incomplete.slice(0, 3);
     } else {
       record.files = filesMatching(inputPatterns(entry), snapshot).sort();
-      record.kind = inputPatterns(entry).length > 0 ? 'declared' : 'project';
     }
+    record.kind = recordKind({ entry, traced: Boolean(trace), files: record.files, incomplete });
+    // D152: what the check reported it used narrows its inputs inside its report's scope.
+    const reportedIdentities = applyReport(entry, record, previous, readReport(reportFor(index, outcome.attempt), projectRoot, key => snapshot.has(key)), result);
     const duration = result.timedOut ? previous.lastDurationMs : result.durationMs;
     if (duration !== undefined) record.lastDurationMs = duration;
     if (Array.isArray(previous.passHistory)) record.passHistory = previous.passHistory;
@@ -388,13 +477,19 @@ function main(argv = process.argv.slice(2), options = {}) {
     let fingerprint = null;
     try {
       set = inputSet(entry, record, ctx);
+      // A report's items carry the fingerprints the check used.
+      if (reportedIdentities) set.known = { ...set.known, ...reportedIdentities };
       fingerprint = fingerprintOf(entry, set, ctx);
     } catch (_) {}
     if (set && fingerprint) {
       record.fingerprint = fingerprint;
       // Which decision code judged it, so a later change of that code is named (D143_T020).
       record.decision = ctx.decision;
-      if (set.kind !== 'project') record.inputHashes = Object.fromEntries(set.files.map(file => [file, snapshot.hash(file)]));
+      // Each input's identity; an item's file with its hash, so a hook can tell its items still hold.
+      if (set.kind !== 'project') {
+        record.inputHashes = Object.fromEntries(set.files.map(key => [key, keyIdentity(ctx, key, set.known)]));
+        for (const key of set.files.filter(isItemKey)) record.inputHashes[pathOf(key)] = snapshot.hash(pathOf(key));
+      }
       if (result.status === 'PASS' && !result.timedOut) pendingPasses.set(entry.id, { fingerprint, set });
     }
     records[entry.id] = record;
@@ -442,9 +537,9 @@ function main(argv = process.argv.slice(2), options = {}) {
   // D143 §4: `jobs` above 1 runs checks side by side (schedule.js); otherwise one at a time.
   const scheduled = jobs > 1
     ? runSideBySide({ order: executionOrder, entries, after, jobs, memoryAllows, isExclusive, startSpacingMs,
-      waitsFor: index => coveringIndex(entries[index]),
-      start: index => startOne(index, trace => runEntryAsync(entries[index], { projectRoot, trace })) })
-    : runInOrder({ order: executionOrder, after, start: index => startOne(index, trace => runEntry(entries[index], { projectRoot, trace })) });
+      waitsFor: waitsOn,
+      start: index => startOne(index, attempt => runEntryAsync(entries[index], observe(entries[index], index, attempt))) })
+    : runInOrder({ order: executionOrder, after, start: index => startOne(index, attempt => runEntry(entries[index], observe(entries[index], index, attempt))) });
   const conclude = () => {
   const failBefore = args.failBefore && !named
     ? failBeforeChecks({ entries, results, records, changedFiles: changedList, expanded, projectRoot, manifestPath, layout })
@@ -461,10 +556,12 @@ function main(argv = process.argv.slice(2), options = {}) {
   // content the fingerprint does not describe.
   // Only the inputs of pending passes are looked at again, unless one of them reads the
   // whole project.
+  // An item's file stands for the item here.
   const pending = [...pendingPasses.values()];
+  const readsProject = set => set.kind === 'project' || set.wholeProject;
   const writtenDuringRun = pending.length === 0 ? new Set()
-    : pending.some(pass => pass.set.kind === 'project') ? snapshot.restat()
-      : snapshot.restat([...new Set(pending.flatMap(pass => pass.set.files))]);
+    : pending.some(pass => readsProject(pass.set)) ? snapshot.restat()
+      : snapshot.restat([...new Set(pending.flatMap(pass => pass.set.files.map(pathOf)))]);
   // Inputs written while checks ran, which kept a pass from being recorded.
   const blockedBy = new Set();
   for (let index = 0; index < entries.length; index++) {
@@ -474,9 +571,17 @@ function main(argv = process.argv.slice(2), options = {}) {
     if (!record || !result || result.reused || result.coveredBy || result.status === 'NOT_RUN' || entry.type === 'manual') continue;
     const previous = previousRecords[entry.id] || {};
     if (failedIds.has(entry.id)) {
-      // A failing run's trace may stop early; keep the dependencies the last full run saw.
-      const failed = { ...previous, ...record, files: Array.isArray(previous.files) && previous.files.length ? previous.files : record.files,
+      // A failing run's trace may stop early; keep the dependencies the last full run saw —
+      // with the kind they were recorded as, when that run reported what it used. A failing
+      // run whose report names its failed cases keeps its own (applyReport).
+      const keepPrevious = record.kind !== 'reported' && Array.isArray(previous.files) && previous.files.length > 0;
+      const failed = { ...previous, ...record, files: keepPrevious ? previous.files : record.files,
+        ...(keepPrevious && previous.kind === 'reported' ? { kind: previous.kind, base: previous.base, scope: previous.scope, cases: previous.cases } : {}),
         lastFailedAt: new Date().toISOString(), lastFailedKind: checkFailedIds.has(entry.id) ? 'check' : 'fail-before' };
+      if (failed.kind !== 'reported') { delete failed.base; delete failed.scope; }
+      // Case results survive a failing run only when its own report applied: otherwise a case
+      // that passed before might be what failed now, and the next run runs every case.
+      if (record.kind !== 'reported') delete failed.cases;
       // The failure key covers the same inputs the next run will read from this record.
       let failKey = null;
       try { failKey = fingerprintOf(entry, inputSet(entry, failed, ctx), ctx); } catch (_) {}
@@ -505,8 +610,8 @@ function main(argv = process.argv.slice(2), options = {}) {
     const pass = pendingPasses.get(entry.id);
     if (!pass) continue;
     // A check with unknown inputs reads the whole project, so any write counts.
-    const touched = pass.set.kind === 'project' ? [...writtenDuringRun]
-      : pass.set.files.filter(file => writtenDuringRun.has(file)
+    const touched = readsProject(pass.set) ? [...writtenDuringRun]
+      : [...new Set(pass.set.files.map(pathOf))].filter(file => writtenDuringRun.has(file)
         || (file.endsWith('/') && [...writtenDuringRun].some(written => written.startsWith(file))));
     if (touched.length) { for (const file of touched) blockedBy.add(file); continue; }
     record.passHistory = [pass.fingerprint, ...(record.passHistory || []).filter(key => key !== pass.fingerprint)].slice(0, historyLimit);
@@ -519,18 +624,30 @@ function main(argv = process.argv.slice(2), options = {}) {
   if (!args.guardRun) runs.push({ head, at: startedAt, ran: entries.length, ms: Math.round(Number(process.hrtime.bigint() - started) / 1e6) });
   const runsSinceCommit = head ? runs.filter(item => item.head === head).length : 0;
   const runLine = runsSinceCommit ? `Check run ${runsSinceCommit} since the last commit${runsSinceCommit > 1 ? ' — run checks once, after the last edit, before committing' : ''}.` : null;
+  // A check that waited for a gate that did not pass (or was not run after a stop) was not reused.
+  const gateBlocked = new Set(results.filter(result => result && (result.gateBlocked || (awaiting.has(result.id) && result.status === 'NOT_RUN')))
+    .map(result => result.id));
+  // D152: a reused check whose item files changed elsewhere (its items' identities did not)
+  // keeps those files' current hashes, so a hook, which cannot ask itemIdentity, judges it
+  // as this run did.
+  for (const id of planned.reused) {
+    const index = selectedIndex.get(id);
+    if (gateBlocked.has(id) || (index !== undefined && !(results[index] && results[index].reused))) continue;
+    const inputHashes = refreshedItemHashes(records[id], ctx);
+    if (inputHashes) records[id] = { ...records[id], inputHashes };
+  }
   writeMap({ manifestPath, startedAt, snapshot: snapshot.serialize(), records, ids: expanded.map(entry => entry.id), runs: runs.slice(-RUN_LOG_LIMIT) });
   if (failedIds.size) console.error(`[VERIFY] ${failedIds.size} failed check(s) will run again on the next --changed: ${[...failedIds].join(', ')}`);
   if (traceDir) { try { fs.rmSync(traceDir, { recursive: true, force: true }); } catch (_) {} }
   if (plan) {
     plan.full = plan.selected.length === total && total > 0;
-    plan.reason = summaryReason(plan, planned);
+    plan.reason = summaryReason(plan, { ...planned, reused: planned.reused.filter(id => !gateBlocked.has(id)) });
   }
   // Checks that ran and still have no known inputs (a non-Node check without `inputs`, a
   // Node check whose trace saw no project file, or one that starts a program the trace
   // cannot follow — named in brackets).
   const unknownRan = results.filter(result => result && !result.reused && !result.coveredBy && result.status !== 'NOT_RUN'
-    && records[result.id] && records[result.id].kind === 'project')
+    && inputsUnknown(records[result.id]))
     .map(result => `${result.id}${Array.isArray(records[result.id].incomplete) ? ` (${records[result.id].incomplete.join('; ')})` : ''}`);
   if (unknownRan.length) notices.push(`Unknown inputs (whole project used): ${unknownRan.join(', ')} — declare "inputs" in the manifest so they run only when their files change. Files git ignores are not watched; declare them in "inputs" if a check reads them.`);
   // D143_T017: a check that read a file of Crabshell's own state reruns whenever that state
@@ -538,7 +655,7 @@ function main(argv = process.argv.slice(2), options = {}) {
   const isState = crabshellState({ projectRoot, layout });
   for (const result of results) {
     if (!result || result.reused || result.coveredBy || result.status === 'NOT_RUN' || !records[result.id]) continue;
-    const stateFile = (records[result.id].files || []).find(file => !file.endsWith('/') && isState(file));
+    const stateFile = (records[result.id].files || []).map(pathOf).find(file => !file.endsWith('/') && isState(file));
     if (stateFile) notices.push(`${result.id} read Crabshell state ${stateFile} — give it a temporary project so the state does not rerun it.`);
   }
   // D151_T004: a changed test that ran and holds its inputs' text word for word is named.

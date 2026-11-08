@@ -18,7 +18,9 @@ const { insideRoot } = require('./trace');
 // The runner's view for a run or a question about one check, built the same way for the
 // runner (main.js) and the hooks: the last records (only this schema's count), the
 // project's snapshot (hashes reused from the last run) and the selection context.
-function selectionView({ projectRoot, layout, manifestPath, manifest }) {
+// runCommands: the runner may run the manifest's itemIdentity command; a hook may not (it
+// then knows an item's identity only while its file is unchanged since a record).
+function selectionView({ projectRoot, layout, manifestPath, manifest, runCommands = false }) {
   const previousMap = readMap(manifestPath);
   const trusted = currentRecords(previousMap);
   const snapshot = takeSnapshot({
@@ -27,7 +29,8 @@ function selectionView({ projectRoot, layout, manifestPath, manifest }) {
     isExcluded: exclusion({ projectRoot, layout, manifestPath, manifest }),
     ignored: ignoredFolders({ projectRoot, layout }),
   });
-  const ctx = { projectRoot, snapshot, decision: layout.decisionHash(), globals: patternList(manifest.changed && manifest.changed.global) };
+  const ctx = { projectRoot, snapshot, decision: layout.decisionHash(), globals: patternList(manifest.changed && manifest.changed.global),
+    runCommands, itemIdentity: manifest.itemIdentity || null };
   return { previousMap, trusted, records: trusted || {}, olderRecords: Boolean(previousMap) && !trusted, snapshot, ctx };
 }
 
@@ -44,8 +47,9 @@ function entryUpToDate(projectRoot, launcherDir, entryId, view = null) {
   if (!view) view = selectionView({ projectRoot: state.root, layout: state.layout, manifestPath: state.layout.manifestPath, manifest: state.manifest });
   const record = view.records[entryId];
   if (!view.trusted || !record || !Array.isArray(record.passHistory) || record.passHistory.length === 0) return null;
-  const plan = planRun({ entries: [entry], records: view.records, olderRecords: false, ctx: view.ctx, reuse: true });
-  return plan.selected.length === 0 ? { entry, record, recordPath: mapPath(state.layout.manifestPath) } : null;
+  // A check narrowed by its report is up to date only while every gate passed on the current files.
+  const plan = planRun({ entries: [entry], records: view.records, olderRecords: false, ctx: view.ctx, reuse: true, gates: entries });
+  return plan.selected.length === 0 && !plan.awaitingGate.includes(entryId) ? { entry, record, recordPath: mapPath(state.layout.manifestPath) } : null;
 }
 
 // D151_T002: the checks a routine --changed run would run now (heavy checks left out, as

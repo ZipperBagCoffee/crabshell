@@ -5,6 +5,8 @@
 // first, and `jobs` runs checks side by side within the CPUs and `memoryShare`.
 // D151_T006: `riskPaths` brings heavy checks in, flaky checks are left out until their test
 // changes, and a failure that is only a forbidden-file change is run once more.
+// D152: checks chosen by the report of what they used (files, folders, items, cases), the
+// gate, and which runner code changes rerun every check.
 const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
@@ -426,6 +428,357 @@ try {
       replayed.status === 0 && replayed.ran.length === 0 && Array.isArray(rows) && rows.length === 1 && Boolean(row)
       && head.startsWith(row.commit) && row.selected === 1 && Number.isFinite(row.estimatedMs),
       `rows=${JSON.stringify(rows)} head=${head} ${show(replayed)}`);
+  });
+  // D152 — a check that reports what it used is chosen by that report. The checks below are
+  // written in a language the runner never names, and read data in a made-up sectioned format
+  // ("[name]" opens an item; lines before the first one are the file's rest) that only the
+  // project's own code knows.
+  const { REPORT_ENV } = require(path.join(path.dirname(RUNNER), 'runner', 'used-report.js'));
+  const store = [
+    'import hashlib, os',
+    "ROOT = os.environ['PROJECT_ROOT']",
+    "def esc(value): return str(value).replace('%', '%25').replace('\\t', '%09').replace('\\r', '%0D').replace('\\n', '%0A')",
+    'def line(*fields):',
+    `    target = os.environ.get('${REPORT_ENV}')`,
+    '    if target:',
+    "        with open(target, 'a', encoding='utf-8') as out: out.write('\\t'.join(esc(f) for f in fields) + '\\n')",
+    'def log(name):',
+    "    with open(os.path.join(os.environ['POLICY_OUTSIDE'], os.environ['POLICY_NAME'] + '.log'), 'a') as out: out.write(name + ' 0 0\\n')",
+    'def sections(rel):',
+    '    items, rest, current = {}, [], None',
+    "    with open(os.path.join(ROOT, rel), encoding='utf-8') as source: text = source.read()",
+    '    for raw in text.splitlines():',
+    "        if raw.startswith('[') and raw.endswith(']'): current = raw[1:-1]; items[current] = ''",
+    '        elif current is None: rest.append(raw)',
+    "        else: items[current] += raw + '\\n'",
+    "    return items, '\\n'.join(rest)",
+    "def fp(text): return hashlib.sha256(text.encode('utf-8')).hexdigest()[:16]",
+    'def lookup(rel, name, case=None):',
+    '    value = sections(rel)[0].get(name)',
+    "    line('item', rel, name, fp(value) if value is not None else '', *([case] if case else []))",
+    '    return value',
+    'def whole(rel, case=None):',
+    "    line('file', rel, *([case] if case else []))",
+    '    return True',
+    "def done(): line('done')",
+    'def raw(text):',
+    `    with open(os.environ['${REPORT_ENV}'], 'a', encoding='utf-8') as out: out.write(text)`,
+  ].join('\n') + '\n';
+  // The project's item identity command: every item's fingerprint and the rest, per file.
+  const identity = "import os, sys\nsys.path.insert(0, os.path.join(os.environ['PROJECT_ROOT'], 'tools'))\nfrom store import *\n"
+    + "for rel in sys.argv[1:]:\n    items, rest = sections(rel)\n"
+    + "    for name, text in items.items(): print('\\t'.join(esc(f) for f in ['item', rel, name, fp(text)]))\n"
+    + "    print('\\t'.join(esc(f) for f in ['rest', rel, fp(rest)]))\n";
+  const pyCheck = (id, body) => "import os, sys\nsys.path.insert(0, os.path.join(os.environ['PROJECT_ROOT'], 'tools'))\nfrom store import *\n"
+    + `log('${id}')\n${body}\n`;
+  const pyEntry = (id, extra = {}) => ({ id, type: 'structural', command: { file: PYTHON, args: ['-B', `tools/${id.toLowerCase()}.py`] },
+    contract: { exitCode: 0 }, inputs: ['data/', 'tools/'], reportScope: ['data/'], ...extra });
+  const itemIdentity = { file: PYTHON, args: ['-B', 'tools/identity.py'] };
+  const stock = (alpha, beta, rest = 'unit = coin') => `${rest}\n[alpha]\nprice = ${alpha}\n[beta]\nprice = ${beta}\n`;
+  const sorted = r => [...r.ran].sort().join(',');
+  const lastRun = dir => JSON.parse(fs.readFileSync(path.join(dir, '.crabshell', 'verification', 'last-run.json'), 'utf8'));
+  const dryRun = (dir, name) => JSON.parse(run(dir, name, ['--changed', '--dry-run']).stdout);
+
+  if (hasPython) attempt('P21 a check that reports the files it used reruns only when one of them changes; a folder it reports reruns it when a file is added there', () => {
+    // W reports one file; F reports the data folder (its list of names); O declares other/ and reports nothing.
+    const dir = project('p21', [pyEntry('W'), pyEntry('F'), { ...pyEntry('O'), inputs: ['other/', 'tools/o.py'] }], {
+      'tools/store.py': store, 'tools/w.py': pyCheck('W', "whole('data/one.kv')\ndone()"),
+      'tools/f.py': pyCheck('F', "whole('data/')\ndone()"), 'tools/o.py': pyCheck('O', ''),
+      'data/one.kv': 'one\n', 'data/two.kv': 'two\n', 'other/x.kv': 'x\n',
+    });
+    const first = run(dir, 'p21');
+    write(dir, 'data/two.kv', 'two edited\n');
+    const unused = run(dir, 'p21', ['--changed']);
+    write(dir, 'data/one.kv', 'one edited\n');
+    const used = run(dir, 'p21', ['--changed']);
+    write(dir, 'data/three.kv', 'three\n');
+    const added = run(dir, 'p21', ['--changed']);
+    // Predicted: [] (AC1, and AC6: O does not read data/two.kv yet is not run for it), [W], [F].
+    check('P21 a check that reports the files it used reruns only when one of them changes; a folder it reports reruns it when a file is added there',
+      first.status === 0 && sorted(first) === 'F,O,W' && record(dir, 'W').kind === 'reported' && record(dir, 'F').files.includes('data/')
+      && unused.status === 0 && sorted(unused) === '' && used.status === 0 && sorted(used) === 'W' && added.status === 0 && sorted(added) === 'F',
+      `first=[${first.ran}] unused=[${unused.ran}] used=[${used.ran}] added=[${added.ran}] W=${JSON.stringify(record(dir, 'W'))}`);
+  });
+
+  if (hasPython) attempt('P22 a broken report (no done line, empty, a path outside the project) or none chooses the check as before', () => {
+    const dir = project('p22', [pyEntry('B1'), pyEntry('B2'), pyEntry('B3'), pyEntry('B4')], {
+      'tools/store.py': store,
+      'tools/b1.py': pyCheck('B1', "whole('data/one.kv')"),
+      'tools/b2.py': pyCheck('B2', `open(os.environ['${REPORT_ENV}'], 'a').close()`),
+      'tools/b3.py': pyCheck('B3', "whole('../outside.kv')\ndone()"),
+      'tools/b4.py': pyCheck('B4', ''),
+      'data/one.kv': 'one\n', 'data/two.kv': 'two\n',
+    });
+    const first = run(dir, 'p22');
+    write(dir, 'data/two.kv', 'two edited\n');
+    const after = run(dir, 'p22', ['--changed']);
+    const kinds = ['B1', 'B2', 'B3', 'B4'].map(id => record(dir, id).kind).join(',');
+    const problems = ['B1', 'B2', 'B3'].filter(id => record(dir, id).reportProblem).length;
+    // Predicted: all four run again (each declares data/), all recorded as declared.
+    check('P22 a broken report (no done line, empty, a path outside the project) or none chooses the check as before',
+      first.status === 0 && after.status === 0 && sorted(after) === 'B1,B2,B3,B4' && kinds === 'declared,declared,declared,declared' && problems === 3,
+      `after=[${after.ran}] kinds=${kinds} problems=${problems} ${show(after)}`);
+  });
+
+  if (hasPython) attempt('P23 an item report reruns a check when its item or the rest of its file changes, not another item; without itemIdentity the file counts', () => {
+    const scripts = {
+      'tools/store.py': store, 'tools/identity.py': identity,
+      'tools/ia.py': pyCheck('IA', "lookup('data/stock.kv', 'alpha')\ndone()"),
+      'tools/ib.py': pyCheck('IB', "lookup('data/stock.kv', 'beta')\ndone()"),
+      'tools/ic.py': pyCheck('IC', "lookup('data/stock.kv', 'gamma')\ndone()"),
+      'data/stock.kv': stock(1, 2),
+    };
+    const entries = [pyEntry('IA'), pyEntry('IB'), pyEntry('IC')];
+    const items = project('p23', entries, scripts, { itemIdentity });
+    const whole = project('p23-whole', entries, scripts);
+    const steps = dir => {
+      const out = [run(dir, 'p23')];
+      write(dir, 'data/stock.kv', stock(1, 3)); out.push(run(dir, 'p23', ['--changed']));
+      write(dir, 'data/stock.kv', `${stock(1, 3)}[gamma]\nprice = 9\n`); out.push(run(dir, 'p23', ['--changed']));
+      write(dir, 'data/stock.kv', `${stock(1, 3, 'unit = gem')}[gamma]\nprice = 9\n`); out.push(run(dir, 'p23', ['--changed']));
+      return out;
+    };
+    const [i0, iBeta, iGamma, iRest] = steps(items);
+    const [w0, wBeta] = steps(whole);
+    // Predicted with itemIdentity: [IB], [IC] (an item looked up and missing, then added), [IA,IB,IC] (the rest);
+    // without it: [IA,IB,IC] for the beta edit.
+    check('P23 an item report reruns a check when its item or the rest of its file changes, not another item; without itemIdentity the file counts',
+      i0.status === 0 && sorted(iBeta) === 'IB' && sorted(iGamma) === 'IC' && sorted(iRest) === 'IA,IB,IC'
+      && w0.status === 0 && sorted(wBeta) === 'IA,IB,IC',
+      `beta=[${iBeta.ran}] gamma=[${iGamma.ran}] rest=[${iRest.ran}] wholeBeta=[${wBeta.ran}] ${show(iBeta)}`);
+  });
+
+  if (hasPython) attempt('P24 a gate: narrowed checks are reused only once it passed on the current files, and are not run when it fails', () => {
+    const dir = project('p24', [pyEntry('G', { gate: true, inputs: ['data/', 'tools/g.py'] }), pyEntry('IA'), pyEntry('IB')], {
+      'tools/store.py': store, 'tools/identity.py': identity,
+      'tools/g.py': pyCheck('G', "sys.exit(1 if 'BROKEN' in open(os.path.join(ROOT, 'data/stock.kv')).read() else 0)"),
+      'tools/ia.py': pyCheck('IA', "lookup('data/stock.kv', 'alpha')\ndone()"),
+      'tools/ib.py': pyCheck('IB', "lookup('data/stock.kv', 'beta')\ndone()"),
+      'data/stock.kv': stock(1, 2),
+    }, { itemIdentity });
+    run(dir, 'p24');
+    write(dir, 'data/stock.kv', stock(1, 3));
+    const waiting = dryRun(dir, 'p24');
+    const passed = run(dir, 'p24', ['--changed']);
+    const reusedAfterGate = (lastRun(dir).find(result => result.id === 'IA') || {});
+    write(dir, 'data/stock.kv', stock(1, '3\nBROKEN'));
+    const failed = run(dir, 'p24');
+    const blocked = (lastRun(dir).find(result => result.id === 'IA') || {});
+    // Predicted: IA waits for G; --changed runs [G,IB] and reuses IA after G; when G fails, IA is NOT_RUN.
+    check('P24 a gate: narrowed checks are reused only once it passed on the current files, and are not run when it fails',
+      waiting.awaitingGate && waiting.awaitingGate.checks.join(',') === 'IA' && waiting.selected.join(',') === 'G,IB'
+      && passed.status === 0 && sorted(passed) === 'G,IB' && reusedAfterGate.status === 'PASS' && reusedAfterGate.reused === true
+      && failed.status !== 0 && blocked.status === 'NOT_RUN' && /gate G did not pass/.test(blocked.message) && !failed.ran.includes('IA'),
+      `waiting=${JSON.stringify(waiting.awaitingGate)} selected=${waiting.selected} passed=[${passed.ran}] IA=${JSON.stringify(reusedAfterGate)} failed=[${failed.ran}] blocked=${JSON.stringify(blocked)}`);
+  });
+
+  if (hasPython) attempt('P25 a {cases} entry runs again only the cases that used what changed, and the cases that failed', () => {
+    const cases = pyCheck('K', [
+      "CASES = {'c1': lambda: lookup('data/stock.kv', 'alpha', 'c1'), 'c2': lambda: lookup('data/stock.kv', 'beta', 'c2'), 'c3': lambda: whole('data/other.kv', 'c3')}",
+      "failing = os.path.exists(os.path.join(os.environ['POLICY_OUTSIDE'], 'K.fail'))",
+      'code = 0',
+      'for name in (sys.argv[1:] or sorted(CASES)):',
+      "    log('K:' + name)",
+      '    CASES[name]()',
+      "    ok = not (failing and name == 'c2')",
+      "    line('result', name, 'pass' if ok else 'fail')",
+      '    code = code or (0 if ok else 1)',
+      'done()',
+      'sys.exit(code)',
+    ].join('\n'));
+    const entryK = { ...pyEntry('K'), command: { file: PYTHON, args: ['-B', 'tools/k.py', '{cases}'] } };
+    const dir = project('p25', [entryK], { 'tools/store.py': store, 'tools/identity.py': identity, 'tools/k.py': cases,
+      'data/stock.kv': stock(1, 2), 'data/other.kv': 'other\n' }, { itemIdentity });
+    const cased = r => r.ran.filter(id => id.startsWith('K:')).map(id => id.slice(2)).sort().join(',');
+    const first = run(dir, 'p25');
+    write(dir, 'data/other.kv', 'other edited\n');
+    const other = run(dir, 'p25', ['--changed']);
+    write(dir, 'data/stock.kv', stock(1, 3));
+    const beta = run(dir, 'p25', ['--changed']);
+    flag('K', true);
+    write(dir, 'data/stock.kv', stock(1, 4));
+    const failing = run(dir, 'p25', ['--changed']);
+    flag('K', false);
+    const fixed = run(dir, 'p25', ['--changed']);
+    const quiet = run(dir, 'p25', ['--changed']);
+    write(dir, 'tools/k.py', `${cases}# edited\n`);
+    const testEdited = run(dir, 'p25', ['--changed']);
+    // Predicted: all three, then [c3], [c2], [c2] failing, [c2] (the failed case), nothing, all three (the test changed).
+    check('P25 a {cases} entry runs again only the cases that used what changed, and the cases that failed',
+      cased(first) === 'c1,c2,c3' && cased(other) === 'c3' && cased(beta) === 'c2' && failing.status !== 0 && cased(failing) === 'c2'
+      && fixed.status === 0 && cased(fixed) === 'c2' && quiet.ran.length === 0 && cased(testEdited) === 'c1,c2,c3',
+      `first=${cased(first)} other=${cased(other)} beta=${cased(beta)} failing=${cased(failing)} fixed=${cased(fixed)} quiet=[${quiet.ran}] edited=${cased(testEdited)} ${show(fixed)}`);
+  });
+
+  if (hasPython) attempt('P26 a Node check with declared inputs whose trace is incomplete keeps its traced reads and is not named as unknown inputs', () => {
+    const dir = project('p26', [entry('N', { inputs: ['src/a.txt'] })], {
+      N: "const fs = require('fs'); const path = require('path'); const { spawnSync } = require('child_process');\n"
+        + "fs.appendFileSync(path.join(process.env.POLICY_OUTSIDE, process.env.POLICY_NAME + '.log'), 'N 0 0\\n');\n"
+        + "fs.readFileSync(path.join(process.env.PROJECT_ROOT, 'src', 'a.txt')); fs.readFileSync(path.join(process.env.PROJECT_ROOT, 'src', 'b.txt'));\n"
+        + `spawnSync(${JSON.stringify(PYTHON)}, ['-c', 'pass'], { cwd: process.env.PROJECT_ROOT });\n`,
+    });
+    const first = run(dir, 'p26');
+    write(dir, 'src/b.txt', 'b edited\n');
+    const plan = dryRun(dir, 'p26');
+    // Predicted: kind declared (not project), no unknown-inputs notice, rerun because src/b.txt (a traced read) changed.
+    check('P26 a Node check with declared inputs whose trace is incomplete keeps its traced reads and is not named as unknown inputs',
+      first.status === 0 && record(dir, 'N').kind === 'declared' && Array.isArray(record(dir, 'N').incomplete)
+      && lines(first, 'N').filter(line => /Unknown inputs/.test(line)).length === 0
+      && plan.selected.join(',') === 'N' && plan.reasons.N === 'src/b.txt changed' && !plan.unknownInputs.includes('N'),
+      `kind=${record(dir, 'N').kind} reason=${plan.reasons.N} unknown=${plan.unknownInputs} ${show(first)}`);
+  });
+
+  attempt('P27 a runner update that changes only the code recording inputs keeps every pass; contract, execute or the tracer code reruns', () => {
+    const dir = project('p27', [entry('A')], { A: nodeCheck('A', 'src/a.txt') });
+    run(dir, 'p27');
+    const modules = path.join(dir, '.crabshell', 'verification', 'runner');
+    for (const name of ['select.js', 'fingerprint.js', 'snapshot.js', 'manifest.js']) fs.appendFileSync(path.join(modules, name), '\nmodule.exports.releaseMarker = 1;\n');
+    const tracePath = path.join(modules, 'trace.js');
+    fs.appendFileSync(tracePath, '\nmodule.exports.releaseMarker = 1;\n');
+    const recording = dryRun(dir, 'p27');
+    const contractPath = path.join(modules, 'contract.js');
+    const contractText = fs.readFileSync(contractPath, 'utf8');
+    fs.appendFileSync(contractPath, '\nmodule.exports.releaseMarker = 1;\n');
+    const judging = dryRun(dir, 'p27');
+    fs.writeFileSync(contractPath, contractText);
+    const traceText = fs.readFileSync(tracePath, 'utf8');
+    const opening = "const TRACER_SOURCE = `'use strict';\n";
+    fs.writeFileSync(tracePath, traceText.replace(opening, `${opening}const releaseMarker = 1;\n`));
+    const tracing = dryRun(dir, 'p27');
+    // Predicted: [] after the recording modules change; [A] for contract.js; [A] for the tracer source.
+    check('P27 a runner update that changes only the code recording inputs keeps every pass; contract, execute or the tracer code reruns',
+      recording.selected.length === 0 && judging.selected.join(',') === 'A' && /decision code changed/.test(judging.reasons.A)
+      && traceText.includes(opening) && tracing.selected.join(',') === 'A',
+      `recording=${recording.selected} judging=${judging.selected} tracing=${tracing.selected}`);
+  });
+
+  // D152 review fixes. A broken report chooses its check as before: each check below declares
+  // data/, so editing data/two.kv (which no report names) runs it again.
+  const runsAsBefore = (name, bodies) => {
+    const ids = Object.keys(bodies);
+    const scripts = { 'tools/store.py': store, 'data/one.kv': 'one\n', 'data/two.kv': 'two\n' };
+    for (const id of ids) scripts[`tools/${id.toLowerCase()}.py`] = pyCheck(id, bodies[id]);
+    const dir = project(name, ids.map(id => pyEntry(id)), scripts);
+    const first = run(dir, name);
+    write(dir, 'data/two.kv', 'two edited\n');
+    const after = run(dir, name, ['--changed']);
+    const records = ids.map(id => record(dir, id));
+    return { ok: first.status === 0 && after.status === 0 && sorted(after) === [...ids].sort().join(',')
+      && records.every(rec => rec.kind === 'declared' && typeof rec.reportProblem === 'string'),
+    detail: `after=[${after.ran}] ${records.map(rec => `${rec.kind}/${rec.reportProblem}`).join(' | ')}` };
+  };
+  if (hasPython) attempt('P28 a report whose only line is done is broken', () => {
+    const { ok, detail } = runsAsBefore('p28', { DO: 'done()' });
+    check('P28 a report whose only line is done is broken', ok, detail);
+  });
+  if (hasPython) attempt('P29 a report naming a file that is not there, or a field holding the item separator, is broken', () => {
+    const { ok, detail } = runsAsBefore('p31', {
+      MF: "whole('data/missing.kv')\ndone()",
+      NU: "raw('item\\tdata/one.kv\\ta%00b\\tf\\ndone\\n')",
+    });
+    check('P29 a report naming a file that is not there, or a field holding the item separator, is broken', ok, detail);
+  });
+  if (hasPython) attempt('P30 a writer name that began more often than it finished makes the report broken', () => {
+    const { ok, detail } = runsAsBefore('p34', { BW: "raw('begin\\tw\\nbegin\\tw\\nfile\\tdata/one.kv\\ndone\\tw\\n')" });
+    check('P30 a writer name that began more often than it finished makes the report broken', ok, detail);
+  });
+
+  // A {cases} entry whose cases each use one whole file. A flag file outside the project named
+  // after the run makes the run crash before its done line (.crash), or fail c2 and stop
+  // before the cases after it (.stop).
+  const wholeCases = pyCheck('K', [
+    "CASES = {'c1': 'data/a.kv', 'c2': 'data/b.kv', 'c3': 'data/c.kv'}",
+    "flag = lambda kind: os.path.exists(os.path.join(os.environ['POLICY_OUTSIDE'], os.environ['POLICY_NAME'] + kind))",
+    'for name in (sys.argv[1:] or sorted(CASES)):',
+    "    log('K:' + name)",
+    '    whole(CASES[name], name)',
+    "    if flag('.crash'): sys.exit(1)",
+    "    if flag('.stop') and name == 'c2':",
+    "        line('result', name, 'fail')",
+    '        done()',
+    '        sys.exit(1)',
+    "    line('result', name, 'pass')",
+    'done()',
+  ].join('\n'));
+  const casesProject = name => project(name, [{ ...pyEntry('K'), command: { file: PYTHON, args: ['-B', 'tools/k.py', '{cases}'] } }], {
+    'tools/store.py': store, 'tools/k.py': wholeCases, 'data/a.kv': 'a\n', 'data/b.kv': 'b\n', 'data/c.kv': 'c\n' });
+  const casesRan = r => r.ran.filter(id => id.startsWith('K:')).map(id => id.slice(2)).sort().join(',');
+  const outsideFlag = (name, kind, on) => { const file = path.join(outside, `${name}${kind}`); if (on) fs.writeFileSync(file, '1'); else fs.rmSync(file, { force: true }); };
+
+  if (hasPython) attempt('P31 a failing {cases} run whose report does not apply keeps no case results: the next run runs every case', () => {
+    const dir = casesProject('p29');
+    run(dir, 'p29');
+    write(dir, 'data/c.kv', 'c edited\n');
+    outsideFlag('p29', '.crash', true);
+    const crashed = run(dir, 'p29', ['--changed']);
+    outsideFlag('p29', '.crash', false);
+    write(dir, 'data/b.kv', 'b edited\n');
+    const next = run(dir, 'p29', ['--changed']);
+    // Predicted: the crash runs [c3] and fails; the next run runs every case (c3, which failed, included).
+    check('P31 a failing {cases} run whose report does not apply keeps no case results: the next run runs every case',
+      crashed.status !== 0 && casesRan(crashed) === 'c3' && next.status === 0 && casesRan(next) === 'c1,c2,c3',
+      `crashed=${casesRan(crashed)} next=${casesRan(next)} ${show(next)}`);
+  });
+
+  if (hasPython) attempt('P32 a failing {cases} run removes no input or case: a case it was to run and did not report runs next', () => {
+    const dir = casesProject('p30');
+    run(dir, 'p30');
+    write(dir, 'data/b.kv', 'b edited\n');
+    write(dir, 'data/c.kv', 'c edited\n');
+    outsideFlag('p30', '.stop', true);
+    const stopped = run(dir, 'p30', ['--changed']);
+    outsideFlag('p30', '.stop', false);
+    const kept = record(dir, 'K');
+    const next = run(dir, 'p30', ['--changed']);
+    // Predicted: [c2,c3] asked, c2 fails and c3 is never reached; data/c.kv and case c3 stay in
+    // the record (c3 counted as failed); the next run runs c2 and c3, not c1.
+    check('P32 a failing {cases} run removes no input or case: a case it was to run and did not report runs next',
+      stopped.status !== 0 && casesRan(stopped) === 'c2' && kept.files.includes('data/c.kv') && Boolean(kept.cases && kept.cases.c3)
+      && kept.cases.c3.result === 'fail' && next.status === 0 && casesRan(next) === 'c2,c3',
+      `stopped=${casesRan(stopped)} cases=${JSON.stringify(kept.cases)} next=${casesRan(next)} ${show(next)}`);
+  });
+
+  if (hasPython) attempt('P33 after --changed reuses a check whose item file changed elsewhere, the hooks\' view reuses it too', () => {
+    const dir = project('p32', [pyEntry('IA')], {
+      'tools/store.py': store, 'tools/identity.py': identity,
+      'tools/ia.py': pyCheck('IA', "lookup('data/stock.kv', 'alpha')\ndone()"), 'data/stock.kv': stock(1, 2),
+    }, { itemIdentity });
+    run(dir, 'p32');
+    write(dir, 'data/stock.kv', stock(1, 3));
+    const changed = run(dir, 'p32', ['--changed']);
+    const launcherDir = path.join(dir, '.crabshell', 'verification');
+    const hooks = require(path.join(launcherDir, 'runner', 'project-state.js'));
+    const upToDate = hooks.entryUpToDate(dir, launcherDir, 'IA');
+    const pending = hooks.pendingChecks(dir, launcherDir);
+    // Predicted: --changed runs nothing; the hooks (which never run itemIdentity) agree.
+    check('P33 after --changed reuses a check whose item file changed elsewhere, the hooks\' view reuses it too',
+      changed.status === 0 && changed.ran.length === 0 && Boolean(upToDate) && Array.isArray(pending) && pending.length === 0,
+      `changed=[${changed.ran}] upToDate=${Boolean(upToDate)} pending=${JSON.stringify(pending)}`);
+  });
+
+  attempt('P34 the code that builds a check\'s environment and arguments, and recheck.js, rerun every check; the rest of their modules does not', () => {
+    const dir = project('p33', [entry('A')], { A: nodeCheck('A', 'src/a.txt') });
+    run(dir, 'p33');
+    const modules = path.join(dir, '.crabshell', 'verification', 'runner');
+    // Each edit is tried alone and undone; selectedAfter gives the checks a --changed run would choose.
+    const selectedAfter = (file, edit) => {
+      const target = path.join(modules, file);
+      const text = fs.readFileSync(target, 'utf8');
+      const edited = edit(text);
+      if (edited === text) return 'unedited';
+      fs.writeFileSync(target, edited);
+      try { return dryRun(dir, 'p33').selected.join(','); } finally { fs.writeFileSync(target, text); }
+    };
+    const inFunction = name => text => text.replace(new RegExp(`(function ${name}\\([^)]*\\) \\{\\n)`), '$1  const releaseMarker = 1;\n');
+    const appended = text => `${text}\nmodule.exports.releaseMarker = 1;\n`;
+    const environment = selectedAfter('trace.js', inFunction('traceEnvironment'));
+    const cases = selectedAfter('used-report.js', inFunction('expandCases'));
+    const recheck = selectedAfter('recheck.js', appended);
+    const reading = selectedAfter('used-report.js', inFunction('parseIdentity'));
+    // Predicted: A, A, A for the three decision parts; nothing for the report reader.
+    check('P34 the code that builds a check\'s environment and arguments, and recheck.js, rerun every check; the rest of their modules does not',
+      environment === 'A' && cases === 'A' && recheck === 'A' && reading === '',
+      `environment=${environment} cases=${cases} recheck=${recheck} reading=${reading}`);
   });
 } finally {
   fs.rmSync(base, { recursive: true, force: true });

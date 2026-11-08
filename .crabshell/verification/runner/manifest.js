@@ -93,11 +93,15 @@ const SETTING_KINDS = {
   share: { message: 'must be a number above 0 and at most 1', valid: value => typeof value === 'number' && value > 0 && value <= 1 },
   flag: { message: 'must be true or false', valid: value => typeof value === 'boolean' },
   name: { message: 'must be a non-empty name', valid: value => typeof value === 'string' && value.length > 0 },
+  command: { message: 'must be an object with a file and an args string array', valid: value => Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+    && typeof value.file === 'string' && value.file.length > 0 && Array.isArray(value.args) && value.args.every(arg => typeof arg === 'string') },
   // Read by the runner and documented, with checks of their own elsewhere.
   other: { message: '', valid: () => true },
 };
+// reportScope: where the check's report of what it used decides its inputs (default: its
+// inputs); gate: the check whose pass vouches for checks narrowed by their reports (D152).
 const ENTRY_SETTINGS = {
-  inputs: 'paths', outputs: 'paths', slow: 'flag', exclusive: 'flag', group: 'name',
+  inputs: 'paths', outputs: 'paths', slow: 'flag', exclusive: 'flag', group: 'name', reportScope: 'paths', gate: 'flag',
   reuse: 'other', always: 'other', coveredBy: 'other', reuseExclude: 'other', timeout: 'other',
 };
 
@@ -254,6 +258,8 @@ function expandEntries(manifest, projectRoot) {
         ...(typeof entry.group === 'string' ? { group: entry.group } : {}),
         ...(Array.isArray(entry.inputs) ? { inputs: entry.inputs } : {}),
         ...(Array.isArray(entry.outputs) ? { outputs: entry.outputs } : {}),
+        ...(Array.isArray(entry.reportScope) ? { reportScope: entry.reportScope } : {}),
+        ...(entry.gate === true ? { gate: true } : {}),
         reuse: reuseExcluded.has(file) ? false : entry.reuse,
         discoveredBy: entry.id,
         ...(coverage.has(file) ? { coveredBy: coverage.get(file) } : {}),

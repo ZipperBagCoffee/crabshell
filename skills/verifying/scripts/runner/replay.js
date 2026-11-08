@@ -3,12 +3,14 @@
 // executed. For each of the last N commits, the files it changed (git) are matched with each
 // check's recorded inputs: a check runs when it has no record yet, when its inputs are unknown
 // (it reads the whole project), when its recorded or declared inputs include a changed file, or
-// when a module that decides results changed. Heavy checks stay out, as in --changed. The time
-// is the run's length with the chosen checks started side by side within `jobs` (their median
+// when a module that decides results changed. A commit's file list cannot tell which items of
+// a file changed, so an item a check reported stands for its file (D152). Heavy checks stay
+// out, as in --changed. The time is the run's length with the chosen checks started side by side within `jobs` (their median
 // pass times), plus the checks that run alone, one after another.
 
 const { spawnSync } = require('child_process');
-const { inputPatterns, matchesInput, medianDuration, isSlow } = require('./select');
+const { inputPatterns, matchesInput, medianDuration, isSlow, inputsUnknown, reportScope, inScope } = require('./select');
+const { pathOf } = require('./used-report');
 
 // The files each of the last `count` commits changed, newest first, and which of them it
 // added or deleted (a folder that is only listed changes when its names change).
@@ -39,15 +41,20 @@ function commitChanges(projectRoot, count) {
 // folder it copied; an older record's folder stands for every file under it.
 function wouldRun(entry, record, changed, namesChanged = changed) {
   if (!record) return true;
-  if (record.kind === 'project') return changed.length > 0;
-  const files = new Set(Array.isArray(record.files) ? record.files : []);
+  if (inputsUnknown(record)) return changed.length > 0;
+  const files = new Set(Array.isArray(record.files) ? record.files.map(pathOf) : []);
   if (record.test) files.add(record.test);
+  // A report decides inside its scope: there only what it named counts; outside it, what the
+  // check declared — or, with no other inputs known, every file.
+  const scope = record.kind === 'reported' ? reportScope(entry) : null;
+  if (scope && record.base === 'project' && changed.some(file => !inScope(scope, file))) return true;
   const declared = inputPatterns(entry);
   const namesOnly = record.folders === 'names';
   const parent = file => file.slice(0, file.lastIndexOf('/') + 1);
   const inFolder = file => [...files].some(input => input.endsWith('/')
     && (namesOnly ? namesChanged.includes(file) && parent(file) === input : file.startsWith(input)));
-  return changed.some(file => files.has(file) || inFolder(file) || declared.some(pattern => matchesInput(pattern, file)));
+  return changed.some(file => files.has(file) || inFolder(file)
+    || (declared.some(pattern => matchesInput(pattern, file)) && !(scope && inScope(scope, file))));
 }
 
 // Longest first onto `jobs` lanes; the run lasts as long as its busiest lane, then the checks

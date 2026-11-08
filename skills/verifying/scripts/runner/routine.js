@@ -6,6 +6,7 @@
 //  - A check that failed and then passed on the same inputs (flaky) is quarantined: left out
 //    and named until its test file's content differs from when it was quarantined. A check
 //    with a standing failure is never left out — the failure reruns it until a pass.
+//  - A gate (D152 P11) is never left out: checks narrowed by their reports wait for it.
 
 const { patternList, matchesInput, isSlow } = require('./select');
 const { MISSING } = require('./snapshot');
@@ -52,10 +53,10 @@ function isQuarantined(record, snapshot) {
 // stateOf(id): how a heavy check's inputs stand, for its listing; inputsChanged(id): whether
 // its own inputs changed since it last passed. Returns the ids to run and what to name.
 function routineChoice({ entries, selected, records, manifest, snapshot, stateOf, inputsChanged }) {
-  const quarantined = entries.filter(entry => isQuarantined(records[entry.id], snapshot))
+  const quarantined = entries.filter(entry => entry.gate !== true && isQuarantined(records[entry.id], snapshot))
     .map(entry => ({ id: entry.id, test: records[entry.id].test }));
   const sidelined = new Set(quarantined.map(item => item.id));
-  const heavy = entries.filter(entry => !sidelined.has(entry.id) && isSlow(entry, records[entry.id], manifest));
+  const heavy = entries.filter(entry => entry.gate !== true && !sidelined.has(entry.id) && isSlow(entry, records[entry.id], manifest));
   const changedHeavy = heavy.filter(entry => inputsChanged(entry.id));
   const riskFile = changedHeavy.length ? changedRiskFile(manifest, () => snapshot.changedFiles()) : null;
   const brought = new Set(riskFile ? changedHeavy.map(entry => entry.id) : []);

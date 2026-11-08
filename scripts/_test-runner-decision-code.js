@@ -3,14 +3,16 @@
 // changes comment lines, blank lines or trailing spaces in those modules must not rerun
 // every check in every project. Any change to a code line (a string, an end-of-line
 // comment, code after a block comment) still counts. When the decision code did change,
-// the reason says so, and --explain explains it once.
+// the reason says so, and --explain explains it once. D152 P6: the decision code is whole
+// modules (DECISION_MODULES) and parts of others hashed by source text (DECISION_PARTS);
+// P27 and P34 in _test-runner-policy.js run it through the runner.
 
 const assert = require('assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const { codeText, DECISION_MODULES } = require('../skills/verifying/scripts/runner/layout');
+const { codeText, DECISION_MODULES, DECISION_PARTS, partSource } = require('../skills/verifying/scripts/runner/layout');
 const { copyRunner } = require('../skills/verifying/scripts/runner/install');
 
 const RUNNER = path.join(__dirname, '..', 'skills', 'verifying', 'scripts', 'run-verify.js');
@@ -50,12 +52,23 @@ test('a changed string, end-of-line comment, template line or code after a block
   ]) assert.notStrictEqual(codeText(edited), codeText(BASE), edited);
 });
 
-test('the six decision modules give the same code text twice, and it differs from their bytes only by dropped lines', () => {
-  assert.ok(DECISION_MODULES.length >= 6, DECISION_MODULES.join(','));
+test('the decision modules give the same code text twice, and it differs from their bytes only by dropped lines', () => {
+  assert.ok(DECISION_MODULES.length >= 2, DECISION_MODULES.join(','));
   for (const name of DECISION_MODULES) {
     const text = fs.readFileSync(path.join(MODULES, name), 'utf8');
     assert.strictEqual(codeText(text), codeText(text), name);
     for (const line of codeText(text).split('\n')) assert.ok(text.includes(line), `${name}: a kept line is not in the file: ${line}`);
+  }
+});
+
+test('every decision part names an export of its module, and a function part is that module\'s own source text', () => {
+  assert.ok(DECISION_PARTS.length > 0);
+  for (const [module, name] of DECISION_PARTS) {
+    const source = partSource(MODULES, module, name);
+    assert.ok(typeof source === 'string' && source.length > 0, `${module} ${name}`);
+    if (typeof require(path.join(MODULES, module))[name] === 'function') {
+      assert.ok(fs.readFileSync(path.join(MODULES, module), 'utf8').includes(source), `${module} ${name}: not its source text`);
+    }
   }
 });
 
@@ -72,7 +85,7 @@ const run = args => {
   for (const key of ['PROJECT_ROOT', 'CLAUDE_PROJECT_DIR', 'CRABSHELL_VERIFY_RUNNING']) delete env[key];
   return spawnSync(process.execPath, [path.join(root, '.crabshell', 'verification', 'run-verify.js'), ...args], { cwd: root, env, encoding: 'utf8', windowsHide: true, timeout: 120000 });
 };
-const copiedModule = path.join(root, '.crabshell', 'verification', 'runner', 'fingerprint.js');
+const copiedModule = path.join(root, '.crabshell', 'verification', 'runner', DECISION_MODULES[0]);
 assert.strictEqual(run([]).status, 0);
 
 test('a comment-only change to a decision module reuses every pass', () => {
