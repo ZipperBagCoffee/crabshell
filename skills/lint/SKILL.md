@@ -5,14 +5,10 @@ description: "Runs Obsidian lint checks on .crabshell/ documents and reports vio
 
 # Lint Skill
 
-## Purpose
+Run `scripts/lint-obsidian.js` on the project's `.crabshell/` documents, read its report, and offer fixes.
 
-Run `scripts/lint-obsidian.js` against the project's `.crabshell/` documents, read the report, and offer to fix violations. This is the primary tool for maintaining document hygiene in the Obsidian integration layer.
-
-## Modes
-
-- **Check mode:** `/lint` — run lint checks, display report, offer fixes
-- **Fix mode:** `/lint fix` — run lint with auto-fix for safe violations (missing frontmatter, stale INDEX rows)
+- **Check mode:** `/lint` runs the checks, shows the report and offers fixes.
+- **Fix mode:** `/lint fix` auto-fixes safe violations: missing frontmatter and stale INDEX rows.
 
 ---
 
@@ -26,20 +22,18 @@ When invoked without arguments:
 node scripts/lint-obsidian.js --project-dir="<project root>"
 ```
 
-If `scripts/lint-obsidian.js` does not exist, report that it is missing and stop gracefully (see Rule 4 below).
+If `scripts/lint-obsidian.js` does not exist, tell the user it is missing and stop. This is a report, not an error.
 
 ### Step 2: Read the report
 
-The script writes a lint report to `.crabshell/lint-report.md` (or prints to stdout). Read the output.
-
-Parse violation categories:
+The script writes `.crabshell/lint-report.md` or prints to stdout. Read the output and sort violations into these categories:
 - **MISSING_FRONTMATTER** — document file lacks YAML frontmatter
 - **BROKEN_WIKILINK** — `[[target]]` where target file does not exist in `.crabshell/`
 - **INDEX_SYNC** — document exists but has no corresponding INDEX.md row, or vice versa
 - **ORPHAN** — document not reachable from any INDEX.md
 - **STALE_STATUS** — document status in frontmatter differs from INDEX.md row
 
-### Step 3: Display report as table
+### Step 3: Show the report as a table
 
 ```
 | Violation | File | Detail |
@@ -51,8 +45,6 @@ Total: N violations (N errors, N warnings)
 
 ### Step 4: Offer fixes
 
-After displaying the report:
-
 ```
 Found N violations. Options:
 1. /lint fix — auto-fix safe violations (MISSING_FRONTMATTER via migrate-obsidian.js --project-dir=., INDEX_SYNC updates)
@@ -60,7 +52,7 @@ Found N violations. Options:
 3. Skip — address manually
 ```
 
-Wait for user selection. Do not auto-fix without explicit user request.
+Wait for the user's choice. Never auto-fix without an explicit user request.
 
 ---
 
@@ -75,7 +67,7 @@ For MISSING_FRONTMATTER violations:
 node scripts/migrate-obsidian.js --project-dir="<project root>"
 ```
 
-For BROKEN_WIKILINK and ORPHAN violations: report only, do not auto-delete or auto-create files.
+Only report BROKEN_WIKILINK and ORPHAN violations. Never auto-create or auto-delete files for them.
 
 ### Step 2: Re-run lint to confirm fixes
 
@@ -96,8 +88,7 @@ Remaining: M (list types)
 
 ## Rules
 
-1. **Read before reporting.** Always read the actual script output — never invent violation counts.
-2. **Safe fixes only.** Auto-fix = frontmatter addition and INDEX sync. Never auto-delete files or rewrite content.
-3. **Output required.** Every lint run that claims "no violations" shows the command run and its output line.
-4. **Script missing = report, not error.** If lint-obsidian.js is absent, inform the user and stop gracefully.
-5. **Document-first rule.** If invoked within a T or P document context, append lint results to that document's verification section before reporting in conversation.
+1. Always read the actual script output before reporting. Never invent violation counts.
+2. Auto-fix only by adding frontmatter and syncing INDEX rows. Never auto-delete files or rewrite content.
+3. Every lint run that claims "no violations" shows the command run and its output line.
+4. Inside a T or P document context, append the lint results to that document's verification section before reporting in chat.

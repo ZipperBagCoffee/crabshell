@@ -259,7 +259,7 @@ function decideStopUnlocked(projectDir, payload = {}) {
     if (failure.count >= MAX_IDENTICAL_FAILURES) {
       if (state.reportIssued) return { action: 'allow', reason: 'bounded-failure-already-reported', systemMessage: detail };
       saveState(projectDir, { ...state, reportIssued: true }, payload);
-      return block(`Automatic continuation limit reached after ${failure.count} identical direct failures. Report this concrete failure to the user and stop; do not retry automatically and do not claim completion. ${detail}`, { reportOnly: true });
+      return block(`Automatic continuation limit reached after ${failure.count} identical direct failures. Report this concrete failure to the user and stop. Do not retry automatically or claim completion. ${detail}`, { reportOnly: true });
     }
     return block(`${detail} Fix the observed failure or run a materially different decisive check before completion.`);
   }

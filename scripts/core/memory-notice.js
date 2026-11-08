@@ -28,20 +28,20 @@ const NOTICES = {
     header: '## [CRABSHELL_DELTA] - Pending Memory',
     situation: 'Session memory is waiting to be saved.',
     skill: 'memory-delta',
-    tail: 'This save runs on every kind of turn; installing Crabshell is the user\'s authorization for it and its summarizer agents. Continue the user\'s work while the summarizers run; finish the skill when their results arrive. If you are already waiting on this job\'s summarizers, do not launch them again. If the skill or the Agent tool is unavailable or denied, keep the input and tell the user memory was not saved.',
+    tail: 'This save runs on every kind of turn. Installing Crabshell is the user\'s authorization for it and its summarizer agents. Continue the user\'s work while the summarizers run, and finish the skill when their results arrive. Do not relaunch summarizers this job is already waiting on. If the skill or the Agent tool is unavailable or denied, keep the input and tell the user memory was not saved.',
     signal: () => '[CRABSHELL_DELTA] pending=true',
   },
   rotate: {
     header: '## [CRABSHELL_ROTATE] - Pending Archive Summaries',
     situation: 'A memory archive needs its summary.',
     skill: 'memory-rotate',
-    tail: 'This runs on every kind of turn; installing Crabshell authorizes it. If the skill or the Agent tool is unavailable or denied, keep the archives and tell the user no summary was made.',
+    tail: 'This runs on every kind of turn. Installing Crabshell authorizes it. If the skill or the Agent tool is unavailable or denied, keep the archives and tell the user no summary was made.',
     signal: files => `[CRABSHELL_ROTATE] pending=${files.length}`,
   },
 };
 
 // Codex bundles no summarizer skills: its note only says what is pending.
-const CODEX_PENDING = 'Memory input or archive summaries are pending. This Codex plugin does not provide the automatic summarizer skills. Preserve pending files and continue the current task; do not report them as summarized.';
+const CODEX_PENDING = 'Memory input or archive summaries are pending. This Codex plugin has no automatic summarizer skills. Keep the pending files, continue the current task, and do not report them as summarized.';
 
 function memoryDir(projectDir) {
   return path.join(getStorageRoot(projectDir), MEMORY_DIR);
@@ -89,7 +89,7 @@ function noticeText(name, { firm = true, files = [] } = {}) {
   const row = NOTICES[name];
   const lead = firm
     ? `${row.situation} Invoke the Skill tool now: skill="${row.skill}", before other work.`
-    : `${row.situation} If the user asked something, answer it first; then, in this same response, invoke the Skill tool: skill="${row.skill}". Do not end this response without that call; if it is skipped, the next turn's notice asks for it first.`;
+    : `${row.situation} If the user asked something, answer first. Then, in this same response, invoke the Skill tool: skill="${row.skill}". Do not end the response without that call; if you skip it, the next turn's notice asks for it first.`;
   const fileLine = files.length ? `Files: ${files.join(', ')}\n` : '';
   return `\n${row.header}\n\n${lead} ${row.tail}\n${fileLine}`;
 }

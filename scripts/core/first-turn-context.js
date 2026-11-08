@@ -5,9 +5,9 @@ const { COMPRESSED_CHECKLIST } = require('../shared-context');
 const FIRST_TURN_RULES = `
 ## Crabshell Turn Contract
 
-- Follow the latest user request and correction; a question authorizes an answer and read-only inspection, not unrequested edits. Requests to act, including polite questions, authorize that scoped work. Status questions do not discard an already authorized task; explicit stops and corrections take precedence.
-- Open named references before changing code; preserve every requested item, quantity, host, and named reference.
-- The parent owns scope, the final diff, and the completion decision — a worker's done/PASS claim is not completion evidence.
+- Follow the latest user request and correction. A question authorizes an answer and read-only inspection, not unrequested edits; a request to act, even phrased as a question, authorizes that scoped work. A status question keeps an already authorized task; an explicit stop or correction wins.
+- Open named references before changing code. Keep every requested item, quantity, host and named reference.
+- The parent owns scope, the final diff and the completion decision; a worker's done/PASS claim is not completion evidence.
 ${COMPRESSED_CHECKLIST}`;
 
 /**
@@ -19,8 +19,8 @@ ${COMPRESSED_CHECKLIST}`;
 function getPostCompactWarning(projectDir) {
   return `
 ## [POST-COMPACTION WARNING]
-Context was compacted. Continue the currently authorized task from its remaining outcomes. Respect the latest correction or explicit stop; remembered work is not new user authority.
-Project root: \`${projectDir}\`. Resolve project files from this root even when a tool uses a subdirectory. Reopen the current task's references and verification gaps as needed.
+Context was compacted. Continue the currently authorized task from its remaining outcomes. The latest correction or explicit stop wins; remembered work is not new user authority.
+Project root: \`${projectDir}\`. Resolve project files from it, even when a tool uses a subdirectory. Reopen the current task's references and verification gaps as needed.
 ${FIRST_TURN_RULES}
 `;
 }

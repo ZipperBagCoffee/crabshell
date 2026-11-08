@@ -36,11 +36,11 @@ function evaluateRegressingGuard(hookData, projectDir) {
   const { phase } = state;
 
   if (phase === 'planning' && isPlanDoc) {
-    return { reason: 'Regressing phase "planning" requires /planning skill invocation first. Use Skill tool with skill="crabshell:planning" instead of writing the plan document directly.' };
+    return { reason: 'Regressing phase "planning": invoke the Skill tool with skill="crabshell:planning" first; do not write the plan document directly.' };
   }
 
   if (phase === 'ticketing' && isTicketDoc) {
-    return { reason: 'Regressing phase "ticketing" requires /ticketing skill invocation first. Use Skill tool with skill="crabshell:ticketing" instead of writing the ticket document directly.' };
+    return { reason: 'Regressing phase "ticketing": invoke the Skill tool with skill="crabshell:ticketing" first; do not write the ticket document directly.' };
   }
 
   // IA-2: Block ticketing when parent plan's agent sections are empty

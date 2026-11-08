@@ -5,17 +5,16 @@ description: "Install and configure RTK (Rust Token Killer) for CLI output compr
 
 # Setup RTK (Rust Token Killer)
 
-Optional utility to install RTK — a CLI proxy that compresses Bash command output before it enters the context window. Reduces token consumption by 50-80% on common commands (git, ls, npm, etc.).
-
-**This is opt-in.** RTK is not required for Crabshell to function. Users invoke `/setup-rtk` only when they want CLI output compression.
+RTK is a third-party CLI proxy (github.com/rtk-ai/rtk) that compresses Bash command output. It affects only Bash tool output.
+It is opt-in: Crabshell works without it. Users invoke `/setup-rtk` only when they want CLI output compression.
 
 ## Steps
 
-### Step 1: Check if RTK is already installed
+### Step 1: Check for an existing install
 
 Run: `which rtk 2>/dev/null || where rtk 2>/dev/null`
-- If found → report version (`rtk --version`) and skip to Step 5
-- If not found → proceed to Step 2
+- Found: report its version (`rtk --version`) and skip to Step 5.
+- Not found: go to Step 2.
 
 ### Step 2: Detect OS and architecture
 
@@ -24,7 +23,7 @@ OS=$(uname -s 2>/dev/null || echo "Windows")
 ARCH=$(uname -m 2>/dev/null || echo "x86_64")
 ```
 
-Map to RTK release asset name:
+Map them to the release asset:
 | OS | Arch | Asset |
 |---|---|---|
 | Linux | x86_64 | `rtk-x86_64-unknown-linux-gnu.tar.gz` |
@@ -33,7 +32,7 @@ Map to RTK release asset name:
 | Darwin | arm64 | `rtk-aarch64-apple-darwin.tar.gz` |
 | Windows / MINGW / MSYS | x86_64 | `rtk-x86_64-pc-windows-msvc.zip` |
 
-If OS/arch combination is not in the table → report and stop.
+If the OS and architecture pair is not in the table, report it and stop.
 
 ### Step 3: Download and extract
 
@@ -52,19 +51,21 @@ curl -sL "https://github.com/rtk-ai/rtk/releases/latest/download/{ASSET}" -o /tm
 "$HOME/tools/rtk/rtk" --version  # or rtk.exe on Windows
 ```
 
+If the download fails, for example from a network error or a GitHub rate limit, report the error and stop. Do not retry.
+
 ### Step 4: Add to PATH
 
-Detect shell config file:
-- If `$SHELL` contains `zsh` → `~/.zshrc`
-- If `$SHELL` contains `bash` → `~/.bashrc`
-- Windows Git Bash → `~/.bashrc`
+Pick the shell config file:
+- `$SHELL` contains `zsh`: `~/.zshrc`
+- `$SHELL` contains `bash`: `~/.bashrc`
+- Windows Git Bash: `~/.bashrc`
 
-Check if already in PATH config:
+Check whether the shell config already adds it:
 ```bash
 grep -q 'tools/rtk' "$SHELL_CONFIG" 2>/dev/null
 ```
-- If already present → skip
-- If not → append: `export PATH="$HOME/tools/rtk:$PATH"`
+- Present: skip.
+- Absent: append `export PATH="$HOME/tools/rtk:$PATH"`.
 
 ### Step 5: Initialize RTK for Claude Code
 
@@ -72,11 +73,13 @@ grep -q 'tools/rtk' "$SHELL_CONFIG" 2>/dev/null
 rtk init -g
 ```
 
-This adds RTK usage instructions to `~/.claude/CLAUDE.md`. On Windows, this uses `--claude-md` mode (text instructions) instead of hook mode.
+This adds RTK instructions to `~/.claude/CLAUDE.md`.
+On Windows it uses `--claude-md` mode: it works through text instructions, so the model must prefix commands with `rtk`.
+On Mac and Linux it can use hook mode, which intercepts commands through PreToolUse hooks.
 
 ### Step 6: Report
 
-Tell user:
+Tell the user:
 ```
 RTK installed:
 - Binary: ~/tools/rtk/rtk (or rtk.exe)
@@ -89,10 +92,3 @@ Next session will automatically use RTK for Bash commands.
 To verify: run `rtk --version` in a new terminal.
 To uninstall: delete ~/tools/rtk/ and remove the PATH line from {shell config}.
 ```
-
-## Notes
-- RTK is a third-party tool (github.com/rtk-ai/rtk), not part of Crabshell
-- On Windows, RTK operates via CLAUDE.md text instructions (model must prefix commands with `rtk`), not hooks
-- On Unix (Mac/Linux), RTK can use PreToolUse hooks for automatic interception
-- RTK only affects Bash tool output — does not touch Read/Edit/Write/Grep tools or memory pipeline
-- If download fails (network issues, GitHub rate limit), report error and stop — do not retry

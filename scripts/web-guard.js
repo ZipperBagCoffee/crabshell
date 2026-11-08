@@ -81,10 +81,10 @@ function sanitizeUrl(url) {
 function webFetchBlockReason(url) {
   const safeUrl = sanitizeUrl(url);
   const target = safeUrl || '<URL>';
-  return 'Crabshell web-guard: WebFetch pipes the page through a small summarizer model before the main model sees it (lossy by design; hallucination risk). Read the source directly instead, in this order: ' +
-    `(1) trafilatura -u "${target}" --markdown --links (if installed); ` +
-    `(2) curl -fsSL "https://r.jina.ai/${target}" (JS-rendered pages, no key needed); ` +
-    `(3) curl -fsSL --compressed "${target}" (raw HTML fallback). ` +
+  return 'Crabshell web-guard: WebFetch passes the page through a small summarizer model, which can drop or distort details. Read the source directly, in this order: ' +
+    `(1) trafilatura -u "${target}" --markdown --links, if installed; ` +
+    `(2) curl -fsSL "https://r.jina.ai/${target}" for JS-rendered pages, no key needed; ` +
+    `(3) curl -fsSL --compressed "${target}" as the raw HTML fallback. ` +
     'Cite the source URL beside every factual claim.';
 }
 
@@ -92,9 +92,9 @@ function webSearchBlockReason(serverName) {
   return `Crabshell web-guard: built-in WebSearch summarizes results via a small model and loses source attribution. Use the "${serverName}" MCP search tools instead (raw results with per-result URLs). Treat snippets as pointers, not evidence — fetch important pages before citing them.`;
 }
 
-const WEBSEARCH_WARN_CONTEXT = 'Crabshell web-guard notice: built-in WebSearch results pass through a small summarizer model. Use the returned URLs only as pointers — fetch each important source directly (trafilatura -u <url> --markdown, or curl -fsSL https://r.jina.ai/<url>, or plain curl) before citing it. Never cite a search snippet as evidence.';
+const WEBSEARCH_WARN_CONTEXT = 'Crabshell web-guard notice: built-in WebSearch results pass through a small summarizer model. Use the URLs only as pointers. Fetch each important source directly before citing it: trafilatura -u <url> --markdown, curl -fsSL https://r.jina.ai/<url>, or plain curl. Never cite a search snippet as evidence.';
 
-const WEBFETCH_WARN_CONTEXT = 'Crabshell web-guard notice: WebFetch content passes through a small summarizer model and may drop or distort details. Re-fetch anything you intend to cite (trafilatura -u <url> --markdown, or curl -fsSL https://r.jina.ai/<url>, or plain curl) and quote from the raw text.';
+const WEBFETCH_WARN_CONTEXT = 'Crabshell web-guard notice: WebFetch content passes through a small summarizer model and may drop or distort details. Re-fetch anything you will cite with trafilatura -u <url> --markdown, curl -fsSL https://r.jina.ai/<url>, or plain curl, and quote the raw text.';
 
 // Returns null (allow silently), { warn: <context string> }, or { block: <reason string> }.
 function evaluateWebGuard(hookData, projectDir, overrides) {

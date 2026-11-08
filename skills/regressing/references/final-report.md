@@ -1,7 +1,5 @@
 # Regressing — Final Report format
 
-Moved out of SKILL.md so the skill body stays within what Claude Code re-attaches after compaction (the first 5,000 tokens of each skill). Read this file when the body points here.
-
 Final Report format:
 
 ```

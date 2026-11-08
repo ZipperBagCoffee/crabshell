@@ -140,7 +140,7 @@ function deny(reason, diagnostic) {
 
 function advise(targetPath, projectDir, diagnostic) {
   return {
-    advisory: `[CRABSHELL] "${targetPath}" is another project's Crabshell folder, not this project's (${normalizePath(projectDir)}/.crabshell/). Reading it is allowed; do not treat it as this project's memory or documents.`,
+    advisory: `[CRABSHELL] "${targetPath}" is another project's Crabshell folder; this project's is ${normalizePath(projectDir)}/.crabshell/. Reading it is allowed. Do not treat it as this project's memory or documents.`,
     diagnostic,
   };
 }
@@ -197,7 +197,7 @@ function evaluateWrite(write, toolName) {
   const filePath = normalizePath(write.path);
   if (write.kind === 'edit' && filePath.endsWith('memory/logbook.md')) {
     return deny(
-      'logbook.md is append-only. Use Write tool to append content, not Edit. Edit modifies existing content which violates the append-only constraint.',
+      'logbook.md is append-only. Append with the Write tool, not Edit.',
       `[PATH_GUARD] Blocked Edit on logbook.md: ${filePath}`
     );
   }
@@ -210,7 +210,7 @@ function evaluateWrite(write, toolName) {
         const existingLineCount = fs.readFileSync(nativePath, 'utf8').split(/\r?\n/).length;
         if (newLineCount < existingLineCount) {
           return deny(
-            `logbook.md shrink detected: existing ${existingLineCount} lines → new ${newLineCount} lines. logbook.md is append-only — content must not be removed. Add new content without removing existing entries.`,
+            `This write would shrink logbook.md from ${existingLineCount} to ${newLineCount} lines. logbook.md is append-only: add new content and keep every existing entry.`,
             `[PATH_GUARD] Blocked Write shrink on logbook.md: ${existingLineCount} → ${newLineCount} lines`
           );
         }

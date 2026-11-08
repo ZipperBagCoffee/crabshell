@@ -1,5 +1,18 @@
 # Changelog
 
+## [21.160.0] - 2026-11-08
+
+### feat: plugin instructions shorter, same meaning
+
+- **Why.** Asked whether the instructions Crabshell feeds the model are verbose, Claude answered yes: the CLAUDE.md rules block, a per-prompt block that restates it, and long skills. The model is the reader, so every extra word costs tokens on every request.
+- **Same meaning, fewer words.** Repeats merged, history and reasons removed, every condition, number, command and exception kept. An independent reviewer compared old and new text for every file. The dropped qualifiers it found ("the user's", "explicit", "must", "as needed", "if there is one", one half of a pair) were restored.
+- **Sizes (words, before → after):** per-prompt turn contract and Rules Quick-Check 576 → 526; CLAUDE.md rules block 1,788 → 1,733; skills 16,417 → 14,193; skill references 10,156 → 9,241; Codex skills 3,147 → 3,072; summarizer agents 401 → 324; changed hook notice and guard strings 820 → 762. Text that was already shortened once shrinks only a few percent when every condition stays.
+- **Unchanged:** when anything is injected; the per-prompt block stays complete, because Codex sessions and Explore workers receive no CLAUDE.md rules; every heading, label and marker that hooks and checks read.
+- **Fixed while rewriting:** ten skills told the model to find "Your ACTUAL project root is:", which no hook prints (now the `Project root:` line); memory-autosave described a banner and a folder layout the code does not produce; investigating paired reviewers with workers, against the risk-based review rule; the USER-MANUAL listed rule sections that no longer exist.
+- **Budgets:** `_test-rule-wording.js` W6/W7 keep the rules block at most 10,600 and the checklist at most 2,700 characters.
+- **Verifying skill (field report from a Godot project):** the `itemIdentity` example timeout was `30`, read as milliseconds; it is now `30000` with the unit stated. select-by-use ⑦: an identity `file` with a slash must be inside the project (an engine installed elsewhere goes through a wrapper), and an engine that parses its own flags needs `--` at the end of `args`. The "First" section: start with the kind of file that selects the most checks.
+- **Structure.** No new files.
+
 ## [21.159.1] - 2026-11-08
 
 ### docs: the select-by-use method covers fields, copies, other runtimes, own selectors and measuring

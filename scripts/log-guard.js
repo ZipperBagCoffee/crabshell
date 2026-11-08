@@ -176,7 +176,7 @@ function validatePendingSections(content, docId, toStatus) {
   if (pendingSections.length > 0) {
     return {
       valid: false,
-      reason: `${docId}: cannot transition to "${toStatus || 'verified'}" — these sections still hold template text ("(placeholder" or "(pending)"): ${pendingSections.join(', ')}. Write the results into them first.`,
+      reason: `${docId}: cannot move to "${toStatus || 'verified'}" while these sections hold template text ("(placeholder" or "(pending)"): ${pendingSections.join(', ')}. Write the results into them first.`,
     };
   }
 

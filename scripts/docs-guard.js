@@ -36,7 +36,7 @@ function checkDiscussionRegressingBlock(filePath, kind, activeSkill, projectDir)
   // Regressing is active — discussing skill is the only legitimate actor for log appends
   if (activeSkill === 'discussing') return null;
 
-  return 'Regressing session is active. Discussion document body cannot be modified during regressing. Only /discussing (log append) is permitted. To amend body sections, end the regressing session first.';
+  return 'A regressing session is active, so the discussion body cannot change. Only /discussing may edit it, and only to append to its log. End the regressing session before amending body sections.';
 }
 
 /**
@@ -57,7 +57,7 @@ function checkInvestigationConstraints(filePath, kind) {
   try {
     const content = fs.readFileSync(filePath, 'utf8');
     if (!content.includes('## Constraints')) {
-      return 'I document missing ## Constraints section. Add constraints before further edits.';
+      return 'This investigation document has no ## Constraints section. Add its constraints before further edits.';
     }
     return null;
   } catch { return null; }
@@ -143,7 +143,7 @@ function evaluateWrite(hookData, write, projectDir) {
   const call = existing ? `skill="${suggestedSkill}", args="${docId}"` : `skill="${suggestedSkill}"`;
 
   return {
-    reason: `Direct write to .crabshell/${category}/ blocked: this session has not loaded the ${suggestedSkill} skill (a new session, or compaction re-attached only the start of it). Invoke the Skill tool first (${call})${existing ? ` — ${docId} exists, so call it in update mode with that ID` : ''}. Re-invoking reloads the instructions; it does not redo one-time setup.`,
+    reason: `Direct write to .crabshell/${category}/ blocked: this session has not loaded the ${suggestedSkill} skill, or compaction kept only the start of it. Invoke the Skill tool first (${call})${existing ? `; ${docId} exists, so this call opens it in update mode` : ''}. Re-invoking reloads the instructions and does not redo one-time setup.`,
     log: `[DOCS_GUARD] Blocked ${toolName} to ${filePath} — no active skill`,
   };
 }

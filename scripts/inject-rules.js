@@ -136,16 +136,16 @@ function updateFeedbackPressure(index, isNegative) {
 
 const EMERGENCY_STOP_CONTEXT = `
 <EXTREMELY_IMPORTANT>
-[DIAGNOSTIC RESET] The user has triggered a diagnostic reset. A gap between intended and actual behavior has been identified.
+[DIAGNOSTIC RESET] The user triggered a diagnostic reset: your behavior differs from what was intended.
 
-1. STOP all current work immediately. Do NOT continue your previous task.
-2. Use the Read tool to read CLAUDE.md right now. Actually read the file — do not rely on memory.
-3. Read CLAUDE.md line by line. For EACH rule, explain in your own words what it means and where a gap appeared in the current session.
-4. After explaining all rules, state — declaratively, not as a question — what you inferred went wrong from the re-read + recent transcript: which specific rule was violated, in which turn, with the offending phrase quoted. Do NOT ask the user "what did I get wrong" — the user already signalled it by triggering the diagnostic reset; asking back is deflection.
-5. Do NOT apologize. Do NOT make excuses. Demonstrate understanding through the declarative gap statement in step 4.
+1. STOP all current work now. Do NOT continue your previous task.
+2. Read CLAUDE.md now with the Read tool. Do not rely on memory.
+3. Go through CLAUDE.md line by line. For EACH rule, explain in your own words what it means and where this session departed from it.
+4. After explaining every rule, state what went wrong, as a statement, not a question: which specific rule was violated, in which turn, with the offending phrase quoted. Base it on the re-read and the recent transcript. Do NOT ask the user what you got wrong; the reset already told you something is wrong.
+5. Do NOT apologize or make excuses. Show understanding through the statement in step 4.
 6. Memory operations (delta, rotation) may continue normally.
 
-This context REPLACES all normal rules. Your ONLY job right now is steps 1-5.
+This context REPLACES all normal rules. Your ONLY job now is steps 1-5.
 </EXTREMELY_IMPORTANT>
 `;
 
@@ -353,7 +353,7 @@ function checkTicketStatuses(projectDir) {
 
     if (needsUpdate.length === 0) return null;
 
-    return `\n## \u26A0 Tickets Need Status Update\nTickets need updating: ${needsUpdate.join(', ')}. Update document results and INDEX.md status before proceeding.\n`;
+    return `\n## \u26A0 Tickets Need Status Update\n${needsUpdate.join(', ')}: update each ticket's results and INDEX.md status before you continue.\n`;
   } catch (e) {
     return null; // fail-open
   }

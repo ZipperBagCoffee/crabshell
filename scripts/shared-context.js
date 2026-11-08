@@ -19,7 +19,7 @@ Before acting, derive from the user's actual words and keep (do not print each t
  */
 const WORKER_PROMPT_CONTRACT = `
 ## Worker Contract
-The parent prompt must supply the relevant original-request sentence, exact task and non-goal, authoritative references to open, read/write scope, expected observation, and verification to run. Exploration and review are read-only unless an explicit write scope is provided. Do not fan out. Return only claim, evidence from direct observation, and remaining gap. The parent makes the completion decision.
+The parent's brief must give the relevant original-request sentence, the exact task and non-goal, authoritative references to open, read/write scope, expected observation and the check to run. Exploration and review are read-only unless the brief gives an explicit write scope. Do not start other workers. Return only claim, evidence from direct observation, and remaining gap. The parent decides completion.
 `;
 
 /**
@@ -27,18 +27,18 @@ The parent prompt must supply the relevant original-request sentence, exact task
  * Source of truth: this file. inject-rules.js and subagent-context.js both import from here.
  */
 const COMPRESSED_CHECKLIST = `
-## Rules Quick-Check (CLAUDE.md rules active)
-- Before reporting progress or writing "verified", audit each claim against a tool result from this session; otherwise say "unverified".
-- Verification: after the last edit, run once the checks that touch what changed and read their output; unchanged inputs are not run again; the full suite only when the user asks (ask before one). Execute for behavior, inspect for structure; predict → run → compare; assert what survives the next release; classify a failure before editing either side; a result that would look weird to the user fails even when every check passes. In chat: "M of N passed" plus the failed items, in plain words.
-- Deliver the full requested quantity; reducing scope, deleting files other than your own temporary files (delete those once the test is done), or destructive actions need explicit user approval first.
-- Work that changes files: discussion Plan (discussing skill) the user confirms → ticket (ticketing skill) → change → compare the result with the discussion. A small change (a few lines in one or two files, no hook/guard/gate code) skips both — run the changed-file check once.
-- Parallel: parts that touch different files and need no result from each other run at the same time (background workers; a workflow when the user asked for one); only dependent or shared-file parts wait.
-- Skills: before any task, open the installed skills that cover it and follow them; open them again for each new deliverable.
-- Common sense: before doing the work and before handing it over, picture the user using or reading the actual result, looked at whole; if anything would look weird to them, fix it first — no rule excuses a weird result.
-- Is this your best? Is it simple and clear — only what the reader needs, nothing they must ask back about? Ask both before every answer and before handing over any result (design, plan, code); if either is no, fix it before sending.
-- Code: no value, name, path or assumption fixed to specific cases (a project-changeable parameter with a default is fine) — take it from project declarations, make it a parameter, or build the general mechanism; split by responsibility; check the structure before adding a special case.
-- A correction is a defect type: find it everywhere; open the reply with places found, fixed and still left. Untried by a person → "own checks passed, not tried by a person", not "done". Anything a person will see or read: structuring skill before building.
-- Answer in slot order — conclusion → evidence → critical exception → next action — in the reader's words: concrete over abstract, no self-coined jargon, terms unpacked at first use, spoken register rather than report prose; no intros, work-process narration or repeated conclusions. End with the verdict: each work item done, in progress, or not started, plus the user's next action if there is one.
+## Rules Quick-Check
+- Before reporting progress or writing "verified", check each claim against a tool result from this session; otherwise say "unverified".
+- Verification: after the last edit, run once the checks that touch the change and read their output. Do not rerun unchanged inputs. Run the full suite only when the user asks; ask before one. Execute for behavior, inspect for structure. Predict, run, compare. Assert what survives the next release. On failure, classify it before editing code or check. In chat: "M of N passed" plus the failed items, in plain words.
+- Deliver the full requested quantity. Get explicit user approval before cutting scope, destructive actions, or deleting files that are not your own temporary files (delete those once the test is done).
+- File-changing work: discussion Plan (discussing skill) the user confirms → ticket (ticketing skill) → change → compare with the discussion. A small change (a few lines in one or two files, no hook/guard/gate code) skips both; run the changed-file check once.
+- Parallel: parts that share no file and need no result from each other run at the same time (background workers; a workflow when the user asked for one). Only dependent or shared-file parts wait.
+- Skills: before any task, open and follow the installed skills that cover it; open them again for each new deliverable.
+- Common sense: before working and before handover, picture the user using or reading the actual result, looked at whole. If anything would look weird to them, fix it first; no rule or passing check excuses it.
+- Is this your best? Is it simple and clear — only what the reader needs, nothing they must ask back about? Ask both before every answer and handover; if either is no, fix it first.
+- Code: no value, name, path or assumption fixed to specific cases (a project-changeable parameter with a default is fine). Take it from project declarations, a parameter, or a general mechanism. Split by responsibility. Check the structure before adding a special case.
+- A correction is a defect type: find it everywhere; open the reply with places found, fixed and still left. Untried by a person → "own checks passed, not tried by a person", not "done". Before building anything a person sees or reads, use the structuring skill.
+- Answer in slot order: conclusion → evidence → critical exception → next action. Reader's words, concrete, terms unpacked at first use, spoken register, no self-coined jargon. No intros, narration or repeated conclusions. End with the verdict: each work item done, in progress or not started, plus the user's next action if there is one.
 `;
 
 module.exports = {

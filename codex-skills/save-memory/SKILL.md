@@ -5,21 +5,18 @@ description: Save an explicit Codex session note to Crabshell memory. Use when t
 
 # Save Memory
 
-Summarize only durable context: decisions, changed files, unresolved issues,
-verification results, and user preferences. Resolve `{SKILL_DIR}` to the
-directory containing this `SKILL.md` and `{PROJECT_ROOT}` to the active project
-root, then run:
+Summarize only durable context: decisions, changed files, unresolved issues, verification results and user preferences.
+`{SKILL_DIR}` is the folder holding this `SKILL.md`; `{PROJECT_ROOT}` is the active project root. Run:
 
 ```bash
 node "{SKILL_DIR}/scripts/codex-memory.js" save --title="Codex session note" --message="..." --project-dir="{PROJECT_ROOT}"
 ```
 
-For longer notes, pipe the note on stdin:
+For a longer note, pipe it on stdin:
 
 ```bash
 node "{SKILL_DIR}/scripts/codex-memory.js" save --title="Codex session note" --project-dir="{PROJECT_ROOT}"
 ```
 
 The script appends to `.crabshell/memory/logbook.md` and resets the Crabshell counter.
-If it reports that memory is busy (exit 1, nothing written — another session is
-saving or rotating memory), run the same command again; do not report the note as saved.
+If it reports that memory is busy (exit 1, nothing written), run the same command again. Do not report the note as saved.
