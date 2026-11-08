@@ -76,6 +76,6 @@ module.exports = {
   projectState: projectDir => ask(projectDir, module => module.projectState(projectDir, launcherDir(projectDir))),
   // The runner's record of an entry it would not run now, or null (also when unavailable).
   entryUpToDate: (projectDir, entryId, view) => ask(projectDir, module => module.entryUpToDate(projectDir, launcherDir(projectDir), entryId, view)),
-  // The checks a routine --changed run would run now, or null (also when unavailable).
+  // The checks that have not passed on the current files, or null (also when unavailable).
   pendingChecks: (projectDir, view) => ask(projectDir, module => module.pendingChecks(projectDir, launcherDir(projectDir), view)),
 };

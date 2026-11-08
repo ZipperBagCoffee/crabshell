@@ -5,10 +5,10 @@ description: Convert CLAUDE.md instructions into Codex-oriented AGENTS.md guidan
 
 # Claude To Agents
 
-Run:
+`{SKILL_DIR}` is the folder holding this `SKILL.md`; `{PROJECT_ROOT}` is the active project root. Run the bundled script by its absolute path:
 
 ```bash
-node scripts/claude-to-agents.js
+node "{SKILL_DIR}/scripts/claude-to-agents.js" --project-dir="{PROJECT_ROOT}"
 ```
 
 It reads `CLAUDE.md` and writes `AGENTS.md`. It keeps the project-specific rules below the Crabshell marker and rewrites obvious Claude-specific terms for Codex.
@@ -17,11 +17,11 @@ It refuses to overwrite an existing `AGENTS.md` unless `--force` is given.
 Use a dry run before overwriting if requested:
 
 ```bash
-node scripts/claude-to-agents.js --dry-run
+node "{SKILL_DIR}/scripts/claude-to-agents.js" --project-dir="{PROJECT_ROOT}" --dry-run
 ```
 
 Overwrite an existing target only on purpose:
 
 ```bash
-node scripts/claude-to-agents.js --force
+node "{SKILL_DIR}/scripts/claude-to-agents.js" --project-dir="{PROJECT_ROOT}" --force
 ```

@@ -1577,29 +1577,42 @@ test('INTEGRATION: offset update inside acquireIndexLock in check()', function()
   const checkEnd = src.indexOf('async function final()');
   const checkBody = src.slice(checkStart, checkEnd);
 
-  // The offset is used inside the callback that tryWithMemoryIndex runs under the lock
+  // The L1 update (which writes the offset) runs inside the callback that
+  // tryWithMemoryIndex runs under the lock
   const lockPos = checkBody.indexOf('tryWithMemoryIndex(memoryDir');
-  const offsetWritePos = checkBody.indexOf('lastL1TranscriptOffset');
+  const offsetWritePos = checkBody.indexOf('updateSessionL1(');
   const unlockPos = checkBody.indexOf('return outcome.ran');
   assert(lockPos !== -1, 'tryWithMemoryIndex in check()');
-  assert(offsetWritePos !== -1, 'lastL1TranscriptOffset in check()');
+  assert(offsetWritePos !== -1, 'updateSessionL1 in check()');
   assert(unlockPos !== -1, 'locked callback end in check()');
   assert(lockPos < offsetWritePos, 'lock before offset write');
   assert(offsetWritePos < unlockPos, 'offset write before unlock');
 });
 
-test('INTEGRATION: final() does NOT use offset — full reprocess via refineRaw', function() {
-  // Concern 5: final() creates definitive L1 from scratch.
-  // It must NOT use offset. Verify refineRaw (async, no offset) is used, not refineRawSync.
-  const src = fs.readFileSync(counterPath, 'utf8');
-  const finalStart = src.indexOf('async function final()');
-  const finalEnd = src.indexOf('function reset()');
-  const finalBody = src.slice(finalStart, finalEnd);
+// Concern 5 (a complete final L1) is checked by behavior in _test-session-end-intent.js:
+// after an interval save, SessionEnd appends only the new part and the session's L1
+// equals a full refine of the transcript.
 
-  // final() uses refineRaw (not refineRawSync)
-  assert(finalBody.includes('refineRaw(rawSaved'), 'final() uses refineRaw for L1 creation');
-  assert(!finalBody.includes('refineRawSync'), 'final() does NOT use refineRawSync');
-  assert(!finalBody.includes('lastL1TranscriptOffset ='), 'final() does NOT set offset');
+test('pruneOldL1: keep spares the ending session\'s own old L1', function() {
+  const tmpDir = makeTempDir('prune-keep');
+  const sessDir = path.join(tmpDir, '.crabshell', 'memory', 'sessions');
+  ensureDir(sessDir);
+  const old = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000);
+  const stamp = `${old.getFullYear()}-${String(old.getMonth() + 1).padStart(2, '0')}-${String(old.getDate()).padStart(2, '0')}_1200`;
+  const own = `${stamp}_ownsess1.l1.jsonl`;
+  const other = `${stamp}_othersess.l1.jsonl`;
+  fs.writeFileSync(path.join(sessDir, own), '{}\n');
+  fs.writeFileSync(path.join(sessDir, other), '{}\n');
+  const origEnv = process.env.CLAUDE_PROJECT_DIR;
+  process.env.CLAUDE_PROJECT_DIR = tmpDir;
+  try {
+    assertEqual(mod.pruneOldL1({ keep: own }), 1, 'only the other old L1 is pruned');
+    assert(fs.existsSync(path.join(sessDir, own)), 'own L1 kept');
+    assert(!fs.existsSync(path.join(sessDir, other)), 'other old L1 pruned');
+  } finally {
+    process.env.CLAUDE_PROJECT_DIR = origEnv;
+    cleanupDir(tmpDir);
+  }
 });
 
 test('INTEGRATION: final() clears offset for fresh next session', function() {
@@ -1621,8 +1634,8 @@ test('INTEGRATION: pruneOldL1 is called before extractDelta in final()', functio
   const finalEnd = src.indexOf('function reset()');
   const finalBody = src.slice(finalStart, finalEnd);
 
-  const l1CreatePos = finalBody.indexOf('refineRaw(rawSaved');
-  const prunePos = finalBody.indexOf('pruneOldL1()');
+  const l1CreatePos = finalBody.indexOf('updateL1(idx)');
+  const prunePos = finalBody.indexOf('pruneOldL1({');
   const deltaPos = finalBody.indexOf('extractDelta(sessionId8)');
 
   assert(l1CreatePos !== -1, 'L1 creation found');
@@ -1639,9 +1652,11 @@ test('INTEGRATION: check() reuses existing session L1 for offset append', functi
   const checkStart = src.indexOf('async function check(');
   const checkEnd = src.indexOf('async function final()');
   const checkBody = src.slice(checkStart, checkEnd);
+  const updateBody = src.slice(src.indexOf('function updateSessionL1('), checkStart);
 
-  // check() looks for existing L1 matching sessionId
-  assert(checkBody.includes('existingL1') || checkBody.includes('_${sessionId8}'), 'check() looks up existing session L1');
+  // check() updates L1 through updateSessionL1, which looks up the session's existing L1
+  assert(checkBody.includes('updateSessionL1('), 'check() uses updateSessionL1');
+  assert(updateBody.includes('existingL1') || updateBody.includes('_${sessionId8}'), 'updateSessionL1 looks up existing session L1');
 });
 
 test('INTEGRATION: check() starts from offset=0 when no existing L1 for session', function() {

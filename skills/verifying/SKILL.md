@@ -148,7 +148,7 @@ Ask: **is this expected value an approved contract, or only what the implementat
 | Answer | Meaning | Fix |
 |---|---|---|
 | An approved contract, and it is unchanged | The code broke it | Fix the code. Changing the check here hides a regression |
-| The contract was changed on purpose this release | The old expectation is obsolete | Update the check, and say so explicitly in the report: the new contract and who approved it |
+| The contract was changed on purpose this release | The old expectation is obsolete | Update the check (apply Create Mode Step 5 Q2: no value the next release will change), and say so explicitly in the report: the new contract and who approved it |
 | Neither: incidental output the check copied | The check was overspecified | Rewrite that assertion as a structure, invariant or relation |
 
 Treat the code as wrong until shown otherwise. Fixing the check is the named exception, never the reflex. Silently re-recording what the code now outputs is not verification.

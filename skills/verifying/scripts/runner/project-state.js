@@ -7,7 +7,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { runnerLayout } = require('./layout');
-const { exclusion, patternList, planRun, reasonGroup } = require('./select');
+const { coverable, exclusion, patternList, planRun, reasonGroup } = require('./select');
 const { routineChoice } = require('./routine');
 const { expandEntries } = require('./manifest');
 const { takeSnapshot } = require('./snapshot');
@@ -52,20 +52,26 @@ function entryUpToDate(projectRoot, launcherDir, entryId, view = null) {
   return plan.selected.length === 0 && !plan.awaitingGate.includes(entryId) ? { entry, record, recordPath: mapPath(state.layout.manifestPath) } : null;
 }
 
-// D151_T002: the checks a routine --changed run would run now (heavy checks left out, as
-// that run leaves them), or null when the manifest cannot be read. A hook asks before a
-// commit whether the files to commit were checked.
+// D151_T002, D155 P3: the checks that have not passed on the current files, among those a
+// routine --changed run takes (heavy checks left out, as that run leaves them), or null when
+// the manifest cannot be read. A hook asks before a commit whether the files to commit were
+// checked. A check the runner runs every time (reuse:false, always) counts as checked when
+// it passed on the current files; a check whose covering check (coveredBy) passed on them
+// counts as checked, as a run that covers it (main.js) — a covered check covers no other.
 function pendingChecks(projectRoot, launcherDir, view = null) {
   const state = projectState(projectRoot, launcherDir);
   let entries;
   try { entries = expandEntries(state.manifest, state.root).filter(entry => entry.type !== 'manual'); } catch (_) { return null; }
   if (!entries.length) return [];
   if (!view) view = selectionView({ projectRoot: state.root, layout: state.layout, manifestPath: state.layout.manifestPath, manifest: state.manifest });
-  const plan = planRun({ entries, records: view.records, olderRecords: view.olderRecords, ctx: view.ctx, reuse: true });
+  const plan = planRun({ entries, records: view.records, olderRecords: view.olderRecords, ctx: view.ctx, reuse: true, everyTime: false });
+  const passed = new Set(plan.reused);
+  const byId = new Map(entries.map(entry => [entry.id, entry]));
+  const covered = id => coverable(byId.get(id), view.records[id]) && passed.has(byId.get(id).coveredBy);
   // The same routine choice as --changed (routine.js): heavy checks wait unless a risk path
   // changed, quarantined flaky checks stay out.
   const inputsChanged = id => Boolean(plan.reasons[id]) && reasonGroup(plan.reasons[id]) === 'with changed inputs';
-  return routineChoice({ entries, selected: plan.selected, records: view.records, manifest: state.manifest,
+  return routineChoice({ entries, selected: plan.selected.filter(id => !covered(id)), records: view.records, manifest: state.manifest,
     snapshot: view.snapshot, stateOf: () => null, inputsChanged }).selected;
 }
 

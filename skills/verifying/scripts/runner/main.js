@@ -8,14 +8,14 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const { runnerLayout, MODULE_DIR, DECISION_FILES } = require('./layout');
 const { parseArgs } = require('./args');
-const { toPosix, validateEntry, entryTestFile, expandEntries } = require('./manifest');
+const { toPosix, entryTestFile, expandEntries } = require('./manifest');
 const { validateManifestSettings } = require('./settings');
 const { copyNotices } = require('./test-hygiene');
 const { hashBuffer, runsOnRunnerNode } = require('./fingerprint');
 const { TRACER_SOURCE, insideRoot, readTrace, readDeep, filesUnder, readChildren, incompleteChildren, contractPaths } = require('./trace');
 const { mapPath, writeMap } = require('./store');
 const { selectionView } = require('./project-state');
-const { patternList, inputPatterns, matchesInput, filesMatching, inputSet, fingerprintOf, planRun, gitChangedFiles, medianDuration, declarationKey, crabshellState, DECISION_CHANGED, currentHead, reasonGroup,
+const { patternList, inputPatterns, matchesInput, filesMatching, inputSet, fingerprintOf, planRun, coverable, gitChangedFiles, medianDuration, declarationKey, crabshellState, DECISION_CHANGED, currentHead, reasonGroup,
   recordKind, inputsUnknown, reportScope, scopeKey, inScope, keyIdentity, knownItems, reportedInputs, refreshedItemHashes } = require('./select');
 const { readReport, hasCases, pathOf, isItemKey } = require('./used-report');
 const { routineChoice, quarantineMark, markHolds } = require('./routine');
@@ -154,11 +154,7 @@ function main(argv = process.argv.slice(2), options = {}) {
   const awaiting = new Set(planned.awaitingGate);
   const selectedIndex = new Map(entries.map((entry, index) => [entry.id, index]));
   const coveringIndex = entry => {
-    if (!args.reuse || named || entry.type === 'manual' || entry.discoveryError || comparedWithHead(entry)) return undefined;
-    const record = previousRecords[entry.id];
-    if (!record || record.lastFailedAt || !Array.isArray(record.files) || record.files.length === 0) return undefined;
-    // Covering must not hide an invalid contract that ordinary execution rejects.
-    try { validateEntry(entry); } catch (_) { return undefined; }
+    if (!args.reuse || named || comparedWithHead(entry) || !coverable(entry, previousRecords[entry.id])) return undefined;
     return selectedIndex.get(entry.coveredBy);
   };
   const canReuse = entry => args.reuse && !named && reusable.has(entry.id) && !comparedWithHead(entry);

@@ -135,6 +135,77 @@ test('a commit after files changed since the checks passed gets one reminder; ri
   assert.strictEqual(run(root, 'git commit -m "again"').before.context, '', 'reminded twice for the same files');
 });
 
+// D155 P3: the reminder judges a check by whether it passed on the current files, as the runner
+// records it. A check the runner runs every time (reuse:false) that passed on them, and a check
+// whose covering check (coveredBy) passed on them, are not named; a check whose files changed
+// since its last pass still is. Each commit below asks about content not asked about before
+// (the reminder is shown once per content).
+// A project whose COVERING check (reuse:false, the given command) covers COVERED (reuse:false,
+// reads src/a.txt); PLAIN reads src/b.txt. All three have passed once; then src/a.txt changed
+// and a --changed run ran COVERING and covered COVERED, whose own record keeps its older pass.
+function coveredProject(name, coveringCommand) {
+  const root = path.join(base, name);
+  const reads = file => `require('fs').readFileSync(require('path').join(__dirname, 'src', '${file}'));\n`;
+  write(root, 'src/a.txt', 'a\n');
+  write(root, 'src/b.txt', 'b\n');
+  write(root, 'covering.js', reads('a.txt'));
+  write(root, 'covered.js', reads('a.txt'));
+  write(root, 'plain.js', reads('b.txt'));
+  const check = (id, command, extra = {}) => ({ id, type: 'structural', command, contract: { exitCode: 0 }, ...extra });
+  write(root, '.crabshell/verification/manifest.json', JSON.stringify({ schemaVersion: 2, entries: [
+    check('COVERING', coveringCommand, { reuse: false }),
+    check('COVERED', { file: 'node', args: ['covered.js'] }, { reuse: false, coveredBy: 'COVERING' }),
+    check('PLAIN', { file: 'node', args: ['plain.js'] }),
+  ] }, null, 2));
+  copyRunner(RUNNER, path.join(root, '.crabshell', 'verification'));
+  const full = runner(root, []);
+  assert.strictEqual(full.status, 0, full.stdout + full.stderr);
+  write(root, 'src/a.txt', 'a changed\n');
+  const changed = runner(root, ['--changed']);
+  assert.ok(changed.status === 0 && /covered by COVERING/.test(changed.stdout), changed.stdout + changed.stderr);
+  return root;
+}
+// The check ids a reminder names, sorted; none for no reminder.
+const remindedOf = context => {
+  const match = /last passed: (.*?)\. Run /.exec(context);
+  return match ? match[1].split(', ').sort() : [];
+};
+
+test('a commit after --changed names neither a reuse:false check that passed nor a check its covering check covered; a changed check still', () => {
+  const root = coveredProject('commit-covered', { file: 'node', args: ['covering.js'] });
+  assert.strictEqual(run(root, 'git commit -m "after --changed"').before.context, '', 'named a check that passed, or was covered, on the current files');
+  write(root, 'src/b.txt', 'b changed\n');
+  assert.deepStrictEqual(remindedOf(run(root, 'git commit -m "plain changed"').before.context), ['PLAIN']);
+  write(root, 'src/a.txt', 'a changed again\n');
+  assert.deepStrictEqual(remindedOf(run(root, 'git commit -m "covering changed"').before.context), ['COVERED', 'COVERING', 'PLAIN']);
+});
+
+// The covering check of the observed case had unknown inputs (a program the runner cannot
+// trace): its pass holds the whole project's identity, which the hook must see the same way.
+test('a covering check with unknown inputs covers after --changed, and no longer once a project file changed', () => {
+  const root = coveredProject('commit-covered-unknown', { file: 'git', args: ['--version'] });
+  assert.strictEqual(run(root, 'git commit -m "after --changed"').before.context, '', 'named a check that passed, or was covered, on the current files');
+  write(root, 'src/a.txt', 'a changed again\n');
+  assert.deepStrictEqual(remindedOf(run(root, 'git commit -m "covering changed"').before.context), ['COVERED', 'COVERING']);
+});
+
+// `always: true` takes the same path as reuse:false: the runner runs it every time, and the
+// reminder counts the pass it recorded on the current files.
+test('a commit names no always:true check that passed on the current files; after its input changes, it does', () => {
+  const root = path.join(base, 'commit-always');
+  write(root, 'src/a.txt', 'a\n');
+  write(root, 'always.js', "require('fs').readFileSync(require('path').join(__dirname, 'src', 'a.txt'));\n");
+  write(root, '.crabshell/verification/manifest.json', JSON.stringify({ schemaVersion: 2, entries: [
+    { id: 'ALWAYS', type: 'structural', always: true, command: { file: 'node', args: ['always.js'] }, contract: { exitCode: 0 } },
+  ] }, null, 2));
+  copyRunner(RUNNER, path.join(root, '.crabshell', 'verification'));
+  const full = runner(root, []);
+  assert.strictEqual(full.status, 0, full.stdout + full.stderr);
+  assert.strictEqual(run(root, 'git commit -m "after the run"').before.context, '', 'named an always:true check that passed on the current files');
+  write(root, 'src/a.txt', 'a changed\n');
+  assert.deepStrictEqual(remindedOf(run(root, 'git commit -m "input changed"').before.context), ['ALWAYS']);
+});
+
 test('an undeclared long command run twice on the same files gets one hint; a file change or a short run gets none', () => {
   const root = project('repeat');
   assert.ok(!/declare/i.test(run(root, 'python long.py', { duration: 20000 }).after.context), 'hinted on the first run');
