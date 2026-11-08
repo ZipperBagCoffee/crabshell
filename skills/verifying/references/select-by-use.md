@@ -18,7 +18,8 @@ The runner chooses by what a check read — the files its own trace saw, or the 
 | Reason | What to do |
 |---|---|
 | `… changed (unknown inputs)` — the record's `kind` is `project` | Report what it used (⑧); where nothing can report, declare `inputs` (⑤) |
-| A file it read when it started, but does not use | Report at the access point (①), scan through a kind index (②), put start-up validation in a gate (③) |
+| A file it read when it started, but does not use | Report where a record or field is handed out (①), scan through a kind index (②), put start-up validation in a gate (③) |
+| One entry that runs many child checks with its own selector | One selector, or the same rules inside it (⑨) |
 | A file it uses, but only one part of it | Report items, not files (④, ⑦); split a shared core file (⑥) |
 | Its own test or program changed, or it failed last time | Nothing to fix |
 
@@ -30,6 +31,11 @@ The function that returns a record to the rest of the program reports the record
 - Right: "The lookup function reports the price table when a caller asks for it." Only checks that ask for prices report prices.
 
 A lookup for a record that does not exist reports that record with an empty fingerprint (⑧), so adding it later runs the check again. Data the program reads outside that function is not reported: route such reads through it, or report them where they happen.
+
+The finest general form is the field: when the record object hands out one field (one top-level field = one item), it reports that field. Code that loops over every record to filter on one field then reports only that field of each record, and needs no change of its own.
+
+- Wrong: "The collection reports a record when it is fetched from the store." A test that copies every record into a modified set reads the copies, and nothing reports them.
+- Right: "The record object reports a field when the field is read." Copies made from it report the same way.
 
 ## ② Scan by kind, through an index
 
@@ -81,6 +87,8 @@ When one file holds many items (records, functions), the report gives each used 
 - Wrong: "The report hashes the record as read; the identity command hashes it after removing spaces." The two never agree, so the check either runs every time or is reused when it should not be.
 - Right: "The report and the identity command call one shared fingerprint function."
 
+When the checks run in another language or runtime than the runner, the identity command runs in that same runtime and calls the program's own fingerprint function; it is never a second implementation written for the runner.
+
 The runner adds the rest-of-file fingerprint to every check that used any item of that file. Without an `itemIdentity` command, or when it fails or gives no rest-of-file fingerprint, the whole file counts as used.
 
 ## ⑧ The report
@@ -104,3 +112,17 @@ done[<TAB>writer]                           the last line; each writer name need
 A report is broken when its last line is not `done`, a writer name has fewer `done` lines than `begin` lines, it names nothing the check used (only `begin`/`done` lines), a field has a bad `%` escape or holds NUL, or it names a path outside the project or a file or folder that was not there before the run and is not there now. A broken report, or no report, means the check is chosen as it is today; the record keeps the reason as `reportProblem`. Only a passing run's report narrows the next choice (an entry with `{cases}` also keeps each case's result, so only failed or changed cases run next; a failing run removes no input or case — a case it was to run and did not report counts as failed — and a failing run whose report is broken or names no failed case keeps no case results, so the next run runs every case); the runner keeps it in the check's record (`files`, record kind `reported`).
 
 The report narrows only the inputs inside the entry's `reportScope` (default: its `inputs`); files the check reads outside that scope stay inputs. An entry with no `inputs` sets `reportScope` (for example the data folder); its inputs are then its report plus every project file outside that scope. Field shapes: [manifest fields](manifest-entries.md#fields-for-checks-that-report-what-they-used).
+
+## ⑨ A project's own selector inside one entry
+
+Prefer one selector: when a project's command runs many child checks with its own pass records, make each child a manifest entry (or use `{cases}`), so the runner chooses them and `--explain` shows each reason. When the project keeps its own selector (for example, children it leaves out as slow would count as failed cases), that selector follows the same rules:
+
+- it gives each child its own report file through `CRABSHELL_USED_REPORT`, replacing the path the entry inherited;
+- it keeps each child's used inputs and passes, with the gate and report scope as its own settings;
+- it reruns a child only when something in that child's report changed; with a missing or broken report it chooses the child as it would without a report (its declared inputs, or every project file when it declares none), as ⑧ says.
+
+The runner then sees only the whole entry, so the selector prints the reason for each child it runs.
+
+## ⑩ Measure one change
+
+Before saying a change selects fewer checks, measure it: start from a run where every check has a pass on the current files, change one file (one record, one field) and nothing else, run `--explain`, read the reason for each chosen check, then put the file back. Report the number and the reasons, never an estimate.

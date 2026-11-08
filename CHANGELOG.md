@@ -1,5 +1,12 @@
 # Changelog
 
+## [21.159.1] - 2026-11-08
+
+### docs: the select-by-use method covers fields, copies, other runtimes, own selectors and measuring
+
+- **Why.** Applying 21.159.0 in a real project showed five places the skill did not say what to do.
+- **select-by-use.md:** report at the field accessor (one top-level field = one item), the general form of reporting where data is handed out and of scanning by kind; reporting lives on the record object, not the collection, so derived copies keep reporting; the itemIdentity command runs in the same runtime as the checks and calls the program's own fingerprint function; new ⑨ — a project selector inside one entry gives each child its own report file and keeps per-child records (prefer one selector); new ⑩ — measure one change from a clean baseline with --explain; a missing or broken report falls back to the check's declared inputs (⑧ and ⑨ now agree). No code change.
+
 ## [21.159.0] - 2026-11-07
 
 ### feat: checks rerun only when what they used changes — any language, any project
