@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.156.0)
+# Crabshell Architecture (v21.157.0)
 
 ## Overview
 
@@ -567,6 +567,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.157.0 | Before every answer the per-prompt checklist asks two questions — "Is this your best?" and "Is it simple and clear — only what the reader needs, nothing they must ask back about?" — and says to fix the answer before sending if either is no (before, it asked only the first, and only before handing over a result). |
 | 21.156.0 | Memory notices come once per turn and let a question be answered first: the pending-save and archive-summary notices go on a turn's first prompt only (queued messages and task reports of the same turn no longer repeat them); on a non-execution turn Claude answers first and runs the save in the same response, and a save skipped that way comes back on the next turn before other work; execution requests still save first; the notices no longer depend on the injection frequency and survive the hook's error fallback (`core/memory-notice.js`). |
 | 21.155.0 | CLAUDE.md follows the installed rules: its managed block is compared at every Claude session start and on every execution prompt and rewritten only when it differs (since 21.107.0 it was rewritten only on a session's first execution prompt, so updates could leave old rules in place); session start replaces only an existing marked block and creates nothing; the new text applies from the next session (Claude Code reads CLAUDE.md before session-start hooks run); a plugin's own source checkout is not rewritten by an installed copy at another path, and this repository's CLAUDE.md must match the source RULES (`_test-rules-and-injection.js` R10/R11). |
 | 21.154.0 | Hooks know the turn (Claude `prompt_id`, Codex `turn_id`): the per-turn rule block is added once per turn even when messages queue up; text the user did not write (another session's message, task reports, pasted text next to the user's own words) issues no instructions and cannot authorize work; after a request, a later question or reprimand ends the turn without a "continue"; the ticket-update reminder uses only this session's edits and the unfinished tickets in the ticket INDEX. |

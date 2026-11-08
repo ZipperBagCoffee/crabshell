@@ -1,6 +1,10 @@
 {
   "launchers": [
     {
+      "sha256": "992d8b0fee8f58f2fc1305223f2dfd8c044730afb1dd58922a49a3215733a0bf",
+      "commit": "94793bd2c1a9"
+    },
+    {
       "sha256": "b00b5db9a3a87ff2a3cdd00adcc018e93dc700bfc6485ed695398f2cea424d61",
       "commit": "16073e84e59c"
     },
@@ -39,10 +43,6 @@
     {
       "sha256": "6bd012ad79f54abe65fa8041be09fb33f9288874b40d2d37c2cd067e3deaba89",
       "commit": "420201bec28c"
-    },
-    {
-      "sha256": "992d8b0fee8f58f2fc1305223f2dfd8c044730afb1dd58922a49a3215733a0bf",
-      "commit": "working-tree"
     }
   ]
 }
