@@ -36,6 +36,10 @@ A lookup for a record that does not exist reports that record with an empty fing
 
 The finest general form is the field. When the record object hands out a field, it reports that field; one top-level field is one item. Code that loops over every record to filter on one field then reports only that field of each record, with no change of its own. Report on the record object, not where the collection fetches it from the store, so copies made from a record report the same way.
 
+Building a collection from another one (a test that copies every record into a changed revision) is not use: the accessor that hands out everything only to build the copy reports nothing, and the copy's record accessors report when a record is handed out.
+
+A stamp is not use: a whole-content hash or version that the program writes into its outputs (saves, logs) but no program code compares. Report nothing for it, the way build systems treat volatile stamps.
+
 ## ② Scan by kind, through an index
 
 A check that walks every record to keep those of one kind has read every record's kind, so it must report every record. Build an index keyed by kind, and let the index report what it returns:
@@ -101,6 +105,7 @@ done[<TAB>writer]                           the last line; each writer name need
 
 - **Paths:** relative to the project root (`/` or `\`), or absolute inside the project. They must exist. Report a file that is not there through its folder; adding it changes the folder's names. A record that is not there is an `item` line with an empty fingerprint.
 - **Report every folder the check lists**, test discovery included. Otherwise a file added there never runs the check again.
+- **Files the check writes and reads back in the same run** (test scratch, generated packs) are outputs, not inputs. Keep them under one scratch folder and have the check's reporting code leave that folder out; reported, they break it (outside the project, or not there before the run).
 - **Escapes** inside a field: `%` → `%25`, TAB → `%09`, CR → `%0D`, LF → `%0A`. `#` is not special. A field may not hold the NUL character (`%00`).
 - **Write the report fresh on every run.** A check that runs again reads everything it needs and reports again; never copy an earlier report.
 
@@ -121,6 +126,7 @@ Prefer one selector. When a project's command runs many child checks with its ow
 
 - it gives each child its own report file through `CRABSHELL_USED_REPORT`, replacing the path the entry inherited;
 - it keeps each child's used inputs and passes, with the gate and report scope as its own settings;
+- it settles the gate first, in its own synchronous step, before deciding any child's reuse; a selector that plans every child up front and runs groups side by side otherwise reuses children while the gate is still unknown;
 - it reruns a child only when something in that child's report changed. With a missing or broken report, it chooses the child as it would without a report: its declared inputs, or every project file when it declares none (⑧).
 
 The runner then sees only the whole entry, so the selector prints the reason for each child it runs.
@@ -133,4 +139,4 @@ Before saying a change selects fewer checks, measure it:
 3. Run `--explain` and read the reason for each chosen check.
 4. Put the file back.
 
-Report the number and the reasons, never an estimate.
+Report the number and the reasons, never an estimate. A timing assertion that fails only with reporting on: rerun it alone before blaming reporting overhead; side-by-side runs slow timing tests too.

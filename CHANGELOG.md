@@ -1,5 +1,12 @@
 # Changelog
 
+## [21.162.2] - 2026-11-08
+
+### docs: select-by-use covers copies, stamps, test scratch, a selector's gate and timing failures
+
+- **Why.** A second project applying 21.162 found five cases the skill did not say how to handle (one data edit there went from 114 checks to 84, 80 of them reused).
+- **select-by-use.md:** building a collection from another one is not use (the copy's accessors report); a stamp (a whole-content hash written into outputs that no code compares) is not use; files a check writes and reads back in the same run are outputs, kept under one scratch folder the check's reporting leaves out; a project selector settles the gate in its own synchronous step before deciding any child's reuse; a timing failure seen only with reporting on is rerun alone before reporting is blamed. No code change.
+
 ## [21.162.1] - 2026-11-08
 
 ### fix: the commit reminder knows more shell forms

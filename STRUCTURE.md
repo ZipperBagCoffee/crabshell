@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.162.1)
+# Crabshell Plugin Structure (v21.162.2)
 
-**Version**: 21.162.1 | **Author**: TaWa | **License**: MIT
+**Version**: 21.162.2 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -518,6 +518,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.162.2 | select-by-use: copies, stamps, test scratch, a selector's gate step, timing failures (docs only) |
 | 21.162.1 | Commit reminder reads more shell forms: `cmd /k`, PowerShell `-Command` prefixes, `ksh`/`fish -c` |
 | 21.162.0 | Session end refines only the new part (one `updateSessionL1` for the interval save and SessionEnd; 64 MB transcript 1,277 ms → 169–341 ms); lint/status/claude-to-agents plugin paths; commit reminder lists only checks not passed on current files |
 | 21.161.0 | Removed the dead session-end save path (SessionEnd message, `quietStop`, memory-autosave skill, V040); saving unchanged; one rule for when checks run in regressing and ticketing |
