@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.160.0)
+# Crabshell Architecture (v21.161.0)
 
 ## Overview
 
@@ -133,14 +133,14 @@ Two meta-principles guide Claude's approach to obstacles:
 +--------------------------------------------------------------------------+
 |  Skills Layer (host-native skill bundles)                                 |
 |  +---------------------------------+  +--------------------------------+ |
-|  | Operational Skills (13)         |  | Memory Skills (7)              | |
+|  | Operational Skills (13)         |  | Memory Skills (6)              | |
 |  | - discussing    (D documents)   |  | - save-memory                  | |
 |  | - planning      (P documents)   |  | - load-memory                  | |
 |  | - ticketing     (T documents)   |  | - search-memory                | |
 |  | - investigating (I documents)   |  | - clear-memory                 | |
-|  | - hotfix        (H documents)   |  | - memory-autosave              | |
-|  | - hotfix (one-pass work)        |  | - memory-delta                 | |
-|  | - regressing    (D→T loop)      |  | - memory-rotate                | |
+|  | - hotfix        (H documents)   |  | - memory-delta                 | |
+|  | - hotfix (one-pass work)        |  | - memory-rotate                | |
+|  | - regressing    (D→T loop)      |  |                                | |
 |  | - verifying     (verification)  |  |                                | |
 |  | - knowledge     (K pages)       |  |                                | |
 |  | - status        (healthcheck)   |  | Setup Skills (1)               | |
@@ -357,7 +357,6 @@ Each document type has an INDEX.md for tracking. Status cascades upward on compl
 | load-memory | Rebuild full context after compaction/restart |
 | search-memory | L1/L2/L3 search (--deep for L1 transcripts) |
 | clear-memory | Cleanup memory files |
-| memory-autosave | Auto-trigger memory save at counter threshold |
 | memory-delta | Mandatory on a pending notice (once per turn; first on a work request or after a skipped save, otherwise after the answer): prepare fixed input, one background summarizer per part, one finalize command |
 | memory-rotate | Auto-trigger L3 summary generation after rotation |
 
@@ -567,6 +566,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.161.0 | Removed the dead session-end save path (SessionEnd message, `quietStop`, memory-autosave skill, V040); saving unchanged; one rule for when checks run in regressing and ticketing |
 | 21.160.0 | Instructions shorter, same meaning: per-prompt block 576 → 526 words, rules block 1,788 → 1,733, skills 16,417 → 14,193, references 10,156 → 9,241; stale project-root pointer fixed in ten skills; `itemIdentity` timeout example in milliseconds |
 | 21.159.1 | Verifying skill select-by-use: fields, copies, runtime of the identity command, own selectors, measuring one change (docs only) |
 | 21.159.0 | Checks rerun only when what they used changes, in any language and project (21.158.0 selected by files read, so a project that loads all its data at start still reran nearly every check for one data edit): every check gets a report file through `CRABSHELL_USED_REPORT`, and a passing run's report becomes its inputs inside `reportScope` (default: its `inputs`); no report or a broken one chooses as before; items inside one file through the project's `itemIdentity` command; a `"gate": true` entry runs the start-up validation first and checks narrowed by their reports are reused only while it passes; `{cases}` reruns only the cases whose used inputs changed; record kind `reported`, and a traced check that starts a program the tracer cannot follow but declares `inputs` is recorded as declared; runner updates keep passes (only `contract.js`, `execute.js` and the tracer source void them; record schema raised to 4 once); new reference `select-by-use.md` and one VERIFICATION rule line (a change that reruns checks it does not affect is a defect); Simple Communication rule 956 → 788 characters |

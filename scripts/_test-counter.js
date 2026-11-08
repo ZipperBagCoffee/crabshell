@@ -239,7 +239,6 @@ test('getConfig: returns defaults when no config file', function() {
     const config = mod.getConfig();
     assertEqual(config.saveInterval, 15, 'default saveInterval');
     assertEqual(config.keepRaw, false, 'default keepRaw');
-    assertEqual(config.quietStop, true, 'default quietStop');
   } finally {
     process.env.CLAUDE_PROJECT_DIR = origEnv;
     cleanupDir(tmpDir);

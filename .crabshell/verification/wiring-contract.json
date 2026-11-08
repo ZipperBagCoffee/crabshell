@@ -77,9 +77,6 @@
       "producers": [
         {
           "file": "scripts/core/memory-notice.js"
-        },
-        {
-          "file": "scripts/counter.js"
         }
       ],
       "consumers": [
@@ -110,21 +107,6 @@
         {
           "file": "skills/memory-rotate/SKILL.md",
           "section": "Trigger and scope"
-        }
-      ]
-    },
-    {
-      "id": "trigger:crabshell_save",
-      "token": "[CRABSHELL_SAVE]",
-      "producers": [
-        {
-          "file": "scripts/counter.js"
-        }
-      ],
-      "consumers": [
-        {
-          "file": "skills/memory-autosave/SKILL.md",
-          "section": "Trigger Message"
         }
       ]
     }

@@ -63,12 +63,12 @@ function tool(name) {
   };
 }
 
-function runFinal(projectRoot, transcriptPath) {
+function runFinal(projectRoot, transcriptPath, sessionId = 'session-end-fixture') {
   return spawnSync(process.execPath, [counterPath, 'final', `--project-dir=${projectRoot}`], {
     cwd: projectRoot,
     input: JSON.stringify({
       hook_event_name: 'SessionEnd',
-      session_id: 'session-end-fixture',
+      ...(sessionId ? { session_id: sessionId } : {}),
       transcript_path: transcriptPath,
       cwd: projectRoot,
       reason: 'exit',
@@ -126,12 +126,24 @@ try {
     const root = project('execution project');
     const result = runFinal(root, executionTranscript);
     assert.strictEqual(result.status, 0, result.stderr || result.stdout);
-    assert.match(result.stdout, /CRABSHELL_SAVE/);
+    // Claude Code discards SessionEnd output and no model turn follows, so it prints nothing.
+    assert.strictEqual(result.stdout, '');
     const memoryRoot = path.join(root, '.crabshell', 'memory');
     // D119: the save counter is per session; a persisted SessionEnd records this session's L1 position.
     assert.ok(fs.existsSync(path.join(memoryRoot, 'session-state', 'session-', 'l1-cursor.json')));
     assert.ok(fs.existsSync(path.join(memoryRoot, 'memory-index.json')));
     assert.ok(fs.readdirSync(path.join(memoryRoot, 'sessions')).some(file => file.endsWith('.l1.jsonl')));
+  });
+
+  test('execution SessionEnd without a session id resets the project-wide save counter', () => {
+    const root = project('legacy counter project');
+    const memoryRoot = path.join(root, '.crabshell', 'memory');
+    fs.mkdirSync(memoryRoot, { recursive: true });
+    fs.writeFileSync(path.join(memoryRoot, 'counter.json'), JSON.stringify({ counter: 7 }));
+    const result = runFinal(root, executionTranscript, null);
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    assert.strictEqual(result.stdout, '');
+    assert.strictEqual(JSON.parse(fs.readFileSync(path.join(memoryRoot, 'counter.json'), 'utf8')).counter, 0);
   });
 
   test('forced-write mutation is detected by the independent snapshot', () => {

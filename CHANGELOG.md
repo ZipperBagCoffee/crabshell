@@ -1,5 +1,16 @@
 # Changelog
 
+## [21.161.0] - 2026-11-08
+
+### fix: remove the dead session-end save path; one rule for when checks run
+
+- **Why.** Two instructions contradicted others. The session-end message told the model to `printf` into `logbook.md`, which the memory skills forbid; and three texts disagreed on when the checks run in regressing (per ticket vs. per cycle).
+- **The session-end save path could never run.** `[CRABSHELL_SAVE]` came only from `counter.js final`, the SessionEnd hook. Claude Code discards a SessionEnd hook's JSON output (`systemMessage` included; https://code.claude.com/docs/en/hooks.md), `systemMessage` never reaches the model anyway, and no model turn follows SessionEnd. The memory-autosave skill's only trigger was that token. It was left over from v13.5.0, which replaced the tool-count auto-save with delta updates.
+- **Removed:** the SessionEnd message (both modes), the `quietStop` setting that chose between them, the memory-autosave skill, and its wiring check (V040). **Unchanged:** what SessionEnd saves (final L1, old-L1 pruning, delta extraction, session-state cleanup), the legacy counter reset without a session id (now covered by a test), and the `saveInterval` save, which is code.
+- **When checks run:** the ticket template (after the discussion's last edit; the last ticket runs it) and the regressing cycle-verification reference (once per cycle) are the sources. The regressing skill now points to its reference, the Codex regressing and ticketing skills say the same thing, and "execution cycle" (one ticket) became "independent execution" so it no longer reads as a regressing cycle.
+- **Doc fixes:** save-memory names memory-delta as the routine save; STRUCTURE skill counts (20 Claude, 13 Codex).
+- **Structure.** Removed `skills/memory-autosave/`.
+
 ## [21.160.0] - 2026-11-08
 
 ### feat: plugin instructions shorter, same meaning

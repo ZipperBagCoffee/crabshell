@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.160.0)
+# Crabshell User Manual (v21.161.0)
 
 ## Why Do You Need This?
 
@@ -406,7 +406,6 @@ The plugin uses two injection mechanisms:
   "saveInterval": 15,
   "keepRaw": false,
   "rulesInjectionFrequency": 1,
-  "quietStop": true,
   "memoryRotation": {
     "thresholdTokens": 25000,
     "carryoverTokens": 2500
@@ -420,7 +419,6 @@ The plugin uses two injection mechanisms:
 | `keepRaw` | false | Keep `.raw.jsonl` files after L1 conversion |
 | `rulesInjectionFrequency` | 1 | Inject rules every N prompts (1 = every prompt) |
 | `deltaMinBytes` | 20480 | Queued session input (bytes) before the memory-save notice appears; read from the per-project file (v21.156.0, was fixed) |
-| `quietStop` | true | Brief session-end message instead of verbose instructions |
 | `memoryRotation.thresholdTokens` | 25000 | Token threshold for logbook.md rotation (with 0.95 safety margin) |
 | `memoryRotation.carryoverTokens` | 2500 | Tokens to keep as carryover after rotation (with 0.95 safety margin) |
 | `webGuard` | "block" | Web guard mode: `block` (WebFetch blocked, WebSearch blocked only when a search MCP is configured), `warn` (never blocks, injects verification warnings), `off` (guard disabled) (v21.114.0) |

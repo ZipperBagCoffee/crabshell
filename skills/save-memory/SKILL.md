@@ -1,6 +1,6 @@
 ---
 name: save-memory
-description: "Manually saves the current session context to memory files on demand. Use when explicitly asked to save progress, or when important decisions need to be preserved immediately rather than waiting for auto-save. Invoke with /save-memory. Not for routine saves — memory-autosave handles those automatically via triggers."
+description: "Manually saves the current session context to memory files on demand. Use when explicitly asked to save progress, or when important decisions need to be preserved immediately rather than waiting for auto-save. Invoke with /save-memory. Not for routine saves — the memory-delta skill handles those when a hook notice asks for it."
 ---
 
 ## Paths
@@ -21,4 +21,4 @@ Usage: `/crabshell:save-memory`
    Never append to logbook.md directly; append-memory.js takes the memory locks and writes the `## UTC (local …)` header.
 3. If it fails with `A prepared delta job exists`, run the memory-delta skill first, then run the command again.
 
-Use it to checkpoint progress mid-session. This save does not reset the counter; auto-save still triggers normally.
+Use it to checkpoint progress mid-session. This save does not reset the counter; the interval save still runs.

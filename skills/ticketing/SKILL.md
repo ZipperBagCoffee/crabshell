@@ -146,7 +146,7 @@ When a ticket becomes `verified`:
 5. **"File contains X" is forbidden** in the Verification section. Describe runnable commands or observable behavior.
 6. **INDEX.md** is the only file whose existing content may change.
 7. **Plan propagation (plan parents only):** When all tickets of a plan are verified, update the plan status (Update Mode Step 4). Discussion parents are not propagated.
-8. **1 Ticket = 1 independent execution cycle:** Run each ticket as its own independent execution. Never batch several tickets into one execution.
+8. **1 Ticket = 1 independent execution:** Run each ticket as its own independent execution. Never batch several tickets into one execution.
 9. **Mandatory work log:** After any work related to this ticket or its purpose, append a Log entry (`### [{YYYY-MM-DD HH:MM}] {entry_type}`), even when this skill was not explicitly invoked.
 10. **Mandatory append of results:** The parent must append execution, direct verification and final evaluation to their T sections. When workers or reviewers were used, record their evidence and the parent's disposition. Verification not recorded in the document counts as not performed. Before completion, the parent reads the T document and confirms that no result section from Rule 1 still contains `placeholder`; the log guard blocks `verified` otherwise. Optional review notes are not a completion gate.
 11. **Verification record:** Record each criterion in `## Verification Results` as the template's Step B says. Use direct evidence; if only indirect evidence exists, say why; otherwise write "unverified". With no project verification tool, invoke the 'verifying' skill. The project's checks run once, at Step B; later steps read that result instead of running them again.
