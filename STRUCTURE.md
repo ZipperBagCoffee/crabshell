@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.155.0)
+# Crabshell Plugin Structure (v21.156.0)
 
-**Version**: 21.155.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.156.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -110,7 +110,8 @@ crabshell/
 │   ├── core/orchestration-policy.js         # 8-field task contract + parent completion policy (v21.105.0)
 │   ├── core/first-turn-context.js           # Shared compact turn contract
 │   ├── core/turn-id.js                      # The host's session and turn numbers (prompt_id / turn_id) (v21.154.0)
-│   ├── core/turn-state.js                   # Per-session turn record: rule block added, latest user intent (v21.154.0)
+│   ├── core/turn-state.js                   # Per-session turn record: rule block added, latest user intent (v21.154.0); turn's first prompt (v21.156.0)
+│   ├── core/memory-notice.js                # Memory notices once per turn: answer-first on questions, a skipped save comes back first (v21.156.0)
 │   ├── core/memory-context.js               # Shared SessionStart selection with preserving legacy-description copy
 │   ├── core/execution-lifecycle.js          # Shared execution-authorized cleanup/reset with host data isolation
 │   ├── core/claude-md-rules.js              # CLAUDE.md managed rules block: sync when it differs, own-source-checkout guard (v21.155.0)
@@ -185,6 +186,8 @@ crabshell/
 │   ├── _test-skill-text-contract.js         # Skill texts match the plugin: removed steps absent, design lines, every manifest setting documented (v21.153.0)
 │   ├── _test-turn-state.js                  # One rule block per host turn; latest user intent (real captured payloads) (v21.154.0)
 │   ├── _test-stop-latest-user.js            # A question or reprimand after a request ends the turn without "continue" (v21.154.0)
+│   ├── _test-memory-notice.js               # Memory notice decisions: turn's first prompt, wording by intent, skipped save comes back first (v21.156.0)
+│   ├── _test-memory-notice-timing.js        # The prompt hook with real captures: once per turn, answer first, injection frequency, error fallback (v21.156.0)
 │   ├── _test-single-source.js               # One definition per shared value across shipped scripts (v21.127.0)
 │   ├── _test-rules-and-injection.js         # Advisor line and unified rule wording; where the project description is injected (v21.127.0); this repository's CLAUDE.md matches RULES (v21.155.0)
 │   ├── _test-claude-md-sync.js              # CLAUDE.md follows the installed rules at SessionStart and every execution prompt; questions read-only; own source checkout kept (v21.155.0)
@@ -362,8 +365,7 @@ UserPromptSubmit hook:
 - Configurable frequency via `rulesInjectionFrequency`
 - Auto-sync rules to CLAUDE.md via `syncClaudeMdRules()` (marker-based; every execution prompt, and SessionStart through `load-memory.js`, when it differs; v21.155.0)
 - Reset and persist all pressure counters when `봉인해제` / `UNLEASH` appears, regardless of question/execution classification (v21.110.1)
-- Detect pending delta → inject DELTA_INSTRUCTION (run memory-delta now on every turn, summarizers in the background; v21.133.0)
-- Detect pending rotation → inject ROTATION_INSTRUCTION
+- Detect pending delta / rotation → memory notice from `core/memory-notice.js` on the turn's first prompt: before other work on a work request or after a skipped save, otherwise answer first and run it in the same response; summarizers in the background (v21.156.0)
 - Detect active regressing session → inject phase-specific reminder (v19.23.0)
 - Check ticket statuses for active regressing → inject warning for todo/in-progress tickets (v21.12.0)
 
@@ -449,9 +451,9 @@ L1 generation:
        ├─> Explicit 봉인해제 / UNLEASH: lock, reset, and persist pressure state before intent gating
        ├─> Inject critical rules via additionalContext
        ├─> Check for pending delta (delta_temp.txt exists)
-       │   └─> If yes (and !deltaProcessing): Inject DELTA_INSTRUCTION → Claude runs memory-delta now (background summarizers)
+       │   └─> If yes (and !deltaProcessing), on the turn's first prompt: memory notice → Claude runs memory-delta (first on a work request or after a skipped save, else after answering; background summarizers; v21.156.0)
        ├─> Check for pending rotation (summaryGenerated: false)
-       │   └─> If yes: Inject ROTATION_INSTRUCTION → Claude executes memory-rotate skill
+       │   └─> If yes, on the turn's first prompt: memory notice → Claude runs memory-rotate (same timing as memory-delta)
        ├─> Check for active regressing session (regressing-state.json)
        │   └─> If yes: Inject phase-specific reminder (planning/ticketing → MANDATORY SKILL TOOL CALL)
        └─> Output indicator: [rules injected], [rules + delta pending], [rules + rotation pending]
@@ -507,6 +509,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.156.0 | Memory notices come once per turn and let a question be answered first: the pending-save and archive-summary notices go on a turn's first prompt only (queued messages and task reports of the same turn no longer repeat them); on a non-execution turn Claude answers first and runs the save in the same response, and a save skipped that way comes back on the next turn before other work; execution requests still save first; the notices no longer depend on the injection frequency and survive the hook's error fallback (`core/memory-notice.js`). |
 | 21.155.0 | CLAUDE.md follows the installed rules: its managed block is compared at every Claude session start and on every execution prompt and rewritten only when it differs (since 21.107.0 it was rewritten only on a session's first execution prompt, so updates could leave old rules in place); session start replaces only an existing marked block and creates nothing; the new text applies from the next session (Claude Code reads CLAUDE.md before session-start hooks run); a plugin's own source checkout is not rewritten by an installed copy at another path, and this repository's CLAUDE.md must match the source RULES (`_test-rules-and-injection.js` R10/R11). |
 | 21.154.0 | Hooks know the turn (Claude `prompt_id`, Codex `turn_id`): the per-turn rule block is added once per turn even when messages queue up; text the user did not write (another session's message, task reports, pasted text next to the user's own words) issues no instructions and cannot authorize work; after a request, a later question or reprimand ends the turn without a "continue"; the ticket-update reminder uses only this session's edits and the unfinished tickets in the ticket INDEX. |
 | 21.153.0 | Checks run only when what they read changed. Nothing blocks a commit, writing a Final Verification runs nothing, and comparing a changed test with HEAD is opt-in (`--fail-before`). The runner (now a launcher and modules) reruns a check only when its fingerprint — entry run fields, program, decision code (comment lines excluded), platform, input contents — is not among its passes; inputs are traced (Node), declared (`inputs`) or unknown (whole project, that check only); `--changed` runs the last failure first, then new, then quickest, stops at a new failure, retries a check that fails on inputs it passed with (`Flaky:`), runs `slow` checks only with `--slow` or at release, and `--explain` prints why each check would run. Hooks know shell calls and file writes by their shape, count only manifest-declared commands (`wrappers`, environment prefixes), answer a hand rerun of a passed check from its record (`CRABSHELL_RERUN=1` runs it anyway), hint when an entry needs `inputs`/`slow`/`outputs`, share the runner's project view (git-ignored folders skipped: a 20,000-file folder cost each hook call a second, now under 2 ms) and stay fail-open without the runner's modules. Each session start keeps a project's runner copy current. Plans carry five design lines before their first ticket, and post-build verification is one check run after the last edit. RULES are shorter (2,080 → 1,792 words) with Skills and Code lines; the per-prompt checklist asks "Is this your best?". After updating, every non-slow check runs once; a package.json `test` check moves to manifest `tools`. |

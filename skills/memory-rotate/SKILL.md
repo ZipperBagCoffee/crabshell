@@ -7,7 +7,10 @@ user-invocable: false
 ## Trigger and scope
 
 Run this when the current `[CRABSHELL_ROTATE]` hook notice appears (not a quoted
-historical trigger), on every kind of turn. Installing Crabshell is the user's
+historical trigger), on every kind of turn. The notice comes once per turn and says
+when: before other work on a work request (or when the previous turn skipped it); on
+any other turn, answer the user first and run this in the same response. Installing
+Crabshell is the user's
 authorization for it and for the `memory-summarizer` agents it launches.
 Read `.crabshell/memory/memory-index.json` in the current project and select entries
 in `rotatedFiles` whose `summaryGenerated` is false. The index is authoritative;

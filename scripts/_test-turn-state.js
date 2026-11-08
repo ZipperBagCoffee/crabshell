@@ -1,6 +1,7 @@
 'use strict';
 // D147_T002: the fixed rule block is added once per host turn (Claude prompt_id, Codex
-// turn_id); a later prompt in the same turn gets only the changing notices. The turn
+// turn_id); a later prompt in the same turn gets only the changing notices (memory notices
+// go on the turn's first prompt only, D149). The turn
 // state also keeps the latest intent of text the user wrote (used by the Stop hooks).
 // Payload shapes are real captures from Claude Code 2.1.319 (fixtures/hook-payloads).
 
@@ -80,16 +81,19 @@ test('Codex turn_id works the same way', () => {
   assert.ok(!run(codexEntry, root, { ...payload, prompt: 'And why?' }).includes(CONTRACT));
 });
 
-test('a changing notice (pending memory save) still reaches a later prompt of the same turn', () => {
+// D149 contract change: the pending-save notice is no longer repeated on a queued prompt of
+// the same turn (it repeated on every prompt while the summarizers ran); a new turn gets it.
+test('a pending memory save is noticed on the turn\'s first prompt only, and again on the next turn', () => {
   const root = project();
   const memory = path.join(root, '.crabshell', 'memory');
   fs.writeFileSync(path.join(memory, 'memory-index.json'), JSON.stringify({ deltaReady: true }));
-  // A pending save needs the ready flag and enough input (inject-rules checkDeltaPending).
+  // A pending save needs the ready flag and enough input (core/memory-notice checkDeltaPending).
   fs.writeFileSync(path.join(memory, 'delta_temp.txt'), 'pending input line\n'.repeat(2000));
   assert.ok(run(claudeEntry, root, turnStart).includes('[CRABSHELL_DELTA]'));
   const second = run(claudeEntry, root, queued);
-  assert.ok(second.includes('[CRABSHELL_DELTA]'), 'notice kept');
+  assert.ok(!second.includes('[CRABSHELL_DELTA]'), 'notice not repeated in the same turn');
   assert.ok(!second.includes(CONTRACT), 'fixed block dropped');
+  assert.ok(run(claudeEntry, root, { ...turnStart, prompt_id: 'turn-state-next-turn' }).includes('[CRABSHELL_DELTA]'), 'next turn noticed');
 });
 
 test('latest user intent follows text the user wrote, not another session\'s message, within one turn', () => {

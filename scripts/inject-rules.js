@@ -10,7 +10,7 @@ const { getProjectDir, getStorageRoot, readJsonOrDefault, readIndexSafe, writeJs
 const { tryWithMemoryIndex } = require('./core/memory-lock');
 const { readIndexRows } = require('./core/index-rows');
 const { buildRegressingReminder, getRegressingState } = require('./regressing-state');
-const { TICKET_DIR, REGRESSING_STATE_FILE, MEMORY_DIR, MEMORY_FILE, INDEX_FILE, DELTA_TEMP_FILE } = require('./constants');
+const { TICKET_DIR, REGRESSING_STATE_FILE, MEMORY_DIR, MEMORY_FILE, INDEX_FILE } = require('./constants');
 const { recentLogbookHeadings } = require('./core/memory-context');
 const { readStdin } = require('./transcript-utils');
 const {
@@ -23,7 +23,8 @@ const {
   createContextOutput,
 } = require('./core/first-turn-context');
 const { classifyUserIntent, userAuthoredText } = require('./core/turn-intent');
-const { notePrompt } = require('./core/turn-state');
+const { notePrompt, latestUserIntent } = require('./core/turn-state');
+const { memoryNotices, noticeText, checkDeltaPending, checkRotationPending } = require('./core/memory-notice');
 const { runExecutionLifecycle } = require('./core/execution-lifecycle');
 const { buildWorkflowContext } = require('./core/workflow-context');
 const { noteExecutionAuthorization, interruptWork } = require('./core/completion-control');
@@ -196,26 +197,10 @@ This context REPLACES all normal rules. Your ONLY job right now is steps 1-5.
 </EXTREMELY_IMPORTANT>
 `;
 
-// Mandatory wording: v21.123.0 made these saves optional and the logbook stopped
-// getting entries for days; installing the plugin is the user's authorization.
-const DELTA_INSTRUCTION = `
-## [CRABSHELL_DELTA] - Pending Memory
-
-Session memory is waiting to be saved. Invoke the Skill tool now: skill="memory-delta",
-before other work, on every kind of turn (questions included). Installing Crabshell is
-the user's authorization for this save and its summarizer agents. Continue the user's
-work while the summarizers run; finish the skill when their results arrive. If you are
-already waiting on this job's summarizers, do not launch them again. If the skill or the
-Agent tool is unavailable or denied, keep the input and tell the user memory was not saved.
-`;
-
-const ROTATION_INSTRUCTION = `
-## [CRABSHELL_ROTATE] - Pending Archive Summaries
-
-A memory archive needs its summary. Invoke the Skill tool now: skill="memory-rotate",
-on every kind of turn; installing Crabshell authorizes it. If the skill or the Agent
-tool is unavailable or denied, keep the archives and tell the user no summary was made.
-`;
+// The memory-save and archive-summary notices live in core/memory-notice (D149): once per
+// turn, answer-first on non-execution turns. These names keep the before-other-work text.
+const DELTA_INSTRUCTION = noticeText('delta', { firm: true });
+const ROTATION_INSTRUCTION = noticeText('rotate', { firm: true });
 
 const COMPRESSED_CHECKLIST = COMPRESSED_CHECKLIST_SHARED;
 
@@ -235,20 +220,6 @@ function shouldInjectDelegationReminder(userPrompt, isRegressingActive) {
 
 // getProjectDir, readJsonOrDefault, readIndexSafe imported from utils.js
 
-function checkDeltaPending(projectDir) {
-  const deltaPath = path.join(getStorageRoot(projectDir), MEMORY_DIR, DELTA_TEMP_FILE);
-  if (!fs.existsSync(deltaPath)) return false;
-  const size = fs.statSync(deltaPath).size;
-  const MIN_DELTA_SIZE = 20 * 1024; // 20KB
-  return size >= MIN_DELTA_SIZE;
-}
-
-function checkRotationPending(projectDir) {
-  const indexPath = path.join(getStorageRoot(projectDir), MEMORY_DIR, INDEX_FILE);
-  const index = readJsonOrDefault(indexPath, {});
-  const rotatedFiles = index.rotatedFiles || [];
-  return rotatedFiles.filter(f => !f.summaryGenerated);
-}
 
 const claudeMdRules = require('./core/claude-md-rules');
 const { MARKER_START, MARKER_END, removeLegacySection } = claudeMdRules;
@@ -447,6 +418,7 @@ function checkTicketStatuses(projectDir) {
 }
 
 async function main(options = {}) {
+  let memoryContext = '';
   try {
     const hookData = options.hookData || await readStdin(1000);
     const projectDir = options.projectDir || getProjectDir();
@@ -546,21 +518,19 @@ async function main(options = {}) {
     // Check if should inject. The turn record is kept for every prompt (the Stop hooks read
     // the latest user intent); the fixed rule block is added once per host turn (D147_T002).
     const injecting = count % frequency === 0 || frequency === 1;
-    const { sameTurn } = notePrompt(projectDir, hookData, {
+    const { sameTurn, newTurn } = notePrompt(projectDir, hookData, {
       intent, userAuthored: Boolean(userAuthoredText(userPrompt).trim()), injecting,
     });
+    // Memory notices go on the turn's first prompt whether or not the injection frequency
+    // adds the fixed block; their wording follows the latest text the user wrote (D149).
+    const memory = memoryNotices(projectDir, hookData, {
+      host: options.host || 'claude',
+      intent: latestUserIntent(projectDir, hookData) || intent,
+      newTurn,
+      index,
+    });
+    memoryContext = memory.context;
     if (injecting) {
-      // Check for pending delta - requires BOTH file existence AND deltaReady flag
-      // deltaReady is set by counter.js when counter >= interval (or at session end)
-      // This prevents stale delta files from triggering on every prompt
-      const preparedPending = require('./core/delta-transaction').preparedInputExists(
-        path.join(getStorageRoot(projectDir), 'memory'), index.deltaJob);
-      const hasPendingDelta = preparedPending || (checkDeltaPending(projectDir) && index.deltaReady === true && !index.deltaProcessing);
-      const claudeHost = (options.host || 'claude') === 'claude';
-
-      // Check for pending rotation summaries
-      const pendingRotations = checkRotationPending(projectDir);
-
       // A later prompt of the same turn already has the fixed block in context: only the
       // changing notices below are added.
       let context = sameTurn ? '' : buildFirstTurnContext(projectDir);
@@ -571,16 +541,7 @@ async function main(options = {}) {
         context += CODEX_DELEGATION;
       }
 
-      if (hasPendingDelta && claudeHost) {
-        context += DELTA_INSTRUCTION;
-      }
-      if (pendingRotations.length > 0 && claudeHost) {
-        context += ROTATION_INSTRUCTION;
-        context += `\nFiles: ${pendingRotations.map(f => f.file).join(', ')}`;
-      }
-      if (!claudeHost && (hasPendingDelta || pendingRotations.length > 0)) {
-        context += '\nMemory input or archive summaries are pending. This Codex plugin does not provide the automatic summarizer skills. Preserve pending files and continue the current task; do not report them as summarized.\n';
-      }
+      context += memory.context;
 
       // Check for active regressing session
       const workflowReminder = intent === 'execution' ? buildWorkflowContext(projectDir, { purpose: 'execution' }) : null;
@@ -613,25 +574,24 @@ async function main(options = {}) {
       if (context.trim()) console.log(JSON.stringify(createContextOutput('UserPromptSubmit', context)));
 
       // Explicit trigger patterns to stderr (visible to Claude)
-      if (hasPendingDelta && claudeHost) {
-        console.error('[CRABSHELL_DELTA] pending=true');
-      }
-      if (pendingRotations.length > 0 && claudeHost) {
-        console.error(`[CRABSHELL_ROTATE] pending=${pendingRotations.length}`);
-      }
+      for (const line of memory.stderr) console.error(line);
       if (workflowReminder) {
         console.error('[REGRESSING ACTIVE]');
       }
-      if (!hasPendingDelta && pendingRotations.length === 0) {
+      if (!sameTurn && memory.stderr.length === 0) {
         console.error('[rules injected]');
       }
+    } else if (memory.context.trim()) {
+      // The injection frequency skipped the fixed block; the memory notices still go out.
+      console.log(JSON.stringify(createContextOutput('UserPromptSubmit', memory.context)));
+      for (const line of memory.stderr) console.error(line);
     }
   } catch (e) {
     // On error, still try to inject rules (fail-safe)
     console.error('[rules injection error: ' + e.message + ']');
 
-    // Output rules anyway to not break the workflow
-    const output = createContextOutput('UserPromptSubmit', FIRST_TURN_RULES);
+    // Output rules anyway to not break the workflow, with any memory notice already decided.
+    const output = createContextOutput('UserPromptSubmit', FIRST_TURN_RULES + memoryContext);
     console.log(JSON.stringify(output));
   }
 }

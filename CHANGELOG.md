@@ -1,5 +1,17 @@
 # Changelog
 
+## [21.156.0] - 2026-11-07
+
+### fix: memory notices — once per turn, and a question gets its answer before the save
+
+- **Why.** The pending-save notice told Claude to run the save "before other work, on every kind of turn (questions included)", so a plain question waited behind two or three tool calls; and while the summarizers ran, every message of the same turn (queued messages, task reports) carried the same notice again — one session's transcript held 237 notice lines for 22 saves (D149).
+- **Once per turn.** The pending-save (`[CRABSHELL_DELTA]`), archive-summary (`[CRABSHELL_ROTATE]`) and Codex pending notices go on a host turn's first prompt only (`core/turn-state` `notePrompt` now returns `newTurn`); a new turn with the work still pending gets them again. Input without a turn number gets them on every prompt, as before.
+- **Answer first.** The wording follows the latest text the user wrote this turn: an execution request saves before other work; any other turn answers first and invokes the skill in the same response. A notice given answer-first whose work shows no progress by the next turn (no prepared job, no finished save, the same pending archives) comes back before other work, so a save is at most one turn late; an unreadable record also falls back to before-other-work.
+- **No silent drops.** The notices no longer sit behind `rulesInjectionFrequency` (a prompt that skips the fixed block still gets them), and the hook's error fallback sends them with the basic rules. `[rules injected]` is printed only when the fixed block was added.
+- **Code.** New `scripts/core/memory-notice.js` (notice table, `checkDeltaPending`/`checkRotationPending` moved here, progress signature, per-session `memory-notice` record); `inject-rules.js` keeps `DELTA_INSTRUCTION`, `ROTATION_INSTRUCTION`, `checkDeltaPending` and `checkRotationPending` as exports. New tests `scripts/_test-memory-notice.js` and `scripts/_test-memory-notice-timing.js` (real captured Claude Code 2.1.319 payloads). They take the expected notice text from the notice module, not copied wording: rewording two notice phrases left all six notice-related test files passing with no test edited.
+- **Setting.** `deltaMinBytes` in `.crabshell/memory/config.json` sets how much queued session input waits before the memory-save notice (default 20480 bytes; it was a fixed number).
+- **Contract changes.** A queued prompt of the same turn no longer repeats the pending-save notice (21.154.0 kept it; `_test-turn-state.js` flipped). The notice no longer says "questions included"; the memory-delta and memory-rotate skills say when to run (a work request or a skipped save: first; otherwise after the answer, in the same response). The trigger tokens' producer moved from `inject-rules.js` to `core/memory-notice.js` (wiring contract updated). Not captured: whether a task report keeps its turn's `prompt_id`; if it does not, it counts as a new turn and gets the notice once more.
+
 ## [21.155.0] - 2026-11-07
 
 ### fix: CLAUDE.md follows the installed rules — at session start and on every request, not once per session

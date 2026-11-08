@@ -7,14 +7,14 @@ const base=fs.mkdtempSync(path.join(os.tmpdir(),'memory-save-directive-'));let p
 function test(name,fn){try{fn();passed++;console.log('PASS '+name);}catch(e){failed++;console.error('FAIL '+name+' '+e.stack);}}
 function project(delta,index){const root=fs.mkdtempSync(path.join(base,'case-')),memory=path.join(root,'.crabshell','memory');fs.mkdirSync(memory,{recursive:true});fs.writeFileSync(path.join(memory,'memory-index.json'),JSON.stringify(index||{deltaReady:true}));if(delta!==null)fs.writeFileSync(path.join(memory,'delta_temp.txt'),delta);return {root,memory};}
 function inject(f,prompt){const r=spawnSync(process.execPath,[path.join(__dirname,'inject-rules.js')],{cwd:f.root,env:{...process.env,CLAUDE_PROJECT_DIR:f.root,CRABSHELL_BACKGROUND:'',HOOK_DATA:''},input:JSON.stringify({cwd:f.root,session_id:'directive-test',hook_event_name:'UserPromptSubmit',prompt}),encoding:'utf8'});assert.equal(r.status,0,r.stderr);return JSON.parse(r.stdout).hookSpecificOutput.additionalContext;}
-const MIN_DELTA=20*1024;
+const {noticeText,MIN_DELTA_SIZE:MIN_DELTA}=require('./core/memory-notice');
 
 test('a question turn with queued memory gets the save directive, not an option',()=>{
   const context=inject(project('input '.repeat(MIN_DELTA/6+100)),'됐나?');
   assert(context.includes('[CRABSHELL_DELTA]'));
   assert(context.includes('skill="memory-delta"'));
-  assert(/Invoke the Skill tool now/.test(context));
-  assert(/questions included/.test(context));
+  // No turn number in this input: the before-other-work notice, as the notice module words it (D149).
+  assert(context.includes(noticeText('delta',{firm:true})));
   assert(!/when compatible/.test(context));
 });
 test('queued memory below the 20KB threshold stays silent (cadence unchanged)',()=>{

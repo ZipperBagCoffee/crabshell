@@ -76,10 +76,10 @@
       "token": "[CRABSHELL_DELTA]",
       "producers": [
         {
-          "file": "scripts/counter.js"
+          "file": "scripts/core/memory-notice.js"
         },
         {
-          "file": "scripts/inject-rules.js"
+          "file": "scripts/counter.js"
         }
       ],
       "consumers": [
@@ -94,10 +94,10 @@
       "token": "[CRABSHELL_ROTATE]",
       "producers": [
         {
-          "file": "scripts/counter.js"
+          "file": "scripts/core/memory-notice.js"
         },
         {
-          "file": "scripts/inject-rules.js"
+          "file": "scripts/counter.js"
         },
         {
           "file": "scripts/legacy-migration.js"
