@@ -5,7 +5,7 @@ description: Use before making or changing anything a person will see or read, s
 
 # Structuring
 
-Build for the person who receives the result, not in the order the code or the material produced it. Do these steps in order, before building. They apply to screens and to writing alike.
+Build for the person who receives the result, not in the order the code or material produced it. Do these steps in order before building, for screens and writing alike.
 
 ## 1. Write what the person is trying to do
 
@@ -16,13 +16,13 @@ List their tasks in their words, not a list of features or contents.
 
 ## 2. Decide what belongs under what
 
-"Important", "used together" and "belongs under" are three different judgments. Before placing an item under a parent, ask all three:
+Before placing an item under a parent, ask all three:
 
 - Does the parent's name describe this item's scope?
 - Is it as specific as its siblings?
 - Would a person look here using only the parent's name?
 
-If any answer is no, it does not belong there. If two things are merely used together, link them; do not nest them.
+If any answer is no, it does not belong there. Importance is no reason to nest. Link things that are merely used together; do not nest them.
 
 - Wrong: Account inside Sound, because that screen was open.
 - Right: Sound and Account side by side under Settings, with a shortcut where it helps.
@@ -38,7 +38,7 @@ Keep what the person needs to decide and finish the current task. Move rare deta
 
 ## 4. Set the reading order, then position and size
 
-Write the order the person should take in the parts: first, second, third. Then give position, size and contrast to match it. If everything is the same size, the order has not been decided.
+Write the order in which the person should take in the parts. Then match position, size and contrast to it. If everything is the same size, the order is not decided yet.
 
 In writing, the fact the reader must not miss comes first. Assume they stop after one sentence.
 
@@ -60,12 +60,9 @@ A new task goes through step 2 against the existing structure before it gets a p
 
 ## 7. Check it, and say who checked it
 
-Give a person the purpose only and watch where they go. For structure, use a bare text menu without design.
+Give a person the purpose only, not the steps, and watch where they go. For structure, use a bare text menu without design.
 
-- Wrong: "Press the Sound menu."
-- Right: "Turn the sound down."
-
-A fresh reviewer agent can find defects from the real result: rendered capture, or the text as it will be read. It cannot pass the result. A person's understanding has no automatic check, so record who actually tried it in the ticket's `## Reader Check`. If nobody did, report "own checks passed, not tried by a person", not "done".
+A fresh reviewer worker can find defects in the real result: the rendered capture, or the text as it will be read. It cannot pass the result. Record who actually tried it in the ticket's `## Reader Check`. If nobody did, report "own checks passed, not tried by a person", not "done".
 
 ## When corrected
 

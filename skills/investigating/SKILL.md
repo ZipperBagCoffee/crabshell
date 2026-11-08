@@ -5,24 +5,21 @@ description: "Conducts multi-agent investigations using internet, local, and use
 
 # Investigation Document Skill
 
-## Modes
-
-- **Create mode:** `/investigating "title"` — creates a new investigation document
-- **Update mode:** `/investigating I001` — appends findings to an existing investigation
+- **Create mode:** `/investigating "title"` creates a new investigation document.
+- **Update mode:** `/investigating I001` appends findings to an existing one.
 
 ---
 
 ## Create Mode
 
-When argument is a title string (not an I-prefixed ID):
+Use this when the argument is a title, not an I-prefixed ID.
 
 ### Step 1: Ensure folder exists
 
-Check if `.crabshell/investigation/` exists.
-
-- **Folder does not exist:** Create it and create `.crabshell/investigation/INDEX.md` with content below.
-- **Folder exists but INDEX.md does NOT exist:** Pre-existing files detected. Create `.crabshell/investigation/backup/`, move ALL existing files into it, then create INDEX.md. Report to user: "Moved N existing files to .crabshell/investigation/backup/"
-- **Folder exists and INDEX.md exists:** Already managed. Proceed.
+Check `.crabshell/investigation/`.
+- No folder: create it, and create `.crabshell/investigation/INDEX.md` with the content below.
+- Folder without INDEX.md: create `.crabshell/investigation/backup/`, move all existing files into it, then create INDEX.md. Tell the user: "Moved N existing files to .crabshell/investigation/backup/"
+- Folder with INDEX.md: go on.
 
 INDEX.md content:
 ```
@@ -34,24 +31,11 @@ INDEX.md content:
 
 ### Step 2: Determine next ID
 
-Glob `.crabshell/investigation/I*.md`.
-Extract numeric part. Next ID = max + 1, zero-padded to 3 digits.
-If no files exist, start at 001.
+Glob `.crabshell/investigation/I*.md`. Next ID = highest number + 1, zero-padded to 3 digits. With no files, start at 001.
 
-### Step 3: Gather investigation parameters
+### Step 3: Constraints and parameters
 
-Ask the user:
-1. **Topic:** What is being investigated? Why?
-2. **Questions:** What specific questions need answers?
-3. **Sources:** Any specific sources to include? (URLs, files, codebases)
-
-### Step 3.0: Constraint presentation
-
-Before gathering parameters, **proactively present** constraints to the user:
-
-1. **Read** `.crabshell/project.md` — extract the `## Constraints` section
-2. **Infer** task-specific constraints from context (topic, related D/P/I documents, user's request)
-3. **Present** both to the user:
+1. Before asking for parameters, proactively present the constraints to the user. Read the `## Constraints` section of `.crabshell/project.md`. Infer task constraints from the topic, related D/P/I documents and the user's request. Show both:
 
 ```
 Constraint Check:
@@ -60,22 +44,20 @@ Constraint Check:
 Additional constraints? Silence = proceed.
 ```
 
-4. Confirmed constraints are written to the `## Constraints` section of the I document
-5. All confirmed constraints are binding for every agent in this investigation
-
-### Step 3.5: Parameter Recommendation
-
-Before creating the investigation document and launching agents, recommend execution parameters to the user. Present as a compact table:
+   Write the confirmed constraints to the I document's `## Constraints` section. They bind every worker in this investigation.
+2. Ask the user:
+   - **Topic:** what is investigated, and why?
+   - **Questions:** which specific questions need answers?
+   - **Sources:** any specific URLs, files or codebases to include?
+3. Before creating the document and launching workers, recommend execution parameters to the user once, as a compact table:
 
 | Parameter | Recommendation | Rationale |
 |-----------|---------------|-----------|
-| Agent count | Risk-based: 0 (parent-led) for narrow topics, 2–5 for broad or contested topics | Delegation is a risk control, not a completion requirement (v21.113.0, I083 R7) |
-| Specialist roles | _{distinct roles relevant to topic}_ | e.g., "Forensic Auditor", "Cognitive Scientist", "Systems Engineer" — each agent must have a unique expert perspective |
-| Model tier | See project.md `## Model Routing` | T1 for analysis/judgment, T2 for mechanical searches. Project-level routing applies. |
+| Worker count | 0 (parent-led) for narrow topics; 2–5 for broad or contested topics | Delegate by risk (rule 5) |
+| Specialist roles | _{distinct roles relevant to topic}_ | Each worker must have a unique expert view, e.g. "Forensic Auditor", "Systems Engineer" |
+| Model tier | See project.md `## Model Routing` | T1 for analysis and judgment, T2 for mechanical searches |
 
-After presenting the table, state: **"Silence = proceed with these parameters. Adjust any parameter before I continue."**
-
-This recommendation happens once per investigation creation. If the user does not respond, proceed with the recommended parameters.
+   Then state: **"Silence = proceed with these parameters. Adjust any parameter before I continue."** If the user does not answer, proceed with them.
 
 ### Step 4: Create investigation document
 
@@ -137,66 +119,58 @@ tags: []
 {methodology, initial sources, approach}
 ```
 
-### Step 5: Execute multi-agent investigation
+### Step 5: Investigate
 
-Launch parallel Work Agents, each assigned a different focus area or source type:
+When rule 5 calls for workers, launch them in parallel, each on a different focus area or source type:
+- **Worker 1, internet:** tell it to follow the raw-source ladder. Find URLs with a configured search MCP (tavily, brave, exa or similar) when one exists. Otherwise use built-in WebSearch and treat its snippets only as pointers. Read every cited source in full: `trafilatura -u "<url>" --markdown --links` if installed, then `curl -fsSL "https://r.jina.ai/<url>"` for JS pages (keyless), then plain `curl` as the raw fallback. Never let a worker cite a search snippet or a WebFetch summary as evidence.
+- **Worker 2, local:** examine local files, code and configurations.
+- **Worker N:** user-specified sources or other distinct angles, as needed.
 
-- **Work Agent 1:** Internet research — search for relevant information online. Instruct the agent to follow the raw-source ladder: discover URLs via a configured search MCP (tavily/brave/exa etc.) if available, else built-in WebSearch treating snippets as pointers only; then read every cited source in full via `trafilatura -u "<url>" --markdown --links` (if installed) → `curl -fsSL "https://r.jina.ai/<url>"` (JS pages, keyless) → plain `curl` (raw fallback). Never let an agent cite a search snippet or a WebFetch summary as evidence — built-in WebFetch pipes pages through a small summarizer model and is lossy by design.
-- **Work Agent 2:** Local investigation — examine local files, code, configurations
-- **Work Agent N:** Additional agents as needed for user-specified sources or distinct angles
-
-**After each Agent returns findings, the Orchestrator MUST use the Edit tool to replace the placeholder text in that agent's section with the actual findings.** Do NOT leave "(findings appended after execution)" in the document.
-- **Document-first rule:** Write agent findings to the corresponding `### Agent N` section in the I document FIRST using the Edit tool. After the document is updated, provide a brief summary to the user. The document update is the primary output; the conversation summary is secondary.
+When a worker returns, replace its `### Agent N` placeholder with its findings.
 
 ### Step 6: Cross-review
 
-Launch Review Agents (paired with Work Agents per CLAUDE.md rules):
+Cross-review by risk (rule 6). When you use reviewers:
+- Give each reviewer only the Topic and Questions sections and the source type or focus area of the worker it checks. Never include that worker's findings.
+- The reviewer investigates that focus area on its own first. Then the parent compares its findings with the worker's; each discrepancy is a finding.
+- Assign each reviewer a different worker. Reviewers challenge each other's conclusions and name contradictions and blind spots.
 
-- **Independence Protocol (MANDATORY):** Each Review Agent prompt MUST NOT include the Work Agent's findings it is reviewing. Provide only: (1) the investigation's Topic and Questions sections, (2) the source type/focus area assigned to the Work Agent. The Review Agent independently investigates the same focus area first. After Review Agent completes, the Orchestrator cross-references RA findings against WA findings — discrepancies are findings.
-- Each Review Agent reviews findings from a different Work Agent
-- Review Agents challenge each other's conclusions, identify contradictions and blind spots
+Replace the `## Cross-Review` placeholder with the results.
 
-**After cross-review completes, the Orchestrator MUST use the Edit tool to replace the Cross-Review section placeholder with the actual cross-review results.**
-- **Document-first rule:** Write cross-review results to the `## Cross-Review` section in the I document FIRST using the Edit tool. After the document is updated, provide a brief summary to the user. The document update is the primary output; the conversation summary is secondary.
+### Step 7: Synthesis
 
-### Step 7: Orchestrator synthesis
+The parent reads all findings and the cross-review, then fills:
+- `## Synthesis`: the integrated conclusions.
+- `## Conclusions`: each question answered on its own, with evidence and a confidence level, plus gaps and unknowns.
 
-The Orchestrator:
-1. Reads all agent findings and the cross-review
-2. Synthesizes integrated conclusions
-3. **Uses the Edit tool to replace the Synthesis section placeholder with integrated conclusions**
-4. **Uses the Edit tool to replace the Conclusions section placeholder with: each Question answered individually, confidence level, and gaps/unknowns**
-5. Assesses confidence level and identifies gaps
-
-**DOCUMENT UPDATE RULE:** By the end of Step 7, every placeholder in the I document ("findings appended after execution", "appended after agent execution", "appended after synthesis") MUST be replaced with actual content. The Log section records timeline events; the structured sections above it contain the full findings. Both must be populated.
-- **Document-first rule:** Write synthesis and conclusions to the `## Synthesis` and `## Conclusions` sections in the I document FIRST using the Edit tool. After the document is updated, provide a brief summary to the user. The document update is the primary output; the conversation summary is secondary.
+By the end of this step, replace every placeholder in the document with real content. This includes the old strings "findings appended after execution", "appended after agent execution" and "appended after synthesis". The structured sections hold the full findings; the Log records the timeline. Fill both.
 
 ### Step 8: Update INDEX.md
 
-Append row to `.crabshell/investigation/INDEX.md`:
+Append a row to `.crabshell/investigation/INDEX.md`:
 
 ```
 | [[I{NNN}-{slug}|I{NNN}]] | {title} | open | {YYYY-MM-DD} | |
 ```
-Note: `{slug}` is the kebab-case portion of the document filename. Obtain it by globbing `.crabshell/investigation/I{NNN}-*.md` and extracting the basename without `.md`.
+`{slug}` is the kebab-case part of the document's file name. Glob `.crabshell/investigation/I{NNN}-*.md` and take the basename without `.md`.
 
 ### Step 9: Confirm
 
-Tell user: "Created I{NNN}. Investigation complete. See Conclusions for findings summary."
+Tell the user: "Created I{NNN}. Investigation complete. See Conclusions for findings summary."
 
 ---
 
 ## Update Mode
 
-When argument matches `I\d{3}` pattern:
+Use this when the argument matches `I\d{3}`.
 
 ### Step 1: Read existing document
 
-Glob `.crabshell/investigation/I{NNN}-*.md`. If not found, stop.
+Glob `.crabshell/investigation/I{NNN}-*.md`. If none matches, stop.
 
 ### Step 2: Append log entry
 
-Append to end of document:
+Append to the end of the document:
 
 ```
 
@@ -212,11 +186,11 @@ Entry types:
 
 ### Step 3: Re-run investigation if needed
 
-If new findings warrant it, re-run the multi-agent investigation (Steps 5-7 from Create Mode) with updated focus areas. Append new agent findings, cross-review, and synthesis to the document.
+If new findings warrant it, rerun Create Mode Steps 5-7 with updated focus areas. Append the new findings, cross-review and synthesis to the document.
 
 ### Step 4: Update INDEX.md if status changed
 
-Update status column in `.crabshell/investigation/INDEX.md`.
+Update the status column in `.crabshell/investigation/INDEX.md`.
 
 ### Status Transitions
 
@@ -227,13 +201,14 @@ Update status column in `.crabshell/investigation/INDEX.md`.
 
 ## Rules
 
-1. **NEVER modify existing content.** Only append to Log section and update Conclusions/Synthesis during investigation.
-2. **Conclusion section** must answer each Question from the Questions section individually, with evidence and confidence assessment.
-3. **INDEX.md** is the only file where existing content may be modified (status updates).
-4. When investigation leads to a discussion or plan, note in log: "→ See [[D{NNN}-{slug}|D{NNN}]]" or "→ See [[P{NNN}-{slug}|P{NNN}]]" and update INDEX.md Related column with the same wikilink format. Obtain `{slug}` by globbing `.crabshell/{discussion|plan}/{ID}-*.md` and extracting the basename without `.md`. If the target document does not exist yet, use the bare ID temporarily: "→ See D{NNN}" or "→ See P{NNN}".
-5. **Delegation is risk-based, not mandatory.** Use independent Work Agents when source breadth, contested claims, or context volume warrant them; a parent-led investigation is valid for narrow topics. Agent count is never completion evidence.
-6. **Cross-review is risk-based.** Use independent Review Agents (without showing them Work Agent findings) when conclusions are contested or high-impact; otherwise the Orchestrator's own source-check suffices. State in the document which level was applied and why.
-7. **Source diversity.** Investigation must use at least 2 different source types (internet + local, internet + user-specified, etc.) unless the topic explicitly restricts sources.
-8. **Mandatory work log:** After performing any work related to this document, append a log entry to the Log section using the existing format (`### [{YYYY-MM-DD HH:MM}] {entry_type}`). This applies regardless of whether this skill was explicitly invoked — if the work touched or advanced this investigation's purpose, log it.
-9. **I documents are independent.** They do not participate in D → P → T hierarchy or status cascades. They may be referenced by other documents but have no parent/child relationships.
-10. **Scope Note (from project RULES):** Conciseness applies to communication style, not to verification steps. Evidence citations are required work product, not verbose output. In this project, verification means closing the gap between belief and reality through observation (Predict → Execute → Compare).
+1. Never modify existing content. During the investigation, you may replace template placeholders and update Synthesis and Conclusions; otherwise only append to the Log.
+2. INDEX.md is the only file whose existing content may change (status updates).
+3. When an investigation leads to a discussion or plan, log "→ See [[D{NNN}-{slug}|D{NNN}]]" or "→ See [[P{NNN}-{slug}|P{NNN}]]". Put the same wikilink in the INDEX.md Related column. Get `{slug}` by globbing `.crabshell/{discussion|plan}/{ID}-*.md` and taking the basename without `.md`. If the target document does not exist yet, use the bare ID for now: "→ See D{NNN}" or "→ See P{NNN}".
+4. Write each result into its I-document section with the Edit tool before summarizing in chat. After each phase's document update, give the user a brief summary. The document is the primary output.
+5. Delegation is risk-based, not mandatory. Use independent workers when source breadth, contested claims or context volume call for them. A parent-led investigation is valid for narrow topics. Worker count is never completion evidence.
+6. Cross-review by risk. Use independent reviewers, without showing them the workers' findings, when conclusions are contested or high-impact. Otherwise the parent's own source check is enough. Record in the document which level you used and why.
+7. Use at least 2 different source types, such as internet + local or internet + user-specified, unless the topic explicitly restricts sources.
+8. After any work that touches or advances this investigation, append a Log entry in the existing format (`### [{YYYY-MM-DD HH:MM}] {entry_type}`). This applies even when this skill was not invoked.
+9. I documents are independent. They take no part in the D → P → T hierarchy or status cascades and have no parent or child. Other documents may reference them.
+10. Conciseness applies to chat style, not to verification. Evidence citations are required work product. Verify by observation: predict, execute, compare.
+11. Whenever Conclusions change, they answer each Question individually, with evidence and a confidence level.

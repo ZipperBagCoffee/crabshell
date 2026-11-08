@@ -79,4 +79,13 @@ report.check('W3 the checklist runs common sense, "Is this your best?" and the c
   report.check('W5 Simple Communication stays short (at most 1,200 characters)', line.length > 0 && line.length <= 1200, String(line.length));
 }
 
+// D153: the rules block and the per-prompt checklist were cut to these sizes with every
+// condition kept; a later edit that grows them past the budget must cut something else first.
+{
+  const budgets = [['W6 the rules block', RULES, 10600], ['W7 the per-prompt checklist', COMPRESSED_CHECKLIST, 2700]];
+  for (const [name, text, limit] of budgets) {
+    report.check(`${name} stays within ${limit.toLocaleString('en-US')} characters`, text.length <= limit, String(text.length));
+  }
+}
+
 report.finish();

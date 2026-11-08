@@ -1,7 +1,5 @@
 # Ticketing — ticket document template
 
-Moved out of SKILL.md so the skill body stays within what Claude Code re-attaches after compaction (the first 5,000 tokens of each skill). Read this file when the body points here.
-
 ```
 ---
 type: ticket
@@ -30,7 +28,7 @@ Excluded: {excluded}
 ## Acceptance Criteria
 - [ ] {criterion 1}
 - [ ] {criterion 2}
-- **Edge-case coverage (recommended):** At least one AC should test an error path, boundary condition, or negative scenario (e.g., "invalid input returns error", "empty file handled gracefully"). Happy-path-only ACs miss the failures that matter most.
+- **Edge-case coverage (recommended):** At least one AC should test an error path, a boundary or a negative case, such as "invalid input returns error".
 
 ## Verification
 {criterion 1}: {how to verify — command to run, behavior to observe}
@@ -38,65 +36,60 @@ Excluded: {excluded}
 
 ## Ticket Execution
 
-The parent owns implementation, decisive verification, the final diff, completion and each worker's brief. Independent parts go to parallel workers by default.
+The parent owns implementation, decisive verification, the final diff, completion and each worker's brief.
+
+**Document-first rule:** In each step, write the results to its T section with Write/Edit first, then give the user a brief summary.
 
 ### Step A: Parent — Execution
-- Execute tasks according to the plan (P)
-- Record results for each work item
-- **Document-first rule:** Write execution results to `## Execution Results` in the T document FIRST using Write/Edit tool. After the document is updated, provide a brief summary to the user. The document update is the primary output; the conversation summary is secondary.
+- Execute the tasks according to the plan and record the result of each work item in `## Execution Results`.
 
 **Parallel workers:**
-- Parts that touch different files and need no result from each other go to parallel workers.
-- Every prompt names the exact task, non-goals, authoritative references, allowed scope, expected observation, and verification command.
-- Delegates do not fan out. Agent count is never progress or completion evidence.
+- Parts that touch different files and need no result from each other go to parallel workers by default.
+- Every brief names the exact task, non-goals, authoritative references, allowed scope, expected observation, and verification command.
+- Workers and reviewers do not fan out. Worker or reviewer count is never progress or completion evidence.
 
 ### Step B: Parent Verification + Optional Independent Review
-- The parent runs the ticket's direct verification regardless of delegation.
+- The parent runs the ticket's direct verification, whether or not workers were used.
+- **Deletion Check (MANDATORY first step):** Run `git diff` on all modified files before any other check. Use `git diff HEAD` when changes are staged or committed. Scan the deleted lines: a function, class or export deleted without mention in the Acceptance Criteria is a finding, and an unintended deletion of existing code is an automatic FAIL. If the diff is empty, as with new files only or already-committed changes, use an available baseline diff. With no diff available, write "Deletion Check: N/A — {reason}" and proceed.
 - **Record in `## Verification Results`:** for each acceptance criterion, the command run (or the file read), its output line, and pass/fail. A behavior claim is backed by an execution result, a structure claim by what was read.
-- Use independent review when change risk, shared contracts, security, data loss, or user-visible behavior warrants it. Reviewer count never follows worker count.
-- **Independence Protocol:** When review is used, the prompt MUST NOT include implementation conclusions as its observation source. Provide the ticket Acceptance Criteria and Verification sections and ask for the same record (command or file read, output line, pass/fail per criterion). The parent records each finding and what it did about it.
-- **Deletion Check (MANDATORY first step):** Run `git diff` (or `git diff HEAD` if changes are staged/committed) on all modified files BEFORE any other verification. Scan deleted lines — any function, class, or export that disappeared without being mentioned in the ticket Acceptance Criteria is a finding. Unintended deletion of existing code = automatic FAIL. If diff is empty (new files only, or already committed), use an available baseline diff. If no diff is obtainable, state "Deletion Check: N/A — {reason}" and proceed.
-- Verify runtime behavior of each work item (trigger → path → result)
-- Confirm changes do not break existing functionality (the Deletion Check above — `git diff` — enforces this)
-- Confirm edge case and exception handling
-- **Check run — once, after the discussion's last edit, before the commit:** with several tickets, the last one runs it and an earlier ticket records that it waits for that run; while editing, run only the test of the part being written, by name through the runner (`node .crabshell/verification/run-verify.js <id>`) so its pass is kept. If `.crabshell/verification/manifest.json` exists, run `node .crabshell/verification/run-verify.js --changed` (or the project's equivalent) once and record the command and its result line; with no manifest, invoke `/verifying` to create one, then run it; a project with nothing executable records "Verification tool N/A: {reason}". The runner reuses passes whose inputs did not change; do not run it again on unchanged files.
-- **Document-first rule:** Write verification results to `## Verification Results` in the T document FIRST using Write/Edit tool. After the document is updated, provide a brief summary to the user. The document update is the primary output; the conversation summary is secondary.
+- Verify each work item's runtime behavior (trigger → path → result), that existing functionality still works, and edge-case and exception handling.
+- Use independent review when change risk, shared contracts, security, data loss or user-visible behavior calls for it. Reviewer count never follows worker count.
+- **Independence Protocol:** A reviewer's brief holds the ticket's Acceptance Criteria and Verification sections, never the implementation's conclusions. Ask for the same record per criterion. The parent records each finding and what it did about it.
+- **Check run — once, after the discussion's last edit, before the commit:** With several tickets, the last ticket runs it and earlier tickets record that they wait for that run. While editing, run only the test of the part being written, by name through the runner (`node .crabshell/verification/run-verify.js <id>`), so its pass is kept. If `.crabshell/verification/manifest.json` exists, run `node .crabshell/verification/run-verify.js --changed` or the project's equivalent once; record the command and its result line. With no manifest, invoke `/verifying` to create one, then run it. A project with nothing executable records "Verification tool N/A: {reason}". Do not run it again on unchanged files.
 
 ### Step B.5: Multiple Independent Reviews (when useful)
-- Assign different material risks rather than duplicating a checklist.
-- The parent compares evidence, records discrepancies, and resolves them before completion. A cross-review report or reviewer count is not a completion gate.
+- Give each reviewer a different material risk, not a copy of one checklist.
+- The parent compares evidence, then records and resolves discrepancies before completion. A cross-review report or reviewer count is not a completion gate.
 
 ### Step C: Parent — Final Verification
-**Performed by:** The parent — reads direct execution evidence and any optional independent findings, then evaluates independently.
-- **Document-first rule:** Write your evaluation to `## Final Verification` in the T document FIRST using Write/Edit tool. After the document is updated, provide a brief summary to the user. The document update is the primary output; the conversation summary is secondary.
-- Read the recorded evidence (the check run's result line, each criterion's command and output line); a worker's or reviewer's claim is not completion evidence. Observe again only what changed after it was observed.
-- **Intent Fidelity (BLOCKING — the result against the discussion):** Before the 4-factor evaluation, write `## Intent Fidelity`: one row per discussion item this ticket touches — each IA item and each Plan decision in its Implementation Details:
+**Performed by:** The parent reads the direct execution evidence and any optional independent findings, then evaluates independently.
+- Read the recorded evidence: the check run's result line and each criterion's command and output line. A worker's or reviewer's claim is not completion evidence. Observe again only what changed after it was observed.
+- **Intent Fidelity (BLOCKING — the result against the discussion):** Before the 4-factor evaluation, write `## Intent Fidelity` with one row per IA item this ticket touches and per Plan decision in its Implementation Details:
   ```
   | Discussion item (IA-n / Plan decision) | Result | Deviation (none/partial/departed) | Evidence | Reason / user approval |
   |---|---|---|---|---|
   ```
-  Evidence is tool output or a file/line, as in Verification Results. A row marked departed without the user's approval means the ticket is not verified: fix the result, or ask the user and record their answer. In regressing, every partial or departed row goes into Next Direction. The log guard blocks `verified` while this section still holds its placeholder.
-- **Evidence (BLOCKING — before evaluating content):** each criterion has its Step B record — the parent's and a worker's alike. A criterion without one (verification claimed but not performed) is observed once — run it, or read its saved result — before it counts.
+  Evidence is tool output or a file and line. A row marked departed without the user's approval means the ticket is not verified: fix the result, or ask the user and record their answer. In regressing, every partial or departed row goes into Next Direction. The log guard blocks `verified` while this section holds its placeholder.
+- **Evidence (BLOCKING — before evaluating content):** Each criterion needs its Step B record, whether the parent or a worker did it. A criterion without one is observed once before it counts: run it, or read its saved result.
 - 4-factor evaluation:
-  1. **Correctness**: Was it done correctly? Cite specific evidence (command output, observed behavior).
-  2. **Coherence**: Do the changes work together as a whole? Individual ACs may each pass, but the combined result may have inconsistencies, contradictions, or integration gaps. The Orchestrator MUST verify that the parts form a coherent whole — not just that each part individually passes. (If only 1 AC exists, state "Single AC — coherence N/A" with brief justification.)
+  1. **Correctness**: Was it done correctly? Cite specific evidence: command output or observed behavior.
+  2. **Coherence**: Do the changes work together as a whole? The parent must check the combined result, not just that each AC passes alone. With a single AC, write "Single AC — coherence N/A" and a brief reason.
      **Ways to check coherence (use the ones the change calls for):**
-     - **Cross-file sync check:** When the same concept appears in multiple files (e.g., RULES in inject-rules.js and CLAUDE.md), grep for the concept in all locations and confirm consistent wording/semantics.
-     - **Reference integrity:** When file A references file B's content (e.g., skill referencing CLAUDE.md rules), verify the reference target actually exists and matches.
-     - **Integration test:** Run the changed code/hook and verify that outputs from multiple changed files interact correctly (e.g., inject-rules.js produces CLAUDE.md that contains all expected sections).
-     - **Contradiction scan:** Explicitly check whether any two changes give contradictory instructions (e.g., one file says "RA count = WA count" while another says "single RA is fine").
-     - **Pipeline contradiction scan:** Check whether this change contradicts logic in related pipelines. Level 1: within the changed files. Level 2: in files that interact with the changed component (imports, callers, shared state). Level 3: against project rules/philosophy (CLAUDE.md, SKILL.md principles). A change that works locally but contradicts a related pipeline is not coherent.
-     Name the method used; "Coherent" or "일관됨" as a one-line verdict with no method is not a check.
-  3. **Improvement Opportunities**: What gaps remain? What didn't work well? ("No improvements" names what was examined and why nothing applies.)
-  4. **Next Direction** (for regressing cycles 1 through N-1; cycle N uses Final Report):
-     - **Problems Found**: Specific issues observed in THIS cycle, with evidence.
+     - **Cross-file sync check:** When one concept appears in several files, grep every location and confirm the wording and meaning match.
+     - **Reference integrity:** When one file cites another's content, confirm the target exists and matches.
+     - **Integration test:** Run the changed code or hook and confirm the outputs of the changed files work together.
+     - **Contradiction scan:** Explicitly check whether any two changes give contradictory instructions.
+     - **Pipeline contradiction scan:** Check whether this change contradicts logic in related pipelines, at three levels: within the changed files; in files that interact with them through imports, callers or shared state; and against project rules and philosophy (CLAUDE.md, SKILL.md principles). A change that works locally but contradicts a related pipeline is not coherent.
+     Name the method used. A one-line "Coherent" or "일관됨" verdict with no method is not a check.
+  3. **Improvement Opportunities**: What gaps remain? What did not work well? "No improvements" names what was examined and why nothing applies.
+  4. **Next Direction**: Regressing cycles 1 through N-1 fill it; cycle N uses the Final Report.
+     - **Problems Found**: Specific issues observed in this cycle, with evidence.
      - **Root Cause Hypothesis**: Why did these problems occur?
      - **Recommended Focus**: What should the next cycle prioritize?
-     - (Generic TODO lists without cycle-specific observations are INVALID.)
+     - A generic TODO list without this cycle's observations is invalid.
 
 ## Execution
-- This ticket uses the parent-owned flow above (Step A → Step B → Step C)
-- 1 Ticket = 1 independent execution cycle
+- Parent-owned flow above (Step A → Step B → Step C); one ticket = one independent execution cycle.
 
 ## Execution Results
 (placeholder — parent writes implementation evidence here)

@@ -3,17 +3,11 @@ name: status
 description: "Runs a healthcheck of the Crabshell plugin state. Reports memory, regressing, verification, counter values, and plugin version with ✓/!/✗ indicators. Invoke with /status."
 ---
 
-## Project Root Resolution
-
-**IMPORTANT:** Get the project root from your context's "Project Root Anchor" section.
-Look for: `Your ACTUAL project root is: <path>`
-
-Use this value as `{PROJECT_DIR}` in all commands below.
-If not available in context, use your current working directory.
+`{PROJECT_DIR}` is the path after `Project root:` in the Project Root Anchor section; without one, use the current working directory.
 
 # Crabshell Status Healthcheck
 
-Read plugin state files and report health. Use ✓ (healthy), ! (attention), ✗ (error/missing).
+Read the plugin state files and report health. Use ✓ (healthy), ! (attention) or ✗ (error or missing).
 
 ## Step 1: Plugin Version
 
@@ -52,7 +46,7 @@ Read `{PROJECT_DIR}/.crabshell/memory/skill-active.json`.
 
 ## Step 6: Verification State
 
-The runner's records decide which checks the current changes need (hooks no longer keep an edited/tested flag).
+The runner's records decide which checks the current changes need.
 - If `{PROJECT_DIR}/.crabshell/verification/run-verify.js` exists, run `node "{PROJECT_DIR}/.crabshell/verification/run-verify.js" --changed --dry-run` and read its JSON:
   - `selected` empty: `✓ Verification: no check waiting for the current changes`
   - otherwise: `! Verification: {selected.length} checks to rerun — {the distinct values of reasons}`
@@ -67,13 +61,13 @@ Read `{PROJECT_DIR}/.crabshell/verification/manifest.json`.
 
 ## Step 8: Directory Structure
 
-Check existence of: memory/, verification/, discussion/, plan/, ticket/, investigation/
+Check that these exist under `.crabshell/`: memory/, verification/, discussion/, plan/, ticket/, investigation/
 
 For each: `✓ .crabshell/{dir}/` or `✗ .crabshell/{dir}/ MISSING`
 
 ## Summary
 
-Count ✓, !, ✗ symbols and report:
+Count the ✓, ! and ✗ marks and report:
 - All ✓: `Everything healthy.`
 - Any !: `{N} item(s) need attention.`
 - Any ✗: `{N} error(s) found.`

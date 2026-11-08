@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.159.1)
+# Crabshell User Manual (v21.160.0)
 
 ## Why Do You Need This?
 
@@ -378,7 +378,7 @@ The plugin automatically manages a rules section in your project's `CLAUDE.md`:
 
 ```markdown
 ## CRITICAL RULES (Core Principles Alignment)
-...plugin-managed rules (SCOPE DEFINITIONS, UNDERSTANDING-FIRST, VERIFICATION-FIRST, etc.)...
+...plugin-managed rules (PRINCIPLES, INTERNAL TASK CONTRACT, VERIFICATION, WORKING RULES, ADDITIONAL RULES)...
 ---Add your project-specific rules below this line---
 
 - Your project rule 1
@@ -393,7 +393,7 @@ The plugin automatically manages a rules section in your project's `CLAUDE.md`:
 
 The plugin uses two injection mechanisms:
 1. **CLAUDE.md sync**: Full rules written to the file on disk (persists across sessions, visible to you)
-2. **COMPRESSED_CHECKLIST**: A condensed reminder injected into Claude's context every prompt via the `UserPromptSubmit` hook (not written to disk, reduces token usage by ~77% vs. full rules)
+2. **COMPRESSED_CHECKLIST**: A condensed reminder injected into Claude's context every prompt via the `UserPromptSubmit` hook (not written to disk; about 75% shorter than the full rules)
 
 ---
 

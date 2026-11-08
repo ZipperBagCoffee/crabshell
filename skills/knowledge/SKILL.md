@@ -5,18 +5,17 @@ description: "Create and manage project-specific knowledge pages in .crabshell/k
 
 # Knowledge Skill
 
-## Purpose
+This skill stores and retrieves verified facts and operational tips discovered through project work.
 
-Store and retrieve verified facts and operational tips discovered through project work. Knowledge pages (K-pages) capture "what we learned" in a retrievable format distinct from CLAUDE.md rules (which are behavioral countermeasures) and D/P/T/I documents (which track work in progress).
+## Rule-overlap check
 
-## Anti-Rule-Duplication Guard
+Before creating a K-page, compare its "What" with these CLAUDE.md RULES keywords: scope, verification, understanding, concise, sycophancy, pressure, guard, hook, bailout, prohibited.
 
-Before creating a K-page, check if the "What" content overlaps with CLAUDE.md RULES keywords: scope, verification, understanding, concise, sycophancy, pressure, guard, hook, bailout, prohibited.
-
-If overlap found, warn:
+On overlap, warn:
 > "This sounds like a behavioral rule. Rules belong in CLAUDE.md, not knowledge/."
 
-Ask user to confirm before proceeding. Facts about *how tools behave* (e.g., "Bash rm triggers permission prompts for .claude/ paths") belong in knowledge/. Rules about *how Claude must behave* belong in CLAUDE.md.
+Then ask the user to confirm before going on.
+Facts about how tools behave belong in knowledge/, for example "Bash rm triggers permission prompts for .claude/ paths". Rules about how Claude must behave belong in CLAUDE.md.
 
 ---
 
@@ -24,8 +23,8 @@ Ask user to confirm before proceeding. Facts about *how tools behave* (e.g., "Ba
 
 ### Step 1: Ensure Infrastructure
 
-Check if `.crabshell/knowledge/` exists. If not, create it.
-Check if `.crabshell/knowledge/INDEX.md` exists. If not, create it with header:
+Create `.crabshell/knowledge/` if it does not exist.
+Create `.crabshell/knowledge/INDEX.md` if it does not exist, with this header:
 
 ```
 # Knowledge Index
@@ -36,21 +35,21 @@ Check if `.crabshell/knowledge/INDEX.md` exists. If not, create it with header:
 
 ### Step 2: Determine Next K{NNN} ID
 
-Scan `.crabshell/knowledge/K*.md` filenames. Find the highest existing number. Next ID = that number + 1, zero-padded to 3 digits. If no K-pages exist, start at K001.
+Scan the `.crabshell/knowledge/K*.md` file names. Next ID = highest number + 1, zero-padded to 3 digits. With no K-pages, start at K001.
 
 ### Step 3: Gather Content from User
 
-Ask the user for the following (or infer from context if the invocation includes enough detail):
+Ask the user for these fields. Infer them from context instead when the invocation gives enough detail.
 
 1. **category**: `fact` (a verified observation about how something behaves) or `tip` (an operational best practice)
-2. **What**: 1-3 sentences describing the fact or tip. Be specific and concrete.
-3. **When**: When is this knowledge relevant? (e.g., "when writing hooks that touch .claude/ paths", "when choosing keywords for CLI user input")
-4. **source**: Which document or observation is this from? (e.g., `I047`, `lesson`, `observation`)
-5. **tags**: 2-4 lowercase tags (e.g., `[cli, bash, permissions]`)
+2. **What**: 1-3 specific, concrete sentences stating the fact or tip.
+3. **When**: when the knowledge applies, for example "when writing hooks that touch .claude/ paths".
+4. **source**: the document or observation it comes from, for example `I047`, `lesson`, `observation`.
+5. **tags**: 2-4 lowercase tags, for example `[cli, bash, permissions]`.
 
 ### Step 4: Create K-Page
 
-Write `.crabshell/knowledge/{K-ID}-{slug}.md` where slug is lowercase-hyphenated title:
+Write `.crabshell/knowledge/{K-ID}-{slug}.md`. The slug is the title in lowercase with hyphens.
 
 ```markdown
 ---
@@ -74,7 +73,7 @@ tags: [{tag1}, {tag2}]
 
 ### Step 5: Update INDEX.md
 
-Append a new row to `.crabshell/knowledge/INDEX.md`:
+Append a row to `.crabshell/knowledge/INDEX.md`:
 
 ```
 | {K-ID} | {title} | {cat} | {tags} | {source} |
@@ -84,16 +83,12 @@ Append a new row to `.crabshell/knowledge/INDEX.md`:
 
 ## Mode B: View Mode — `/knowledge K001`
 
-### Step 1: Read K-Page
-
-Read `.crabshell/knowledge/K{NNN}-*.md` matching the given ID. Display full content.
-
-If the ID does not exist, list all available K-page IDs from INDEX.md.
+Read `.crabshell/knowledge/K{NNN}-*.md` for the given ID and show its full content.
+If the ID does not exist, list all K-page IDs from INDEX.md.
 
 ---
 
 ## Notes
 
-- K-pages are append-only records. Do not edit existing K-pages; create a new one if the fact has changed.
-- K-pages are stored under `.crabshell/` (gitignored, local only).
-- search-docs.js indexes `.crabshell/knowledge/` — K-pages are searchable via `/crabshell:search-docs`.
+- K-pages are append-only. Never edit an existing K-page; create a new one when the fact has changed.
+- `/crabshell:search-docs` searches K-pages.

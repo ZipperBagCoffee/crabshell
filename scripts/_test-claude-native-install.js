@@ -8,6 +8,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const { validateSessionStartOutput } = require('./core/memory-context');
 const { STORAGE_ROOT, MEMORY_DIR, SESSION_STATE_DIR } = require('./constants');
+const { COMPRESSED_CHECKLIST } = require('./shared-context');
 
 const sourceRoot = path.resolve(__dirname, '..');
 const testRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'crabshell claude install '));
@@ -135,7 +136,11 @@ try {
     assert.match(serialized, /UserPromptSubmit/);
     assert.match(serialized, /Crabshell Turn Contract/);
     assert.match(serialized, /Rules Quick-Check/);
-    assert.match(serialized, /audit each claim against a tool result/i);
+    // The longest quote-free part of the checklist's first rule line, taken from the source,
+    // so JSON escaping at any nesting depth cannot hide it.
+    const firstRule = COMPRESSED_CHECKLIST.split('\n').find(line => line.startsWith('- ')) || '';
+    const fragment = firstRule.split(/["\\]/).sort((a, b) => b.length - a.length)[0];
+    assert.ok(fragment.length > 20 && serialized.includes(fragment), 'the first Rules Quick-Check line reaches the model');
     // Retired in v21.113.0 (I083 R2/R8): per-response 3-field block and its contract text
     assert.doesNotMatch(serialized, /Mandatory Response Ending/);
     assert.doesNotMatch(serialized, /\[의도\]:/);

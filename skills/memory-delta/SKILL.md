@@ -6,55 +6,34 @@ user-invocable: false
 
 ## Scope and prerequisites
 
-Run this when the current hook's `[CRABSHELL_DELTA]` notice appears (not a trigger
-quoted in historical conversation), on every kind of turn. The notice comes once per
-turn and says when: before other work on a work request (or when the previous turn's
-save was skipped); on any other turn, answer the user first and run this in the same
-response. Installing Crabshell is the user's authorization for this save and for the
-`delta-summarizer` agents it launches; it needs no request in the current message.
-Skipping it drops the session from the memory the next session loads: v21.123.0 made
-this step optional and the logbook got no entries for most of a day.
+Run this when the current hook prints `[CRABSHELL_DELTA]`, on every kind of turn. A copy quoted from earlier conversation is not a trigger.
+The notice comes once per turn and says when. On a work request, or when the previous turn skipped the save, run this before other work. Otherwise answer the user first, then run this in the same response.
+Installing Crabshell is the user's authorization for this save and its `delta-summarizer` workers; the current message need not ask for it.
+Skipping the save drops this session from the memory the next session loads.
 
-Resolve `{PROJECT_DIR}` from the current Project Root Anchor (otherwise cwd) and
-`{PLUGIN_ROOT}` from the installed plugin. Use the host's Node executable (`node`
-below), not a fixed Windows installation path.
+`{PROJECT_DIR}`: the current Project Root Anchor path, else the current working directory. `{PLUGIN_ROOT}`: this skill's base directory minus `/skills/memory-delta`. Use the host's `node`, not a fixed Windows path.
 
-## Execution
+## Steps
 
 1. Prepare the input:
    `node "{PLUGIN_ROOT}/scripts/append-memory.js" --prepare-delta --project-dir="{PROJECT_DIR}"`
-   Read the returned JSON. `{pending:false}` means there is nothing to save; stop.
-   Otherwise retain `jobId`, `inputFile`, `summaryFile`, and `parts` exactly.
-   Preparation moves the current queue to a fixed input; newly extracted content stays
-   separate. `reused:true` means this job is still open: if you already launched its
-   summarizers in this session and are waiting for their results, do not launch them
-   again. Otherwise (a new session, or they failed) continue with step 2.
-2. Launch one `delta-summarizer` per entry of `parts`, all in one message, in the
-   background (pass `run_in_background: true` where the Agent tool offers it). Give each
-   the exact `inputFile` path and only its range: "Read ONLY lines {offset} through
+   Read the returned JSON. `{pending:false}` means nothing to save; stop. Otherwise keep `jobId`, `inputFile`, `summaryFile` and `parts` exactly.
+   `reused:true` means an earlier attempt left this job open, possibly in a turn or session that ended before results arrived. If this session launched its workers and still waits on them, do not relaunch. Otherwise go on; this covers a new session and failed workers.
+2. Launch one `delta-summarizer` per entry of `parts`, all in one message, in the background. Pass `run_in_background: true` when the Agent tool offers it.
+   Give each worker the exact `inputFile` path and only its range: "Read ONLY lines {offset} through
    {offset + limit - 1} of {inputFile} (Read with offset and limit); read no other file
-   or range; summarize in your existing format." Continue the user's work; the results
-   arrive as notifications. An empty result or `ERROR:` stops this attempt; the prepared
-   input stays for a retry.
-3. When every part has returned, write one summary body to the returned `summaryFile`:
-   the parts in order, duplicate lines merged, anything this conversation shows to be
-   wrong corrected. Do not add a timestamp header; the finalizer supplies it.
+   or range; summarize in your existing format."
+   Continue the user's work; results arrive as notifications. An empty result or `ERROR:` ends this attempt; the input stays prepared for a retry.
+3. When every part has returned, write one summary body to the returned `summaryFile`: parts in order, duplicate lines merged, anything this conversation shows wrong corrected. Add no timestamp header; finalize adds it.
 4. Finalize with one command:
    `node "{PLUGIN_ROOT}/scripts/append-memory.js" --finalize-delta --job-id="{jobId}" --summary-file="{summaryFile}" --project-dir="{PROJECT_DIR}"`
-   Require exit 0 and JSON `completed:true`. This command appends the summary,
-   advances the input timestamp, updates flags, and removes its own temporary files.
-   `newInputPending:true` means newer input waits for the next notice.
-   Report `cleanupRemaining` if nonempty; saved content and cleanup are distinct.
+   Require exit 0 and JSON `completed:true`. It appends the summary, advances the input timestamp, updates flags and removes its own temporary files.
+   `newInputPending:true`: newer input waits for the next notice. Report `cleanupRemaining` if nonempty; saved content and cleanup are separate results.
 
-If the turn or session ends before the results arrive, the job stays prepared; the next
-notice re-enters step 1 with `reused:true` and the same input.
+## Failure
 
-## Retry and failure
-
-If the Skill or Agent tool is unavailable or denied, leave the input prepared and tell
-the user the memory was not saved. Keep the input and metadata on any error. Retry
-preparation to recover the active job; it returns the same fixed input and a fresh
-summary path. Retrying finalization for the current completed job does not append it
-again. Never run legacy `mark-appended`, `mark-updated`, or `cleanup` on a prepared
-job, and never delete `delta_temp.txt` manually: it may contain newer input. A partial
-disk write or lost storage is not proof of successful saving; report the actual failure.
+- Skill or Agent tool unavailable or denied: leave the input prepared and tell the user memory was not saved.
+- On any error, keep the input and its metadata. Rerun step 1 to recover the open job; it returns the same input and a new summary path.
+- Rerunning finalize for the current completed job does not append it again.
+- Never run legacy `mark-appended`, `mark-updated` or `cleanup` on a prepared job. Never delete `delta_temp.txt` by hand.
+- A partial disk write or lost storage is not proof of a successful save; report the actual failure.

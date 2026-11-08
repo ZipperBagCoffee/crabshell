@@ -3,62 +3,47 @@ name: setup-project
 description: "Auto-generates project.md from codebase analysis (package.json, README.md, git remote). Creates a 2-3 sentence project concept that is injected every prompt for drift prevention. Use when project.md doesn't exist or needs updating. Invoke with /setup-project."
 ---
 
-## Model Routing
+## Paths and models
 
-| Tier | Model | When |
-|------|-------|------|
-| T1 | Opus | Reviewing generated concept quality, judgment on whether content matches project intent |
-| T2 | Sonnet | Scanning package.json/README.md, writing project.md, verifying file existence and length |
-| T3 | Haiku | Not used in this skill |
-
-## Project Root Resolution
-
-**IMPORTANT:** Get the project root from your context's "Project Root Anchor" section.
-Look for: `Your ACTUAL project root is: <path>`
-
-Use this value as `{PROJECT_DIR}` in all commands below.
-If not available in context, use your current working directory.
+- `{NODE_PATH}`: the absolute path in your context's "Node.js Path" section; without one, use `node`.
+- `{PROJECT_DIR}`: the path after `Project root:` in the Project Root Anchor section; without one, use the current working directory.
+- Use Opus to review the generated concept's quality and judge whether it matches the project's intent. Use Sonnet to scan package.json and README.md, write project.md, and verify its existence and length. Haiku is not used.
 
 # Setup Project
 
-Generate `.crabshell/project.md` — a 2-3 sentence project concept injected every prompt by inject-rules.js for drift prevention.
-
-## Format Constraint
-- Max 10 lines, 500 characters total (inject-rules.js truncation)
-- Content: What is this project? What does it do? What tech stack?
-- Example: "Crabshell is a Claude Code plugin that auto-saves session context. Provides hierarchical memory rotation, rules injection, and integrated search. Built with Node.js, runs as hooks."
+Write `.crabshell/project.md`: a 2-3 sentence project concept that inject-rules.js injects into every prompt.
+It holds at most 10 lines and 500 characters. It says what the project is, what it does and its tech stack.
 
 ## Steps
 
-### Step 1: Check existing project.md
-Read `{PROJECT_DIR}/.crabshell/project.md`. If exists, show current content and ask: "Update or keep?"
+### Step 1: Check the existing file
+Read `{PROJECT_DIR}/.crabshell/project.md`. If it exists, show its content and ask: "Update or keep?"
 
-### Step 2: Scan project sources
-Read available sources in order of priority:
+### Step 2: Scan sources
+Read the available sources in priority order:
 1. `package.json` or `.claude-plugin/plugin.json` — name + description fields
 2. `README.md` — first non-empty paragraph after title
 3. Git remote URL — extract repo name
 4. Top-level directory names — detect framework/stack
 
-### Step 3: Generate project concept
-From extracted info, compose 2-3 sentences (under 500 chars total):
+### Step 3: Write the concept
+From the extracted info, compose 2-3 sentences, under 500 characters in total:
 - Line 1: "{name} is a {type} that {purpose}."
 - Line 2: "{key features or tech stack}."
 - Line 3 (optional): "{additional context}."
 
-### Step 4: Present to user
-Show the generated text. User approves, edits, or rejects.
+### Step 4: Show it
+Show the text. The user approves, edits or rejects it.
 
-### Step 5: Write project.md
-Save approved content to `{PROJECT_DIR}/.crabshell/project.md`.
-Use the Write tool to create `{PROJECT_DIR}/.crabshell/project.md` with the approved content.
-If the directory doesn't exist, create it first:
+### Step 5: Save it
+Write the approved content to `{PROJECT_DIR}/.crabshell/project.md` with the Write tool.
+If the directory does not exist, create it first:
 ```bash
 "{NODE_PATH}" -e "require('fs').mkdirSync('{PROJECT_DIR}/.crabshell/memory',{recursive:true})"
 ```
 
-### Step 6: Verify
-Read back the file and confirm inject-rules.js would pick it up:
-- File exists at correct path
-- Content is 10 lines or fewer
-- Total length under 500 chars
+### Step 6: Check it
+Read the file back and confirm:
+- It exists at the path above.
+- It has 10 lines or fewer.
+- It is under 500 characters.

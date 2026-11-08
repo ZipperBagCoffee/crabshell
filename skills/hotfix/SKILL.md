@@ -7,20 +7,20 @@ description: "One-pass work goes through a discussion whose Plan the user confir
 
 ## Purpose
 
-Work the parent does in one pass — one-line fixes up to small multi-file changes — goes through a discussion (D) with one ticket, the same D → T workflow as everything else: plan first, then build. Existing H documents under `.crabshell/hotfix/` stay readable and searchable; new H documents are not created.
+Work the parent does in one pass, from a one-line fix to a small multi-file change, goes through a discussion (D) with one ticket: plan first, then build. Existing H documents under `.crabshell/hotfix/` stay readable and searchable. Do not create new H documents.
 
 ---
 
 ## Mode A: New one-pass work — `/hotfix "description"`
 
-Do not create an H document, and do not change files before step 2:
+Create no H document, and change no files before step 2.
 
-1. `/discussing "description"` — Intent: what was broken or requested (the problem); Context: where it was found; `## Plan`: the fix (file → what changes), the rejected alternative if any, the risk and how it will be checked. Show the plan to the user and record their confirmation (for a one-line fix, one sentence is enough).
-2. `/ticketing D{NNN} "description"` — one ticket under that discussion, with the fix in `## Implementation Details`.
-3. Apply the change, verify it directly (prediction vs observed command output), and fill Execution Results, Verification Results, Intent Fidelity (the fix against the problem and the plan) and Final Verification. Set the ticket to `verified` in the ticket INDEX and the discussion to `concluded` (a status-change log entry through `/discussing` plus the discussion INDEX).
-4. Report the discussion and ticket IDs. Document-first: the document writes are the primary output.
+1. `/discussing "description"`. Intent: the problem, what was broken or requested. Context: where it was found. `## Plan`: the fix (file → what changes), any rejected alternative, the risk and how it will be checked. Show the plan to the user and record their confirmation. For a one-line fix, one sentence is enough.
+2. `/ticketing D{NNN} "description"`: one ticket under that discussion, with the fix in `## Implementation Details`.
+3. Apply the change and verify it directly: prediction against observed command output. Fill Execution Results, Verification Results, Intent Fidelity and Final Verification; Intent Fidelity compares the fix with the problem and the plan. Set the ticket to `verified` in the ticket INDEX. Set the discussion to `concluded` with a status-change log entry through `/discussing` and in the discussion INDEX.
+4. Write the documents first, then report the discussion and ticket IDs.
 
-The parent owns direct verification; no agents or review cycle are needed. If evidence is expected to change the plan across iterations, use regressing instead.
+The parent owns direct verification; no workers or review cycle are needed. When evidence is expected to change the plan across iterations, use regressing instead.
 
 ---
 
@@ -46,6 +46,4 @@ Append a new log entry under the `## Log` section:
 
 ## Design Principles
 
-- **One workflow** — one-pass work uses D → T like everything else; the lightweight part is one ticket and no review cycle.
 - **Existing H documents** keep their four sections (Problem, Fix, Verification, Log) and accept log entries through Mode B.
-- **Document-first** — write to the documents before reporting in conversation.

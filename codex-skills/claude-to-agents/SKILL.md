@@ -11,7 +11,8 @@ Run:
 node scripts/claude-to-agents.js
 ```
 
-This reads `CLAUDE.md` and writes `AGENTS.md`. It preserves project-specific rules below the Crabshell marker and rewrites obvious Claude-specific terms to Codex-oriented wording. If `AGENTS.md` already exists, the script refuses to overwrite it unless `--force` is provided.
+It reads `CLAUDE.md` and writes `AGENTS.md`. It keeps the project-specific rules below the Crabshell marker and rewrites obvious Claude-specific terms for Codex.
+It refuses to overwrite an existing `AGENTS.md` unless `--force` is given.
 
 Use a dry run before overwriting if requested:
 
@@ -19,7 +20,7 @@ Use a dry run before overwriting if requested:
 node scripts/claude-to-agents.js --dry-run
 ```
 
-Overwrite an existing target only when that is intentional:
+Overwrite an existing target only on purpose:
 
 ```bash
 node scripts/claude-to-agents.js --force

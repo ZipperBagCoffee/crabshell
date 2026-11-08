@@ -3,36 +3,22 @@ name: save-memory
 description: "Manually saves the current session context to memory files on demand. Use when explicitly asked to save progress, or when important decisions need to be preserved immediately rather than waiting for auto-save. Invoke with /save-memory. Not for routine saves — memory-autosave handles those automatically via triggers."
 ---
 
-## Project Root Resolution
+## Paths
 
-**IMPORTANT:** Get the project root from your context's "Project Root Anchor" section.
-Look for: `Your ACTUAL project root is: <path>`
-
-Use this value as `{PROJECT_DIR}` in all commands below.
-If not available in context, use your current working directory.
+- `{NODE_PATH}`: the absolute path in your context's "Node.js Path" section; without one, use `node`.
+- `{SCRIPTS_PATH}`: this skill's base directory without `/skills/save-memory`, plus `/scripts/`. The scripts are in the plugin, not the project.
+- `{PROJECT_DIR}`: the path after `Project root:` in the Project Root Anchor section; without one, use the current working directory.
 
 # Save Memory
 
-Force immediate save of session memory.
+Usage: `/crabshell:save-memory`
 
-## Usage
-
-```
-/crabshell:save-memory
-```
-
-## Actions
-
-1. **Save to logbook.md** through append-memory.js — it takes the memory locks and writes the `## UTC (local …)` header, so never append to logbook.md directly:
-   - Use the Write tool to save the session summary to `{PROJECT_DIR}/.crabshell/memory/manual-summary-{YYYYMMDD-HHMMSS}.txt` (a new name each time, so concurrent sessions do not overwrite each other).
-   - Run (the scripts folder is the plugin's `scripts/`, next to this skill's `skills/` folder):
+1. Write the session summary with the Write tool to `{PROJECT_DIR}/.crabshell/memory/manual-summary-{YYYYMMDD-HHMMSS}.txt`. Use a new name each time.
+2. Append it with append-memory.js:
    ```bash
    "{NODE_PATH}" "{SCRIPTS_PATH}/append-memory.js" --project-dir="{PROJECT_DIR}" --summary-file="{PROJECT_DIR}/.crabshell/memory/manual-summary-{YYYYMMDD-HHMMSS}.txt"
    ```
-   - If it fails with `A prepared delta job exists`, run the memory-delta skill first (it finalizes that pending summary), then run the command again.
+   Never append to logbook.md directly; append-memory.js takes the memory locks and writes the `## UTC (local …)` header.
+3. If it fails with `A prepared delta job exists`, run the memory-delta skill first, then run the command again.
 
-## Notes
-
-- Uses same format as auto-save
-- Does NOT reset counter (auto-save will still trigger normally)
-- Use when you want to checkpoint progress mid-session
+Use it to checkpoint progress mid-session. This save does not reset the counter; auto-save still triggers normally.

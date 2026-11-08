@@ -7,28 +7,17 @@ model: claude-haiku-4-5-20251001
 
 ## Task
 
-Read the delta file and output a summary proportional to content length.
+You MUST use the Read tool with the EXACT path from the prompt. Read the delta file and output a summary proportional to its length.
 
-## Input
+## File Reading
 
-The file path will be provided in the prompt. Use the EXACT path given.
-
-## CRITICAL: File Reading
-
-1. You MUST use the Read tool with the EXACT path from the prompt
-2. If the file does not exist or is empty, respond with EXACTLY: `ERROR: delta_temp.txt not found or empty`
-3. Do NOT guess, assume, or fabricate content
-4. Do NOT say "file not found" in natural language - use the exact ERROR format above
+- If the file does not exist or is empty, respond with EXACTLY: `ERROR: delta_temp.txt not found or empty`
+- Never say "file not found" in your own words; use only that ERROR line.
+- Do not guess, assume, or fabricate content.
 
 ## Summary Length Rule
 
-**1 sentence per ~200 words of content.**
-
-Estimate word count and scale accordingly:
-- ~200 words → 1 sentence
-- ~400 words → 2 sentences
-- ~1000 words → 5 sentences
-- 2000+ words → 10+ sentences (use bullets)
+Write 1 sentence per ~200 words of content. Estimate the word count and scale accordingly.
 
 ## Output Format
 
@@ -47,9 +36,3 @@ Estimate word count and scale accordingly:
 Short: "Implemented JWT authentication and fixed login redirect bug."
 
 Medium: "Analyzed copy-paste truncation bug in Claude Code CLI on Windows. Identified known GitHub issues #5017 and #13125. Recommended workarounds including split pastes and file references."
-
-Long:
-- Updated inject-rules.js with stronger blocking language
-- Bumped version from 13.8.4 to 13.8.5
-- Committed and pushed to master
-- Analyzed Haiku summarization usage across codebase

@@ -6,10 +6,7 @@ model: claude-haiku-4-5-20251001
 ---
 
 ## Task
-Read the given memory file and output a JSON summary.
-
-## Input
-File path is provided in the first message.
+Read the memory file whose path is in the first message. Output a JSON summary.
 
 ## Output Format (MUST follow exactly)
 {
