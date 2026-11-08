@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.155.0)
+# Crabshell Architecture (v21.156.0)
 
 ## Overview
 
@@ -183,7 +183,7 @@ Codex marketplace -> installed cache -> .codex-plugin/plugin.json
 
 Several host sessions may work in one project. State is split by what it describes:
 
-- Per session: the save counter, L1 read position, document skill flag, turn record (rule block added, latest user intent; v21.154.0) and doc-watchdog edit record (v21.154.0) (`memory/session-state/<sid8>/`, sid8 = first 8 characters of session_id, the L1 file key), the delta watermark (`memory-index.json` `sessionDelta[sid8]`), and the completion-control entry (`completion-control.json` `sessions[session_id]`, full id because JSON keys need no file-name form and Codex ids share time-ordered prefixes). Payloads without a session id use the legacy project-wide fields or the `_` entry.
+- Per session: the save counter, L1 read position, document skill flag, turn record (rule block added, latest user intent; v21.154.0), doc-watchdog edit record (v21.154.0) and memory-notice record (notices given answer-first; v21.156.0) (`memory/session-state/<sid8>/`, sid8 = first 8 characters of session_id, the L1 file key), the delta watermark (`memory-index.json` `sessionDelta[sid8]`), and the completion-control entry (`completion-control.json` `sessions[session_id]`, full id because JSON keys need no file-name form and Codex ids share time-ordered prefixes). Payloads without a session id use the legacy project-wide fields or the `_` entry.
 - Per working tree: the check record (`verification-state.json`) — since v21.153.0 only declared check runs (a start and its result per check); edits write nothing and nothing blocks a commit. Whether evidence is current is the project's content identity as the runner sees it (`core/project-state.js` over the runner's snapshot). A manifest `tools` command is a required check; a single entry is evidence only for itself; package.json is not read.
 - Per workflow: `regressing-state.json` records the owning session; the session that runs the workflow's next skill takes ownership.
 
@@ -244,7 +244,7 @@ Claude `PostToolUseFailure` is wired to both verification-state and parent-evide
        │   └─> If todo/in-progress tickets: Inject warning reminder
        ├─> Check for emergency stop keywords → replace entire context
        └─> Output indicator: [rules injected], [rules + rotation pending], [REGRESSING ACTIVE]
-           (Claude pending notices are directives: run memory-delta / memory-rotate now, summarizers in the background; a denied tool leaves the input pending and is reported. Codex emits a pending notice without invoking missing skills.)
+           (Claude pending notices are directives, once per turn on its first prompt: run memory-delta / memory-rotate before other work on a work request or after a skipped save, otherwise after the answer in the same response (v21.156.0); summarizers in the background; a denied tool leaves the input pending and is reported. Codex emits a pending notice without invoking missing skills.)
 
 3. PreToolUse (Bash|Write|Edit|WebFetch|WebSearch) — one process: adapters/claude/pre-tool-use.js (v21.125.0)
    Each guard loads and runs inside its own try/catch (a failing guard is skipped, the rest decide).
@@ -358,7 +358,7 @@ Each document type has an INDEX.md for tracking. Status cascades upward on compl
 | search-memory | L1/L2/L3 search (--deep for L1 transcripts) |
 | clear-memory | Cleanup memory files |
 | memory-autosave | Auto-trigger memory save at counter threshold |
-| memory-delta | Mandatory on a pending notice: prepare fixed input, one background summarizer per part, one finalize command |
+| memory-delta | Mandatory on a pending notice (once per turn; first on a work request or after a skipped save, otherwise after the answer): prepare fixed input, one background summarizer per part, one finalize command |
 | memory-rotate | Auto-trigger L3 summary generation after rotation |
 
 ### Agent Structure
@@ -567,6 +567,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.156.0 | Memory notices come once per turn and let a question be answered first: the pending-save and archive-summary notices go on a turn's first prompt only (queued messages and task reports of the same turn no longer repeat them); on a non-execution turn Claude answers first and runs the save in the same response, and a save skipped that way comes back on the next turn before other work; execution requests still save first; the notices no longer depend on the injection frequency and survive the hook's error fallback (`core/memory-notice.js`). |
 | 21.155.0 | CLAUDE.md follows the installed rules: its managed block is compared at every Claude session start and on every execution prompt and rewritten only when it differs (since 21.107.0 it was rewritten only on a session's first execution prompt, so updates could leave old rules in place); session start replaces only an existing marked block and creates nothing; the new text applies from the next session (Claude Code reads CLAUDE.md before session-start hooks run); a plugin's own source checkout is not rewritten by an installed copy at another path, and this repository's CLAUDE.md must match the source RULES (`_test-rules-and-injection.js` R10/R11). |
 | 21.154.0 | Hooks know the turn (Claude `prompt_id`, Codex `turn_id`): the per-turn rule block is added once per turn even when messages queue up; text the user did not write (another session's message, task reports, pasted text next to the user's own words) issues no instructions and cannot authorize work; after a request, a later question or reprimand ends the turn without a "continue"; the ticket-update reminder uses only this session's edits and the unfinished tickets in the ticket INDEX. |
 | 21.153.0 | Checks run only when what they read changed. Nothing blocks a commit, writing a Final Verification runs nothing, and comparing a changed test with HEAD is opt-in (`--fail-before`). The runner (now a launcher and modules) reruns a check only when its fingerprint — entry run fields, program, decision code (comment lines excluded), platform, input contents — is not among its passes; inputs are traced (Node), declared (`inputs`) or unknown (whole project, that check only); `--changed` runs the last failure first, then new, then quickest, stops at a new failure, retries a check that fails on inputs it passed with (`Flaky:`), runs `slow` checks only with `--slow` or at release, and `--explain` prints why each check would run. Hooks know shell calls and file writes by their shape, count only manifest-declared commands (`wrappers`, environment prefixes), answer a hand rerun of a passed check from its record (`CRABSHELL_RERUN=1` runs it anyway), hint when an entry needs `inputs`/`slow`/`outputs`, share the runner's project view (git-ignored folders skipped: a 20,000-file folder cost each hook call a second, now under 2 ms) and stay fail-open without the runner's modules. Each session start keeps a project's runner copy current. Plans carry five design lines before their first ticket, and post-build verification is one check run after the last edit. RULES are shorter (2,080 → 1,792 words) with Skills and Code lines; the per-prompt checklist asks "Is this your best?". After updating, every non-slow check runs once; a package.json `test` check moves to manifest `tools`. |

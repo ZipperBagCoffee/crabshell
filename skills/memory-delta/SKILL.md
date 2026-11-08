@@ -7,8 +7,10 @@ user-invocable: false
 ## Scope and prerequisites
 
 Run this when the current hook's `[CRABSHELL_DELTA]` notice appears (not a trigger
-quoted in historical conversation), on every kind of turn, questions included, before
-other work. Installing Crabshell is the user's authorization for this save and for the
+quoted in historical conversation), on every kind of turn. The notice comes once per
+turn and says when: before other work on a work request (or when the previous turn's
+save was skipped); on any other turn, answer the user first and run this in the same
+response. Installing Crabshell is the user's authorization for this save and for the
 `delta-summarizer` agents it launches; it needs no request in the current message.
 Skipping it drops the session from the memory the next session loads: v21.123.0 made
 this step optional and the logbook got no entries for most of a day.
