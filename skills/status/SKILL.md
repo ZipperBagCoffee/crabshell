@@ -3,7 +3,7 @@ name: status
 description: "Runs a healthcheck of the Crabshell plugin state. Reports memory, regressing, verification, counter values, and plugin version with ✓/!/✗ indicators. Invoke with /status."
 ---
 
-`{PROJECT_DIR}` is the path after `Project root:` in the Project Root Anchor section; without one, use the current working directory.
+`{PROJECT_DIR}` is the path after `Project root:` in the Project Root Anchor section; without one, use the current working directory. `{PLUGIN_ROOT}` is this skill's base directory without `/skills/status`.
 
 # Crabshell Status Healthcheck
 
@@ -11,7 +11,7 @@ Read the plugin state files and report health. Use ✓ (healthy), ! (attention) 
 
 ## Step 1: Plugin Version
 
-Read `{PROJECT_DIR}/.claude-plugin/plugin.json`. Report: `✓ Plugin: crabshell v{version}`
+Read `{PLUGIN_ROOT}/.claude-plugin/plugin.json` (the installed plugin, not the project). Report: `✓ Plugin: crabshell v{version}`
 
 If missing: `✗ Plugin: .claude-plugin/plugin.json not found`
 

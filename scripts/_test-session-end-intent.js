@@ -146,6 +146,43 @@ try {
     assert.strictEqual(JSON.parse(fs.readFileSync(path.join(memoryRoot, 'counter.json'), 'utf8')).counter, 0);
   });
 
+  test('SessionEnd after an interval save refines only the new part, and the L1 equals a full refine', () => {
+    const { sessionKey } = require('./core/session-state');
+    const { refineRawSync } = require('./refine-raw');
+    const root = project('incremental project');
+    const sid = 'incremental-session-0001';
+    const reply = text => ({ type: 'assistant', timestamp: new Date().toISOString(), message: { role: 'assistant', content: [{ type: 'text', text }] } });
+    const entries = [user('Implement this change now.'), tool('Write')];
+    for (let i = 0; i < 30; i += 1) entries.push(user(`step ${i}`), reply(`done ${i}`));
+    const file = transcript('incremental', entries);
+    // Interval save: the session's counter is one short of the default interval.
+    const stateDir = path.join(root, '.crabshell', 'memory', 'session-state', sessionKey(sid));
+    fs.mkdirSync(stateDir, { recursive: true });
+    fs.writeFileSync(path.join(stateDir, 'counter.json'), JSON.stringify({ counter: 14 }));
+    const hookData = { hook_event_name: 'PostToolUse', session_id: sid, transcript_path: file, tool_name: 'Write', cwd: root };
+    const check = spawnSync(process.execPath, [counterPath, 'check', `--project-dir=${root}`], {
+      cwd: root, encoding: 'utf8', timeout: 30000, windowsHide: true,
+      env: { ...process.env, CLAUDE_PROJECT_DIR: root, HOOK_DATA: JSON.stringify(hookData) },
+    });
+    assert.strictEqual(check.status, 0, check.stderr);
+    const sessionsDir = path.join(root, '.crabshell', 'memory', 'sessions');
+    const l1Of = () => fs.readdirSync(sessionsDir).filter(name => name.endsWith('.l1.jsonl') && name.includes(`_${sessionKey(sid)}`));
+    assert.strictEqual(l1Of().length, 1, 'the interval save wrote the session L1');
+    const cursorAfterCheck = JSON.parse(fs.readFileSync(path.join(stateDir, 'l1-cursor.json'), 'utf8')).offset;
+
+    const more = [];
+    for (let i = 30; i < 45; i += 1) more.push(user(`step ${i}`), reply(`done ${i}`));
+    fs.appendFileSync(file, more.map(entry => JSON.stringify(entry)).join('\n') + '\n');
+    const result = runFinal(root, file, sid);
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    assert.strictEqual(l1Of().length, 1, 'SessionEnd appended to the same L1, no second file');
+    assert.ok(JSON.parse(fs.readFileSync(path.join(stateDir, 'l1-cursor.json'), 'utf8')).offset > cursorAfterCheck);
+
+    const whole = path.join(tempRoot, 'whole.l1.jsonl');
+    refineRawSync(file, whole);
+    assert.strictEqual(fs.readFileSync(path.join(sessionsDir, l1Of()[0]), 'utf8'), fs.readFileSync(whole, 'utf8'));
+  });
+
   test('forced-write mutation is detected by the independent snapshot', () => {
     const root = project('forced write mutation project');
     const before = snapshot(root);

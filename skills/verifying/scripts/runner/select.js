@@ -7,7 +7,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const { toPosix, globRegex, resolveInside } = require('./manifest');
+const { toPosix, globRegex, resolveInside, validateEntry } = require('./manifest');
 const { entryFingerprint, programIdentity, runsOnRunnerNode } = require('./fingerprint');
 const { insideRoot, contractPaths } = require('./trace');
 const { mapPath, exemptPath } = require('./store');
@@ -389,9 +389,23 @@ function prepareItems(entries, records, ctx) {
   if (files.size) itemFacts(ctx, [...files]);
 }
 
+// Whether another check's pass may stand for this one (its `coveredBy`): it names a covering
+// check, it is not manual and was found, its record holds a run that did not fail and saw
+// its inputs, and its contract is one its own run would accept — covering must not hide an
+// invalid contract. The runner (main.js) and the hooks' view (project-state.js) share it.
+function coverable(entry, record) {
+  if (!entry || typeof entry.coveredBy !== 'string' || entry.type === 'manual' || entry.discoveryError) return false;
+  if (!record || record.lastFailedAt || !Array.isArray(record.files) || record.files.length === 0) return false;
+  try { validateEntry(entry); } catch (_) { return false; }
+  return true;
+}
+
 // For each runnable entry: run (with the reason) or reuse its pass. gates: the gate entries
 // (default: those among `entries`; a caller judging one check passes them all).
-function planRun({ entries, records, olderRecords, ctx, reuse, gates = null }) {
+// everyTime: false judges a reuse:false or always check like any other — by whether its
+// last passes hold the current inputs — for a caller that asks what has not passed on the
+// current files rather than what a run would run (a hook before a commit, D155 P3).
+function planRun({ entries, records, olderRecords, ctx, reuse, gates = null, everyTime = true }) {
   const plan = { selected: [], reasons: {}, reused: [], sets: new Map(), fingerprints: new Map(), unknownInputs: [],
     cases: new Map(), gatesPending: [], awaitingGate: [] };
   prepareItems(entries, records, ctx);
@@ -403,8 +417,8 @@ function planRun({ entries, records, olderRecords, ctx, reuse, gates = null }) {
     }
     let reason = null;
     if (entry.discoveryError) reason = 'discovery found no file';
-    else if (entry.reuse === false) reason = 'reuse:false';
-    else if (entry.always === true) reason = 'always';
+    else if (everyTime && entry.reuse === false) reason = 'reuse:false';
+    else if (everyTime && entry.always === true) reason = 'always';
     else if (!reuse) reason = 'all checks requested (--no-reuse)';
     else if (!record) reason = olderRecords ? 'record from an older runner' : 'new check';
     else if (record.lastFailedAt) reason = 'failed in the last run';
@@ -513,5 +527,5 @@ module.exports = {
   covers, patternList, inputPatterns, matchesInput, inputsCover, crabshellState, exclusion, filesMatching, argumentFiles,
   declarationKey, medianDuration, isSlow, DEFAULT_SLOW_AFTER_SECONDS,
   recordKind, inputsUnknown, reportScope, scopeKey, inScope, keyIdentity, knownItems, refreshedItemHashes, itemFacts, casesToRun, reportedInputs,
-  inputSet, fingerprintOf, changeReason, DECISION_CHANGED, reasonGroup, planRun, withoutRunnerFiles, gitChangedFiles, gitVisibleFiles, currentHead,
+  inputSet, fingerprintOf, changeReason, DECISION_CHANGED, reasonGroup, coverable, planRun, withoutRunnerFiles, gitChangedFiles, gitVisibleFiles, currentHead,
 };

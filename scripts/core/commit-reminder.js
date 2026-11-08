@@ -1,10 +1,11 @@
 'use strict';
 // Check once, before the commit (D151_T002): the moment "everything is fixed" is the
-// commit. When a commit is about to run and the files in the working tree would make a
-// routine check run select checks (they changed since those checks last passed), one
-// line says so. It never blocks — commits are not gated (D143) — it is shown once for the
-// same project content, and it is silent when nothing would run (a change no check reads,
-// no manifest) and on any failure.
+// commit. When a commit is about to run and checks of a routine check run have not passed
+// on the files in the working tree (they changed since those checks last passed; a check
+// run every time, or one covered by another, counts by the pass the runner recorded —
+// D155 P3), one line says so. It never blocks — commits are not gated (D143) — it is
+// shown once for the same project content, and it is silent when nothing is pending (a
+// change no check reads, no manifest) and on any failure.
 
 const path = require('path');
 const { STORAGE_ROOT, MEMORY_DIR } = require('../constants');

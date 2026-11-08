@@ -5,7 +5,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const { commandObservation, isTestExecution } = require('./core/command-observation');
+const { commandObservation, isTestExecution, isGitCommit } = require('./core/command-observation');
 const { copyRunner } = require('../skills/verifying/scripts/runner/install');
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'crabshell-command-'));
@@ -150,5 +150,44 @@ test('changing manifest input changes recognized commands without reader or expe
 test('compound commands cannot hide a failed check behind a successful last process', () => {
   assert.strictEqual(isTestExecution('node "second unrelated name.js"; echo PASS', root), false);
   assert.strictEqual(isTestExecution('echo "node .crabshell/verification/run-verify.js"', root), false);
+});
+// D155: the commit reminder runs on a `git commit` the shell runs, not on those words as data
+// (a quoted argument, a heredoc body, a here-string, a comment).
+test('a git commit is found among the commands, not inside quotes, heredoc bodies or comments', () => {
+  const commits = [
+    'git commit -m "msg"',
+    "rtk git commit -F - <<'EOF'\nfix: x\n\nbody that names git commit\nEOF",
+    'cd x && git commit',
+    'git add .\ngit commit -m "second line"',
+    'git commit -m "$(cat <<\'EOF\'\nfix: "quoted" git commit\nEOF\n)"',
+    'echo "$(git commit -m x)"',
+    'cat <<EOF\nnot this git commit\nEOF\ngit commit -m after',
+    // A shell's command argument is commands again: any path, .exe or not, combined flags.
+    'bash -c "git commit -m x"',
+    'powershell -Command "git commit -m x"',
+    'cmd /c "git commit -m x"',
+    "/usr/bin/bash -lc 'git add . && git commit -m x'",
+    'C:\\Windows\\System32\\cmd.exe /C "git commit -m x"',
+    'pwsh.exe -NoProfile -c "git commit -m \\"x\\""',
+    '& "C:\\Program Files\\Git\\bin\\bash.exe" -c "git commit -m x"',
+    '"/usr/bin/bash" -lc "git commit -m x"',
+  ];
+  const notCommits = [
+    'python - <<\'EOF\'\nprint("git commit -m x")\nEOF',
+    "python - <<'EOF'\ngit commit -m x\nEOF\necho done",
+    'cat <<-EOF\n\tgit commit\n\tEOF',
+    'grep -n "git commit" file.js',
+    "echo 'git commit'",
+    'node -e "console.log(\'git commit\')"',
+    'echo hi # then git commit',
+    "$m = @'\ngit commit\n'@; echo $m",
+    'git commitment',
+    'echo "bash -c git commit"',
+    'bash -c "echo \'git commit\'"',
+    'bash script.sh "git commit"',
+    'echo "bash" "git commit"',
+  ];
+  for (const command of commits) assert.strictEqual(isGitCommit(command), true, JSON.stringify(command));
+  for (const command of notCommits) assert.strictEqual(isGitCommit(command), false, JSON.stringify(command));
 });
 console.log(`RESULT: ${passed} passed, 0 failed`);

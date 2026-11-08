@@ -238,8 +238,146 @@ function isRequiredCheck(command, projectDir, cwd = projectDir) {
   return Boolean(declaration && declaration.required !== false);
 }
 
+// The text of a shell command that the shell runs as commands: every quoted string,
+// heredoc body, PowerShell here-string (@'…'@, @"…"@) and comment becomes a space, so
+// words that are only data (an echo argument, a script fed to python on stdin) are not
+// read as commands. A command substitution inside double quotes ("$(…)") is commands again,
+// and so is the quoted argument a shell runs (`bash -c "…"`, `pwsh -Command "…"`, `cmd /c "…"`).
+// A shell (a command word, any path, .exe or not) and the flags that make it run its next
+// argument as commands.
+const SHELL_COMMAND_FLAGS = [
+  [/^(?:bash|sh|zsh|dash)$/, /^-[a-z]*c[a-z]*$/], // -c, or combined short flags such as -lc
+  [/^(?:pwsh|powershell)$/, /^-(?:c|command)$/i],
+  [/^cmd$/, /^\/c$/i],
+];
+// The shell a word names (any path, .exe or not), or null.
+function shellName(word) {
+  const name = String(word).replace(/^.*[\\/]/, '').replace(/\.exe$/i, '').toLowerCase();
+  return SHELL_COMMAND_FLAGS.some(([shell]) => shell.test(name)) ? name : null;
+}
+
+// Whether the commands read so far (`out`) end with a shell and its command flag in the
+// current command (after the last `;`, `&`, `|`, parenthesis or line end).
+function endsWithShellCommandFlag(out) {
+  const segment = out.slice(Math.max(...[';', '&', '|', '(', ')', '\n'].map(mark => out.lastIndexOf(mark))) + 1);
+  const words = segment.trim().split(/\s+/);
+  const flag = words.pop();
+  return Boolean(flag) && words.some(word => {
+    const name = shellName(word);
+    return Boolean(name) && SHELL_COMMAND_FLAGS.some(([shell, flags]) => shell.test(name) && flags.test(flag));
+  });
+}
+
+function commandText(command) {
+  const text = String(command);
+  const heredocs = []; // { word, tabs }: bodies that start after the next line end
+  let i = 0;
+  const skipBodies = () => {
+    while (heredocs.length) {
+      const { word, tabs } = heredocs.shift();
+      while (i < text.length) {
+        const end = text.indexOf('\n', i) < 0 ? text.length : text.indexOf('\n', i);
+        let line = text.slice(i, end).replace(/\r$/, '');
+        if (tabs) line = line.replace(/^\t+/, '');
+        i = end + 1;
+        if (line === word) break;
+      }
+    }
+  };
+  // `<<WORD`, `<<-WORD`, `<<'WORD'`, `<<"WORD"`, `<<\WORD`: the delimiter without its quotes.
+  const heredocOperator = () => {
+    i += 2;
+    const tabs = text[i] === '-';
+    if (tabs) i++;
+    while (text[i] === ' ' || text[i] === '\t') i++;
+    let word = '';
+    while (i < text.length && !/[\s;&|<>()]/.test(text[i])) {
+      const char = text[i];
+      if (char === "'" || char === '"') {
+        const end = text.indexOf(char, i + 1) < 0 ? text.length : text.indexOf(char, i + 1);
+        word += text.slice(i + 1, end);
+        i = end + 1;
+      } else if (char === '\\') { word += text[i + 1] || ''; i += 2; }
+      else { word += char; i++; }
+    }
+    if (word) heredocs.push({ word, tabs });
+  };
+  const doubleQuoted = () => {
+    let out = '';
+    for (i++; i < text.length;) {
+      const char = text[i];
+      if (char === '"') { i++; break; }
+      if (char === '\\' || char === '`') i += 2; // POSIX and PowerShell escapes
+      else if (char === '$' && text[i + 1] === '(') { i += 2; out += ` ${code(')')} `; }
+      else i++;
+    }
+    return out;
+  };
+  // A quoted string's value: single quotes keep every character; in double quotes a
+  // backslash before " \ $ or ` is dropped.
+  const quotedValue = () => {
+    const quote = text[i];
+    let value = '';
+    for (i++; i < text.length;) {
+      const char = text[i];
+      if (char === quote) { i++; break; }
+      if (quote === '"' && char === '\\' && /["\\$`]/.test(text[i + 1] || '')) { value += text[i + 1]; i += 2; }
+      else { value += char; i++; }
+    }
+    return value;
+  };
+  // Commands until `closer` (the `)` that ends a command substitution) or the end.
+  // A quoted program path that names a shell ("C:\Program Files\Git\bin\bash.exe") is
+  // kept as the shell's name, so the command flag after it is still recognized.
+  const quotedShell = () => {
+    const start = i;
+    const name = shellName(quotedValue());
+    if (!name) i = start;
+    return name;
+  };
+  function code(closer) {
+    let out = '';
+    let shell = null;
+    let depth = 0;
+    while (i < text.length) {
+      const char = text[i];
+      if (char === ')' && closer && depth === 0) { i++; return out; }
+      if ((char === "'" || char === '"') && endsWithShellCommandFlag(out)) out += ` ${commandText(quotedValue())} `;
+      else if ((char === "'" || char === '"') && (shell = quotedShell())) out += ` ${shell} `;
+      else if (char === "'") {
+        i = text.indexOf("'", i + 1) < 0 ? text.length : text.indexOf("'", i + 1) + 1;
+        out += ' ';
+      } else if (char === '"') out += ` ${doubleQuoted()} `;
+      else if (char === '@' && /^['"]\r?\n/.test(text.slice(i + 1, i + 4))) {
+        const end = text.indexOf(`\n${text[i + 1]}@`, i + 2);
+        i = end < 0 ? text.length : end + 3;
+        out += ' ';
+      } else if (char === '\\' || char === '`') {
+        // An escaped character is a literal (kept with its escape, so a Windows path keeps
+        // its separators); an escaped line end joins two lines.
+        out += /[\r\n]/.test(text[i + 1] || '') ? ' ' : char + (text[i + 1] || '');
+        i += text[i + 1] === '\r' && text[i + 2] === '\n' ? 3 : 2;
+      } else if (char === '#' && (i === 0 || /[\s;&|()]/.test(text[i - 1]))) {
+        while (i < text.length && text[i] !== '\n') i++;
+      } else if (text.startsWith('<<<', i)) { out += ' '; i += 3; }
+      else if (text.startsWith('<<', i)) { heredocOperator(); out += ' '; }
+      else if (char === '\n') { out += '\n'; i++; skipBodies(); }
+      else {
+        if (char === '(') depth++;
+        else if (char === ')' && depth > 0) depth--;
+        out += char;
+        i++;
+      }
+    }
+    return out;
+  }
+  return code(null);
+}
+
+// A `git commit` the shell runs: anywhere among its commands (after `cd x &&`, a wrapper
+// such as `rtk`, on any line), never inside a quoted string or heredoc body.
 function isGitCommit(command) {
-  return typeof command === 'string' && /\bgit\s+commit\b/.test(command.trim());
+  return typeof command === 'string' && /\bgit[ \t]+commit\b/.test(commandText(command));
 }
 
 function responseText(toolResponse) {

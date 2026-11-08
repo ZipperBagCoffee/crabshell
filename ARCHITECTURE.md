@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.161.0)
+# Crabshell Architecture (v21.162.0)
 
 ## Overview
 
@@ -304,11 +304,10 @@ Claude `PostToolUseFailure` is wired to both verification-state and parent-evide
 
 5. SessionEnd
    └─> counter.js final
-       ├─> Create final L1 session transcript (full reprocess, no offset)
-       ├─> Cleanup duplicate L1 files
-       ├─> pruneOldL1() — delete L1 files >30 days old (v21.10.0)
-       ├─> extractDelta(sid8) for remaining content (waits up to 800 ms for the memory-index lock)
-       ├─> Record this session's read position at the end of its transcript (so --resume adds no duplicates)
+       ├─> Session intent check stops at the first execution request (no full read)
+       ├─> One memory-index lock hold (waits up to 800 ms): updateSessionL1 — the interval save's incremental path, refining only what was written since the last save and moving this session's read position (so --resume adds no duplicates)
+       ├─> pruneOldL1({ keep: this session's L1 }) — delete other L1 files >30 days old
+       ├─> extractDelta(sid8) for remaining content; lock busy → the L1 tail is still saved
        └─> Remove this session's counter and skill flag; prune session-state folders older than 30 days
 
 6-7. Compaction — Claude has no PreCompact/PostCompact hooks since v21.125.0
@@ -566,6 +565,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.162.0 | Session end refines only the new part (one `updateSessionL1` for the interval save and SessionEnd; 64 MB transcript 1,277 ms → 169–341 ms); lint/status/claude-to-agents plugin paths; commit reminder lists only checks not passed on current files |
 | 21.161.0 | Removed the dead session-end save path (SessionEnd message, `quietStop`, memory-autosave skill, V040); saving unchanged; one rule for when checks run in regressing and ticketing |
 | 21.160.0 | Instructions shorter, same meaning: per-prompt block 576 → 526 words, rules block 1,788 → 1,733, skills 16,417 → 14,193, references 10,156 → 9,241; stale project-root pointer fixed in ten skills; `itemIdentity` timeout example in milliseconds |
 | 21.159.1 | Verifying skill select-by-use: fields, copies, runtime of the identity command, own selectors, measuring one change (docs only) |

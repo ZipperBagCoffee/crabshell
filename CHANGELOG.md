@@ -1,5 +1,17 @@
 # Changelog
 
+## [21.162.0] - 2026-11-08
+
+### fix: session end processes only what is new; skill paths that work in any project; an accurate commit reminder
+
+- **Why.** 21.161.0 left four things open: the session-end hook could pass Claude Code's 1.5-second SessionEnd budget on a large transcript, two skills ran plugin scripts by a path that only exists inside the plugin's own repository, the commit reminder listed checks that had just passed, and fourteen follow-up fixes to the 21.160.0 skill rewrite had not been reviewed.
+- **Session end follows the new part, not the whole transcript.** The interval save already refined only what a session wrote since its last save; that code is now one function (`updateSessionL1`) that SessionEnd uses too, instead of copying and re-refining the whole transcript. The session-intent check stops at the first execution request instead of parsing every line, and duplicate-L1 cleanup reads only first lines. Measured on a 64 MB transcript after an interval save: 1,277 ms → 169–341 ms. The raw transcript is copied only when `keepRaw` is set. Old-L1 pruning never deletes the ending session's own L1. When another process holds the memory index, the session's tail is still written to its L1.
+- **Same L1 as before:** a new test shows that after an interval save and SessionEnd, the session's L1 equals a full refine of the transcript; the source-copying test that pinned the old full reprocess was replaced by it.
+- **Skill paths:** lint runs `lint-obsidian.js` and `migrate-obsidian.js` from the plugin's scripts folder; status reads the version from the installed plugin, not the project; the Codex claude-to-agents skill runs a bundled script with `--project-dir`.
+- **Commit reminder:** it now lists only checks that have not passed on the current files, using the runner's own rules — a `reuse:false`/`always` check that passed on these inputs and a check covered by a passing `coveredBy` check are no longer listed. `git commit` written inside a quoted string, a heredoc body or a comment no longer counts as a commit; a commit a shell runs (`bash -c "…"`, `powershell -Command "…"`, `cmd /c "…"`, also from a quoted shell path) still does.
+- **Skill wording:** four spots from the review of the fourteen fixes — verifying's contract-change row applies Q2, regressing notifies as soon as the cap will be reached, discussing's Rule 4 lists what a Plan holds again, and planning/discussing point at the fields regressing Step 4a lists instead of "the same fields".
+- **Structure.** New `codex-skills/claude-to-agents/scripts/claude-to-agents.js` (shim); `scripts/claude-to-agents.js` exports `main`.
+
 ## [21.161.0] - 2026-11-08
 
 ### fix: remove the dead session-end save path; one rule for when checks run

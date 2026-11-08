@@ -73,4 +73,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { convert, splitClaudeMd };
+module.exports = { convert, main, splitClaudeMd };

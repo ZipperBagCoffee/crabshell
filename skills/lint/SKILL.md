@@ -3,9 +3,15 @@ name: lint
 description: "Runs Obsidian lint checks on .crabshell/ documents and reports violations. Use when you want to verify document health: missing frontmatter, broken wikilinks, INDEX.md sync issues, orphaned files. Invoke with /lint to run checks, or /lint fix to auto-apply safe fixes."
 ---
 
+## Paths
+
+- `{NODE_PATH}`: the absolute path in your context's "Node.js Path" section; without one, use `node`.
+- `{SCRIPTS_PATH}`: this skill's base directory without `/skills/lint`, plus `/scripts/`. The script is in the plugin, not the project.
+- `{PROJECT_DIR}`: the path after `Project root:` in the Project Root Anchor section; without one, use the current working directory.
+
 # Lint Skill
 
-Run `scripts/lint-obsidian.js` on the project's `.crabshell/` documents, read its report, and offer fixes.
+Run `{SCRIPTS_PATH}/lint-obsidian.js` on the project's `.crabshell/` documents, read its report, and offer fixes.
 
 - **Check mode:** `/lint` runs the checks, shows the report and offers fixes.
 - **Fix mode:** `/lint fix` auto-fixes safe violations: missing frontmatter and stale INDEX rows.
@@ -19,10 +25,10 @@ When invoked without arguments:
 ### Step 1: Run lint script
 
 ```bash
-node scripts/lint-obsidian.js --project-dir="<project root>"
+"{NODE_PATH}" "{SCRIPTS_PATH}/lint-obsidian.js" --project-dir="{PROJECT_DIR}"
 ```
 
-If `scripts/lint-obsidian.js` does not exist, tell the user it is missing and stop. This is a report, not an error.
+If `{SCRIPTS_PATH}/lint-obsidian.js` does not exist, tell the user it is missing and stop. This is a report, not an error.
 
 ### Step 2: Read the report
 
@@ -64,7 +70,7 @@ When invoked with `fix`:
 
 For MISSING_FRONTMATTER violations:
 ```bash
-node scripts/migrate-obsidian.js --project-dir="<project root>"
+"{NODE_PATH}" "{SCRIPTS_PATH}/migrate-obsidian.js" --project-dir="{PROJECT_DIR}"
 ```
 
 Only report BROKEN_WIKILINK and ORPHAN violations. Never auto-create or auto-delete files for them.
@@ -72,7 +78,7 @@ Only report BROKEN_WIKILINK and ORPHAN violations. Never auto-create or auto-del
 ### Step 2: Re-run lint to confirm fixes
 
 ```bash
-node scripts/lint-obsidian.js --project-dir="<project root>"
+"{NODE_PATH}" "{SCRIPTS_PATH}/lint-obsidian.js" --project-dir="{PROJECT_DIR}"
 ```
 
 ### Step 3: Report delta

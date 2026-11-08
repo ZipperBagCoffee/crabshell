@@ -26,8 +26,10 @@ report.check('PF1 the discussion template has a Plan section with every field, b
   Boolean(planBlock) && PLAN_FIELDS.every(field => planBlock.includes(`**${field}:**`))
   && createTemplate.indexOf('## Plan') < createTemplate.indexOf('## Discussion Log'),
   PLAN_FIELDS.filter(field => !planBlock.includes(`**${field}:**`)).join(', '));
-report.check('PF2 the Plan is revisable until the first ticket, then changes are log entries; regressing cycle plans use the same fields',
-  /## Plan`[^\n]*until the first ticket[^\n]*`Plan revision`/.test(discussing) && /Cycle \{n\} plan`[^\n]*same fields/.test(discussing));
+// A regressing cycle plan carries the fields regressing Step 4a lists; the design lines
+// stay once in the discussion's Plan (21.162.0 removed the contradicting "same fields").
+report.check('PF2 the Plan is revisable until the first ticket, then changes are log entries; regressing cycle plans use the fields regressing Step 4a lists',
+  /## Plan`[^\n]*until the first ticket[^\n]*`Plan revision`/.test(discussing) && /Cycle \{n\} plan`[^\n]*fields regressing Step 4a lists/.test(discussing));
 report.check('PF3 creating a discussion ends by asking for the Plan and the user\'s confirmation before tickets',
   /Step 5[\s\S]*?Plan[\s\S]*?confirm[\s\S]*?\/ticketing/.test(discussing.slice(discussing.indexOf('### Step 5'), discussing.indexOf('## Update Mode'))));
 report.check('PF4 ticketing stops when the parent discussion has no filled Plan (or cycle plan) and user confirmation',

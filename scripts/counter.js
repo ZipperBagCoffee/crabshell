@@ -89,6 +89,46 @@ function findSessionL1(sessionsDir, sessionId8) {
     .sort().reverse()[0] || null; // newest first
 }
 
+// Brings this session's L1 up to date: refines only what the transcript gained since
+// the session's last L1 update and appends it (a new L1 when the session has none),
+// so the cost follows the new part, not the whole transcript. The interval save and
+// SessionEnd both use it. Returns true when `index` changed and must be written.
+function updateSessionL1({ transcriptPath, sessionId, sessionId8, index, sessionsDir }) {
+  const stat = fs.statSync(transcriptPath);
+  const cursor = readL1Cursor(sessionId, index);
+  const sameTranscript = !cursor || !cursor.transcriptPath || cursor.transcriptPath === transcriptPath;
+  // Only refine when this transcript changed since this session's last L1 update
+  const changed = !cursor || !sameTranscript || !cursor.mtime
+    || stat.mtimeMs > cursor.mtime || (cursor.size !== undefined && stat.size !== cursor.size);
+  if (!changed) return false;
+  ensureDir(sessionsDir);
+
+  // Append to this session's existing L1 from its own position (offset mode),
+  // or create a new L1 (fresh session / no existing L1)
+  let l1Dest;
+  let startOffset = 0;
+  const existingL1 = findSessionL1(sessionsDir, sessionId8);
+  if (existingL1) {
+    l1Dest = path.join(sessionsDir, existingL1);
+    // No per-session cursor yet: a session that predates per-session
+    // tracking falls back to the legacy project-wide position.
+    startOffset = cursor && sameTranscript ? (cursor.offset || 0)
+      : (!cursor && sessionId8 ? index.lastL1TranscriptOffset || 0 : 0);
+  } else {
+    const ts = getTimestamp();
+    l1Dest = path.join(sessionsDir, sessionId8 ? `${ts}_${sessionId8}.l1.jsonl` : `${ts}.l1.jsonl`);
+    // First L1 of this session: none of its entries has been summarized.
+    markSessionStarted(index, sessionId8);
+  }
+
+  const result = refineRawSync(transcriptPath, l1Dest, startOffset);
+  if (fs.existsSync(l1Dest)) cleanupDuplicateL1(l1Dest);
+  const newOffset = result && typeof result === 'object' && result.newOffset !== undefined
+    ? result.newOffset : stat.size;
+  writeL1Cursor(sessionId, index, { transcriptPath, offset: newOffset, mtime: stat.mtimeMs, size: stat.size });
+  return true;
+}
+
 // PostToolUse. With a payload (the Claude PostToolUse dispatcher) it does not read
 // stdin and returns host notices instead of printing them.
 async function check(payload = null) {
@@ -163,43 +203,8 @@ async function check(payload = null) {
 
     if (transcriptPath) {
       try {
-        const stat = fs.statSync(transcriptPath);
         const idx = readIndexSafe(indexPath);
-        const cursor = readL1Cursor(sessionId, idx);
-        const sameTranscript = !cursor || !cursor.transcriptPath || cursor.transcriptPath === transcriptPath;
-        // Only refine when this transcript changed since this session's last L1 update
-        const changed = !cursor || !sameTranscript || !cursor.mtime
-          || stat.mtimeMs > cursor.mtime || (cursor.size !== undefined && stat.size !== cursor.size);
-        if (changed) {
-          ensureDir(sessionsDir);
-
-          // Append to this session's existing L1 from its own position (offset mode),
-          // or create a new L1 (fresh session / no existing L1)
-          let l1Dest;
-          let startOffset = 0;
-          const existingL1 = findSessionL1(sessionsDir, sessionId8);
-          if (existingL1) {
-            l1Dest = path.join(sessionsDir, existingL1);
-            // No per-session cursor yet: a session that predates per-session
-            // tracking falls back to the legacy project-wide position.
-            startOffset = cursor && sameTranscript ? (cursor.offset || 0)
-              : (!cursor && sessionId8 ? idx.lastL1TranscriptOffset || 0 : 0);
-          } else {
-            const ts = getTimestamp();
-            const l1Name = sessionId8 ? `${ts}_${sessionId8}.l1.jsonl` : `${ts}.l1.jsonl`;
-            l1Dest = path.join(sessionsDir, l1Name);
-            startOffset = 0;
-            // First L1 of this session: none of its entries has been summarized.
-            markSessionStarted(idx, sessionId8);
-          }
-
-          const result = refineRawSync(transcriptPath, l1Dest, startOffset);
-          if (fs.existsSync(l1Dest)) cleanupDuplicateL1(l1Dest);
-          const newOffset = result && typeof result === 'object' && result.newOffset !== undefined
-            ? result.newOffset : stat.size;
-          writeL1Cursor(sessionId, idx, { transcriptPath, offset: newOffset, mtime: stat.mtimeMs, size: stat.size });
-          writeJson(indexPath, idx);
-        }
+        if (updateSessionL1({ transcriptPath, sessionId, sessionId8, index: idx, sessionsDir })) writeJson(indexPath, idx);
       } catch (e) {
         fs.appendFileSync(path.join(getLogsDir(), 'error.log'),
           `${new Date().toISOString()}: check() L1 creation failed: ${e.message}\n`);
@@ -241,87 +246,59 @@ async function final() {
     sessionId: hookData.session_id || null
   });
 
-  // Copy raw transcript
-  let rawSaved = '';
-  if (transcriptSrc) {
+  // Keep a raw copy of the transcript only when the user asked for one (keepRaw).
+  if (transcriptSrc && getConfig().keepRaw) {
     try {
       const rawBase = sessionId8 ? `${timestamp}_${sessionId8}` : timestamp;
-      const rawDest = path.join(sessionsDir, `${rawBase}.raw.jsonl`);
-      fs.copyFileSync(transcriptSrc, rawDest);
-      rawSaved = rawDest.replace(/\\/g, '/');
+      fs.copyFileSync(transcriptSrc, path.join(sessionsDir, `${rawBase}.raw.jsonl`));
     } catch (e) {
-      fs.appendFileSync(path.join(getLogsDir(), 'error.log'),
+      fs.appendFileSync(path.join(logsDir, 'error.log'),
         `${timestamp}: Failed to copy transcript: ${e.message}\n`);
     }
   }
 
-  // Create L1 refined version
-  if (rawSaved) {
+  // In one lock hold: bring this session's L1 up to date (the interval save's
+  // incremental path, so only what was written since the last save is refined),
+  // prune old L1 files (never this session's own), then extract the delta, so
+  // extractDelta never selects a stale file.
+  const idxPath = path.join(getStorageRoot(), MEMORY_DIR, INDEX_FILE);
+  const finalMemoryDir = path.join(getStorageRoot(), MEMORY_DIR);
+  const updateL1 = index => {
+    if (!transcriptSrc) return false;
     try {
-      const l1Dest = rawSaved.replace('.raw.jsonl', '.l1.jsonl');
-      const lineCount = await refineRaw(rawSaved, l1Dest);
-      // Log stats
-      const rawSize = fs.statSync(rawSaved).size;
-      const l1Size = fs.statSync(l1Dest).size;
-      const reduction = ((1 - l1Size / rawSize) * 100).toFixed(1);
-      fs.appendFileSync(path.join(logsDir, 'refine.log'),
-        `${timestamp}: ${lineCount} lines, ${rawSize}→${l1Size} bytes (${reduction}% reduction)\n`);
-
-      // Remove duplicate L1 files from same session
-      cleanupDuplicateL1(l1Dest);
-
-      // Delete raw file unless keepRaw is enabled
-      const config = getConfig();
-      if (!config.keepRaw) fs.unlinkSync(rawSaved);
+      return updateSessionL1({ transcriptPath: transcriptSrc, sessionId, sessionId8, index, sessionsDir });
     } catch (e) {
-      fs.appendFileSync(path.join(getLogsDir(), 'error.log'),
-        `${timestamp}: Failed to create L1: ${e.message}\n`);
+      fs.appendFileSync(path.join(logsDir, 'error.log'),
+        `${timestamp}: Failed to update L1: ${e.message}\n`);
+      return false;
     }
-  }
-
-  // Prune old L1 files (>30 days) — after L1 creation, before delta extraction
-  // Must run before delta so extractDelta never selects a stale file
-  try {
-    pruneOldL1();
-  } catch (e) {
-    fs.appendFileSync(path.join(logsDir, 'error.log'),
-      `${timestamp}: Failed to prune old L1 files: ${e.message}\n`);
-  }
-
-  // Process any remaining delta before session ends (pass sessionId for isolation).
-  // Extraction, the session's delta start and its L1 position change in one lock hold.
-  {
-    const idxPath = path.join(getStorageRoot(), MEMORY_DIR, INDEX_FILE);
-    const finalMemoryDir = path.join(getStorageRoot(), MEMORY_DIR);
-    if (sessionId8) {
-      // The final L1 holds the whole transcript; a resumed session continues after it.
-      // This is the session's own state file, so it does not wait for the shared lock.
-      const cursorPath = hookData.transcript_path || transcriptSrc;
-      if (cursorPath) {
-        try {
-          const stat = fs.statSync(cursorPath);
-          writeL1Cursor(sessionId, null, { transcriptPath: cursorPath, offset: stat.size, mtime: stat.mtimeMs, size: stat.size });
-        } catch {}
-      }
+  };
+  // SessionEnd shares a 1.5 s host budget; waiting longer than a tool-call hook
+  // keeps a busy lock from dropping the session's last entries.
+  const outcome = tryWithMemoryIndex(finalMemoryDir, () => {
+    const idx = readIndexSafe(idxPath);
+    let indexChanged = updateL1(idx);
+    // A session ending before its first save: its L1 holds only its own entries.
+    if (sessionId8 && !hadSessionL1 && markSessionStarted(idx, sessionId8)) indexChanged = true;
+    if (indexChanged) writeJson(idxPath, idx);
+    try {
+      pruneOldL1({ keep: findSessionL1(sessionsDir, sessionId8) });
+    } catch (e) {
+      fs.appendFileSync(path.join(logsDir, 'error.log'),
+        `${timestamp}: Failed to prune old L1 files: ${e.message}\n`);
     }
-    // SessionEnd shares a 1.5 s host budget; waiting longer than a tool-call hook
-    // keeps a busy lock from dropping the session's last entries.
-    tryWithMemoryIndex(finalMemoryDir, () => {
-      if (sessionId8 && !hadSessionL1) {
-        // A session ending before its first save: its L1 holds only its own entries.
-        const started = readIndexSafe(idxPath);
-        if (markSessionStarted(started, sessionId8)) writeJson(idxPath, started);
-      }
-      extractDelta(sessionId8);
-      if (!sessionId8) {
-        // Legacy project-wide position — the next session starts fresh
-        const idx = readIndexSafe(idxPath);
-        delete idx.lastL1TranscriptOffset;
-        delete idx.lastL1TranscriptMtime;
-        writeJson(idxPath, idx);
-      }
-    }, { waitMs: FINAL_LOCK_WAIT_MS });
-  }
+    extractDelta(sessionId8);
+    if (!sessionId8) {
+      // Legacy project-wide position — the next session starts fresh
+      const idx = readIndexSafe(idxPath);
+      delete idx.lastL1TranscriptOffset;
+      delete idx.lastL1TranscriptMtime;
+      writeJson(idxPath, idx);
+    }
+  }, { waitMs: FINAL_LOCK_WAIT_MS });
+  // Another process held the memory index past the wait: still save this session's
+  // tail to its L1. The index is left alone; the next save records what it needs.
+  if (!outcome.ran) updateL1({});
   if (sessionId8) {
     removeSessionState(getProjectDir(), sessionId, 'counter');
     require('./core/skill-flag').clearSkillActive(getProjectDir(), sessionId);
@@ -339,11 +316,30 @@ function reset() {
   console.log('[CRABSHELL] Counter reset.');
 }
 
+// First line of a file, read in chunks so a large L1 is not read whole.
+function readFirstLine(filePath) {
+  const fd = fs.openSync(filePath, 'r');
+  try {
+    const chunks = [];
+    const buffer = Buffer.alloc(64 * 1024);
+    for (let position = 0; ;) {
+      const read = fs.readSync(fd, buffer, 0, buffer.length, position);
+      if (read === 0) break;
+      const newline = buffer.subarray(0, read).indexOf(0x0a);
+      chunks.push(Buffer.from(buffer.subarray(0, newline === -1 ? read : newline)));
+      if (newline !== -1) break;
+      position += read;
+    }
+    return Buffer.concat(chunks).toString('utf8').replace(/\r$/, '');
+  } finally {
+    fs.closeSync(fd);
+  }
+}
+
 // Remove duplicate L1 files from same session (keep only the largest/latest)
 function cleanupDuplicateL1(newL1Path) {
   const sessionsDir = path.dirname(newL1Path);
-  const newL1Content = fs.readFileSync(newL1Path, 'utf8');
-  const newL1FirstLine = newL1Content.split(/\r?\n/)[0];
+  const newL1FirstLine = readFirstLine(newL1Path);
 
   let sessionStartTs;
   try {
@@ -362,7 +358,7 @@ function cleanupDuplicateL1(newL1Path) {
     if (fileName === newL1Name) continue;
 
     const filePath = path.join(sessionsDir, fileName);
-    const firstLine = fs.readFileSync(filePath, 'utf8').split(/\r?\n/)[0];
+    const firstLine = readFirstLine(filePath);
 
     try {
       const fileStartTs = JSON.parse(firstLine).ts;
@@ -388,12 +384,14 @@ function calendarDaysSince(localMidnight, now) {
   return Math.round((today - localMidnight) / (1000 * 60 * 60 * 24));
 }
 
-function pruneOldL1() {
+// `keep` names an L1 file never to delete: the ending session's own L1, which an
+// incremental update keeps under its start date.
+function pruneOldL1({ keep = null } = {}) {
   const sessionsDir = path.join(getStorageRoot(), SESSIONS_DIR);
   if (!fs.existsSync(sessionsDir)) return 0;
 
   const now = new Date();
-  const l1Files = fs.readdirSync(sessionsDir).filter(f => f.endsWith('.l1.jsonl'));
+  const l1Files = fs.readdirSync(sessionsDir).filter(f => f.endsWith('.l1.jsonl') && f !== keep);
   let pruned = 0;
 
   for (const fileName of l1Files) {
@@ -445,7 +443,7 @@ function dedupeL1() {
   for (const f of l1Files) {
     try {
       const filePath = path.join(sessionsDir, f);
-      const firstLine = fs.readFileSync(filePath, 'utf8').split(/\r?\n/)[0];
+      const firstLine = readFirstLine(filePath);
       const ts = JSON.parse(firstLine).ts;
       const size = fs.statSync(filePath).size;
       if (!tsMap[ts]) tsMap[ts] = [];

@@ -9,7 +9,7 @@ description: "Crabshell no longer creates plan documents: a new plan is written 
 
 The workflow is D (a discussion that carries the plan) → T. Do not create a P document. When invoked with a title, tell the user that new plans go into the discussion and continue with step 1.
 
-1. Open a discussion with `/discussing "topic"`, or use an existing one with `/discussing D{NNN}`. Write every field of its `## Plan` that the discussing template lists. Show the plan to the user and record their confirmation. Once tickets exist, a plan change is a `Plan revision` log entry instead. In regressing, the plan is Step 4a's `Cycle {n} plan` entry, with the same fields.
+1. Open a discussion with `/discussing "topic"`, or use an existing one with `/discussing D{NNN}`. Write every field of its `## Plan` that the discussing template lists. Show the plan to the user and record their confirmation. Once tickets exist, a plan change is a `Plan revision` log entry instead. In regressing, the plan is Step 4a's `Cycle {n} plan` entry, with the fields Step 4a lists.
 2. Create tickets with `/ticketing D{NNN} "title"`. Each carries its part of the plan in `## Implementation Details`.
 
 The parent owns plan analysis and intent fidelity. An optional independent review receives the intent, scope and criteria, never the parent's conclusions.
