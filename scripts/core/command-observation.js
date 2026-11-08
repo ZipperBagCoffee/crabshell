@@ -245,10 +245,13 @@ function isRequiredCheck(command, projectDir, cwd = projectDir) {
 // and so is the quoted argument a shell runs (`bash -c "…"`, `pwsh -Command "…"`, `cmd /c "…"`).
 // A shell (a command word, any path, .exe or not) and the flags that make it run its next
 // argument as commands.
+// The shell may stand anywhere in the current command, not only first, so a wrapper
+// (`rtk bash -c "…"`, `sudo sh -c "…"`) still counts; the cost is one extra notice for
+// text such as `echo bash -c "git commit"`, which never blocks anything.
 const SHELL_COMMAND_FLAGS = [
-  [/^(?:bash|sh|zsh|dash)$/, /^-[a-z]*c[a-z]*$/], // -c, or combined short flags such as -lc
-  [/^(?:pwsh|powershell)$/, /^-(?:c|command)$/i],
-  [/^cmd$/, /^\/c$/i],
+  [/^(?:bash|sh|zsh|dash|ksh|fish)$/, /^-[a-z]*c[a-z]*$/], // -c, or combined short flags such as -lc
+  [/^(?:pwsh|powershell)$/, /^-c(?:o(?:m(?:m(?:a(?:n(?:d)?)?)?)?)?)?$/i], // -Command or any prefix PowerShell accepts
+  [/^cmd$/, /^\/[ck]$/i], // /c runs and exits, /k runs and stays
 ];
 // The shell a word names (any path, .exe or not), or null.
 function shellName(word) {

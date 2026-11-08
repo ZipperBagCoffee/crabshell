@@ -171,6 +171,10 @@ test('a git commit is found among the commands, not inside quotes, heredoc bodie
     'pwsh.exe -NoProfile -c "git commit -m \\"x\\""',
     '& "C:\\Program Files\\Git\\bin\\bash.exe" -c "git commit -m x"',
     '"/usr/bin/bash" -lc "git commit -m x"',
+    'cmd /k "git commit -m x"',
+    'powershell -com "git commit -m x"',
+    'ksh -c "git commit -m x"',
+    'rtk bash -c "git commit -m x"',
   ];
   const notCommits = [
     'python - <<\'EOF\'\nprint("git commit -m x")\nEOF',
@@ -186,6 +190,7 @@ test('a git commit is found among the commands, not inside quotes, heredoc bodie
     'bash -c "echo \'git commit\'"',
     'bash script.sh "git commit"',
     'echo "bash" "git commit"',
+    'powershell -NoProfile "git commit"',
   ];
   for (const command of commits) assert.strictEqual(isGitCommit(command), true, JSON.stringify(command));
   for (const command of notCommits) assert.strictEqual(isGitCommit(command), false, JSON.stringify(command));

@@ -1,5 +1,13 @@
 # Changelog
 
+## [21.162.1] - 2026-11-08
+
+### fix: the commit reminder knows more shell forms
+
+- **Why.** 21.162.0 left forms the reminder did not read as a commit.
+- **Now read as a commit:** `cmd /k "git commit …"`, PowerShell's `-Command` under any prefix it accepts (`-c`, `-co`, `-com` …), `ksh -c` and `fish -c`. A shell named anywhere in the command still counts, on purpose, so a wrapped shell such as `rtk bash -c "git commit …"` is caught: the reminder never blocks, and an extra notice for text like `echo bash -c "git commit"` is cheaper than a missed commit.
+- **Structure.** No new files.
+
 ## [21.162.0] - 2026-11-08
 
 ### fix: session end processes only what is new; skill paths that work in any project; an accurate commit reminder
