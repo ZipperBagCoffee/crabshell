@@ -250,57 +250,22 @@ function checkRotationPending(projectDir) {
   return rotatedFiles.filter(f => !f.summaryGenerated);
 }
 
-const MARKER_START = '## CRITICAL RULES (Core Principles Alignment)';
-const MARKER_END = '---Add your project-specific rules below this line---';
+const claudeMdRules = require('./core/claude-md-rules');
+const { MARKER_START, MARKER_END, removeLegacySection } = claudeMdRules;
 
-function removeLegacySection(content, sectionHeader) {
-  const start = content.indexOf(sectionHeader);
-  if (start === -1) return content;
-
-  const afterHeader = content.slice(start + sectionHeader.length);
-  const nextSection = afterHeader.search(/\n## /);
-  const end = nextSection === -1 ? content.length : start + sectionHeader.length + nextSection;
-
-  return content.slice(0, start).trimEnd() + (nextSection === -1 ? '' : content.slice(end));
+// The running plugin's root: the host-declared CLAUDE_PLUGIN_ROOT, else this script's plugin.
+function resolvePluginRoot() {
+  return process.env.CLAUDE_PLUGIN_ROOT || path.resolve(__dirname, '..');
 }
 
+// Brings CLAUDE.md's managed rules block in line with RULES; { written, skipped, error }.
+function syncClaudeMdRules(projectDir, options = {}) {
+  return claudeMdRules.syncRulesToClaudeMd(projectDir, { ...options, rules: RULES, pluginRoot: resolvePluginRoot() });
+}
+
+// Boolean form kept for existing callers and tests: true unless the sync failed.
 function syncRulesToClaudeMd(projectDir) {
-  try {
-    const claudeMdPath = path.join(projectDir, 'CLAUDE.md');
-    const rulesBlock = RULES.trim() + '\n\n' + MARKER_END;
-
-    // If CLAUDE.md doesn't exist, create with rules only
-    if (!fs.existsSync(claudeMdPath)) {
-      fs.writeFileSync(claudeMdPath, rulesBlock + '\n');
-      return true;
-    }
-
-    let content = fs.readFileSync(claudeMdPath, 'utf8');
-    const startIdx = content.indexOf(MARKER_START);
-    const endIdx = content.indexOf(MARKER_END);
-
-    if (startIdx !== -1 && endIdx !== -1) {
-      // Markers found → replace only between markers (inclusive)
-      const before = content.slice(0, startIdx);
-      const after = content.slice(endIdx + MARKER_END.length);
-      const next = before + rulesBlock + after;
-      if (next !== content) fs.writeFileSync(claudeMdPath, next);
-    } else {
-      // No markers → legacy migration: remove old sections, prepend rules at top
-      content = removeLegacySection(content, '## Memory Keeper Plugin Rules');
-      content = removeLegacySection(content, '## CRITICAL RULES');
-      const remaining = content.trim();
-      if (remaining && remaining !== '# Project Notes') {
-        fs.writeFileSync(claudeMdPath, rulesBlock + '\n\n' + remaining + '\n');
-      } else {
-        fs.writeFileSync(claudeMdPath, rulesBlock + '\n');
-      }
-    }
-    return true;
-  } catch (e) {
-    // Silently fail - don't break main workflow
-    return false;
-  }
+  return !syncClaudeMdRules(projectDir).error;
 }
 
 // --- Prompt-aware memory loading ---
@@ -512,10 +477,15 @@ async function main(options = {}) {
         host,
         pluginDataDir: options.pluginDataDir,
         claudeConfigDir: options.claudeConfigDir,
-        syncRules: host === 'claude' ? syncRulesToClaudeMd : null,
       });
       for (const diagnostic of lifecycle.diagnostics) {
         console.error(`[CRABSHELL ${host} lifecycle] ${diagnostic}`);
+      }
+      // Every execution prompt, not once per session: a plugin update during a
+      // session reaches CLAUDE.md on the next request (D148). No-op when current.
+      if (host === 'claude') {
+        const synced = syncClaudeMdRules(projectDir);
+        if (synced.error) console.error(`[CRABSHELL ${host} lifecycle] Claude rule synchronization failed: ${synced.error}`);
       }
       noteExecutionAuthorization(projectDir, hookData, { host });
     }
@@ -681,6 +651,7 @@ module.exports = {
   checkRotationPending,
   checkTicketStatuses,
   syncRulesToClaudeMd,
+  syncClaudeMdRules,
   removeLegacySection,
   parseMemorySections,
   extractKeywords,
