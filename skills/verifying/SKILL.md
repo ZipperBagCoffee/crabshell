@@ -7,7 +7,7 @@ description: "Creates project-specific verification tools when they don't exist,
 
 ## Purpose
 
-Bridge the gap between VERIFICATION-FIRST principles and project reality. Most projects lack executable verification tools. This skill analyzes the runtime environment and creates a verification manifest that maps user-observable outcomes to portable commands and independent contracts.
+Most projects lack executable verification tools. This skill analyzes the project and creates a verification manifest that maps user-observable outcomes to portable commands and independent contracts.
 
 ## Modes
 
@@ -121,11 +121,11 @@ Routine updates run `--changed` once after the last edit. Run every check only w
 `test-map.json` keeps each check's record: its inputs (files and folders required, read, listed or copied), the fingerprints it passed with, durations and failures. Passing checks refresh their records even in a failing run. Failures keep prior files, add no pass and remain selected for retry; [failure marks](references/runner-reuse-output.md#reuse-and-timing) distinguish check failures from unresolved HEAD comparisons.
 
 **Entry fields that keep routine runs short (D143).**
-- `inputs: ["src/game/**", "tools/check_x.py"]` — the files, folders (ending in `/`) or globs a check reads. Required for any check the Node tracer cannot see (Python, Godot, shell, other languages): without it the check's inputs are unknown and any project change reruns it. Declared inputs enter its fingerprint and are recorded like traced files.
+- `inputs: ["src/game/**", "tools/check_x.py"]` — the files, folders (ending in `/`) or globs a check reads. Required for a check the Node tracer cannot see that does not report what it used: without it the check's inputs are unknown and any project change reruns it. Declared inputs enter its fingerprint and are recorded like traced files.
 - `outputs: ["build/"]` — files the check writes: its products, not its inputs.
 - `slow: true` — recordings, screenshots and golden renders, benchmarks, long simulations, real installs, whole-suite runs. `--changed` skips them and prints `Slow checks not run: … — run them with: node .crabshell/verification/run-verify.js --slow`; they run with `--slow`, on a full run (when the user asks) and at the project's release step.
 
-`--changed` chooses by content, not Git: a check reruns only when its fingerprint (run fields, program, runner, platform, input contents) is not among those it passed with — new, failed last time, `always: true`, `reuse: false`, or changed inputs; unknown inputs mean the whole project. A changed file no check reads or declares runs the declared-input checks once. A record of another schema counts as none. Crabshell's storage (`.crabshell/` outside the verification folder) is never snapshotted. Records: [manifest changes](references/runner-reuse-output.md#manifest-changes-and-records). `--explain` prints each check `--changed` would run with its first reason, running nothing; `--dry-run` shows the selection (`/status` uses it). Blind spots: a non-Node check's reads outside its `inputs`, untraced computed paths.
+`--changed` chooses by content, not Git: a check reruns only when its fingerprint (run fields, program, runner, platform, input contents) is not among those it passed with — new, failed last time, `always: true`, `reuse: false`, or changed inputs; unknown inputs mean the whole project. A changed file no check reads or declares runs the declared-input checks once. A record of another schema counts as none. Crabshell's storage (`.crabshell/` outside the verification folder) is never snapshotted. Records: [manifest changes](references/runner-reuse-output.md#manifest-changes-and-records). `--explain` prints each check `--changed` would run with its first reason, running nothing; `--dry-run` shows the selection (`/status` uses it). Blind spots: a non-Node check's reads outside its `inputs`, untraced computed paths. Many checks for one change: read `--explain`, then make checks report what they used ([select-by-use](references/select-by-use.md)); never answer with a time target or a check cap.
 
 **Reuse and timing.** Before executing checks, read [reuse eligibility and timing](references/runner-reuse-output.md#reuse-and-timing) for fingerprint inputs, exclusions, controls, `coveredBy` duplicate suppression and dry-run estimates.
 
@@ -143,7 +143,7 @@ A failing verifier means one of two things, and they have opposite fixes. Ask:
 | The contract was deliberately changed this release | The old expectation is obsolete | Update the verifier, and say so explicitly in the report with what the new contract is and who approved it |
 | Neither — it was incidental output the verifier copied | The verifier was overspecified | Rewrite that assertion as structure, invariant, or relation so it stops breaking on unrelated changes |
 
-Code is the more likely culprit (about four in five regression failures in one industrial study traced to a code defect, not an obsolete test). Treat "fix the verifier" as the named exception, never the reflex; silently re-recording what the code now outputs is not verification.
+Code is the likelier culprit (four in five regression failures in one industrial study were code defects). Treat "fix the verifier" as the named exception, never the reflex; silently re-recording what the code now outputs is not verification.
 
 For a wiring entry, a FAIL means either the source broke a parent-approved hop, in which case fix the source, or the hop was deliberately removed or renamed in this release, in which case update `wiring-contract.json` and state the approved change in the report by naming the hop. Map staleness is never a wiring FAIL; it is only the documentation state recorded by Create Mode Step 2a(i).
 

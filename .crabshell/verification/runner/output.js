@@ -57,7 +57,8 @@ function printResults(results, { args, started, resultsPath, plan = null, select
     const stderr = String(result.stderr || '').trim();
     if (stderr) for (const tail of stderr.split(/\r?\n/).slice(-5)) console.log(`  ${tail}`);
   }
-  if (plan) console.log(`\nChanged-files run: ${selected} of ${plan.total} checks (${plan.full ? 'all — ' : ''}${plan.reason})`);
+  // The checks the run chose (checks that only waited for a gate are counted as reused).
+  if (plan) console.log(`\nChanged-files run: ${Array.isArray(plan.selected) ? plan.selected.length : selected} of ${plan.total} checks (${plan.full ? 'all — ' : ''}${plan.reason})`);
   if (stoppedAt) console.log(`Stopped after a new failure (${stoppedAt}); ${notRun.length} check${notRun.length === 1 ? '' : 's'} not run — they run again after the fix.`);
   if (stillFailing.length) console.log(`Still failing on the inputs they failed with last time (the run went on): ${stillFailing.join(', ')}`);
   for (const notice of notices) console.log(notice);

@@ -8,10 +8,13 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { RUNNER_NODE, resolveInside, toPosix } = require('./manifest');
+const { isItemKey, pathOf } = require('./used-report');
 
-// Bump when the meaning of a fingerprint or a record changes: records of another
-// schema count as missing, so every check runs once.
-const SCHEMA_VERSION = 3;
+// Bump when the meaning of a fingerprint or a record changes, and whenever the runner starts
+// recording more of what a check reads (the code that records inputs is not decision code,
+// layout.js): records of another schema count as missing, so every check runs once.
+// 4: reports of what a check used, item keys, case records (D152).
+const SCHEMA_VERSION = 4;
 
 function hashBuffer(buffer) {
   return crypto.createHash('sha256').update(buffer).digest('hex');
@@ -95,10 +98,12 @@ function programIdentity(command, projectRoot) {
   } catch (_) { return { id: found }; }
 }
 
-// identityOf(file) gives a file's (or "folder/"'s) content identity; `project` is the
-// whole project's identity for a check whose inputs are unknown (null otherwise).
+// identityOf(key) gives an input's content identity (a file, a "folder/"'s names, or an item
+// of a file); `project` is the identity of the project files a check's inputs leave unknown
+// (null when there are none).
 function entryFingerprint({ entry, files, identityOf, program, decision, project = null }) {
-  const inputs = [...new Set(files.map(toPosix))].sort();
+  // An item key keeps its item name as written; only its path is made '/'-separated.
+  const inputs = [...new Set(files.map(key => (isItemKey(key) ? toPosix(pathOf(key)) + key.slice(pathOf(key).length) : toPosix(key))))].sort();
   return hashBuffer(JSON.stringify([
     SCHEMA_VERSION, resultFields(entry), program, decision, process.platform, process.arch,
     inputs.map(file => [file, identityOf(file)]), project,

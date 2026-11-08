@@ -12,12 +12,19 @@ const MODULE_DIR = 'runner';
 const RESULTS_FILE = 'last-run.json';
 // Crabshell's own storage folder, which holds the verification folder (as git's is .git).
 const STORAGE_FOLDER = '.crabshell';
-// The runner's own modules that decide a check's result: how it runs (execute, trace —
-// the tracer is loaded into the checked process), how it is judged (contract), what an
-// entry means (manifest) and what counts as the same input (fingerprint, snapshot).
-// Output, records, selection and the launcher do not change a result, so editing them
-// reruns nothing.
-const DECISION_MODULES = ['contract.js', 'execute.js', 'fingerprint.js', 'manifest.js', 'snapshot.js', 'trace.js'];
+// The runner code that can change a check's result (D152 P6): how it runs (execute), how it
+// is judged (contract), and what turns a failure into a pass (recheck) — whole modules — and
+// the parts of other modules that shape the checked process: the tracer loaded into it and
+// the environment it gets (trace.js), the report variable and the case arguments
+// (used-report.js); their source text is hashed, the rest of those modules is not. The code
+// that records and compares inputs (fingerprint, snapshot, manifest, select, the rest of
+// trace and used-report), output and the launcher are not here, so editing them reruns
+// nothing; a change that makes the runner record more of what a check reads bumps
+// fingerprint.js SCHEMA_VERSION instead.
+const DECISION_MODULES = ['contract.js', 'execute.js', 'recheck.js'];
+const DECISION_PARTS = [['trace.js', 'TRACER_SOURCE'], ['trace.js', 'traceEnvironment'], ['used-report.js', 'REPORT_ENV'], ['used-report.js', 'expandCases']];
+// The files whose change can rerun every check (for --replay, which sees only file names).
+const DECISION_FILES = [...new Set([...DECISION_MODULES, ...DECISION_PARTS.map(([module]) => module)])];
 
 function runnerLayout(launcherDir) {
   const dir = path.resolve(launcherDir);
@@ -42,16 +49,19 @@ function runnerLayout(launcherDir) {
     }
     return hash.digest('hex');
   };
-  // One hash over the modules that decide results (their names and code text): a release
-  // that only changes their comments does not rerun every check (D143_T020).
+  // One hash over the code that decides results (the modules' names and code text, and the
+  // parts' source text): a release that only changes their comments does not rerun every
+  // check (D143_T020).
   const decisionHash = () => {
     const hash = crypto.createHash('sha256');
-    for (const name of DECISION_MODULES) {
+    const add = (name, read) => {
       hash.update(name);
       hash.update('\0');
-      try { hash.update(codeText(fs.readFileSync(path.join(moduleDir, name), 'utf8'))); } catch (_) { hash.update('MISSING'); }
+      try { hash.update(codeText(read())); } catch (_) { hash.update('MISSING'); }
       hash.update('\0');
-    }
+    };
+    for (const name of DECISION_MODULES) add(name, () => fs.readFileSync(path.join(moduleDir, name), 'utf8'));
+    for (const [module, name] of DECISION_PARTS) add(`${module} ${name}`, () => partSource(moduleDir, module, name));
     return hash.digest('hex');
   };
   return {
@@ -68,6 +78,14 @@ function runnerLayout(launcherDir) {
     runnerHash,
     decisionHash,
   };
+}
+
+// The source text of one decision part: a function's code, or a string constant's value.
+function partSource(moduleDir, module, name) {
+  const value = require(path.join(moduleDir, module))[name];
+  if (typeof value === 'function') return value.toString();
+  if (typeof value === 'string') return value;
+  throw new Error(`${module} exports no ${name}`);
 }
 
 // A module's code without the lines that cannot change what it does: lines that are only
@@ -106,4 +124,4 @@ function codeText(text) {
   return kept.join('\n');
 }
 
-module.exports = { runnerLayout, codeText, LAUNCHER_FILE, MODULE_DIR, RESULTS_FILE, DECISION_MODULES, STORAGE_FOLDER };
+module.exports = { runnerLayout, codeText, LAUNCHER_FILE, MODULE_DIR, RESULTS_FILE, DECISION_MODULES, DECISION_PARTS, DECISION_FILES, STORAGE_FOLDER, partSource };

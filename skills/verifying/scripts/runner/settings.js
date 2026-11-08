@@ -10,6 +10,8 @@ const MANIFEST_SETTINGS = {
   exclude: 'paths', wrappers: 'names', passHistory: 'count', jobs: 'count', retries: 'whole',
   slowAfterSeconds: 'seconds', suggestAfterSeconds: 'seconds', memoryShare: 'share',
   minFreeMemoryMB: 'whole', startSpacingMs: 'whole', copyLiteralMinChars: 'count', riskPaths: 'paths',
+  // D152: the project command that prints the fingerprint of every item in the files it is given.
+  itemIdentity: 'command',
 };
 
 function validateManifestSettings(manifest) {

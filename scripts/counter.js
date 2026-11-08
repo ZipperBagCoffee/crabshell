@@ -431,6 +431,13 @@ function cleanupDuplicateL1(newL1Path) {
 // Delete L1 files older than 30 days based on filename date prefix
 // Uses calendar days (Math.floor) matching compress() behavior:
 // exactly 30 days old → keep, >30 days → delete
+// Whole calendar days from a local-midnight date to now. Measured midnight to midnight and
+// rounded, so a day of 23 or 25 hours (a daylight-saving change) still counts as one day.
+function calendarDaysSince(localMidnight, now) {
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.round((today - localMidnight) / (1000 * 60 * 60 * 24));
+}
+
 function pruneOldL1() {
   const sessionsDir = path.join(getStorageRoot(), SESSIONS_DIR);
   if (!fs.existsSync(sessionsDir)) return 0;
@@ -455,8 +462,8 @@ function pruneOldL1() {
 
     if (isNaN(fileDate.getTime())) continue;
 
-    // Calendar days comparison matching compress() — >30 days means 31+
-    const daysOld = Math.floor((now - fileDate) / (1000 * 60 * 60 * 24));
+    // Calendar days, as compress() counts them — >30 days means 31+
+    const daysOld = calendarDaysSince(fileDate, now);
     if (daysOld > 30) {
       try {
         fs.unlinkSync(path.join(sessionsDir, fileName));
@@ -584,7 +591,7 @@ function compress() {
       if (!match) return;
 
       const fileDate = new Date(match[1], match[2] - 1, match[3]);
-      const daysOld = Math.floor((now - fileDate) / (1000 * 60 * 60 * 24));
+      const daysOld = calendarDaysSince(fileDate, now);
 
       if (daysOld > 30) {
         const archiveDir = path.join(sessionsDir, 'archive');

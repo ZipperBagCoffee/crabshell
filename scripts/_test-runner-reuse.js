@@ -9,6 +9,7 @@ const h = require('./testlib/hook-harness');
 const source = process.env.CRABSHELL_TEST_RUNNER || path.join(__dirname, '..', 'skills', 'verifying', 'scripts', 'run-verify.js');
 const api = require(source);
 const { copyRunner } = require('../skills/verifying/scripts/runner/install');
+const { SCHEMA_VERSION } = require('../skills/verifying/scripts/runner/fingerprint');
 const root = h.makeWorkRoot('runner-reuse');
 const report = h.createReporter('runner-reuse');
 const check = (name, fn) => {
@@ -329,7 +330,7 @@ check('first failed full run records the passing check and the failed check\'s i
   const result = run(dir); const map = readJson(mapFile(dir));
   assert.equal(result.status, 1); assert(map.entries.A.passHistory[0]); assert(map.entries.A.files.includes('input.data'));
   assert(map.entries.B.files.includes('scripts/_test-B.js')); assert(!map.entries.B.passHistory);
-  assert.equal(map.schema, 3);
+  assert.equal(map.schema, SCHEMA_VERSION);
   const plan = dry(dir, 'unread.md');
   assert.equal(plan.full, false); assert.deepEqual(plan.selected, ['B']);
   assert.equal(plan.reasons.B, 'failed in the last run');

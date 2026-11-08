@@ -8,6 +8,7 @@ const { RUNNER_NODE, validateEntry, resolveInside } = require('./manifest');
 const { evaluateAssertion, snapshotPaths, deepEqual } = require('./contract');
 const { traceEnvironment } = require('./trace');
 const { classify } = require('./classify');
+const { REPORT_ENV, expandCases } = require('./used-report');
 
 const DEFAULT_TIMEOUT_MS = 30000;
 
@@ -21,6 +22,9 @@ function commandExecutable(command, projectRoot) {
 
 // options.projectRoot names the project; otherwise PROJECT_ROOT, otherwise the
 // launcher's project (options.defaultProjectRoot, which the launcher supplies).
+// options.report: the file the check may write what it used to (REPORT_ENV; a report path
+// this process inherited is not passed on). options.cases: the cases `{cases}` stands for
+// (none: every case).
 // Returns { result } when nothing runs, or { run } with what to start and how to judge it.
 function prepare(entry, options) {
   const projectRoot = path.resolve(options.projectRoot || process.env.PROJECT_ROOT || options.defaultProjectRoot || process.cwd());
@@ -35,17 +39,20 @@ function prepare(entry, options) {
     const forbiddenPaths = Array.isArray(entry.contract.forbiddenChanges) ? entry.contract.forbiddenChanges : [];
     const before = snapshotPaths(projectRoot, forbiddenPaths);
     const cwd = entry.command.cwd ? resolveInside(projectRoot, entry.command.cwd, 'command.cwd') : projectRoot;
+    // CRABSHELL_VERIFY_RUNNING names the project being verified, so only a nested run of
+    // this same project counts as recursion (main.js).
+    const env = { ...process.env, PROJECT_ROOT: projectRoot, CLAUDE_PROJECT_DIR: projectRoot, CRABSHELL_VERIFY_RUNNING: projectRoot };
+    delete env[REPORT_ENV];
+    if (options.report) env[REPORT_ENV] = options.report;
     return {
       run: {
         file: commandExecutable(entry.command, projectRoot),
-        args: entry.command.args,
+        args: expandCases(entry.command.args, options.cases),
         options: {
           cwd,
           timeout: entry.timeout || DEFAULT_TIMEOUT_MS,
           windowsHide: true,
-          // CRABSHELL_VERIFY_RUNNING names the project being verified, so only a nested run of
-          // this same project counts as recursion (main.js).
-          env: traceEnvironment({ ...process.env, PROJECT_ROOT: projectRoot, CLAUDE_PROJECT_DIR: projectRoot, CRABSHELL_VERIFY_RUNNING: projectRoot }, options.trace, projectRoot),
+          env: traceEnvironment(env, options.trace, projectRoot),
         },
         judge: executed => judge(entry, projectRoot, forbiddenPaths, before, executed),
       },

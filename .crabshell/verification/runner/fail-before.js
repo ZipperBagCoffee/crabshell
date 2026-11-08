@@ -12,6 +12,7 @@ const { insideRoot } = require('./trace');
 const { exemptPath, EXEMPT_FILE } = require('./store');
 const { covers, withoutRunnerFiles, gitVisibleFiles } = require('./select');
 const { runEntry } = require('./execute');
+const { pathOf } = require('./used-report');
 
 // HEAD written into fresh folders through a temporary index, so the repository, its
 // index and the working tree are never touched.
@@ -49,7 +50,8 @@ function failBeforeTargets({ entries, records, changedFiles, expanded, projectRo
   for (const entry of entries) {
     const test = entryTestFile(entry, projectRoot);
     if (!test || !changed.has(test)) continue;
-    const files = (records[entry.id] || {}).files || [];
+    // An item a check reported stands for its file here.
+    const files = [...new Set(((records[entry.id] || {}).files || []).map(pathOf))];
     const sources = [...changed].filter(file => !testFiles.has(file) && files.some(recorded => covers(recorded, file)));
     if (sources.length > 0) targets.push({ entry, test, files, sources });
   }

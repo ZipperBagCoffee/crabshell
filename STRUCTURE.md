@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.158.0)
+# Crabshell Plugin Structure (v21.159.0)
 
-**Version**: 21.158.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.159.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -255,10 +255,10 @@ crabshell/
 │   ├── (light-workflow retired v21.112.0 — one-pass work records via hotfix)
 │   ├── verifying/SKILL.md            # /crabshell:verifying (schema-v2 behavioral verification; Step 2a wiring inventory v21.121.0)
 │   │   ├── scripts/run-verify.js      # Launcher of the portable verification runner (v21.106.0; split into runner/ v21.153.0)
-│   │   ├── scripts/runner/            # Runner modules: manifest, fingerprint, snapshot, ignored, select, schedule, execute, contract, trace, store, output, install, project-state (v21.153.0); settings (manifest run settings), test-hygiene (copy detector), routine (risk paths, flaky quarantine), recheck (forbidden-file re-check), replay (--replay) (v21.158.0)
+│   │   ├── scripts/runner/            # Runner modules: manifest, fingerprint, snapshot, ignored, select, schedule, execute, contract, trace, store, output, install, project-state (v21.153.0); settings (manifest run settings), test-hygiene (copy detector), routine (risk paths, flaky quarantine), recheck (forbidden-file re-check), replay (--replay) (v21.158.0); used-report (reports of what a check used, `itemIdentity`, `{cases}`) (v21.159.0)
 │   │   ├── scripts/released-launchers.json # Every launcher Crabshell released (LF sha256), built by scripts/build-released-launchers.js (v21.153.0)
 │   │   ├── scripts/check-pipeline-wiring.js # Pipeline wiring probe: discover / check --contract (v21.121.0)
-│   │   └── references/                # wiring-inventory, manifest-entries (v21.132.0); fail-before (v21.142.0)
+│   │   └── references/                # wiring-inventory, manifest-entries (v21.132.0); fail-before (v21.142.0); runner-reuse-output (v21.146.0); select-by-use (checks that report what they used, v21.159.0)
 │   ├── status/SKILL.md               # /crabshell:status (plugin healthcheck)
 │   ├── lint/SKILL.md                 # /crabshell:lint (Obsidian document lint checks) (v21.70.0)
 │   ├── search-docs/SKILL.md          # /crabshell:search-docs (BM25 document search) (v21.72.0)
@@ -370,8 +370,8 @@ Session start loader:
 UserPromptSubmit hook:
 - Inject critical rules every prompt via `additionalContext`
 - Append the `## Codex Delegation` guidance block (`CODEX_DELEGATION`) on Claude execution turns — /codex:rescue usage, model example, project-root launch, prompt-carried constraints, captured hook payload handoff, completion re-verification, and platform notes
-- `RULES` Simple Communication is a four-slot response contract (v21.115.0, I085): `[conclusion] → [evidence] → [critical exception] → [next action]` in the reader's words, first sentence is the direct answer, keep-vs-cut list on shortening, bullets only for 3+ parallel items with max 4 per group, one term unpacked per sentence (비유 금지), concrete over abstract, no self-coined acronyms, accuracy outranks brevity, banter never as padding
-- `RULES` VERIFICATION: after the last edit, run once the checks that touch what changed and read their output; unchanged inputs are not run again (v21.158.0); the chat report is `"M of N passed"` plus failed items, in plain words (v21.115.0/.1, I085)
+- `RULES` Simple Communication is a four-slot response contract (v21.115.0, I085): `[conclusion] → [evidence] → [critical exception] → [next action]` in the reader's words, first sentence is the direct answer, keep-vs-cut list on shortening, bullets only for 3+ parallel items with max 4 per group, one term unpacked per sentence (비유 금지), concrete over abstract, no self-coined acronyms, accuracy outranks brevity, banter never as padding; shortened 956 → 788 characters with every instruction kept (v21.159.0)
+- `RULES` VERIFICATION: after the last edit, run once the checks that touch what changed and read their output; unchanged inputs are not run again (v21.158.0); the chat report is `"M of N passed"` plus failed items, in plain words (v21.115.0/.1, I085); a change that reruns checks it does not affect is a defect, fixed with the verifying skill's select-by-use method, never with a time target or a count cap (v21.159.0)
 - Configurable frequency via `rulesInjectionFrequency`
 - Auto-sync rules to CLAUDE.md via `syncClaudeMdRules()` (marker-based; every execution prompt, and SessionStart through `load-memory.js`, when it differs; v21.155.0)
 - Reset and persist all pressure counters when `봉인해제` / `UNLEASH` appears, regardless of question/execution classification (v21.110.1)
@@ -519,6 +519,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.159.0 | Checks rerun only when what they used changes, in any language and project (21.158.0 selected by files read, so a project that loads all its data at start still reran nearly every check for one data edit): every check gets a report file through `CRABSHELL_USED_REPORT`, and a passing run's report becomes its inputs inside `reportScope` (default: its `inputs`); no report or a broken one chooses as before; items inside one file through the project's `itemIdentity` command; a `"gate": true` entry runs the start-up validation first and checks narrowed by their reports are reused only while it passes; `{cases}` reruns only the cases whose used inputs changed; record kind `reported`, and a traced check that starts a program the tracer cannot follow but declares `inputs` is recorded as declared; runner updates keep passes (only `contract.js`, `execute.js` and the tracer source void them; record schema raised to 4 once); new reference `select-by-use.md` and one VERIFICATION rule line (a change that reruns checks it does not affect is a defect); Simple Communication rule 956 → 788 characters |
 | 21.158.0 | Checks sized to the change: one `run-verify.js --changed --slow` after the release's last edit replaces the `--no-reuse` full run; a hint for hand-run declared checks and a commit-time reminder (neither blocks); several check ids per run; side by side by default (`jobs`, `minFreeMemoryMB`, `startSpacingMs`); `riskPaths`, quarantine of flaky checks, a re-check of forbidden-file failures; `--replay N` estimates past commits from the records; `changed.global` no longer lists `scripts/constants.js`/`scripts/utils.js` and a folder a check only lists counts by its names; copy detector (`copyLiteralMinChars`); tests that copied rule and message wording rewritten; the VERIFICATION rules center on one sentence and a ticket records per criterion the command, its output line and pass/fail; the "Parallel Work Check" reminder and a per-prompt parallel line restore parallel work for independent parts; shared modules split into `scripts/core/` |
 | 21.157.0 | Before every answer the per-prompt checklist asks two questions — "Is this your best?" and "Is it simple and clear — only what the reader needs, nothing they must ask back about?" — and says to fix the answer before sending if either is no (before, it asked only the first, and only before handing over a result). |
 | 21.156.0 | Memory notices come once per turn and let a question be answered first: the pending-save and archive-summary notices go on a turn's first prompt only (queued messages and task reports of the same turn no longer repeat them); on a non-execution turn Claude answers first and runs the save in the same response, and a save skipped that way comes back on the next turn before other work; execution requests still save first; the notices no longer depend on the injection frequency and survive the hook's error fallback (`core/memory-notice.js`). |

@@ -1,5 +1,21 @@
 # Changelog
 
+## [21.159.0] - 2026-11-07
+
+### feat: checks rerun only when what they used changes — any language, any project
+
+- **Why.** 21.158.0 said checking was sized to the change, but that was measured only in this repository. A check reran whenever a file it *read* changed. Programs that load all their data at start (games, card engines, config-heavy tools) therefore reran nearly every check for any one data edit: one content file reran 114 checks (~24 min) in one project, a one-line edit 52 checks (~12 min) in another, and two projects whose checks declared no inputs ran every check every time. Correction of the 21.158.0 claim: selection was by files read, not by what a change affects.
+- **A check can report what it used.** The runner gives every check a report file through `CRABSHELL_USED_REPORT`; any program in any language (and its child processes) writes the files, folders or items it used, ending with a done marker. A passing run's report becomes the check's inputs inside its `reportScope` (default: its `inputs`); reads outside that scope stay inputs. No report, an empty one, one without the done marker, or a path that is not a project file means the check is chosen exactly as before.
+- **Items inside one file.** For files holding many records or functions, the project's `itemIdentity` command prints each item's fingerprint and one for the rest of the file; a check that used one item reruns only when that item or the rest changes. Without the command the whole file counts. The runner parses no file format.
+- **Gate check.** An entry marked `"gate": true` (for example the program's start-up validation of all data) runs first; checks narrowed by their reports are reused only while the gate passes on the current files, and become NOT_RUN when it fails.
+- **Cases inside one entry.** A command with `{cases}` gets only the cases whose used inputs changed; each case keeps its own record.
+- **Runner updates keep passes.** Only code that can change a result (`contract.js`, `execute.js`, the tracer source) voids recorded passes; changes to how inputs are recorded do not (the schema version is raised by hand when inputs widen). This release raises it once.
+- **One record kind.** A traced check that starts a program the tracer cannot follow but declares `inputs` is recorded as declared (traced reads plus declared inputs); the "unknown inputs" notice, `--replay` and the copy detector read the same kind.
+- **Skill and rule.** The verifying skill's new reference `select-by-use.md` tells Claude how to make a project's checks report what they use (report where data is handed out, scan through a kind index, put start-up validation in a gate, report only functions that ran, declare `inputs` only where nothing can report, split shared code). One rule line: a change that reruns checks it does not affect is a defect, fixed with that method, never with a time target or a count cap.
+- **Structure.** New runner module `skills/verifying/scripts/runner/used-report.js` (the report format, reading a check's report, running the project's `itemIdentity` command, `{cases}` expansion); new reference `skills/verifying/references/select-by-use.md` (how to make a project's checks report what they use).
+- **Fix: 30-day memory cleanup counted one day too many** after a daylight-saving change, in the evening hour: old session files and logs were pruned or archived a day early. Days are now counted midnight to midnight (`scripts/counter.js`, one function for both places).
+- **Shorter communication rule.** The Simple Communication rule is shorter (956 → 788 characters) with every instruction kept.
+
 ## [21.158.0] - 2026-11-07
 
 ### feat: checks sized to the change — one run before the commit, side by side, fewer checks per edit, and tests that do not copy the code
