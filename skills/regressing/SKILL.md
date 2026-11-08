@@ -77,11 +77,11 @@ repeat until convergence or cap reached:
 After each /ticketing invocation, update the regressing state. Append the new ticket's ID to `"ticketIds"` and set `"lastUpdatedAt": "{ISO}"` with: `"{NODE_PATH}" -e "const f='{PROJECT_DIR}/.crabshell/memory/regressing-state.json';const s=JSON.parse(require('fs').readFileSync(f,'utf8'));s.ticketIds.push('{T-ID}');s.lastUpdatedAt=new Date().toISOString();require('fs').writeFileSync(f,JSON.stringify(s,null,2))"`. The PostToolUse hook moves the phase.
 
 #### Step 4c: Ticket Execution
-- Execute each T(n,m) with ticketing's parent-owned execution and verification flow. Each ticket is its own execution cycle.
+- Execute each T(n,m) with ticketing's parent-owned execution and verification flow. Each ticket is its own independent execution.
 - **Ticket execution ordering:** The parent sets the dependency order before execution begins. Dependent tickets MUST run in order: if T002 needs T001's file changes, T001 completes before T002 starts. Independent tickets MAY run in parallel.
 - The parent owns each phase, executes in-scope work and appends execution evidence to the T document. Work given to a worker follows the ticket contract.
   - **Framing:** Every delegated prompt (worker or reviewer) follows ticketing framing and verification standards, names exact scope and non-goals, and forbids fan-out.
-- Before each ticket's final verification, read and follow `references/cycle-verification.md`. It covers optional independent review, the check run (once per ticket, after its last edit), and the parent's final verification: Correctness, Coherence, Improvement Opportunities, the evidence record, Intent Fidelity (the result against D's IA and the cycle plan) and Next Direction. Default posture: skepticism. A worker's or reviewer's claim is never the completion condition.
+- Before each ticket's final verification, read and follow `references/cycle-verification.md`. It covers optional independent review, the check run, and the parent's final verification: Correctness, Coherence, Improvement Opportunities, the evidence record, Intent Fidelity (the result against D's IA and the cycle plan) and Next Direction. Default posture: skepticism. A worker's or reviewer's claim is never the completion condition.
 
 After ticket execution, update the regressing state. Set `"phase": "feedback"` and `"lastUpdatedAt": "{ISO}"` with: `"{NODE_PATH}" -e "const f='{PROJECT_DIR}/.crabshell/memory/regressing-state.json';const s=JSON.parse(require('fs').readFileSync(f,'utf8'));s.phase='feedback';s.lastUpdatedAt=new Date().toISOString();require('fs').writeFileSync(f,JSON.stringify(s,null,2))"`
 

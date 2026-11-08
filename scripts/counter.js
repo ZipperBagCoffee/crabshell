@@ -39,7 +39,7 @@ function getConfig() {
   const configPath = path.join(getStorageRoot(), 'memory', 'config.json');
   let config = readJsonOrDefault(configPath, null);
   if (!config) {
-    config = readJsonOrDefault(GLOBAL_CONFIG_PATH, { saveInterval: DEFAULT_INTERVAL, keepRaw: false, quietStop: true });
+    config = readJsonOrDefault(GLOBAL_CONFIG_PATH, { saveInterval: DEFAULT_INTERVAL, keepRaw: false });
   }
   return config;
 }
@@ -224,7 +224,6 @@ async function final() {
   // CLAUDE_PROJECT_DIR (set by Claude Code) is the authoritative project root.
   const sessionId = hookData.session_id || null;
   const sessionId8 = sessionKey(sessionId);
-  const projectDir = getProjectDir().replace(/\\/g, '/');
   const timestamp = getTimestamp();
   const sessionsDir = path.join(getStorageRoot(), SESSIONS_DIR);
 
@@ -257,7 +256,6 @@ async function final() {
   }
 
   // Create L1 refined version
-  let l1Created = false;
   if (rawSaved) {
     try {
       const l1Dest = rawSaved.replace('.raw.jsonl', '.l1.jsonl');
@@ -271,23 +269,15 @@ async function final() {
 
       // Remove duplicate L1 files from same session
       cleanupDuplicateL1(l1Dest);
-      l1Created = true;
 
       // Delete raw file unless keepRaw is enabled
       const config = getConfig();
-      if (!config.keepRaw) {
-        fs.unlinkSync(rawSaved);
-        rawSaved = ''; // Clear so instructions don't show deleted file
-      }
+      if (!config.keepRaw) fs.unlinkSync(rawSaved);
     } catch (e) {
       fs.appendFileSync(path.join(getLogsDir(), 'error.log'),
         `${timestamp}: Failed to create L1: ${e.message}\n`);
     }
   }
-
-  const scriptPath = process.argv[1].replace(/\\/g, '/');
-  const nodePath = process.execPath.replace(/\\/g, '/');
-  const config = getConfig();
 
   // Prune old L1 files (>30 days) — after L1 creation, before delta extraction
   // Must run before delta so extractDelta never selects a stale file
@@ -300,8 +290,6 @@ async function final() {
 
   // Process any remaining delta before session ends (pass sessionId for isolation).
   // Extraction, the session's delta start and its L1 position change in one lock hold.
-  let deltaResult = { success: false, reason: 'memory index busy' };
-  let deltaOutput = '';
   {
     const idxPath = path.join(getStorageRoot(), MEMORY_DIR, INDEX_FILE);
     const finalMemoryDir = path.join(getStorageRoot(), MEMORY_DIR);
@@ -324,7 +312,7 @@ async function final() {
         const started = readIndexSafe(idxPath);
         if (markSessionStarted(started, sessionId8)) writeJson(idxPath, started);
       }
-      deltaResult = extractDelta(sessionId8);
+      extractDelta(sessionId8);
       if (!sessionId8) {
         // Legacy project-wide position — the next session starts fresh
         const idx = readIndexSafe(idxPath);
@@ -339,48 +327,10 @@ async function final() {
     require('./core/skill-flag').clearSkillActive(getProjectDir(), sessionId);
   }
   try { pruneSessionStates(getProjectDir()); } catch {}
-  if (deltaResult.success) {
-    deltaOutput = `\n[CRABSHELL_DELTA] file=${deltaResult.deltaFile}\nDelta extracted at session end: ${deltaResult.entryCount} entries.`;
-  }
 
-  // Quiet mode by default - only show brief message
-  if (config.quietStop !== false) {
-    let systemMsg = `[CRABSHELL_SAVE] Session saved. L1: ${l1Created ? 'OK' : 'SKIP'}`;
-    if (deltaOutput) {
-      systemMsg += deltaOutput;
-    }
-    const output = {
-      systemMessage: systemMsg
-    };
-    console.log(JSON.stringify(output));
-    if (!sessionId8) setCounter(0);
-    return;
-  }
-
-  const instructions = `
-═══════════════════════════════════════════════════════════════
-[CRABSHELL_SAVE] SESSION ENDING - Final Save Required
-═══════════════════════════════════════════════════════════════
-
-${rawSaved ? `✓ Raw transcript saved: ${rawSaved}` : '⚠ Raw transcript not saved'}
-
-**APPEND complete summary to logbook.md:**
-\`\`\`bash
-printf '\\n## %s (Session End)\\n%s\\n' "${timestamp}" "[Complete session summary - be thorough]" >> "${projectDir}/.crabshell/memory/logbook.md"
-\`\`\`
-
-**RUN compression:**
-\`\`\`bash
-"${nodePath}" "${scriptPath}" compress
-\`\`\`
-
-═══════════════════════════════════════════════════════════════`;
-
-  const output = {
-    systemMessage: instructions
-  };
-  console.log(JSON.stringify(output));
-
+  // SessionEnd prints nothing: Claude Code discards a SessionEnd hook's JSON output
+  // (systemMessage included) and no model turn follows. The saved L1 and delta are
+  // picked up by the next session's memory notice.
   if (!sessionId8) setCounter(0);
 }
 

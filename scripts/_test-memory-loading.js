@@ -36,7 +36,7 @@ const entries = n => Array.from({ length: n }, (_, i) => `## 2026-09-${String(10
   const bad = run([`--summary-file=${outside}`]);
   report.check('A2 a summary file outside the memory folder is refused and the logbook is unchanged',
     bad.status === 1 && fs.readFileSync(memoryFile(dir, 'logbook.md'), 'utf8') === before, `status=${bad.status} ${bad.stderr.slice(0, 160)}`);
-  const skills = ['save-memory', 'memory-autosave'].map(name => [name, fs.readFileSync(path.join(__dirname, '..', 'skills', name, 'SKILL.md'), 'utf8')]);
+  const skills = ['save-memory'].map(name => [name, fs.readFileSync(path.join(__dirname, '..', 'skills', name, 'SKILL.md'), 'utf8')]);
   report.check('A3 the save skills append only through append-memory.js and say what to do when a delta job is prepared',
     skills.every(([, text]) => !/appendFileSync/.test(text) && /append-memory\.js/.test(text) && /--summary-file=/.test(text) && /memory-delta/.test(text)),
     skills.filter(([, text]) => /appendFileSync/.test(text) || !/--summary-file=/.test(text) || !/memory-delta/.test(text)).map(([name]) => name).join(' '));

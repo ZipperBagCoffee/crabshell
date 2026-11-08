@@ -17,7 +17,7 @@ A discussion `--parent` such as `D001` makes the ticket ID `D001_T001`. A ticket
 
 A ticket under a discussion needs the discussion's `## Plan` first. The command refuses a discussion with no plan, no `**Reader Structure:**` line, or empty design lines: **Values:**, **Structure:**, **Start state:**, **User burden:**, **Design review:**. `none: <reason>` counts as filled. It also needs `--details` with this ticket's part of the plan: each file → function/section → what changes, specific enough to build from the ticket alone.
 
-After the last edit, run the project's checks once (`node .crabshell/verification/run-verify.js --changed` or the project's equivalent) and record the command and result. Later steps read that result instead of running the checks again.
+After the discussion's last edit (with several tickets, the last ticket runs it; in regressing, after the cycle's last edit), run the project's checks once (`node .crabshell/verification/run-verify.js --changed` or the project's equivalent) and record the command and result. Later steps read that result instead of running the checks again.
 
 Before setting the ticket to verified, fill:
 - `## Reader Check`: who tried the result, or "not confirmed"; how a correction spread, or "none".

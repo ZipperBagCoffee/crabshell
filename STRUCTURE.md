@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.160.0)
+# Crabshell Plugin Structure (v21.161.0)
 
-**Version**: 21.160.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.161.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -235,8 +235,7 @@ crabshell/
 │   ├── install-codex.js              # Legacy/development Claude checkout -> Codex bridge (v21.94.0)
 │   └── migrate-obsidian.js           # Frontmatter + wikilink migration; --generate-digest; hotfix + knowledge sections (v21.75.0)
 │
-├── skills/                           # Slash command skills (22 total)
-│   ├── memory-autosave/SKILL.md      # Auto-trigger memory save
+├── skills/                           # Slash command skills (20 total)
 │   ├── memory-delta/SKILL.md         # Mandatory delta save: prepare → background summarizers per part → finalize (v21.133.0)
 │   ├── memory-rotate/SKILL.md        # Auto-trigger L3 generation
 │   ├── save-memory/SKILL.md          # /crabshell:save-memory
@@ -266,7 +265,7 @@ crabshell/
 │   ├── structuring/SKILL.md          # /crabshell:structuring (structure for the person who receives the result) (v21.144.0)
 │   └── hotfix/SKILL.md              # /crabshell:hotfix (H-page lightweight fix recording) (v21.75.0)
 │
-├── codex-skills/                     # Codex-native bundled skills (12 total)
+├── codex-skills/                     # Codex-native bundled skills (13 total)
 │   ├── load-memory/scripts/          # Installed-cache memory wrapper
 │   ├── save-memory/scripts/          # Installed-cache memory wrapper
 │   ├── search-memory/scripts/        # Installed-cache memory wrapper
@@ -519,6 +518,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.161.0 | Removed the dead session-end save path (SessionEnd message, `quietStop`, memory-autosave skill, V040); saving unchanged; one rule for when checks run in regressing and ticketing |
 | 21.160.0 | Instructions shorter, same meaning: per-prompt block 576 → 526 words, rules block 1,788 → 1,733, skills 16,417 → 14,193, references 10,156 → 9,241; stale project-root pointer fixed in ten skills; `itemIdentity` timeout example in milliseconds |
 | 21.159.1 | Verifying skill select-by-use: fields, copies, runtime of the identity command, own selectors, measuring one change (docs only) |
 | 21.159.0 | Checks rerun only when what they used changes, in any language and project (21.158.0 selected by files read, so a project that loads all its data at start still reran nearly every check for one data edit): every check gets a report file through `CRABSHELL_USED_REPORT`, and a passing run's report becomes its inputs inside `reportScope` (default: its `inputs`); no report or a broken one chooses as before; items inside one file through the project's `itemIdentity` command; a `"gate": true` entry runs the start-up validation first and checks narrowed by their reports are reused only while it passes; `{cases}` reruns only the cases whose used inputs changed; record kind `reported`, and a traced check that starts a program the tracer cannot follow but declares `inputs` is recorded as declared; runner updates keep passes (only `contract.js`, `execute.js` and the tracer source void them; record schema raised to 4 once); new reference `select-by-use.md` and one VERIFICATION rule line (a change that reruns checks it does not affect is a defect); Simple Communication rule 956 → 788 characters |

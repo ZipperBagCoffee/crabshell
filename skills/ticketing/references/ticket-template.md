@@ -55,7 +55,7 @@ The parent owns implementation, decisive verification, the final diff, completio
 - Verify each work item's runtime behavior (trigger → path → result), that existing functionality still works, and edge-case and exception handling.
 - Use independent review when change risk, shared contracts, security, data loss or user-visible behavior calls for it. Reviewer count never follows worker count.
 - **Independence Protocol:** A reviewer's brief holds the ticket's Acceptance Criteria and Verification sections, never the implementation's conclusions. Ask for the same record per criterion. The parent records each finding and what it did about it.
-- **Check run — once, after the discussion's last edit, before the commit:** With several tickets, the last ticket runs it and earlier tickets record that they wait for that run. While editing, run only the test of the part being written, by name through the runner (`node .crabshell/verification/run-verify.js <id>`), so its pass is kept. If `.crabshell/verification/manifest.json` exists, run `node .crabshell/verification/run-verify.js --changed` or the project's equivalent once; record the command and its result line. With no manifest, invoke `/verifying` to create one, then run it. A project with nothing executable records "Verification tool N/A: {reason}". Do not run it again on unchanged files.
+- **Check run — once, after the discussion's last edit, before the commit (in regressing: after the cycle's last edit, see the regressing skill's cycle-verification.md):** With several tickets, the last ticket runs it and earlier tickets record that they wait for that run. While editing, run only the test of the part being written, by name through the runner (`node .crabshell/verification/run-verify.js <id>`), so its pass is kept. If `.crabshell/verification/manifest.json` exists, run `node .crabshell/verification/run-verify.js --changed` or the project's equivalent once; record the command and its result line. With no manifest, invoke `/verifying` to create one, then run it. A project with nothing executable records "Verification tool N/A: {reason}". Do not run it again on unchanged files.
 
 ### Step B.5: Multiple Independent Reviews (when useful)
 - Give each reviewer a different material risk, not a copy of one checklist.
@@ -89,7 +89,7 @@ The parent owns implementation, decisive verification, the final diff, completio
      - A generic TODO list without this cycle's observations is invalid.
 
 ## Execution
-- Parent-owned flow above (Step A → Step B → Step C); one ticket = one independent execution cycle.
+- Parent-owned flow above (Step A → Step B → Step C); one ticket = one independent execution.
 
 ## Execution Results
 (placeholder — parent writes implementation evidence here)

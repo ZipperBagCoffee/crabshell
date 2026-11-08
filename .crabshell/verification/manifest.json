@@ -464,34 +464,6 @@
       "timeout": 30000
     },
     {
-      "id": "V040",
-      "ia": "trigger [CRABSHELL_SAVE] has live producers and consumers",
-      "type": "structural",
-      "command": {
-        "file": "node",
-        "args": [
-          ".crabshell/verification/check-pipeline-wiring.js",
-          "check",
-          "--contract",
-          ".crabshell/verification/wiring-contract.json",
-          "--hop",
-          "trigger:crabshell_save"
-        ]
-      },
-      "contract": {
-        "exitCode": 0,
-        "assertions": [
-          {
-            "kind": "stdoutJsonEquals",
-            "pointer": "/passed",
-            "equals": true
-          }
-        ],
-        "forbiddenChanges": []
-      },
-      "timeout": 30000
-    },
-    {
       "id": "V041",
       "ia": "skill memory-delta resolves the delta-summarizer agent",
       "type": "structural",
