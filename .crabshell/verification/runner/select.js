@@ -42,6 +42,12 @@ function inputsCover(entry, file) {
   return inputPatterns(entry).some(pattern => matchesInput(pattern, file));
 }
 
+// A path a pattern names: a file it matches, or a folder ("x/") the pattern names without
+// its slash. Used for `exclude` and `outputs`.
+function underPattern(pattern, rel) {
+  return matchesInput(pattern, rel) || (rel.endsWith('/') && matchesInput(pattern, rel.slice(0, -1)));
+}
+
 // What a run never treats as a project file: the runner's own records and modules,
 // what Crabshell writes for itself — everything in its storage folder outside the
 // verification folder (documents, knowledge, memory; v2 §1), or, for a launcher outside
@@ -70,7 +76,7 @@ function exclusion({ projectRoot, layout, manifestPath, manifest }) {
   const declared = [...patternList(manifest && manifest.exclude), ...entries.flatMap(entry => patternList(entry && entry.outputs))];
   return rel => crabshellOwn(rel) || own.some(folder => rel === folder || rel.startsWith(folder))
     || ownFilePrefixes.some(prefix => rel === prefix || rel.startsWith(`${prefix}.`))
-    || declared.some(pattern => matchesInput(pattern, rel) || (rel.endsWith('/') && matchesInput(pattern, rel.slice(0, -1))));
+    || declared.some(pattern => underPattern(pattern, rel));
 }
 
 // The snapshot files a list of patterns names; a plain path that is not in the
@@ -304,16 +310,27 @@ function reasonGroup(reason) {
       : reason === 'record from an older runner' ? 'recorded by an older runner' : reason;
 }
 
+// The inputs whose identity differs from the one the record holds, in path order.
+function changedKeys(set, record, ctx) {
+  const hashes = record && record.inputHashes;
+  if (!hashes || typeof hashes !== 'object') return [];
+  return [...set.files].sort().filter(key => hashes[key] !== keyIdentity(ctx, key, set.known));
+}
+
+// Every input difference from the record, as reason text: each changed input, then each
+// recorded input that is no longer one (D164: --explain names them all, not the first).
+function inputDifferences(set, record, ctx) {
+  if (set.kind === 'project' || !record || !record.inputHashes || typeof record.inputHashes !== 'object') return [];
+  const differences = changedKeys(set, record, ctx).map(key => `${describeKey(key)} changed`);
+  // An item's file is recorded with its items (its hash tells a hook the items still hold).
+  const listed = new Set([...set.files, ...set.files.filter(isItemKey).map(pathOf)]);
+  for (const key of Object.keys(record.inputHashes)) if (!listed.has(key)) differences.push(`${describeKey(key)} is no longer an input`);
+  return differences;
+}
+
 function changeReason(set, record, ctx) {
-  if (set.kind !== 'project' && record && record.inputHashes && typeof record.inputHashes === 'object') {
-    for (const key of [...set.files].sort()) {
-      if (record.inputHashes[key] !== keyIdentity(ctx, key, set.known)) return `${describeKey(key)} changed`;
-    }
-    // An item's file is recorded with its items (its hash tells a hook the items still hold).
-    const listed = new Set([...set.files, ...set.files.filter(isItemKey).map(pathOf)]);
-    const gone = Object.keys(record.inputHashes).find(key => !listed.has(key));
-    if (gone) return `${describeKey(gone)} is no longer an input`;
-  }
+  const differences = inputDifferences(set, record, ctx);
+  if (differences.length) return differences[0];
   // The runner's own decision code (D143_T020): named so a release that changes it says why
   // every check runs once.
   if (record && record.decision && record.decision !== ctx.decision) return DECISION_CHANGED;
@@ -342,7 +359,7 @@ function casesToRun(entry, record, set, ctx) {
   if (names.length < 2 || !set.files.every(key => own(hashes, key))) return null;
   const then = fingerprintOf(entry, { ...set, known: hashes }, ctx);
   if (record.lastFailedAt ? record.failKey !== then : !(Array.isArray(record.passHistory) && record.passHistory.includes(then))) return null;
-  const changed = new Set(set.files.filter(key => hashes[key] !== keyIdentity(ctx, key, set.known)));
+  const changed = new Set(changedKeys(set, record, ctx));
   const used = new Set(names.flatMap(name => record.cases[name].files || []));
   if ([...changed].some(key => !used.has(key))) return null;
   const run = names.filter(name => record.cases[name].result !== 'pass' || (record.cases[name].files || []).some(key => changed.has(key)));
@@ -406,7 +423,7 @@ function coverable(entry, record) {
 // last passes hold the current inputs — for a caller that asks what has not passed on the
 // current files rather than what a run would run (a hook before a commit, D155 P3).
 function planRun({ entries, records, olderRecords, ctx, reuse, gates = null, everyTime = true }) {
-  const plan = { selected: [], reasons: {}, reused: [], sets: new Map(), fingerprints: new Map(), unknownInputs: [],
+  const plan = { selected: [], reasons: {}, changedInputs: {}, reused: [], sets: new Map(), fingerprints: new Map(), unknownInputs: [],
     cases: new Map(), gatesPending: [], awaitingGate: [] };
   prepareItems(entries, records, ctx);
   const judge = entry => {
@@ -445,6 +462,11 @@ function planRun({ entries, records, olderRecords, ctx, reuse, gates = null, eve
     if (!reason) { plan.reused.push(entry.id); continue; }
     plan.selected.push(entry.id);
     plan.reasons[entry.id] = reason;
+    if (set && reasonGroup(reason) === 'with changed inputs') {
+      let differences = [];
+      try { differences = inputDifferences(set, record, ctx); } catch (_) {}
+      if (differences.length) plan.changedInputs[entry.id] = differences;
+    }
     if (set && (reason === 'failed in the last run' || reasonGroup(reason) === 'with changed inputs')) {
       let cases = null;
       try { cases = casesToRun(entry, record, set, ctx); } catch (_) {}
@@ -470,6 +492,7 @@ function planRun({ entries, records, olderRecords, ctx, reuse, gates = null, eve
       plan.reused.splice(plan.reused.indexOf(entry.id), 1);
       plan.selected.push(entry.id);
       plan.reasons[entry.id] = `${ownerless[0]} changed and no check reads or declares it`;
+      plan.changedInputs[entry.id] = ownerless.map(file => `${file} changed and no check reads or declares it`);
     }
     plan.selected.sort((a, b) => entries.findIndex(entry => entry.id === a) - entries.findIndex(entry => entry.id === b));
   }
@@ -487,6 +510,60 @@ function planRun({ entries, records, olderRecords, ctx, reuse, gates = null, eve
     });
   }
   return plan;
+}
+
+// D164 (Ninja's restat, Bazel's early cutoff): a check that reads a file another check of
+// this run writes — its `outputs` — is judged after that writer ran, by what it wrote.
+// running: the ids that run in this run; reusable: the ids whose passes could be reused.
+// For each reader: the writers it waits for and the files it reads from them. A reused
+// reader that runs after all may write too, so its own outputs count until nothing new is
+// found. A check with unknown inputs never sees `outputs` (they are not project files).
+function readersOf({ entries, sets, running, reusable }) {
+  const byId = new Map(entries.map(entry => [entry.id, entry]));
+  const writes = id => patternList(byId.has(id) ? byId.get(id).outputs : null);
+  const candidates = [...running, ...reusable].filter(id => byId.has(id));
+  const writers = new Set(running.filter(id => writes(id).length));
+  const readers = new Map();
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const id of candidates) {
+      const set = sets.get(id);
+      if (!set || set.kind === 'project') continue;
+      const files = [...new Set(set.files.map(pathOf))];
+      for (const writer of writers) {
+        if (writer === id || (readers.has(id) && readers.get(id).writers.includes(writer))) continue;
+        const read = files.filter(file => writes(writer).some(pattern => underPattern(pattern, file)));
+        if (!read.length) continue;
+        const found = readers.get(id) || { writers: [], files: [] };
+        found.writers.push(writer);
+        found.files = [...new Set([...found.files, ...read])].sort();
+        readers.set(id, found);
+        if (!writers.has(id) && writes(id).length) writers.add(id);
+        grew = true;
+      }
+    }
+  }
+  return readers;
+}
+
+// Files a check of this run wrote: their content and items are read again when next asked.
+function forgetFiles(ctx, files) {
+  ctx.snapshot.refresh(files);
+  if (ctx.items) for (const file of files) ctx.items.delete(file);
+}
+
+// A reused check judged again after the checks that write what it reads ran (D164): why
+// it must run now, or null while its inputs are still ones it passed with.
+function reasonAfterWriters(entry, record, ctx) {
+  let set;
+  let fingerprint;
+  try {
+    set = inputSet(entry, record, ctx);
+    fingerprint = fingerprintOf(entry, set, ctx);
+  } catch (_) { return 'an input could not be read'; }
+  if (record && Array.isArray(record.passHistory) && record.passHistory.includes(fingerprint)) return null;
+  return changeReason(set, record, ctx);
 }
 
 // --- used by fail-before (opt-in), which compares changed tests with HEAD ---
@@ -524,8 +601,9 @@ function gitVisibleFiles(projectRoot) {
 }
 
 module.exports = {
-  covers, patternList, inputPatterns, matchesInput, inputsCover, crabshellState, exclusion, filesMatching, argumentFiles,
+  covers, patternList, inputPatterns, matchesInput, underPattern, inputsCover, crabshellState, exclusion, filesMatching, argumentFiles,
   declarationKey, medianDuration, isSlow, DEFAULT_SLOW_AFTER_SECONDS,
   recordKind, inputsUnknown, reportScope, scopeKey, inScope, keyIdentity, knownItems, refreshedItemHashes, itemFacts, casesToRun, reportedInputs,
-  inputSet, fingerprintOf, changeReason, DECISION_CHANGED, reasonGroup, coverable, planRun, withoutRunnerFiles, gitChangedFiles, gitVisibleFiles, currentHead,
+  inputSet, fingerprintOf, changedKeys, inputDifferences, changeReason, DECISION_CHANGED, reasonGroup, coverable, planRun,
+  readersOf, forgetFiles, reasonAfterWriters, withoutRunnerFiles, gitChangedFiles, gitVisibleFiles, currentHead,
 };

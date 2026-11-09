@@ -16,7 +16,8 @@ const { TRACER_SOURCE, insideRoot, readTrace, readDeep, filesUnder, readChildren
 const { mapPath, writeMap } = require('./store');
 const { selectionView } = require('./project-state');
 const { patternList, inputPatterns, matchesInput, filesMatching, inputSet, fingerprintOf, planRun, coverable, gitChangedFiles, medianDuration, declarationKey, crabshellState, DECISION_CHANGED, currentHead, reasonGroup,
-  recordKind, inputsUnknown, reportScope, scopeKey, inScope, keyIdentity, knownItems, reportedInputs, refreshedItemHashes } = require('./select');
+  recordKind, inputsUnknown, reportScope, scopeKey, inScope, keyIdentity, knownItems, reportedInputs, refreshedItemHashes,
+  underPattern, readersOf, forgetFiles, reasonAfterWriters } = require('./select');
 const { readReport, hasCases, pathOf, isItemKey } = require('./used-report');
 const { routineChoice, quarantineMark, markHolds } = require('./routine');
 const { forbiddenOnly, recheckForbidden, clearedNotice } = require('./recheck');
@@ -155,6 +156,23 @@ function main(argv = process.argv.slice(2), options = {}) {
   }
   const reusable = new Set(planned.reused);
   const awaiting = new Set(planned.awaitingGate);
+  // D164: a check that reads files another check of this run writes (its `outputs`) waits for
+  // that writer. A reused one joins the run and is judged again once its writers ran: reused
+  // when what they wrote is what it passed with, run when it changed. The checks a routine
+  // run leaves out (heavy, quarantined) stay out.
+  let readers = new Map();
+  if (args.reuse && !named) {
+    const sidelined = new Set([...(plan && plan.slowSkipped ? plan.slowSkipped : []), ...(plan && plan.quarantined ? plan.quarantined.map(item => item.id) : [])]);
+    readers = readersOf({ entries: runnable, sets: planned.sets, running: entries.filter(entry => !reusable.has(entry.id)).map(entry => entry.id),
+      reusable: planned.reused.filter(id => !sidelined.has(id)) });
+  }
+  const waitingReaders = new Set([...readers.keys()].filter(id => reusable.has(id)));
+  if (waitingReaders.size) {
+    const inRun = new Set(entries.map(entry => entry.id));
+    entries = runnable.filter(entry => inRun.has(entry.id) || waitingReaders.has(entry.id));
+  }
+  // The reused readers that ran after all, with why.
+  const ranAfterWriters = new Map();
   const selectedIndex = new Map(entries.map((entry, index) => [entry.id, index]));
   const coveringIndex = entry => {
     if (!args.reuse || named || comparedWithHead(entry) || !coverable(entry, previousRecords[entry.id])) return undefined;
@@ -168,8 +186,11 @@ function main(argv = process.argv.slice(2), options = {}) {
     const indexes = planned.gatesPending.map(id => selectedIndex.get(id));
     return indexes.includes(undefined) ? null : indexes;
   };
-  // What a check waits for: the check that covers it, and the gates.
-  const waitsOn = index => [coveringIndex(entries[index]), ...(gatesOf(entries[index]) || [])].filter(parent => parent !== undefined);
+  // The checks of this run that write what a check reads (their places in this run).
+  const writersOf = entry => (readers.has(entry.id) ? readers.get(entry.id).writers.map(id => selectedIndex.get(id)) : []);
+  // What a check waits for: the check that covers it, the gates, and its writers.
+  const waitsOn = index => [coveringIndex(entries[index]), ...(gatesOf(entries[index]) || []), ...writersOf(entries[index])]
+    .filter(parent => parent !== undefined);
   const executionOrder = [];
   const ordered = new Set();
   const order = index => {
@@ -257,6 +278,14 @@ function main(argv = process.argv.slice(2), options = {}) {
     plan.reason = summaryReason(plan, planned);
     plan.unknownInputs = planned.unknownInputs;
     if (planned.awaitingGate.length) plan.awaitingGate = { gates: planned.gatesPending, checks: planned.awaitingGate };
+    // Every input that differs for each check it would run (D164), and the reused checks that
+    // would wait for the checks writing what they read.
+    const changedInputs = plan.selected.filter(id => planned.changedInputs[id]).map(id => [id, planned.changedInputs[id]]);
+    if (changedInputs.length) plan.changedInputs = Object.fromEntries(changedInputs);
+    if (waitingReaders.size) {
+      plan.awaitingWriters = entries.filter(entry => waitingReaders.has(entry.id))
+        .map(entry => ({ id: entry.id, writers: readers.get(entry.id).writers, files: readers.get(entry.id).files }));
+    }
     if (planned.cases.size) plan.cases = Object.fromEntries(planned.cases);
     plan.estimatedSeconds = Math.round(estimatedMs / 100) / 10;
     plan.estimatedWallSeconds = Math.round(runLength(sideBySideMs, aloneMs, runLimit) / 100) / 10;
@@ -267,10 +296,13 @@ function main(argv = process.argv.slice(2), options = {}) {
         ? `Estimated ~${plan.estimatedWallSeconds}s, up to ${runLimit} checks at a time; their times add up to ${plan.estimatedSeconds}s`
         : `Estimated ${plan.estimatedSeconds}s`;
       if (plan.selected.length) console.log(`${estimate}${runWithoutTime ? ` for the checks with a recorded time; ${plan.estimateNote.replace(' and are not in estimatedSeconds', '')}` : ''}.`);
-      // One line per check a --changed run would run: its id and the first reason.
+      // One line per check a --changed run would run: its id, its reason and every other input
+      // that changed.
       const risky = new Set(plan.riskIncluded ? plan.riskIncluded.ids : []);
-      const lines = plan.selected.map(id => `${id}: ${planned.reasons[id] || 'selected'}${risky.has(id) ? `; heavy, runs because ${plan.riskIncluded.file} changed (riskPaths)` : ''}`);
+      const also = id => (planned.changedInputs[id] || []).filter(text => text !== planned.reasons[id]);
+      const lines = plan.selected.map(id => `${id}: ${planned.reasons[id] || 'selected'}${also(id).length ? `; also ${also(id).join(', ')}` : ''}${risky.has(id) ? `; heavy, runs because ${plan.riskIncluded.file} changed (riskPaths)` : ''}`);
       console.log(lines.length ? lines.join('\n') : 'No check would run for the current changes.');
+      if (plan.awaitingWriters) console.log(`Run only if a check before them writes new content into what they read: ${plan.awaitingWriters.map(item => `${item.id} (${item.files.join(', ')}, from ${item.writers.join(', ')})`).join('; ')}`);
       if (plan.slowSkipped && plan.slowSkipped.length) console.log(`Slow checks left to --slow: ${plan.slowSkipped.map(id => `${id} (${plan.slowStates[id]})`).join(', ')}`);
       if (plan.quarantined && plan.quarantined.length) console.log(`Left out as flaky: ${plan.quarantined.map(item => `${item.id} (until ${item.test} changes)`).join(', ')}`);
       if (plan.selected.some(id => planned.reasons[id] === DECISION_CHANGED)) console.log("The runner's decision code changed: every non-slow check runs once; slow checks wait for --slow.");
@@ -323,6 +355,12 @@ function main(argv = process.argv.slice(2), options = {}) {
       return { id: entry.id, type: entry.type, status: 'PASS', coveredBy: entry.coveredBy, durationMs: 0,
         message: `Covered by ${entry.coveredBy}`, output: '', error: null, failureClass: null };
     }
+    // D164: a reused check that waited for the checks writing what it reads is judged again
+    // on what they wrote; it runs when that differs from what it passed with.
+    if (parent === undefined && waitingReaders.has(entry.id) && canReuse(entry)) {
+      const reason = reasonAfterWriters(entry, previousRecords[entry.id], ctx);
+      if (reason) { ranAfterWriters.set(entry.id, reason); return null; }
+    }
     // D152 P11: a check narrowed by its report is reused once every gate passed in this run,
     // and not run when one did not; a gate missing from this run leaves it to run itself.
     const gates = gatesOf(entry);
@@ -339,8 +377,9 @@ function main(argv = process.argv.slice(2), options = {}) {
     // If the selected covering check failed (or was only covered itself), get fresh
     // evidence from this command even when it has an older pass.
     if (parent === undefined && canReuse(entry)) {
+      const afterWriters = waitingReaders.has(entry.id) ? `, also after ${readers.get(entry.id).writers.join(', ')} ran` : '';
       return { id: entry.id, type: entry.type, status: 'PASS', reused: true, durationMs: 0,
-        message: 'Unchanged since it passed', output: '', error: null, failureClass: null };
+        message: `Unchanged since it passed${afterWriters}`, output: '', error: null, failureClass: null };
     }
     return null;
   };
@@ -519,13 +558,25 @@ function main(argv = process.argv.slice(2), options = {}) {
   const notRun = [];
   const stillFailing = [];
   const sameInputs = new Map();
+  // The files later checks of this run read from what a check writes (D164).
+  const readFrom = entry => {
+    const outputs = patternList(entry.outputs);
+    const files = [...readers.values()].filter(found => found.writers.includes(entry.id)).flatMap(found => found.files);
+    return [...new Set(files)].filter(file => outputs.some(pattern => underPattern(pattern, file)));
+  };
   const startOne = (index, runFn) => {
     const entry = entries[index];
     // Judged before the run: a check may write its own inputs.
     sameInputs.set(index, args.changed && failedOnSameInputs(entry));
     const decided = decide(entry, index);
     if (decided) return decided;
-    return then(attempts(entry, index, runFn), outcome => complete(entry, index, outcome));
+    return then(attempts(entry, index, runFn), outcome => {
+      const result = complete(entry, index, outcome);
+      // Its readers, which waited for it, see what it wrote.
+      const written = readFrom(entry);
+      if (written.length) forgetFiles(ctx, written);
+      return result;
+    });
   };
   const after = {
     stopped: () => Boolean(stoppedAt),
@@ -633,9 +684,11 @@ function main(argv = process.argv.slice(2), options = {}) {
   if (!args.guardRun) runs.push({ head, at: startedAt, ran: entries.length, ms: Math.round(Number(process.hrtime.bigint() - started) / 1e6) });
   const runsSinceCommit = head ? runs.filter(item => item.head === head).length : 0;
   const runLine = runsSinceCommit ? `Check run ${runsSinceCommit} since the last commit${runsSinceCommit > 1 ? ' — run checks once, after the last edit, before committing' : ''}.` : null;
-  // A check that waited for a gate that did not pass (or was not run after a stop) was not reused.
-  const gateBlocked = new Set(results.filter(result => result && (result.gateBlocked || (awaiting.has(result.id) && result.status === 'NOT_RUN')))
-    .map(result => result.id));
+  // A check that waited for a gate that did not pass, or for its writers (D164), and was not
+  // run after a stop was not reused; nor was a reader that ran after its writers.
+  const waited = id => awaiting.has(id) || waitingReaders.has(id);
+  const gateBlocked = new Set(results.filter(result => result && (result.gateBlocked || (waited(result.id) && result.status === 'NOT_RUN')
+    || ranAfterWriters.has(result.id))).map(result => result.id));
   // D152: a reused check whose item files changed elsewhere (its items' identities did not)
   // keeps those files' current hashes, so a hook, which cannot ask itemIdentity, judges it
   // as this run did.
@@ -649,6 +702,11 @@ function main(argv = process.argv.slice(2), options = {}) {
   if (failedIds.size) console.error(`[VERIFY] ${failedIds.size} failed check(s) will run again on the next --changed: ${[...failedIds].join(', ')}`);
   if (traceDir) { try { fs.rmSync(traceDir, { recursive: true, force: true }); } catch (_) {} }
   if (plan) {
+    // The readers that ran after their writers are checks this run chose, with their reasons.
+    for (const [id, reason] of ranAfterWriters) {
+      if (!plan.selected.includes(id)) plan.selected.push(id);
+      planned.reasons[id] = reason;
+    }
     plan.full = plan.selected.length === total && total > 0;
     plan.reason = summaryReason(plan, { ...planned, reused: planned.reused.filter(id => !gateBlocked.has(id)) });
   }
@@ -675,8 +733,15 @@ function main(argv = process.argv.slice(2), options = {}) {
       read: file => fs.readFileSync(path.join(projectRoot, file), 'utf8') }));
   }
   if (blockedBy.size) {
+    const list = files => `${files.slice(0, 5).join(', ')}${files.length > 5 ? `, … (${files.length})` : ''}`;
+    // D164: a file a check of this run declares in its `outputs` is declared already. The checks
+    // that read it were not known to read it (no record of it yet), so they did not wait.
+    const writerOf = file => entries.find(entry => patternList(entry.outputs).some(pattern => underPattern(pattern, file)));
     const files = [...blockedBy].sort();
-    notices.push(`Inputs written while checks ran (their passes were not recorded): ${files.slice(0, 5).join(', ')}${files.length > 5 ? `, … (${files.length})` : ''} — if a check writes them, declare them in its "outputs".`);
+    const undeclared = files.filter(file => !writerOf(file));
+    const declared = files.filter(file => writerOf(file));
+    if (undeclared.length) notices.push(`Inputs written while checks ran (their passes were not recorded): ${list(undeclared)} — if a check writes them, declare them in its "outputs".`);
+    if (declared.length) notices.push(`Files another check wrote in this run, read by checks not yet known to read them (their passes were not recorded): ${list(declared.map(file => `${file} (from ${writerOf(file).id})`))} — those checks run once more and from then on wait for their writer.`);
   }
   results.push(...failBefore);
   return printResults(results, { args, started, resultsPath: layout.resultsPath, plan, selected: entries.length, failBefore, stoppedAt, notRun, stillFailing, notices, runLine });

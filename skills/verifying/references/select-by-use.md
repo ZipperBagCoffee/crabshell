@@ -22,7 +22,9 @@ A value built from many inputs uses all of them: a whole-content hash or validit
 
 ## First: find why each check was chosen
 
-`node .crabshell/verification/run-verify.js --explain` prints each check a `--changed` run would run, with its first reason, and runs nothing. For each chosen check, open its record in `test-map.json` (`kind`, `files`) and sort it:
+Before fixing anything, list the kinds of thing this project's checks use. Examples: data files, code in each kind of process that runs it (a test runner, an engine a script starts, a tool), files another check writes, settings. For each kind, name the way its use gets recorded (①–⑧). A kind with no way yet counts as used whole. Every check it chooses stays in the measurement (⑩) as waste left, with that kind as the reason. Fixing one kind at a time without this list finds the next kind only at the next measurement.
+
+`node .crabshell/verification/run-verify.js --explain` prints each check a `--changed` run would run, with its reason and every other input that changed (`; also …`), and runs nothing. A check chosen for two inputs needs both fixed: fixing one only shows the other. For each chosen check, open its record in `test-map.json` (`kind`, `files`) and sort each of its reasons:
 
 | Reason | What to do |
 |---|---|
@@ -33,6 +35,8 @@ A value built from many inputs uses all of them: a whole-content hash or validit
 | A file it uses, but only one part of it | Report items, not files (④, ⑦); split a shared core file (⑥) |
 | Every loaded file, because the tracer cannot see constant reads | "What the tracer cannot see" under ④ |
 | A case that ran after the case that used the change, in one process | "Cases in one process" under ⑧ |
+| A file another check writes | Declare it in the writer's `outputs`. The runner then judges the reader after the writer ran, by what it wrote: reused when the content is what it passed with |
+| Code run in a process another program starts, such as an engine a script launches | Turn on the same coverage or report there (④) |
 | Its own test or program changed, or it failed last time | Nothing to fix |
 
 Start where the time goes: measure (⑩) which changed files select the most checks, and fix that kind first. Where a code file selects hundreds of checks and a data file a few, ④, ⑥ and `{cases}` save the time, and ①–③ mainly add checks the declared inputs missed.
@@ -79,6 +83,8 @@ The part of a code file outside its function bodies is different: constants, sig
 
 - Wrong: "The test imports the module that defines the price function, so it reports the price function."
 - Right: "The price function reports itself when it runs." Only tests that called it report it.
+
+Every process that runs project code reports, including one that another program starts, such as an engine a script launches or a tool that runs the game. The report path reaches it through the environment (⑧). Turn on there the same coverage or call hook the direct launch uses. Until then, report each code file that process can load as a `file`, and name those files as waste left in the measurement (⑩).
 
 What the tracer cannot see: a coverage or call hook sees the functions that ran, not reads of constants, enums or static fields. A use it cannot see must still not be missed. From the most precise way to the least:
 1. Read the source of each function that ran and the part outside the functions of each loaded file. For each constant, enum or static field they name, directly, through an alias, or inherited through what its file extends, report that member as an `item` of the file that declares it. The identity command (⑦) then lists those members as items too, not only functions, so a new or changed constant runs only the checks whose code names it. Access by a computed name or string goes to way 3.
@@ -156,7 +162,8 @@ Prefer one selector. When a project's command runs many child checks with its ow
 - it gives each child its own report file through `CRABSHELL_USED_REPORT`, replacing the path the entry inherited;
 - it keeps each child's used inputs and passes, with the gate and report scope as its own settings;
 - it settles the gate first, in its own synchronous step, before deciding any child's reuse; a selector that plans every child up front and runs groups side by side otherwise reuses children while the gate is still unknown;
-- it reruns a child only when something in that child's report changed. With a missing or broken report, it chooses the child as it would without a report: its declared inputs, or every project file when it declares none (⑧).
+- it reruns a child only when something in that child's report changed. With a missing or broken report, it chooses the child as it would without a report: its declared inputs, or every project file when it declares none (⑧);
+- it judges a child that reads files another child writes after that child ran, by what it wrote. The writer being chosen is not a change to the reader. The runner does the same for entries: a check that reads files in another check's `outputs` waits for that check and is reused when the content is what it passed with.
 
 The runner then sees only the whole entry: `--explain` and the run summary show one check however many children run, and its time is all of theirs. So the selector prints the reason for each child it runs, and measuring (⑩) counts its children.
 
@@ -178,10 +185,12 @@ Before saying the checks run less, measure each kind of change the project's wor
 For each kind:
 1. Start from a run where every check has a pass on the current files.
 2. Make that one change and nothing else.
-3. Run `--explain` and read the reason for each chosen check. For an entry with its own selector (⑨), count the children its own output says it would run.
+3. Run `--explain` and read every reason of each chosen check: its reason and each `also` input. For an entry with its own selector (⑨), count the children its own output says it would run, with their reasons.
 4. Put the file back.
 
-Report each kind with its number of checks and their reasons, never an estimate. Name each kind not measured. Until every kind the project has is measured, the report reads "partial: measured … / not measured …", not done. A kind that still runs checks that did not use the change is the next fix.
+Report each kind with its number of checks, never an estimate. For each check, give every reason and whether the check used the change (needed) or not (waste). Name each kind not measured. Until every kind the project has is measured, the report reads "partial: measured … / not measured …", not done. A kind that still runs checks that did not use the change is the next fix.
+
+A cause is fixed only when the same kind, measured again, chooses none of the checks it chose for that cause. Otherwise write "partly fixed: N still chosen, because …". Before handing over a list of causes, fixes or feedback, put it next to the question it answers and the conclusions you stated. Each of them belongs in the list or is named as left out.
 
 A miss counts too. When a `--changed` run reused a check's pass and the same check catches a bug once it really runs, the check used something it did not report or declare. Find it and report it (⑧) or add it to `inputs` (⑤); routine full runs do not fix a miss.
 

@@ -154,6 +154,62 @@ try {
       && !looksMachineAbsolute('/api/v1/items') && !looksMachineAbsolute('relative/path'),
       `${machinePath}=${looksMachineAbsolute(machinePath)} /api=${looksMachineAbsolute('/api/v1/items')}`);
   });
+
+  // D164: W writes out/f.txt (its `outputs`) from src/w.txt — "bad" when the source says so,
+  // "ok" otherwise; R reads out/f.txt and its own src/r.txt and src/r2.txt, and fails on "bad".
+  attempt('C9 a check that reads what another check writes is judged after that writer, by what it wrote', () => {
+    const writer = `${note('W')}\nconst fs = require('fs'), p = require('path'), r = process.env.PROJECT_ROOT;\nfs.mkdirSync(p.join(r, 'out'), { recursive: true });\nfs.writeFileSync(p.join(r, 'out/f.txt'), fs.readFileSync(p.join(r, 'src/w.txt'), 'utf8').includes('bad') ? 'bad' : 'ok');\n`;
+    const reader = `${note('R')}\nconst text = ${read('out/f.txt')}\n${read('src/r.txt')}\n${read('src/r2.txt')}\nif (text.includes('bad')) process.exit(1);\n`;
+    const dir = project('c9', [{ ...node('W', 'scripts/_test-w.js'), outputs: ['out/'] }, node('R', 'scripts/_test-r.js')],
+      { 'scripts/_test-w.js': writer, 'scripts/_test-r.js': reader, 'src/w.txt': 'one\n', 'src/r.txt': 'r\n', 'src/r2.txt': 'r2\n' });
+    // The first run does not know yet that R reads W's output: R's pass is not recorded, and the
+    // notice names the writer instead of asking to declare `outputs` that are declared.
+    const first = run(dir, 'c9-first');
+    check('C9e a file a check declares in "outputs" is not reported as undeclared when an unknown reader read it',
+      first.status === 0 && /Files another check wrote in this run[^\n]*out\/f\.txt \(from W\)/.test(first.stdout) && !/declare them in its "outputs"/.test(first.stdout),
+      show(first));
+    run(dir, 'c9-second');
+    // The reader and its writer both have changed inputs: the reader runs after the writer,
+    // and its pass counts although the writer rewrote out/f.txt during the run.
+    write(dir, 'src/w.txt', 'two\n');
+    write(dir, 'src/r.txt', 'r changed\n');
+    const both = run(dir, 'c9-both', ['--changed']);
+    const after = run(dir, 'c9-after', ['--changed']);
+    check('C9a a reader chosen with its writer runs after it, and its pass is recorded',
+      both.status === 0 && both.ran.join(',') === 'R,W' && !/Inputs written while checks ran/.test(both.stdout) && after.ran.length === 0,
+      `${show(both)} || after ${show(after)}`);
+    // Only the writer's input changed and it writes what it wrote before: the reader waits for it
+    // and is reused.
+    write(dir, 'src/w.txt', 'three\n');
+    const plan = dry(dir, 'c9-dry');
+    const waits = plan.awaitingWriters || [];
+    check('C9b --dry-run names the reused reader that waits for its writer, and does not choose it',
+      plan.selected.join(',') === 'W' && waits.length === 1 && waits[0].id === 'R' && waits[0].writers.join(',') === 'W' && waits[0].files.join(',') === 'out/f.txt',
+      JSON.stringify({ selected: plan.selected, awaitingWriters: plan.awaitingWriters }));
+    const same = run(dir, 'c9-same', ['--changed']);
+    check('C9c the writer writes what it wrote before: the reader is reused after it',
+      same.status === 0 && same.ran.join(',') === 'W' && /reused 1/.test(same.stdout), show(same));
+    // The writer now writes "bad": the reader runs in the same run, after the writer, and fails.
+    write(dir, 'src/w.txt', 'bad\n');
+    const changed = run(dir, 'c9-changed', ['--changed']);
+    check('C9d the writer writes new content: the reader runs in the same run and fails on it',
+      changed.status === 1 && changed.ran.join(',') === 'R,W' && /FAIL R/.test(changed.stdout), show(changed));
+  });
+
+  attempt('C10 --explain and --dry-run name every input that changed, not only the first', () => {
+    const dir = project('c10', [node('A', 'scripts/_test-a.js')],
+      { 'scripts/_test-a.js': `${note('A')}\n${read('src/a.txt')}\n${read('src/b.txt')}\n` });
+    run(dir, 'c10-first');
+    write(dir, 'src/a.txt', 'a changed\n');
+    write(dir, 'src/b.txt', 'b changed\n');
+    const plan = dry(dir, 'c10-dry');
+    const explain = run(dir, 'c10-explain', ['--changed', '--explain']);
+    const line = explain.stdout.split(/\r?\n/).find(text => text.startsWith('A: ')) || '';
+    check('C10 --explain and --dry-run name every input that changed, not only the first',
+      JSON.stringify(plan.changedInputs && plan.changedInputs.A) === JSON.stringify(['src/a.txt changed', 'src/b.txt changed'])
+      && line.includes('src/a.txt') && line.includes('src/b.txt'),
+      `${JSON.stringify(plan.changedInputs)} || ${line}`);
+  });
 } finally {
   fs.rmSync(base, { recursive: true, force: true });
 }

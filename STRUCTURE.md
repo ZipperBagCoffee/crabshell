@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.167.0)
+# Crabshell Plugin Structure (v21.168.0)
 
-**Version**: 21.167.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.168.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -520,6 +520,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.168.0 | A check that reads a file another check writes (its `outputs`) waits for that check and is judged by what it wrote: reused when the content is what it passed with, run in the same run when it changed; `--explain` and `--dry-run` name every input that changed for each check, not only the first; select-by-use: list the kinds of thing checks use before fixing, report every reason as needed or waste, call a cause fixed only when a new measurement chooses none of its checks |
 | 21.167.0 | Reports gain a `rest` line (only the part of a file outside its items, such as code that runs when the file loads); select-by-use: every check that loads a code file uses that part, a compile gate for code narrowed to functions that ran, a coverage report gets `done` only when the coverage source delivered everything |
 | 21.166.2 | select-by-use: handing out a whole file only to overwrite part of it is not use, like handing it out only to copy it |
 | 21.166.1 | select-by-use: an ordered list of ways is taken from the top; a later way needs the reason each earlier one cannot be done and its measured cost |
