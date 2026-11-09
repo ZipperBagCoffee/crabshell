@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.163.0)
+# Crabshell Architecture (v21.164.0)
 
 ## Overview
 
@@ -565,6 +565,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.164.0 | `--explain`/`--dry-run` estimate the run's own length (`estimatedWallSeconds`: checks side by side as the runner runs them; `estimatedSeconds` stays the sum); select-by-use ⑩ measures each kind of change and reports "partial" until all are measured; fingerprints without comments, one setup file per case, `{cases}` lists kept out of `command` |
 | 21.163.0 | Verifying skill: new reference `check-cost.md` (find where a long run spends its time, then start once for many cases, wait for events not the clock, run checks side by side, mark heavy work `slow`); select-by-use states one principle for values built from many inputs and drops two case paragraphs; the VERIFICATION defect line also names start-up, waiting and one-at-a-time runs; examples in general words |
 | 21.162.2 | select-by-use: copies, stamps, test scratch, a selector's gate step, timing failures (docs only) |
 | 21.162.1 | Commit reminder reads more shell forms: `cmd /k`, PowerShell `-Command` prefixes, `ksh`/`fish -c` |

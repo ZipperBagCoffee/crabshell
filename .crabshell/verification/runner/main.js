@@ -21,7 +21,7 @@ const { readReport, hasCases, pathOf, isItemKey } = require('./used-report');
 const { routineChoice, quarantineMark, markHolds } = require('./routine');
 const { forbiddenOnly, recheckForbidden, clearedNotice } = require('./recheck');
 const { runEntry, runEntryAsync } = require('./execute');
-const { runInOrder, runSideBySide, defaultJobs, runsAlone } = require('./schedule');
+const { runInOrder, runSideBySide, defaultJobs, runsAlone, concurrencyLimit, runLength } = require('./schedule');
 const { commitChanges, replay, replayLines } = require('./replay');
 const { failBeforeTargets, failBeforeExemptions, matchingExemption, failBeforeChecks } = require('./fail-before');
 const { printResults } = require('./output');
@@ -92,15 +92,18 @@ function main(argv = process.argv.slice(2), options = {}) {
   // `exclusive: false`. A manifest that sets `jobs` keeps the older rule: every check may share.
   const jobsDeclared = Number.isInteger(manifest.jobs);
   const jobs = jobsDeclared ? manifest.jobs : defaultJobs();
+  // How many checks the run really starts at once (runSideBySide caps `jobs` at this machine);
+  // the --replay and --dry-run estimates use the same number.
+  const runLimit = jobs > 1 ? concurrencyLimit(jobs) : 1;
   // D151: --replay N estimates past commits' routine runs from the records; nothing runs.
   if (args.replay) {
     const moduleDir = path.join(path.dirname(layout.launcherFile), MODULE_DIR);
     const decisionFiles = DECISION_FILES.map(name => insideRoot(projectRoot, path.join(moduleDir, name))).filter(Boolean);
     let commits;
     try { commits = commitChanges(projectRoot, args.replay); } catch (error) { return failRunner('RUNNER_REPLAY', error.message); }
-    const rows = replay({ commits, entries: runnable, records: previousRecords, manifest, jobs, decisionFiles,
+    const rows = replay({ commits, entries: runnable, records: previousRecords, manifest, jobs: runLimit, decisionFiles,
       isExclusive: entry => runsAlone(entry, previousRecords[entry.id], jobsDeclared) });
-    console.log(args.json ? JSON.stringify(rows) : replayLines(rows, jobs).join('\n'));
+    console.log(args.json ? JSON.stringify(rows) : replayLines(rows, runLimit).join('\n'));
     return 0;
   }
   const planned = planRun({ entries: runnable, records: previousRecords, olderRecords, ctx, reuse: args.reuse });
@@ -199,6 +202,10 @@ function main(argv = process.argv.slice(2), options = {}) {
     // counted so the estimate does not read as the whole run (D143_T006).
     let runWithoutTime = 0;
     let runCount = 0;
+    // The run's own length: the checks that may share run side by side within the run's limit,
+    // the others one after another (schedule.js), so the estimate is not the sum of check times.
+    const sideBySideMs = [];
+    const aloneMs = [];
     plan.wouldReuse = 0;
     plan.wouldCover = 0;
     const covered = new Set();
@@ -218,8 +225,10 @@ function main(argv = process.argv.slice(2), options = {}) {
       else {
         const duration = (previousRecords[entry.id] || {}).lastDurationMs;
         runCount++;
-        if (Number.isFinite(duration) && duration >= 0) estimatedMs += duration;
-        else runWithoutTime++;
+        if (Number.isFinite(duration) && duration >= 0) {
+          estimatedMs += duration;
+          (runsAlone(entry, previousRecords[entry.id], jobsDeclared) ? aloneMs : sideBySideMs).push(duration);
+        } else runWithoutTime++;
       }
     }
     // A --changed run lists only the checks it runs; the passes it reuses are the rest.
@@ -241,7 +250,7 @@ function main(argv = process.argv.slice(2), options = {}) {
         const head = spawnSync('git', ['ls-tree', 'HEAD', '--', test], { cwd: projectRoot, encoding: 'utf8', windowsHide: true });
         const runs = !head.error && head.status === 0 && head.stdout.trim() === '' ? 1 : 2;
         const duration = (previousRecords[entry.id] || {}).lastDurationMs;
-        if (Number.isFinite(duration) && duration >= 0) estimatedMs += duration * runs;
+        if (Number.isFinite(duration) && duration >= 0) { estimatedMs += duration * runs; aloneMs.push(duration * runs); }
       }
     }
     plan.full = plan.selected.length === total && total > 0;
@@ -250,10 +259,14 @@ function main(argv = process.argv.slice(2), options = {}) {
     if (planned.awaitingGate.length) plan.awaitingGate = { gates: planned.gatesPending, checks: planned.awaitingGate };
     if (planned.cases.size) plan.cases = Object.fromEntries(planned.cases);
     plan.estimatedSeconds = Math.round(estimatedMs / 100) / 10;
+    plan.estimatedWallSeconds = Math.round(runLength(sideBySideMs, aloneMs, runLimit) / 100) / 10;
     plan.withoutRecordedTime = runWithoutTime;
     if (runWithoutTime) plan.estimateNote = `${runWithoutTime} of the ${runCount} checks that would run have no recorded time and are not in estimatedSeconds`;
     if (args.explain) {
-      if (plan.selected.length) console.log(`Estimated ${plan.estimatedSeconds}s${runWithoutTime ? ` for the checks with a recorded time; ${plan.estimateNote.replace(' and are not in estimatedSeconds', '')}` : ''}.`);
+      const estimate = plan.estimatedWallSeconds < plan.estimatedSeconds
+        ? `Estimated ~${plan.estimatedWallSeconds}s, up to ${runLimit} checks at a time; their times add up to ${plan.estimatedSeconds}s`
+        : `Estimated ${plan.estimatedSeconds}s`;
+      if (plan.selected.length) console.log(`${estimate}${runWithoutTime ? ` for the checks with a recorded time; ${plan.estimateNote.replace(' and are not in estimatedSeconds', '')}` : ''}.`);
       // One line per check a --changed run would run: its id and the first reason.
       const risky = new Set(plan.riskIncluded ? plan.riskIncluded.ids : []);
       const lines = plan.selected.map(id => `${id}: ${planned.reasons[id] || 'selected'}${risky.has(id) ? `; heavy, runs because ${plan.riskIncluded.file} changed (riskPaths)` : ''}`);

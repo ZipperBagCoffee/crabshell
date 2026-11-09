@@ -246,6 +246,31 @@ check('dry-run gives path reasons, reuse count and duration estimate without exe
   assert.equal(noReuse.wouldReuse, 0); assert.equal(noReuse.estimatedSeconds, 3.6);
   assert.equal(dry(forbidden, 'notes/new').reasons.A, 'notes/ changed');
 });
+check('dry-run and --explain estimate the run length with the runner\'s own side-by-side rule', () => {
+  const times = { A: 1000, B: 2000, C: 500 };
+  const dir = fixture('wall', [entry('A', { exclusive: false }), entry('B', { exclusive: false }), entry('C', { exclusive: true })]);
+  run(dir);
+  const map = readJson(mapFile(dir));
+  for (const [id, ms] of Object.entries(times)) map.entries[id].lastDurationMs = ms;
+  fs.writeFileSync(mapFile(dir), JSON.stringify(map));
+  // How many checks this machine's run starts at once comes from the runner's own schedule.
+  const { concurrencyLimit, defaultJobs } = require(path.join(path.dirname(source), 'runner', 'schedule.js'));
+  const limit = defaultJobs() > 1 ? concurrencyLimit(defaultJobs()) : 1;
+  // A and B share lanes, C runs alone after them; with one lane every time adds up.
+  const sum = (times.A + times.B + times.C) / 1000;
+  const wall = limit > 1 ? (Math.max(times.A, times.B) + times.C) / 1000 : sum;
+  const plan = dry(dir, 'input.data');
+  assert.deepEqual(plan.selected.sort(), ['A', 'B', 'C']);
+  assert.equal(plan.estimatedSeconds, sum); assert.equal(plan.estimatedWallSeconds, wall);
+  const file = path.join(dir, 'input.data'); const before = fs.readFileSync(file);
+  fs.appendFileSync(file, '\n');
+  try {
+    // The estimate line gives the run's length, how many checks run at once and the sum, in that order.
+    const first = run(dir, ['--explain']).stdout.split(/\r?\n/)[0];
+    assert(first.startsWith('Estimated'), first);
+    assert.deepEqual((first.match(/\d+(\.\d+)?/g) || []).map(Number), limit > 1 ? [wall, limit, sum] : [sum]);
+  } finally { fs.writeFileSync(file, before); }
+});
 check('full dry-run explains each selection', () => {
   const dir = fixture('no-map'); const plan = dry(dir);
   assert.equal(plan.reasons.A, 'new check'); assert.equal(plan.reason, '1 new'); assert.equal(plan.estimatedSeconds, 0); assert.equal(plan.wouldReuse, 0);
