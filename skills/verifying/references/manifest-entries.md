@@ -70,7 +70,7 @@ A selected check may reuse an unchanged PASS; selection does not mean the comman
 With `jobs` above 1, `"exclusive": true` runs a check alone, and checks sharing a `"group": "<name>"` run one at a time.
 
 Top-level run settings, all optional:
-- `jobs`: how many checks run side by side. Default: half of what the machine can run in parallel, capped at all of it. With no `jobs`, a check runs alone unless its last run traced it as a check run by the runner's own Node. A check in another language therefore runs one at a time until it gets `"exclusive": false` or a `group`.
+- `jobs`: how many checks run side by side. Default: half of what the machine can run in parallel, capped at all of it. With no `jobs`, a check runs alone unless its last run traced it as a check run by the runner's own Node. A check in another language therefore runs one at a time until its entry sets `"exclusive": false`; a `group` only keeps its members from overlapping.
 - `minFreeMemoryMB`: no further check starts while less memory than this is free. Default 2048. One check always runs.
 - `memoryShare`: no further check starts while the share of memory in use is above it. No default.
 - `startSpacingMs`: side by side, the next check starts after a check finishes or after this pause, so the memory a started check takes is seen first. Default 250.

@@ -25,7 +25,7 @@ Before acting, derive from the user's actual words and keep (do not print each t
 - Predict → run → compare; record the gap. In chat: "M of N passed" plus the failed items, in plain words. A result that would look weird to the user fails even when every check passes.
 - Assert structures, invariants and relations that survive the next release; derive changing values from their source; use exact literals only where the spelling is the contract.
 - On failure, before editing, say which it is: the code broke an unchanged contract, the approved contract changed, or the check was wrong. If none is defensible, report the failure.
-- A change that reruns checks it does not affect is a defect: fix it with the verifying skill's select-by-use method, never with a time target or a count cap.
+- A check that reruns on changes it does not use, or spends its time starting, waiting or running alone, is a defect: fix it with the verifying skill (select-by-use, check-cost), never with a time target or a count cap.
 
 ### WORKING RULES
 - When criticized: stop, state your understanding and intended action, and confirm before acting. Check the reported issue or claim with tool evidence before responding. Treat the correction as a defect type: find it everywhere in the work; open the reply with places found, fixed and still left. When the type comes back, reopen the earlier fix (git log -S, memory logbook) and fix the type, not the instance.
