@@ -90,6 +90,8 @@ A data report does not help when the changed file is code every check loads. If 
 
 When one file holds many items (records, functions), the report gives each used item a fingerprint. The manifest's `itemIdentity` command gives the runner the current fingerprint of every item in a file, plus one fingerprint for the rest of the file outside the items: defaults, shared constants, file-level code. The report and the identity command must call the same fingerprint function in the project's check code. Two different functions never agree, so the check either runs every time or is reused when it should not be.
 
+A fingerprint covers only what can change the result (see "Read is not used"). Leave out comment-only and blank lines, in the items and in the rest of the file; then a comment edit runs nothing. Keep the content of strings, and keep a comment that the language or a tool in the check reads, such as a compiler directive or a type-checker pragma.
+
 When the checks run in another language or runtime than the runner, the identity command runs in that same runtime and calls the program's own fingerprint function. It is never a second implementation written for the runner. A `file` containing a slash must be inside the project; a bare name is found on PATH. For an engine installed elsewhere, use a project wrapper script. The runner appends the file paths after `args`, so an engine that parses its own flags needs `--` at the end of `args`.
 
 The runner adds the rest-of-file fingerprint to every check that used any item of that file. Without an `itemIdentity` command, or when it fails or gives no rest-of-file fingerprint, the whole file counts as used.
@@ -109,6 +111,7 @@ done[<TAB>writer]                           the last line; each writer name need
 
 - **Paths:** relative to the project root (`/` or `\`), or absolute inside the project. They must exist. Report a file that is not there through its folder; adding it changes the folder's names. A record that is not there is an `item` line with an empty fingerprint.
 - **Report every folder the check lists**, test discovery included. Otherwise a file added there never runs the check again.
+- **Case setup:** a file the check's program reads to set up cases is one file per case, read only for the cases being run and reported as that case's `file`. A file read for every case, or an input no case reported, is used by every case: a change to it runs every case. Report a case's own inputs per case, not in the entry's `inputs`.
 - **Files the check writes and reads back in the same run** (test scratch, generated fixtures) are outputs, not inputs. Keep them under one scratch folder and have the check's reporting code leave that folder out; reported, they break it (outside the project, or not there before the run).
 - **Escapes** inside a field: `%` → `%25`, TAB → `%09`, CR → `%0D`, LF → `%0A`. `#` is not special. A field may not hold the NUL character (`%00`).
 - **Write the report fresh on every run.** A check that runs again reads everything it needs and reports again; never copy an earlier report.
@@ -133,14 +136,31 @@ Prefer one selector. When a project's command runs many child checks with its ow
 - it settles the gate first, in its own synchronous step, before deciding any child's reuse; a selector that plans every child up front and runs groups side by side otherwise reuses children while the gate is still unknown;
 - it reruns a child only when something in that child's report changed. With a missing or broken report, it chooses the child as it would without a report: its declared inputs, or every project file when it declares none (⑧).
 
-The runner then sees only the whole entry, so the selector prints the reason for each child it runs.
+The runner then sees only the whole entry: `--explain` and the run summary show one check however many children run, and its time is all of theirs. So the selector prints the reason for each child it runs, and measuring (⑩) counts its children.
 
-## ⑩ Measure one change
+## ⑩ Measure each kind of change
 
-Before saying a change selects fewer checks, measure it:
+Before saying the checks run less, measure each kind of change the project's work makes. One kind never stands for another: a data edit can run a few checks while a one-line code edit still runs most of them. The kinds, where the project has them:
+- a line inside a function of the code file the most checks load;
+- a comment-only line, and a blank line;
+- a new function in that file;
+- a file-level constant;
+- a line in one test file;
+- one value in one data record;
+- an asset: a picture, sound or scene;
+- a new test file, and a new data file;
+- a project or engine setting, or a dependency version;
+- regenerating the manifest, when a script builds it;
+- the change the user complained about, as they described it.
+
+For each kind:
 1. Start from a run where every check has a pass on the current files.
-2. Change one file (one record, one field) and nothing else.
-3. Run `--explain` and read the reason for each chosen check.
+2. Make that one change and nothing else.
+3. Run `--explain` and read the reason for each chosen check. For an entry with its own selector (⑨), count the children its own output says it would run.
 4. Put the file back.
 
-Report the number and the reasons, never an estimate. A timing assertion that fails only with reporting on: rerun it alone before blaming reporting overhead; side-by-side runs slow timing tests too.
+Report each kind with its number of checks and their reasons, never an estimate. Name each kind not measured. Until every kind the project has is measured, the report reads "partial: measured … / not measured …", not done. A kind that still runs checks that did not use the change is the next fix.
+
+A miss counts too. When a `--changed` run reused a check's pass and the same check catches a bug once it really runs, the check used something it did not report or declare. Find it and report it (⑧) or add it to `inputs` (⑤); routine full runs do not fix a miss.
+
+A timing assertion that fails only with reporting on: rerun it alone before blaming reporting overhead; side-by-side runs slow timing tests too.

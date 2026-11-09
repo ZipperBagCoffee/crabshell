@@ -14,6 +14,7 @@ Each check's record in `.crabshell/verification/test-map.json` keeps `durations`
 | Sleeping, or waiting for a timeout | ② |
 | Each check is short, but they finish one after another | ③ |
 | The work itself: renders, recordings, benchmarks, long simulations | ④ |
+| One entry runs many child checks with its own selector; its time is all of theirs | Measure and fix its children ([select-by-use](select-by-use.md) ⑨) |
 
 ## ① Start once, run many cases
 
@@ -46,4 +47,4 @@ When the work itself is long, mark the entry `slow: true`; the verifying skill l
 
 ## Measure the change
 
-Run the changed check once before the fix and once after, on the same files, and report both times. Every case must give the same result as before; a fix that changes one changed what the check catches.
+Run the changed check once before the fix and once after, on the same files, and report both times. Every case must give the same result as before; a fix that changes one changed what the check catches. Report each check you measured and name the long checks not yet fixed; one faster check is not a faster run.

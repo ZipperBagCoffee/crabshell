@@ -11,6 +11,7 @@
 const { spawnSync } = require('child_process');
 const { inputPatterns, matchesInput, medianDuration, isSlow, inputsUnknown, reportScope, inScope } = require('./select');
 const { pathOf } = require('./used-report');
+const { runLength } = require('./schedule');
 
 // The files each of the last `count` commits changed, newest first, and which of them it
 // added or deleted (a folder that is only listed changes when its names change).
@@ -57,18 +58,6 @@ function wouldRun(entry, record, changed, namesChanged = changed) {
     || (declared.some(pattern => matchesInput(pattern, file)) && !(scope && inScope(scope, file))));
 }
 
-// Longest first onto `jobs` lanes; the run lasts as long as its busiest lane, then the checks
-// that run alone follow one after another.
-function runLength(sideBySideMs, aloneMs, jobs) {
-  const lanes = new Array(Math.max(1, jobs)).fill(0);
-  for (const ms of [...sideBySideMs].sort((a, b) => b - a)) {
-    let least = 0;
-    for (let lane = 1; lane < lanes.length; lane++) if (lanes[lane] < lanes[least]) least = lane;
-    lanes[least] += ms;
-  }
-  return Math.max(...lanes) + aloneMs.reduce((sum, ms) => sum + ms, 0);
-}
-
 // entries: the expanded, runnable checks; records: test-map entries; decisionFiles: repo paths
 // whose change reruns every check; isExclusive(entry): runs alone.
 function replay({ commits, entries, records, manifest, jobs, isExclusive, decisionFiles = [] }) {
@@ -98,4 +87,4 @@ function replayLines(rows, jobs) {
   return lines;
 }
 
-module.exports = { commitChanges, wouldRun, runLength, replay, replayLines };
+module.exports = { commitChanges, wouldRun, replay, replayLines };

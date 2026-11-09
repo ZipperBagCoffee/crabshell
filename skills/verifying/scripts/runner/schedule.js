@@ -104,4 +104,17 @@ async function runSideBySide({ order, entries, start, after, jobs, waitsFor,
   }
 }
 
-module.exports = { concurrencyLimit, defaultJobs, runsAlone, runInOrder, runSideBySide };
+// How long a run lasts, estimated from check times (ms): the checks that may share go longest
+// first onto `jobs` lanes and the run lasts as long as its busiest lane; then the checks that
+// run alone follow one after another. --replay and the --dry-run estimate both use it.
+function runLength(sideBySideMs, aloneMs, jobs) {
+  const lanes = new Array(Math.max(1, jobs)).fill(0);
+  for (const ms of [...sideBySideMs].sort((a, b) => b - a)) {
+    let least = 0;
+    for (let lane = 1; lane < lanes.length; lane++) if (lanes[lane] < lanes[least]) least = lane;
+    lanes[least] += ms;
+  }
+  return Math.max(...lanes) + aloneMs.reduce((sum, ms) => sum + ms, 0);
+}
+
+module.exports = { concurrencyLimit, defaultJobs, runsAlone, runInOrder, runSideBySide, runLength };

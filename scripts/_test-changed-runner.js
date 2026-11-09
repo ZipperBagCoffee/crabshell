@@ -4,7 +4,6 @@
 // back to everything whenever it cannot know (no or stale load map, a file outside
 // the map, a file every check depends on).
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const h = require('./testlib/hook-harness');
@@ -66,8 +65,8 @@ function fixture(name, manifestEntries) {
   return dir;
 }
 
-function runner(dir, args) {
-  const env = { ...process.env, PROJECT_ROOT: dir, CRABSHELL_VERIFY_JSON: '1' };
+function runner(dir, args, extraEnv = {}) {
+  const env = { ...process.env, PROJECT_ROOT: dir, CRABSHELL_VERIFY_JSON: '1', ...extraEnv };
   delete env.CLAUDE_PROJECT_DIR;
   delete env.CRABSHELL_VERIFY_RUNNING; // this test may itself run inside a declared check
   const result = spawnSync(process.execPath, [path.join(dir, CRAB, 'verification', 'run-verify.js'), ...args], { cwd: dir, env, encoding: 'utf8', windowsHide: true, timeout: 120000 });
@@ -448,7 +447,11 @@ function rewriteSameLater(dir, rel) {
 // source it reads, that test also runs on HEAD and must fail there: a test that
 // passes on the old source too does not check the change.
 {
-  const tmpBefore = new Set(fs.readdirSync(os.tmpdir()).filter(name => name.startsWith('crabshell-fail-before-')));
+  // The runner's HEAD copies go to a temp folder of their own: other checks running side by
+  // side make and remove the same kind of folder in the machine's temp folder.
+  const tmp = path.join(root, 'fail-before-tmp');
+  fs.mkdirSync(tmp, { recursive: true });
+  const tmpEnv = { TMP: tmp, TEMP: tmp, TMPDIR: tmp };
   const fb = fixture('fail-before');
   const original = {
     'scripts/lib-a.js': "require('./constants');\nmodule.exports = 1;\n",
@@ -469,7 +472,7 @@ function rewriteSameLater(dir, rel) {
   const restore = () => { for (const [rel, content] of Object.entries(original)) write(fb, rel, content); };
   // D143: the HEAD comparison is opt-in, so these cases ask for it with --fail-before.
   const run = (args, { optIn = true } = {}) => {
-    const result = runner(fb, ['--changed', ...(optIn ? ['--fail-before'] : []), ...(args || [])]);
+    const result = runner(fb, ['--changed', ...(optIn ? ['--fail-before'] : []), ...(args || [])], tmpEnv);
     let results = [];
     try { results = JSON.parse(result.stdout.match(/^\[\]$|^\[\r?\n[\s\S]*?\r?\n\]$/m)[0]); } catch {}
     const before = results.filter(item => String(item.id).startsWith('FAIL_BEFORE:'));
@@ -539,7 +542,7 @@ function rewriteSameLater(dir, rel) {
   fs.rmSync(path.join(fb, 'scripts', '_test-new.js'));
   restore();
 
-  const left = fs.readdirSync(os.tmpdir()).filter(name => name.startsWith('crabshell-fail-before-') && !tmpBefore.has(name));
+  const left = fs.readdirSync(tmp).filter(name => name.startsWith('crabshell-fail-before-'));
   report.check('R44 no HEAD copy is left in the temp folder', left.length === 0, left.join(','));
 }
 
