@@ -1,5 +1,12 @@
 # Changelog
 
+## [21.166.2] - 2026-11-09
+
+### docs: overwriting part of a whole file is not use
+
+- **Why.** A field report found 10 of 22 tests rerun for one data key because each set a different key through the whole-file value, whose accessor reports the whole file. The "Read is not used" sentence covered handing everything out only to copy it, not to overwrite part of it.
+- **select-by-use.md:** the same sentence now covers both: handing out a whole collection or file only to copy it or to overwrite part of it is not use; the single-record or field accessors report what is then read, and a value the check overwrites before reading never came from the file. No new rule; no code change.
+
 ## [21.166.1] - 2026-11-08
 
 ### docs: ordered ways are taken from the top

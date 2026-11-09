@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.166.1)
+# Crabshell Architecture (v21.166.2)
 
 ## Overview
 
@@ -566,6 +566,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.166.2 | select-by-use: handing out a whole file only to overwrite part of it is not use, like handing it out only to copy it |
 | 21.166.1 | select-by-use: an ordered list of ways is taken from the top; a later way needs the reason each earlier one cannot be done and its measured cost |
 | 21.166.0 | Sycophancy guard restored: an answer that agrees with nothing checked in the turn is sent back once, and a file write right after it is blocked; web-guard lets WebSearch run as the last resort once every configured search MCP was called in the turn |
 | 21.165.0 | web-guard names every configured search MCP, exa first and then tavily by default (instructions that rank them differently win); select-by-use: cases sharing one process (a cache reports what its value was built from), and reads a call tracer cannot see (constants reported as items) |
