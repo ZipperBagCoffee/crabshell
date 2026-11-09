@@ -12,7 +12,9 @@
 //                                               or names a folder used its list of names
 //   item   <path> <item> <fingerprint> [<case>]  used one item of a file; an empty
 //                                               fingerprint: looked the item up, found none
-//   result <case> pass|fail                     how one case of a `{cases}` entry ended
+//   rest   <path> [<case>]                      used only the file's part outside its items,
+//                                               such as code that runs when the file loads (D163)
+//   result <case> pass|fail                    how one case of a `{cases}` entry ended
 //   begin  <writer>                             a process starts writing (when several write)
 //   done   [<writer>]                           a process finished: the last line it writes
 // A report is complete when its last line is `done`, each writer name has as many `done`
@@ -119,6 +121,12 @@ function readReport(file, projectRoot, inSnapshot = () => false) {
       const key = projectPath(projectRoot, rest[0], exists);
       if (!key) return { problem: `not a file or folder of the project: ${rest[0]}` };
       uses.push({ path: key, item: null, fingerprint: null, case: rest[1] || null });
+      continue;
+    }
+    if (kind === 'rest' && (rest.length === 1 || rest.length === 2)) {
+      const key = projectPath(projectRoot, rest[0], exists);
+      if (!key || key.endsWith('/')) return { problem: `not a file of the project: ${rest[0]}` };
+      uses.push({ path: key, item: '', fingerprint: undefined, case: rest[1] || null });
       continue;
     }
     if (kind === 'item' && (rest.length === 3 || rest.length === 4) && rest[1]) {

@@ -61,6 +61,8 @@ An edit inside a record of another kind then runs nothing.
 
 When the program validates all data at start and refuses to start on a broken record, every check that starts the program depends on every record, but only through "did validation pass". Make one gate check that runs that validation, and mark it with the gate field (see [manifest fields](manifest-entries.md#fields-for-checks-that-report-what-they-used)). The gate calls the same validation function the program runs at start, never a lighter one written for the test; otherwise the gate passes while the real start refuses.
 
+Code narrowed to the functions that ran (④) needs the same kind of gate: a syntax or compile error inside a function no check ran still breaks every check that loads its file. One gate check compiles or loads every source file the way the program does.
+
 How the runner treats the gate:
 - A check reduced by its report is reused only while the gate has passed on the current files.
 - The gate's fingerprint is not part of the other checks' fingerprints, so a data edit does not run every check through it.
@@ -73,11 +75,13 @@ The gate proves only that each record is valid. A check that uses record B's val
 
 For code split into items (functions), a function counts as used when it ran during the check. Loading the file that holds it, or mentioning its name, is not use. Report from the language's own coverage or call hook, or from one report call at the function's entry.
 
+The part of a code file outside its function bodies is different: constants, signatures, defaults and the class declaration run or compile when the file loads, and a compiler may fold another file's constant into it. Every check that loads a code file uses that part: report a `rest` line (⑧) for each code file the check loaded, and items only for the functions that ran.
+
 - Wrong: "The test imports the module that defines the price function, so it reports the price function."
 - Right: "The price function reports itself when it runs." Only tests that called it report it.
 
 What the tracer cannot see: a coverage or call hook sees the functions that ran, not reads of constants, enums or static fields. A use it cannot see must still not be missed. From the most precise way to the least:
-1. Read the source of each function that ran. For each constant, enum or static field it names, directly, through an alias, or inherited through what its file extends, report that member as an `item` of the file that declares it. The identity command (⑦) then lists those members as items too, not only functions, so a new or changed constant runs only the checks whose code names it. Access by a computed name or string goes to way 3.
+1. Read the source of each function that ran and the part outside the functions of each loaded file. For each constant, enum or static field they name, directly, through an alias, or inherited through what its file extends, report that member as an `item` of the file that declares it. The identity command (⑦) then lists those members as items too, not only functions, so a new or changed constant runs only the checks whose code names it. Access by a computed name or string goes to way 3.
 2. Move constants that many files read into a small file of their own (⑥).
 3. As the last resort, report every file loaded in the process as a `file`. Loading is not use (①), but when nothing can tell the uses apart, the check must not miss.
 
@@ -103,7 +107,7 @@ A fingerprint covers only what can change the result (see "Read is not used"). L
 
 When the checks run in another language or runtime than the runner, the identity command runs in that same runtime and calls the program's own fingerprint function. It is never a second implementation written for the runner. A `file` containing a slash must be inside the project; a bare name is found on PATH. For an engine installed elsewhere, use a project wrapper script. The runner appends the file paths after `args`, so an engine that parses its own flags needs `--` at the end of `args`.
 
-The runner adds the rest-of-file fingerprint to every check that used any item of that file. Without an `itemIdentity` command, or when it fails or gives no rest-of-file fingerprint, the whole file counts as used.
+The runner adds the rest-of-file fingerprint to every check that used any item of that file or reported its `rest` (⑧). Without an `itemIdentity` command, or when it fails or gives no rest-of-file fingerprint, the whole file counts as used.
 
 ## ⑧ The report
 
@@ -113,6 +117,7 @@ The runner sets `CRABSHELL_USED_REPORT` to the path of the check's report file; 
 file<TAB>path[<TAB>case]                    the whole file was used
 file<TAB>folder/[<TAB>case]                 the folder's list of names was used (a path ending in "/" or naming a folder)
 item<TAB>path<TAB>item<TAB>fingerprint[<TAB>case]   only that item was used; an empty fingerprint = looked up, not there
+rest<TAB>path[<TAB>case]                    only the file's part outside its items was used (code that runs when the file loads)
 result<TAB>case<TAB>pass|fail               one line per case, for entries whose command uses {cases}
 begin<TAB>writer                            optional, when several processes write
 done[<TAB>writer]                           the last line; each writer name needs as many done lines as begin lines
@@ -131,6 +136,7 @@ done[<TAB>writer]                           the last line; each writer name need
 - **Files the check writes and reads back in the same run** (test scratch, generated fixtures) are outputs, not inputs. Keep them under one scratch folder and have the check's reporting code leave that folder out; reported, they break it (outside the project, or not there before the run).
 - **Escapes** inside a field: `%` → `%25`, TAB → `%09`, CR → `%0D`, LF → `%0A`. `#` is not special. A field may not hold the NUL character (`%00`).
 - **Write the report fresh on every run.** A check that runs again reads everything it needs and reports again; never copy an earlier report.
+- **A report built from coverage** gets its `done` line only with evidence that the coverage source delivered everything: its final summary arrived and every function it counted has a name. Sources drop data when a process ends early or a message queue overflows. Without that evidence, leave `done` out: the report is then broken, and the check is chosen as it would be without a report, never as "used nothing".
 
 A report is broken when:
 - its last line is not `done`;

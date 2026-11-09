@@ -354,7 +354,7 @@ function casesToRun(entry, record, set, ctx) {
 // gives stays an item and brings the file's rest with it; without that command, when it
 // fails or gives no rest, the item stands for its whole file. Returns the keys the whole
 // check used (`shared`), each case's own keys, their identities (`known`) and each case's
-// result.
+// result. A `rest` line (item '') brings only the file's rest (D163).
 function reportedInputs(report, ctx) {
   const facts = itemFacts(ctx, [...new Set(report.uses.filter(use => use.item !== null).map(use => use.path))]);
   const known = {};
@@ -368,7 +368,7 @@ function reportedInputs(report, ctx) {
   for (const use of report.uses) {
     const fileFacts = use.item === null ? null : facts.get(use.path);
     if (!fileFacts || fileFacts.rest === null) { add(use.case, use.path); continue; }
-    add(use.case, itemKey(use.path, use.item), use.fingerprint);
+    if (use.item !== '') add(use.case, itemKey(use.path, use.item), use.fingerprint);
     add(use.case, restKey(use.path), fileFacts.rest);
   }
   for (const name of report.results.keys()) if (!cases.has(name)) cases.set(name, new Set());
