@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.164.0)
+# Crabshell Architecture (v21.165.0)
 
 ## Overview
 
@@ -389,7 +389,7 @@ Regressing retains document-cycle continuation but has no parallel-worker count 
 | `log-guard.js` | PreToolUse (Write\|Edit) | Block a ticket marked done (Execution Results) or verified (every result section, Intent Fidelity included since v21.135.0) in INDEX.md while those sections still hold template text; rows read with `core/index-rows.js` |
 | `verify-guard.js` | not wired (v21.153.0) | Formerly blocked Final Verification writes until the declared checks ran; unwired because it re-ran the check the work had just run. File kept for tests and audits |
 | `path-guard.js` | PreToolUse via `adapters/claude/pre-tool-use.js` (Bash\|Write\|Edit); Read\|Grep\|Glob notice via `post-tool-use.js` | Block Bash writes into another project's .crabshell (v21.125.0: reads get a notice; prose, patterns, heredoc text, temp folders and unknown variables are not blocked); block Edit on logbook.md; block Write shrink on logbook.md (v20.6.0); block direct skill-flag writes. Runs alone too |
-| `web-guard.js` | PreToolUse (WebFetch\|WebSearch) | Block WebFetch (small-model summarization, lossy by design) with URL-substituted raw-fetch redirect (trafilatura → r.jina.ai → curl); block WebSearch only when a search MCP is configured in ~/.claude.json or .mcp.json, else allow with snippet-verification warning; modes block/warn/off via `webGuard` config (v21.114.0, I084) |
+| `web-guard.js` | PreToolUse (WebFetch\|WebSearch) | Block WebFetch (small-model summarization, lossy by design) with URL-substituted raw-fetch redirect (trafilatura → r.jina.ai → curl); block WebSearch only when a search MCP is configured in ~/.claude.json or .mcp.json, naming every one found (exa first, then tavily, v21.165.0), else allow with snippet-verification warning; modes block/warn/off via `webGuard` config (v21.114.0, I084) |
 | `core/path-policy.js` | shared library | Host-neutral memory path decisions used by Claude and Codex wrappers |
 | `core/shell-writes.js` | shared library | Static Bash analysis: which .crabshell paths a command names and whether each is written (quotes, heredocs, pipelines, redirects, substitutions, interpreter code, powershell/cmd) |
 | `adapters/claude/pre-tool-use.js`, `adapters/claude/post-tool-use.js`, `adapters/claude/dispatch.js`, `core/dispatch.js` | Claude PreToolUse / PostToolUse / PostToolUseFailure (Codex PreToolUse shares `core/dispatch.js`) | One process per event: each check loads its module inside its own try/catch, stdout redirected to stderr while they run, one JSON object out (v21.125.0). Since v21.153.0 checks route by the call's shape (`core/tool-shape.js`: a shell call or a file write, whatever the tool is named); the check runner is `core/dispatch.js` for both hosts and each adapter builds its own output; PreToolUse/PostToolUseFailure match every tool but Read, Grep and Glob |
@@ -565,6 +565,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.165.0 | web-guard names every configured search MCP, exa first and then tavily by default (instructions that rank them differently win); select-by-use: cases sharing one process (a cache reports what its value was built from), and reads a call tracer cannot see (constants reported as items) |
 | 21.164.0 | `--explain`/`--dry-run` estimate the run's own length (`estimatedWallSeconds`: checks side by side as the runner runs them; `estimatedSeconds` stays the sum); select-by-use ⑩ measures each kind of change and reports "partial" until all are measured; fingerprints without comments, one setup file per case, `{cases}` lists kept out of `command` |
 | 21.163.0 | Verifying skill: new reference `check-cost.md` (find where a long run spends its time, then start once for many cases, wait for events not the clock, run checks side by side, mark heavy work `slow`); select-by-use states one principle for values built from many inputs and drops two case paragraphs; the VERIFICATION defect line also names start-up, waiting and one-at-a-time runs; examples in general words |
 | 21.162.2 | select-by-use: copies, stamps, test scratch, a selector's gate step, timing failures (docs only) |

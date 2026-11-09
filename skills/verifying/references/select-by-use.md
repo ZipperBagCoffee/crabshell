@@ -29,6 +29,8 @@ A value built from many inputs uses all of them: a whole-content hash or validit
 | A value built from many files: a whole-content hash or verdict, a list of everything | The three ways out under "Read is not used" |
 | One entry that runs many child checks with its own selector | One selector, or the same rules inside it (⑨) |
 | A file it uses, but only one part of it | Report items, not files (④, ⑦); split a shared core file (⑥) |
+| Every loaded file, because the tracer cannot see constant reads | "What the tracer cannot see" under ④ |
+| A case that ran after the case that used the change, in one process | "Cases in one process" under ⑧ |
 | Its own test or program changed, or it failed last time | Nothing to fix |
 
 Start where the time goes: measure (⑩) which changed files select the most checks, and fix that kind first. Where a code file selects hundreds of checks and a data file a few, ④, ⑥ and `{cases}` save the time, and ①–③ mainly add checks the declared inputs missed.
@@ -72,6 +74,11 @@ For code split into items (functions), a function counts as used when it ran dur
 - Wrong: "The test imports the module that defines the price function, so it reports the price function."
 - Right: "The price function reports itself when it runs." Only tests that called it report it.
 
+What the tracer cannot see: a coverage or call hook sees the functions that ran, not reads of constants, enums or static fields. A use it cannot see must still not be missed. From the most precise way to the least:
+1. Read the source of each function that ran. For each constant, enum or static field it names, directly, through an alias, or inherited through what its file extends, report that member as an `item` of the file that declares it. The identity command (⑦) then lists those members as items too, not only functions, so a new or changed constant runs only the checks whose code names it. Access by a computed name or string goes to way 3.
+2. Move constants that many files read into a small file of their own (⑥).
+3. As the last resort, report every file loaded in the process as a `file`. Loading is not use (①), but when nothing can tell the uses apart, the check must not miss.
+
 ## ⑤ A check nothing can report from: declare `inputs`
 
 A check in any language that the project owns can write a report (⑧). A program whose source the project does not own, a tool you cannot change, or a capture of a real app cannot. Give such an entry `inputs`: every file, folder (ending in `/`) or glob that its run opens. Leave out no file it uses; reduce reruns with a report instead.
@@ -88,7 +95,7 @@ A data report does not help when the changed file is code every check loads. If 
 
 ## ⑦ One function computes an item's fingerprint
 
-When one file holds many items (records, functions), the report gives each used item a fingerprint. The manifest's `itemIdentity` command gives the runner the current fingerprint of every item in a file, plus one fingerprint for the rest of the file outside the items: defaults, shared constants, file-level code. The report and the identity command must call the same fingerprint function in the project's check code. Two different functions never agree, so the check either runs every time or is reused when it should not be.
+When one file holds many items (records, functions), the report gives each used item a fingerprint. The manifest's `itemIdentity` command gives the runner the current fingerprint of every item in a file, plus one fingerprint for the rest of the file outside the items: defaults, constants not listed as items (④), file-level code. The report and the identity command must call the same fingerprint function in the project's check code. Two different functions never agree, so the check either runs every time or is reused when it should not be.
 
 A fingerprint covers only what can change the result (see "Read is not used"). Leave out comment-only and blank lines, in the items and in the rest of the file; then a comment edit runs nothing. Keep the content of strings, and keep a comment that the language or a tool in the check reads, such as a compiler directive or a type-checker pragma.
 
@@ -112,6 +119,13 @@ done[<TAB>writer]                           the last line; each writer name need
 - **Paths:** relative to the project root (`/` or `\`), or absolute inside the project. They must exist. Report a file that is not there through its folder; adding it changes the folder's names. A record that is not there is an `item` line with an empty fingerprint.
 - **Report every folder the check lists**, test discovery included. Otherwise a file added there never runs the check again.
 - **Case setup:** a file the check's program reads to set up cases is one file per case, read only for the cases being run and reported as that case's `file`. A file read for every case, or an input no case reported, is used by every case: a change to it runs every case. Report a case's own inputs per case, not in the entry's `inputs`.
+- **Cases in one process:** each case reports what it used. A value an earlier case left behind, such as a cache or a static table built on first use, is used by every later case that reads it: the later case used what the value was built from. In order of preference:
+  1. The cache keeps, with each value, the `item` and `file` lines reported while the value was built, and reports them again each time it hands the value out (①). This is exact and needs no extra run.
+  2. Where the cache cannot do that, clear it in the per-case setup, so each case builds and reports its own.
+  3. Reporting the union of every earlier case in the process never misses, but every later case runs again when one earlier case's input changes.
+  4. One process per case is exact but pays the start-up once per case (check-cost ①).
+
+  When only some cases run again, each case's report comes from that run, so it reflects only the cases that ran before it there.
 - **Files the check writes and reads back in the same run** (test scratch, generated fixtures) are outputs, not inputs. Keep them under one scratch folder and have the check's reporting code leave that folder out; reported, they break it (outside the project, or not there before the run).
 - **Escapes** inside a field: `%` → `%25`, TAB → `%09`, CR → `%0D`, LF → `%0A`. `#` is not special. A field may not hold the NUL character (`%00`).
 - **Write the report fresh on every run.** A check that runs again reads everything it needs and reports again; never copy an earlier report.

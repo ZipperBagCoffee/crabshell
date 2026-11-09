@@ -122,7 +122,7 @@ tags: []
 ### Step 5: Investigate
 
 When rule 5 calls for workers, launch them in parallel, each on a different focus area or source type:
-- **Worker 1, internet:** tell it to follow the raw-source ladder. Find URLs with a configured search MCP (tavily, brave, exa or similar) when one exists. Otherwise use built-in WebSearch and treat its snippets only as pointers. Read every cited source in full: `trafilatura -u "<url>" --markdown --links` if installed, then `curl -fsSL "https://r.jina.ai/<url>"` for JS pages (keyless), then plain `curl` as the raw fallback. Never let a worker cite a search snippet or a WebFetch summary as evidence.
+- **Worker 1, internet:** tell it to follow the raw-source ladder. Find URLs with a configured search MCP (exa, tavily, brave or similar) when one exists; with several, use them in the order web-guard names them unless your instructions rank them differently. Otherwise use built-in WebSearch and treat its snippets only as pointers. Read every cited source in full: `trafilatura -u "<url>" --markdown --links` if installed, then `curl -fsSL "https://r.jina.ai/<url>"` for JS pages (keyless), then plain `curl` as the raw fallback. Never let a worker cite a search snippet or a WebFetch summary as evidence.
 - **Worker 2, local:** examine local files, code and configurations.
 - **Worker N:** user-specified sources or other distinct angles, as needed.
 
