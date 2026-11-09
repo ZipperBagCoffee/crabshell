@@ -53,12 +53,13 @@ const consecutive = (text, labels) => {
 }
 
 // The order the user set (v21.136.0, v21.138.0, v21.141.0): Common Sense right after Be Logical,
-// Take Pride and Depth after it; on the checklist, "Is this your best?" right after common sense
-// and the coding line after it (D144, D146, D150).
+// Take Pride and Depth after it; on the checklist, the questions asked before every answer
+// (D150, D167: the request, best, finished in one go, simple and clear) right after common sense
+// and the coding line after it (D144, D146).
 report.check('W2 the principles run Be Logical, Common Sense, Take Pride, Depth on consecutive lines',
   consecutive(RULES, ['- **Be Logical**:', '- **Common Sense**:', '- **Take Pride**:', '- **Depth**:']));
-report.check('W3 the checklist runs common sense, "Is this your best?" and the coding line on consecutive lines',
-  consecutive(COMPRESSED_CHECKLIST, ['- Common sense:', '- Is this your best?', '- Code:']));
+report.check('W3 the checklist runs common sense, the questions before every answer and the coding line on consecutive lines',
+  consecutive(COMPRESSED_CHECKLIST, ['- Common sense:', '- Before every answer and handover ask:', '- Code:']));
 
 // Retired wording that must not come back: the P/O/G acronym, the old internet-search line,
 // "record after doing" (plan first, D123), a "purpose" test in Common Sense (D124), and the

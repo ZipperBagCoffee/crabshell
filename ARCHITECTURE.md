@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.169.1)
+# Crabshell Architecture (v21.170.0)
 
 ## Overview
 
@@ -566,6 +566,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.170.0 | `shared-context.js` checklist: four questions before every answer; runner `startOne` records `startMs`/`endMs`/`waitedFor` in `last-run.json`, `output.js` prints an empty selection's time; select-by-use ⑩ and check-cost measure the floor, waits and the longest chain |
 | 21.169.1 | select-by-use ⑩ measures the real run's total time and each chosen check's start-up, waiting and work; "First" lists processes from an operating-system log of one real run; check-cost reports the user's example run before and after |
 | 21.169.0 | The `setup-rtk` skill is removed: independent benchmarks (JetBrains, Quesma) found that RTK did not lower the bill, and the skill put RTK on a PATH that Claude Code's shells did not read; the Skills Layer lists 12 operational skills |
 | 21.168.0 | A check that reads a file another check writes (its `outputs`) waits for that check and is judged by what it wrote: reused when the content is what it passed with, run in the same run when it changed; `--explain` and `--dry-run` name every input that changed for each check, not only the first; select-by-use: list the kinds of thing checks use before fixing, report every reason as needed or waste, call a cause fixed only when a new measurement chooses none of its checks |
