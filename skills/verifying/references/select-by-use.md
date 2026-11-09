@@ -22,7 +22,7 @@ A value built from many inputs uses all of them: a whole-content hash or validit
 
 ## First: find why each check was chosen
 
-Before fixing anything, list the kinds of thing this project's checks use. Examples: data files, code in each kind of process that runs it (a test runner, an engine a script starts, a tool), files another check writes, settings. For each kind, name the way its use gets recorded (①–⑧). A kind with no way yet counts as used whole. Every check it chooses stays in the measurement (⑩) as waste left, with that kind as the reason. Fixing one kind at a time without this list finds the next kind only at the next measurement.
+Before fixing anything, list the kinds of thing this project's checks use. Examples: data files, code in each kind of process that runs it (a test runner, an engine a script starts, a tool), files another check writes, settings. Take the processes from one real run, not from reading the code. Run the user's example once while the operating system logs every program that starts, and list each program the run started. For example, use `strace -f -e trace=execve -o exec.log <command>` on Linux, `sudo eslogger exec` on macOS, or Process Monitor filtered to Process Start on Windows. A list written from memory misses the program a script starts, such as an engine. For each kind, name the way its use gets recorded (①–⑧). A kind with no way yet counts as used whole. Every check it chooses stays in the measurement (⑩) as waste left, with that kind as the reason. Fixing one kind at a time without this list finds the next kind only at the next measurement.
 
 `node .crabshell/verification/run-verify.js --explain` prints each check a `--changed` run would run, with its reason and every other input that changed (`; also …`), and runs nothing. A check chosen for two inputs needs both fixed: fixing one only shows the other. For each chosen check, open its record in `test-map.json` (`kind`, `files`) and sort each of its reasons:
 
@@ -39,7 +39,7 @@ Before fixing anything, list the kinds of thing this project's checks use. Examp
 | Code run in a process another program starts, such as an engine a script launches | Turn on the same coverage or report there (④) |
 | Its own test or program changed, or it failed last time | Nothing to fix |
 
-Start where the time goes: measure (⑩) which changed files select the most checks, and fix that kind first. Where a code file selects hundreds of checks and a data file a few, ④, ⑥ and `{cases}` save the time, and ①–③ mainly add checks the declared inputs missed.
+Start where the time goes: measure (⑩) which kind of change makes the longest real run, and fix that kind first. Where a code file selects hundreds of checks and a data file a few, ④, ⑥ and `{cases}` save the time, and ①–③ mainly add checks the declared inputs missed.
 
 ## ① Report at the one place that hands out data
 
@@ -169,7 +169,7 @@ The runner then sees only the whole entry: `--explain` and the run summary show 
 
 ## ⑩ Measure each kind of change
 
-Before saying the checks run less, measure each kind of change the project's work makes. One kind never stands for another: a data edit can run a few checks while a one-line code edit still runs most of them. The kinds, where the project has them:
+Before saying the checks cost less, measure the time each kind of change costs. What counts is the time the user waits for the run, not how many checks a preview picks. One kind never stands for another: a data edit can run a few checks while a one-line code edit still runs most of them. The kinds, where the project has them:
 - a line inside a function of the code file the most checks load;
 - a comment-only line, and a blank line;
 - a new function in that file;
@@ -184,11 +184,15 @@ Before saying the checks run less, measure each kind of change the project's wor
 
 For each kind:
 1. Start from a run where every check has a pass on the current files.
-2. Make that one change and nothing else.
+2. Make that one change and nothing else. For the user's example, make the real fix they described.
 3. Run `--explain` and read every reason of each chosen check: its reason and each `also` input. For an entry with its own selector (⑨), count the children its own output says it would run, with their reasons.
-4. Put the file back.
+4. Run `--changed` for real and keep the total time it prints.
+   - From `last-run.json`, take each chosen check's `durationMs`.
+   - Split it into start-up, waiting and the work itself ([check cost](check-cost.md), "First").
+   - Compare the total with the sum of the checks' times: the difference shows how much ran side by side.
+5. Put the file back, unless the change is a fix the user asked for.
 
-Report each kind with its number of checks, never an estimate. For each check, give every reason and whether the check used the change (needed) or not (waste). Name each kind not measured. Until every kind the project has is measured, the report reads "partial: measured … / not measured …", not done. A kind that still runs checks that did not use the change is the next fix.
+Report each kind with its total run time and its number of checks, both measured, never estimated. For each check, give its time split, every reason, and whether the check used the change (needed) or not (waste). A lower count with the same total time fixed nothing for the user. Name each kind not measured. Until every kind the project has is measured, the report reads "partial: measured … / not measured …", not done. A kind that still runs checks that did not use the change is the next fix.
 
 A cause is fixed only when the same kind, measured again, chooses none of the checks it chose for that cause. Otherwise write "partly fixed: N still chosen, because …". Before handing over a list of causes, fixes or feedback, put it next to the question it answers and the conclusions you stated. Each of them belongs in the list or is named as left out.
 

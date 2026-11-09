@@ -6,7 +6,7 @@ Never answer with a time target, a cap on how many checks run, or by deleting or
 
 ## First: find where the time goes
 
-Each check's record in `.crabshell/verification/test-map.json` keeps `durations`, the times of its passing runs in milliseconds; `last-run.json` gives each check's `durationMs` in the last run. Sort the checks by their median duration and start with the longest. Time how long its program takes to start and exit with nothing to do, such as an empty test. Then sort it:
+Start from a real run of the user's example ([select-by-use](select-by-use.md) ⑩). Its total time is what the user waits for. Each check's record in `.crabshell/verification/test-map.json` keeps `durations`, the times of its passing runs in milliseconds; `last-run.json` gives each check's `durationMs` in the last run. Sort the checks by their median duration and start with the longest. Time how long its program takes to start and exit with nothing to do, such as an empty test. Then sort it:
 
 | Where the time goes | Fix |
 |---|---|
@@ -47,4 +47,4 @@ When the work itself is long, mark the entry `slow: true`; the verifying skill l
 
 ## Measure the change
 
-Run the changed check once before the fix and once after, on the same files, and report both times. Every case must give the same result as before; a fix that changes one changed what the check catches. Report each check you measured and name the long checks not yet fixed; one faster check is not a faster run.
+Run the changed check once before the fix and once after, on the same files, and report both times. Every case must give the same result as before; a fix that changes one changed what the check catches. Report each check you measured and name the long checks not yet fixed. Then run the user's example again and report the run's total time before and after: one faster check is not a faster run.

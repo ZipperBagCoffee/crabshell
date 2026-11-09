@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.169.0)
+# Crabshell Plugin Structure (v21.169.1)
 
-**Version**: 21.169.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.169.1 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -519,6 +519,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.169.1 | `skills/verifying/references/select-by-use.md` ⑩ and "First", `check-cost.md`: measure the real run's total time and per-check start-up, waiting and work; list processes from an operating-system log of one real run |
 | 21.169.0 | The `setup-rtk` skill is removed (`skills/setup-rtk/`): independent benchmarks (JetBrains, Quesma) found that RTK did not lower the bill, and the skill put RTK on a PATH that Claude Code's shells did not read; the skills tree lists 19 |
 | 21.168.0 | A check that reads a file another check writes (its `outputs`) waits for that check and is judged by what it wrote: reused when the content is what it passed with, run in the same run when it changed; `--explain` and `--dry-run` name every input that changed for each check, not only the first; select-by-use: list the kinds of thing checks use before fixing, report every reason as needed or waste, call a cause fixed only when a new measurement chooses none of its checks |
 | 21.167.0 | Reports gain a `rest` line (only the part of a file outside its items, such as code that runs when the file loads); select-by-use: every check that loads a code file uses that part, a compile gate for code narrowed to functions that ran, a coverage report gets `done` only when the coverage source delivered everything |
