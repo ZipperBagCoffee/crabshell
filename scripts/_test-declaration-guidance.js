@@ -4,7 +4,7 @@
 // `slow` (it took longer than slowAfterSeconds), `outputs` (it wrote files) — once each.
 // An undeclared command that took longer than suggestAfterSeconds and ran twice on the
 // same files gets one hint to declare it. `run-verify.js --explain` shows, for each check
-// it would run, its first reason, without running anything.
+// it would run, its reason and every other input that changed, without running anything.
 
 const assert = require('assert');
 const fs = require('fs');
@@ -255,7 +255,7 @@ function runner(root, args) {
   return spawnSync(process.execPath, [path.join(root, '.crabshell', 'verification', 'run-verify.js'), ...args], { cwd: root, env, encoding: 'utf8', windowsHide: true, timeout: 120000 });
 }
 
-test('--explain names each check it would rerun with its first reason, and runs nothing', () => {
+test('--explain names each check it would rerun with its reason, and runs nothing', () => {
   const root = runnerProject('explain');
   assert.strictEqual(runner(root, []).status, 0);
   const nothing = runner(root, ['--explain']);

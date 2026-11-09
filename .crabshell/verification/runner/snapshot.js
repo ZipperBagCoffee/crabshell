@@ -60,6 +60,9 @@ function takeSnapshot({ projectRoot, previous = null, isExcluded = () => false, 
   const prior = previous && previous.files && typeof previous.files === 'object' ? previous.files : {};
   const priorTakenAt = previous && Number.isFinite(previous.takenAt) ? previous.takenAt : 0;
   const hashes = new Map();
+  // Files a check of this run wrote before later checks read them (D164): how each looked
+  // right after (null: not there). restat compares them with that, not with this look.
+  const rewritten = new Map();
   const absolute = rel => path.join(projectRoot, ...rel.split('/').filter(Boolean));
   // A hash from the last run still holds for this file.
   const priorHash = rel => {
@@ -153,6 +156,11 @@ function takeSnapshot({ projectRoot, previous = null, isExcluded = () => false, 
           }
           let now = null;
           try { now = statOf(fs.statSync(absolute(rel))); } catch (_) {}
+          if (rewritten.has(rel)) {
+            const then = rewritten.get(rel);
+            if (then === null ? now !== null : !sameStat(now, then)) changed.add(rel);
+            continue;
+          }
           if (!files.has(rel)) {
             // A file outside the snapshot (Crabshell's state, `exclude`, `outputs`) had no
             // earlier look: it was written during the run when its times are not older
@@ -168,6 +176,17 @@ function takeSnapshot({ projectRoot, previous = null, isExcluded = () => false, 
       for (const [rel, stat] of now) if (!sameStat(stat, files.get(rel))) changed.add(rel);
       for (const rel of files.keys()) if (!now.has(rel)) changed.add(rel);
       return changed;
+    },
+    // Files a check of this run just wrote: their next hash is read from disk, and restat
+    // compares each file with how it is now.
+    refresh(rels) {
+      for (const rel of rels) {
+        hashes.delete(rel);
+        if (rel.endsWith('/')) continue;
+        let now = null;
+        try { now = statOf(fs.statSync(absolute(rel))); } catch (_) {}
+        rewritten.set(rel, now);
+      }
     },
     // Size, times and the hash where one is known, for the next run's snapshot.
     serialize() {

@@ -1,5 +1,21 @@
 # Changelog
 
+## [21.168.0] - 2026-11-09
+
+### feat: a check that reads another check's output waits for it; every changed input is named
+
+- **Why.** A field report on five rounds of check optimization that never finished. Its scheduler chose every check that reads another check's output as soon as that check was chosen, before the output changed. A check run for two reasons showed only one, so the second appeared only after the first was fixed. Crabshell's runner had the same root cause the other way round: it judged a reader before its writer ran. A writer that wrote new content left the reader reused for one run, which is a miss, and a reader that ran after its writer lost its pass because the file had been written during the run.
+- **Runner.** A check whose recorded inputs include a file in another check's `outputs` waits for that check when it runs in the same run. It is then judged by what the writer wrote. When the content is what it passed with, the reader is reused; when it changed, the reader runs in that run. A reader that ran after its writer keeps its pass. `--dry-run` lists such readers as `awaitingWriters`, and `--explain` adds a "Run only if …" line. Heavy and quarantined checks stay out of a routine run, as before. A reader with no record yet is not ordered and runs once more, as before. The notice for it now names the writer instead of asking to declare `outputs` that are already declared.
+- **Reasons.** `--explain` prints every input that changed for each check after its reason (`; also …`), and `--dry-run` lists them as `changedInputs`. Reason texts, their groups and the summary counts are unchanged.
+- **select-by-use.**
+  - Before fixing, list the kinds of thing the checks use and the way each kind gets recorded. A kind with no way stays in the measurement as waste left.
+  - A process that another program starts turns on the same coverage or report.
+  - A project's own selector judges a child that reads another child's output after that child ran.
+  - The measurement gives every reason of each check, marked needed or waste.
+  - A cause is fixed only when the same kind, measured again, chooses none of its checks.
+  - Before handing over a list of causes or feedback, put it next to the question and the conclusions you stated.
+- **Records.** No decision code changed, so recorded passes are kept after the update.
+
 ## [21.167.0] - 2026-11-09
 
 ### feat: a report can name a file's part outside its items; code items, compile gate and complete coverage
