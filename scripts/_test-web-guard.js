@@ -219,6 +219,28 @@ const guard = require('./web-guard.js');
 })();
 
 (function () {
+  // D159: several configured search servers are all named, in the default order (exa
+  // before tavily) whatever order the configuration lists them in; a server that only
+  // searches local code is not one of them.
+  const project = 'C:/nonexistent-project';
+  const noProjectFile = { projectMcpJsonPath: 'C:/nonexistent-project/.mcp.json' };
+  const both = makeUserConfig({ tavily: { type: 'http', url: 'https://mcp.tavily.com/mcp' }, exa: { type: 'http', url: 'https://mcp.exa.ai/mcp' } });
+  const local = makeUserConfig({ 'codebase-search': { command: 'x' }, tavily: { type: 'http', url: 'https://mcp.tavily.com/mcp' } });
+  const order = guard.findSearchMcps(project, { userConfigPath: both, ...noProjectFile });
+  const reason = (guard.evaluateWebGuard({ tool_name: 'WebSearch', tool_input: { query: 'q' } }, project,
+    { mode: 'block', userConfigPath: both, ...noProjectFile }) || {}).block || '';
+  const onlySearch = guard.findSearchMcps(project, { userConfigPath: local, ...noProjectFile });
+  if (order.join() === 'exa,tavily' && reason.indexOf('"exa"') !== -1 && reason.indexOf('"exa"') < reason.indexOf('"tavily"')
+    && onlySearch.join() === 'tavily') {
+    console.log('PASS: every configured search server is named, exa before tavily; local code search is not one');
+    passed++;
+  } else {
+    console.log(`FAIL: order=${order} onlySearch=${onlySearch} reason=${reason}`);
+    failed++;
+  }
+})();
+
+(function () {
   const res = guard.evaluateWebGuard(
     { tool_name: 'WebSearch', tool_input: { query: 'q' } },
     'C:/nonexistent-project',

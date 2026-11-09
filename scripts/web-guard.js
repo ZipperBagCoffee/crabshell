@@ -12,11 +12,23 @@ const { getStorageRoot, getProjectDir } = require('./utils');
 
 // Web search providers, matched as whole words of a server name ("brave-search",
 // "mcp-exa"). A bare "search" is not enough: "codebase-search" searches local code.
+// The order is the default preference when several are configured (exa first, then
+// tavily, D159); the block message tells Claude to follow its instructions instead
+// when they rank the tools differently.
 const SEARCH_MCP_HINTS = [
-  'tavily', 'brave', 'exa', 'serper', 'perplexity', 'jina', 'firecrawl',
+  'exa', 'tavily', 'brave', 'serper', 'perplexity', 'jina', 'firecrawl',
   'kagi', 'searxng', 'duckduckgo', 'ddg', 'websearch', 'web-search'
 ];
+const hintPattern = hint => new RegExp('(?:^|[^a-z0-9])' + hint + '(?:[^a-z0-9]|$)');
 const SEARCH_MCP_PATTERN = new RegExp('(?:^|[^a-z0-9])(?:' + SEARCH_MCP_HINTS.join('|') + ')(?:[^a-z0-9]|$)');
+const HINT_PATTERNS = SEARCH_MCP_HINTS.map(hintPattern);
+
+// A search server's place in the default order: the first hint its name matches.
+function searchRank(name) {
+  const lower = String(name).toLowerCase();
+  const rank = HINT_PATTERNS.findIndex(pattern => pattern.test(lower));
+  return rank === -1 ? SEARCH_MCP_HINTS.length : rank;
+}
 
 // Modes: 'block' (default) | 'warn' | 'off'
 function getMode(projectDir) {
@@ -60,17 +72,24 @@ function collectMcpServerNames(userConfigPath, projectMcpJsonPath, projectDir) {
   return names;
 }
 
-function findSearchMcp(projectDir, overrides) {
+// Every search server this project can use, once each, in the default order (ties keep
+// the configuration's order).
+function findSearchMcps(projectDir, overrides) {
   const userConfigPath = (overrides && overrides.userConfigPath) ||
     process.env.CRABSHELL_WEBGUARD_USER_CONFIG ||
     path.join(os.homedir(), '.claude.json');
   const projectMcpJsonPath = (overrides && overrides.projectMcpJsonPath) ||
     path.join(projectDir, '.mcp.json');
   const names = collectMcpServerNames(userConfigPath, projectMcpJsonPath, projectDir);
-  for (const name of names) {
-    if (SEARCH_MCP_PATTERN.test(String(name).toLowerCase())) return name;
-  }
-  return null;
+  const found = [...new Set(names)].filter(name => SEARCH_MCP_PATTERN.test(String(name).toLowerCase()));
+  return found.map((name, index) => ({ name, index, rank: searchRank(name) }))
+    .sort((a, b) => a.rank - b.rank || a.index - b.index)
+    .map(item => item.name);
+}
+
+// The search server to use first, or null when none is configured.
+function findSearchMcp(projectDir, overrides) {
+  return findSearchMcps(projectDir, overrides)[0] || null;
 }
 
 // Strip characters that would break the suggested shell commands.
@@ -88,8 +107,11 @@ function webFetchBlockReason(url) {
     'Cite the source URL beside every factual claim.';
 }
 
-function webSearchBlockReason(serverName) {
-  return `Crabshell web-guard: built-in WebSearch summarizes results via a small model and loses source attribution. Use the "${serverName}" MCP search tools instead (raw results with per-result URLs). Treat snippets as pointers, not evidence — fetch important pages before citing them.`;
+function webSearchBlockReason(serverNames) {
+  const use = serverNames.length === 1
+    ? `Use the "${serverNames[0]}" MCP search tools instead (raw results with per-result URLs).`
+    : `Use the configured MCP search tools instead (raw results with per-result URLs), in this order unless your instructions rank them differently: ${serverNames.map(name => `"${name}"`).join(', then ')}. Move to the next one when a tool is unavailable, hits its rate limit or finds too little.`;
+  return `Crabshell web-guard: built-in WebSearch summarizes results via a small model and loses source attribution. ${use} Treat snippets as pointers, not evidence — fetch important pages before citing them.`;
 }
 
 const WEBSEARCH_WARN_CONTEXT = 'Crabshell web-guard notice: built-in WebSearch results pass through a small summarizer model. Use the URLs only as pointers. Fetch each important source directly before citing it: trafilatura -u <url> --markdown, curl -fsSL https://r.jina.ai/<url>, or plain curl. Never cite a search snippet as evidence.';
@@ -113,8 +135,8 @@ function evaluateWebGuard(hookData, projectDir, overrides) {
   // WebSearch: block only when a configured search MCP alternative exists.
   // Machines without one keep the built-in search (degraded to warn) — never
   // leave a user with no search path at all.
-  const searchMcp = findSearchMcp(projectDir, overrides);
-  if (mode === 'block' && searchMcp) return { block: webSearchBlockReason(searchMcp) };
+  const searchMcps = findSearchMcps(projectDir, overrides);
+  if (mode === 'block' && searchMcps.length) return { block: webSearchBlockReason(searchMcps) };
   return { warn: WEBSEARCH_WARN_CONTEXT };
 }
 
@@ -142,4 +164,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { evaluateWebGuard, findSearchMcp, getMode, sanitizeUrl, collectMcpServerNames };
+module.exports = { evaluateWebGuard, findSearchMcp, findSearchMcps, getMode, sanitizeUrl, collectMcpServerNames };

@@ -1,5 +1,14 @@
 # Changelog
 
+## [21.165.0] - 2026-11-08
+
+### feat: web-guard names every search tool, exa first; select-by-use covers cases sharing a process and reads a tracer cannot see
+
+- **web-guard.** When it blocks the built-in WebSearch it named only the first search MCP in the configuration (`tavily, exa` on the owner's machine gave "tavily"). It now names every search MCP the project can use, in a default order (exa, then tavily, then brave and the rest), says to move to the next when one is unavailable, rate-limited or finds too little, and says to follow the instructions when they rank them differently. A machine with one search MCP gets the same message as before; blocking and allowing are unchanged. New export `findSearchMcps`; `findSearchMcp` returns the first of it. The investigating skill names the tools in the same order.
+- **select-by-use ⑧ "Cases in one process".** A value an earlier case left behind (a cache, a static table built on first use) is used by every later case that reads it. In order of preference: the cache keeps the lines reported while the value was built and reports them again on each hand-out (exact); clear the cache in per-case setup; report the union of earlier cases (never misses, reruns later cases); one process per case (exact, pays the start-up per case). A field report measured the union approach selecting 12 tests for a one-line edit that 4 ran.
+- **select-by-use ④ "What the tracer cannot see".** A call tracer does not see reads of constants, enums or static fields. Most precise first: read the source of each function that ran and report each constant it names (directly, through an alias or inherited) as an `item` of the declaring file, with the identity command listing those members as items; move widely read constants to a small file; as the last resort report every loaded file. The first table has a row for each case; ⑦'s rest now says "constants not listed as items".
+- The runner is unchanged.
+
 ## [21.164.0] - 2026-11-08
 
 ### feat: run-time estimates use the runner's own side-by-side rule; select-by-use measures each kind of change

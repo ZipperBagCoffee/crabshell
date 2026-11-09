@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.164.0)
+# Crabshell Plugin Structure (v21.165.0)
 
-**Version**: 21.164.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.165.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -391,7 +391,7 @@ Path guard (v19.31.0; v21.125.0 write-only blocking). The Claude PreToolUse disp
 ### scripts/web-guard.js
 PreToolUse WebFetch/WebSearch guard (v21.114.0, I084 — built-in tools summarize pages via a small model, "lossy by design" per Anthropic docs):
 - WebFetch: block (exit 2) with a URL-substituted raw-fetch ladder — `trafilatura -u <url> --markdown --links` → `curl -fsSL https://r.jina.ai/<url>` (keyless, JS pages) → plain `curl` (raw). Fallbacks require no API key, so blocking is always safe
-- WebSearch: block only when a configured search MCP exists (scans `~/.claude.json` mcpServers incl. per-project entries + project `.mcp.json` for tavily/brave/exa/serper/etc.); without one, allow with an additionalContext warning ("snippets are pointers — fetch before citing") so machines with no search alternative keep working
+- WebSearch: block only when a configured search MCP exists (scans `~/.claude.json` mcpServers incl. per-project entries + project `.mcp.json` for exa/tavily/brave/serper/etc.; the block message names every one found, exa first, then tavily, unless the instructions rank them differently, v21.165.0); without one, allow with an additionalContext warning ("snippets are pointers — fetch before citing") so machines with no search alternative keep working
 - Modes via `webGuard` in `.crabshell/memory/config.json`: `block` (default) / `warn` / `off`
 - URL sanitization before embedding in suggested commands (strips quotes/backticks/whitespace)
 - CRABSHELL_BACKGROUND bypass + fail-open on all errors (exit 0)
@@ -518,6 +518,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.165.0 | web-guard names every configured search MCP, exa first and then tavily by default (instructions that rank them differently win); select-by-use: cases sharing one process (a cache reports what its value was built from), and reads a call tracer cannot see (constants reported as items) |
 | 21.164.0 | `--explain`/`--dry-run` estimate the run's own length (`estimatedWallSeconds`: checks side by side as the runner runs them; `estimatedSeconds` stays the sum); select-by-use ⑩ measures each kind of change and reports "partial" until all are measured; fingerprints without comments, one setup file per case, `{cases}` lists kept out of `command` |
 | 21.163.0 | Verifying skill: new reference `check-cost.md` (find where a long run spends its time, then start once for many cases, wait for events not the clock, run checks side by side, mark heavy work `slow`); select-by-use states one principle for values built from many inputs and drops two case paragraphs; the VERIFICATION defect line also names start-up, waiting and one-at-a-time runs; examples in general words |
 | 21.162.2 | select-by-use: copies, stamps, test scratch, a selector's gate step, timing failures (docs only) |
