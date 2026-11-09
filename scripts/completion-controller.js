@@ -10,18 +10,26 @@ const { isFileWrite, shellCommand } = require('./core/tool-shape');
 
 if (process.env.CRABSHELL_BACKGROUND === '1') process.exit(0);
 
-// Claude-only Stop checks, run in this process. sycophancy-guard and scope-guard
-// left Stop dispatch in v21.113.0 (I083 R5: behavioral policing moved out of
-// hooks) and were deleted in v21.130.0.
+// Claude-only Stop checks, run in this process; one check's failure skips only that
+// check. sycophancy-guard left Stop dispatch in v21.113.0 and came back in v21.166.0
+// (D162: agreeing without checking anything in the turn); scope-guard stays deleted.
+const CLAUDE_STOP_CHECKS = [
+  ['doc-watchdog', (payload, projectDir) => require('./doc-watchdog').stopReason(payload, projectDir)],
+  ['sycophancy-guard', payload => require('./sycophancy-guard').stopReason(payload)],
+];
+
 function legacyClaudeStopReasons(payload, projectDir = getProjectDir()) {
   if (payload.stop_hook_active === true) return [];
-  try {
-    const reason = require('./doc-watchdog').stopReason(payload, projectDir);
-    return reason ? [reason] : [];
-  } catch (error) {
-    process.stderr.write(`[CRABSHELL] doc-watchdog Stop check skipped: ${error.message}\n`);
-    return [];
+  const reasons = [];
+  for (const [name, check] of CLAUDE_STOP_CHECKS) {
+    try {
+      const reason = check(payload, projectDir);
+      if (reason) reasons.push(reason);
+    } catch (error) {
+      process.stderr.write(`[CRABSHELL] ${name} Stop check skipped: ${error.message}\n`);
+    }
   }
+  return reasons;
 }
 
 // One feature's failure leaves the others running (D143_T018: hooks are fail-open).

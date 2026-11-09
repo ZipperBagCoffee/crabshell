@@ -96,4 +96,53 @@ function getLastUserMessage(transcriptPath) {
   }
 }
 
-module.exports = { findTranscriptPath, encodeProjectPath, getLastUserMessage };
+// A person's prompt, as opposed to a tool result or a background task's notice that the
+// host also records as a user line.
+function isHumanPrompt(entry) {
+  if (!entry || entry.type !== 'user') return false;
+  if (entry.origin && entry.origin.kind) return entry.origin.kind === 'human';
+  const content = entry.message && entry.message.content;
+  if (typeof content === 'string') return !/^\s*<task-notification>/.test(content);
+  return Array.isArray(content) && content.some(part => part && part.type === 'text')
+    && !content.some(part => part && part.type === 'tool_result');
+}
+
+/**
+ * What the assistant did since the person's last prompt (D161, D162): its text and tool
+ * calls in order, as { kind: 'text', text } and { kind: 'tool', name }. Reads only the
+ * transcript's last `maxBytes`; when the prompt lies before that, the whole read part
+ * counts. Returns null when the transcript cannot be read.
+ */
+function currentTurn(transcriptPath, { maxBytes = 1048576 } = {}) {
+  if (!transcriptPath) return null;
+  try {
+    const stat = fs.statSync(transcriptPath);
+    const readSize = Math.min(maxBytes, stat.size);
+    const buf = Buffer.alloc(readSize);
+    const fd = fs.openSync(transcriptPath, 'r');
+    try { fs.readSync(fd, buf, 0, readSize, stat.size - readSize); } finally { fs.closeSync(fd); }
+    const lines = buf.toString('utf8').split(/\r?\n/);
+    if (readSize < stat.size) lines.shift(); // the first line was cut by the read
+    const entries = [];
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      try { entries.push(JSON.parse(line)); } catch (_) { /* a line still being written */ }
+    }
+    let start = 0;
+    for (let i = entries.length - 1; i >= 0; i--) if (isHumanPrompt(entries[i])) { start = i + 1; break; }
+    const turn = [];
+    for (const entry of entries.slice(start)) {
+      const content = entry.type === 'assistant' && entry.message && entry.message.content;
+      if (!Array.isArray(content)) continue;
+      for (const part of content) {
+        if (part && part.type === 'text' && part.text) turn.push({ kind: 'text', text: part.text });
+        else if (part && part.type === 'tool_use' && part.name) turn.push({ kind: 'tool', name: part.name });
+      }
+    }
+    return turn;
+  } catch (_) {
+    return null;
+  }
+}
+
+module.exports = { findTranscriptPath, encodeProjectPath, getLastUserMessage, currentTurn, isHumanPrompt };

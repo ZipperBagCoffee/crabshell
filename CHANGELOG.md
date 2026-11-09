@@ -1,5 +1,14 @@
 # Changelog
 
+## [21.166.0] - 2026-11-08
+
+### feat: the sycophancy guard is back; WebSearch runs as the last resort
+
+- **Sycophancy guard restored (user decision after a regression).** `scripts/sycophancy-guard.js` was unwired in v21.113.0 and deleted in v21.130.0. Its detection core is back: the agreement phrases (now with "맞아요", "맞네요", "맞는 말"), quotes and code that do not count, and execution output that counts as evidence. A tool call earlier in the current turn now also counts as evidence. At Stop, an answer that agrees while nothing was checked in the turn is sent back once: check the claim, keep the position if the evidence disagrees, then answer from the evidence. The old Stop path had become a stderr note no model read. At PreToolUse, a file write right after such agreement is blocked, as before. Not restored: the pressure levels, P/O/G table checks and oscillation counters, whose systems are gone. Claude only.
+- **web-guard: WebSearch as the last resort.** With a search MCP configured, built-in WebSearch was always blocked. It now runs, with a warning to say which searches failed and to read sources directly, once the current turn has called every configured search MCP. The block message names the ones not tried yet. A call before the person's last prompt does not count; an unreadable transcript keeps the block.
+- **Shared:** `scripts/core/transcript.js` `currentTurn` reads what the assistant did since the person's last prompt (text and tool calls) from the transcript's last 1 MB.
+- **Docs:** USER-MANUAL's web-guard sentence that 21.165.0 left broken is whole again.
+
 ## [21.165.0] - 2026-11-08
 
 ### feat: web-guard names every search tool, exa first; select-by-use covers cases sharing a process and reads a tracer cannot see
