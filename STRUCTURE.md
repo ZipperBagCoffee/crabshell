@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.162.2)
+# Crabshell Plugin Structure (v21.163.0)
 
-**Version**: 21.162.2 | **Author**: TaWa | **License**: MIT
+**Version**: 21.163.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -257,7 +257,7 @@ crabshell/
 │   │   ├── scripts/runner/            # Runner modules: manifest, fingerprint, snapshot, ignored, select, schedule, execute, contract, trace, store, output, install, project-state (v21.153.0); settings (manifest run settings), test-hygiene (copy detector), routine (risk paths, flaky quarantine), recheck (forbidden-file re-check), replay (--replay) (v21.158.0); used-report (reports of what a check used, `itemIdentity`, `{cases}`) (v21.159.0)
 │   │   ├── scripts/released-launchers.json # Every launcher Crabshell released (LF sha256), built by scripts/build-released-launchers.js (v21.153.0)
 │   │   ├── scripts/check-pipeline-wiring.js # Pipeline wiring probe: discover / check --contract (v21.121.0)
-│   │   └── references/                # wiring-inventory, manifest-entries (v21.132.0); fail-before (v21.142.0); runner-reuse-output (v21.146.0); select-by-use (checks that report what they used, v21.159.0)
+│   │   └── references/                # wiring-inventory, manifest-entries (v21.132.0); fail-before (v21.142.0); runner-reuse-output (v21.146.0); select-by-use (checks that report what they used, v21.159.0); check-cost (making each check cheaper, v21.163.0)
 │   ├── status/SKILL.md               # /crabshell:status (plugin healthcheck)
 │   ├── lint/SKILL.md                 # /crabshell:lint (Obsidian document lint checks) (v21.70.0)
 │   ├── search-docs/SKILL.md          # /crabshell:search-docs (BM25 document search) (v21.72.0)
@@ -371,7 +371,7 @@ UserPromptSubmit hook:
 - Inject critical rules every prompt via `additionalContext`
 - Append the `## Codex Delegation` guidance block (`CODEX_DELEGATION`) on Claude execution turns — /codex:rescue usage, model example, project-root launch, prompt-carried constraints, captured hook payload handoff, completion re-verification, and platform notes
 - `RULES` Simple Communication is a four-slot response contract (v21.115.0, I085): `[conclusion] → [evidence] → [critical exception] → [next action]` in the reader's words, first sentence is the direct answer, keep-vs-cut list on shortening, bullets only for 3+ parallel items with max 4 per group, one term unpacked per sentence (비유 금지), concrete over abstract, no self-coined acronyms, accuracy outranks brevity, banter never as padding; shortened 956 → 788 characters with every instruction kept (v21.159.0)
-- `RULES` VERIFICATION: after the last edit, run once the checks that touch what changed and read their output; unchanged inputs are not run again (v21.158.0); the chat report is `"M of N passed"` plus failed items, in plain words (v21.115.0/.1, I085); a change that reruns checks it does not affect is a defect, fixed with the verifying skill's select-by-use method, never with a time target or a count cap (v21.159.0)
+- `RULES` VERIFICATION: after the last edit, run once the checks that touch what changed and read their output; unchanged inputs are not run again (v21.158.0); the chat report is `"M of N passed"` plus failed items, in plain words (v21.115.0/.1, I085); a check that reruns on changes it does not use, or spends its time starting, waiting or running alone, is a defect, fixed with the verifying skill (select-by-use, check-cost), never with a time target or a count cap (v21.159.0, v21.163.0)
 - Configurable frequency via `rulesInjectionFrequency`
 - Auto-sync rules to CLAUDE.md via `syncClaudeMdRules()` (marker-based; every execution prompt, and SessionStart through `load-memory.js`, when it differs; v21.155.0)
 - Reset and persist all pressure counters when `봉인해제` / `UNLEASH` appears, regardless of question/execution classification (v21.110.1)
@@ -518,6 +518,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.163.0 | Verifying skill: new reference `check-cost.md` (find where a long run spends its time, then start once for many cases, wait for events not the clock, run checks side by side, mark heavy work `slow`); select-by-use states one principle for values built from many inputs and drops two case paragraphs; the VERIFICATION defect line also names start-up, waiting and one-at-a-time runs; examples in general words |
 | 21.162.2 | select-by-use: copies, stamps, test scratch, a selector's gate step, timing failures (docs only) |
 | 21.162.1 | Commit reminder reads more shell forms: `cmd /k`, PowerShell `-Command` prefixes, `ksh`/`fish -c` |
 | 21.162.0 | Session end refines only the new part (one `updateSessionL1` for the interval save and SessionEnd; 64 MB transcript 1,277 ms → 169–341 ms); lint/status/claude-to-agents plugin paths; commit reminder lists only checks not passed on current files |

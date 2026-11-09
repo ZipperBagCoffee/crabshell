@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.162.2)
+# Crabshell Architecture (v21.163.0)
 
 ## Overview
 
@@ -565,6 +565,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.163.0 | Verifying skill: new reference `check-cost.md` (find where a long run spends its time, then start once for many cases, wait for events not the clock, run checks side by side, mark heavy work `slow`); select-by-use states one principle for values built from many inputs and drops two case paragraphs; the VERIFICATION defect line also names start-up, waiting and one-at-a-time runs; examples in general words |
 | 21.162.2 | select-by-use: copies, stamps, test scratch, a selector's gate step, timing failures (docs only) |
 | 21.162.1 | Commit reminder reads more shell forms: `cmd /k`, PowerShell `-Command` prefixes, `ksh`/`fish -c` |
 | 21.162.0 | Session end refines only the new part (one `updateSessionL1` for the interval save and SessionEnd; 64 MB transcript 1,277 ms → 169–341 ms); lint/status/claude-to-agents plugin paths; commit reminder lists only checks not passed on current files |

@@ -11,6 +11,13 @@ Never answer with a time target or a cap on how many checks run. A change to a p
 
 The runner chooses by what a check read: the files its own trace saw, or the `inputs` the entry declares. A check that reports what it used is chosen by its report instead. A check that reads everything but uses one record runs again on every data edit. A check whose declared list is a guess misses the files it really uses.
 
+Only what can change the result is used. Handing out every record only to build a copy (a test that copies every record to change a few) is not use: that accessor reports nothing, and the copy's record accessors report when a record is handed out. A stamp is not use either: a whole-content hash or version that the program writes into its outputs (output files, logs) and no program code compares. Report nothing for it, the way build systems treat volatile stamps.
+
+A value built from many inputs uses all of them: a whole-content hash or validity verdict, a list of everything, a snapshot. A check that reads one runs again when any of those inputs changes. Three ways out:
+- read only the parts the check needs, reported where they are handed out (①);
+- prove the whole-content fact once in the gate (③), so other checks rely on its pass;
+- leave out a value that cannot change the result, such as a stamp.
+
 ## First: find why each check was chosen
 
 `node .crabshell/verification/run-verify.js --explain` prints each check a `--changed` run would run, with its first reason, and runs nothing. For each chosen check, open its record in `test-map.json` (`kind`, `files`) and sort it:
@@ -19,6 +26,7 @@ The runner chooses by what a check read: the files its own trace saw, or the `in
 |---|---|
 | `… changed (unknown inputs)` — the record's `kind` is `project` | Report what it used (⑧); where nothing can report, declare `inputs` (⑤) |
 | A file it read when it started, but does not use | Report where a record or field is handed out (①), scan through a kind index (②), put start-up validation in a gate (③) |
+| A value built from many files: a whole-content hash or verdict, a list of everything | The three ways out under "Read is not used" |
 | One entry that runs many child checks with its own selector | One selector, or the same rules inside it (⑨) |
 | A file it uses, but only one part of it | Report items, not files (④, ⑦); split a shared core file (⑥) |
 | Its own test or program changed, or it failed last time | Nothing to fix |
@@ -35,10 +43,6 @@ The function that returns a record to the rest of the program reports that recor
 A lookup for a record that does not exist reports that record with an empty fingerprint (⑧), so adding it later runs the check again. Data the program reads outside that function is not reported: route those reads through it, or report them where they happen.
 
 The finest general form is the field. When the record object hands out a field, it reports that field; one top-level field is one item. Code that loops over every record to filter on one field then reports only that field of each record, with no change of its own. Report on the record object, not where the collection fetches it from the store, so copies made from a record report the same way.
-
-Building a collection from another one (a test that copies every record into a changed revision) is not use: the accessor that hands out everything only to build the copy reports nothing, and the copy's record accessors report when a record is handed out.
-
-A stamp is not use: a whole-content hash or version that the program writes into its outputs (saves, logs) but no program code compares. Report nothing for it, the way build systems treat volatile stamps.
 
 ## ② Scan by kind, through an index
 
@@ -105,7 +109,7 @@ done[<TAB>writer]                           the last line; each writer name need
 
 - **Paths:** relative to the project root (`/` or `\`), or absolute inside the project. They must exist. Report a file that is not there through its folder; adding it changes the folder's names. A record that is not there is an `item` line with an empty fingerprint.
 - **Report every folder the check lists**, test discovery included. Otherwise a file added there never runs the check again.
-- **Files the check writes and reads back in the same run** (test scratch, generated packs) are outputs, not inputs. Keep them under one scratch folder and have the check's reporting code leave that folder out; reported, they break it (outside the project, or not there before the run).
+- **Files the check writes and reads back in the same run** (test scratch, generated fixtures) are outputs, not inputs. Keep them under one scratch folder and have the check's reporting code leave that folder out; reported, they break it (outside the project, or not there before the run).
 - **Escapes** inside a field: `%` → `%25`, TAB → `%09`, CR → `%0D`, LF → `%0A`. `#` is not special. A field may not hold the NUL character (`%00`).
 - **Write the report fresh on every run.** A check that runs again reads everything it needs and reports again; never copy an earlier report.
 

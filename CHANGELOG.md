@@ -1,5 +1,15 @@
 # Changelog
 
+## [21.163.0] - 2026-11-08
+
+### feat: the verifying skill says how to make each check cheaper; one rule for values built from many inputs
+
+- **New reference `check-cost.md`.** When a run is long even though it runs only the checks the change touched, Claude sorts the checks by their recorded `durations` and compares the longest with the time its program takes to start and exit. Then: start once and run many cases in one `{cases}` entry; wait for an event or a fake clock instead of sleeping; set `"exclusive": false` (or a shared `group`) so checks that the runner's Node did not trace stop running one at a time; mark work heavy by nature `slow`. Every case must give the same result before and after; never a time target, a count cap or a weakened check.
+- **select-by-use: one rule instead of case paragraphs.** "Read is not used" now says only what can change the result is used (a copy-only accessor and a stamp report nothing), and that a value built from many inputs (a whole-content hash or validity verdict, a list of everything, a snapshot) uses all of them, with three ways out: read only the parts, prove the whole-content fact once in the gate, or leave out a value that cannot change the result. The copy and stamp paragraphs under ① are folded into it, and the first table has a row for it. Three examples added in 21.162.2 used one project's words; they now read: a test that copies every record to change a few, output files, generated fixtures.
+- **Rule.** The VERIFICATION defect line now reads: a check that reruns on changes it does not use, or spends its time starting, waiting or running alone, is a defect, fixed with the verifying skill (select-by-use, check-cost), never with a time target or a count cap. The rules block stays within its 10,600-character budget (10,598).
+- **Correction.** The manual and `manifest-entries.md` said a `group` lets a check in another language share the machine; only `"exclusive": false` does (`runsAlone` ignores `group`, which only keeps its members from overlapping). Both now say so.
+- The runner is unchanged; selection, records and reused passes stay as they were.
+
 ## [21.162.2] - 2026-11-08
 
 ### docs: select-by-use covers copies, stamps, test scratch, a selector's gate and timing failures
