@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.170.0)
+# Crabshell Plugin Structure (v21.171.0)
 
-**Version**: 21.170.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.171.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -156,14 +156,12 @@ crabshell/
 │   ├── completion-controller.js             # Single Claude Stop/SubagentStop owner retaining existing guards
 │   ├── codex-doctor.js                      # Cross-runtime source/cache/hook/trust/behavior/drift diagnostics
 │   ├── codex-memory.js                      # Manual Codex memory load/save/search/status
-│   ├── verify-cross-runtime.js              # Manual runner from V059 fileAssertions; fail-open last
 │   ├── _test-cross-platform-native-hosts.js # Windows/Linux clean-profile CLI matrix
 │   ├── _test-codex-windows-hook-command.js  # Windows hook output + loader/rejection fail-open regression
 │   ├── _test-linux-native-hosts.sh          # Disposable Linux Node/current-CLI provisioner
 │   ├── run-orchestration-corpus.js          # Live Codex A/B orchestration behavior runner (v21.105.0)
 │   ├── _test-orchestration-defaults.js      # Deterministic orchestration policy tests (v21.105.0)
 │   ├── docs-guard.js                        # PreToolUse D/P/T/I skill bypass prevention (v19.33.0); a new discussion ticket needs the Plan (v21.135.0)
-│   ├── verify-guard.js                      # Final Verification check runner — not wired since v21.153.0 (v19.34.0, v20.3.0)
 │   ├── log-guard.js                         # PreToolUse ticket status check — done/verified need filled result sections (v21.131.0; Intent Fidelity v21.135.0)
 │   ├── verification-sequence.js             # PostToolUse state tracker + PreToolUse commit/edit gate (v21.0.0)
 │   ├── skill-tracker.js                     # Per-session skill flag setter, run inline by the PostToolUse dispatcher (v19.33.0, v21.124.0, v21.125.0)
@@ -175,7 +173,6 @@ crabshell/
 │   ├── _test-feedback-detection.js          # Feedback detection + pressure system tests (v21.5.0)
 │   ├── _test-inject-rules.js                # inject-rules.js export + behavioral tests (v21.6.0)
 │   ├── _test-counter.js                     # counter.js export + subprocess + lock + pruning + offset tests (v21.10.0)
-│   ├── _test-verify-guard.js                # verify-guard.js integration tests — Write/Edit new/existing distinction (v21.16.0)
 │   ├── doc-watchdog.js                      # Doc-update omission checks: recordEdit/gateEdit/stopReason, in-project files only, per-session record and unfinished INDEX tickets (v21.18.0, v21.125.0, v21.154.0)
 │   ├── _test-doc-watchdog.js                # doc-watchdog.js integration suite: per-session record, INDEX status, owner, execution turn (v21.18.0, v21.154.0)
 │   ├── _test-restriction-controls.js        # Lifted restrictions paired with writes that stay blocked (v21.125.0)
@@ -421,15 +418,6 @@ PreToolUse ticket status check (v21.4.0; narrowed v21.131.0):
 - Plans, discussions, investigations and hotfixes are not checked; the work-log length rule and the previous-cycle check were removed in v21.131.0
 - Fail-open on parse errors (user experience protection)
 
-### scripts/verify-guard.js
-Not wired since v21.153.0 (it re-ran the check the work had just run); kept for tests and audits. Former PreToolUse Final Verification enforcement (v19.34.0, v19.39.0 deterministic, v20.3.0 behavioral AC, v21.16.0 hybrid):
-- Hybrid approach: Edit always enforces verification; Write enforces only for existing files (new file creation skips — fs.existsSync-based)
-- Block when ticket path (`.crabshell/ticket/P###_T###*`) contains `## Final Verification`
-- Directly executes the generated `run-verify.js --changed --no-fail-before` — blocks on failed command exits, structured assertions, or forbidden-path mutations (the HEAD comparison of changed tests is left to the commit gate's run, v21.142.0)
-- Require at least 1 schema-v2 `behavioral` entry with a structured contract; a legacy self-label or positive stdout substring is insufficient
-- "Verification tool N/A:" exception for projects without verification tools
-- Fail-open on parse errors (user experience protection)
-
 ### scripts/extract-delta.js
 L1 delta extraction:
 - `extractDelta()`: Extract changes since last logbook.md update
@@ -478,8 +466,7 @@ L1 generation:
    ├─> docs-guard (Write|Edit) — block writes to .crabshell/ D/P/T/I without this session's skill flag
    ├─> log-guard (Write|Edit) — block a ticket marked done/verified while its result sections are still template text
    ├─> verification gate (Bash) — block git commit while source edits lack a passing declared check; record a declared check's start
-   ├─> doc-watchdog gate (Write|Edit) — soft notice when in-project code edits >= 5 without a D/P/T doc update during regressing
-   └─> verify-guard (Write|Edit) — Final Verification writes run the declared checks
+   └─> doc-watchdog gate (Write|Edit) — soft notice when in-project code edits >= 5 without a D/P/T doc update during regressing
    (pressure-guard unwired v21.113.0 — I083 R4/R5, deleted v21.130.0; sycophancy-guard restored for file writes v21.166.0; Read|Grep|Glob have no PreToolUse hook since v21.125.0)
 
 3.5. Stop
@@ -519,6 +506,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.171.0 | Removed `scripts/verify-guard.js`, `scripts/_test-verify-guard.js`, `_test-v020-novel-scope-expansion.js`, `_test-externalization-trap-catalog.js`, `_test-legacy-orchestration-retirement.js`, `prompts/`; `inject-rules.js` reads only the user's text for stop/reset; general wording in `core/rules-text.js`, `web-guard.js`, `regressing-guard.js`, `core/plan-entry.js`, skills |
 | 21.170.0 | `scripts/shared-context.js` (four questions before every answer), `skills/verifying/scripts/runner/main.js` (`startMs`/`endMs`/`waitedFor`), `output.js` (empty selection's time), select-by-use ⑩/"First", check-cost, runner-reuse-output |
 | 21.169.1 | `skills/verifying/references/select-by-use.md` ⑩ and "First", `check-cost.md`: measure the real run's total time and per-check start-up, waiting and work; list processes from an operating-system log of one real run |
 | 21.169.0 | The `setup-rtk` skill is removed (`skills/setup-rtk/`): independent benchmarks (JetBrains, Quesma) found that RTK did not lower the bill, and the skill put RTK on a PATH that Claude Code's shells did not read; the skills tree lists 19 |

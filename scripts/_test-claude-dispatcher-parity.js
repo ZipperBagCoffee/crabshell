@@ -7,8 +7,7 @@
 // patterns, OS-temp paths or unknown-variable paths; web-guard looks only at this
 // project's MCP servers and known web-search names; doc-watchdog counts only edits
 // inside the project; the verification gate is no longer run for Write/Edit (it
-// returned without effect for those tools); verify-guard is no longer wired (D143) —
-// no case here writes a Final Verification, so its old entry decides nothing.
+// returned without effect for those tools).
 const fs = require('fs');
 const path = require('path');
 const h = require('./testlib/hook-harness');
@@ -26,7 +25,6 @@ const OLD_PRE = [
   { matcher: /^(Write|Edit)$/, script: 'regressing-guard.js', args: [] },
   { matcher: /^(Write|Edit)$/, script: 'docs-guard.js', args: [] },
   { matcher: /^(Write|Edit)$/, script: 'log-guard.js', args: [] },
-  { matcher: /^(Write|Edit)$/, script: 'verify-guard.js', args: [] },
   { matcher: /^(Write|Edit|Bash)$/, script: 'verification-sequence.js', args: ['gate'] },
   { matcher: /^(Write|Edit)$/, script: 'doc-watchdog.js', args: ['gate'] },
 ];

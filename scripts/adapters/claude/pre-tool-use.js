@@ -5,8 +5,7 @@
 // shell call or a file write (core/tool-shape) — whatever the tool is named; a call that
 // is neither loads no guard module. All guards run even
 // after one denies, because some record state (a declared check starting, the
-// parent's check preparation). verify-guard is no longer wired (D143): writing a
-// ticket's Final Verification ran the declared checks again.
+// parent's check preparation).
 if (process.env.CRABSHELL_BACKGROUND === '1') process.exit(0);
 
 const { readStdin } = require('../../transcript-utils');

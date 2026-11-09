@@ -67,7 +67,7 @@ function evaluateRegressingGuard(hookData, projectDir) {
             return !body || /^\([^)]*\)$/.test(body);
           });
           if (emptySections.length > 0) {
-            return { reason: `Ticketing blocked: Plan ${planId} has empty agent sections: ${emptySections.join(', ')}. Complete planning phase (WA/RA/Orchestrator) before creating tickets.` };
+            return { reason: `Ticketing blocked: Plan ${planId} has empty agent sections: ${emptySections.join(', ')}. Fill those sections before creating tickets.` };
           }
         }
       } catch (e) {

@@ -17,7 +17,7 @@ node "{SKILL_DIR}/scripts/codex-docs.js" discussion "topic" --intent="..." --con
 
 Then add a `## Convergence Criteria` section to the D document. Each item must be objectively checkable by reading project documents or running a command: document status, command exit code, numeric threshold. Subjective wording ("no new issues found") is invalid.
 
-1b. Print this ready-to-paste goal-mode line for the user (Codex CLI 0.128.0+). Fill in the real D file and cap:
+1b. Print this ready-to-paste goal-mode line for the user (hosts with `/goal`). Fill in the real D file and cap:
 
 ```
 /goal Crabshell regressing {D-ID}: every item under "## Convergence Criteria" in .crabshell/discussion/{D-file}.md is met and its frontmatter status is "concluded", or the D Final Report records the cycle cap {N} as reached. Judge only by reading that document.

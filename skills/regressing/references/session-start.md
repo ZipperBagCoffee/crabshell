@@ -28,13 +28,13 @@ Present it as a compact recommendation block:
 Silence = proceed. Adjust any parameter by responding.
 ```
 
-**Inline parameter detection:** A bare number after the topic is the cycle cap, not the agent count. A number with a "명" or "agents" suffix is the agent count. Example: `/regressing "topic" 5` → cap=5. `/regressing "topic" 3명` → agents=3, cap=10.
+**Inline parameter detection:** A bare number after the topic is the cycle cap, not the agent count. A number given as a count of agents, in any language, is the agent count. Example: `/regressing "topic" 5` → cap=5. `/regressing "topic" 3명` → agents=3, cap=10.
 
 Silence means proceed with the recommended parameters. The user may change any parameter before execution begins.
 
 ### Step 2.6: Goal-Mode Handoff (host continuation)
 
-The host's goal mode (Claude Code 2.1.139+ `/goal`, Codex CLI 0.128.0+ `/goal`) keeps the session working until its evaluator confirms the Discussion is concluded. No hook forces continuation; `completion-controller.js` still enforces bounded continuation on execution-authorized turns.
+On a host with a `/goal` command, goal mode keeps the session working until its evaluator confirms the Discussion is concluded. No hook forces continuation; `completion-controller.js` still enforces bounded continuation on execution-authorized turns.
 
 Right after Step 2.5, print this ready-to-paste line for the user. Fill in the real D-ID, file name and cap:
 

@@ -84,10 +84,10 @@ The part of a code file outside its function bodies is different: constants, sig
 - Wrong: "The test imports the module that defines the price function, so it reports the price function."
 - Right: "The price function reports itself when it runs." Only tests that called it report it.
 
-Every process that runs project code reports, including one that another program starts, such as an engine a script launches or a tool that runs the game. The report path reaches it through the environment (⑧). Turn on there the same coverage or call hook the direct launch uses. Until then, report each code file that process can load as a `file`, and name those files as waste left in the measurement (⑩).
+Every process that runs project code reports, including one that another program starts, such as an engine a script launches or a tool that runs the program. The report path reaches it through the environment (⑧). Turn on there the same coverage or call hook the direct launch uses. Until then, report each code file that process can load as a `file`, and name those files as waste left in the measurement (⑩).
 
 What the tracer cannot see: a coverage or call hook sees the functions that ran, not reads of constants, enums or static fields. A use it cannot see must still not be missed. From the most precise way to the least:
-1. Read the source of each function that ran and the part outside the functions of each loaded file. For each constant, enum or static field they name, directly, through an alias, or inherited through what its file extends, report that member as an `item` of the file that declares it. The identity command (⑦) then lists those members as items too, not only functions, so a new or changed constant runs only the checks whose code names it. Access by a computed name or string goes to way 3.
+1. Read the source of each function that ran and the part outside the functions of each loaded file. For each constant, enum or static field they name, directly, through an alias or import, or by inheritance, report that member as an `item` of the file that declares it. The identity command (⑦) then lists those members as items too, not only functions, so a new or changed constant runs only the checks whose code names it. Access by a computed name or string goes to way 3.
 2. Move constants that many files read into a small file of their own (⑥).
 3. As the last resort, report every file loaded in the process as a `file`. Loading is not use (①), but when nothing can tell the uses apart, the check must not miss.
 
@@ -111,7 +111,7 @@ When one file holds many items (records, functions), the report gives each used 
 
 A fingerprint covers only what can change the result (see "Read is not used"). Leave out comment-only and blank lines, in the items and in the rest of the file; then a comment edit runs nothing. Keep the content of strings, and keep a comment that the language or a tool in the check reads, such as a compiler directive or a type-checker pragma.
 
-When the checks run in another language or runtime than the runner, the identity command runs in that same runtime and calls the program's own fingerprint function. It is never a second implementation written for the runner. A `file` containing a slash must be inside the project; a bare name is found on PATH. For an engine installed elsewhere, use a project wrapper script. The runner appends the file paths after `args`, so an engine that parses its own flags needs `--` at the end of `args`.
+When the checks run in another language or runtime than the runner, the identity command runs in that same runtime and calls the program's own fingerprint function. It is never a second implementation written for the runner. A `file` containing a slash must be inside the project; a bare name is found on PATH. Start any other program outside the project through a project wrapper script. The runner appends the file paths after `args`, so a program that parses its own flags needs its end-of-options marker (often `--`) at the end of `args`.
 
 The runner adds the rest-of-file fingerprint to every check that used any item of that file or reported its `rest` (⑧). Without an `itemIdentity` command, or when it fails or gives no rest-of-file fingerprint, the whole file counts as used.
 
@@ -142,7 +142,7 @@ done[<TAB>writer]                           the last line; each writer name need
 - **Files the check writes and reads back in the same run** (test scratch, generated fixtures) are outputs, not inputs. Keep them under one scratch folder and have the check's reporting code leave that folder out; reported, they break it (outside the project, or not there before the run).
 - **Escapes** inside a field: `%` → `%25`, TAB → `%09`, CR → `%0D`, LF → `%0A`. `#` is not special. A field may not hold the NUL character (`%00`).
 - **Write the report fresh on every run.** A check that runs again reads everything it needs and reports again; never copy an earlier report.
-- **A report built from coverage** gets its `done` line only with evidence that the coverage source delivered everything: its final summary arrived and every function it counted has a name. Sources drop data when a process ends early or a message queue overflows. Without that evidence, leave `done` out: the report is then broken, and the check is chosen as it would be without a report, never as "used nothing".
+- **A report built from coverage** gets its `done` line only with evidence that the coverage source delivered everything: its final summary arrived and every function it counted has a name. Without that evidence, leave `done` out: the report is then broken, and the check is chosen as it would be without a report, never as "used nothing".
 
 A report is broken when:
 - its last line is not `done`;
@@ -157,11 +157,11 @@ The report narrows only the inputs inside the entry's `reportScope`, which defau
 
 ## ⑨ A project's own selector inside one entry
 
-Prefer one selector. When a project's command runs many child checks with its own pass records, make each child a manifest entry (or use `{cases}`), so the runner chooses them and `--explain` shows each reason. When the project keeps its own selector, for example because children it leaves out as slow would count as failed cases, that selector follows the same rules:
+Prefer one selector. When a project's command runs many child checks with its own pass records, make each child a manifest entry (or use `{cases}`), so the runner chooses them and `--explain` shows each reason. When the project keeps its own selector, that selector follows the same rules:
 
 - it gives each child its own report file through `CRABSHELL_USED_REPORT`, replacing the path the entry inherited;
 - it keeps each child's used inputs and passes, with the gate and report scope as its own settings;
-- it settles the gate first, in its own synchronous step, before deciding any child's reuse; a selector that plans every child up front and runs groups side by side otherwise reuses children while the gate is still unknown;
+- it settles the gate first and decides no child's reuse until the gate's result is known;
 - it reruns a child only when something in that child's report changed. With a missing or broken report, it chooses the child as it would without a report: its declared inputs, or every project file when it declares none (⑧);
 - it judges a child that reads files another child writes after that child ran, by what it wrote. The writer being chosen is not a change to the reader. The runner does the same for entries: a check that reads files in another check's `outputs` waits for that check and is reused when the content is what it passed with.
 

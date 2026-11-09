@@ -8,6 +8,6 @@ A passing check does not show that it checks the change; a test that also passes
 
 **Exemptions.** Exempt a change that keeps behavior on purpose (a refactor) in `fail-before-exempt.json` beside the manifest: `{ "<test file>": { "sha256": "<sha256 of the test file>", "reason": "<why>" } }`. The FAIL message prints this line with the hash. The exemption holds only while the test keeps that content; the next edit to the test needs a new one.
 
-**Default.** Without `--fail-before` the comparison does not run. `--no-fail-before` is still accepted and also marks a guard's run: no saved results, and the array is printed.
+**Default.** Without `--fail-before` the comparison does not run. `--no-fail-before` marks a guard's run: no saved results, and the array is printed.
 
-**Limits.** Tests that need ignored folders such as `node_modules` get manual results. A test helper changed together with a test is rolled back with the source, so a test that needs the new helper fails on HEAD and passes this check. Without the project's `verify-classify.js`, a new test that cannot load on HEAD is classified by the fallback rules and may count as PASS instead of manual.
+**Limits.** Tests that need ignored folders such as `node_modules` get manual results. A test helper changed together with a test is rolled back with the source, so a test that needs the new helper fails on HEAD and passes this check. Without a project failure classifier (`verify-classify.js` beside `run-verify.js`), a new test that cannot load on HEAD is classified by the fallback rules and may count as PASS instead of manual.

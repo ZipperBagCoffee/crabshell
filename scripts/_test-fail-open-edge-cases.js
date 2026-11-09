@@ -155,8 +155,7 @@ function statePath(sandbox) {
     'regressing-guard.js',
     'skill-tracker.js',
     'subagent-context.js',
-    'verification-sequence.js',
-    'verify-guard.js'
+    'verification-sequence.js'
   ];
 
   {

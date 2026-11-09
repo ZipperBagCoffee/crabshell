@@ -1,13 +1,13 @@
 ---
 name: setup-project
-description: "Auto-generates project.md from codebase analysis (package.json, README.md, git remote). Creates a 2-3 sentence project concept that is injected every prompt for drift prevention. Use when project.md doesn't exist or needs updating. Invoke with /setup-project."
+description: "Auto-generates project.md from codebase analysis (manifest, README.md, git remote). Creates a 2-3 sentence project concept that is injected every prompt for drift prevention. Use when project.md doesn't exist or needs updating. Invoke with /setup-project."
 ---
 
 ## Paths and models
 
 - `{NODE_PATH}`: the absolute path in your context's "Node.js Path" section; without one, use `node`.
 - `{PROJECT_DIR}`: the path after `Project root:` in the Project Root Anchor section; without one, use the current working directory.
-- Use Opus to review the generated concept's quality and judge whether it matches the project's intent. Use Sonnet to scan package.json and README.md, write project.md, and verify its existence and length. Haiku is not used.
+- Models: follow `## Model Routing` in `.crabshell/project.md`, else the host's default (a first run has none). Checking the concept's quality and fit to the project's intent is judgment work; the rest is mechanical.
 
 # Setup Project
 
@@ -21,7 +21,7 @@ Read `{PROJECT_DIR}/.crabshell/project.md`. If it exists, show its content and a
 
 ### Step 2: Scan sources
 Read the available sources in priority order:
-1. `package.json` or `.claude-plugin/plugin.json` — name + description fields
+1. A manifest such as `package.json` or `pyproject.toml` — name + description fields
 2. `README.md` — first non-empty paragraph after title
 3. Git remote URL — extract repo name
 4. Top-level directory names — detect framework/stack

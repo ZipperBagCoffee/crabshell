@@ -23,20 +23,19 @@ The map is a coverage hint for the parent when approving hops, and a document fo
 
 #### (ii) Connection inventory
 
-For a Claude Code plugin project where `hooks/hooks.json` exists:
+A hop is one part starting, loading or signaling another, such as a hook, entry point, plugin or route.
 
-1. Copy `${CLAUDE_PLUGIN_ROOT}/skills/verifying/scripts/check-pipeline-wiring.js` to `VERIFICATION_PROBE`. Never retype or fork it.
-2. Run `node .crabshell/verification/check-pipeline-wiring.js discover` and save its stdout as `VERIFICATION_CANDIDATE`.
-3. The parent reviews every candidate hop against the source, the user's IA, and the architecture map when available. Remove candidates that are not part of an approved pipeline, or list them under `ignore` and record the reason in the verification record.
-4. Save the parent-approved list as `VERIFICATION_CONTRACT`.
+1. Find candidate hops with a deterministic probe, or by hand from the code and the map's edges. Save them as `VERIFICATION_CANDIDATE`.
+2. The parent reviews every candidate hop against the source, the user's IA, and the architecture map when available. Remove candidates that are not part of an approved pipeline, or list them under `ignore` and record the reason in the verification record.
+3. Save the parent-approved list as `VERIFICATION_CONTRACT`.
 
 Never copy discovery as the contract. A deleted hop also vanishes from discovery; only an approved contract catches a deletion.
 
-For other project types, derive hops by hand from the map's edges or directly from the code. Create one manifest entry per approved hop with a project-specific deterministic probe. Do not fake a `hooks.json` file.
+Example, a Claude Code plugin (`hooks/hooks.json` exists): copy the bundled probe `${CLAUDE_PLUGIN_ROOT}/skills/verifying/scripts/check-pipeline-wiring.js` to `VERIFICATION_PROBE`; never retype or fork it. Save the stdout of `node .crabshell/verification/check-pipeline-wiring.js discover` as `VERIFICATION_CANDIDATE`. It finds hook commands, agent files and Crabshell trigger tokens. Other projects do not fake a `hooks.json` file.
 
 #### (iii) Manifest entries
 
-Create one `structural` entry per approved hop. Every hop entry calls the same probe with `--hop <id>`, expects exit code 0, and asserts `stdoutJsonEquals` at `/passed`. Write an outcome in `ia`, with no version or ticket number:
+Create one `structural` entry per approved hop. Every hop entry calls the same probe for one hop. With the bundled probe it passes `--hop <id>`, expects exit code 0, and asserts `stdoutJsonEquals` at `/passed`. Write an outcome in `ia`, with no version or ticket number:
 
 ```json
 {
@@ -65,7 +64,7 @@ Create one `structural` entry per approved hop. Every hop entry calls the same p
 }
 ```
 
-Add one completeness entry that classifies every discovered hook command, agent file, and trigger token:
+Add one completeness entry that fails when a discovered hop is neither approved nor ignored:
 
 ```json
 {

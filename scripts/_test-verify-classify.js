@@ -1,6 +1,6 @@
 'use strict';
 
-const { classify, shouldWarn, THRESHOLD_PERCENT } = require('./verify-classify');
+const { classify } = require('./verify-classify');
 
 let passed = 0;
 let failed = 0;
@@ -49,39 +49,6 @@ assert('case8', classify({}, []), 'unknown');
 
 // Case 9: empty strings -> unknown, no throw
 assert('case9', classify('', ''), 'unknown');
-
-// Case 10: VC-3 absorbed — shouldWarn threshold test
-// 4 unknown out of 10 FAIL = 40% > 30% threshold -> warn:true
-const syntheticResults = [
-  { status: 'FAIL', failureClass: 'unknown' },
-  { status: 'FAIL', failureClass: 'unknown' },
-  { status: 'FAIL', failureClass: 'unknown' },
-  { status: 'FAIL', failureClass: 'unknown' },
-  { status: 'FAIL', failureClass: 'env-incompatible' },
-  { status: 'FAIL', failureClass: 'env-incompatible' },
-  { status: 'FAIL', failureClass: 'env-incompatible' },
-  { status: 'FAIL', failureClass: 'env-incompatible' },
-  { status: 'FAIL', failureClass: 'env-incompatible' },
-  { status: 'FAIL', failureClass: 'env-incompatible' },
-];
-const w1 = shouldWarn(syntheticResults);
-assertBool('case10a-shouldWarn-above-threshold', w1.warn, true);
-
-// 1 unknown out of 10 FAIL = 10% < 30% threshold -> warn:false
-const syntheticResults2 = [
-  { status: 'FAIL', failureClass: 'unknown' },
-  { status: 'FAIL', failureClass: 'env-incompatible' },
-  { status: 'FAIL', failureClass: 'env-incompatible' },
-  { status: 'FAIL', failureClass: 'env-incompatible' },
-  { status: 'FAIL', failureClass: 'env-incompatible' },
-  { status: 'FAIL', failureClass: 'env-incompatible' },
-  { status: 'FAIL', failureClass: 'env-incompatible' },
-  { status: 'FAIL', failureClass: 'env-incompatible' },
-  { status: 'FAIL', failureClass: 'env-incompatible' },
-  { status: 'FAIL', failureClass: 'env-incompatible' },
-];
-const w2 = shouldWarn(syntheticResults2);
-assertBool('case10b-shouldWarn-below-threshold', w2.warn, false);
 
 // Case 11: V012 sample — FAIL: at line start -> assertion-fail
 assert('case11-v012-line-start', classify('FAIL:dispatch=7 fm=2 ko=4 en=0', ''), 'assertion-fail');

@@ -34,13 +34,17 @@ const EMERGENCY_KEYWORDS = ['아시발멈춰', 'BRAINMELT'];
 // Bailout keywords - when detected, resets feedback pressure to L0
 const BAILOUT_KEYWORDS = ['봉인해제', 'UNLEASH'];
 
+// Only the words the user typed count (D168): a task report or another session's message
+// that quotes a keyword, such as a worker reading this file, does not stop or reset anything.
+const typedByUser = hookData => userAuthoredText((hookData && (hookData.prompt || hookData.input)) || '');
+
 function checkEmergencyStop(hookData) {
-  const input = (hookData && (hookData.prompt || hookData.input)) || '';
+  const input = typedByUser(hookData);
   return EMERGENCY_KEYWORDS.some(kw => input.includes(kw));
 }
 
 function detectBailout(hookData) {
-  const input = (hookData && (hookData.prompt || hookData.input)) || '';
+  const input = typedByUser(hookData);
   return BAILOUT_KEYWORDS.some(kw => input.includes(kw));
 }
 
@@ -161,7 +165,7 @@ const DELEGATION_REMINDER = `\n## Parallel Work Check\nParts that touch differen
 
 // Codex delegation guidance — Claude host only (/codex:rescue is a Claude Code plugin surface;
 // on the Codex host the guidance would be circular).
-const CODEX_DELEGATION = `\n## Codex Delegation\n- /codex:rescue: stuck, second opinion, or large handoff. status·result·cancel for background jobs.\n- Model: use the latest (e.g. --model gpt-6-astra).\n- Launch from the project root — cwd keys the job registry, resume, and sandbox scope.\n- Codex inherits no CLAUDE.md/hooks — put constraints (no commit/push/installs, file scope) in the prompt.\n- "Task started" ≠ done — status --wait, then result; re-verify the diff yourself.\n- Hook-facing code (tool_response, event routing): hand over a captured payload from scripts/fixtures/hook-payloads/ — a synthetic shape passes the worker's test and fails on the host.\n- Windows: sandbox git fails ("dubious ownership") until \`git config --global --add safe.directory <repo>\`. Linux: bwrap error = AppArmor userns blocks sandbox.\n`;
+const CODEX_DELEGATION = `\n## Codex Delegation\n- /codex:rescue: stuck, second opinion, or large handoff. status·result·cancel for background jobs.\n- Model: the latest one available.\n- Launch from the project root — cwd keys the job registry, resume, and sandbox scope.\n- Codex inherits no CLAUDE.md/hooks — put constraints (no commit/push/installs, file scope) in the prompt.\n- "Task started" ≠ done — status --wait, then result; re-verify the diff yourself.\n- Code that reads a host's input (hook payloads, events): hand over a captured real payload — a synthetic shape passes the worker's test and fails on the host.\n- A sandbox error in the worker (git refusing the folder, a blocked namespace) is the sandbox's setup, not the task: report it with the exact message.\n`;
 
 function shouldInjectDelegationReminder(userPrompt, isRegressingActive) {
   if (isRegressingActive) return true;
@@ -439,7 +443,7 @@ async function main(options = {}) {
           if (index.tooGoodSkepticism) index.tooGoodSkepticism.retryCount = 0;
           console.error('[PRESSURE BAILOUT: reset all 3 counters]');
         }
-        isNegativeFeedback = isBailout ? false : detectNegativeFeedback(userPrompt);
+        isNegativeFeedback = isBailout ? false : detectNegativeFeedback(userAuthoredText(userPrompt));
         pressureLevel = isBailout ? 0 : updateFeedbackPressure(index, isNegativeFeedback);
         if (pressureLevel > 0) console.error(`[PRESSURE L${pressureLevel}]`);
         count = (index.rulesInjectionCount || 0) + 1;
