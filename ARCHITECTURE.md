@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.168.0)
+# Crabshell Architecture (v21.169.0)
 
 ## Overview
 
@@ -131,9 +131,9 @@ Two meta-principles guide Claude's approach to obstacles:
           |
           v
 +--------------------------------------------------------------------------+
-|  Skills Layer (host-native skill bundles)                                 |
+|  Skills Layer (host-native skill bundles)                                |
 |  +---------------------------------+  +--------------------------------+ |
-|  | Operational Skills (13)         |  | Memory Skills (6)              | |
+|  | Operational Skills (12)         |  | Memory Skills (6)              | |
 |  | - discussing    (D documents)   |  | - save-memory                  | |
 |  | - planning      (P documents)   |  | - load-memory                  | |
 |  | - ticketing     (T documents)   |  | - search-memory                | |
@@ -144,9 +144,9 @@ Two meta-principles guide Claude's approach to obstacles:
 |  | - verifying     (verification)  |  |                                | |
 |  | - knowledge     (K pages)       |  |                                | |
 |  | - status        (healthcheck)   |  | Setup Skills (1)               | |
-|  | - setup-rtk     (RTK config)    |  | - setup-project                | |
-|  | - lint          (doc linter)    |  |                                | |
-|  | - search-docs   (BM25 search)  |  |                                | |
+|  | - lint          (doc linter)    |  | - setup-project                | |
+|  | - search-docs   (BM25 search)   |  |                                | |
+|  |                                 |  |                                | |
 |  +---------------------------------+  +--------------------------------+ |
 +--------------------------------------------------------------------------+
 ```
@@ -566,6 +566,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.169.0 | The `setup-rtk` skill is removed: independent benchmarks (JetBrains, Quesma) found that RTK did not lower the bill, and the skill put RTK on a PATH that Claude Code's shells did not read; the Skills Layer lists 12 operational skills |
 | 21.168.0 | A check that reads a file another check writes (its `outputs`) waits for that check and is judged by what it wrote: reused when the content is what it passed with, run in the same run when it changed; `--explain` and `--dry-run` name every input that changed for each check, not only the first; select-by-use: list the kinds of thing checks use before fixing, report every reason as needed or waste, call a cause fixed only when a new measurement chooses none of its checks |
 | 21.167.0 | Reports gain a `rest` line (only the part of a file outside its items, such as code that runs when the file loads); select-by-use: every check that loads a code file uses that part, a compile gate for code narrowed to functions that ran, a coverage report gets `done` only when the coverage source delivered everything |
 | 21.166.2 | select-by-use: handing out a whole file only to overwrite part of it is not use, like handing it out only to copy it |
