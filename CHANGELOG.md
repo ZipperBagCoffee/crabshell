@@ -1,5 +1,12 @@
 # Changelog
 
+## [21.166.1] - 2026-11-08
+
+### docs: ordered ways are taken from the top
+
+- **Why.** select-by-use lists ways in order (cases in one process, reads a tracer cannot see) but did not say when to go down the list. A project took the last and costliest way, one process per case (about +50% run time by its own measurement), without trying the ones above it.
+- **select-by-use.md:** where a section lists ways in order, use the first one the project can do; a later way needs the reason each earlier one cannot be done, and its measured cost (⑩, check-cost). No code change.
+
 ## [21.166.0] - 2026-11-08
 
 ### feat: the sycophancy guard is back; WebSearch runs as the last resort

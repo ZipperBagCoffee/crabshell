@@ -4,6 +4,8 @@ Read this when one change selects many checks, or before writing a check that lo
 
 Never answer with a time target or a cap on how many checks run. A change to a part every check really uses rightly runs every check; a change to one record runs only the checks that use that record.
 
+Where a section lists ways in order, use the first one the project can do. Taking a later way needs the reason each earlier one cannot be done, and its measured cost (⑩, [check cost](check-cost.md)).
+
 ## Read is not used
 
 - Read: "The check loaded every data file when the program started."
