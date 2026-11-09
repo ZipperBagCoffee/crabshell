@@ -1,5 +1,16 @@
 # Changelog
 
+## [21.169.0] - 2026-11-09
+
+### feat: remove the setup-rtk skill
+
+- **Why.** The skill installed RTK (Rust Token Killer), a tool that shortens command output before the model reads it. Two independent benchmarks found it did not lower the bill. JetBrains measured +7.6% per task at low reasoning effort and +0.1% at high effort (https://blog.jetbrains.com/ai/2026/07/rtk-claude-code-token-savings/). Quesma measured +1% per task for Claude Code and +17% for DeepSeek (https://quesma.com/blog/does-rtk-make-ai-coding-cheaper/).
+- **The skill's steps were also wrong.**
+  - It put RTK on PATH only in `~/.bashrc`, which Claude Code's shells did not read on the machine it was written on, yet it said the next session would use RTK automatically.
+  - It described the Windows text-instruction mode that RTK replaced with a native hook in 0.37.2.
+- **Removed.** `skills/setup-rtk/`, and its rows in USER-MANUAL (Setup), STRUCTURE (skills tree, now 19) and ARCHITECTURE (Skills Layer, Operational Skills now 12).
+- **Kept.** The manifest `wrappers` setting still accepts any command prefix, `rtk` included. An RTK you already installed keeps working. To uninstall it, delete its binary, its PATH line and the RTK block in `~/.claude/CLAUDE.md`.
+
 ## [21.168.0] - 2026-11-09
 
 ### feat: a check that reads another check's output waits for it; every changed input is named

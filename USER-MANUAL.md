@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.168.0)
+# Crabshell User Manual (v21.169.0)
 
 ## Why Do You Need This?
 
@@ -165,7 +165,6 @@ All available skills (slash commands):
 |---------|-------------|
 | `/crabshell:setup-project` | Initialize project configuration (project.md, config) |
 | `/crabshell:install-codex` | Legacy/development bridge into Codex locations; prefer native Codex marketplace installation |
-| `/crabshell:setup-rtk` | Install and configure RTK (Rust Token Killer) for token-optimized CLI output |
 
 > **Tip:** For basic memory operations, you can also just ask Claude directly (e.g., "save memory now", "search memory for auth").
 
