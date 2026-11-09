@@ -564,14 +564,20 @@ function main(argv = process.argv.slice(2), options = {}) {
     const files = [...readers.values()].filter(found => found.writers.includes(entry.id)).flatMap(found => found.files);
     return [...new Set(files)].filter(file => outputs.some(pattern => underPattern(pattern, file)));
   };
+  const elapsedMs = () => Math.round(Number(process.hrtime.bigint() - started) / 1e6);
   const startOne = (index, runFn) => {
     const entry = entries[index];
     // Judged before the run: a check may write its own inputs.
     sameInputs.set(index, args.changed && failedOnSameInputs(entry));
     const decided = decide(entry, index);
     if (decided) return decided;
+    // D167: when it ran (milliseconds from the run's start, all its attempts) and which checks of
+    // this run it waited for, so a person can find the run's longest chain in last-run.json.
+    const startMs = elapsedMs();
+    const waitedFor = waitsOn(index).map(at => entries[at].id);
     return then(attempts(entry, index, runFn), outcome => {
       const result = complete(entry, index, outcome);
+      Object.assign(result, { startMs, endMs: elapsedMs() }, waitedFor.length ? { waitedFor } : {});
       // Its readers, which waited for it, see what it wrote.
       const written = readFrom(entry);
       if (written.length) forgetFiles(ctx, written);

@@ -1,5 +1,25 @@
 # Changelog
 
+## [21.170.0] - 2026-11-09
+
+### feat: four questions before every answer; the runner records when each check ran and what it waited for
+
+- **Before every answer.** The per-turn checklist asks four questions before every answer and handover: what was the request, is this your best, does doing it once finish all of it, is it simple and clear. When any is no, the answer is rethought first. It replaces the two-question line; no checker was added.
+- **Runner.**
+  - Each check that ran has `startMs` and `endMs` in `last-run.json`: the milliseconds from the run's start, over all its attempts.
+  - It also has `waitedFor`: the checks of this run it waited for (the check covering it, gates, the checks writing what it reads).
+  - An empty selection prints its own time ("No checks selected — nothing changed that a check reads (0.6s)."). That is the floor every change pays.
+  - No decision code changed, so recorded passes are kept.
+- **select-by-use ⑩.**
+  - A kind of change is a kind of file and the program that uses it.
+  - The list adds tool and check-tool updates, edits of one check's definition, deleting and moving a file, and the shapes real commits take.
+  - Measure with the user's own command and `jobs`, and first with nothing changed (the floor).
+  - Choose per kind with `--explain`. Run for real once per distinct set of chosen checks, because `passHistory` keeps 10 passes and a failure runs first next time.
+  - Name each wait's reason and the check that held it. Read the run's time as its longest chain, not the sum.
+  - Failed checks and checks with no record go in the report. A check that asserts on time is measured with reporting on and off.
+- **select-by-use "First".** Process Monitor needs administrator rights. Without them, a Job Object with a completion port lists the processes a command starts; a message can be lost.
+- **check-cost.** "First" subtracts the floor and starts from the longest chain. A wait for a free slot goes to ③.
+
 ## [21.169.1] - 2026-11-09
 
 ### docs: measure the run the user waits for; list processes from a real run

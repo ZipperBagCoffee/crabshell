@@ -174,10 +174,18 @@ try {
     write(dir, 'src/w.txt', 'two\n');
     write(dir, 'src/r.txt', 'r changed\n');
     const both = run(dir, 'c9-both', ['--changed']);
+    const timed = JSON.parse(fs.readFileSync(path.join(dir, '.crabshell', 'verification', 'last-run.json'), 'utf8'));
     const after = run(dir, 'c9-after', ['--changed']);
     check('C9a a reader chosen with its writer runs after it, and its pass is recorded',
       both.status === 0 && both.ran.join(',') === 'R,W' && !/Inputs written while checks ran/.test(both.stdout) && after.ran.length === 0,
       `${show(both)} || after ${show(after)}`);
+    // D167: last-run.json says when each check ran and what it waited for; an empty run says its time.
+    const [w, r] = ['W', 'R'].map(id => timed.find(item => item.id === id) || {});
+    const span = item => Number.isInteger(item.startMs) && Number.isInteger(item.endMs) && item.startMs <= item.endMs;
+    check('C9f last-run.json gives each check that ran its start, its end and the checks it waited for; an empty run prints its time',
+      span(w) && span(r) && JSON.stringify(r.waitedFor) === '["W"]' && r.startMs >= w.endMs && w.waitedFor === undefined
+      && /No checks selected[^\n]*\(\d+\.\d+s\)/.test(after.stdout),
+      `W=${JSON.stringify(w)} R=${JSON.stringify(r)} after=${after.stdout.slice(0, 120)}`);
     // Only the writer's input changed and it writes what it wrote before: the reader waits for it
     // and is reused.
     write(dir, 'src/w.txt', 'three\n');

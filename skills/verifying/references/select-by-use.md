@@ -22,7 +22,7 @@ A value built from many inputs uses all of them: a whole-content hash or validit
 
 ## First: find why each check was chosen
 
-Before fixing anything, list the kinds of thing this project's checks use. Examples: data files, code in each kind of process that runs it (a test runner, an engine a script starts, a tool), files another check writes, settings. Take the processes from one real run, not from reading the code. Run the user's example once while the operating system logs every program that starts, and list each program the run started. For example, use `strace -f -e trace=execve -o exec.log <command>` on Linux, `sudo eslogger exec` on macOS, or Process Monitor filtered to Process Start on Windows. A list written from memory misses the program a script starts, such as an engine. For each kind, name the way its use gets recorded (①–⑧). A kind with no way yet counts as used whole. Every check it chooses stays in the measurement (⑩) as waste left, with that kind as the reason. Fixing one kind at a time without this list finds the next kind only at the next measurement.
+Before fixing anything, list the kinds of thing this project's checks use. Examples: data files, code in each kind of process that runs it (a test runner, an engine a script starts, a tool), files another check writes, settings. Take the processes from one real run, not from reading the code. Run the user's example once while the operating system logs every program that starts, and list each program the run started. For example, use `strace -f -e trace=execve -o exec.log <command>` on Linux, `sudo eslogger exec` on macOS, or Process Monitor filtered to Process Start on Windows. Process Monitor needs administrator rights. Without them, start the command suspended inside a Job Object with a completion port, then resume it. Each new-process message names a process the command started; a message can be lost, so check the list against what the code starts. A list written from memory misses the program a script starts, such as an engine. For each kind, name the way its use gets recorded (①–⑧). A kind with no way yet counts as used whole. Every check it chooses stays in the measurement (⑩) as waste left, with that kind as the reason. Fixing one kind at a time without this list finds the next kind only at the next measurement.
 
 `node .crabshell/verification/run-verify.js --explain` prints each check a `--changed` run would run, with its reason and every other input that changed (`; also …`), and runs nothing. A check chosen for two inputs needs both fixed: fixing one only shows the other. For each chosen check, open its record in `test-map.json` (`kind`, `files`) and sort each of its reasons:
 
@@ -169,7 +169,7 @@ The runner then sees only the whole entry: `--explain` and the run summary show 
 
 ## ⑩ Measure each kind of change
 
-Before saying the checks cost less, measure the time each kind of change costs. What counts is the time the user waits for the run, not how many checks a preview picks. One kind never stands for another: a data edit can run a few checks while a one-line code edit still runs most of them. The kinds, where the project has them:
+Before saying the checks cost less, measure the time each kind of change costs. What counts is the time the user waits for the run, not how many checks a preview picks. One kind never stands for another: a data edit can run a few checks while a one-line code edit still runs most of them. A kind is a kind of file and the program that uses it: one data file read by the app and by a build tool is two kinds. The kinds, where the project has them:
 - a line inside a function of the code file the most checks load;
 - a comment-only line, and a blank line;
 - a new function in that file;
@@ -180,22 +180,29 @@ Before saying the checks cost less, measure the time each kind of change costs. 
 - a new test file, and a new data file;
 - a project or engine setting, or a dependency version;
 - regenerating the manifest, when a script builds it;
+- an update of a tool the checks run, and a change to the check tool itself;
+- an edit of one check's definition: its command, its pass rule, its report scope;
+- deleting a file, and moving one;
+- the shapes real commits take, such as a version bump across several files;
 - the change the user complained about, as they described it.
+
+Measure with the command the user runs, with the same number of checks at once (`jobs`). First run it with nothing changed: that time (choosing, the gate, identity commands) is the floor every change pays.
 
 For each kind:
 1. Start from a run where every check has a pass on the current files.
 2. Make that one change and nothing else. For the user's example, make the real fix they described.
 3. Run `--explain` and read every reason of each chosen check: its reason and each `also` input. For an entry with its own selector (⑨), count the children its own output says it would run, with their reasons.
-4. Run `--changed` for real and keep the total time it prints.
-   - From `last-run.json`, take each chosen check's `durationMs`.
-   - Split it into start-up, waiting and the work itself ([check cost](check-cost.md), "First").
-   - Compare the total with the sum of the checks' times: the difference shows how much ran side by side.
-5. Put the file back, unless the change is a fix the user asked for.
+4. Put the file back, unless the change is a fix the user asked for.
 
-Report each kind with its total run time and its number of checks, both measured, never estimated. For each check, give its time split, every reason, and whether the check used the change (needed) or not (waste). A lower count with the same total time fixed nothing for the user. Name each kind not measured. Until every kind the project has is measured, the report reads "partial: measured … / not measured …", not done. A kind that still runs checks that did not use the change is the next fix.
+Then, for each distinct set of chosen checks, make one of its changes again, run `--changed` for real once, and put it back. Do not run every kind for real. A check keeps only its last `passHistory` passes (10 by default), so many real runs push out the passes the next kind starts from. A failure also runs first in the next run, which then measures the wrong thing. In that run's `last-run.json`, each check that ran has `durationMs`, `startMs` and `endMs` (milliseconds from the run's start) and `waitedFor` (the checks of this run it waited for).
+- Split each check's time into start-up, waiting and work ([check cost](check-cost.md), "First").
+- For each wait, name its reason and the check that held it. The reasons are an earlier check (`waitedFor`), an import or download it needs, or a free slot.
+- The run takes as long as its longest chain, not the sum of check times. Start from the check that ended last and step back through what each one waited for. Only a shorter chain makes the run shorter.
+
+Report each kind with the floor, its total run time and its number of checks, all measured, never estimated. Checks that failed or left no record go in the report too: their time counts. For each check, give its time split, every reason, and whether the check used the change (needed) or not (waste). A lower count with the same total time fixed nothing for the user. Name each kind not measured. Until every kind the project has is measured, the report reads "partial: measured … / not measured …", not done. A kind that still runs checks that did not use the change is the next fix.
 
 A cause is fixed only when the same kind, measured again, chooses none of the checks it chose for that cause. Otherwise write "partly fixed: N still chosen, because …". Before handing over a list of causes, fixes or feedback, put it next to the question it answers and the conclusions you stated. Each of them belongs in the list or is named as left out.
 
 A miss counts too. When a `--changed` run reused a check's pass and the same check catches a bug once it really runs, the check used something it did not report or declare. Find it and report it (⑧) or add it to `inputs` (⑤); routine full runs do not fix a miss.
 
-A timing assertion that fails only with reporting on: rerun it alone before blaming reporting overhead; side-by-side runs slow timing tests too.
+Measure a check that asserts on time with reporting on and with it off. When it fails only with reporting on, rerun it alone before blaming reporting; side-by-side runs slow it too.

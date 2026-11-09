@@ -45,7 +45,7 @@ function printResults(results, { args, started, resultsPath, plan = null, select
   if (args.json || args.guardRun) console.log(json);
   const leftOut = plan && plan.leftOut ? plan.leftOut : 0;
   console.log(selected === 0 && failures.length === 0
-    ? (leftOut ? `No checks selected — the ${leftOut === 1 ? 'check' : `${leftOut} checks`} chosen for the changes ${leftOut === 1 ? 'is' : 'are'} left out (named below).` : 'No checks selected — nothing changed that a check reads.')
+    ? (leftOut ? `No checks selected — the ${leftOut === 1 ? 'check' : `${leftOut} checks`} chosen for the changes ${leftOut === 1 ? 'is' : 'are'} left out (named below) (${seconds}s).` : `No checks selected — nothing changed that a check reads (${seconds}s).`)
     : failures.length
       ? `FAIL — ${failures.length} of ${selected} checks failed${counts}, ${seconds}s`
       : `PASS — ${passed} of ${plan ? plan.total : selected} checks${counts}, ${seconds}s`);
