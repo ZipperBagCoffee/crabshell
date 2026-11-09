@@ -1,5 +1,14 @@
 # Changelog
 
+## [21.169.1] - 2026-11-09
+
+### docs: measure the run the user waits for; list processes from a real run
+
+- **Why.** A field report. Measuring by how many checks `--explain` picks, the project cut the count and missed the problem the user had: how long the check run takes. Its list of the kinds of thing checks use was written from memory and left out an engine a script starts.
+- **select-by-use ⑩.** For each kind of change, run `--changed` for real (the user's example as the real fix they described) and keep the total time it prints. Split each chosen check's `durationMs` into start-up, waiting and the work (check-cost "First"), and compare the total with the sum of the checks' times. Report the total time and the count, both measured; a lower count with the same total time fixed nothing. "Start where the time goes" now ranks kinds by the longest real run, not by the most checks picked.
+- **select-by-use "First".** Take the processes from one real run while the operating system logs every program that starts, for example `strace -f -e trace=execve` on Linux, `sudo eslogger exec` on macOS, or Process Monitor filtered to Process Start on Windows.
+- **check-cost.** "First" starts from a real run of the user's example. "Measure the change" reports that run's total time before and after the fix.
+
 ## [21.169.0] - 2026-11-09
 
 ### feat: remove the setup-rtk skill
