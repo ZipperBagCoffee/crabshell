@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.166.2)
+# Crabshell Plugin Structure (v21.167.0)
 
-**Version**: 21.166.2 | **Author**: TaWa | **License**: MIT
+**Version**: 21.167.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -520,6 +520,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.167.0 | Reports gain a `rest` line (only the part of a file outside its items, such as code that runs when the file loads); select-by-use: every check that loads a code file uses that part, a compile gate for code narrowed to functions that ran, a coverage report gets `done` only when the coverage source delivered everything |
 | 21.166.2 | select-by-use: handing out a whole file only to overwrite part of it is not use, like handing it out only to copy it |
 | 21.166.1 | select-by-use: an ordered list of ways is taken from the top; a later way needs the reason each earlier one cannot be done and its measured cost |
 | 21.166.0 | Sycophancy guard restored: an answer that agrees with nothing checked in the turn is sent back once, and a file write right after it is blocked; web-guard lets WebSearch run as the last resort once every configured search MCP was called in the turn |

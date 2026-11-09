@@ -457,6 +457,8 @@ try {
     '    value = sections(rel)[0].get(name)',
     "    line('item', rel, name, fp(value) if value is not None else '', *([case] if case else []))",
     '    return value',
+    'def outside(rel, case=None):',
+    "    line('rest', rel, *([case] if case else []))",
     'def whole(rel, case=None):',
     "    line('file', rel, *([case] if case else []))",
     '    return True',
@@ -546,6 +548,28 @@ try {
       i0.status === 0 && sorted(iBeta) === 'IB' && sorted(iGamma) === 'IC' && sorted(iRest) === 'IA,IB,IC'
       && w0.status === 0 && sorted(wBeta) === 'IA,IB,IC',
       `beta=[${iBeta.ran}] gamma=[${iGamma.ran}] rest=[${iRest.ran}] wholeBeta=[${wBeta.ran}] ${show(iBeta)}`);
+  });
+
+  if (hasPython) attempt('P35 a rest report reruns a check when the part of its file outside the items changes, not when an item changes; without itemIdentity the file counts', () => {
+    // D163: code that runs when a file loads (constants, signatures) is used by every check
+    // that loads the file, even one that runs none of its functions.
+    const scripts = {
+      'tools/store.py': store, 'tools/identity.py': identity,
+      'tools/ir.py': pyCheck('IR', "outside('data/stock.kv')\ndone()"),
+      'data/stock.kv': stock(1, 2),
+    };
+    const steps = dir => {
+      const out = [run(dir, 'p35')];
+      write(dir, 'data/stock.kv', stock(1, 3)); out.push(run(dir, 'p35', ['--changed']));
+      write(dir, 'data/stock.kv', stock(1, 3, 'unit = gem')); out.push(run(dir, 'p35', ['--changed']));
+      return out;
+    };
+    const [r0, rItem, rRest] = steps(project('p35', [pyEntry('IR')], scripts, { itemIdentity }));
+    const [w0, wItem] = steps(project('p35-whole', [pyEntry('IR')], scripts));
+    // Predicted with itemIdentity: [] for the beta edit, [IR] for the rest edit; without it: [IR] for the beta edit.
+    check('P35 a rest report reruns a check when the part of its file outside the items changes, not when an item changes; without itemIdentity the file counts',
+      r0.status === 0 && sorted(rItem) === '' && sorted(rRest) === 'IR' && w0.status === 0 && sorted(wItem) === 'IR',
+      `item=[${rItem.ran}] rest=[${rRest.ran}] wholeItem=[${wItem.ran}] ${show(rItem)}`);
   });
 
   if (hasPython) attempt('P24 a gate: narrowed checks are reused only once it passed on the current files, and are not run when it fails', () => {

@@ -1,5 +1,13 @@
 # Changelog
 
+## [21.167.0] - 2026-11-09
+
+### feat: a report can name a file's part outside its items; code items, compile gate and complete coverage
+
+- **Why.** A field report on narrowing code checks to the functions that ran found three ways to miss a change. A compiler folds another file's constant into a file's top-level code, so a check that loads the file depends on that constant without running any of its functions. A syntax error inside a function no check ran breaks every check that loads the file. A coverage source sometimes drops data (a process that ends early, an overflowing message queue: 5 of 135 runs).
+- **Runner.** A report may name `rest<TAB>path[<TAB>case]`: only the file's part outside its items was used. With an `itemIdentity` command the check depends on that part's fingerprint alone, so an edit to one of the file's items does not rerun it; without one the whole file counts. Before, a report could name a file's rest only together with an item. Reports without `rest` lines and existing records are unchanged; the parser and `reportedInputs` are not decision code, so nothing reruns after the update.
+- **select-by-use.** ④: a code file's part outside its function bodies (constants, signatures, defaults, the class declaration) runs or compiles when the file loads, so every check that loads it reports `rest`; items only for the functions that ran. The constant reading of "What the tracer cannot see" also covers the top-level part of each loaded file. ③: code narrowed to the functions that ran needs a gate that compiles or loads every source file. ⑧: a report built from coverage gets its `done` line only with evidence that the source delivered everything; without it the report is broken and the check is chosen as without a report. ⑦ and the report-line table name `rest`.
+
 ## [21.166.2] - 2026-11-09
 
 ### docs: overwriting part of a whole file is not use
