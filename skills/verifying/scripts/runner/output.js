@@ -3,7 +3,6 @@
 
 const crypto = require('crypto');
 const fs = require('fs');
-const { shouldWarn } = require('./classify');
 
 function printResults(results, { args, started, resultsPath, plan = null, selected = results.length, failBefore = [], stoppedAt = null, notRun = [], stillFailing = [], notices = [], runLine = null }) {
   const fullPath = resultsPath;
@@ -91,8 +90,6 @@ function printResults(results, { args, started, resultsPath, plan = null, select
     console.log('\nFailure Categories:');
     for (const category of Object.keys(counts).sort()) console.log(`  ${category}: ${counts[category]}`);
   }
-  const warning = shouldWarn(results);
-  if (warning.warn) console.error(`[VERIFY] WARN: ${warning.unknownCount}/${warning.failCount} (${warning.ratio}%) failures unclassified; classifier rules may need update`);
   if (save) console.log(`Full results: ${saveError === null ? fullPath : `not saved (${saveError})`}`);
   return failures.length > 0 ? 1 : 0;
 }

@@ -20,7 +20,7 @@ A D document records intent, open questions, tradeoffs, decisions and, before an
 - `--values`, `--structure`, `--start-state`, `--user-burden` and `--design-review` write the design lines the ticket command requires. `none: <reason>` counts where a line does not apply.
   - **Values:** every name, list and number put into code, and its source.
   - **Structure:** which modules and functions change, with no special case or second copy.
-  - **Start state:** an existing user's project the day after the update.
+  - **Start state:** existing callers, users and data after the change.
   - **User burden:** what the user has to do.
   - **Design review:** a reviewer of the same or higher tier who did not write the plan reads only the plan and records findings → fixes.
 

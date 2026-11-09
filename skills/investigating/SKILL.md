@@ -122,7 +122,7 @@ tags: []
 ### Step 5: Investigate
 
 When rule 5 calls for workers, launch them in parallel, each on a different focus area or source type:
-- **Worker 1, internet:** tell it to follow the raw-source ladder. Find URLs with a configured search MCP (exa, tavily, brave or similar) when one exists; with several, use them in the order web-guard names them unless your instructions rank them differently. Otherwise use built-in WebSearch and treat its snippets only as pointers. Read every cited source in full: `trafilatura -u "<url>" --markdown --links` if installed, then `curl -fsSL "https://r.jina.ai/<url>"` for JS pages (keyless), then plain `curl` as the raw fallback. Never let a worker cite a search snippet or a WebFetch summary as evidence.
+- **Worker 1, internet:** find URLs with the search tools the project configured, in the order the user or the project ranks them. Without any, use the host's built-in search. Search snippets are pointers only. Read every cited source's own text in full, with a text extractor or from the raw page. Never let a worker cite a search snippet or a tool's summary of a page as evidence.
 - **Worker 2, local:** examine local files, code and configurations.
 - **Worker N:** user-specified sources or other distinct angles, as needed.
 
@@ -143,7 +143,7 @@ The parent reads all findings and the cross-review, then fills:
 - `## Synthesis`: the integrated conclusions.
 - `## Conclusions`: each question answered on its own, with evidence and a confidence level, plus gaps and unknowns.
 
-By the end of this step, replace every placeholder in the document with real content. This includes the old strings "findings appended after execution", "appended after agent execution" and "appended after synthesis". The structured sections hold the full findings; the Log records the timeline. Fill both.
+By the end of this step, replace every placeholder in the document with real content. The structured sections hold the full findings; the Log records the timeline. Fill both.
 
 ### Step 8: Update INDEX.md
 

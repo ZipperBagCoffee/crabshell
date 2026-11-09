@@ -76,7 +76,7 @@ function requirePromptLifecycle(result) {
 
 try {
   fs.mkdirSync(fixtureRoot, { recursive: true });
-  for (const relativePath of ['.claude-plugin', 'agents', 'commands', 'hooks', 'prompts', 'scripts', 'skills']) {
+  for (const relativePath of ['.claude-plugin', 'agents', 'commands', 'hooks', 'scripts', 'skills']) {
     fs.cpSync(path.join(sourceRoot, relativePath), path.join(fixtureRoot, relativePath), { recursive: true });
   }
   fs.mkdirSync(claudeConfigDir, { recursive: true });

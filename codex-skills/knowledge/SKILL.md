@@ -18,4 +18,4 @@ Defaults: `category=fact`, `source=observation`, `what`/`when`=`TBD.` if omitted
 K-pages are append-only. Never edit an existing K-page; create a new one when a fact has changed.
 
 Before creating a K-page, check that its "What" is a fact about how something behaves; that belongs in knowledge/. A behavioral rule for the assistant belongs in CLAUDE.md.
-If it overlaps with the rule keywords (scope, verification, understanding, sycophancy, pressure, guard, hook, bailout, prohibited), confirm with the user before going on.
+If it reads as such a rule, confirm with the user before going on.

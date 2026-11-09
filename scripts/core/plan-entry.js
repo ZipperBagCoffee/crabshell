@@ -57,7 +57,7 @@ const discussionHasReaderStructure = content => planFieldFilled(content, 'Reader
 const DESIGN_FIELD_MEANING = {
   Values: 'every name, list and number the work puts into code, and where each comes from (what the project declares, or a parameter with a default)',
   Structure: 'which modules and functions change, and why no special case or second copy of code is added',
-  'Start state': "what an existing user's project looks like the day after the update, and how it keeps working",
+  'Start state': 'what existing data, callers or users see right after the change, and how they keep working',
   'User burden': 'what the user has to do',
   'Design review': 'a reviewer of the same or a higher model tier who did not write the plan reads only the plan and its files; write "findings → fixes"',
 };

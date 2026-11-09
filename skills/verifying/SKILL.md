@@ -52,7 +52,7 @@ Record the analysis as:
 
 ### Step 2a: Architecture map and connection inventory
 
-For a Claude Code plugin project (`hooks/hooks.json` exists): copy the wiring probe next to the manifest and run discovery. Approve each candidate hop against the source and the user's intent; never copy discovery as the contract. Save the approved contract. Add one structural entry per approved hop and one completeness entry. An architecture map (`arch-explorer:build`) is optional documentation, never a pass/fail input. Exact paths, commands and entry shapes: `references/wiring-inventory.md`.
+Find every hop: one part starting, loading or signaling another, such as a hook, entry point, plugin or route. Approve each candidate hop against the source and the user's intent; never copy discovery as the contract. Save the approved contract. Add one structural entry per approved hop, proving it is wired and loads, and one completeness entry. An architecture map (`arch-explorer:build`) is optional documentation, never a pass/fail input. Discovery (a bundled probe covers Claude Code plugins), paths and entry shapes: `references/wiring-inventory.md`.
 
 ### Step 3: Review analysis
 
@@ -94,7 +94,7 @@ Read `references/manifest-entries.md` before writing entries. It holds the full 
 
 ### Step 6: Create verification runner script
 
-Copy `${CLAUDE_PLUGIN_ROOT}/skills/verifying/scripts/run-verify.js` and the `runner/` folder beside it into `.crabshell/verification/`. Copy `${CLAUDE_PLUGIN_ROOT}/skills/verifying/scripts/check-pipeline-wiring.js` to `.crabshell/verification/check-pipeline-wiring.js`. Keep both next to the manifest. Never retype either implementation, and never fork it in the skill document.
+Copy `${CLAUDE_PLUGIN_ROOT}/skills/verifying/scripts/run-verify.js` and the `runner/` folder beside it into `.crabshell/verification/`, next to the manifest. Never retype the implementation, and never fork it in the skill document.
 
 Session start keeps the copy current after plugin updates. It copies changed modules and replaces a launcher Crabshell released. It keeps an edited launcher and names it once.
 
@@ -131,7 +131,7 @@ A hand rerun of a declared check on the files it last passed with is blocked and
 **Entry fields that keep routine runs short.**
 - `inputs: ["src/game/**", "tools/check_x.py"]` — the files, folders (ending in `/`) or globs a check reads. Required when the Node tracer cannot see the check and the check does not report what it used. Without it, the check's inputs are unknown and any project change reruns it. Declared inputs enter its fingerprint and are recorded like traced files.
 - `outputs: ["build/"]` — files the check writes. They are its products, not its inputs. A check whose recorded inputs include one waits for the writer when the writer runs, and is then reused if the content is what it passed with.
-- `slow: true` — for recordings, screenshots and golden renders, benchmarks, long simulations, real installs and whole-suite runs. `--changed` skips them and prints `Slow checks not run: … — run them with: node .crabshell/verification/run-verify.js --slow`. They run with `--slow`, on a full run the user asked for, and at the project's release step.
+- `slow: true` — a check too long for every change, such as a real install. A median pass time over `slowAfterSeconds` makes a check slow without the flag. `--changed` skips them and prints `Slow checks not run: … — run them with: node .crabshell/verification/run-verify.js --slow`. They run with `--slow`, on a full run the user asked for, and at the project's release step.
 
 `--changed` chooses by content, not Git. A check reruns only when its fingerprint is not among those it passed with. The fingerprint covers run fields, program, runner, platform and input contents. So a check reruns when it is new, failed last time, has `always: true` or `reuse: false`, or its inputs changed. Unknown inputs mean the whole project. A changed file that no check reads or declares runs the declared-input checks once. A record of another schema counts as none. Crabshell's storage (`.crabshell/` outside the verification folder) is never snapshotted. Records: [manifest changes](references/runner-reuse-output.md#manifest-changes-and-records).
 
@@ -192,7 +192,7 @@ When invoked with `add "description"`:
 When invoked with `wiring`:
 
 1. Read the existing approved `wiring-contract.json`. If it does not exist, run Create Mode Step 2a.
-2. Rerun `check-pipeline-wiring.js discover` and save the new candidate output.
+2. Rerun discovery and save the new candidate output.
 3. Diff the candidate against the approved contract. Present every new and removed hop to the parent for approval. Do not copy the candidate over the contract.
 4. After approval, update the contract, the hop entries, the completeness entry and the manifest `updated` timestamp together.
 5. Optionally regenerate the architecture map when `arch-explorer:build` is available. The map stays documentation only.
@@ -209,4 +209,4 @@ When invoked with `wiring`:
 6. **Timeout safety.** Default 30s. Destructive commands (rm, drop) PROHIBITED.
 7. **Idempotent create.** Never overwrite an existing manifest.
 8. **External skills are optional.** Verification never depends on `arch-explorer` or any third-party plugin being installed. Record their absence; it is never fatal.
-9. **The parent approves the wiring contract; never copy it from discovery.** Classify every `hooks.json` command, agent file and trigger token as approved, or ignored with a reason. Otherwise the completeness entry fails.
+9. **The parent approves the wiring contract; never copy it from discovery.** Classify every discovered hop as approved, or ignored with a reason. Otherwise the completeness entry fails.

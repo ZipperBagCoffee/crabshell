@@ -1,5 +1,40 @@
 # Changelog
 
+## [21.171.0] - 2026-11-09
+
+### feat: a lighter, general plugin — devices that only watched other devices are gone; instructions hold for any project
+
+- **Why.** The user asked for a plugin that is general and keeps only what is essential: 「프로젝트 specific 한거는 다 general하게」, 「검사를 위한 검사를 위한 검사기 덕지덕지 … essential 하지 않게」.
+- **One rule decided what stays.** A device stays when it does one of three things:
+  - blocks or changes the user's work;
+  - guards a host limit, such as the SessionStart size or the rule and checklist budgets;
+  - pins a decision the user made.
+  
+  A device that only watched another device is gone.
+- **The stop and reset words count only when the user typed them.** Before, a background task's report or another session's message that quoted the emergency-stop word fired a diagnostic reset. It happened once in this session, when a worker read `inject-rules.js`. The stop, bailout and frustration checks now read only the user's own text (`userAuthoredText`).
+- **Removed:**
+  - `verify-guard.js` and its test: unwired since v21.153.0, and nothing loaded it.
+  - Three tests that loaded no product code or watched for retired text to come back: the v020 scope regexes, the externalization trap catalog and the legacy-orchestration retirement.
+  - The `prompts/` folder, which no shipped code read.
+  - Manifest V010, V059's phrase checks on test output, and `verify-cross-runtime.js`, the manual tool that read them.
+  - The runner's "failures unclassified" warning about its own classifier.
+  - Two checks that watched for retired wording in the skill files.
+- **Kept on purpose:**
+  - the sycophancy guard (restored at the user's request);
+  - the pressure counters (read through `/status`);
+  - the wiring checks;
+  - the rerun guard and the declaration hints (the user's verification-efficiency requests);
+  - the tests that pin the discussion → ticket and plan-first decisions.
+- **Instructions for any project.** Each sentence was checked with one question: would it be wrong or useless for a project on another engine, language or OS?
+  - The rules: Crabshell's own version-bump steps became "update the changelog, every place stating the old version, and the docs on what changed"; the memory rule lost its machine-learning terms, with the same meaning.
+  - The Codex block lost a model version, a folder that exists only in this repository, and two incidents.
+  - The web-guard messages name reading tools as examples.
+  - The verifying skill's wiring step covers any project's hops, with the plugin case as an example. Its `slow` line is the general rule.
+  - In other skills: discussing's Start state, regressing's cache-sync, version-number and WA/RA wording, investigating's tool ladder, knowledge's keyword list, and setup-project's fixed model names.
+- **Smaller fixes:**
+  - The summarizer agents use the `haiku` alias instead of a dated model ID.
+  - The P9 side-by-side test no longer fails under a release run's load (`memoryShare: 1`, as P10).
+
 ## [21.170.0] - 2026-11-09
 
 ### feat: four questions before every answer; the runner records when each check ran and what it waited for

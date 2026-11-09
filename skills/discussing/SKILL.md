@@ -111,7 +111,7 @@ If NOT regressing: user's answer — observable conditions for "done", or "Not a
 **Reader Structure:** {if a person will see or read the result: what they will do (task → where they look → the words there) and every visible text, built with the structuring skill. If nobody will: "none: <reason>"}
 **Values:** {every name, list and number the work puts into code, and where each comes from (what the project declares, or a parameter with a default)}
 **Structure:** {which modules and functions change, and why no special case or second copy of code is added}
-**Start state:** {what an existing user's project looks like the day after the update, and how it keeps working}
+**Start state:** {what existing data, callers or users see right after the change, and how they keep working}
 **User burden:** {what the user has to do}
 **Design review:** {a reviewer of the same or a higher model tier who did not write the plan reads only the plan and its files: "findings → fixes"; "none: <reason>" when the risk is low}
 **Analysis:** {the evidence inspected — files, functions, measurements}

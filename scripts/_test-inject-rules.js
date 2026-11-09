@@ -98,6 +98,17 @@ test('EMERGENCY: input field also works', function() {
   assertEqual(mod.checkEmergencyStop({ input: '아시발멈춰' }), true);
 });
 
+// D168: a task report or another session's message that quotes a keyword (a worker reading
+// this file) stops and resets nothing; the user's own words around it still count.
+test('EMERGENCY and BAILOUT: only the words the user typed count', function() {
+  const report = '<task-notification>\n<result>keywords at :32 and :35 (아시발멈춰, 봉인해제)</result>\n</task-notification>';
+  const peer = '<cross-session-message from="x">BRAINMELT UNLEASH</cross-session-message>';
+  assertEqual(mod.checkEmergencyStop({ prompt: report }), false, 'task report');
+  assertEqual(mod.detectBailout({ prompt: report }), false, 'task report bailout');
+  assertEqual(mod.checkEmergencyStop({ prompt: peer }), false, 'peer message');
+  assertEqual(mod.checkEmergencyStop({ prompt: `${report}\n아시발멈춰` }), true, 'typed after a report');
+});
+
 test('EMERGENCY: undefined hookData -> false', function() {
   assertEqual(mod.checkEmergencyStop(undefined), false);
 });

@@ -7,11 +7,11 @@ description: "Create and manage project-specific knowledge pages in .crabshell/k
 
 This skill stores and retrieves verified facts and operational tips discovered through project work.
 
-## Rule-overlap check
+## Rule check
 
-Before creating a K-page, compare its "What" with these CLAUDE.md RULES keywords: scope, verification, understanding, concise, sycophancy, pressure, guard, hook, bailout, prohibited.
+Before creating a K-page, ask whether its "What" says how Claude must behave rather than how something behaves.
 
-On overlap, warn:
+If it does, warn:
 > "This sounds like a behavioral rule. Rules belong in CLAUDE.md, not knowledge/."
 
 Then ask the user to confirm before going on.

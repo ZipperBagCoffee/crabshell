@@ -30,14 +30,6 @@ for (const parent of ['P001', 'D001']) {
   const kind = parent.startsWith('P') ? 'plan parent (pinned)' : 'discussion parent';
   const id = `${parent}_T001`;
   {
-    const { evaluateVerifyGuard } = require('./verify-guard');
-    const dir = project(`verify-${parent}`);
-    const ticket = path.join(dir, CRAB, 'ticket', `${id}-probe.md`);
-    fs.writeFileSync(ticket, '# probe\n');
-    const result = evaluateVerifyGuard({ tool_name: 'Edit', tool_input: { file_path: fwd(ticket), old_string: '# probe', new_string: '# probe\n\n## Final Verification\nok' } }, dir);
-    report.check(`V ${kind}: verify-guard blocks a Final Verification write without a verification tool`, Boolean(result && result.reason), JSON.stringify(result).slice(0, 160));
-  }
-  {
     const { evaluateRegressingGuard } = require('./regressing-guard');
     const dir = project(`regress-${parent}`);
     regressing(dir, 'ticketing');
@@ -129,7 +121,7 @@ for (const parent of ['P001', 'D001']) {
 // One definition of the ticket ID shape: guards and the document tool derive it.
 {
   const literal = /P\\d\{3\}_T\\d\{3\}|\\bP\\d\{3\}\\b/;
-  const users = ['verify-guard.js', 'regressing-guard.js', 'log-guard.js', 'codex-docs.js']
+  const users = ['regressing-guard.js', 'log-guard.js', 'codex-docs.js']
     .filter(file => literal.test(fs.readFileSync(path.join(__dirname, file), 'utf8')));
   report.check('S1 no guard or document tool retypes the plan-only ticket ID pattern', users.length === 0, users.join(' '));
 }

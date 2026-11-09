@@ -1,6 +1,5 @@
 'use strict';
 
-const THRESHOLD_PERCENT = 30;
 
 function classify(err, output) {
   try {
@@ -24,16 +23,4 @@ function classify(err, output) {
   }
 }
 
-function shouldWarn(results) {
-  try {
-    const fails = results.filter(r => r && r.status === 'FAIL');
-    if (fails.length === 0) return { warn: false, ratio: 0, unknownCount: 0, failCount: 0 };
-    const unk = fails.filter(r => r.failureClass === 'unknown').length;
-    const ratio = (unk / fails.length) * 100;
-    return { warn: ratio > THRESHOLD_PERCENT, ratio: Math.round(ratio), unknownCount: unk, failCount: fails.length };
-  } catch (_) {
-    return { warn: false, ratio: 0, unknownCount: 0, failCount: 0 };
-  }
-}
-
-module.exports = { classify, shouldWarn, THRESHOLD_PERCENT };
+module.exports = { classify };

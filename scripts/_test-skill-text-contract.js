@@ -1,11 +1,8 @@
 'use strict';
-// D145_T002: the skill texts match what the plugin does now. Procedure steps D145 removed
-// (B.9, Skeptical calibration, a minimum of two Coherence methods, re-running decisive
-// observations, the three-sentence minimum in ticket and cycle verification, the
-// independent-evidence cross-reference) and runner behavior D143 removed (manifestHash,
-// entryHash, package.json `test` as a required check) appear in no Claude or Codex skill
-// file; the plan's design lines (plan-entry DESIGN_FIELDS) are in both discussing texts;
-// the verifying skill names the manifest fields and runner switches D143 added.
+// D145_T002: the skill texts match what the plugin does now: the plan's design lines
+// (plan-entry DESIGN_FIELDS) are in both discussing texts, and the verifying skill names the
+// manifest fields and runner switches. D168: checks that retired wording stays out were
+// removed (they watched old text, not what the plugin does).
 
 const assert = require('assert');
 const fs = require('fs');
@@ -33,35 +30,6 @@ function markdownFiles(dir) {
 const skillFiles = ['skills', 'codex-skills'].flatMap(dir => markdownFiles(path.join(REPO, dir)));
 const read = rel => fs.readFileSync(path.join(REPO, rel), 'utf8');
 const rel = file => path.relative(REPO, file).replace(/\\/g, '/');
-
-// Removed things and where they must not appear.
-const REMOVED_EVERYWHERE = [
-  ['the B.9 step', /\bB\.9\b/],
-  ['Skeptical calibration', /Skeptical calibration/i],
-  ['a minimum of two Coherence methods', /minimum 2 of/i],
-  ['re-running decisive observations', /Re-run decisive observations/i],
-  ['the independent-evidence cross-reference', /independent-evidence cross-reference/i],
-  ['manifestHash', /manifestHash/],
-  ['entryHash', /entryHash/],
-  ['package.json `test` as a required check', /package\.json `test` script/],
-  ['a three-sentence minimum', /minimum 3 sentences/i],
-];
-const VERIFICATION_PROCEDURES = ['skills/ticketing/references/ticket-template.md', 'skills/regressing/references/cycle-verification.md'];
-
-test('removed procedure steps and runner behavior appear in no skill file', () => {
-  assert.ok(skillFiles.length > 10, `only ${skillFiles.length} skill files found`);
-  const hits = [];
-  for (const file of skillFiles) {
-    const text = fs.readFileSync(file, 'utf8');
-    for (const [name, pattern] of REMOVED_EVERYWHERE) if (pattern.test(text)) hits.push(`${rel(file)}: ${name}`);
-  }
-  assert.deepStrictEqual(hits, []);
-});
-
-test('ticket and cycle verification ask for no minimum sentence count', () => {
-  const hits = VERIFICATION_PROCEDURES.filter(file => /(\b3\+?|\bthree)\s+sentences/i.test(read(file)));
-  assert.deepStrictEqual(hits, []);
-});
 
 test('both discussing texts carry every design line of the plan', () => {
   const claude = read('skills/discussing/SKILL.md');

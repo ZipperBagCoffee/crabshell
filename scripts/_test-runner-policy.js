@@ -216,7 +216,9 @@ try {
       scripts['tools/c.py'] = pyCheck;
       entries.push({ id: 'C', type: 'structural', command: { file: PYTHON, args: ['-B', 'tools/c.py'] }, contract: { exitCode: 0 }, inputs: ['tools/c.py'] });
     }
-    const dir = project('p9', entries, scripts, { minFreeMemoryMB: 0 });
+    // memoryShare 1 takes the usage gate out (as in P10): only the default job count is under
+    // test, so a loaded machine (a release run) does not hold B back.
+    const dir = project('p9', entries, scripts, { minFreeMemoryMB: 0, memoryShare: 1 });
     const first = run(dir, 'p9', ['--no-reuse']);
     const second = run(dir, 'p9', ['--no-reuse']);
     const cAlone = !hasPython || (second.ran.includes('C') && !overlap(second.log, 'A', 'C') && !overlap(second.log, 'B', 'C'));
