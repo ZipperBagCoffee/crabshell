@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.165.0)
+# Crabshell Architecture (v21.166.0)
 
 ## Overview
 
@@ -175,7 +175,7 @@ Codex marketplace -> installed cache -> .codex-plugin/plugin.json
 - Every Codex hook command resolves its adapter inside a Promise fail-open boundary; synchronous module-load errors and rejected adapter `main()` calls are absorbed with exit 0.
 - SessionStart reads shared memory/workflow context; `getProjectMemoryPath()` may copy a legacy-only description into `.crabshell/project.md` without deleting or overwriting existing files. Explicit memory and document skills execute from installed launchers against the active project. Document launchers require absolute `--project-dir`. Claude's automatic SessionEnd transcript/delta save remains Claude-only.
 - One shared completion state owner requires parent-executed command evidence after a child claim, rejects ambiguous/false-done evidence, and bounds identical automatic failures. Claude retains the doc-watchdog Stop check behind `completion-controller.js`; the behavioral sycophancy/scope checks are unwired. Codex emits the native block decision through its adapter.
-- Pressure telemetry remains; behavioral pressure/sycophancy/scope hooks, fixed-count, role-collapse, and behavior-verifier surfaces remain retired from both runtimes.
+- Pressure telemetry remains; behavioral pressure/scope hooks, fixed-count, role-collapse, and behavior-verifier surfaces remain retired from both runtimes. Claude's sycophancy guard was restored in v21.166.0 (Stop send-back and file-write block for agreement with nothing checked in the turn).
 - `codex-doctor.js` probes both CLIs and derives installed, activated, trusted, behavior-verified, degraded, drifted, and unsupported states. Codex desktop app remains a separate unexercised row.
 - `scripts/install-codex.js` remains a legacy/development bridge and is not part of the native default path.
 
@@ -273,7 +273,7 @@ Claude `PostToolUseFailure` is wired to both verification-state and parent-evide
    │   └─> Record the start of a declared check
    ├─> doc-watchdog gate (Write|Edit) — soft notice when in-project code edits >= 5 without a D/P/T doc update (regressing only)
    (verify-guard unwired in v21.153.0 — Final Verification writes no longer run checks)
-   (pressure-guard and sycophancy-guard unwired from PreToolUse in v21.113.0 — I083 R4/R5; deleted v21.130.0)
+   (pressure-guard unwired from PreToolUse in v21.113.0 — I083 R4/R5; deleted v21.130.0; sycophancy-guard restored for file writes v21.166.0)
    Read|Grep|Glob have no PreToolUse hook since v21.125.0; the other-project notice comes from PostToolUse.
 
 3.5. Stop / SubagentStop — v21.107.0 single owner
@@ -282,7 +282,7 @@ Claude `PostToolUseFailure` is wired to both verification-state and parent-evide
        ├─> Require decisive parent command evidence recorded by PostToolUse
        ├─> Bound identical actual failures, then require a concrete report instead of looping
        ├─> Preserve active D/P/T/W workflow continuation
-       └─> Claude Stop check in the same process: doc-watchdog stopReason (sycophancy/scope retired v21.113.0)
+       └─> Claude Stop checks in the same process: doc-watchdog stopReason, sycophancy-guard stopReason (restored v21.166.0; scope retired v21.113.0)
 
 4. PostToolUse (all tools) — one process: adapters/claude/post-tool-use.js (v21.125.0)
    ├─> counter check
@@ -408,7 +408,8 @@ Regressing retains document-cycle continuation but has no parallel-worker count 
 | `_test-cross-platform-native-hosts.js` | release smoke | Isolated Windows/Linux Claude Code CLI and Codex CLI install/activation matrix; app reported separately |
 | `skills/verifying/scripts/run-verify.js`, `skills/verifying/scripts/runner/` | verification source | A small launcher and the runner modules (v21.153.0): manifest and its settings tables, fingerprint (entry run fields, program, decision code without comment lines, platform, input contents; since v21.159.0 the decision code is `contract.js`, `execute.js` and the tracer source only), snapshot (one walk; git-ignored folders skipped via a kept list, `ignored.js`), select (pass history, change reasons; record kinds `reported`, `traced`, `declared`, `project` since v21.159.0), schedule (order, stop at a new failure, retries, `jobs`), store (`test-map.json` schema 4 since v21.159.0), trace (NODE_OPTIONS tracer across child processes), used-report (a check's report of what it used through `CRABSHELL_USED_REPORT`, the project's `itemIdentity` command, `{cases}`; v21.159.0), output, install (copy with temp file + rename) |
 | `.crabshell/verification/run-verify.js`, `.crabshell/verification/runner/` | project runner copy | Copied from the skill runner; kept current at each session start (`core/runner-sync.js`: changed modules copied, a released launcher replaced — the list is `skills/verifying/scripts/released-launchers.json`, built by `scripts/build-released-launchers.js` — an edited launcher kept and named once); stdout text is diagnostic, not a pass oracle |
-| (deleted v21.130.0) | — | `sycophancy-guard.js`, `pressure-guard.js`, `scope-guard.js` (unwired v21.113.0, I083 R4/R5) and `regressing-loop-guard.js` (unwired v21.107.0) were removed with their tests; git history keeps them. Regressing continuation is goal-driven (v21.110.0) with `completion-controller.js` bounded continuation. |
+| `sycophancy-guard.js` | Stop, PreToolUse (file writes) | Restored v21.166.0 (D162): agreement phrases outside code and quotes, with no tool call earlier in the current turn (`core/transcript.js` `currentTurn`), are sent back once at Stop and block a file write. |
+| (deleted v21.130.0) | — | `pressure-guard.js`, `scope-guard.js` (unwired v21.113.0, I083 R4/R5) and `regressing-loop-guard.js` (unwired v21.107.0) were removed with their tests; git history keeps them. Regressing continuation is goal-driven (v21.110.0) with `completion-controller.js` bounded continuation. |
 | `skill-tracker.js` | PostToolUse (Skill) via `post-tool-use.js` (inline since v21.125.0) | Set the calling session's skill flag on Skill tool calls (no timer; cleared on compaction and SessionEnd; payloads without a session id use the legacy 15-minute project flag) |
 | `regressing-state.js` | (library) | Phase tracker: getState, buildReminder, detectSkillCall, advancePhase |
 | `extract-delta.js` | (library) | L1 delta extraction, timestamp watermarks, temp file management |
@@ -547,7 +548,7 @@ Separated from memory-index.json to eliminate Write race condition during delta 
 - The Stop hook's `stop_response` field contains only the **last text block** of multi-block responses. When Claude produces text, then calls a tool, then produces more text, only the final text block is visible to the Stop hook.
 - **Impact on sycophancy detection**: Sycophancy patterns in early text blocks (before tool calls) are invisible to the Stop hook. A response that agrees without evidence in block 1, calls Write in block 2, and writes a summary in block 3 would only have block 3 checked by the Stop hook.
 - **Partial mitigation (historical, before v21.113.0)**: The PreToolUse layer of `sycophancy-guard.js` parsed mid-turn transcript text before each Write|Edit call. This catches sycophancy that precedes file writes, but only for Write|Edit — not for Read, Grep, Glob, or Bash tool calls.
-- **Remaining gap**: If Claude agrees without evidence and then uses Read/Grep/Glob/Bash (but not Write/Edit), neither the Stop hook nor the PreToolUse guard catches the sycophancy. Expanding PreToolUse to check transcript text for all tool types is a potential future mitigation.
+- **Since v21.166.0**: the restored guard reads the whole current turn from the transcript (`currentTurn`), so agreement in an early text block counts at Stop too, and any tool call earlier in the turn counts as the check.
 
 ### Guard Consolidation (IA-6 Analysis, revised v21.125.0)
 Until v21.124.0 each guard was its own hook process; one Edit started 10 synchronous processes. v21.125.0 runs each Claude event's guards in one process. The four reasons for keeping them separate were checked against measurements:
@@ -565,6 +566,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.166.0 | Sycophancy guard restored: an answer that agrees with nothing checked in the turn is sent back once, and a file write right after it is blocked; web-guard lets WebSearch run as the last resort once every configured search MCP was called in the turn |
 | 21.165.0 | web-guard names every configured search MCP, exa first and then tavily by default (instructions that rank them differently win); select-by-use: cases sharing one process (a cache reports what its value was built from), and reads a call tracer cannot see (constants reported as items) |
 | 21.164.0 | `--explain`/`--dry-run` estimate the run's own length (`estimatedWallSeconds`: checks side by side as the runner runs them; `estimatedSeconds` stays the sum); select-by-use ⑩ measures each kind of change and reports "partial" until all are measured; fingerprints without comments, one setup file per case, `{cases}` lists kept out of `command` |
 | 21.163.0 | Verifying skill: new reference `check-cost.md` (find where a long run spends its time, then start once for many cases, wait for events not the clock, run checks side by side, mark heavy work `slow`); select-by-use states one principle for values built from many inputs and drops two case paragraphs; the VERIFICATION defect line also names start-up, waiting and one-at-a-time runs; examples in general words |

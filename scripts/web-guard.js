@@ -9,6 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { getStorageRoot, getProjectDir } = require('./utils');
+const { currentTurn } = require('./core/transcript');
 
 // Web search providers, matched as whole words of a server name ("brave-search",
 // "mcp-exa"). A bare "search" is not enough: "codebase-search" searches local code.
@@ -107,16 +108,37 @@ function webFetchBlockReason(url) {
     'Cite the source URL beside every factual claim.';
 }
 
-function webSearchBlockReason(serverNames) {
+function webSearchBlockReason(serverNames, untried = serverNames) {
   const use = serverNames.length === 1
     ? `Use the "${serverNames[0]}" MCP search tools instead (raw results with per-result URLs).`
     : `Use the configured MCP search tools instead (raw results with per-result URLs), in this order unless your instructions rank them differently: ${serverNames.map(name => `"${name}"`).join(', then ')}. Move to the next one when a tool is unavailable, hits its rate limit or finds too little.`;
-  return `Crabshell web-guard: built-in WebSearch summarizes results via a small model and loses source attribution. ${use} Treat snippets as pointers, not evidence — fetch important pages before citing them.`;
+  const lastResort = `Built-in WebSearch is allowed in this turn as the last resort once each of them has been tried (and any other route your instructions name before it); not tried yet: ${untried.map(name => `"${name}"`).join(', ')}.`;
+  return `Crabshell web-guard: built-in WebSearch summarizes results via a small model and loses source attribution. ${use} ${lastResort} Treat snippets as pointers, not evidence — fetch important pages before citing them.`;
+}
+
+// Whether a tool name belongs to an MCP server: `mcp__<server>__<tool>`, or
+// `mcp__plugin_<plugin>_<server>__<tool>` for a plugin's server. The host replaces
+// characters a tool name cannot hold with "_".
+function serverInToolName(serverName, toolName) {
+  const match = /^mcp__(.+?)__/.exec(String(toolName || '').toLowerCase());
+  if (!match) return false;
+  const server = String(serverName).toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+  return match[1] === server || match[1].endsWith(`_${server}`);
+}
+
+// The configured search servers this turn has not called yet (D161). Unknown when the
+// transcript cannot be read: then every server counts as untried.
+function untriedSearchMcps(serverNames, turn) {
+  if (!Array.isArray(turn)) return serverNames;
+  const called = turn.filter(item => item.kind === 'tool').map(item => item.name);
+  return serverNames.filter(server => !called.some(name => serverInToolName(server, name)));
 }
 
 const WEBSEARCH_WARN_CONTEXT = 'Crabshell web-guard notice: built-in WebSearch results pass through a small summarizer model. Use the URLs only as pointers. Fetch each important source directly before citing it: trafilatura -u <url> --markdown, curl -fsSL https://r.jina.ai/<url>, or plain curl. Never cite a search snippet as evidence.';
 
-const WEBFETCH_WARN_CONTEXT = 'Crabshell web-guard notice: WebFetch content passes through a small summarizer model and may drop or distort details. Re-fetch anything you will cite with trafilatura -u <url> --markdown, curl -fsSL https://r.jina.ai/<url>, or plain curl, and quote the raw text.';
+const WEBSEARCH_LAST_RESORT_CONTEXT = 'Crabshell web-guard notice: every configured search MCP was tried in this turn, so built-in WebSearch runs as the last resort. Say which searches failed or found too little. Its results pass through a small summarizer model: use the URLs only as pointers and fetch each important source directly before citing it (trafilatura -u <url> --markdown, curl -fsSL https://r.jina.ai/<url>, or plain curl).';
+
+const WEBFETCH_WARN_CONTEXT ='Crabshell web-guard notice: WebFetch content passes through a small summarizer model and may drop or distort details. Re-fetch anything you will cite with trafilatura -u <url> --markdown, curl -fsSL https://r.jina.ai/<url>, or plain curl, and quote the raw text.';
 
 // Returns null (allow silently), { warn: <context string> }, or { block: <reason string> }.
 function evaluateWebGuard(hookData, projectDir, overrides) {
@@ -134,9 +156,13 @@ function evaluateWebGuard(hookData, projectDir, overrides) {
 
   // WebSearch: block only when a configured search MCP alternative exists.
   // Machines without one keep the built-in search (degraded to warn) — never
-  // leave a user with no search path at all.
+  // leave a user with no search path at all. D161: once this turn has called every
+  // configured search MCP, the built-in search runs as the last resort.
   const searchMcps = findSearchMcps(projectDir, overrides);
-  if (mode === 'block' && searchMcps.length) return { block: webSearchBlockReason(searchMcps) };
+  if (mode === 'block' && searchMcps.length) {
+    const untried = untriedSearchMcps(searchMcps, currentTurn(hookData.transcript_path));
+    return untried.length ? { block: webSearchBlockReason(searchMcps, untried) } : { warn: WEBSEARCH_LAST_RESORT_CONTEXT };
+  }
   return { warn: WEBSEARCH_WARN_CONTEXT };
 }
 
@@ -164,4 +190,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { evaluateWebGuard, findSearchMcp, findSearchMcps, getMode, sanitizeUrl, collectMcpServerNames };
+module.exports = { evaluateWebGuard, findSearchMcp, findSearchMcps, getMode, sanitizeUrl, collectMcpServerNames, serverInToolName, untriedSearchMcps };

@@ -241,6 +241,35 @@ const guard = require('./web-guard.js');
 })();
 
 (function () {
+  // D161: once this turn has called every configured search MCP, WebSearch runs as the
+  // last resort; a call made before the person's last prompt does not count.
+  const project = 'C:/nonexistent-project';
+  const options = { mode: 'block', projectMcpJsonPath: 'C:/nonexistent-project/.mcp.json',
+    userConfigPath: makeUserConfig({ tavily: { type: 'http', url: 'https://mcp.tavily.com/mcp' }, exa: { type: 'http', url: 'https://mcp.exa.ai/mcp' } }) };
+  const prompt = text => ({ type: 'user', origin: { kind: 'human' }, message: { role: 'user', content: text } });
+  const call = name => ({ type: 'assistant', message: { content: [{ type: 'tool_use', id: name, name, input: {} }] } });
+  const result = name => ({ type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: name, content: 'nothing' }] } });
+  const transcript = entries => {
+    const file = path.join(makeTempDir('webguard-turn-'), 'session.jsonl');
+    fs.writeFileSync(file, entries.map(entry => JSON.stringify(entry)).join('\n') + '\n');
+    return file;
+  };
+  const search = file => guard.evaluateWebGuard({ tool_name: 'WebSearch', tool_input: { query: 'q' }, transcript_path: file }, project, options) || {};
+  const both = search(transcript([prompt('find it'), call('mcp__exa__web_search_exa'), result('mcp__exa__web_search_exa'),
+    call('mcp__tavily__tavily_search'), result('mcp__tavily__tavily_search')]));
+  const one = search(transcript([prompt('find it'), call('mcp__exa__web_search_exa'), result('mcp__exa__web_search_exa')]));
+  const earlier = search(transcript([prompt('first'), call('mcp__exa__web_search_exa'), call('mcp__tavily__tavily_search'), prompt('second')]));
+  if (!both.block && /last resort/.test(both.warn || '')
+    && one.block && /not tried yet: "tavily"\./.test(one.block) && earlier.block) {
+    console.log('PASS: WebSearch runs as the last resort only after every configured search MCP was called in this turn');
+    passed++;
+  } else {
+    console.log(`FAIL: both=${JSON.stringify(both)} one=${JSON.stringify(one)} earlier=${JSON.stringify(earlier)}`);
+    failed++;
+  }
+})();
+
+(function () {
   const res = guard.evaluateWebGuard(
     { tool_name: 'WebSearch', tool_input: { query: 'q' } },
     'C:/nonexistent-project',

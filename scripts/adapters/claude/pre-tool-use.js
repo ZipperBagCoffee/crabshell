@@ -64,6 +64,15 @@ const CHECKS = [
       return result && { reason: result.block, context: result.warn };
     },
   },
+  {
+    // D162: a file write right after agreeing with no check earlier in the turn.
+    name: 'sycophancy-guard',
+    accepts: isFileWrite,
+    run: payload => {
+      const reason = require('../../sycophancy-guard').writeReason(payload);
+      return reason ? { reason, log: '[SYCOPHANCY_GUARD] write after unchecked agreement' } : null;
+    },
+  },
   { name: 'regressing-guard', accepts: isFileWrite, run: (payload, projectDir) => require('../../regressing-guard').evaluateRegressingGuard(payload, projectDir) },
   { name: 'docs-guard', accepts: isFileWrite, run: (payload, projectDir) => require('../../docs-guard').evaluateDocsGuard(payload, projectDir) },
   { name: 'log-guard', accepts: isFileWrite, run: (payload, projectDir) => require('../../log-guard').evaluateLogGuard(payload, projectDir) },

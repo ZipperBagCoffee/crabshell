@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.165.0)
+# Crabshell Plugin Structure (v21.166.0)
 
-**Version**: 21.165.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.166.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -102,7 +102,8 @@ crabshell/
 │   ├── append-memory.js                     # Prepare/finalize CLI and legacy summary append
 │   ├── regressing-guard.js                  # PreToolUse regressing skill enforcement (v19.23.0)
 │   ├── path-guard.js                        # Path guard entry: blocks Bash writes into another project's .crabshell, notices reads, logbook Edit/shrink block (v19.31.0, v20.6.0, v21.125.0)
-│   ├── web-guard.js                         # PreToolUse WebFetch/WebSearch guard — raw-fetch redirect, conditional WebSearch block, block/warn/off modes (v21.114.0, I084)
+│   ├── web-guard.js                         # PreToolUse WebFetch/WebSearch guard — raw-fetch redirect, conditional WebSearch block, block/warn/off modes (v21.114.0, I084); WebSearch as last resort after every search MCP in the turn (v21.166.0)
+│   ├── sycophancy-guard.js                  # Stop + PreToolUse file writes: agreement with nothing checked in the turn is sent back / blocked (restored v21.166.0)
 │   ├── core/path-policy.js                  # Host-neutral memory path policy (v21.104.0)
 │   ├── core/shell-writes.js                 # Static Bash analysis: .crabshell paths named and whether written (v21.125.0)
 │   ├── core/post-compact-effects.js         # Pressure re-injection reset + compaction log; Claude SessionStart(compact), Codex PostCompact (v21.125.0)
@@ -167,6 +168,7 @@ crabshell/
 │   ├── verification-sequence.js             # PostToolUse state tracker + PreToolUse commit/edit gate (v21.0.0)
 │   ├── skill-tracker.js                     # Per-session skill flag setter, run inline by the PostToolUse dispatcher (v19.33.0, v21.124.0, v21.125.0)
 │   ├── _test-path-guard.js                  # Path-guard unit tests + shell var resolution tests (v20.0.0, v21.8.0)
+│   ├── _test-sycophancy-guard.js            # Restored sycophancy guard: Stop send-back, write block, exemptions (v21.166.0)
 │   ├── _test-web-guard.js                   # Web-guard subprocess + unit tests — block/warn/off, MCP detection, fail-open (v21.114.0)
 │   ├── _test-verification-sequence.js       # Verification-sequence unit/integration tests (v21.0.0)
 │   ├── _test-log-guard.js                   # Log-guard unit/integration tests (v21.4.0, v21.11.0)
@@ -479,12 +481,12 @@ L1 generation:
    ├─> verification gate (Bash) — block git commit while source edits lack a passing declared check; record a declared check's start
    ├─> doc-watchdog gate (Write|Edit) — soft notice when in-project code edits >= 5 without a D/P/T doc update during regressing
    └─> verify-guard (Write|Edit) — Final Verification writes run the declared checks
-   (pressure-guard/sycophancy-guard unwired v21.113.0 — I083 R4/R5, deleted v21.130.0; Read|Grep|Glob have no PreToolUse hook since v21.125.0)
+   (pressure-guard unwired v21.113.0 — I083 R4/R5, deleted v21.130.0; sycophancy-guard restored for file writes v21.166.0; Read|Grep|Glob have no PreToolUse hook since v21.125.0)
 
 3.5. Stop
    └─> completion-controller.js (single Stop owner, v21.107.0)
        ├─> decideStop — blocks stop on execution-authorized turns while a D/P/T or W workflow (incl. regressing-state.json) is active; parent-evidence gate; bounded identical-failure reporting
-       └─> retained validator in the same process: doc-watchdog stopReason; behavioral sycophancy/scope validators remain unwired
+       └─> validators in the same process: doc-watchdog stopReason, sycophancy-guard stopReason (restored v21.166.0); scope validator remains deleted
    Note: regressing continuation is goal-driven from v21.110.0 — the regressing skill emits a `/goal` handoff (host goal mode: Claude Code 2.1.139+, Codex CLI 0.128.0+); regressing-loop-guard.js is retired from wiring and kept as a compatibility/test source.
 
 4. PostToolUse (.*) and PostToolUseFailure (Bash) — one process: adapters/claude/post-tool-use.js (v21.125.0)
@@ -518,6 +520,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.166.0 | Sycophancy guard restored: an answer that agrees with nothing checked in the turn is sent back once, and a file write right after it is blocked; web-guard lets WebSearch run as the last resort once every configured search MCP was called in the turn |
 | 21.165.0 | web-guard names every configured search MCP, exa first and then tavily by default (instructions that rank them differently win); select-by-use: cases sharing one process (a cache reports what its value was built from), and reads a call tracer cannot see (constants reported as items) |
 | 21.164.0 | `--explain`/`--dry-run` estimate the run's own length (`estimatedWallSeconds`: checks side by side as the runner runs them; `estimatedSeconds` stays the sum); select-by-use ⑩ measures each kind of change and reports "partial" until all are measured; fingerprints without comments, one setup file per case, `{cases}` lists kept out of `command` |
 | 21.163.0 | Verifying skill: new reference `check-cost.md` (find where a long run spends its time, then start once for many cases, wait for events not the clock, run checks side by side, mark heavy work `slow`); select-by-use states one principle for values built from many inputs and drops two case paragraphs; the VERIFICATION defect line also names start-up, waiting and one-at-a-time runs; examples in general words |
