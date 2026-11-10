@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.173.0)
+# Crabshell Architecture (v21.173.1)
 
 ## Overview
 
@@ -561,6 +561,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.173.1 | `runner/main.js`: `--failed` runs logged with `failed: true` and left out of the runs-since-commit count |
 | 21.173.0 | `runner/main.js`, `schedule.js`, `output.js` lose the stop at a new failure (`stoppedAt`, `after.stopped`/`after.skip`); `args.js` `--failed` and `select.js` `isFailing` rerun only the failed checks; a stderr line per failure and a `--failed` line after a failing run; decision code unchanged |
 | 21.172.0 | `inject-rules.js` loses pressure detection and the bailout words (index write only for `rulesInjectionCount`); counter, execution-lifecycle and Codex post-compact lose the resets; `web-guard.js` `searchToolNames()` reads config `searchTools`; setup-project keeps project.md sections |
 | 21.171.0 | `inject-rules.js` stop/bailout/pressure read `userAuthoredText`; removed `verify-guard.js`, `prompts/`, three meta tests, V010, V059 fileAssertions, `classify.js` shouldWarn; rules-text, Codex block, web-guard, regressing-guard and skills reworded generally; agents `model: haiku` |
