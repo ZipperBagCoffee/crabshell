@@ -18,17 +18,16 @@ const POST = 'adapters/claude/post-tool-use.js';
 const lastJson = result => { try { return JSON.parse(result.stdout.trim().split('\n').filter(Boolean).pop() || 'null'); } catch { return null; } };
 const OTHER = fwd(path.join(os.homedir(), 'crabshell-test-other-project'));
 
-// D1: SessionStart after compaction logs the compaction. Contract change (D120 T4): it
-// no longer resets the pressure display state, which reached no output.
+// D1: SessionStart after compaction logs the compaction and writes nothing to
+// memory-index.json (D120 T4, D169: the counters it used to reset are gone).
 {
   const project = h.makeProject(root, 'compact');
   const index = h.memoryPath(project, 'memory-index.json');
-  const current = h.readJson(index) || {};
-  const pressure = { level: 2, consecutiveCount: 2, decayCounter: 0 };
-  fs.writeFileSync(index, JSON.stringify({ ...current, feedbackPressure: pressure }));
+  const indexBefore = JSON.stringify(h.readJson(index) || {});
+  fs.writeFileSync(index, indexBefore);
   const result = h.runHook(root, 'load-memory.js', [], { hook_event_name: 'SessionStart', source: 'compact', session_id: A }, project);
   report.check('D1 SessionStart(compact) appends to compaction.log', result.status === 0 && fs.existsSync(h.memoryPath(project, 'logs', 'compaction.log')), `exit=${result.status}`);
-  report.check('D1 ...and leaves the pressure state as it was', JSON.stringify((h.readJson(index) || {}).feedbackPressure) === JSON.stringify(pressure));
+  report.check('D1 ...and leaves memory-index.json as it was', fs.readFileSync(index, 'utf8') === indexBefore);
   const startup = h.makeProject(root, 'startup');
   h.runHook(root, 'load-memory.js', [], { hook_event_name: 'SessionStart', source: 'startup', session_id: A }, startup);
   report.check('D1 control: SessionStart(startup) writes no compaction log', !fs.existsSync(h.memoryPath(startup, 'logs', 'compaction.log')));

@@ -161,29 +161,12 @@ async function check(payload = null) {
   const counter = getCounter(sessionId) + 1;
   setCounter(counter, sessionId);
   const saveDue = counter >= interval;
-  const pressureReset = hookData.tool_name === 'TaskCreate';
-  if (!saveDue && !pressureReset) return;
+  if (!saveDue) return;
 
   // When another process holds the lock the save is skipped (fail-open): the
   // counter stays at or above the interval, so this session's next tool call
   // retries it.
   const outcome = tryWithMemoryIndex(memoryDir, () => {
-    // Pressure reset on Task delegation
-    if (pressureReset) {
-      try {
-        const idxPath = path.join(getStorageRoot(), MEMORY_DIR, INDEX_FILE);
-        const idx = readIndexSafe(idxPath);
-        if (idx.feedbackPressure && idx.feedbackPressure.level > 0 && idx.feedbackPressure.level < 3) {
-          idx.feedbackPressure.level = 0;
-          idx.feedbackPressure.consecutiveCount = 0;
-          idx.feedbackPressure.decayCounter = 0;
-          writeJson(idxPath, idx);
-          console.error('[PRESSURE RESET] Task delegation detected — pressure reset to L0');
-        }
-      } catch (e) { /* fail-open */ }
-    }
-    if (!saveDue) return;
-
     // Check rotation before auto-save
     const memoryPath = path.join(getStorageRoot(), MEMORY_DIR, MEMORY_FILE);
     const rotationResult = checkAndRotate(memoryPath, config);

@@ -3,15 +3,16 @@
 //
 // Design note: inject-rules.js uses non-blocking acquireIndexLock (single-try, no retry).
 // Lock-busy processes fail-open — they skip the write (by design, per T001 AC1).
-// So for N concurrent processes, the on-disk consecutiveCount equals the number of
-// processes that successfully acquired the lock (= N - lockBusy). "Lost update 0건"
-// means: on-disk count equals the number of successful-write events (each lock-winner
-// bumps by exactly 1), NOT that count equals N.
+// The only value it keeps in memory-index.json is rulesInjectionCount, and only when
+// config.json sets rulesInjectionFrequency above 1 (D169: the feedback counters it used
+// to write are gone). So for N concurrent processes, the on-disk rulesInjectionCount
+// equals the number of processes that successfully acquired the lock (= N - lockBusy).
+// "No lost update" means: on-disk count equals the number of successful-write events
+// (each lock-winner bumps by exactly 1), NOT that count equals N.
 //
-// This test spawns N=5 concurrent subprocesses, counts stderr '[PRESSURE L' markers
-// (one per subprocess invoking the pressure branch) and '[inject-rules: index lock busy'
-// lines (lock-skip events), and asserts:
-//   on_disk_count == (processes_that_ran_pressure_branch - lock_busy_skips)
+// This test spawns N=5 concurrent subprocesses, counts '[inject-rules: index lock busy'
+// lines (lock-skip events) in their stderr, and asserts:
+//   on_disk_count == (N - lock_busy_skips - acknowledged_write_errors)
 //   on_disk_count >= 1  (at least one winner)
 //   no subprocess crashed
 // 3 trials per run. Per T001 RA behavioral proof (N=8, lockBusy=3, count=5).
@@ -78,7 +79,8 @@ function spawnInject(tmpDir, payload, procIndex) {
   });
 }
 
-// Seed a fresh tmp memory dir with an initial memory-index.json.
+// Seed a fresh tmp memory dir with an initial memory-index.json and a config.json whose
+// rulesInjectionFrequency is above 1, so every execution prompt writes the index.
 function seedTmpDir() {
   const tmpDir = makeTempDir('inject-race');
   const memoryDir = path.join(tmpDir, '.crabshell', 'memory');
@@ -90,9 +92,10 @@ function seedTmpDir() {
     rotatedFiles: [],
     stats: { totalRotations: 0, lastRotation: null },
     lastMemoryUpdateTs: null,
-    feedbackPressure: { level: 0, consecutiveCount: 0, decayCounter: 0, oscillationCount: 0, lastShownLevel: 0 },
+    rulesInjectionCount: 0,
   };
   fs.writeFileSync(path.join(memoryDir, 'memory-index.json'), JSON.stringify(initialIndex, null, 2), 'utf8');
+  fs.writeFileSync(path.join(memoryDir, 'config.json'), JSON.stringify({ rulesInjectionFrequency: 2 }), 'utf8');
   return tmpDir;
 }
 
@@ -108,16 +111,14 @@ function countOccurrences(text, needle) {
   return count;
 }
 
-// Run one trial: N concurrent inject-rules.js with negative-feedback prompt.
-// Assert no lost updates: on-disk count equals (winners - none_lost).
+// Run one trial: N concurrent inject-rules.js with an execution prompt.
+// Assert no lost updates: on-disk count equals the number of winners.
 async function runTrial(trialNum, N) {
   const tmpDir = seedTmpDir();
   try {
-    // Negative feedback + execution keyword: since D111, non-execution turns are
-    // read-only (mayMutateState gate), so the RMW write path only runs on
-    // execution intent. The old payload ('시발 짜증나') classified as default and
-    // never wrote — the test was asserting a write the design forbids.
-    const payload = JSON.stringify({ prompt: '시발 짜증나 고쳐' });
+    // Execution prompt: since D111, non-execution turns are read-only (mayMutateState
+    // gate), so the RMW write path only runs on execution intent.
+    const payload = JSON.stringify({ prompt: 'Implement the requested change.' });
     const promises = [];
     for (let i = 0; i < N; i++) {
       promises.push(spawnInject(tmpDir, payload, i));
@@ -145,8 +146,7 @@ async function runTrial(trialNum, N) {
     const winners = N - lockBusy - writeErrors;
 
     const index = readIndex(tmpDir);
-    const fp = index.feedbackPressure || {};
-    const onDiskCount = fp.consecutiveCount;
+    const onDiskCount = index.rulesInjectionCount;
 
     // Primary assertion: no lost updates. Each winner bumped the counter by exactly 1.
     if (onDiskCount !== winners) {

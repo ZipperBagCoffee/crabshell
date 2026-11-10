@@ -241,6 +241,29 @@ const guard = require('./web-guard.js');
 })();
 
 (function () {
+  // D169: a project's `searchTools` list in .crabshell/memory/config.json replaces the
+  // built-in search server names and their order; without it the built-in list applies.
+  // A server that only searches local code counts in neither case.
+  const servers = makeUserConfig({
+    'mycorp-search': { type: 'http', url: 'https://search.mycorp.example/mcp' },
+    exa: { type: 'http', url: 'https://mcp.exa.ai/mcp' },
+    tavily: { type: 'http', url: 'https://mcp.tavily.com/mcp' },
+    'codebase-search': { command: 'x' },
+  });
+  const configured = makeTempProject({ searchTools: ['mycorp-search', 'tavily'] });
+  const plain = makeTempProject(null);
+  const listed = guard.findSearchMcps(configured, { userConfigPath: servers, projectMcpJsonPath: path.join(configured, '.mcp.json') });
+  const builtIn = guard.findSearchMcps(plain, { userConfigPath: servers, projectMcpJsonPath: path.join(plain, '.mcp.json') });
+  if (listed.join() === 'mycorp-search,tavily' && builtIn.join() === 'exa,tavily') {
+    console.log('PASS: searchTools in config.json replaces the built-in search server list and order');
+    passed++;
+  } else {
+    console.log(`FAIL: searchTools listed=${listed} builtIn=${builtIn}`);
+    failed++;
+  }
+})();
+
+(function () {
   // D161: once this turn has called every configured search MCP, WebSearch runs as the
   // last resort; a call made before the person's last prompt does not count.
   const project = 'C:/nonexistent-project';

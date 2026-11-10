@@ -81,7 +81,6 @@ try {
   fs.writeFileSync(path.join(storageRoot, 'project.md'), 'COMPACTION_PROJECT_MARKER\n');
   fs.writeFileSync(path.join(memoryDir, 'logbook.md'), 'COMPACTION_MEMORY_MARKER\n');
   fs.writeFileSync(path.join(memoryDir, 'memory-index.json'), JSON.stringify({
-    feedbackPressure: { level: 2, lastShownLevel: 2 },
     rotatedFiles: [],
   }, null, 2));
   fs.writeFileSync(path.join(memoryDir, 'regressing-state.json'), JSON.stringify({
@@ -121,7 +120,8 @@ try {
     assert.deepStrictEqual(snapshot(projectRoot), before);
   });
 
-  test('Codex PostCompact restores context and preserves Claude reset/log outcomes', () => {
+  // D169: PostCompact no longer writes memory-index.json, so it is not an allowed change.
+  test('Codex PostCompact restores context and logs the compaction', () => {
     const before = snapshot(projectRoot);
     const context = contextFrom(run(postAdapter, 'PostCompact', 'auto'), 'PostCompact');
     assert.match(context, /COMPACTION_MEMORY_MARKER/);
@@ -130,7 +130,6 @@ try {
     assert.match(fs.readFileSync(logPath, 'utf8'), /PostCompact hook fired/);
     assert.strictEqual(fs.readFileSync(path.join(projectRoot, 'sentinel.txt'), 'utf8'), 'UNCHANGED\n');
     const allowed = new Set([
-      path.join('.crabshell', 'memory', 'memory-index.json'),
       path.join('.crabshell', 'memory', 'lock-contention.json'),
       path.join('.crabshell', 'memory', 'logs'),
       path.join('.crabshell', 'memory', 'logs', 'compaction.log'),

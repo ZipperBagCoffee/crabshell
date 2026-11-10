@@ -1,5 +1,19 @@
 # Changelog
 
+## [21.172.0] - 2026-11-09
+
+### feat: the pressure counters are gone; web-guard's search tools are a setting; setup-project keeps project.md's sections
+
+- **Pressure counters removed.** The user asked 「뭔데이거 안쓰면 지워」 ("what is this? if unused, delete it").
+  - inject-rules raised a counter when a prompt held profanity, and 봉인해제 / UNLEASH reset it. Since v21.113.0 nothing read the counter except a `/status` line.
+  - Removed: the detection patterns, the counter updates and resets (inject-rules, counter, execution-lifecycle, Codex post-compact), the reset words, the `/status` lines, the tests of them, and manifest V016.
+  - The emergency stop words stay.
+  - Old counter fields left in a project's memory-index.json are ignored.
+- **web-guard search tools are a setting.** `searchTools` in `.crabshell/memory/config.json` lists the MCP servers web-guard counts as web search, in the order it asks for them. Unset, it uses the built-in list as before. A new search provider no longer needs a code change.
+- **setup-project keeps the rest of project.md.**
+  - It replaces only the concept, the text before the first `## ` heading. `## Constraints`, `## Model Routing` and every other section stay as they are.
+  - The 10-line, 500-character limit applies to the concept. Before, saving rewrote the whole file and could drop Model Routing.
+
 ## [21.171.0] - 2026-11-09
 
 ### feat: a lighter, general plugin — devices that only watched other devices are gone; instructions hold for any project

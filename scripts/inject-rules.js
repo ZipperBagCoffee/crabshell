@@ -31,112 +31,14 @@ const { noteExecutionAuthorization, interruptWork } = require('./core/completion
 // Emergency stop keywords - when detected, replaces entire context with EMERGENCY STOP
 const EMERGENCY_KEYWORDS = ['아시발멈춰', 'BRAINMELT'];
 
-// Bailout keywords - when detected, resets feedback pressure to L0
-const BAILOUT_KEYWORDS = ['봉인해제', 'UNLEASH'];
-
 // Only the words the user typed count (D168): a task report or another session's message
-// that quotes a keyword, such as a worker reading this file, does not stop or reset anything.
+// that quotes a keyword, such as a worker reading this file, does not stop anything.
 const typedByUser = hookData => userAuthoredText((hookData && (hookData.prompt || hookData.input)) || '');
 
 function checkEmergencyStop(hookData) {
   const input = typedByUser(hookData);
   return EMERGENCY_KEYWORDS.some(kw => input.includes(kw));
 }
-
-function detectBailout(hookData) {
-  const input = typedByUser(hookData);
-  return BAILOUT_KEYWORDS.some(kw => input.includes(kw));
-}
-
-// --- Feedback Pressure Detection ---
-// Profanity-only NEGATIVE_PATTERNS (W021): correction/assessment/disagreement patterns removed.
-// Only Korean compound words containing profanity substrings need exclusion.
-const NEGATIVE_EXCLUSIONS = [
-  /시발[점역전]/,                                              // "시발점" (starting point), "시발역" (station)
-  /병신경/,                                                    // "병신경" (pathological nerve)
-];
-
-// W021: Profanity-only patterns. Correction/assessment/logical-disagreement patterns
-// removed — those represent normal user clarification, not frustration that warrants
-// pressure escalation. Only actual profanity raises the pressure counter.
-const NEGATIVE_PATTERNS = [
-  // Korean profanity
-  /시발|씨발|씨팔|시팔/,                                      // "시발" variants
-  /병신/,                                                      // "병신"
-  /좆|졷/,                                                     // "좆" variants
-  /지랄/,                                                      // "지랄"
-  /새끼/,                                                      // "새끼"
-  /뒤질|뒤져/,                                                 // "뒤질래", "뒤져"
-  // English profanity (mirrors Claude Code userPromptKeywords.ts)
-  /\b(wtf|wth|ffs|omfg)\b/i,
-  /\bshit(ty|tiest)?\b/i,
-  /\bfuck(ing|ed)?\b/i,
-  /\bdumbass\b/i,
-  /\bpiece\s+of\s+(shit|crap|junk)\b/i,
-  /\bthis\s+sucks\b/i,
-  /\bso\s+frustrating\b/i,
-];
-
-function stripCodeBlocks(text) {
-  let s = text;
-  s = s.replace(/```[\s\S]*?```/g, ' ');
-  s = s.replace(/`[^`]+`/g, ' ');
-  return s;
-}
-
-// Strip Claude Code auto-injected <system-reminder>...</system-reminder> blocks
-// before NEG detection so reminder words ("error", "wrong", "break", etc.) do
-// not produce false-positive feedback-pressure increments. Pure function:
-// non-string input passes through unchanged; zero matches → original returned.
-function stripSystemReminders(text) {
-  if (typeof text !== 'string') return text;
-  return text.replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, ' ');
-}
-
-function detectNegativeFeedback(prompt) {
-  if (!prompt || prompt.length < 2) return false;
-  let stripped = stripCodeBlocks(prompt);
-  stripped = stripSystemReminders(stripped);
-  // Neutralize exclusion matches — replace with whitespace so remaining text is still checked
-  for (const exc of NEGATIVE_EXCLUSIONS) {
-    stripped = stripped.replace(exc, ' ');
-  }
-  for (const pat of NEGATIVE_PATTERNS) {
-    if (pat.test(stripped)) return true;
-  }
-  return false;
-}
-
-function updateFeedbackPressure(index, isNegative) {
-  if (!index.feedbackPressure) {
-    index.feedbackPressure = { level: 0, consecutiveCount: 0, lastDetectedAt: null, decayCounter: 0, oscillationCount: 0 };
-  }
-  // Ensure oscillationCount field exists on legacy objects
-  if (typeof index.feedbackPressure.oscillationCount !== 'number') {
-    index.feedbackPressure.oscillationCount = 0;
-  }
-  const fp = index.feedbackPressure;
-  if (isNegative) {
-    fp.consecutiveCount++;
-    fp.level = Math.min(3, fp.consecutiveCount);
-    fp.lastDetectedAt = new Date().toISOString();
-    fp.decayCounter = 0;
-  } else {
-    fp.decayCounter++;
-    if (fp.decayCounter >= 3 && fp.level > 0) {
-      fp.level = Math.max(0, fp.level - 1);
-      fp.consecutiveCount = Math.max(0, fp.consecutiveCount - 1);
-      fp.decayCounter = 0;
-    }
-  }
-  return fp.level;
-}
-
-// PRESSURE_L1/L2/L3 model-visible injection retired in v21.113.0 (I083 R4:
-// surfacing pressure counters to the model causes context-anxiety-type
-// degradation; official guidance says avoid exposing budget/pressure gauges).
-// The feedbackPressure counters are still tracked for user-facing telemetry
-// (/status) and bailout keywords still reset them.
 
 const EMERGENCY_STOP_CONTEXT = `
 <EXTREMELY_IMPORTANT>
@@ -370,11 +272,8 @@ async function main(options = {}) {
     const projectDir = options.projectDir || getProjectDir();
 
     // Extract and classify before any optional state mutation.
-    // Explicit bailout keywords are user-authorized state resets even when the
-    // surrounding prompt is classified as a question/default turn.
     const userPrompt = (hookData && (hookData.prompt || hookData.input)) || '';
     const intent = classifyUserIntent(userPrompt);
-    const isBailout = detectBailout(hookData);
     if (require('./core/turn-intent').isStopRequest(userPrompt)) interruptWork(projectDir, hookData);
 
     // Emergency stop check — replaces entire context
@@ -421,41 +320,22 @@ async function main(options = {}) {
     // Lock-fail fallback (fail-open): on lock acquisition failure, still perform the read
     // and compute in-memory state so context injection proceeds, but SKIP the write
     // (prevents lost-update race when another process is mid-write). Warn to stderr.
-    const mayMutateState = intent === 'execution' || isBailout;
+    const mayMutateState = intent === 'execution';
     let index;
-    let isNegativeFeedback;
-    let pressureLevel;
     let count;
     const readAndUpdate = idxLocked => {
       // READ inside lock — snapshot is now consistent with the write below
       index = readIndexSafe(indexPath);
 
-      const fp = index.feedbackPressure;
       if (mayMutateState) {
-        // Bailout: reset pressure regardless of current level (all 3 counters)
-        if (isBailout) {
-          if (fp) {
-            fp.level = 0;
-            fp.consecutiveCount = 0;
-            fp.decayCounter = 0;
-            fp.oscillationCount = 0;
-          }
-          if (index.tooGoodSkepticism) index.tooGoodSkepticism.retryCount = 0;
-          console.error('[PRESSURE BAILOUT: reset all 3 counters]');
-        }
-        isNegativeFeedback = isBailout ? false : detectNegativeFeedback(userAuthoredText(userPrompt));
-        pressureLevel = isBailout ? 0 : updateFeedbackPressure(index, isNegativeFeedback);
-        if (pressureLevel > 0) console.error(`[PRESSURE L${pressureLevel}]`);
         count = (index.rulesInjectionCount || 0) + 1;
         if (frequency > 1) index.rulesInjectionCount = count;
-        if (idxLocked && (isNegativeFeedback || isBailout || index.feedbackPressure || frequency > 1)) {
+        if (idxLocked && frequency > 1) {
           writeJson(indexPath, index);
-        } else if (!idxLocked) {
+        } else if (!idxLocked && frequency > 1) {
           console.error('[inject-rules: index lock busy, skipping write (fail-open)]');
         }
       } else {
-        isNegativeFeedback = false;
-        pressureLevel = fp && typeof fp.level === 'number' ? fp.level : 0;
         count = frequency;
       }
     };
@@ -549,10 +429,6 @@ if (require.main === module) {
 module.exports = {
   // Functions
   checkEmergencyStop,
-  stripCodeBlocks,
-  stripSystemReminders,
-  detectNegativeFeedback,
-  updateFeedbackPressure,
   checkDeltaPending,
   checkRotationPending,
   checkTicketStatuses,
@@ -567,13 +443,8 @@ module.exports = {
   main,
   // Re-export from core/regressing-reminder for convenience
   buildRegressingReminder,
-  // Bailout
-  detectBailout,
-  BAILOUT_KEYWORDS,
   // Constants
   EMERGENCY_KEYWORDS,
-  NEGATIVE_PATTERNS,
-  NEGATIVE_EXCLUSIONS,
   MARKER_START,
   MARKER_END,
   RULES,

@@ -8,39 +8,47 @@ if (process.env.CRABSHELL_BACKGROUND === '1') process.exit(0);
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { getStorageRoot, getProjectDir } = require('./utils');
+const { getStorageRoot, getProjectDir, readJsonOrDefault } = require('./utils');
 const { currentTurn } = require('./core/transcript');
 
 // Web search providers, matched as whole words of a server name ("brave-search",
 // "mcp-exa"). A bare "search" is not enough: "codebase-search" searches local code.
-// The order is the default preference when several are configured (exa first, then
-// tavily, D159); the block message tells Claude to follow its instructions instead
-// when they rank the tools differently.
-const SEARCH_MCP_HINTS = [
+// The order is the preference when several are configured (exa first, then tavily,
+// D159); the block message tells Claude to follow its instructions instead when they
+// rank the tools differently. A project replaces this list, and its order, with
+// `searchTools` in .crabshell/memory/config.json (D169).
+const DEFAULT_SEARCH_TOOLS = [
   'exa', 'tavily', 'brave', 'serper', 'perplexity', 'jina', 'firecrawl',
   'kagi', 'searxng', 'duckduckgo', 'ddg', 'websearch', 'web-search'
 ];
-const hintPattern = hint => new RegExp('(?:^|[^a-z0-9])' + hint + '(?:[^a-z0-9]|$)');
-const SEARCH_MCP_PATTERN = new RegExp('(?:^|[^a-z0-9])(?:' + SEARCH_MCP_HINTS.join('|') + ')(?:[^a-z0-9]|$)');
-const HINT_PATTERNS = SEARCH_MCP_HINTS.map(hintPattern);
+const escapeRegExp = text => text.replace(/[.*+?^${}()|[\]\\]/g, ch => '\\' + ch);
+const namePattern = name => new RegExp('(?:^|[^a-z0-9])' + escapeRegExp(name) + '(?:[^a-z0-9]|$)');
 
-// A search server's place in the default order: the first hint its name matches.
-function searchRank(name) {
-  const lower = String(name).toLowerCase();
-  const rank = HINT_PATTERNS.findIndex(pattern => pattern.test(lower));
-  return rank === -1 ? SEARCH_MCP_HINTS.length : rank;
+function readConfig(projectDir) {
+  return readJsonOrDefault(path.join(getStorageRoot(projectDir), 'memory', 'config.json'), {}) || {};
+}
+
+// The search server names this project recognizes, in preference order.
+function searchToolNames(projectDir) {
+  const listed = readConfig(projectDir).searchTools;
+  const names = Array.isArray(listed) ? listed.filter(name => typeof name === 'string' && name.trim()).map(name => name.trim().toLowerCase()) : [];
+  return names.length ? names : DEFAULT_SEARCH_TOOLS;
+}
+
+// A server's place in that order (the first name it matches), or -1 for a server that is
+// not a search server.
+function searchRank(serverName, names) {
+  const lower = String(serverName).toLowerCase();
+  return names.findIndex(name => namePattern(name).test(lower));
 }
 
 // Modes: 'block' (default) | 'warn' | 'off'
 function getMode(projectDir) {
-  try {
-    const configPath = path.join(getStorageRoot(projectDir), 'memory', 'config.json');
-    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-    if (config && typeof config.webGuard === 'string') {
-      const mode = config.webGuard.toLowerCase();
-      if (mode === 'warn' || mode === 'off' || mode === 'block') return mode;
-    }
-  } catch { /* no config or unreadable -> default */ }
+  const config = readConfig(projectDir);
+  if (typeof config.webGuard === 'string') {
+    const mode = config.webGuard.toLowerCase();
+    if (mode === 'warn' || mode === 'off' || mode === 'block') return mode;
+  }
   return 'block';
 }
 
@@ -82,8 +90,9 @@ function findSearchMcps(projectDir, overrides) {
   const projectMcpJsonPath = (overrides && overrides.projectMcpJsonPath) ||
     path.join(projectDir, '.mcp.json');
   const names = collectMcpServerNames(userConfigPath, projectMcpJsonPath, projectDir);
-  const found = [...new Set(names)].filter(name => SEARCH_MCP_PATTERN.test(String(name).toLowerCase()));
-  return found.map((name, index) => ({ name, index, rank: searchRank(name) }))
+  const order = searchToolNames(projectDir);
+  return [...new Set(names)].map((name, index) => ({ name, index, rank: searchRank(name, order) }))
+    .filter(item => item.rank !== -1)
     .sort((a, b) => a.rank - b.rank || a.index - b.index)
     .map(item => item.name);
 }
@@ -190,4 +199,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { evaluateWebGuard, findSearchMcp, findSearchMcps, getMode, sanitizeUrl, collectMcpServerNames, serverInToolName, untriedSearchMcps };
+module.exports = { evaluateWebGuard, findSearchMcp, findSearchMcps, getMode, searchToolNames, sanitizeUrl, collectMcpServerNames, serverInToolName, untriedSearchMcps };

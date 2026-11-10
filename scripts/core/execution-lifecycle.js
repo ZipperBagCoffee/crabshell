@@ -77,7 +77,6 @@ function runExecutionLifecycle(projectDir, hookData = {}, options = {}) {
     memoryEnsured: false,
     staleDeltaRemoved: false,
     staleSkillFlagRemoved: false,
-    pressureReset: false,
     claudeMemoryWarningEnsured: false,
     diagnostics: [],
   };
@@ -114,21 +113,10 @@ function runExecutionLifecycle(projectDir, hookData = {}, options = {}) {
       } catch (error) {
         result.diagnostics.push(`stale delta cleanup failed: ${error.message}`);
       }
-      let changed = false;
-      if (index.feedbackPressure && index.feedbackPressure.oscillationCount > 0) {
-        index.feedbackPressure.oscillationCount = 0;
-        changed = true;
-      }
-      if (index.tooGoodSkepticism && index.tooGoodSkepticism.retryCount > 0) {
-        index.tooGoodSkepticism.retryCount = 0;
-        changed = true;
-      }
-      if (changed) writeJson(indexPath, index);
-      result.pressureReset = changed;
     });
-    if (!outcome.ran) result.diagnostics.push('index lock busy, skipping stale delta cleanup and per-session pressure reset');
+    if (!outcome.ran) result.diagnostics.push('index lock busy, skipping stale delta cleanup');
   } catch (error) {
-    result.diagnostics.push(`per-session pressure reset failed: ${error.message}`);
+    result.diagnostics.push(`stale delta cleanup failed: ${error.message}`);
   }
 
   const staleDiagnostic = staleRegressingDiagnostic(memoryDir, options.now || Date.now());

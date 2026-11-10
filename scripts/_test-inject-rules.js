@@ -44,8 +44,7 @@ const mod = require(injectRulesPath);
 // ============================================================
 test('EXPORT: all functions present', function() {
   const fns = [
-    'checkEmergencyStop', 'stripCodeBlocks', 'detectNegativeFeedback',
-    'updateFeedbackPressure', 'checkRotationPending',
+    'checkEmergencyStop', 'checkRotationPending',
     'checkTicketStatuses', 'syncRulesToClaudeMd', 'removeLegacySection',
     'parseMemorySections', 'extractKeywords', 'getRelevantMemorySnippets',
     'buildRegressingReminder',
@@ -60,15 +59,10 @@ test('EXPORT: all constants present', function() {
     'RULES', 'MARKER_START', 'MARKER_END', 'COMPRESSED_CHECKLIST',
     'EMERGENCY_STOP_CONTEXT', 'ROTATION_INSTRUCTION',
     'EMERGENCY_KEYWORDS',
-    'NEGATIVE_PATTERNS', 'NEGATIVE_EXCLUSIONS', 'BAILOUT_KEYWORDS',
   ];
   for (const c of consts) {
     assert(mod[c] !== undefined, c + ' not exported');
   }
-});
-
-test('EXPORT: detectBailout exported as function', function() {
-  assert(typeof mod.detectBailout === 'function', 'detectBailout not exported as function');
 });
 
 // ============================================================
@@ -99,12 +93,11 @@ test('EMERGENCY: input field also works', function() {
 });
 
 // D168: a task report or another session's message that quotes a keyword (a worker reading
-// this file) stops and resets nothing; the user's own words around it still count.
-test('EMERGENCY and BAILOUT: only the words the user typed count', function() {
-  const report = '<task-notification>\n<result>keywords at :32 and :35 (아시발멈춰, 봉인해제)</result>\n</task-notification>';
-  const peer = '<cross-session-message from="x">BRAINMELT UNLEASH</cross-session-message>';
+// this file) stops nothing; the user's own words around it still count.
+test('EMERGENCY: only the words the user typed count', function() {
+  const report = '<task-notification>\n<result>keyword at :32 (아시발멈춰)</result>\n</task-notification>';
+  const peer = '<cross-session-message from="x">BRAINMELT</cross-session-message>';
   assertEqual(mod.checkEmergencyStop({ prompt: report }), false, 'task report');
-  assertEqual(mod.detectBailout({ prompt: report }), false, 'task report bailout');
   assertEqual(mod.checkEmergencyStop({ prompt: peer }), false, 'peer message');
   assertEqual(mod.checkEmergencyStop({ prompt: `${report}\n아시발멈춰` }), true, 'typed after a report');
 });
@@ -723,27 +716,6 @@ test('SECTIONS: no H2 -> empty array', function() {
 });
 
 // ============================================================
-// 9. stripCodeBlocks
-// ============================================================
-test('STRIP: fenced code block removed', function() {
-  const result = mod.stripCodeBlocks('text ```code here``` more');
-  assert(!result.includes('code here'));
-  assert(result.includes('text'));
-});
-
-test('STRIP: inline code removed', function() {
-  const result = mod.stripCodeBlocks('check `variable` now');
-  assert(!result.includes('variable'));
-});
-
-test('STRIP: multi-line fenced block', function() {
-  const result = mod.stripCodeBlocks('before\n```\nline1\nline2\n```\nafter');
-  assert(!result.includes('line1'));
-  assert(result.includes('before'));
-  assert(result.includes('after'));
-});
-
-// ============================================================
 // 10. removeLegacySection
 // ============================================================
 test('LEGACY: removes section preserves rest', function() {
@@ -757,30 +729,6 @@ test('LEGACY: removes section preserves rest', function() {
 test('LEGACY: noop when not found', function() {
   const content = '## A\nContent A\n';
   assert(mod.removeLegacySection(content, '## Nonexistent').includes('A'));
-});
-
-// ============================================================
-// 11. Integration: feedback pressure flow
-// ============================================================
-test('INTEGRATION: pressure escalation L1->L2->L3 and decay', function() {
-  const index = {};
-  // W021: Korean profanity (틀렸 was removed; using actual profanity)
-  assertEqual(mod.detectNegativeFeedback('시발 짜증나'), true, 'Korean profanity');
-  assertEqual(mod.updateFeedbackPressure(index, true), 1, 'L1');
-  assertEqual(mod.updateFeedbackPressure(index, true), 2, 'L2');
-  assertEqual(mod.updateFeedbackPressure(index, true), 3, 'L3');
-  // 3 positives to decay once
-  mod.updateFeedbackPressure(index, false);
-  mod.updateFeedbackPressure(index, false);
-  assertEqual(mod.updateFeedbackPressure(index, false), 2, 'decay to L2');
-});
-
-test('INTEGRATION: code blocks stripped before negative detection', function() {
-  // W021: 'wrong' removed from patterns; using profanity to test stripping logic
-  // profanity inside code block should not trigger
-  assertEqual(mod.detectNegativeFeedback('Fix:\n```\nconst x = "fuck this";\n```\nDone.'), false);
-  // profanity outside code block triggers
-  assertEqual(mod.detectNegativeFeedback('This is fucking annoying. ```code```'), true);
 });
 
 // ============================================================
@@ -975,45 +923,6 @@ test('SNIPPETS: respects 2000 char cap', function() {
 });
 
 // ============================================================
-// 15. Additional edge cases: stripCodeBlocks
-// ============================================================
-test('STRIP: empty string -> empty', function() {
-  assertEqual(mod.stripCodeBlocks(''), '');
-});
-
-test('STRIP: empty fenced block', function() {
-  const result = mod.stripCodeBlocks('before `````` after');
-  assert(typeof result === 'string');
-  assert(result.includes('before'));
-  assert(result.includes('after'));
-});
-
-test('STRIP: unclosed backtick -> content preserved', function() {
-  const input = 'text with `unclosed backtick';
-  assertEqual(mod.stripCodeBlocks(input), input);
-});
-
-test('STRIP: nested fenced blocks (greedy edge)', function() {
-  const input = 'text ```outer\n```inner```\nouter end``` more';
-  const result = mod.stripCodeBlocks(input);
-  assert(typeof result === 'string');
-});
-
-test('STRIP: fenced with language tag', function() {
-  const input = 'before ```javascript\nconst x = 1;\n``` after';
-  const result = mod.stripCodeBlocks(input);
-  assert(!result.includes('const x'));
-  assert(result.includes('before'));
-  assert(result.includes('after'));
-});
-
-test('STRIP: multiple inline code spans', function() {
-  const result = mod.stripCodeBlocks('use `foo` and `bar` together');
-  assert(!result.includes('foo'));
-  assert(!result.includes('bar'));
-});
-
-// ============================================================
 // 16. Additional edge cases: extractKeywords
 // ============================================================
 test('KEYWORDS: undefined -> empty', function() {
@@ -1080,49 +989,6 @@ test('LEGACY: empty content after header', function() {
 });
 
 // ============================================================
-// 19. Additional edge cases: feedback detection
-// ============================================================
-test('FEEDBACK: single char -> false (length < 2)', function() {
-  assertEqual(mod.detectNegativeFeedback('x'), false);
-});
-
-test('FEEDBACK: keyword in code block -> false', function() {
-  assertEqual(mod.detectNegativeFeedback('Fix:\n```\nwrong approach\n```\nDone.'), false);
-});
-
-test('FEEDBACK: keyword in inline code -> false', function() {
-  assertEqual(mod.detectNegativeFeedback('Variable `wrong` should be renamed'), false);
-});
-
-test('FEEDBACK: profanity outside code block -> true', function() {
-  // W021: 'wrong' no longer in NEGATIVE_PATTERNS — switched to profanity to test outside-code-block detection
-  assertEqual(mod.detectNegativeFeedback('This is fucking annoying and needs fixing'), true);
-});
-
-test('FEEDBACK: don\'t worry exclusion prevents false positive', function() {
-  // "don't worry" is an exclusion — stripped before pattern check
-  assertEqual(mod.detectNegativeFeedback("don't worry about it"), false);
-});
-
-// ============================================================
-// 20. Additional edge cases: pressure system
-// ============================================================
-test('PRESSURE: single negative -> level 1', function() {
-  const index = {};
-  assertEqual(mod.updateFeedbackPressure(index, true), 1);
-});
-
-test('PRESSURE: decayCounter resets on negative', function() {
-  const index = {};
-  mod.updateFeedbackPressure(index, true);   // level 1
-  mod.updateFeedbackPressure(index, false);  // decay 1
-  mod.updateFeedbackPressure(index, false);  // decay 2
-  mod.updateFeedbackPressure(index, true);   // resets decay, level 2
-  assertEqual(index.feedbackPressure.decayCounter, 0, 'decay reset');
-  assertEqual(index.feedbackPressure.level, 2);
-});
-
-// ============================================================
 // 21. Constants integrity
 // ============================================================
 test('CONSTANTS: MARKER_END is correct string', function() {
@@ -1137,12 +1003,6 @@ test('CONSTANTS: EMERGENCY_STOP_CONTEXT contains DIAGNOSTIC RESET', function() {
 
 test('CONSTANTS: COMPRESSED_CHECKLIST contains Rules Quick-Check', function() {
   assert(mod.COMPRESSED_CHECKLIST.includes('Rules Quick-Check'));
-});
-
-test('CONSTANTS: PRESSURE injection constants retired (v21.113.0, I083 R4)', function() {
-  assert(mod.PRESSURE_L1 === undefined);
-  assert(mod.PRESSURE_L2 === undefined);
-  assert(mod.PRESSURE_L3 === undefined);
 });
 
 // DELTA_INSTRUCTION constant test removed (AC-4: constant deleted from inject-rules.js)
