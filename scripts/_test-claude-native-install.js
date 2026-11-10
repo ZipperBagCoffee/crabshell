@@ -154,8 +154,6 @@ try {
   fs.writeFileSync(path.join(memoryDir, 'memory-index.json'), JSON.stringify({
     deltaReady: false,
     rulesInjectionFrequency: 1,
-    feedbackPressure: { level: 0, consecutiveCount: 0, decayCounter: 0, oscillationCount: 5, lastShownLevel: 0 },
-    tooGoodSkepticism: { retryCount: 6 },
     rotatedFiles: [],
   }, null, 2));
   fs.writeFileSync(path.join(memoryDir, 'delta_temp.txt'), 'STALE_EXECUTION_DELTA_MARKER\n');
@@ -182,9 +180,6 @@ try {
     const skillPath = path.join(memoryDir, 'skill-active.json');
     const skillContent = fs.existsSync(skillPath) ? fs.readFileSync(skillPath, 'utf8') : '';
     assert.doesNotMatch(skillContent, /STALE_EXECUTION_SKILL_MARKER/);
-    const index = JSON.parse(fs.readFileSync(path.join(memoryDir, 'memory-index.json'), 'utf8'));
-    assert.strictEqual(index.feedbackPressure.oscillationCount, 0);
-    assert.strictEqual(index.tooGoodSkepticism.retryCount, 0);
     assert.match(fs.readFileSync(path.join(projectRoot, 'CLAUDE.md'), 'utf8'), /CRITICAL RULES/);
   });
 

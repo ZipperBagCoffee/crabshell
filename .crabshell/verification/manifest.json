@@ -187,35 +187,6 @@
       ]
     },
     {
-      "id": "V016",
-      "ia": "Both bailout keywords reset and persist the real shared UserPromptSubmit main path while ordinary questions remain read-only",
-      "type": "behavioral",
-      "command": {
-        "file": "node",
-        "args": [
-          "scripts/_test-bailout-main.js",
-          "--json"
-        ]
-      },
-      "contract": {
-        "exitCode": 0,
-        "assertions": [
-          {
-            "kind": "stdoutJsonEquals",
-            "pointer": "/passed",
-            "equals": true
-          },
-          {
-            "kind": "stdoutJsonEquals",
-            "pointer": "/failedCount",
-            "equals": 0
-          }
-        ],
-        "forbiddenChanges": []
-      },
-      "timeout": 30000
-    },
-    {
       "id": "V017",
       "ia": "hook UserPromptSubmit to scripts/inject-rules.js is wired and loadable",
       "type": "structural",

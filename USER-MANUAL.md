@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.171.0)
+# Crabshell User Manual (v21.172.0)
 
 ## Why Do You Need This?
 
@@ -37,7 +37,7 @@ For local development, `codex plugin marketplace add .` works only when `.` is t
 
 Start a new Codex session, review/trust the Crabshell hook definition, and invoke `crabshell:status`. It reports live installed, activated, trusted, behavior-verified, degraded, drifted, and unsupported states for Claude Code CLI and Codex CLI. Codex desktop-app evidence is kept separate. The old `/crabshell:install-codex` command remains a legacy/development bridge.
 
-Codex automatically loads existing memory/workflow context at SessionStart and uses native prompt, compaction, subagent, command-observation, and completion hooks. Explicit load/save/search skills remain available. Claude retains its automatic SessionEnd capture and pressure/sycophancy system; neither host launches the other.
+Codex automatically loads existing memory/workflow context at SessionStart and uses native prompt, compaction, subagent, command-observation, and completion hooks. Explicit load/save/search skills remain available. Claude retains its automatic SessionEnd capture and sycophancy guard; neither host launches the other.
 
 ### What an install contains
 
@@ -75,7 +75,7 @@ Both hosts copy the whole plugin folder into their plugin cache (Claude Code: `~
 - PreCompact/PostCompact recover memory and workflow context; SubagentStart supplies the current task/non-goals/references/success contract.
 - PostToolUse records decisive parent command results. SubagentStop is only a child claim; Stop requires parent evidence and bounds identical retry failures.
 - Interrupt preserves a paused record and invalidates earlier test success. Historical work records never authorize resuming stopped work.
-- Use `crabshell:save-memory` for an explicit Codex session note. Codex does not invoke Claude's SessionEnd capture or pressure counters.
+- Use `crabshell:save-memory` for an explicit Codex session note. Codex does not invoke Claude's SessionEnd capture.
 
 ### What Gets Saved
 
@@ -256,7 +256,7 @@ The plugin uses Claude Code hooks to run automatically:
 
 | Hook | Script | When It Runs | What It Does |
 |------|--------|-------------|-------------|
-| `UserPromptSubmit` | `inject-rules.js` | Every prompt | Emits the compact shared turn contract (11-line Rules Quick-Check, including "Is this your best?" and the no-hardcoding line since v21.153.0, "Is it simple and clear?" asked with it before every answer since v21.157.0, the parallel-work line since v21.158.0, and since v21.170.0 four questions before every answer and handover — what was the request, is this your best, does doing it once finish all of it, is it simple and clear — with the answer rethought when any is no); Claude-host `## Codex Delegation` guidance on execution turns only; `봉인해제` / `UNLEASH` immediately resets pressure counters; execution prompts run once-per-session cleanup/reset and Claude rule/memory-warning synchronization. Since v21.154.0 the fixed block is added once per turn (Claude `prompt_id`, Codex `turn_id`): a message that arrives mid-turn gets only the changing notices, and text the user did not write (another session's message, task reports, pasted text next to the user's own words) is not read as an instruction. Since v21.156.0 the memory notices (pending save, archive summaries) go on the turn's first prompt only, whatever `rulesInjectionFrequency` is: answer first on non-execution turns, before other work on execution turns and after a skipped save. Three-field response ending and pressure texts retired v21.113.0 (I083) |
+| `UserPromptSubmit` | `inject-rules.js` | Every prompt | Emits the compact shared turn contract (11-line Rules Quick-Check, including "Is this your best?" and the no-hardcoding line since v21.153.0, "Is it simple and clear?" asked with it before every answer since v21.157.0, the parallel-work line since v21.158.0, and since v21.170.0 four questions before every answer and handover — what was the request, is this your best, does doing it once finish all of it, is it simple and clear — with the answer rethought when any is no); Claude-host `## Codex Delegation` guidance on execution turns only; execution prompts run once-per-session cleanup/reset and Claude rule/memory-warning synchronization. Since v21.154.0 the fixed block is added once per turn (Claude `prompt_id`, Codex `turn_id`): a message that arrives mid-turn gets only the changing notices, and text the user did not write (another session's message, task reports, pasted text next to the user's own words) is not read as an instruction. Since v21.156.0 the memory notices (pending save, archive summaries) go on the turn's first prompt only, whatever `rulesInjectionFrequency` is: answer first on non-execution turns, before other work on execution turns and after a skipped save. Three-field response ending and pressure texts retired v21.113.0 (I083) |
 | `SessionStart` | `load-memory.js` | Session begins (also after compaction) | Loads logbook, summaries, canonical project memory, and active workflow; legacy-only descriptions are copied without overwriting existing data. After compaction (`source: "compact"`) it clears this session's skill flag (Claude Code re-attaches only the first 5,000 tokens of each invoked skill) and logs the compaction — Claude has no PreCompact/PostCompact hooks since v21.125.0 because their output reaches no model. Since v21.153.0 it also keeps a project's runner copy current: changed `runner/` modules are copied, a launcher Crabshell released is replaced, and a launcher the user edited is kept and named once (Codex SessionStart does the same). Since v21.155.0 Claude SessionStart also rewrites the managed rules block of an existing CLAUDE.md when it differs from the installed rules |
 | `PreToolUse` | `adapters/claude/pre-tool-use.js` | Before every tool except Read, Grep and Glob (since v21.153.0) | One process runs every guard in order, each loaded in its own try/catch (a failing guard is skipped; the check runner is `core/dispatch.js`, shared with Codex). Guards are routed by the call's shape — a shell call or a file write — whatever the tool is named (v21.153.0): rerun guard (a declared check run by hand on the files it last passed with is answered from its record; `CRABSHELL_RERUN=1` runs it anyway), completion-controller check preparation, path-guard, web-guard, regressing-guard, docs-guard, log-guard, verification gate (records declared check starts; it no longer blocks `git commit`), the before-run look for declaration hints (since v21.158.0 also: a declared check run by hand is told once to run through the runner so its pass is kept), a commit reminder (v21.158.0: one notice when a `git commit` follows changes the checks have not passed on; never blocks), doc-watchdog notice. A check that records a start stands down after a deny. Denies with exit 0 + `permissionDecision: "deny"` listing every reason (v21.125.0) |
 | `PostToolUse` | `adapters/claude/post-tool-use.js` | After every tool use | One process: counter (auto-save + delta extraction at interval), verification record, completion-controller evidence (shell calls and file writes), declaration hints after a hand-run check (`inputs`, `slow`, `outputs`; an undeclared long command run twice on the same files — v21.153.0), doc-watchdog edit count (file writes), skill flag (Skill, set before the next tool call), and a notice when a read reaches another project's `.crabshell` (v21.125.0) |
@@ -276,7 +276,7 @@ Hook launchers invoke Node directly; `scripts/find-node.sh` is a fallback utilit
 | `PreToolUse` | `adapters/codex/pre-tool-use.js` | Matching local file/shell tools | Applies shared memory path policy, records check starts and blocks commit without a current passing check; the same commit reminder and declaration hints as Claude (v21.158.0) |
 | `PostToolUse` | `adapters/codex/post-tool-use.js` | After Bash, Write, or Edit | Normalizes commands; binds output-only hooks to explicit native transcript exit codes; updates parent and commit evidence with shared content identity |
 | `PreCompact` | `adapters/codex/pre-compact.js` | Before compaction | Emits shared memory/workflow recovery context without writes |
-| `PostCompact` | `adapters/codex/post-compact.js` | After compaction | Restores shared context and runs the shared post-compaction effects (`core/post-compact-effects.js`: pressure notice re-injection reset, compaction log); Claude runs the same effects at SessionStart `compact` |
+| `PostCompact` | `adapters/codex/post-compact.js` | After compaction | Restores shared context and runs the shared post-compaction effects (`core/post-compact-effects.js`: regressing-state note, compaction log); Claude runs the same effects at SessionStart `compact` |
 | `SubagentStart` | `adapters/codex/subagent-start.js` | Child starts | Supplies exact current intent, task, non-goals, references, allowed changes, and observable success |
 | `SubagentStop` | `adapters/codex/stop.js` | Child stops | Records the child result as a claim, never as completion proof |
 | `Stop` | `adapters/codex/stop.js` | Parent attempts completion | Applies the shared parent-evidence and bounded-continuation decision using Codex-native block JSON |
@@ -294,7 +294,7 @@ As of v21.106.0, the dormant behavior-verifier script, prompt, state consumer, f
 
 These defaults are not user-facing configuration knobs. They are centralized in `scripts/shared-context.js`, while `scripts/core/orchestration-policy.js` exposes deterministic helpers for the task contract, question boundary, named-reference resolution, and completion evidence.
 
-**Related:** [Hooks](#hooks), [Configuration](#configuration), and [Pressure System](#pressure-system).
+**Related:** [Hooks](#hooks) and [Configuration](#configuration).
 
 ---
 
@@ -320,55 +320,6 @@ Guards run inside the Claude PreToolUse, PostToolUse and Stop hooks (one process
 
 Guards run automatically via hooks. No configuration needed.
 For Codex, shared path policy, completion control and the edit/commit verification state have native adapters. The document guards remain Claude-only.
-
----
-
-## Pressure System
-
-> **Status v21.113.0 (I083 R4): telemetry-only.** Model-visible pressure messages (L1/L2/L3 texts) and tool blocking (`pressure-guard.js`) are retired — surfacing pressure gauges to the model causes context-anxiety-type degradation per current model guidance. The counters below are still tracked in `memory-index.json` for the user's own diagnosis (`/status`), and `봉인해제` / `UNLEASH` still resets them. The description below documents the counters; enforcement paragraphs are historical.
-
-Crabshell tracks three pressure counters (feedbackPressure.level, feedbackPressure.oscillationCount, tooGoodSkepticism.retryCount) in `.crabshell/memory/memory-index.json`. Together they form a graduated response mechanism that restricts tool access when Claude drifts — either via consecutive negative user feedback or via the assistant's own output patterns (reversals, all-None P/O/G).
-
-Pressure is telemetry only on both hosts (the enforcement script `pressure-guard.js` was deleted in v21.130.0; the sycophancy guard restored in v21.166.0 does not read pressure); both hosts use the shared UserPromptSubmit path, so `봉인해제` / `UNLEASH` clears the shared pressure state from either host.
-
-### Three Counters
-
-| Counter | Raised By | Trigger | Reset By |
-|---------|-----------|---------|----------|
-| feedbackPressure.level (0-3) | inject-rules.js @ UserPromptSubmit | User message matches NEGATIVE_PATTERNS (W021: profanity-only) | Positive-feedback decay (3 clean prompts) · `봉인해제` / `UNLEASH` · TaskCreate tool (L1-L2 only) |
-| feedbackPressure.oscillationCount | (no longer updated — its producer, the old sycophancy-guard.js, was deleted v21.130.0; the v21.166.0 guard does not update it) | Assistant response contains REVERSAL_PATTERNS (e.g., "actually, let me", "다시 생각해보니") — **no user input required** | `봉인해제` / `UNLEASH` |
-| tooGoodSkepticism.retryCount | (no longer updated — its producer, the old sycophancy-guard.js, was deleted v21.130.0; the v21.166.0 guard does not update it) | Assistant response contains a P/O/G table where all Gap cells are None/없음/N/A — **no user input required** | Clean P/O/G (Gap ≠ None) in a later Stop · retryCount > 3 overflow · `봉인해제` / `UNLEASH` (originally BAILOUT, renamed v21.79.0) |
-
-**Note:** Two of the three counters (oscillationCount, tooGoodSkepticism.retryCount) rise from the assistant's own output independent of the user. Use `/crabshell:status` to inspect current values.
-
-### Pressure Levels (feedbackPressure.level)
-
-| Level | Name | Trigger | Effect |
-|-------|------|---------|--------|
-| **L0** | Normal | Default state | All tools available |
-| **L1** | Warning | 1 consecutive negative feedback | Warning text injected into context; all tools still available |
-| **L2** | Partial Block | 2 consecutive negative feedbacks | 6 primary tools blocked (Read, Grep, Glob, Bash, Write, Edit); conversation-only tools remain |
-| **L3** | Full Lockdown | 3+ consecutive negative feedbacks | ALL tools blocked; structured self-diagnosis required (What I did wrong / Why it was wrong / What I will do differently); must resolve through conversation only |
-
-### How It Works
-
-- **Detection:** The `inject-rules.js` hook (UserPromptSubmit) analyzes user prompts for negative feedback signals and updates `feedbackPressure.level` in `memory-index.json`. The `sycophancy-guard.js` hook (Stop) independently analyzes assistant output and updates `feedbackPressure.oscillationCount` and `tooGoodSkepticism.retryCount`.
-- **Enforcement:** none since v21.113.0 (the `pressure-guard.js` hook that blocked tools was retired then and deleted in v21.130.0).
-- **Decay:** Positive feedback from the user reduces `feedbackPressure.level` naturally. The assistant-side counters decay only on their own reset paths (see table above).
-- **Exception:** Operations targeting `.crabshell/` or `.claude/` paths are always allowed, even at L3 (so the plugin can still manage its own state).
-
-### Bailout
-
-If tool access is locked at L2 or L3, the user can type one of these keywords to reset the pressure system:
-
-- **`봉인해제`** (Korean)
-- **`UNLEASH`** (English; renamed from `BAILOUT` in v21.79.0 / W021)
-
-Either keyword resets the pressure counters (feedbackPressure.level, consecutiveCount, decayCounter, oscillationCount, and tooGoodSkepticism.retryCount) to zero. The reset runs before question/execution intent gating, so the bare keyword and a keyword embedded in a question both work. On reset, stderr logs `[PRESSURE BAILOUT: reset all 3 counters]` (internal label retained for backward log-compatibility).
-
-This is the **only** way to immediately escape L2/L3 without waiting for natural decay. When you're stuck at L2/L3, Claude will inform you about these keywords.
-
-**Note:** As of v21.77.0, the bailout keyword (then `BAILOUT`, since renamed `UNLEASH` in v21.79.0) also resets `tooGoodSkepticism.retryCount` (previously only `feedbackPressure.*` was reset).
 
 ---
 
@@ -421,6 +372,7 @@ The plugin uses two injection mechanisms:
 | `deltaMinBytes` | 20480 | Queued session input (bytes) before the memory-save notice appears; read from the per-project file (v21.156.0, was fixed) |
 | `memoryRotation.thresholdTokens` | 25000 | Token threshold for logbook.md rotation (with 0.95 safety margin) |
 | `memoryRotation.carryoverTokens` | 2500 | Tokens to keep as carryover after rotation (with 0.95 safety margin) |
+| `searchTools` | built-in list | Search MCP servers web-guard recognizes, matched as whole words of a server name, in the order it asks for them (since v21.172.0). Unset: exa, tavily, brave, serper, perplexity, jina, firecrawl, kagi, searxng, duckduckgo, ddg, websearch, web-search |
 | `webGuard` | "block" | Web guard mode: `block` (WebFetch blocked, WebSearch blocked only when a search MCP is configured), `warn` (never blocks, injects verification warnings), `off` (guard disabled) (v21.114.0) |
 
 ### Orchestration Defaults

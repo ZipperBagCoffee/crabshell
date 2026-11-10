@@ -1,8 +1,8 @@
-# Crabshell Architecture (v21.171.0)
+# Crabshell Architecture (v21.172.0)
 
 ## Overview
 
-Crabshell is a dual-runtime Claude Code/Codex plugin. Both hosts use native hook manifests backed by shared first-turn, memory, workflow, compaction, subagent, command-observation, and parent-completion cores. Claude Code retains automatic SessionEnd capture, pressure telemetry, and deterministic guards; behavioral pressure/sycophancy/scope hooks are unwired. Codex uses synchronous native lifecycle/Interrupt events and explicit memory/document skills. Both runtimes share `.crabshell/` storage without launching or requiring each other. Version 21.126.0 lets verification run only the checks the changed files touch and lets only the project's own check commands unlock commits; version 21.125.0 runs each Claude hook event in one process and blocks only writes into another project's memory folder; version 21.124.0 keeps memory, verification, completion and skill-flag state per session so concurrent sessions do not interfere, and fits SessionStart memory within the host limit.
+Crabshell is a dual-runtime Claude Code/Codex plugin. Both hosts use native hook manifests backed by shared first-turn, memory, workflow, compaction, subagent, command-observation, and parent-completion cores. Claude Code retains automatic SessionEnd capture and deterministic guards; behavioral pressure/sycophancy/scope hooks are unwired. Codex uses synchronous native lifecycle/Interrupt events and explicit memory/document skills. Both runtimes share `.crabshell/` storage without launching or requiring each other. Version 21.126.0 lets verification run only the checks the changed files touch and lets only the project's own check commands unlock commits; version 21.125.0 runs each Claude hook event in one process and blocks only writes into another project's memory folder; version 21.124.0 keeps memory, verification, completion and skill-flag state per session so concurrent sessions do not interfere, and fits SessionStart memory within the host limit.
 
 ## Core Philosophy
 
@@ -71,7 +71,7 @@ Two meta-principles guide Claude's approach to obstacles:
 |  | - Load moc-digest  |  | - Project description: SessionStart only  |  |
 |  | - Active workflow  |  | - Inject prompt-aware memory snippets     |  |
 |  | - Legacy copy only |  | - Execution-only cleanup/rule sync        |  |
-|  +--------------------+  | - Pressure level telemetry (stderr only)  |  |
+|  +--------------------+  |                                           |  |
 |                          | - Detect pending delta → INSTRUCTION      |  |
 |                          | - Detect pending rotation → INSTRUCTION   |  |
 |                          | - Detect regressing → phase reminder      |  |
@@ -175,7 +175,7 @@ Codex marketplace -> installed cache -> .codex-plugin/plugin.json
 - Every Codex hook command resolves its adapter inside a Promise fail-open boundary; synchronous module-load errors and rejected adapter `main()` calls are absorbed with exit 0.
 - SessionStart reads shared memory/workflow context; `getProjectMemoryPath()` may copy a legacy-only description into `.crabshell/project.md` without deleting or overwriting existing files. Explicit memory and document skills execute from installed launchers against the active project. Document launchers require absolute `--project-dir`. Claude's automatic SessionEnd transcript/delta save remains Claude-only.
 - One shared completion state owner requires parent-executed command evidence after a child claim, rejects ambiguous/false-done evidence, and bounds identical automatic failures. Claude retains the doc-watchdog Stop check behind `completion-controller.js`; the behavioral sycophancy/scope checks are unwired. Codex emits the native block decision through its adapter.
-- Pressure telemetry remains; behavioral pressure/scope hooks, fixed-count, role-collapse, and behavior-verifier surfaces remain retired from both runtimes. Claude's sycophancy guard was restored in v21.166.0 (Stop send-back and file-write block for agreement with nothing checked in the turn).
+- The pressure counters were removed in v21.172.0 (nothing read them); behavioral pressure/scope hooks, fixed-count, role-collapse, and behavior-verifier surfaces remain retired from both runtimes. Claude's sycophancy guard was restored in v21.166.0 (Stop send-back and file-write block for agreement with nothing checked in the turn).
 - `codex-doctor.js` probes both CLIs and derives installed, activated, trusted, behavior-verified, degraded, drifted, and unsupported states. Codex desktop app remains a separate unexercised row.
 - `scripts/install-codex.js` remains a legacy/development bridge and is not part of the native default path.
 
@@ -229,7 +229,6 @@ Claude `PostToolUseFailure` is wired to both verification-state and parent-evide
 2. UserPromptSubmit (every prompt)
    └─> inject-rules.js
        ├─> Classify question vs execution through core/turn-intent.js
-       ├─> Explicit 봉인해제 / UNLEASH: reset and persist pressure before the intent gate
        ├─> Other questions: inject read-only shared contract, perform no lifecycle writes
        ├─> First execution prompt: cleanup/reset + MEMORY.md warning
        ├─> Every execution prompt: CLAUDE.md managed block rewritten when it differs (v21.155.0; not in the plugin's own source checkout)
@@ -381,7 +380,7 @@ Regressing retains document-cycle continuation but has no parallel-worker count 
 |--------|------|---------|
 | `find-node.sh` | (fallback utility) | Cross-platform Node.js locator retained for fallback use; direct hooks run `node` from `hooks.json` in v21.99.3 |
 | `load-memory.js` | SessionStart | Load memory hierarchy, MEMORY.md warning, CLAUDE.md managed block when it differs (v21.155.0) |
-| `inject-rules.js` | UserPromptSubmit | Dual injection (CLAUDE.md + additionalContext), Claude-host-only Codex delegation guidance, intent-independent pressure bailout, delta/rotation/regressing detection |
+| `inject-rules.js` | UserPromptSubmit | Dual injection (CLAUDE.md + additionalContext), Claude-host-only Codex delegation guidance, emergency stop, delta/rotation/regressing detection |
 | `counter.js` | PostToolUse, SessionEnd | Main engine: counter, L1 creation, rotation, regressing phase detection |
 | `regressing-guard.js` | PreToolUse (Write\|Edit) | Block direct plan/ticket writes during active regressing; force Skill tool; validate P doc agent sections before ticketing (v21.41.0) |
 | `docs-guard.js` | PreToolUse (Write\|Edit) | Block writes to .crabshell/ D/P/T/I/H subdirectories without active skill flag; block a new `D###_T###` ticket whose discussion has no plan or whose Implementation Details is empty (`core/plan-entry.js`, v21.135.0) |
@@ -392,7 +391,7 @@ Regressing retains document-cycle continuation but has no parallel-worker count 
 | `core/path-policy.js` | shared library | Host-neutral memory path decisions used by Claude and Codex wrappers |
 | `core/shell-writes.js` | shared library | Static Bash analysis: which .crabshell paths a command names and whether each is written (quotes, heredocs, pipelines, redirects, substitutions, interpreter code, powershell/cmd) |
 | `adapters/claude/pre-tool-use.js`, `adapters/claude/post-tool-use.js`, `adapters/claude/dispatch.js`, `core/dispatch.js` | Claude PreToolUse / PostToolUse / PostToolUseFailure (Codex PreToolUse shares `core/dispatch.js`) | One process per event: each check loads its module inside its own try/catch, stdout redirected to stderr while they run, one JSON object out (v21.125.0). Since v21.153.0 checks route by the call's shape (`core/tool-shape.js`: a shell call or a file write, whatever the tool is named); the check runner is `core/dispatch.js` for both hosts and each adapter builds its own output; PreToolUse/PostToolUseFailure match every tool but Read, Grep and Glob |
-| `core/post-compact-effects.js` | shared library | Post-compaction effects: pressure notice re-injection reset and compaction log; Claude runs it at SessionStart(compact), Codex from its PostCompact hook |
+| `core/post-compact-effects.js` | shared library | Post-compaction effects: compaction log and regressing-state note; Claude runs it at SessionStart(compact), Codex from its PostCompact hook |
 | `core/first-turn-context.js`, `core/memory-context.js`, `core/workflow-context.js` | shared libraries | Shared compact turn contract, memory with preserving legacy-description copy, and restart-safe workflow context |
 | `core/compaction-context.js`, `core/subagent-context.js` | shared libraries | Recovery context and bounded task-specific child context for both hosts |
 | `core/command-observation.js`, `core/completion-control.js`, `core/project-state.js`, `core/rerun-guard.js`, `core/declaration-guidance.js` | shared libraries | Declared checks only (manifest `tools`, entries, `wrappers`, environment prefixes) and host-specific results; current-content parent evidence (identity compared only when both sides are known); the runner's project view for hooks, loaded on first use (no runner modules → no judgment: blocking checks do not block, evidence is none); a hand rerun of a check that passed on the same files answered from its record; hints to declare `inputs`/`slow`/`outputs` and repeated undeclared commands (v21.153.0) |
@@ -508,8 +507,6 @@ Save to *.summary.json
 | sessionDelta | Per-session watermarks `{ [sid8]: { seenAt, pendingTs, committedTs } }` (v21.124.0); a delta job snapshots `processedThroughBySession` and finalization commits each session's cutoff |
 | lastL1TranscriptMtime | Legacy project-wide transcript mtime, used only for payloads without a session id (sessions keep theirs in session-state/<sid8>/l1-cursor.json) |
 | lastL1TranscriptOffset | Legacy project-wide byte offset, used only for payloads without a session id and once for sessions predating v21.124.0 |
-| feedbackPressure | Pressure system state: `level` (0-3), `consecutiveCount`, `oscillationCount`, `decayCounter`, `lastDetectedAt` — RMW under index lock |
-| tooGoodSkepticism | Sycophancy guard "too good" P/O/G all-None retry counter: `retryCount` |
 
 ### counter.json Structure (v20.5.0)
 
@@ -564,6 +561,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.172.0 | `inject-rules.js` loses pressure detection and the bailout words (index write only for `rulesInjectionCount`); counter, execution-lifecycle and Codex post-compact lose the resets; `web-guard.js` `searchToolNames()` reads config `searchTools`; setup-project keeps project.md sections |
 | 21.171.0 | `inject-rules.js` stop/bailout/pressure read `userAuthoredText`; removed `verify-guard.js`, `prompts/`, three meta tests, V010, V059 fileAssertions, `classify.js` shouldWarn; rules-text, Codex block, web-guard, regressing-guard and skills reworded generally; agents `model: haiku` |
 | 21.170.0 | `shared-context.js` checklist: four questions before every answer; runner `startOne` records `startMs`/`endMs`/`waitedFor` in `last-run.json`, `output.js` prints an empty selection's time; select-by-use ⑩ and check-cost measure the floor, waits and the longest chain |
 | 21.169.1 | select-by-use ⑩ measures the real run's total time and each chosen check's start-up, waiting and work; "First" lists processes from an operating-system log of one real run; check-cost reports the user's example run before and after |

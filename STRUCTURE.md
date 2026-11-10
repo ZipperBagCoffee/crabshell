@@ -1,10 +1,10 @@
-# Crabshell Plugin Structure (v21.171.0)
+# Crabshell Plugin Structure (v21.172.0)
 
-**Version**: 21.171.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.172.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
-Crabshell is a dual-runtime Claude Code/Codex plugin. Both hosts use native lifecycle hooks backed by shared first-turn, memory, workflow, compaction, subagent, and parent-completion cores. Claude retains automatic SessionEnd capture and pressure telemetry; Codex supplies synchronous native lifecycle and Interrupt events. Both share the D/P/T/I/W/K document system and `.crabshell/` storage. Version 21.127.0 adds the document-type table (`DOC_TYPES`, in `scripts/constants.js` until v21.158.0 moved it to `scripts/core/doc-types.js`), `scripts/core/skill-flag.js` and the lock wrappers in `scripts/core/memory-lock.js`; Version 21.126.0 adds test discovery, the load map and `--changed` to the verification runner; Version 21.125.0 runs each Claude hook event in one process (`scripts/adapters/claude/`) and narrows the path guard to writes (`scripts/core/shell-writes.js`); Version 21.124.0 added per-session state (`scripts/core/session-state.js`, `scripts/core/session-delta.js`) and the SessionStart budget; Version 21.123.0 added the failure/capture/finalization/recovery components listed below.
+Crabshell is a dual-runtime Claude Code/Codex plugin. Both hosts use native lifecycle hooks backed by shared first-turn, memory, workflow, compaction, subagent, and parent-completion cores. Claude retains automatic SessionEnd capture; Codex supplies synchronous native lifecycle and Interrupt events. Both share the D/P/T/I/W/K document system and `.crabshell/` storage. Version 21.127.0 adds the document-type table (`DOC_TYPES`, in `scripts/constants.js` until v21.158.0 moved it to `scripts/core/doc-types.js`), `scripts/core/skill-flag.js` and the lock wrappers in `scripts/core/memory-lock.js`; Version 21.126.0 adds test discovery, the load map and `--changed` to the verification runner; Version 21.125.0 runs each Claude hook event in one process (`scripts/adapters/claude/`) and narrows the path guard to writes (`scripts/core/shell-writes.js`); Version 21.124.0 added per-session state (`scripts/core/session-state.js`, `scripts/core/session-delta.js`) and the SessionStart budget; Version 21.123.0 added the failure/capture/finalization/recovery components listed below.
 
 Codex compatibility is provided in the same repository through a separate `.codex-plugin/plugin.json`, `codex-skills/`, and explicit wrapper scripts. Claude Code and Codex ship from the same repo but activate different manifests; both can share the `.crabshell/` memory and document store.
 
@@ -80,7 +80,7 @@ crabshell/
 │   ├── find-node.sh                         # Fallback Node.js locator utility (v18.0.0, hardened v21.99.3)
 │   ├── counter.js                           # Main engine
 │   ├── load-memory.js                       # Load memory on session start
-│   ├── inject-rules.js                      # Rules injection + intent-independent pressure bailout
+│   ├── inject-rules.js                      # Rules injection, emergency stop, memory and workflow notices
 │   ├── _test-bailout-main.js                # Real-main bailout reset/read-only regression
 │   ├── _test-check-pipeline-wiring.js       # Wiring probe: discover/check/mutation sensitivity on a tmpdir fixture (v21.121.0)
 │   ├── _test-command-observation.js         # Declared commands, actual exits, assertions, and rejected lookalikes
@@ -106,7 +106,7 @@ crabshell/
 │   ├── sycophancy-guard.js                  # Stop + PreToolUse file writes: agreement with nothing checked in the turn is sent back / blocked (restored v21.166.0)
 │   ├── core/path-policy.js                  # Host-neutral memory path policy (v21.104.0)
 │   ├── core/shell-writes.js                 # Static Bash analysis: .crabshell paths named and whether written (v21.125.0)
-│   ├── core/post-compact-effects.js         # Pressure re-injection reset + compaction log; Claude SessionStart(compact), Codex PostCompact (v21.125.0)
+│   ├── core/post-compact-effects.js         # Compaction log and regressing-state note; Claude SessionStart(compact), Codex PostCompact (v21.125.0)
 │   ├── core/codex-app-server.js             # Codex JSON-RPC/CLI capability client (v21.104.0)
 │   ├── core/orchestration-policy.js         # 8-field task contract + parent completion policy (v21.105.0)
 │   ├── core/first-turn-context.js           # Shared compact turn contract
@@ -170,7 +170,6 @@ crabshell/
 │   ├── _test-web-guard.js                   # Web-guard subprocess + unit tests — block/warn/off, MCP detection, fail-open (v21.114.0)
 │   ├── _test-verification-sequence.js       # Verification-sequence unit/integration tests (v21.0.0)
 │   ├── _test-log-guard.js                   # Log-guard unit/integration tests (v21.4.0, v21.11.0)
-│   ├── _test-feedback-detection.js          # Feedback detection + pressure system tests (v21.5.0)
 │   ├── _test-inject-rules.js                # inject-rules.js export + behavioral tests (v21.6.0)
 │   ├── _test-counter.js                     # counter.js export + subprocess + lock + pruning + offset tests (v21.10.0)
 │   ├── doc-watchdog.js                      # Doc-update omission checks: recordEdit/gateEdit/stopReason, in-project files only, per-session record and unfinished INDEX tickets (v21.18.0, v21.125.0, v21.154.0)
@@ -306,7 +305,7 @@ The repository intentionally keeps Claude and Codex runtime surfaces side by sid
 | `scripts/claude-to-agents.js` | Codex | `CLAUDE.md` to `AGENTS.md` conversion |
 | `scripts/install-codex.js` | Claude Code -> Codex | Legacy/development manual bridge; native marketplace installation is the default |
 
-Installing one runtime does not activate the other runtime. Claude and Codex each load their own manifest and native adapters; neither launches or requires the other. Both load shared memory/workflow state and apply parent-completion semantics; a legacy-only project description may be copied to the canonical path during a read. Claude retains automatic SessionEnd capture and pressure telemetry; behavioral pressure/sycophancy/scope hooks are unwired. Fixed-count, role-collapse, and behavior-verifier hooks are retired from both runtimes.
+Installing one runtime does not activate the other runtime. Claude and Codex each load their own manifest and native adapters; neither launches or requires the other. Both load shared memory/workflow state and apply parent-completion semantics; a legacy-only project description may be copied to the canonical path during a read. Claude retains automatic SessionEnd capture; behavioral pressure/sycophancy/scope hooks are unwired. Fixed-count, role-collapse, and behavior-verifier hooks are retired from both runtimes.
 
 Document skills `discussing`, `planning`, `ticketing`, `investigating`, `hotfix`, `knowledge`, and `regressing` each contain `scripts/codex-docs.js`. These small launchers resolve the shared engine from the installed plugin and require `--project-dir` so documents target the consumer project.
 
@@ -372,7 +371,6 @@ UserPromptSubmit hook:
 - `RULES` VERIFICATION: after the last edit, run once the checks that touch what changed and read their output; unchanged inputs are not run again (v21.158.0); the chat report is `"M of N passed"` plus failed items, in plain words (v21.115.0/.1, I085); a check that reruns on changes it does not use, or spends its time starting, waiting or running alone, is a defect, fixed with the verifying skill (select-by-use, check-cost), never with a time target or a count cap (v21.159.0, v21.163.0)
 - Configurable frequency via `rulesInjectionFrequency`
 - Auto-sync rules to CLAUDE.md via `syncClaudeMdRules()` (marker-based; every execution prompt, and SessionStart through `load-memory.js`, when it differs; v21.155.0)
-- Reset and persist all pressure counters when `봉인해제` / `UNLEASH` appears, regardless of question/execution classification (v21.110.1)
 - Detect pending delta / rotation → memory notice from `core/memory-notice.js` on the turn's first prompt: before other work on a work request or after a skipped save, otherwise answer first and run it in the same response; summarizers in the background (v21.156.0)
 - Detect active regressing session → inject phase-specific reminder (v19.23.0)
 - Check ticket statuses for active regressing → inject warning for todo/in-progress tickets (v21.12.0)
@@ -397,7 +395,7 @@ PreToolUse WebFetch/WebSearch guard (v21.114.0, I084 — built-in tools summariz
 ### scripts/core/path-policy.js and scripts/adapters/codex/
 - `path-policy.js` contains the host-neutral path decisions shared with the existing Claude wrapper
 - `adapters/codex/pre-tool-use.js` normalizes the native Codex `PreToolUse` payload and emits `hookSpecificOutput.permissionDecision="deny"`
-- Malformed/unsupported events fail open, and each launcher catches adapter-load or rejected-`main()` failures; the Codex hook config contains synchronous Stop handling but no async, automatic SessionEnd memory, pressure, or verifier handlers
+- Malformed/unsupported events fail open, and each launcher catches adapter-load or rejected-`main()` failures; the Codex hook config contains synchronous Stop handling but no async, automatic SessionEnd memory or verifier handlers
 - `codex-app-server.js` provides the JSON-RPC client used by doctor to query Codex's own plugin/skill/hook interpretation
 
 ### scripts/core/orchestration-policy.js and scripts/run-orchestration-corpus.js
@@ -447,7 +445,6 @@ L1 generation:
 
 2. UserPromptSubmit (every prompt)
    └─> inject-rules.js
-       ├─> Explicit 봉인해제 / UNLEASH: lock, reset, and persist pressure state before intent gating
        ├─> Inject critical rules via additionalContext
        ├─> Check for pending delta (delta_temp.txt exists)
        │   └─> If yes (and !deltaProcessing), on the turn's first prompt: memory notice → Claude runs memory-delta (first on a work request or after a skipped save, else after answering; background summarizers; v21.156.0)
@@ -488,7 +485,7 @@ L1 generation:
    PostToolUseFailure runs only verification record + completion-controller.
 
 5-6. Compaction — no Claude PreCompact/PostCompact hooks since v21.125.0 (their output reaches no model)
-   └─> SessionStart source "compact" → load-memory.js → core/post-compact-effects.js (pressure re-injection reset, compaction log)
+   └─> SessionStart source "compact" → load-memory.js → core/post-compact-effects.js (compaction log)
    Codex keeps adapters/codex/pre-compact.js and post-compact.js.
 
 7. SubagentStart (v21.21.0)
@@ -506,6 +503,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.172.0 | Pressure removed from `scripts/inject-rules.js`, `counter.js`, `core/execution-lifecycle.js`, `post-compact.js`, `skills/status`; tests `_test-feedback-detection`, `_test-bailout-*`, `_test-strip-reminders` removed; `scripts/web-guard.js` `searchTools`; `skills/setup-project` keeps sections |
 | 21.171.0 | Removed `scripts/verify-guard.js`, `scripts/_test-verify-guard.js`, `_test-v020-novel-scope-expansion.js`, `_test-externalization-trap-catalog.js`, `_test-legacy-orchestration-retirement.js`, `prompts/`; `inject-rules.js` reads only the user's text for stop/reset; general wording in `core/rules-text.js`, `web-guard.js`, `regressing-guard.js`, `core/plan-entry.js`, skills |
 | 21.170.0 | `scripts/shared-context.js` (four questions before every answer), `skills/verifying/scripts/runner/main.js` (`startMs`/`endMs`/`waitedFor`), `output.js` (empty selection's time), select-by-use ⑩/"First", check-cost, runner-reuse-output |
 | 21.169.1 | `skills/verifying/references/select-by-use.md` ⑩ and "First", `check-cost.md`: measure the real run's total time and per-check start-up, waiting and work; list processes from an operating-system log of one real run |

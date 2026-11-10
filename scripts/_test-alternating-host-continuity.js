@@ -80,8 +80,6 @@ try {
   fs.writeFileSync(path.join(storageRoot, 'project.md'), 'ALTERNATING_HOST_PROJECT\n');
   fs.writeFileSync(path.join(memoryDir, 'memory-index.json'), JSON.stringify({
     rulesInjectionFrequency: 1,
-    feedbackPressure: { level: 0, consecutiveCount: 0, decayCounter: 0, oscillationCount: 0, lastShownLevel: 0 },
-    tooGoodSkepticism: { retryCount: 0 },
     rotatedFiles: [],
   }, null, 2));
   fs.writeFileSync(path.join(projectRoot, 'CLAUDE.md'), '# Alternating host fixture\n');

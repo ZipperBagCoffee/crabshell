@@ -609,64 +609,19 @@ test('SUBPROCESS check: counter below interval does not reset', function() {
 });
 
 // ============================================================
-// 10. Subprocess: check — TaskCreate pressure reset
+// 10. Subprocess: check — TaskCreate
 // ============================================================
-test('SUBPROCESS check: TaskCreate resets pressure to L0', function() {
+// D169: TaskCreate counts like any other tool call; below the save interval it leaves
+// memory-index.json as it was.
+test('SUBPROCESS check: TaskCreate counts like any tool and leaves the index alone', function() {
   const { tmpDir, memDir } = setupProject();
   try {
-    fs.writeFileSync(path.join(memDir, 'memory-index.json'), JSON.stringify({
-      version: 1, current: 'logbook.md', rotatedFiles: [], stats: { totalRotations: 0 },
-      feedbackPressure: { level: 2, consecutiveCount: 3, decayCounter: 0, lastDetectedAt: new Date().toISOString() }
-    }));
-    runCheck(tmpDir, { tool_name: 'TaskCreate', session_id: 'test5678efgh' });
-    const idx = JSON.parse(fs.readFileSync(path.join(memDir, 'memory-index.json'), 'utf8'));
-    assertEqual(idx.feedbackPressure.level, 0, 'pressure level');
-    assertEqual(idx.feedbackPressure.consecutiveCount, 0, 'consecutiveCount');
-    assertEqual(idx.feedbackPressure.decayCounter, 0, 'decayCounter');
-  } finally {
-    cleanupDir(tmpDir);
-  }
-});
-
-test('SUBPROCESS check: TaskCreate with no pressure no crash', function() {
-  const { tmpDir, memDir } = setupProject();
-  try {
+    const indexPath = path.join(memDir, 'memory-index.json');
+    const indexBefore = fs.readFileSync(indexPath, 'utf8');
     runCheck(tmpDir, { tool_name: 'TaskCreate', session_id: 'test5678efgh' });
     const data = { counter: readSessionCounter(memDir, 'test5678efgh') };
     assertEqual(data.counter, 1, 'counter increments');
-  } finally {
-    cleanupDir(tmpDir);
-  }
-});
-
-test('SUBPROCESS check: TaskCreate with L3 pressure does NOT reset (level stays at 3)', function() {
-  const { tmpDir, memDir } = setupProject();
-  try {
-    fs.writeFileSync(path.join(memDir, 'memory-index.json'), JSON.stringify({
-      version: 1, current: 'logbook.md', rotatedFiles: [], stats: {},
-      feedbackPressure: { level: 3, consecutiveCount: 5, decayCounter: 2, lastDetectedAt: '2026-01-01' }
-    }));
-    runCheck(tmpDir, { tool_name: 'TaskCreate', session_id: 'testpressure' });
-    const idx = JSON.parse(fs.readFileSync(path.join(memDir, 'memory-index.json'), 'utf8'));
-    assertEqual(idx.feedbackPressure.level, 3, 'level must stay at 3 — L3 blocks TaskCreate reset');
-    assertEqual(idx.feedbackPressure.consecutiveCount, 5, 'consecutiveCount must be unchanged');
-    assertEqual(idx.feedbackPressure.decayCounter, 2, 'decayCounter must be unchanged');
-  } finally {
-    cleanupDir(tmpDir);
-  }
-});
-
-test('SUBPROCESS check: TaskCreate with pressure.level=0 is no-op', function() {
-  const { tmpDir, memDir } = setupProject();
-  try {
-    fs.writeFileSync(path.join(memDir, 'memory-index.json'), JSON.stringify({
-      version: 1, current: 'logbook.md', rotatedFiles: [], stats: {},
-      feedbackPressure: { level: 0, consecutiveCount: 0, decayCounter: 0 }
-    }));
-    runCheck(tmpDir, { tool_name: 'TaskCreate', session_id: 'testnopress' });
-    // Should not modify anything (level is already 0, guard: level > 0)
-    const idx = JSON.parse(fs.readFileSync(path.join(memDir, 'memory-index.json'), 'utf8'));
-    assertEqual(idx.feedbackPressure.level, 0, 'level unchanged');
+    assertEqual(fs.readFileSync(indexPath, 'utf8'), indexBefore, 'memory-index.json unchanged');
   } finally {
     cleanupDir(tmpDir);
   }

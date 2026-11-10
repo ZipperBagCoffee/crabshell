@@ -25,8 +25,7 @@ async function main(options = {}) {
       try { require('./core/skill-flag').clearSkillActive(projectDir, hookData.session_id); } catch {}
     }
     // Claude has no PostCompact wiring (its output reaches no model); its effects
-    // run here: the next prompt re-injects the pressure notice, and the
-    // compaction is logged.
+    // run here: the compaction is logged.
     try { require('./core/post-compact-effects').runPostCompactEffects(projectDir); } catch {}
   }
   // The project's runner copy follows the installed plugin (D143_T016); only a

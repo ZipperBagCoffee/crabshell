@@ -70,14 +70,6 @@ try {
     deltaReady: false,
     rulesInjectionFrequency: 1,
     rulesInjectionCount: 0,
-    feedbackPressure: {
-      level: 1,
-      consecutiveCount: 1,
-      decayCounter: 0,
-      oscillationCount: 3,
-      lastShownLevel: 1,
-    },
-    tooGoodSkepticism: { retryCount: 2 },
     rotatedFiles: [],
   }, null, 2));
   fs.writeFileSync(path.join(memoryDir, 'delta_temp.txt'), 'STALE_DELTA\n');
@@ -99,12 +91,6 @@ try {
     if (fs.existsSync(path.join(memoryDir, 'skill-active.json'))) throw new Error('stale skill-active.json remains');
   });
 
-  test('execution session preserves per-session pressure reset', () => {
-    const index = JSON.parse(fs.readFileSync(path.join(memoryDir, 'memory-index.json'), 'utf8'));
-    if (index.feedbackPressure.oscillationCount !== 0) throw new Error(`oscillationCount=${index.feedbackPressure.oscillationCount}`);
-    if (index.tooGoodSkepticism.retryCount !== 0) throw new Error(`retryCount=${index.tooGoodSkepticism.retryCount}`);
-  });
-
   test('execution session preserves automatic Claude rule synchronization', () => {
     const claudeMd = fs.readFileSync(path.join(projectRoot, 'CLAUDE.md'), 'utf8');
     if (!claudeMd.includes('CRITICAL RULES')) throw new Error('CLAUDE.md was not synchronized');
@@ -124,28 +110,18 @@ try {
     if (JSON.stringify(markers).includes(projectRoot)) throw new Error('marker name exposes project path');
   });
 
-  const sameSessionIndex = JSON.parse(fs.readFileSync(path.join(memoryDir, 'memory-index.json'), 'utf8'));
-  sameSessionIndex.feedbackPressure.oscillationCount = 7;
-  sameSessionIndex.tooGoodSkepticism = { retryCount: 4 };
-  fs.writeFileSync(path.join(memoryDir, 'memory-index.json'), JSON.stringify(sameSessionIndex, null, 2));
   fs.writeFileSync(path.join(memoryDir, 'skill-active.json'), '{"skill":"current-session"}\n');
   const repeat = run(userPrompt, { hook_event_name: 'UserPromptSubmit', prompt: 'Implement the next requested change.', session_id: 'preservation-session-1' });
 
-  test('same session does not repeat cleanup or erase current-session counters', () => {
+  test('same session does not repeat cleanup', () => {
     if (repeat.status !== 0) throw new Error(repeat.stderr || repeat.stdout);
     if (!fs.existsSync(path.join(memoryDir, 'skill-active.json'))) throw new Error('current-session skill flag was removed');
-    const index = JSON.parse(fs.readFileSync(path.join(memoryDir, 'memory-index.json'), 'utf8'));
-    if (index.feedbackPressure.oscillationCount !== 7) throw new Error(`oscillationCount=${index.feedbackPressure.oscillationCount}`);
-    if (index.tooGoodSkepticism.retryCount !== 4) throw new Error(`retryCount=${index.tooGoodSkepticism.retryCount}`);
   });
 
   const nextSession = run(userPrompt, { hook_event_name: 'UserPromptSubmit', prompt: 'Implement the final requested change.', session_id: 'preservation-session-2' });
-  test('new Claude session runs cleanup and reset again', () => {
+  test('new Claude session runs cleanup again', () => {
     if (nextSession.status !== 0) throw new Error(nextSession.stderr || nextSession.stdout);
     if (fs.existsSync(path.join(memoryDir, 'skill-active.json'))) throw new Error('new-session skill flag cleanup did not run');
-    const index = JSON.parse(fs.readFileSync(path.join(memoryDir, 'memory-index.json'), 'utf8'));
-    if (index.feedbackPressure.oscillationCount !== 0) throw new Error(`oscillationCount=${index.feedbackPressure.oscillationCount}`);
-    if (index.tooGoodSkepticism.retryCount !== 0) throw new Error(`retryCount=${index.tooGoodSkepticism.retryCount}`);
   });
 
   test('question-only Claude lifecycle leaves project, plugin data, and Claude home unchanged', () => {
@@ -189,8 +165,6 @@ try {
     fs.writeFileSync(path.join(codexMemory, 'memory-index.json'), JSON.stringify({
       deltaReady: false,
       rulesInjectionFrequency: 1,
-      feedbackPressure: { level: 0, consecutiveCount: 0, decayCounter: 0, oscillationCount: 5, lastShownLevel: 0 },
-      tooGoodSkepticism: { retryCount: 6 },
       rotatedFiles: [],
     }, null, 2));
     const claudeBefore = fs.readFileSync(path.join(codexProject, 'CLAUDE.md'), 'utf8');
@@ -209,10 +183,6 @@ try {
     if (result.status !== 0) throw new Error(result.stderr || result.stdout);
     if (fs.existsSync(path.join(codexMemory, 'delta_temp.txt'))) throw new Error('Codex stale delta remains');
     if (fs.existsSync(path.join(codexMemory, 'skill-active.json'))) throw new Error('Codex stale skill flag remains');
-    const index = JSON.parse(fs.readFileSync(path.join(codexMemory, 'memory-index.json'), 'utf8'));
-    if (index.feedbackPressure.oscillationCount !== 0 || index.tooGoodSkepticism.retryCount !== 0) {
-      throw new Error('Codex per-session counters were not reset');
-    }
     if (fs.readFileSync(path.join(codexProject, 'CLAUDE.md'), 'utf8') !== claudeBefore) throw new Error('Codex changed CLAUDE.md');
     if (JSON.stringify(treeSnapshot(codexClaudeConfig)) !== JSON.stringify(configBefore)) throw new Error('Codex wrote Claude built-in memory');
     const markers = fs.readdirSync(path.join(codexData, 'session-lifecycle')).filter(file => file.endsWith('.json'));

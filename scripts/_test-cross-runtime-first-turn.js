@@ -68,7 +68,6 @@ try {
   fs.writeFileSync(path.join(projectRoot, '.crabshell', 'memory', 'memory-index.json'), JSON.stringify({
     version: 1,
     current: 'logbook.md',
-    feedbackPressure: { level: 2, consecutiveCount: 2, decayCounter: 0, lastShownLevel: 2 },
   }, null, 2));
   fs.writeFileSync(path.join(projectRoot, '.crabshell', 'memory', 'regressing-state.json'), JSON.stringify({
     active: true,
