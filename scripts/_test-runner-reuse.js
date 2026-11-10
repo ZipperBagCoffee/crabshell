@@ -329,12 +329,13 @@ for (const partial of [false, true]) check(`mixed ${partial ? 'partial' : 'full'
   const testB = path.join(dir, 'scripts/_test-B.js');
   fs.appendFileSync(testB, '\nprocess.exit(1);\n');
   write(dir, 'input.data', 'z');
-  // D143: --changed runs the faster check first and stops at the first failure, so the
-  // recorded times are fixed here to run the passing A before the failing B.
+  // D143: --changed runs the faster check first. D170: the run goes on after a failure, so the
+  // recorded times are fixed here to run the failing B before the passing A — A's pass, after
+  // B failed, must still be recorded.
   if (partial) {
     const map = readJson(mapFile(dir));
-    map.entries.A.lastDurationMs = 1; map.entries.B.lastDurationMs = 60000;
-    map.entries.A.durations = [1]; map.entries.B.durations = [60000]; // D143_T011: order by median pass time
+    map.entries.A.lastDurationMs = 60000; map.entries.B.lastDurationMs = 1;
+    map.entries.A.durations = [60000]; map.entries.B.durations = [1]; // D143_T011: order by median pass time
     fs.writeFileSync(mapFile(dir), JSON.stringify(map));
   }
   const args = partial ? ['--changed', '--no-fail-before'] : [];
@@ -345,7 +346,7 @@ for (const partial of [false, true]) check(`mixed ${partial ? 'partial' : 'full'
   assert.equal(after.entries.B.passedAt, before.entries.B.passedAt);
   assert.deepEqual(after.entries.B.files, before.entries.B.files);
   assert(Number.isFinite(Date.parse(after.entries.B.lastFailedAt)));
-  assert.match(failure.stderr, /1 failed check\(s\) will run again on the next --changed: B/);
+  assert.match(failure.stderr, /1 failed: B — after the fix, rerun only these: node \S+ --failed; once they pass, run --changed once\./);
   const countA = counter(dir); const countB = counter(dir, 'B'); const next = run(dir);
   assert.equal(next.results[0].reused, true); assert.equal(counter(dir), countA); assert.equal(counter(dir, 'B'), countB + 1);
 });
@@ -874,6 +875,22 @@ for (const [name, env] of [['failing', { COVER_FAIL: '1' }], ['timing out', { CO
     assert(counter(dir, 'A') > before); assert.match(result.stdout, /\(ran 2\)/);
   });
 }
+// D170: a covering check failing in a --changed run no longer stops it, so the covered check,
+// chosen too, runs itself instead of being left unrun.
+check('covering check failing in a --changed run lets the chosen covered check run itself', () => {
+  const dir = coverageFixture('coverage-changed-failing');
+  assert.equal(run(dir, ['--no-reuse']).status, 0);
+  // Both A and B read input.data, so both are chosen and A waits for B.
+  write(dir, 'input.data', 'changed');
+  const before = counter(dir, 'A');
+  const result = run(dir, ['--changed'], { COVER_FAIL: '1' });
+  assert.equal(result.status, 1);
+  const [covered, covering] = ['A', 'B'].map(id => result.results.find(item => item.id === id) || {});
+  assert.equal(covering.status, 'FAIL');
+  assert.equal(covered.status, 'PASS'); assert(!covered.coveredBy); assert(!covered.reused);
+  assert.equal(counter(dir, 'A'), before + 1);
+  assert.doesNotMatch(result.stdout, /Stopped after/);
+});
 check('covering check absent from selection leaves the child runnable', () => {
   const dir = coverageFixture('coverage-absent');
   assert.equal(run(dir, ['--no-reuse']).status, 0);

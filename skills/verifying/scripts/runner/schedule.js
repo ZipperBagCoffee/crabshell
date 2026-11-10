@@ -2,13 +2,13 @@
 // When each chosen check starts (D143 §4, D151_T001): one at a time, or side by side
 // within `jobs` and the CPUs, keeping an exclusive check alone, a `group` in turn, and a
 // check after the checks it waits for (waitsFor: an index, a list of them, or undefined — the
-// check that covers it, the gates of a check narrowed by its report). Side by side, checks
+// check that covers it, the gates of a check narrowed by its report, the checks writing what it
+// reads (D164)). Side by side, checks
 // start one at a time: the next one starts only after a check finishes or `startSpacingMs` has passed, and only
 // while memoryAllows() — so the memory a started check takes is seen before the next start
 // (starting several in one pass let all of them past the memory gate). One check always
-// runs. After a stop no new check starts; the running ones finish.
+// runs. Every chosen check runs; a failure does not stop the run (D170).
 //
-// after.stopped() — a new failure stopped the run; after.skip(index) — not started;
 // after.done(index, result) — finished. start(index) returns a result or its promise.
 
 const os = require('os');
@@ -41,10 +41,7 @@ function runsAlone(entry, record, jobsDeclared) {
 }
 
 function runInOrder({ order, start, after }) {
-  for (const index of order) {
-    if (after.stopped()) { after.skip(index); continue; }
-    after.done(index, start(index));
-  }
+  for (const index of order) after.done(index, start(index));
 }
 
 const pause = ms => new Promise(resolve => setTimeout(() => resolve(null), ms));
@@ -73,23 +70,19 @@ async function runSideBySide({ order, entries, start, after, jobs, waitsFor,
   };
   while (pending.length || running.size) {
     let launched = false;
-    if (after.stopped()) {
-      for (const index of pending.splice(0)) after.skip(index);
-    } else {
-      // The next check in order that can start. A check that must run alone and is ready
-      // holds its place: later checks do not start ahead of it (the order puts likely
-      // failures first), they wait until it has run.
-      let position = -1;
-      for (let at = 0; at < pending.length; at++) {
-        if (fits(pending[at])) { position = at; break; }
-        if (isExclusive(pending[at]) && ready(pending[at])) break;
-      }
-      if (position >= 0) { launch(pending.splice(position, 1)[0]); launched = true; }
+    // The next check in order that can start. A check that must run alone and is ready
+    // holds its place: later checks do not start ahead of it (the order puts likely
+    // failures first, and each failure is printed when it happens), they wait until it has run.
+    let position = -1;
+    for (let at = 0; at < pending.length; at++) {
+      if (fits(pending[at])) { position = at; break; }
+      if (isExclusive(pending[at]) && ready(pending[at])) break;
     }
+    if (position >= 0) { launch(pending.splice(position, 1)[0]); launched = true; }
     if (running.size === 0) {
       // Nothing could start (a covered check whose covering check is not in this run):
       // start the next one by itself rather than wait forever.
-      if (pending.length && !after.stopped()) { launch(pending.shift()); launched = true; }
+      if (pending.length) { launch(pending.shift()); launched = true; }
       else break;
     }
     // Wait for a check to finish; after a start with room for more, also wake when the

@@ -1,5 +1,14 @@
 # Changelog
 
+## [21.173.0] - 2026-11-09
+
+### feat: a failure no longer stops `--changed`; `--failed` reruns only the failed checks
+
+- **Every chosen check runs after a failure.** Another session (Banneret) reported 16 `--changed` runs, about 130 minutes, for one task. Each run stopped at its first new failure, so each unrelated failure cost one more round. Its run log (test-map.json `runs`) held 50 runs and 650 minutes over a day and a half. Gradle `failFast`, pytest `-x` and Jest `--bail` all run everything unless asked to stop. Now one run shows every failure, and each failure is printed on stderr when it happens: `[VERIFY] FAIL <id> at <s>s — the run goes on.`
+- **`--failed`** runs only the checks whose last run failed, like pytest `--lf`. A failing run now ends with `[VERIFY] <n> failed: <ids> — after the fix, rerun only these: node <launcher> --failed; once they pass, run --changed once.` It used to send the reader to `--changed`, which reruns every check that reads the fixed file. With nothing failing, `--failed` prints `No check failed in its last run.` and exits 0; with `--changed` or check ids it is an argument error.
+- Unchanged: the order (failed last time, new, quickest); checks that depend on a failed one (a gate's waiting checks are not run, a covered check runs itself, a reader runs after its writer); the decision code, so no project reruns its checks because of this update.
+- Removed: the summary line "Stopped after a new failure …" and "(the run went on)" in the still-failing line.
+
 ## [21.172.0] - 2026-11-09
 
 ### feat: the pressure counters are gone; web-guard's search tools are a setting; setup-project keeps project.md's sections

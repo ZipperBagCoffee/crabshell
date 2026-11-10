@@ -3,6 +3,7 @@
 // (`retries`), heavy checks are told apart by their median pass time
 // (`slowAfterSeconds`), --changed runs the likeliest failures and the quickest checks
 // first, and `jobs` runs checks side by side within the CPUs and `memoryShare`.
+// D170: a failure does not stop the run; --failed reruns only the failed checks.
 // D151_T006: `riskPaths` brings heavy checks in, flaky checks are left out until their test
 // changes, and a failure that is only a forbidden-file change is run once more.
 // D152: checks chosen by the report of what they used (files, folders, items, cases), the
@@ -169,19 +170,48 @@ try {
       `together=${overlap(together.log, 'A', 'B')}/${together.status} exclusive=${overlap(exclusive.log, 'A', 'B')} grouped=${overlap(grouped.log, 'A', 'B')} tight=${overlap(tight.log, 'A', 'B')} serial=${overlap(oneByOne.log, 'A', 'B')} ${together.stdout.slice(-200)}`);
   });
 
-  attempt('P6 after a new failure no new check starts; the running one finishes and is recorded', () => {
-    const dir = project('p6', [entry('X'), entry('Y'), entry('Z')], {
-      // X runs long enough for Y to start beside it (starts are spaced, D151_T001) before X fails.
-      X: nodeCheck('X', 'src/a.txt', { ms: 600 }), Y: nodeCheck('Y', 'src/a.txt', { ms: 900 }), Z: nodeCheck('Z', 'src/a.txt', { ms: 1500 }),
-    }, { jobs: 2, memoryShare: 1 });
-    run(dir, 'p6');
+  // D170 (approved contract change): a new failure no longer stops a --changed run, one at a
+  // time (jobs 1) or side by side (jobs 2).
+  for (const jobs of [1, 2]) {
+    attempt(`P6 (jobs ${jobs}) two unrelated new failures are both reported by one --changed run, and the passing check is recorded`, () => {
+      const name = `p6-jobs${jobs}`;
+      const dir = project(name, [entry('X'), entry('Y'), entry('Z')], {
+        X: nodeCheck('X', 'src/a.txt', { ms: 300 }), Y: nodeCheck('Y', 'src/a.txt', { ms: 300 }), Z: nodeCheck('Z', 'src/b.txt', { ms: 300 }),
+      }, { jobs, memoryShare: 1 });
+      run(dir, name);
+      flag('X', true); flag('Z', true);
+      write(dir, 'src/a.txt', 'a changed\n');
+      write(dir, 'src/b.txt', 'b changed\n');
+      const both = run(dir, name, ['--changed']);
+      flag('X', false); flag('Z', false);
+      check(`P6 (jobs ${jobs}) two unrelated new failures are both reported by one --changed run, and the passing check is recorded`,
+        both.status !== 0 && both.ran.sort().join(',') === 'X,Y,Z' && /FAIL — 2 of 3 checks failed/.test(both.stdout)
+        && /^FAIL X:/m.test(both.stdout) && /^FAIL Z:/m.test(both.stdout) && !/Stopped after/.test(both.stdout)
+        && /\[VERIFY\] FAIL X at/.test(both.stderr) && /\[VERIFY\] FAIL Z at/.test(both.stderr)
+        && Boolean(record(dir, 'Y').passHistory) && record(dir, 'Y').passHistory.length === 2, `${show(both)} || ${both.stderr.slice(-300)}`);
+    });
+  }
+
+  attempt('P36 --failed runs only the checks whose last run failed; the next --changed reuses that pass; none failed → nothing runs; with --changed → argument error', () => {
+    const dir = project('p36', [entry('X'), entry('Y')], { X: nodeCheck('X', 'src/a.txt'), Y: nodeCheck('Y', 'src/b.txt') });
+    run(dir, 'p36');
+    const none = run(dir, 'p36', ['--failed']);
     flag('X', true);
     write(dir, 'src/a.txt', 'a changed\n');
-    const stopped = run(dir, 'p6', ['--changed']);
+    const failing = run(dir, 'p36', ['--changed']);
     flag('X', false);
-    check('P6 after a new failure no new check starts; the running one finishes and is recorded',
-      stopped.ran.sort().join(',') === 'X,Y' && /Stopped after a new failure \(X\); 1 check not run/.test(stopped.stdout) && Boolean(record(dir, 'Y').passHistory)
-      && record(dir, 'Y').passHistory.length === 2, show(stopped));
+    // Y's input changes too: --failed still runs only X; the next --changed runs Y.
+    write(dir, 'src/b.txt', 'b changed\n');
+    const onlyX = run(dir, 'p36', ['--failed']);
+    const next = run(dir, 'p36', ['--changed']);
+    const mixed = run(dir, 'p36', ['--failed', '--changed']);
+    check('P36 --failed runs only the checks whose last run failed; the next --changed reuses that pass; none failed → nothing runs; with --changed → argument error',
+      none.status === 0 && none.ran.length === 0 && /No check failed in its last run\./.test(none.stdout)
+      && failing.status !== 0 && failing.ran.join(',') === 'X' && /rerun only these: node \.crabshell\/verification\/run-verify\.js --failed/.test(failing.stderr)
+      && onlyX.status === 0 && onlyX.ran.join(',') === 'X'
+      && next.status === 0 && next.ran.join(',') === 'Y'
+      && mixed.status !== 0 && mixed.ran.length === 0 && /--failed runs the checks that failed last time/.test(mixed.stdout),
+      `none=${show(none)} | failing=${show(failing)} | onlyX=${show(onlyX)} | next=${show(next)} | mixed=${show(mixed)}`);
   });
   attempt('P7 jobs above what this machine can run in parallel is capped there', () => {
     const { concurrencyLimit } = require(path.join(path.dirname(RUNNER), 'runner', 'schedule.js'));
@@ -596,6 +626,15 @@ try {
       && passed.status === 0 && sorted(passed) === 'G,IB' && reusedAfterGate.status === 'PASS' && reusedAfterGate.reused === true
       && failed.status !== 0 && blocked.status === 'NOT_RUN' && /gate G did not pass/.test(blocked.message) && !failed.ran.includes('IA'),
       `waiting=${JSON.stringify(waiting.awaitingGate)} selected=${waiting.selected} passed=[${passed.ran}] IA=${JSON.stringify(reusedAfterGate)} failed=[${failed.ran}] blocked=${JSON.stringify(blocked)}`);
+    // D170: in a --changed run the gate fails anew (its input changed) — the check waiting for it
+    // is not run, and an unrelated chosen check (IB, its item changed) still runs.
+    write(dir, 'data/stock.kv', stock(1, '4\nBROKEN'));
+    const changedFail = run(dir, 'p24', ['--changed']);
+    const blockedAgain = (lastRun(dir).find(result => result.id === 'IA') || {});
+    check('P24b a gate failing in a --changed run: the check waiting for it is not run, another chosen check still runs',
+      changedFail.status !== 0 && changedFail.ran.includes('G') && changedFail.ran.includes('IB') && !changedFail.ran.includes('IA')
+      && blockedAgain.status === 'NOT_RUN' && /gate G did not pass/.test(blockedAgain.message) && !/Stopped after/.test(changedFail.stdout),
+      `ran=[${changedFail.ran}] IA=${JSON.stringify(blockedAgain)} ${show(changedFail)}`);
   });
 
   if (hasPython) attempt('P25 a {cases} entry runs again only the cases that used what changed, and the cases that failed', () => {
