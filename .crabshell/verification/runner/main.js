@@ -686,9 +686,11 @@ function main(argv = process.argv.slice(2), options = {}) {
   // runs repeated on work in progress show as a count (a guard run is not counted).
   const head = args.guardRun ? null : currentHead(projectRoot);
   const runs = previousMap && Array.isArray(previousMap.runs) ? [...previousMap.runs] : [];
-  if (!args.guardRun) runs.push({ head, at: startedAt, ran: entries.length, ms: Math.round(Number(process.hrtime.bigint() - started) / 1e6) });
-  const runsSinceCommit = head ? runs.filter(item => item.head === head).length : 0;
-  const runLine = runsSinceCommit ? `Check run ${runsSinceCommit} since the last commit${runsSinceCommit > 1 ? ' — run checks once, after the last edit, before committing' : ''}.` : null;
+  if (!args.guardRun) runs.push({ head, at: startedAt, ran: entries.length, ms: Math.round(Number(process.hrtime.bigint() - started) / 1e6), ...(args.failed ? { failed: true } : {}) });
+  // D170: a --failed run is the fix loop the failing run asks for, so it is kept in the log but
+  // not counted against "run checks once".
+  const runsSinceCommit = head && !args.failed ? runs.filter(item => item.head === head && !item.failed).length : 0;
+  const runLine = runsSinceCommit ? `Check run ${runsSinceCommit} since the last commit${runsSinceCommit > 1 ? ' — run --changed once, after the last edit, before committing; while fixing failures, rerun only them with --failed' : ''}.` : null;
   // A check that waited for a gate that did not pass was not reused; nor was a reader that ran
   // after its writers (D164).
   const gateBlocked = new Set(results.filter(result => result && (result.gateBlocked || ranAfterWriters.has(result.id))).map(result => result.id));

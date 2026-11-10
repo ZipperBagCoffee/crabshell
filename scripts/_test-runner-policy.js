@@ -286,11 +286,20 @@ try {
     const one = run(dir, 'p12', ['--changed']);
     write(dir, 'src/a.txt', 'a changed\n');
     const two = run(dir, 'p12', ['--changed']);
+    // D170: the --failed fix loop is not counted against "run checks once".
+    flag('A', true);
+    write(dir, 'src/a.txt', 'a changed again\n');
+    const three = run(dir, 'p12', ['--changed']);
+    flag('A', false);
+    const fixLoop = run(dir, 'p12', ['--failed']);
+    const four = run(dir, 'p12', ['--changed']);
     commit('second');
     const again = run(dir, 'p12', ['--changed']);
     const count = r => (r.stdout.match(/Check run (\d+) since the last commit/) || [])[1];
-    check('P12 each run says how many check runs there were since the last commit; a commit starts the count again',
-      count(one) === '1' && count(two) === '2' && count(again) === '1', `one=${count(one)} two=${count(two)} again=${count(again)} ${show(again)}`);
+    check('P12 each run says how many check runs there were since the last commit; --failed runs are not counted; a commit starts the count again',
+      count(one) === '1' && count(two) === '2' && /rerun only them with --failed/.test(two.stdout) && count(three) === '3'
+      && fixLoop.ran.join(',') === 'A' && count(fixLoop) === undefined && count(four) === '4' && count(again) === '1',
+      `one=${count(one)} two=${count(two)} three=${count(three)} fixLoop=${count(fixLoop)}/[${fixLoop.ran}] four=${count(four)} again=${count(again)} ${show(again)}`);
   });
   attempt('P13 a changed test that holds its input\'s text word for word is named once; derived, own or short text is not', () => {
     const sentence = 'The quick brown fox jumps over the lazy dog every day';

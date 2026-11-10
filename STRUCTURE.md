@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.173.0)
+# Crabshell Plugin Structure (v21.173.1)
 
-**Version**: 21.173.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.173.1 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -503,6 +503,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.173.1 | `skills/verifying/scripts/runner/main.js` run count skips `--failed`; test `_test-runner-policy.js` P12 |
 | 21.173.0 | `skills/verifying/scripts/runner/{main,schedule,output,args,select}.js`: no stop at a new failure, `--failed`; tests `_test-runner-any-project.js` Y2–Y9, `_test-runner-policy.js` P6 (jobs 1 and 2), P24b, P36, `_test-runner-reuse.js` covering failure in `--changed`, `_test-runner-trace.js` C9g/C9h |
 | 21.172.0 | Pressure removed from `scripts/inject-rules.js`, `counter.js`, `core/execution-lifecycle.js`, `post-compact.js`, `skills/status`; tests `_test-feedback-detection`, `_test-bailout-*`, `_test-strip-reminders` removed; `scripts/web-guard.js` `searchTools`; `skills/setup-project` keeps sections |
 | 21.171.0 | Removed `scripts/verify-guard.js`, `scripts/_test-verify-guard.js`, `_test-v020-novel-scope-expansion.js`, `_test-externalization-trap-catalog.js`, `_test-legacy-orchestration-retirement.js`, `prompts/`; `inject-rules.js` reads only the user's text for stop/reset; general wording in `core/rules-text.js`, `web-guard.js`, `regressing-guard.js`, `core/plan-entry.js`, skills |

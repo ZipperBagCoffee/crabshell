@@ -1,5 +1,12 @@
 # Changelog
 
+## [21.173.1] - 2026-11-09
+
+### fix: `--failed` runs are not counted against "run checks once"
+
+- The count line ("Check run N since the last commit — run checks once …") counted the `--failed` fix loop that 21.173.0's guidance asks for, so the second step of that guidance was told off. `--failed` runs are kept in the run log (marked `failed: true`) but not counted, and the line now reads "— run --changed once, after the last edit, before committing; while fixing failures, rerun only them with --failed".
+- Checked: Crabshell's hooks do not treat `run-verify.js --failed` as the project's check (no completion evidence, no rerun block, no hint), so the closing `--changed` still counts.
+
 ## [21.173.0] - 2026-11-09
 
 ### feat: a failure no longer stops `--changed`; `--failed` reruns only the failed checks
