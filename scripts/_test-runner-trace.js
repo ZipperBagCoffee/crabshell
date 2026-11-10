@@ -202,6 +202,23 @@ try {
     const changed = run(dir, 'c9-changed', ['--changed']);
     check('C9d the writer writes new content: the reader runs in the same run and fails on it',
       changed.status === 1 && changed.ran.join(',') === 'R,W' && /FAIL R/.test(changed.stdout), show(changed));
+    // D170: a --changed run goes on after the writer fails. The writer now fails when its input
+    // says "fail", after writing.
+    write(dir, 'scripts/_test-w.js', `${writer}if (fs.readFileSync(p.join(r, 'src/w.txt'), 'utf8').includes('fail')) process.exit(1);\n`);
+    write(dir, 'src/w.txt', 'ok fail\n');
+    const writerFails = run(dir, 'c9-writer-fails', ['--changed']);
+    const failRun = JSON.parse(fs.readFileSync(path.join(dir, '.crabshell', 'verification', 'last-run.json'), 'utf8'));
+    const [fw, fr] = ['W', 'R'].map(id => failRun.find(item => item.id === id) || {});
+    check('C9g the writer fails after writing new content: the reader still runs after it in the same --changed run',
+      writerFails.status === 1 && fw.status === 'FAIL' && fr.status === 'PASS' && !fr.reused && fr.startMs >= fw.endMs && !/Stopped after/.test(writerFails.stdout),
+      `W=${JSON.stringify(fw)} R=${JSON.stringify(fr)} ${show(writerFails)}`);
+    write(dir, 'src/w.txt', 'ok fail again\n');
+    const sameOutput = run(dir, 'c9-same-output', ['--changed']);
+    const sameRun = JSON.parse(fs.readFileSync(path.join(dir, '.crabshell', 'verification', 'last-run.json'), 'utf8'));
+    const [sw, sr] = ['W', 'R'].map(id => sameRun.find(item => item.id === id) || {});
+    check('C9h the writer fails but writes what it wrote before: the reader is reused after it',
+      sameOutput.status === 1 && sw.status === 'FAIL' && sr.status === 'PASS' && sr.reused === true && sameOutput.ran.join(',') === 'W',
+      `W=${JSON.stringify(sw)} R=${JSON.stringify(sr)} ${show(sameOutput)}`);
   });
 
   attempt('C10 --explain and --dry-run name every input that changed, not only the first', () => {

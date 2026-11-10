@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.172.0)
+# Crabshell Plugin Structure (v21.173.0)
 
-**Version**: 21.172.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.173.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -180,7 +180,7 @@ crabshell/
 │   ├── _test-runner-layout.js               # Launcher + runner/ modules; every derived location (v21.153.0)
 │   ├── _test-runner-fingerprint.js          # A check reruns only when its fingerprint is not among its passes (v21.153.0)
 │   ├── _test-runner-trace.js                # Traced vs unknown inputs: what the tracer saw across child processes (v21.153.0)
-│   ├── _test-runner-policy.js               # Retries, heavy checks, order, stop at a new failure, parallel jobs (v21.153.0)
+│   ├── _test-runner-policy.js               # Retries, heavy checks, order, every check runs after a failure, --failed (v21.173.0), parallel jobs (v21.153.0)
 │   ├── _test-runner-any-project.js          # Non-Node (Python) checks with inputs, slow, and a folder without git (v21.153.0)
 │   ├── _test-runner-state-warning.js        # A check reading Crabshell state is named; outside-snapshot inputs judged by time (v21.153.0)
 │   ├── _test-runner-new-file-input.js       # A changed file that now requires a new file selects its reader (v21.153.0)
@@ -503,6 +503,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.173.0 | `skills/verifying/scripts/runner/{main,schedule,output,args,select}.js`: no stop at a new failure, `--failed`; tests `_test-runner-any-project.js` Y2–Y9, `_test-runner-policy.js` P6 (jobs 1 and 2), P24b, P36, `_test-runner-reuse.js` covering failure in `--changed`, `_test-runner-trace.js` C9g/C9h |
 | 21.172.0 | Pressure removed from `scripts/inject-rules.js`, `counter.js`, `core/execution-lifecycle.js`, `post-compact.js`, `skills/status`; tests `_test-feedback-detection`, `_test-bailout-*`, `_test-strip-reminders` removed; `scripts/web-guard.js` `searchTools`; `skills/setup-project` keeps sections |
 | 21.171.0 | Removed `scripts/verify-guard.js`, `scripts/_test-verify-guard.js`, `_test-v020-novel-scope-expansion.js`, `_test-externalization-trap-catalog.js`, `_test-legacy-orchestration-retirement.js`, `prompts/`; `inject-rules.js` reads only the user's text for stop/reset; general wording in `core/rules-text.js`, `web-guard.js`, `regressing-guard.js`, `core/plan-entry.js`, skills |
 | 21.170.0 | `scripts/shared-context.js` (four questions before every answer), `skills/verifying/scripts/runner/main.js` (`startMs`/`endMs`/`waitedFor`), `output.js` (empty selection's time), select-by-use ⑩/"First", check-cost, runner-reuse-output |

@@ -417,6 +417,12 @@ function coverable(entry, record) {
   return true;
 }
 
+// A check whose last run failed (its failure record stays until an executed pass clears it).
+// --changed runs it first; --failed runs only these (D170).
+function isFailing(record) {
+  return Boolean(record && record.lastFailedAt);
+}
+
 // For each runnable entry: run (with the reason) or reuse its pass. gates: the gate entries
 // (default: those among `entries`; a caller judging one check passes them all).
 // everyTime: false judges a reuse:false or always check like any other — by whether its
@@ -438,7 +444,7 @@ function planRun({ entries, records, olderRecords, ctx, reuse, gates = null, eve
     else if (everyTime && entry.always === true) reason = 'always';
     else if (!reuse) reason = 'all checks requested (--no-reuse)';
     else if (!record) reason = olderRecords ? 'record from an older runner' : 'new check';
-    else if (record.lastFailedAt) reason = 'failed in the last run';
+    else if (isFailing(record)) reason = 'failed in the last run';
     // The fingerprint is worked out only when a decision needs it: to compare with the
     // passes, or to tell a repeated failure from a new one.
     let fingerprint = null;
@@ -604,6 +610,6 @@ module.exports = {
   covers, patternList, inputPatterns, matchesInput, underPattern, inputsCover, crabshellState, exclusion, filesMatching, argumentFiles,
   declarationKey, medianDuration, isSlow, DEFAULT_SLOW_AFTER_SECONDS,
   recordKind, inputsUnknown, reportScope, scopeKey, inScope, keyIdentity, knownItems, refreshedItemHashes, itemFacts, casesToRun, reportedInputs,
-  inputSet, fingerprintOf, changedKeys, inputDifferences, changeReason, DECISION_CHANGED, reasonGroup, coverable, planRun,
+  inputSet, fingerprintOf, changedKeys, inputDifferences, changeReason, DECISION_CHANGED, reasonGroup, coverable, isFailing, planRun,
   readersOf, forgetFiles, reasonAfterWriters, withoutRunnerFiles, gitChangedFiles, gitVisibleFiles, currentHead,
 };

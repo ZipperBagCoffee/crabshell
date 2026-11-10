@@ -32,6 +32,8 @@ function parseArgs(argv) {
     else if (arg === '--no-fail-before') { parsed.failBefore = false; parsed.guardRun = true; }
     else if (arg === '--fail-before') parsed.failBefore = true;
     else if (arg === '--slow') parsed.slow = true;
+    // D170: only the checks whose last run failed, while their fix is being worked on.
+    else if (arg === '--failed') parsed.failed = true;
     // D151: what routine runs would have cost on the last N commits, from the records.
     else if (arg === '--replay') {
       const count = Number(argv[++index]);
@@ -46,6 +48,9 @@ function parseArgs(argv) {
       parsed.error = `Unknown flag: ${arg}`;
       break;
     } else parsed.targetIds.push(arg);
+  }
+  if (!parsed.error && parsed.failed && (parsed.changed || parsed.targetIds.length > 0)) {
+    parsed.error = '--failed runs the checks that failed last time; use it without --changed or check ids';
   }
   return parsed;
 }

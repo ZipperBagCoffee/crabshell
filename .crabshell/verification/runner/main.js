@@ -17,7 +17,7 @@ const { mapPath, writeMap } = require('./store');
 const { selectionView } = require('./project-state');
 const { patternList, inputPatterns, matchesInput, filesMatching, inputSet, fingerprintOf, planRun, coverable, gitChangedFiles, medianDuration, declarationKey, crabshellState, DECISION_CHANGED, currentHead, reasonGroup,
   recordKind, inputsUnknown, reportScope, scopeKey, inScope, keyIdentity, knownItems, reportedInputs, refreshedItemHashes,
-  underPattern, readersOf, forgetFiles, reasonAfterWriters } = require('./select');
+  underPattern, readersOf, forgetFiles, reasonAfterWriters, isFailing } = require('./select');
 const { readReport, hasCases, pathOf, isItemKey } = require('./used-report');
 const { routineChoice, quarantineMark, markHolds } = require('./routine');
 const { forbiddenOnly, recheckForbidden, clearedNotice } = require('./recheck');
@@ -60,10 +60,13 @@ function main(argv = process.argv.slice(2), options = {}) {
   const projectRoot = path.resolve(options.projectRoot || process.env.PROJECT_ROOT || layout.defaultProjectRoot);
   const running = process.env.CRABSHELL_VERIFY_RUNNING;
   const nested = running === '1' || (Boolean(running) && path.resolve(running).toLowerCase() === projectRoot.toLowerCase());
-  const named = args.targetIds.length > 0;
+  // --failed (D170) is a run by name: its names are the checks whose last run failed.
+  const named = args.targetIds.length > 0 || Boolean(args.failed);
   if (nested && !named && !args.dryRun) {
     return failRunner('RUNNER_RECURSION', 'Nested full-manifest verification is blocked. Pass an explicit entry id.');
   }
+  // The command that runs this runner again with a flag, as a person would type it here.
+  const runnerCommand = flag => `node ${insideRoot(projectRoot, layout.launcherFile) || layout.launcherFile} ${flag}`;
   const manifestPath = options.manifestPath || layout.manifestPath;
   let manifest;
   try {
@@ -87,6 +90,13 @@ function main(argv = process.argv.slice(2), options = {}) {
   // runner alone may run the project's itemIdentity command.
   const { previousMap, records: previousRecords, olderRecords, snapshot, ctx } = selectionView({ projectRoot, layout, manifestPath, manifest, runCommands: true });
   const runnable = expanded.filter(entry => entry.type !== 'manual');
+  if (args.failed) {
+    args.targetIds = runnable.filter(entry => isFailing(previousRecords[entry.id])).map(entry => entry.id);
+    if (args.targetIds.length === 0) {
+      console.log('No check failed in its last run.');
+      return 0;
+    }
+  }
   // D151_T001: side by side by default. With no `jobs` setting only recorded traced Node
   // checks share the machine; any other check (a first run, declared inputs, another
   // program such as a game engine that may share a cache) runs alone unless its entry says
@@ -145,7 +155,7 @@ function main(argv = process.argv.slice(2), options = {}) {
     };
     if (!args.slow) {
       Object.assign(plan, routineChoice({ entries: runnable, selected: plan.selected, records: previousRecords, manifest, snapshot, stateOf: slowState, inputsChanged }));
-      plan.slowCommand = `node ${insideRoot(projectRoot, layout.launcherFile) || layout.launcherFile} --slow`;
+      plan.slowCommand = runnerCommand('--slow');
     }
     // D152 P11: checks narrowed by their reports join the run to wait for the gate; they are
     // reused when it passes and not run when it fails.
@@ -200,14 +210,14 @@ function main(argv = process.argv.slice(2), options = {}) {
     executionOrder.push(index);
   };
   // D143: a routine --changed run starts with the check that failed last time, then
-  // checks with no record, then the quickest by median pass time, and stops at a new
-  // failure; a full run keeps the manifest order and runs them all. Results are still
-  // listed in manifest order.
+  // checks with no record, then the quickest by median pass time, so a likely failure is
+  // printed early; it runs every chosen check (D170). A full run keeps the manifest order.
+  // Results are still listed in manifest order.
   const runOrder = entries.map((_, index) => index);
   if (args.changed) {
     const rank = index => {
       const record = previousRecords[entries[index].id];
-      if (record && record.lastFailedAt) return [0, 0];
+      if (isFailing(record)) return [0, 0];
       if (!record) return [1, 0];
       const median = medianDuration(record);
       return [2, Number.isFinite(median) ? median : 0];
@@ -543,19 +553,15 @@ function main(argv = process.argv.slice(2), options = {}) {
     records[entry.id] = record;
     return result;
   };
-  // D143: a --changed run stops at a new failure — a check that passed last time, is new,
-  // or whose inputs (files, entry, program, runner) changed since it last failed. A check
-  // failing again on the inputs it failed with is reported and the run goes on. After a
-  // stop no new check starts (one already running finishes and is recorded); the rest are
-  // reported as not run, keep their earlier records, and are selected again by the next
-  // --changed run. A failure record without a failure key counts as new.
+  // D170: a failure does not stop the run — every chosen check runs, so one run shows every
+  // failure (stopping at the first one cost a whole run per failure). A --changed check
+  // failing again on the inputs it failed with is named apart from a new failure; a failure
+  // record without a failure key counts as new.
   const failedOnSameInputs = entry => {
     const previous = previousRecords[entry.id];
     const fingerprint = planned.fingerprints.get(entry.id);
-    return Boolean(previous && previous.lastFailedAt && previous.failKey && fingerprint && previous.failKey === fingerprint);
+    return Boolean(isFailing(previous) && previous.failKey && fingerprint && previous.failKey === fingerprint);
   };
-  let stoppedAt = null;
-  const notRun = [];
   const stillFailing = [];
   const sameInputs = new Map();
   // The files later checks of this run read from what a check writes (D164).
@@ -585,19 +591,12 @@ function main(argv = process.argv.slice(2), options = {}) {
     });
   };
   const after = {
-    stopped: () => Boolean(stoppedAt),
-    skip: index => {
-      const entry = entries[index];
-      notRun.push(entry.id);
-      results[index] = { id: entry.id, type: entry.type, status: 'NOT_RUN', durationMs: 0,
-        message: `Not run: ${stoppedAt} failed first`, output: '', error: null, failureClass: null };
-    },
     done: (index, result) => {
       results[index] = result;
-      if (args.changed && result.status === 'FAIL') {
-        if (sameInputs.get(index)) stillFailing.push(entries[index].id);
-        else if (!stoppedAt) stoppedAt = entries[index].id;
-      }
+      if (result.status !== 'FAIL') return;
+      if (args.changed && sameInputs.get(index)) stillFailing.push(entries[index].id);
+      // Said when it happens, so whoever reads a long run's output can start on it.
+      if (!args.guardRun) console.error(`[VERIFY] FAIL ${entries[index].id} at ${(elapsedMs() / 1000).toFixed(1)}s — the run goes on.`);
     },
   };
   // D143 §4: `jobs` above 1 runs checks side by side (schedule.js); otherwise one at a time.
@@ -690,11 +689,9 @@ function main(argv = process.argv.slice(2), options = {}) {
   if (!args.guardRun) runs.push({ head, at: startedAt, ran: entries.length, ms: Math.round(Number(process.hrtime.bigint() - started) / 1e6) });
   const runsSinceCommit = head ? runs.filter(item => item.head === head).length : 0;
   const runLine = runsSinceCommit ? `Check run ${runsSinceCommit} since the last commit${runsSinceCommit > 1 ? ' — run checks once, after the last edit, before committing' : ''}.` : null;
-  // A check that waited for a gate that did not pass, or for its writers (D164), and was not
-  // run after a stop was not reused; nor was a reader that ran after its writers.
-  const waited = id => awaiting.has(id) || waitingReaders.has(id);
-  const gateBlocked = new Set(results.filter(result => result && (result.gateBlocked || (waited(result.id) && result.status === 'NOT_RUN')
-    || ranAfterWriters.has(result.id))).map(result => result.id));
+  // A check that waited for a gate that did not pass was not reused; nor was a reader that ran
+  // after its writers (D164).
+  const gateBlocked = new Set(results.filter(result => result && (result.gateBlocked || ranAfterWriters.has(result.id))).map(result => result.id));
   // D152: a reused check whose item files changed elsewhere (its items' identities did not)
   // keeps those files' current hashes, so a hook, which cannot ask itemIdentity, judges it
   // as this run did.
@@ -705,7 +702,8 @@ function main(argv = process.argv.slice(2), options = {}) {
     if (inputHashes) records[id] = { ...records[id], inputHashes };
   }
   writeMap({ manifestPath, startedAt, snapshot: snapshot.serialize(), records, ids: expanded.map(entry => entry.id), runs: runs.slice(-RUN_LOG_LIMIT) });
-  if (failedIds.size) console.error(`[VERIFY] ${failedIds.size} failed check(s) will run again on the next --changed: ${[...failedIds].join(', ')}`);
+  // D170: while the failures are being fixed, only they run again; the wider run comes once, after.
+  if (failedIds.size) console.error(`[VERIFY] ${failedIds.size} failed: ${[...failedIds].join(', ')} — after the fix, rerun only these: ${runnerCommand('--failed')}; once they pass, run --changed once.`);
   if (traceDir) { try { fs.rmSync(traceDir, { recursive: true, force: true }); } catch (_) {} }
   if (plan) {
     // The readers that ran after their writers are checks this run chose, with their reasons.
@@ -750,7 +748,7 @@ function main(argv = process.argv.slice(2), options = {}) {
     if (declared.length) notices.push(`Files another check wrote in this run, read by checks not yet known to read them (their passes were not recorded): ${list(declared.map(file => `${file} (from ${writerOf(file).id})`))} — those checks run once more and from then on wait for their writer.`);
   }
   results.push(...failBefore);
-  return printResults(results, { args, started, resultsPath: layout.resultsPath, plan, selected: entries.length, failBefore, stoppedAt, notRun, stillFailing, notices, runLine });
+  return printResults(results, { args, started, resultsPath: layout.resultsPath, plan, selected: entries.length, failBefore, stillFailing, notices, runLine });
   };
   return then(scheduled, conclude);
 }

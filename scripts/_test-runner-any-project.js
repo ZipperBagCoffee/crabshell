@@ -126,7 +126,7 @@ try {
       changed.status === 0 && changed.ran.join(',') === 'B' && /1 with changed inputs/.test(changed.stdout), `ran=${changed.ran} ${changed.stdout.slice(-300)}`);
   }
 
-  // --- order, stop at the first failure, notices (D143_T004) ---
+  // --- order, every check after a failure and --failed (D170), notices (D143_T004) ---
   {
     const dir = project('order', { withGit: true, runnerSource: current });
     write(dir, 'tools/check_b.py', checkScript('B', 'game/b.py', 0.4));
@@ -151,13 +151,19 @@ try {
     check('Y1 --changed runs the check with the shorter recorded time first', ordered.status === 0 && ordered.ran.join(',') === 'A,B', `ran=${ordered.ran}`);
     write(dir, 'game/a.py', 'A = "bad"\n');
     write(dir, 'game/b.py', 'B = "ok"  # changed again\n');
-    const stopped = run(dir, 'order', ['--changed']);
-    check('Y2 --changed stops at a new failure and says how many checks did not run',
-      stopped.status !== 0 && stopped.ran.join(',') === 'A' && /Stopped after a new failure \(A\); 1 check not run — they run again after the fix\./.test(stopped.stdout),
-      `ran=${stopped.ran} ${stopped.stdout.slice(-300)}`);
+    // D170 (approved contract change): a new failure no longer stops a --changed run.
+    const keptGoing = run(dir, 'order', ['--changed']);
+    check('Y2 --changed runs every chosen check after a new failure and says how to rerun only the failed one',
+      keptGoing.status !== 0 && keptGoing.ran.join(',') === 'A,B' && !/Stopped after/.test(keptGoing.stdout)
+      && /\[VERIFY\] FAIL A at [\d.]+s — the run goes on\./.test(keptGoing.stderr)
+      && /1 failed: A — after the fix, rerun only these: node \.crabshell\/verification\/run-verify\.js --failed; once they pass, run --changed once\./.test(keptGoing.stderr),
+      `ran=${keptGoing.ran} ${keptGoing.stdout.slice(-300)} || ${keptGoing.stderr.slice(-300)}`);
     write(dir, 'game/a.py', 'A = "ok"  # fixed\n');
-    const again = run(dir, 'order', ['--changed']);
-    check('Y3 after the fix the check that did not run is selected and runs', again.status === 0 && again.ran.includes('B'), `ran=${again.ran}`);
+    const onlyFailed = run(dir, 'order', ['--failed']);
+    const afterFix = run(dir, 'order', ['--changed']);
+    check('Y3 --failed runs only the failed check, and the next --changed reuses its pass and the pass B got in the failing run',
+      onlyFailed.status === 0 && onlyFailed.ran.join(',') === 'A' && afterFix.status === 0 && afterFix.ran.length === 0,
+      `failed=[${onlyFailed.ran}] ${onlyFailed.stdout.slice(-200)} || after=[${afterFix.ran}] ${afterFix.stdout.slice(-200)}`);
     fs.writeFileSync(flag, '1');
     const flaky = run(dir, 'order', ['--no-reuse']);
     fs.rmSync(flag, { force: true });
@@ -171,22 +177,22 @@ try {
     const full = run(dir, 'order', ['--no-reuse']);
     check('Y6 a full run does not stop early: every check runs', full.ran.sort().join(',') === 'A,B,F,Q,S', `ran=${full.ran}`);
 
-    // D143_T008: only a new failure stops a --changed run; a check failing again on the
-    // inputs it failed with is reported and the run goes on.
+    // D143_T008: a check failing again on the inputs it failed with is named apart from a
+    // new failure (D170: neither stops the run).
     write(dir, 'game/a.py', 'A = "bad"\n');
     write(dir, 'game/b.py', 'B = "ok"  # changed for Y7\n');
     const firstFail = run(dir, 'order', ['--changed']);
     write(dir, 'game/b.py', 'B = "ok"  # changed again for Y7\n');
     const sameFail = run(dir, 'order', ['--changed']);
-    check('Y7 a check failing again on the inputs it failed with does not stop the run and is named',
-      firstFail.ran.join(',') === 'A' && sameFail.status !== 0 && sameFail.ran.join(',') === 'A,B'
-      && /Still failing on the inputs they failed with last time \(the run went on\): A/.test(sameFail.stdout) && !/Stopped after/.test(sameFail.stdout),
+    check('Y7 a check failing again on the inputs it failed with is named as still failing',
+      firstFail.ran.join(',') === 'A,B' && !/Still failing/.test(firstFail.stdout) && sameFail.status !== 0 && sameFail.ran.join(',') === 'A,B'
+      && /Still failing on the inputs they failed with last time: A/.test(sameFail.stdout) && !/Stopped after/.test(sameFail.stdout),
       `first=${firstFail.ran} same=${sameFail.ran} ${sameFail.stdout.slice(-300)}`);
     write(dir, 'game/a.py', 'A = "still bad"\n');
     write(dir, 'game/b.py', 'B = "ok"  # changed for Y8\n');
     const changedFail = run(dir, 'order', ['--changed']);
-    check('Y8 a failed check whose input changed and that fails again is a new failure and stops the run',
-      changedFail.ran.join(',') === 'A' && /Stopped after a new failure \(A\); 1 check not run — they run again after the fix\./.test(changedFail.stdout),
+    check('Y8 a failed check whose input changed and that fails again is a new failure, not "still failing"',
+      changedFail.status !== 0 && changedFail.ran.join(',') === 'A,B' && /FAIL A/.test(changedFail.stdout) && !/Still failing/.test(changedFail.stdout),
       `ran=${changedFail.ran} ${changedFail.stdout.slice(-300)}`);
     const mapFile = path.join(dir, '.crabshell', 'verification', 'test-map.json');
     const map = JSON.parse(fs.readFileSync(mapFile, 'utf8'));
@@ -195,7 +201,7 @@ try {
     write(dir, 'game/b.py', 'B = "ok"  # changed for Y9\n');
     const legacy = run(dir, 'order', ['--changed']);
     check('Y9 an older failure record without a failure key counts as a new failure',
-      legacy.ran.join(',') === 'A' && /Stopped after a new failure \(A\)/.test(legacy.stdout), `ran=${legacy.ran} ${legacy.stdout.slice(-300)}`);
+      legacy.status !== 0 && legacy.ran.join(',') === 'A,B' && !/Still failing/.test(legacy.stdout), `ran=${legacy.ran} ${legacy.stdout.slice(-300)}`);
   }
 } finally {
   fs.rmSync(base, { recursive: true, force: true });

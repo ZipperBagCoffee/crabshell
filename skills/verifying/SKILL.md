@@ -119,10 +119,11 @@ Read `.crabshell/verification/manifest.json`. If it is missing, say: "No manifes
 
 ```bash
 node .crabshell/verification/run-verify.js --changed  # selects checks touched by changed files
+node .crabshell/verification/run-verify.js --failed   # only checks whose last run failed
 node .crabshell/verification/run-verify.js            # selects every check, only when requested
 ```
 
-For routine updates, run `--changed` once after the last edit. Run every check only when the user asks. If a full run seems needed, ask first and say why. A release runs `--changed --slow`, which keeps passes.
+For routine updates, run `--changed` once after the last edit. Run every check only when the user asks. If a full run seems needed, ask first and say why. A release runs `--changed --slow`, which keeps passes. After a failing run (every chosen check runs; all failures are listed), fix, rerun `--failed` until those pass, then run `--changed` once. Run a long `--changed` in the background: results are written only when the run ends.
 
 A hand rerun of a declared check on the files it last passed with is blocked and answered from its record. Put `CRABSHELL_RERUN=1` before the command to run it anyway. After a hand run, Crabshell hints once each when the entry needs `inputs`, `slow` or `outputs`.
 
