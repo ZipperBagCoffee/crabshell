@@ -1,5 +1,12 @@
 # Changelog
 
+## [21.176.0] - 2026-11-14
+
+### feat: web-guard says what each search server runs on (D174)
+
+- The WebSearch block message labels every search server: `(signed in)` when Claude Code's credential store holds a token for it (a `/mcp` login), `(API key)` when its own configuration carries a key header, environment variable or URL parameter, `(no sign-in or key)` otherwise. Only whether a token is there is read, never its value; when the store cannot be read (some systems keep it in the OS keychain), nothing is said about sign-in.
+- Why: a session read only config files, saw no key and called a signed-in plugin server "keyless"; a login token is not in any config file.
+
 ## [21.175.0] - 2026-11-14
 
 ### feat: a rule keeps personal data out of commits (D173)

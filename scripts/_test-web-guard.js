@@ -362,6 +362,37 @@ const guard = require('./web-guard.js');
 })();
 
 (function () {
+  // D174: the block message says what each search server runs on — signed in through
+  // Claude Code's login (a token in the credential store), an API key in its own
+  // configuration, or neither — without ever showing a token. When the credential store
+  // cannot be read, it says nothing about sign-in.
+  const claude = makeTempDir('webguard-login-');
+  const project = makeTempProject(null);
+  const userConfig = makeUserConfig({
+    exa: { type: 'http', url: 'https://mcp.exa.ai/mcp' },
+    tavily: { type: 'http', url: 'https://mcp.tavily.com/mcp' },
+    'brave-search': { type: 'http', url: 'https://brave.example/mcp', headers: { 'X-API-Key': 'k' } },
+  });
+  const options = { mode: 'block', claudeDir: claude, userConfigPath: userConfig, projectMcpJsonPath: path.join(project, '.mcp.json') };
+  const message = () => (guard.evaluateWebGuard({ tool_name: 'WebSearch', tool_input: { query: 'q' } }, project, options) || {}).block || '';
+  const withoutStore = message();
+  fs.writeFileSync(path.join(claude, '.credentials.json'), JSON.stringify({ mcpOAuth: {
+    'tavily|abc123': { serverName: 'tavily', accessToken: 'SECRET-TOKEN-VALUE', refreshToken: 'SECRET-REFRESH' },
+    'gone|def456': { serverName: 'gone' },
+  } }));
+  const withStore = message();
+  if (withStore.includes('"exa" (no sign-in or key), then "tavily" (signed in), then "brave-search" (API key)')
+    && !/SECRET/.test(withStore)
+    && withoutStore.includes('"exa", then "tavily", then "brave-search" (API key)')) {
+    console.log('PASS: the block message says each search server\'s sign-in or key, shows no token, and says nothing about sign-in without a readable store');
+    passed++;
+  } else {
+    console.log(`FAIL: withStore=${withStore.slice(150, 420)} withoutStore=${withoutStore.slice(150, 400)}`);
+    failed++;
+  }
+})();
+
+(function () {
   const res = guard.evaluateWebGuard(
     { tool_name: 'WebSearch', tool_input: { query: 'q' } },
     'C:/nonexistent-project',

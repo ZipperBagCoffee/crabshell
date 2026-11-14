@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.175.0)
+# Crabshell Plugin Structure (v21.176.0)
 
-**Version**: 21.175.0 | **Author**: ZipperBagCoffee | **License**: MIT
+**Version**: 21.176.0 | **Author**: ZipperBagCoffee | **License**: MIT
 
 ## Overview
 
@@ -504,6 +504,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.176.0 | `scripts/web-guard.js` `signedInServers`/`keyInConfig`/`serverStates`; test `_test-web-guard.js` |
 | 21.175.0 | `scripts/core/rules-text.js` Personal data rule; `CLAUDE.md` rules block |
 | 21.174.0 | `scripts/web-guard.js` plugin MCP servers; runner `wide-selection.js`, `main.js`, `output.js`, `settings.js`, `select.js` `fromChanges`/`projectReasonKind`; tests `_test-web-guard.js`, `_test-runner-wide-selection.js` |
 | 21.173.1 | `skills/verifying/scripts/runner/main.js` run count skips `--failed`; test `_test-runner-policy.js` P12 |

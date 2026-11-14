@@ -137,6 +137,11 @@ const serverIdentity = config => (config.url ? `url ${config.url}` : config.comm
 // switched off for this project (`disabledMcpServers`, `disabledMcpjsonServers`) and a plugin
 // server that repeats a server the user set up. Other projects' servers are not available here.
 function collectMcpServerNames(userConfigPath, projectMcpJsonPath, projectDir, claudeDirPath = claudeDir()) {
+  return collectMcpServers(userConfigPath, projectMcpJsonPath, projectDir, claudeDirPath).map(item => item.name);
+}
+
+// The same servers with their configuration ({ name, config }).
+function collectMcpServers(userConfigPath, projectMcpJsonPath, projectDir, claudeDirPath = claudeDir()) {
   const servers = [];
   const disabled = new Set();
   const userConfig = readJson(userConfigPath);
@@ -161,20 +166,62 @@ function collectMcpServerNames(userConfigPath, projectMcpJsonPath, projectDir, c
       if (!manual.has(serverIdentity(item.config))) servers.push(item);
     }
   } catch { /* unreadable plugin files -> ignore */ }
-  return servers.map(item => item.name).filter(name => !disabled.has(name));
+  return servers.filter(item => !disabled.has(item.name));
 }
 
-// Every search server this project can use, once each, in the default order (ties keep
-// the configuration's order).
-function findSearchMcps(projectDir, overrides) {
+// Every search server this project can use ({ name, config }), once each, in the default
+// order (ties keep the configuration's order).
+function searchServers(projectDir, overrides) {
   const projectMcpJsonPath = (overrides && overrides.projectMcpJsonPath) ||
     path.join(projectDir, '.mcp.json');
-  const names = collectMcpServerNames(userConfigFile(overrides), projectMcpJsonPath, projectDir, claudeDir(overrides));
+  const servers = collectMcpServers(userConfigFile(overrides), projectMcpJsonPath, projectDir, claudeDir(overrides));
   const order = searchToolNames(projectDir);
-  return [...new Set(names)].map((name, index) => ({ name, index, rank: searchRank(name, order) }))
+  const seen = new Set();
+  return servers.filter(item => !seen.has(item.name) && seen.add(item.name))
+    .map((item, index) => ({ ...item, index, rank: searchRank(item.name, order) }))
     .filter(item => item.rank !== -1)
     .sort((a, b) => a.rank - b.rank || a.index - b.index)
-    .map(item => item.name);
+    .map(({ name, config }) => ({ name, config }));
+}
+
+function findSearchMcps(projectDir, overrides) {
+  return searchServers(projectDir, overrides).map(item => item.name);
+}
+
+// The MCP servers signed in through Claude Code's login (`/mcp` OAuth): the names in the
+// credential store that hold a token (only whether one is there is read, never its value).
+// null when the store cannot be read (some systems keep it in the OS keychain instead), so
+// nothing is said about sign-in then (D174).
+function signedInServers(claudeDirPath) {
+  const store = readJson(path.join(claudeDirPath, '.credentials.json'));
+  if (!store) return null;
+  const logins = isObject(store.mcpOAuth) ? store.mcpOAuth : {};
+  const names = new Set();
+  for (const [key, entry] of Object.entries(logins)) {
+    if (isObject(entry) && (entry.accessToken || entry.refreshToken)) names.add(String(entry.serverName || key.split('|')[0]));
+  }
+  return names;
+}
+
+// Whether a server's own configuration carries a key: a header, environment variable or URL
+// query parameter named like one (api key, authorization, token) with a value.
+const KEY_NAME = /api[-_]?key|authorization|token/i;
+function keyInConfig(config) {
+  const named = object => isObject(object) && Object.entries(object).some(([name, value]) => KEY_NAME.test(name) && Boolean(value));
+  if (named(config.headers) || named(config.env)) return true;
+  try { return [...new URL(String(config.url || '')).searchParams].some(([name, value]) => KEY_NAME.test(name) && Boolean(value)); } catch { return false; }
+}
+
+// What each search server runs on, for the block message: signed in, an API key, or neither
+// (only when the credential store could be read); no entry when it cannot be told.
+function serverStates(servers, signedIn) {
+  const states = {};
+  for (const { name, config } of servers) {
+    if (signedIn && signedIn.has(name)) states[name] = 'signed in';
+    else if (keyInConfig(config)) states[name] = 'API key';
+    else if (signedIn) states[name] = 'no sign-in or key';
+  }
+  return states;
 }
 
 // The search server to use first, or null when none is configured.
@@ -197,10 +244,12 @@ function webFetchBlockReason(url) {
     'Cite the source URL beside every factual claim.';
 }
 
-function webSearchBlockReason(serverNames, untried = serverNames) {
+// states: what each server runs on (serverStates), shown beside its name.
+function webSearchBlockReason(serverNames, untried = serverNames, states = {}) {
+  const shown = name => `"${name}"${states[name] ? ` (${states[name]})` : ''}`;
   const use = serverNames.length === 1
-    ? `Use the "${serverNames[0]}" MCP search tools instead (raw results with per-result URLs).`
-    : `Use the configured MCP search tools instead (raw results with per-result URLs), in this order unless your instructions rank them differently: ${serverNames.map(name => `"${name}"`).join(', then ')}. Move to the next one when a tool is unavailable, hits its rate limit or finds too little.`;
+    ? `Use the ${shown(serverNames[0])} MCP search tools instead (raw results with per-result URLs).`
+    : `Use the configured MCP search tools instead (raw results with per-result URLs), in this order unless your instructions rank them differently: ${serverNames.map(shown).join(', then ')}. Move to the next one when a tool is unavailable, hits its rate limit or finds too little.`;
   const lastResort = `Built-in WebSearch is allowed in this turn as the last resort once each of them has been tried (and any other route your instructions name before it); not tried yet: ${untried.map(name => `"${name}"`).join(', ')}.`;
   return `Crabshell web-guard: built-in WebSearch summarizes results via a small model and loses source attribution. ${use} ${lastResort} Treat snippets as pointers, not evidence — fetch important pages before citing them.`;
 }
@@ -248,10 +297,11 @@ function evaluateWebGuard(hookData, projectDir, overrides) {
   // Machines without one keep the built-in search (degraded to warn) — never
   // leave a user with no search path at all. D161: once this turn has called every
   // configured search MCP, the built-in search runs as the last resort.
-  const searchMcps = findSearchMcps(projectDir, overrides);
+  const servers = searchServers(projectDir, overrides);
+  const searchMcps = servers.map(item => item.name);
   if (mode === 'block' && searchMcps.length) {
     const untried = untriedSearchMcps(searchMcps, currentTurn(hookData.transcript_path));
-    return untried.length ? { block: webSearchBlockReason(searchMcps, untried) } : { warn: WEBSEARCH_LAST_RESORT_CONTEXT };
+    return untried.length ? { block: webSearchBlockReason(searchMcps, untried, serverStates(servers, signedInServers(claudeDir(overrides)))) } : { warn: WEBSEARCH_LAST_RESORT_CONTEXT };
   }
   return { warn: WEBSEARCH_WARN_CONTEXT };
 }
@@ -280,4 +330,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { evaluateWebGuard, findSearchMcp, findSearchMcps, getMode, searchToolNames, sanitizeUrl, collectMcpServerNames, pluginServers, enabledPluginKeys, serverInToolName, untriedSearchMcps };
+module.exports = { evaluateWebGuard, findSearchMcp, findSearchMcps, getMode, searchToolNames, sanitizeUrl, collectMcpServerNames, pluginServers, enabledPluginKeys, signedInServers, keyInConfig, serverStates, serverInToolName, untriedSearchMcps };

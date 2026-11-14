@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.175.0)
+# Crabshell Architecture (v21.176.0)
 
 ## Overview
 
@@ -561,6 +561,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.176.0 | `web-guard.js` reads the credential store's `mcpOAuth` names (token presence only) and each server's key settings to label the block message |
 | 21.175.0 | `core/rules-text.js` RULES gains the Personal data line (ADDITIONAL RULES) |
 | 21.174.0 | `web-guard.js` `pluginServers()`/`enabledPluginKeys()` add enabled plugins' MCP servers as Claude Code loads them, servers Claude Code does not start are left out, `searchRank()` takes an exact `searchTools` name first, `serverInToolName()` matches the same server only; runner `wide-selection.js` `wideSelection()` |
 | 21.173.1 | `runner/main.js`: `--failed` runs logged with `failed: true` and left out of the runs-since-commit count |
