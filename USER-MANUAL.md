@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.174.0)
+# Crabshell User Manual (v21.175.0)
 
 ## Why Do You Need This?
 
@@ -337,6 +337,7 @@ The plugin automatically manages a rules section in your project's `CLAUDE.md`:
 ```
 
 - **Above the line**: Auto-managed by the plugin. Compared with the installed rules at every session start and on every work request, and rewritten when it differs (v21.155.0; session start replaces only an existing marked block and never creates the file). Claude Code reads CLAUDE.md when a session starts, so updated rules apply from the next session. Contains PRINCIPLES, INTERNAL TASK CONTRACT, VERIFICATION, WORKING RULES and ADDITIONAL RULES. In the plugin's own source checkout an installed copy at another path does not rewrite it.
+- **Personal data** (v21.175.0): the rules say nothing that identifies a person goes into anything committed or published (names, emails, account names, home-folder paths, other projects' names, credentials, captured prompts), with generic stand-ins, the host's private commit address, and a staged-diff check before each commit.
 - **Below the line**: Your project-specific content. The plugin never modifies anything below this marker.
 - **Orchestration defaults**: the auto-managed rules and compressed checklist carry the same internal task contract, parallel work for independent parts (since v21.158.0), and parent-owned verification defaults. There is no separate always-loaded agent-count rules file in this repository.
 

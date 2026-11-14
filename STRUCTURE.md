@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.174.0)
+# Crabshell Plugin Structure (v21.175.0)
 
-**Version**: 21.174.0 | **Author**: TaWa | **License**: MIT
+**Version**: 21.175.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -504,6 +504,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.175.0 | `scripts/core/rules-text.js` Personal data rule; `CLAUDE.md` rules block |
 | 21.174.0 | `scripts/web-guard.js` plugin MCP servers; runner `wide-selection.js`, `main.js`, `output.js`, `settings.js`, `select.js` `fromChanges`/`projectReasonKind`; tests `_test-web-guard.js`, `_test-runner-wide-selection.js` |
 | 21.173.1 | `skills/verifying/scripts/runner/main.js` run count skips `--failed`; test `_test-runner-policy.js` P12 |
 | 21.173.0 | `skills/verifying/scripts/runner/{main,schedule,output,args,select}.js`: no stop at a new failure, `--failed`; tests `_test-runner-any-project.js` Y2–Y9, `_test-runner-policy.js` P6 (jobs 1 and 2), P24b, P36, `_test-runner-reuse.js` covering failure in `--changed`, `_test-runner-trace.js` C9g/C9h |

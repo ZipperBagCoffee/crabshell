@@ -1,5 +1,12 @@
 # Changelog
 
+## [21.175.0] - 2026-11-14
+
+### feat: a rule keeps personal data out of commits (D173)
+
+- New rule (ADDITIONAL RULES, so every project's CLAUDE.md rules block gets it): nothing that identifies a person goes into anything committed or published — code, docs, test data, commit messages, commit author. That covers real names, email addresses, account names, home-folder paths, other projects' names, credentials, captured prompts and transcripts. Generic values stand in, commits use the host's private commit address, and the staged diff is checked before each commit. The rules budget check (`_test-rule-wording.js` W6) grows by this rule's 275 characters, since the user asked for it.
+- Why: this repository's public history had held a real name and work email in commit metadata, personal emails in tags, a captured session transcript as test data, this machine's user folder in test files and other projects' names. They were removed and the history was rewritten (D172).
+
 ## [21.174.0] - 2026-11-14
 
 ### feat: web-guard sees plugin MCP servers; a notice names what pulled in most checks (D171)

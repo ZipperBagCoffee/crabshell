@@ -82,8 +82,10 @@ report.check('W3 the checklist runs common sense, the questions before every ans
 
 // D153: the rules block and the per-prompt checklist were cut to these sizes with every
 // condition kept; a later edit that grows them past the budget must cut something else first.
+// D173: a rule the user asks for raises the budget by that rule's own length (Personal data,
+// 275 characters).
 {
-  const budgets = [['W6 the rules block', RULES, 10600], ['W7 the per-prompt checklist', COMPRESSED_CHECKLIST, 2700]];
+  const budgets = [['W6 the rules block', RULES, 10875],['W7 the per-prompt checklist', COMPRESSED_CHECKLIST, 2700]];
   for (const [name, text, limit] of budgets) {
     report.check(`${name} stays within ${limit.toLocaleString('en-US')} characters`, text.length <= limit, String(text.length));
   }
