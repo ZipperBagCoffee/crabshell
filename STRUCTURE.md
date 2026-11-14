@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.173.1)
+# Crabshell Plugin Structure (v21.174.0)
 
-**Version**: 21.173.1 | **Author**: TaWa | **License**: MIT
+**Version**: 21.174.0 | **Author**: TaWa | **License**: MIT
 
 ## Overview
 
@@ -167,7 +167,7 @@ crabshell/
 │   ├── skill-tracker.js                     # Per-session skill flag setter, run inline by the PostToolUse dispatcher (v19.33.0, v21.124.0, v21.125.0)
 │   ├── _test-path-guard.js                  # Path-guard unit tests + shell var resolution tests (v20.0.0, v21.8.0)
 │   ├── _test-sycophancy-guard.js            # Restored sycophancy guard: Stop send-back, write block, exemptions (v21.166.0)
-│   ├── _test-web-guard.js                   # Web-guard subprocess + unit tests — block/warn/off, MCP detection, fail-open (v21.114.0)
+│   ├── _test-web-guard.js                   # Web-guard subprocess + unit tests — block/warn/off, MCP detection, plugin servers (v21.174.0), fail-open (v21.114.0)
 │   ├── _test-verification-sequence.js       # Verification-sequence unit/integration tests (v21.0.0)
 │   ├── _test-log-guard.js                   # Log-guard unit/integration tests (v21.4.0, v21.11.0)
 │   ├── _test-inject-rules.js                # inject-rules.js export + behavioral tests (v21.6.0)
@@ -180,6 +180,7 @@ crabshell/
 │   ├── _test-runner-layout.js               # Launcher + runner/ modules; every derived location (v21.153.0)
 │   ├── _test-runner-fingerprint.js          # A check reruns only when its fingerprint is not among its passes (v21.153.0)
 │   ├── _test-runner-trace.js                # Traced vs unknown inputs: what the tracer saw across child processes (v21.153.0)
+│   ├── _test-runner-wide-selection.js       # The wide-selection notice: what pulled in most checks (v21.174.0)
 │   ├── _test-runner-policy.js               # Retries, heavy checks, order, every check runs after a failure, --failed (v21.173.0), parallel jobs (v21.153.0)
 │   ├── _test-runner-any-project.js          # Non-Node (Python) checks with inputs, slow, and a folder without git (v21.153.0)
 │   ├── _test-runner-state-warning.js        # A check reading Crabshell state is named; outside-snapshot inputs judged by time (v21.153.0)
@@ -251,7 +252,7 @@ crabshell/
 │   ├── (light-workflow retired v21.112.0 — one-pass work records via hotfix)
 │   ├── verifying/SKILL.md            # /crabshell:verifying (schema-v2 behavioral verification; Step 2a wiring inventory v21.121.0)
 │   │   ├── scripts/run-verify.js      # Launcher of the portable verification runner (v21.106.0; split into runner/ v21.153.0)
-│   │   ├── scripts/runner/            # Runner modules: manifest, fingerprint, snapshot, ignored, select, schedule, execute, contract, trace, store, output, install, project-state (v21.153.0); settings (manifest run settings), test-hygiene (copy detector), routine (risk paths, flaky quarantine), recheck (forbidden-file re-check), replay (--replay) (v21.158.0); used-report (reports of what a check used, `itemIdentity`, `{cases}`) (v21.159.0)
+│   │   ├── scripts/runner/            # Runner modules: manifest, fingerprint, snapshot, ignored, select, schedule, execute, contract, trace, store, output, install, project-state (v21.153.0); settings (manifest run settings), test-hygiene (copy detector), routine (risk paths, flaky quarantine), recheck (forbidden-file re-check), replay (--replay) (v21.158.0); used-report (reports of what a check used, `itemIdentity`, `{cases}`) (v21.159.0); wide-selection (what pulled in most checks) (v21.174.0)
 │   │   ├── scripts/released-launchers.json # Every launcher Crabshell released (LF sha256), built by scripts/build-released-launchers.js (v21.153.0)
 │   │   ├── scripts/check-pipeline-wiring.js # Pipeline wiring probe: discover / check --contract (v21.121.0)
 │   │   └── references/                # wiring-inventory, manifest-entries (v21.132.0); fail-before (v21.142.0); runner-reuse-output (v21.146.0); select-by-use (checks that report what they used, v21.159.0); check-cost (making each check cheaper, v21.163.0)
@@ -387,7 +388,7 @@ Path guard (v19.31.0; v21.125.0 write-only blocking). The Claude PreToolUse disp
 ### scripts/web-guard.js
 PreToolUse WebFetch/WebSearch guard (v21.114.0, I084 — built-in tools summarize pages via a small model, "lossy by design" per Anthropic docs):
 - WebFetch: block (exit 2) with a URL-substituted raw-fetch ladder — `trafilatura -u <url> --markdown --links` → `curl -fsSL https://r.jina.ai/<url>` (keyless, JS pages) → plain `curl` (raw). Fallbacks require no API key, so blocking is always safe
-- WebSearch: block only when a configured search MCP exists (scans `~/.claude.json` mcpServers incl. per-project entries + project `.mcp.json` for exa/tavily/brave/serper/etc.; the block message names every one found, exa first, then tavily, unless the instructions rank them differently, v21.165.0); without one, allow with an additionalContext warning ("snippets are pointers — fetch before citing") so machines with no search alternative keep working
+- WebSearch: block only when a configured search MCP exists (scans `~/.claude.json` mcpServers incl. per-project entries + project `.mcp.json` for exa/tavily/brave/serper/etc., then the enabled plugins' servers as `plugin:<plugin>:<server>` from `plugin.json` `mcpServers` or the plugin's `.mcp.json`, v21.174.0; the block message names every one found, exa first, then tavily, unless the instructions rank them differently, v21.165.0); without one, allow with an additionalContext warning ("snippets are pointers — fetch before citing") so machines with no search alternative keep working
 - Modes via `webGuard` in `.crabshell/memory/config.json`: `block` (default) / `warn` / `off`
 - URL sanitization before embedding in suggested commands (strips quotes/backticks/whitespace)
 - CRABSHELL_BACKGROUND bypass + fail-open on all errors (exit 0)
@@ -503,6 +504,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.174.0 | `scripts/web-guard.js` plugin MCP servers; runner `wide-selection.js`, `main.js`, `output.js`, `settings.js`, `select.js` `fromChanges`/`projectReasonKind`; tests `_test-web-guard.js`, `_test-runner-wide-selection.js` |
 | 21.173.1 | `skills/verifying/scripts/runner/main.js` run count skips `--failed`; test `_test-runner-policy.js` P12 |
 | 21.173.0 | `skills/verifying/scripts/runner/{main,schedule,output,args,select}.js`: no stop at a new failure, `--failed`; tests `_test-runner-any-project.js` Y2–Y9, `_test-runner-policy.js` P6 (jobs 1 and 2), P24b, P36, `_test-runner-reuse.js` covering failure in `--changed`, `_test-runner-trace.js` C9g/C9h |
 | 21.172.0 | Pressure removed from `scripts/inject-rules.js`, `counter.js`, `core/execution-lifecycle.js`, `post-compact.js`, `skills/status`; tests `_test-feedback-detection`, `_test-bailout-*`, `_test-strip-reminders` removed; `scripts/web-guard.js` `searchTools`; `skills/setup-project` keeps sections |

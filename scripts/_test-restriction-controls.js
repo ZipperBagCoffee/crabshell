@@ -111,7 +111,8 @@ const stopHook = project => h.runHook(root, 'completion-controller.js', [], { ho
     fs.writeFileSync(configPath, JSON.stringify(config));
     const mcpPath = path.join(root, `wg-mcp-${Math.random().toString(36).slice(2)}.json`);
     if (mcpJson) fs.writeFileSync(mcpPath, JSON.stringify(mcpJson));
-    return web.evaluateWebGuard({ tool_name: 'WebSearch', tool_input: { query: 'q' } }, project, { userConfigPath: configPath, projectMcpJsonPath: mcpPath, mode: 'block' });
+    // D171: plugins' servers count too; an empty configuration folder keeps this machine's out.
+    return web.evaluateWebGuard({ tool_name: 'WebSearch', tool_input: { query: 'q' } }, project, { userConfigPath: configPath, projectMcpJsonPath: mcpPath, claudeDir: path.join(root, 'wg-no-claude-config'), mode: 'block' });
   };
   const blocked = decision => Boolean(decision && decision.block);
   const windowsKey = project.replace(/\//g, '\\');

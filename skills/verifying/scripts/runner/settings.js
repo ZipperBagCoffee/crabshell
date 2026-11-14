@@ -12,6 +12,9 @@ const MANIFEST_SETTINGS = {
   minFreeMemoryMB: 'whole', startSpacingMs: 'whole', copyLiteralMinChars: 'count', riskPaths: 'paths',
   // D152: the project command that prints the fingerprint of every item in the files it is given.
   itemIdentity: 'command',
+  // D171: when the wide-selection notice prints (the share of all checks the changes pulled
+  // in, and the fewest such checks).
+  wideSelectionShare: 'share', wideSelectionMinChecks: 'count',
 };
 
 function validateManifestSettings(manifest) {

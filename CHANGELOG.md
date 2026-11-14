@@ -1,5 +1,13 @@
 # Changelog
 
+## [21.174.0] - 2026-11-14
+
+### feat: web-guard sees plugin MCP servers; a notice names what pulled in most checks (D171)
+
+- web-guard also counts the search servers of enabled Claude Code plugins, read as Claude Code reads them (the plugin's `.mcp.json`, then `plugin.json` `mcpServers` on top) and named as `/mcp` names them (`plugin:<plugin>:<server>`), after the user's own servers; `enabledPlugins` in the user and project settings decides which plugins are on. A server counts as tried only through its own tools, so a keyless `exa` and the signed-in `plugin:exa:exa` are asked for one after the other (before, a call to either marked both tried). Servers Claude Code does not start no longer keep the built-in search blocked: those in `disabledMcpServers`/`disabledMcpjsonServers`, a plugin server that repeats a server you set up, and every plugin server under `CLAUDE_CODE_SKIP_PLUGIN_MCP_SERVERS`. `.claude.json` is read from `CLAUDE_CONFIG_DIR` when it is set. A `searchTools` entry that is exactly a server's name places that server on its own.
+- Runner `wideSelectionShare` (default 0.5) and `wideSelectionMinChecks` (default 10): when what changed or failed last time pulls in more than that share of all checks, the summary, `--explain` and `--dry-run` (`wideSelection`) name what pulled in the most — each changed input, "unknown inputs (any project file)" for checks that use the whole project, or a reason kind such as `failed last time` — with its count. Reported by the OtherProject session (131 of 178 commands chosen with no signal). New checks, a runner change, a changed entry or program, older records, `reuse:false` and `always` do not count. Nothing changes about what runs.
+- select-by-use ⑨: a project's own selector prints the same notice. The verifying skill says a worker runs the checks once, after its last edit: a run in the middle of its edits records failures of a half-done state, which then rerun.
+
 ## [21.173.1] - 2026-11-09
 
 ### fix: `--failed` runs are not counted against "run checks once"

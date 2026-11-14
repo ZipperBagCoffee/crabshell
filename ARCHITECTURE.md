@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.173.1)
+# Crabshell Architecture (v21.174.0)
 
 ## Overview
 
@@ -387,7 +387,7 @@ Regressing retains document-cycle continuation but has no parallel-worker count 
 | `log-guard.js` | PreToolUse (Write\|Edit) | Block a ticket marked done (Execution Results) or verified (every result section, Intent Fidelity included since v21.135.0) in INDEX.md while those sections still hold template text; rows read with `core/index-rows.js` |
 | `verify-guard.js` | deleted (v21.171.0; unwired v21.153.0) | Formerly blocked Final Verification writes until the declared checks ran; unwired because it re-ran the check the work had just run |
 | `path-guard.js` | PreToolUse via `adapters/claude/pre-tool-use.js` (Bash\|Write\|Edit); Read\|Grep\|Glob notice via `post-tool-use.js` | Block Bash writes into another project's .crabshell (v21.125.0: reads get a notice; prose, patterns, heredoc text, temp folders and unknown variables are not blocked); block Edit on logbook.md; block Write shrink on logbook.md (v20.6.0); block direct skill-flag writes. Runs alone too |
-| `web-guard.js` | PreToolUse (WebFetch\|WebSearch) | Block WebFetch (small-model summarization, lossy by design) with URL-substituted raw-fetch redirect (trafilatura → r.jina.ai → curl); block WebSearch only when a search MCP is configured in ~/.claude.json or .mcp.json, naming every one found (exa first, then tavily, v21.165.0), else allow with snippet-verification warning; modes block/warn/off via `webGuard` config (v21.114.0, I084) |
+| `web-guard.js` | PreToolUse (WebFetch\|WebSearch) | Block WebFetch (small-model summarization, lossy by design) with URL-substituted raw-fetch redirect (trafilatura → r.jina.ai → curl); block WebSearch only when a search MCP is configured in ~/.claude.json, .mcp.json or an enabled plugin (v21.174.0), naming every one found (exa first, then tavily, v21.165.0), else allow with snippet-verification warning; modes block/warn/off via `webGuard` config (v21.114.0, I084) |
 | `core/path-policy.js` | shared library | Host-neutral memory path decisions used by Claude and Codex wrappers |
 | `core/shell-writes.js` | shared library | Static Bash analysis: which .crabshell paths a command names and whether each is written (quotes, heredocs, pipelines, redirects, substitutions, interpreter code, powershell/cmd) |
 | `adapters/claude/pre-tool-use.js`, `adapters/claude/post-tool-use.js`, `adapters/claude/dispatch.js`, `core/dispatch.js` | Claude PreToolUse / PostToolUse / PostToolUseFailure (Codex PreToolUse shares `core/dispatch.js`) | One process per event: each check loads its module inside its own try/catch, stdout redirected to stderr while they run, one JSON object out (v21.125.0). Since v21.153.0 checks route by the call's shape (`core/tool-shape.js`: a shell call or a file write, whatever the tool is named); the check runner is `core/dispatch.js` for both hosts and each adapter builds its own output; PreToolUse/PostToolUseFailure match every tool but Read, Grep and Glob |
@@ -561,6 +561,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.174.0 | `web-guard.js` `pluginServers()`/`enabledPluginKeys()` add enabled plugins' MCP servers as Claude Code loads them, servers Claude Code does not start are left out, `searchRank()` takes an exact `searchTools` name first, `serverInToolName()` matches the same server only; runner `wide-selection.js` `wideSelection()` |
 | 21.173.1 | `runner/main.js`: `--failed` runs logged with `failed: true` and left out of the runs-since-commit count |
 | 21.173.0 | `runner/main.js`, `schedule.js`, `output.js` lose the stop at a new failure (`stoppedAt`, `after.stopped`/`after.skip`); `args.js` `--failed` and `select.js` `isFailing` rerun only the failed checks; a stderr line per failure and a `--failed` line after a failing run; decision code unchanged |
 | 21.172.0 | `inject-rules.js` loses pressure detection and the bailout words (index write only for `rulesInjectionCount`); counter, execution-lifecycle and Codex post-compact lose the resets; `web-guard.js` `searchToolNames()` reads config `searchTools`; setup-project keeps project.md sections |

@@ -35,11 +35,13 @@ function searchToolNames(projectDir) {
   return names.length ? names : DEFAULT_SEARCH_TOOLS;
 }
 
-// A server's place in that order (the first name it matches), or -1 for a server that is
-// not a search server.
+// A server's place in that order: the entry that is exactly its name, else the first name
+// it matches as a whole word (so `searchTools` can place a plugin's `plugin:exa:exa` apart
+// from a user's `exa`), or -1 for a server that is not a search server.
 function searchRank(serverName, names) {
   const lower = String(serverName).toLowerCase();
-  return names.findIndex(name => namePattern(name).test(lower));
+  const exact = names.indexOf(lower);
+  return exact !== -1 ? exact : names.findIndex(name => namePattern(name).test(lower));
 }
 
 // Modes: 'block' (default) | 'warn' | 'off'
@@ -59,37 +61,115 @@ function sameProjectPath(a, b) {
   return process.platform === 'win32' ? clean(a).toLowerCase() === clean(b).toLowerCase() : clean(a) === clean(b);
 }
 
-// Servers this project can use: user-wide, this project's entry in the user config,
-// and the project .mcp.json. Other projects' servers are not available here.
-function collectMcpServerNames(userConfigPath, projectMcpJsonPath, projectDir) {
-  const names = [];
-  try {
-    const raw = fs.readFileSync(userConfigPath, 'utf8');
-    const parsed = JSON.parse(raw);
-    if (parsed && parsed.mcpServers) names.push(...Object.keys(parsed.mcpServers));
-    if (parsed && parsed.projects) {
-      for (const [key, proj] of Object.entries(parsed.projects)) {
-        if (proj && proj.mcpServers && sameProjectPath(key, projectDir)) names.push(...Object.keys(proj.mcpServers));
-      }
+// Claude Code's configuration folder (settings.json, plugins/, and .claude.json when set):
+// CLAUDE_CONFIG_DIR, else ~/.claude (D171).
+function claudeDir(overrides) {
+  return (overrides && overrides.claudeDir) || process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude');
+}
+
+// The user config Claude Code reads: .claude.json in the configuration folder when one is set
+// (CLAUDE_CONFIG_DIR), else in home.
+function userConfigFile(overrides) {
+  const dir = (overrides && overrides.claudeDir) || process.env.CLAUDE_CONFIG_DIR;
+  return (overrides && overrides.userConfigPath) || process.env.CRABSHELL_WEBGUARD_USER_CONFIG
+    || path.join(dir || os.homedir(), '.claude.json');
+}
+
+const readJson = file => readJsonOrDefault(file, null);
+const isObject = value => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+
+// The settings files that apply here, from the user's to the project's local one; each later
+// one overrides the one before.
+function settingsFiles(claudeDirPath, projectDir) {
+  return [path.join(claudeDirPath, 'settings.json'), path.join(projectDir, '.claude', 'settings.json'), path.join(projectDir, '.claude', 'settings.local.json')]
+    .map(readJson).filter(Boolean);
+}
+
+// The plugins switched on for this project (D171).
+function enabledPluginKeys(claudeDirPath, projectDir) {
+  const state = {};
+  for (const settings of settingsFiles(claudeDirPath, projectDir)) {
+    if (isObject(settings.enabledPlugins)) Object.assign(state, settings.enabledPlugins);
+  }
+  return Object.keys(state).filter(key => state[key] === true);
+}
+
+// The servers an MCP file holds: its `mcpServers`, or a top level that is itself the list.
+function serversIn(parsed) {
+  if (!isObject(parsed)) return {};
+  const servers = isObject(parsed.mcpServers) ? parsed.mcpServers : parsed;
+  return Object.fromEntries(Object.entries(servers).filter(([, value]) => isObject(value)));
+}
+
+// The MCP servers of the enabled plugins installed for this project, read as Claude Code
+// reads them: the plugin's root .mcp.json, then plugin.json `mcpServers` on top (the servers,
+// a file, or a list of files and servers). Named as Claude Code names them:
+// plugin:<plugin>:<server>. CLAUDE_CODE_SKIP_PLUGIN_MCP_SERVERS turns them all off.
+function pluginServers(claudeDirPath, projectDir) {
+  if (process.env.CLAUDE_CODE_SKIP_PLUGIN_MCP_SERVERS) return [];
+  const installed = readJson(path.join(claudeDirPath, 'plugins', 'installed_plugins.json'));
+  const plugins = installed && isObject(installed.plugins) ? installed.plugins : {};
+  const found = [];
+  for (const key of enabledPluginKeys(claudeDirPath, projectDir)) {
+    const installs = Array.isArray(plugins[key]) ? plugins[key] : [];
+    const install = installs.find(item => item && item.installPath && (item.scope === 'user' || (item.projectPath && sameProjectPath(item.projectPath, projectDir))));
+    if (!install) continue;
+    const root = install.installPath;
+    let servers = serversIn(readJson(path.join(root, '.mcp.json')));
+    const declared = (readJson(path.join(root, '.claude-plugin', 'plugin.json')) || {}).mcpServers;
+    for (const item of Array.isArray(declared) ? declared : [declared]) {
+      if (typeof item === 'string') servers = { ...servers, ...serversIn(readJson(path.resolve(root, item))) };
+      else if (isObject(item)) servers = { ...servers, ...serversIn({ mcpServers: item }) };
     }
-  } catch { /* unreadable user config -> ignore */ }
+    const plugin = key.split('@')[0];
+    for (const [server, config] of Object.entries(servers)) found.push({ name: `plugin:${plugin}:${server}`, config });
+  }
+  return found;
+}
+
+// What makes two servers the same server for Claude Code: the same address, or the same
+// command with the same arguments.
+const serverIdentity = config => (config.url ? `url ${config.url}` : config.command ? `command ${JSON.stringify([config.command, ...(config.args || [])])}` : null);
+
+// Servers this project can use: user-wide, this project's entry in the user config, the
+// project .mcp.json, then the enabled plugins' servers. Left out are the ones Claude Code does
+// not start, since nobody could call them and the built-in search would stay blocked: those
+// switched off for this project (`disabledMcpServers`, `disabledMcpjsonServers`) and a plugin
+// server that repeats a server the user set up. Other projects' servers are not available here.
+function collectMcpServerNames(userConfigPath, projectMcpJsonPath, projectDir, claudeDirPath = claudeDir()) {
+  const servers = [];
+  const disabled = new Set();
+  const userConfig = readJson(userConfigPath);
+  if (userConfig) {
+    for (const [name, config] of Object.entries(serversIn({ mcpServers: userConfig.mcpServers || {} }))) servers.push({ name, config });
+    for (const [key, proj] of Object.entries(isObject(userConfig.projects) ? userConfig.projects : {})) {
+      if (!proj || !sameProjectPath(key, projectDir)) continue;
+      for (const [name, config] of Object.entries(serversIn({ mcpServers: proj.mcpServers || {} }))) servers.push({ name, config });
+      for (const list of [proj.disabledMcpServers, proj.disabledMcpjsonServers]) if (Array.isArray(list)) list.forEach(name => disabled.add(name));
+    }
+  }
+  const projectFile = readJson(projectMcpJsonPath);
+  if (projectFile && isObject(projectFile.mcpServers)) {
+    for (const [name, config] of Object.entries(serversIn(projectFile))) servers.push({ name, config });
+  }
+  for (const settings of settingsFiles(claudeDirPath, projectDir)) {
+    if (Array.isArray(settings.disabledMcpjsonServers)) settings.disabledMcpjsonServers.forEach(name => disabled.add(name));
+  }
+  const manual = new Set(servers.map(item => serverIdentity(item.config)).filter(Boolean));
   try {
-    const raw = fs.readFileSync(projectMcpJsonPath, 'utf8');
-    const parsed = JSON.parse(raw);
-    if (parsed && parsed.mcpServers) names.push(...Object.keys(parsed.mcpServers));
-  } catch { /* no project .mcp.json -> ignore */ }
-  return names;
+    for (const item of pluginServers(claudeDirPath, projectDir)) {
+      if (!manual.has(serverIdentity(item.config))) servers.push(item);
+    }
+  } catch { /* unreadable plugin files -> ignore */ }
+  return servers.map(item => item.name).filter(name => !disabled.has(name));
 }
 
 // Every search server this project can use, once each, in the default order (ties keep
 // the configuration's order).
 function findSearchMcps(projectDir, overrides) {
-  const userConfigPath = (overrides && overrides.userConfigPath) ||
-    process.env.CRABSHELL_WEBGUARD_USER_CONFIG ||
-    path.join(os.homedir(), '.claude.json');
   const projectMcpJsonPath = (overrides && overrides.projectMcpJsonPath) ||
     path.join(projectDir, '.mcp.json');
-  const names = collectMcpServerNames(userConfigPath, projectMcpJsonPath, projectDir);
+  const names = collectMcpServerNames(userConfigFile(overrides), projectMcpJsonPath, projectDir, claudeDir(overrides));
   const order = searchToolNames(projectDir);
   return [...new Set(names)].map((name, index) => ({ name, index, rank: searchRank(name, order) }))
     .filter(item => item.rank !== -1)
@@ -125,14 +205,15 @@ function webSearchBlockReason(serverNames, untried = serverNames) {
   return `Crabshell web-guard: built-in WebSearch summarizes results via a small model and loses source attribution. ${use} ${lastResort} Treat snippets as pointers, not evidence — fetch important pages before citing them.`;
 }
 
-// Whether a tool name belongs to an MCP server: `mcp__<server>__<tool>`, or
-// `mcp__plugin_<plugin>_<server>__<tool>` for a plugin's server. The host replaces
-// characters a tool name cannot hold with "_".
+// Whether a tool name belongs to an MCP server: `mcp__<server>__<tool>`; a plugin's server
+// `plugin:<plugin>:<server>` gives `mcp__plugin_<plugin>_<server>__<tool>`. The host replaces
+// characters a tool name cannot hold with "_". Only the same server matches, so a user's
+// `exa` and the plugin's `plugin:exa:exa` are tried apart (D171).
 function serverInToolName(serverName, toolName) {
   const match = /^mcp__(.+?)__/.exec(String(toolName || '').toLowerCase());
   if (!match) return false;
   const server = String(serverName).toLowerCase().replace(/[^a-z0-9_-]/g, '_');
-  return match[1] === server || match[1].endsWith(`_${server}`);
+  return match[1] === server;
 }
 
 // The configured search servers this turn has not called yet (D161). Unknown when the
@@ -199,4 +280,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { evaluateWebGuard, findSearchMcp, findSearchMcps, getMode, searchToolNames, sanitizeUrl, collectMcpServerNames, serverInToolName, untriedSearchMcps };
+module.exports = { evaluateWebGuard, findSearchMcp, findSearchMcps, getMode, searchToolNames, sanitizeUrl, collectMcpServerNames, pluginServers, enabledPluginKeys, serverInToolName, untriedSearchMcps };

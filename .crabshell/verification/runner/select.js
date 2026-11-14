@@ -310,6 +310,23 @@ function reasonGroup(reason) {
       : reason === 'record from an older runner' ? 'recorded by an older runner' : reason;
 }
 
+// Reasons that choose a check whatever the change was: a runner change, a changed entry or
+// program (a new Node, for example), a first run, an older record, a check set to run every
+// time, every check asked for, a missing file (D171: the wide-selection notice counts only the
+// checks the changes or last failures pulled in).
+const NOT_FROM_CHANGES = new Set([DECISION_CHANGED, 'entry, program or runner changed', 'new check', 'record from an older runner',
+  'reuse:false', 'always', 'all checks requested (--no-reuse)', 'discovery found no file']);
+function fromChanges(reason) {
+  return Boolean(reason) && !NOT_FROM_CHANGES.has(reason);
+}
+
+// For a check that uses the whole project, or every file outside its report scope: which of
+// the two its reason names (the file it names is only the first that changed), else null.
+function projectReasonKind(reason) {
+  const match = new RegExp(` \\((unknown inputs|${OUTSIDE_SCOPE})\\)$`).exec(String(reason || ''));
+  return match ? match[1] : null;
+}
+
 // The inputs whose identity differs from the one the record holds, in path order.
 function changedKeys(set, record, ctx) {
   const hashes = record && record.inputHashes;
@@ -610,6 +627,6 @@ module.exports = {
   covers, patternList, inputPatterns, matchesInput, underPattern, inputsCover, crabshellState, exclusion, filesMatching, argumentFiles,
   declarationKey, medianDuration, isSlow, DEFAULT_SLOW_AFTER_SECONDS,
   recordKind, inputsUnknown, reportScope, scopeKey, inScope, keyIdentity, knownItems, refreshedItemHashes, itemFacts, casesToRun, reportedInputs,
-  inputSet, fingerprintOf, changedKeys, inputDifferences, changeReason, DECISION_CHANGED, reasonGroup, coverable, isFailing, planRun,
+  inputSet, fingerprintOf, changedKeys, inputDifferences, changeReason, DECISION_CHANGED, reasonGroup, fromChanges, projectReasonKind, coverable, isFailing, planRun,
   readersOf, forgetFiles, reasonAfterWriters, withoutRunnerFiles, gitChangedFiles, gitVisibleFiles, currentHead,
 };

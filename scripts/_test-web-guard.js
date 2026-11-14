@@ -40,6 +40,10 @@ function makeUserConfig(mcpServers) {
   return file;
 }
 
+// D171: web-guard also reads the enabled plugins' servers from Claude Code's configuration
+// folder; every check here gets an empty one, so this machine's plugins do not count.
+process.env.CLAUDE_CONFIG_DIR = makeTempDir('webguard-claude-');
+
 const EMPTY_USER_CONFIG = makeUserConfig({});
 const TAVILY_USER_CONFIG = makeUserConfig({ tavily: { type: 'http', url: 'https://mcp.tavily.com/mcp' } });
 
@@ -288,6 +292,71 @@ const guard = require('./web-guard.js');
     passed++;
   } else {
     console.log(`FAIL: both=${JSON.stringify(both)} one=${JSON.stringify(one)} earlier=${JSON.stringify(earlier)}`);
+    failed++;
+  }
+})();
+
+(function () {
+  // D171: the enabled plugins' MCP servers count, read as Claude Code reads them (the plugin's
+  // .mcp.json, then plugin.json `mcpServers` on top: servers, a file, or a list of both), named
+  // plugin:<plugin>:<server>, after the user's own servers. A server is tried only by its own
+  // tools, so the user's `exa` and the plugin's `plugin:exa:exa` stay apart. Servers Claude Code
+  // does not start do not count: disabled plugins, another project's install, servers switched
+  // off for the project, a plugin server repeating a user server, every plugin server under
+  // CLAUDE_CODE_SKIP_PLUGIN_MCP_SERVERS; nor do broken plugin files.
+  const writeJson = (file, value) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, typeof value === 'string' ? value : JSON.stringify(value)); };
+  const claude = makeTempDir('webguard-plugins-');
+  const pluginRoot = name => path.join(claude, 'plugins', 'cache', 'market', name, '1.0.0');
+  const installs = {};
+  const install = (name, files, extra = {}) => {
+    for (const [rel, value] of Object.entries(files)) writeJson(path.join(pluginRoot(name), rel), value);
+    installs[`${name}@market`] = [{ scope: 'user', installPath: pluginRoot(name), ...extra }];
+  };
+  const manifest = (name, mcpServers) => ({ '.claude-plugin/plugin.json': mcpServers === undefined ? { name } : { name, mcpServers } });
+  install('exa', manifest('exa', { exa: { type: 'http', url: 'https://mcp.exa.ai/mcp?client=claude-code-plugin' } }));
+  install('pathsearch', { ...manifest('pathsearch', './servers.json'), 'servers.json': { mcpServers: { tavily: { type: 'http', url: 'https://mcp.tavily.com/mcp' } } } });
+  install('rootfile', { ...manifest('rootfile'), '.mcp.json': { mcpServers: { 'brave-search': { command: 'b' } } } });
+  install('both', { ...manifest('both', { firecrawl: { command: 'f' } }), '.mcp.json': { perplexity: { command: 'p' } } });
+  install('mixed', { ...manifest('mixed', ['./a.json', { searxng: { command: 's' } }]), 'a.json': { ddg: { command: 'd' } } });
+  install('dupe', manifest('dupe', { duckduckgo: { type: 'http', url: 'https://mcp.exa.ai/mcp' } }));
+  install('offuser', manifest('offuser', { serper: { command: 'x' } }));
+  install('offproject', manifest('offproject', { kagi: { command: 'x' } }));
+  install('elsewhere', manifest('elsewhere', { jina: { command: 'x' } }), { scope: 'project', projectPath: 'C:/another-project' });
+  writeJson(path.join(claude, 'plugins', 'installed_plugins.json'), { version: 2, plugins: installs });
+  const on = ['exa', 'pathsearch', 'rootfile', 'both', 'mixed', 'dupe', 'offuser', 'offproject', 'elsewhere'];
+  writeJson(path.join(claude, 'settings.json'), { enabledPlugins: { ...Object.fromEntries(on.map(name => [`${name}@market`, true])), 'offuser@market': false } });
+  const project = makeTempProject(null);
+  writeJson(path.join(project, '.claude', 'settings.local.json'), { enabledPlugins: { 'offproject@market': false } });
+  const userConfig = path.join(makeTempDir('webguard-cfg-'), 'claude.json');
+  writeJson(userConfig, { mcpServers: { exa: { type: 'http', url: 'https://mcp.exa.ai/mcp' } },
+    projects: { [project]: { disabledMcpServers: ['plugin:pathsearch:tavily'] } } });
+  const options = { claudeDir: claude, projectMcpJsonPath: path.join(project, '.mcp.json'), userConfigPath: userConfig };
+  const found = guard.findSearchMcps(project, options);
+  const expected = 'exa,plugin:exa:exa,plugin:rootfile:brave-search,plugin:both:perplexity,plugin:both:firecrawl,plugin:mixed:searxng,plugin:mixed:ddg';
+  // untriedSearchMcps reads the turn as currentTurn gives it: one { kind, name } per tool call.
+  const turn = names => names.map(name => ({ kind: 'tool', name }));
+  const afterPlugin = guard.untriedSearchMcps(['exa', 'plugin:exa:exa'], turn(['mcp__plugin_exa_exa__web_search_exa']));
+  const afterUser = guard.untriedSearchMcps(['exa', 'plugin:exa:exa'], turn(['mcp__exa__web_search_exa']));
+  // A searchTools entry that is exactly a server's name places it apart from the word match.
+  const placed = makeTempProject({ searchTools: ['exa', 'brave', 'plugin:exa:exa'] });
+  const placedOrder = guard.findSearchMcps(placed, { ...options, projectMcpJsonPath: path.join(placed, '.mcp.json') });
+  process.env.CLAUDE_CODE_SKIP_PLUGIN_MCP_SERVERS = '1';
+  const skipped = guard.findSearchMcps(project, options);
+  delete process.env.CLAUDE_CODE_SKIP_PLUGIN_MCP_SERVERS;
+  // With a configuration folder and no explicit user config, .claude.json is read from it.
+  writeJson(path.join(claude, '.claude.json'), { mcpServers: { tavily: { type: 'http', url: 'https://mcp.tavily.com/mcp' } } });
+  const fromFolder = guard.findSearchMcps(project, { claudeDir: claude, projectMcpJsonPath: path.join(project, '.mcp.json') });
+  writeJson(path.join(claude, 'plugins', 'installed_plugins.json'), '{ broken');
+  let broken = null;
+  try { broken = guard.findSearchMcps(project, options); } catch (error) { broken = error.message; }
+  const envFile = process.env.CRABSHELL_WEBGUARD_USER_CONFIG;
+  if (found.join() === expected && afterPlugin.join() === 'exa' && afterUser.join() === 'plugin:exa:exa'
+    && placedOrder.join() === 'exa,plugin:rootfile:brave-search,plugin:exa:exa' && skipped.join() === 'exa'
+    && (envFile !== undefined || (fromFolder.includes('tavily') && !fromFolder.includes('exa'))) && Array.isArray(broken) && broken.join() === 'exa') {
+    console.log('PASS: enabled plugins\' search servers count as Claude Code loads them, after the user\'s, each tried by its own tools; servers Claude Code does not start and broken plugin files do not');
+    passed++;
+  } else {
+    console.log(`FAIL: found=${found} afterPlugin=${afterPlugin} afterUser=${afterUser} placed=${placedOrder} skipped=${skipped} fromFolder=${fromFolder} broken=${broken}`);
     failed++;
   }
 })();

@@ -27,6 +27,7 @@ const { commitChanges, replay, replayLines } = require('./replay');
 const { failBeforeTargets, failBeforeExemptions, matchingExemption, failBeforeChecks } = require('./fail-before');
 const { printResults } = require('./output');
 const { classify } = require('./classify');
+const { wideSelection, wideSelectionLine } = require('./wide-selection');
 
 const DEFAULT_PASS_HISTORY = 10;
 // A failure on inputs a check passed with runs once more by default (Rare).
@@ -157,6 +158,10 @@ function main(argv = process.argv.slice(2), options = {}) {
       Object.assign(plan, routineChoice({ entries: runnable, selected: plan.selected, records: previousRecords, manifest, snapshot, stateOf: slowState, inputsChanged }));
       plan.slowCommand = runnerCommand('--slow');
     }
+    // D171: what changed or failed last time pulled in more than a share of all checks — name what pulled the most.
+    const wide = wideSelection({ selected: plan.selected, reasons: planned.reasons, changedInputs: planned.changedInputs, total,
+      share: manifest.wideSelectionShare, minChecks: manifest.wideSelectionMinChecks });
+    if (wide) plan.wideSelection = wide;
     // D152 P11: checks narrowed by their reports join the run to wait for the gate; they are
     // reused when it passes and not run when it fails.
     const keep = new Set([...plan.selected, ...planned.awaitingGate]);
@@ -316,6 +321,7 @@ function main(argv = process.argv.slice(2), options = {}) {
       if (plan.slowSkipped && plan.slowSkipped.length) console.log(`Slow checks left to --slow: ${plan.slowSkipped.map(id => `${id} (${plan.slowStates[id]})`).join(', ')}`);
       if (plan.quarantined && plan.quarantined.length) console.log(`Left out as flaky: ${plan.quarantined.map(item => `${item.id} (until ${item.test} changes)`).join(', ')}`);
       if (plan.selected.some(id => planned.reasons[id] === DECISION_CHANGED)) console.log("The runner's decision code changed: every non-slow check runs once; slow checks wait for --slow.");
+      if (plan.wideSelection) console.log(wideSelectionLine(plan.wideSelection));
       return 0;
     }
     console.log(JSON.stringify(plan, null, 2));

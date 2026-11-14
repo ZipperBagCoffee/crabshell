@@ -163,7 +163,8 @@ Prefer one selector. When a project's command runs many child checks with its ow
 - it keeps each child's used inputs and passes, with the gate and report scope as its own settings;
 - it settles the gate first and decides no child's reuse until the gate's result is known;
 - it reruns a child only when something in that child's report changed. With a missing or broken report, it chooses the child as it would without a report: its declared inputs, or every project file when it declares none (⑧);
-- it judges a child that reads files another child writes after that child ran, by what it wrote. The writer being chosen is not a change to the reader. The runner does the same for entries: a check that reads files in another check's `outputs` waits for that check and is reused when the content is what it passed with.
+- it judges a child that reads files another child writes after that child ran, by what it wrote. The writer being chosen is not a change to the reader. The runner does the same for entries: a check that reads files in another check's `outputs` waits for that check and is reused when the content is what it passed with;
+- when the children it chooses pass a share of all its children, it prints what pulled the most in, the same as the runner's `Wide selection` notice: each changed input or reason kind with its count of children.
 
 The runner then sees only the whole entry: `--explain` and the run summary show one check however many children run, and its time is all of theirs. So the selector prints the reason for each child it runs, and measuring (⑩) counts its children.
 
