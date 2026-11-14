@@ -5,9 +5,10 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const NODE = 'C:/Program Files/nodejs/node.exe';
-const SCRIPT = 'C:/Users/user/Documents/memory-keeper-plugin/scripts/docs-guard.js';
-const projectDir = 'C:/Users/user/Documents/memory-keeper-plugin';
+// This repository's own guard and root, wherever it is checked out (D172: no machine path).
+const NODE = process.execPath;
+const SCRIPT = path.join(__dirname, 'docs-guard.js');
+const projectDir = path.resolve(__dirname, '..');
 
 let passed = 0;
 let failed = 0;
