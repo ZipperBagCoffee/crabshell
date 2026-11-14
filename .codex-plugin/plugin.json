@@ -3,7 +3,7 @@
   "version": "21.175.0",
   "description": "Native Codex lifecycle hooks plus shared Crabshell memory, verification, diagnostics, and document workflows.",
   "author": {
-    "name": "TaWa"
+    "name": "ZipperBagCoffee"
   },
   "homepage": "https://github.com/ZipperBagCoffee/crabshell",
   "repository": "https://github.com/ZipperBagCoffee/crabshell",
@@ -21,7 +21,7 @@
     "displayName": "Crabshell",
     "shortDescription": "Native project memory, verification, and workflows for Codex.",
     "longDescription": "Adds native Codex lifecycle hooks for shared project memory, task context, compaction recovery, subagents, and parent-owned completion, plus skills for memory and D/P/T/I/H/W workflows.",
-    "developerName": "TaWa",
+    "developerName": "ZipperBagCoffee",
     "category": "Productivity",
     "capabilities": [
       "Read",
