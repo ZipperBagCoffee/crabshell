@@ -196,6 +196,18 @@ async function main() {
     check('the next check of that resource fails without waiting again', /an earlier check of this run waited 1s for `kiln` and gave up/.test(second.stdout + second.stderr) && tookMs < 5500, `${tookMs}ms ${show(second)}`);
   }
 
+  // A run by name cannot use another run's pass, so it does not wait for an earlier run that
+  // only chose its check (it waits only while that run executes it).
+  {
+    const dir = project('named-beside');
+    const a = start(dir, ['--changed'], { OVERLAP_SLEEP_Q1: '4000', OVERLAP_SLEEP_Q2: '4000' });
+    await untilRecord(dir, a.child.pid);
+    const b = await run(dir, ['Q3'], { OVERLAP_SLEEP_Q3: '100' });
+    const ra = await a.done;
+    check('a run by name does not wait for an earlier run that only chose its check', ra.status === 0 && b.status === 0 && b.endedAt < ra.endedAt && !/Waiting for/.test(b.stderr),
+      `${b.stderr.slice(-200)} | ${show(ra)}`);
+  }
+
   // A timing check of an earlier run beside a later run that is only waiting for it: the
   // waiting run is not heavy work, so neither waits for the other until the limit.
   {

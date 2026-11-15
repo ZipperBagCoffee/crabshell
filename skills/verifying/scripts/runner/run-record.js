@@ -79,11 +79,15 @@ function startedBefore(a, b) {
 }
 
 // The live runs that started before `me` and chose check `id` and have not ended. Waits go
-// only from a later run to an earlier one, so two runs never wait for each other.
+// only from a later run to an earlier one, so two runs never wait for each other. With
+// runningOnly, only the runs executing the check now (for a run that cannot use their pass:
+// it waits only so the two executions do not overlap).
 function earlierRunsChoosing(manifestPath, id, me, options = {}) {
   const ignore = options.ignore instanceof Set ? options.ignore : new Set();
-  return liveRecords(manifestPath, options).filter(record => !ignore.has(record.pid) && Array.isArray(record.selected)
-    && record.selected.includes(id) && startedBefore(record, me));
+  return liveRecords(manifestPath, options).filter(record => !ignore.has(record.pid) && startedBefore(record, me)
+    && (options.runningOnly
+      ? Array.isArray(record.running) && record.running.some(item => item && item.id === id)
+      : Array.isArray(record.selected) && record.selected.includes(id)));
 }
 
 // The live runs running check `id` now.
@@ -201,10 +205,10 @@ const then = (value, fn) => (value && typeof value.then === 'function' ? value.t
 // Waits while an earlier live run that chose check `id` has not ended (see waitWhile).
 // confirm(records) → the records that still belong to the process that wrote them; it is asked
 // once per run found, so a record whose pid another process took over is not waited for.
-function waitForEarlierRuns({ manifestPath, id, me, ancestors, ignore, confirm, ...options }) {
+function waitForEarlierRuns({ manifestPath, id, me, ancestors, ignore, confirm, runningOnly = false, ...options }) {
   const genuine = new Map();
   const pending = () => {
-    const runs = earlierRunsChoosing(manifestPath, id, me, { exclude: ancestors, ignore });
+    const runs = earlierRunsChoosing(manifestPath, id, me, { exclude: ancestors, ignore, runningOnly });
     const unseen = runs.filter(record => !genuine.has(record.pid));
     if (unseen.length) {
       let kept = unseen;

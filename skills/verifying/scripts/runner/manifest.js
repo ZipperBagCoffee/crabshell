@@ -263,6 +263,11 @@ function expandEntries(manifest, projectRoot) {
         ...(Array.isArray(entry.outputs) ? { outputs: entry.outputs } : {}),
         ...(Array.isArray(entry.reportScope) ? { reportScope: entry.reportScope } : {}),
         ...(entry.gate === true ? { gate: true } : {}),
+        // D175: what a discovered check holds, loads and measures applies to each file it finds.
+        ...(Array.isArray(entry.uses) ? { uses: entry.uses } : {}),
+        ...(entry.heavy === true ? { heavy: true } : {}),
+        ...(entry.timing === true ? { timing: true } : {}),
+        ...(Array.isArray(entry.whenArgs) ? { whenArgs: entry.whenArgs } : {}),
         reuse: reuseExcluded.has(file) ? false : entry.reuse,
         discoveredBy: entry.id,
         ...(coverage.has(file) ? { coveredBy: coverage.get(file) } : {}),

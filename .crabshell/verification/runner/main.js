@@ -662,10 +662,15 @@ function main(argv = process.argv.slice(2), options = {}) {
       ? { id: entry.id, type: entry.type, status: 'FAIL', durationMs: 0, output: '', error: blocked, failureClass: classify(blocked, '') }
       : begin()));
     if (overlapAllowed) return begin();
+    // A run that cannot take another run's pass (a run by name, --no-reuse, a HEAD comparison, a
+    // covered check, reuse:false or always) waits only while an earlier run executes the check.
+    const usesOthersPass = args.reuse && !named && !comparedWithHead(entry) && coveringIndex(entry) === undefined
+      && entry.reuse !== false && entry.always !== true;
     const waited = runRecord.waitForEarlierRuns({ manifestPath, id: entry.id, me: run.record, ancestors: run.ancestors, ignore: gaveUpOn,
+      runningOnly: !usesOthersPass,
       confirm: records => { const list = resources.processList(); return records.filter(record => runStillLive(record, list)); },
       timeoutMs: waitLimitMs, sync: jobs <= 1,
-      onWait: other => console.error(`[VERIFY] Waiting for ${entry.id}: run pid ${other.pid} (started ${other.startedAt}) chose it too.`) });
+      onWait: other => console.error(`[VERIFY] Waiting for ${entry.id}: run pid ${other.pid} (started ${other.startedAt}) ${usesOthersPass ? 'chose it too' : 'is running it'}.`) });
     return then(waited, ({ waitedFor: earlier, timedOut }) => {
       if (timedOut) {
         gaveUpOn.add(earlier.pid);

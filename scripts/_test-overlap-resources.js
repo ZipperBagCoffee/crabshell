@@ -89,6 +89,19 @@ async function main() {
   check('an absolute lockFile is refused', throwsWith(() => validateManifestSettings({ ...ok, resources: { kiln: { lockFile: process.platform === 'win32' ? 'C:\\kiln.lock' : '/kiln.lock' } } }), /repo-relative/));
   check('a launch without a command is named', throwsWith(() => validateManifestSettings({ ...ok, launches: [{ name: 'fire' }] }), /needs a name and a command/));
 
+  // A discovery entry's uses, heavy, timing and whenArgs apply to every file it finds.
+  {
+    const discoveredRoot = path.join(base, 'discovered');
+    fs.mkdirSync(path.join(discoveredRoot, 'checks'), { recursive: true });
+    for (const name of ['kiln_a.js', 'kiln_b.js']) fs.writeFileSync(path.join(discoveredRoot, 'checks', name), 'process.exit(0);\n');
+    const expanded = require('../skills/verifying/scripts/runner/manifest').expandEntries({ entries: [{ id: 'KD', type: 'behavioral',
+      discover: { pattern: 'checks/kiln_*.js', exclude: [] }, contract: { exitCode: 0, assertions: [], forbiddenChanges: ['x.json'] },
+      uses: ['kiln'], heavy: true, timing: true, whenArgs: ['--hot'] }] }, discoveredRoot);
+    check('a discovery entry\'s uses, heavy, timing and whenArgs reach each discovered check', expanded.length === 2
+      && expanded.every(entry => JSON.stringify(entry.uses) === '["kiln"]' && entry.heavy === true && entry.timing === true && JSON.stringify(entry.whenArgs) === '["--hot"]'),
+      JSON.stringify(expanded.map(entry => [entry.id, entry.uses, entry.heavy, entry.timing, entry.whenArgs])));
+  }
+
   await hookPart();
 
   console.log(`\n${passed}/${passed + failed} passed`);

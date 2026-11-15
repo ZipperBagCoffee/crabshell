@@ -1,5 +1,14 @@
 # Changelog
 
+## [21.177.2] - 2026-11-14
+
+### fix: a run by name no longer waits out an earlier run; discovered checks keep their overlap fields (D175_T005)
+
+- A run that cannot use another run's pass (a run by name, `--no-reuse`, a HEAD comparison, a covered check, `reuse:false` or `always`) waited until an earlier run that chose the same check ended (up to `resourceWaitSeconds`) and then ran it anyway. It now waits only while the earlier run executes that check, so running one check by name beside a long `--changed` starts at once.
+- A discovery entry's `uses`, `heavy`, `timing` and `whenArgs` were dropped when it expanded into one check per file, so they validated and then did nothing; each discovered check now carries them.
+- Docs: a `timing` check waits for a run that is executing a check, not for any live run (21.177.1's change).
+- Measured: a project whose checks all passed with 21.176.0 has nothing to rerun after this runner is copied in.
+
 ## [21.177.1] - 2026-11-14
 
 ### fix: three overlaps 21.177.0's checks did not exercise (D175_T005)
