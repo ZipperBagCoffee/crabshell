@@ -46,7 +46,8 @@ const DEFAULT_RESOURCE_WAIT_SECONDS = 600;
 
 // Continue with fn once a value is ready: now, or when its promise settles (run-record.js).
 const { then } = runRecord;
-const { runnerWaits } = require('./overlap');
+const { runnerWaits, runStillLive } = require('./overlap');
+const resources = require('./resources');
 
 // Top-level manifest fields the runner reads.
 // options.layout (or options.launcherDir) says where the launcher sits; the launcher
@@ -662,6 +663,7 @@ function main(argv = process.argv.slice(2), options = {}) {
       : begin()));
     if (overlapAllowed) return begin();
     const waited = runRecord.waitForEarlierRuns({ manifestPath, id: entry.id, me: run.record, ancestors: run.ancestors, ignore: gaveUpOn,
+      confirm: records => { const list = resources.processList(); return records.filter(record => runStillLive(record, list)); },
       timeoutMs: waitLimitMs, sync: jobs <= 1,
       onWait: other => console.error(`[VERIFY] Waiting for ${entry.id}: run pid ${other.pid} (started ${other.startedAt}) chose it too.`) });
     return then(waited, ({ waitedFor: earlier, timedOut }) => {

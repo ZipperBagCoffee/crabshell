@@ -44,6 +44,18 @@ function worktreeRoot(dir) {
   return out ? path.resolve(out.trim()) : null;
 }
 
+// The nearest folder at or above dir holding a `.git` entry, as git itself finds a worktree:
+// { root, linked } (linked: a .git file — a linked worktree), or null outside git. Files only.
+function gitEntryAbove(dir) {
+  try {
+    for (let current = path.resolve(dir); ; current = path.dirname(current)) {
+      try { return { root: current, linked: fs.statSync(path.join(current, '.git')).isFile() }; } catch (_) {}
+      if (path.dirname(current) === current) return null;
+    }
+  } catch (_) { return null; }
+}
+const gitFolderAbove = dir => (gitEntryAbove(dir) || {}).root || null;
+
 // The main worktree of a linked worktree, read from files alone (no git process): its `.git`
 // file names the worktree's git folder, whose `commondir` names the shared one. Null for a
 // main worktree or a folder outside git.
@@ -171,4 +183,4 @@ function ancestorsOf(processes, pid) {
   return chain;
 }
 
-module.exports = { DEFAULTS, git, resourceOf, worktrees, worktreeRoot, mainWorktreeOf, manifestPathFor, lockHolder, stillHolding, windowsArgv, parseWindows, parsePosix, processList, ancestorsOf };
+module.exports = { DEFAULTS, git, resourceOf, worktrees, worktreeRoot, gitEntryAbove, gitFolderAbove, mainWorktreeOf, manifestPathFor, lockHolder, stillHolding, windowsArgv, parseWindows, parsePosix, processList, ancestorsOf };

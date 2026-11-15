@@ -72,6 +72,10 @@ function overlapDecision(payload, projectDir) {
         const declaredCwd = path.resolve(root, (entry.command && entry.command.cwd) || '.');
         if (!matchesCommand(entry.command, segment, { declaredCwd, rootOf })) continue;
         const { record, item } = running.get(entry.id);
+        // Before refusing: the record's pid must still be the run that wrote it.
+        let processes = null;
+        try { processes = runner('resources').processList(); } catch (_) {}
+        if (!runner('overlap').runStillLive(record, processes)) continue;
         return {
           reason: `\`${command}\` is check ${entry.id}, and the runner (pid ${record.pid}, since ${localTime(item.startedAt || record.startedAt)}) is running it now; its result will be in the runner's record. Wait for that run, or run it anyway with ${overrideSyntax(payload, command, runRecord.OVERRIDE_ENV)}.`,
           entryId: entry.id,

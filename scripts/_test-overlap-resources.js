@@ -216,6 +216,8 @@ async function hookPart() {
   fs.writeFileSync(path.join(plain, '.crabshell', 'verification', 'manifest.json'), JSON.stringify({ schemaVersion: 2, entries: [{ id: 'P1', type: 'structural', command: { file: 'node', args: ['tools/fire.js'] } }] }));
   check('a project with no such declaration decides nothing', guard.resourceDecision(payload('node tools/fire.js', plain), plain) === null);
   check('and runs no git and no process list for it', calls === 0, String(calls));
+  check('a declaring project decides nothing for a command it does not declare', guard.resourceDecision(payload('node tools/unlisted.js --x', main), main) === null);
+  check('and runs no git and no process list for that command either', calls === 0, String(calls));
   const failedList = guard.resourceDecision(payload('node tools/gauge.js', main), main);
   check('a process list that fails gives one line and no refusal', Boolean(failedList && failedList.context && !failedList.reason) && /Could not list processes/.test(failedList.context), JSON.stringify(failedList));
   Object.assign(resourcesModule, saved);

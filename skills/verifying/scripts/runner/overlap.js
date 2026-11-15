@@ -10,26 +10,45 @@ const resources = require('./resources');
 const runRecord = require('./run-record');
 const { matchesCommand, programMatches } = require('./command-match');
 
-// The checks (`entries`) and `launches` that take part: those with uses, heavy or timing.
+// How far a process's start time may sit from the one its run record wrote (clock reads differ).
+const PID_START_TOLERANCE_MS = 5000;
+
+const takesPart = item => Boolean(item) && ((Array.isArray(item.uses) && item.uses.length > 0) || item.heavy === true || item.timing === true);
+
+// The checks (`entries`) and `launches` that take part: those with uses, heavy or timing. A
+// manifest that declares none of these is not expanded (discovery walks the files, and the
+// hook asks on every shell call).
 function declarationsOf(manifest, root) {
   if (!manifest || typeof manifest !== 'object') return [];
-  let entries = Array.isArray(manifest.entries) ? manifest.entries : [];
-  try { entries = require('./manifest').expandEntries(manifest, root); } catch (_) {}
+  const raw = Array.isArray(manifest.entries) ? manifest.entries : [];
   const launches = Array.isArray(manifest.launches) ? manifest.launches : [];
+  if (!raw.some(takesPart) && !launches.some(takesPart)) return [];
+  let entries = raw;
+  try { entries = require('./manifest').expandEntries(manifest, root); } catch (_) {}
   return [...entries.map(entry => ({ ...entry, label: entry.id })), ...launches.map(launch => ({ ...launch, label: launch.name }))]
-    .filter(item => item && item.command && typeof item.command === 'object' && !Array.isArray(item.command)
-      && ((Array.isArray(item.uses) && item.uses.length) || item.heavy === true || item.timing === true));
+    .filter(item => item && item.command && typeof item.command === 'object' && !Array.isArray(item.command) && takesPart(item));
 }
 
 const usesOf = item => (item && Array.isArray(item.uses) ? item.uses : []);
 const isHeavy = item => Boolean(item) && (item.heavy === true || usesOf(item).length > 0);
 
-// The worktree root a folder is in (one of roots), else the folder itself.
+// The worktree root a folder is in: one of roots when they are known (git listed them), else
+// the nearest folder holding a `.git` entry (files only, no git process), else the folder.
 function rootFinder(roots) {
+  if (!Array.isArray(roots)) return folder => resources.gitFolderAbove(folder) || folder;
   return folder => roots.find(root => {
     const relative = path.relative(root, path.resolve(folder));
     return !relative.startsWith('..') && !path.isAbsolute(relative);
   }) || folder;
+}
+
+// Whether a live run's record still belongs to the process that wrote it: a pid another
+// process took over (it started at another time) does not count. Unknown times count.
+function runStillLive(run, processes) {
+  if (!Array.isArray(processes)) return true;
+  const item = processes.find(entry => entry.pid === run.pid);
+  if (!item) return false;
+  return !(Number.isFinite(item.startedAt) && Number.isFinite(run.processStartedAt) && Math.abs(item.startedAt - run.processStartedAt) > PID_START_TOLERANCE_MS);
 }
 
 // (declaration, segment) => whether the segment runs it, paths read from each side's
@@ -82,11 +101,16 @@ function processRuns(item, declaration, roots, matches) {
   return !item.unknownArgs && matches(declaration, processSegment(item, roots));
 }
 
-// What would spoil a time measurement now: live runs, held declared resources, and running
-// declared heavy commands or `timingCompetitors` programs. exclude: pids to leave out.
+// What would spoil a time measurement now: live runs executing a check (a run that only waits
+// is no load, and counting it would make two runs wait for each other), held declared
+// resources, and running declared heavy commands or `timingCompetitors` programs.
+// exclude: pids to leave out.
 function timingBlockers({ manifest, declarations, runs, roots, processes, matches, exclude = new Set() }) {
   const blockers = [];
-  for (const { run, root } of runs) blockers.push({ pid: run.pid, why: `runner run in ${root}` });
+  for (const { run, root } of runs) {
+    const busy = Array.isArray(run.running) && run.running.length > 0;
+    if (busy && runStillLive(run, processes)) blockers.push({ pid: run.pid, why: `runner run in ${root}` });
+  }
   for (const name of Object.keys((manifest && manifest.resources) || {})) {
     for (const holder of holdersOf(manifest, name, { scopeRoots: roots, runs: [] })) {
       if (holder.pid) blockers.push({ pid: holder.pid, why: `holds \`${name}\` via \`${holder.file}\`` });
@@ -109,6 +133,7 @@ function timingBlockers({ manifest, declarations, runs, roots, processes, matche
 function measurements({ declarations, runs, roots, processes, matches, exclude = new Set() }) {
   const found = [];
   for (const { run } of runs) {
+    if (!runStillLive(run, processes)) continue;
     for (const item of Array.isArray(run.running) ? run.running : []) {
       if (item && item.timing === true && !exclude.has(run.pid)) found.push({ pid: run.pid, what: `runner check ${item.id}` });
     }
@@ -153,10 +178,12 @@ function runnerWaits({ manifest, manifestPath, projectRoot, run, entries, sync, 
     const resource = resources.resourceOf(manifest, name);
     if (!resource) return [];
     let holders = holdersOf(manifest, name, { scopeRoots: resource.scope === 'repo' ? rootsNow() : [path.resolve(projectRoot)], runs: runsNow() });
-    if (holders.some(holder => holder.pid)) {
+    if (holders.length) {
+      // Only when there is something to wait for: confirm each holder against the processes.
       const list = resources.processList();
       const mine = ownTree(list);
-      holders = holders.filter(holder => !holder.pid || (!mine.has(holder.pid) && !run.ancestors.includes(holder.pid) && resources.stillHolding(holder, list)));
+      holders = holders.filter(holder => (holder.run ? runStillLive(holder.run, list)
+        : !holder.pid || (!mine.has(holder.pid) && !run.ancestors.includes(holder.pid) && resources.stillHolding(holder, list))));
     }
     return holders.map(holder => ({ name, holder }));
   };
@@ -184,4 +211,4 @@ function runnerWaits({ manifest, manifestPath, projectRoot, run, entries, sync, 
   };
 }
 
-module.exports = { declarationsOf, usesOf, isHeavy, rootFinder, matcher, liveRuns, holdersOf, processSegment, processRuns, timingBlockers, measurements, runnerWaits };
+module.exports = { declarationsOf, usesOf, isHeavy, rootFinder, matcher, liveRuns, holdersOf, runStillLive, processSegment, processRuns, timingBlockers, measurements, runnerWaits };

@@ -196,6 +196,18 @@ async function main() {
     check('the next check of that resource fails without waiting again', /an earlier check of this run waited 1s for `kiln` and gave up/.test(second.stdout + second.stderr) && tookMs < 5500, `${tookMs}ms ${show(second)}`);
   }
 
+  // A timing check of an earlier run beside a later run that is only waiting for it: the
+  // waiting run is not heavy work, so neither waits for the other until the limit.
+  {
+    const dir = project('timing-wait', { resourceWaitSeconds: 3 }, { Q2: { timing: true } });
+    const a = start(dir, ['--changed'], { OVERLAP_SLEEP_Q1: '1500' });
+    await untilRecord(dir, a.child.pid);
+    const b = start(dir, ['--changed']);
+    const [ra, rb] = await Promise.all([a.done, b.done]);
+    check('a timing check does not wait for a run that only waits for it', ra.status === 0 && rb.status === 0 && !/Not run/.test(ra.stdout + ra.stderr),
+      `${show(ra)} | ${show(rb)}`);
+  }
+
   // A later run stops waiting after resourceWaitSeconds and runs the check itself.
   {
     const dir = project('limit', { resourceWaitSeconds: 1 });
@@ -245,6 +257,19 @@ async function main() {
     check('the dead record and the lock are removed', !fs.existsSync(path.join(recordDir(dir), `${pid}.json`))
       && !fs.existsSync(path.join(dir, '.crabshell', 'verification', 'test-map.json.lock')));
     check('the map was written', IDS.every(id => map(dir).entries[id]));
+  }
+  // A record whose pid another live process took over (its start time differs) is not waited for.
+  {
+    const dir = project('reused');
+    const other = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 60000)'], { windowsHide: true, stdio: 'ignore' });
+    const otherEnded = new Promise(resolve => other.on('exit', resolve));
+    fs.mkdirSync(recordDir(dir), { recursive: true });
+    fs.writeFileSync(path.join(recordDir(dir), `${other.pid}.json`), JSON.stringify({ schema: 1, pid: other.pid, processStartedAt: 1000,
+      startedAt: '2000-01-01T00:00:00.000Z', selected: IDS, running: [{ id: 'Q1' }], done: [] }));
+    const result = await run(dir, ['--changed']);
+    other.kill();
+    await otherEnded;
+    check('a run record left by a process whose pid was reused causes no wait', result.status === 0 && !/Waiting for/.test(result.stderr), show(result));
   }
   {
     const dir = project('unwritable');

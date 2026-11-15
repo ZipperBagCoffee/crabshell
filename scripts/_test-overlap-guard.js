@@ -71,6 +71,16 @@ const recordDir = path.join(verification, require('../skills/verifying/scripts/r
   report.check('after the run ends the check is not refused', !denied(afterEnd), afterEnd.stdout.slice(-300));
   report.check('the dead run record is removed', !fs.existsSync(recordFile));
 
+  // A record whose pid now belongs to another process (it started at another time) refuses nothing.
+  const reused = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 120000)'], { windowsHide: true, stdio: 'ignore' });
+  const reusedEnded = new Promise(resolve => reused.on('exit', resolve));
+  fs.writeFileSync(path.join(recordDir, `${reused.pid}.json`), JSON.stringify({ schema: 1, pid: reused.pid, processStartedAt: 1000,
+    startedAt: new Date().toISOString(), selected: ['ZP1'], running: [{ id: 'ZP1', startedAt: new Date().toISOString() }], done: [] }));
+  const takenOver = bash('node scripts/_zeta_probe.js');
+  report.check('a record whose pid another process took over refuses nothing', !denied(takenOver), takenOver.stdout.slice(-300));
+  reused.kill();
+  await reusedEnded;
+
   // A broken record never refuses anything.
   fs.writeFileSync(path.join(recordDir, 'broken.json'), '{ nope');
   const broken = bash('node scripts/_zeta_probe.js');

@@ -199,8 +199,21 @@ function waitWhile(pending, { timeoutMs, stepMs = 1000, sync, onWait = () => {} 
 const then = (value, fn) => (value && typeof value.then === 'function' ? value.then(fn) : fn(value));
 
 // Waits while an earlier live run that chose check `id` has not ended (see waitWhile).
-function waitForEarlierRuns({ manifestPath, id, me, ancestors, ignore, ...options }) {
-  return waitWhile(() => earlierRunsChoosing(manifestPath, id, me, { exclude: ancestors, ignore }), options);
+// confirm(records) → the records that still belong to the process that wrote them; it is asked
+// once per run found, so a record whose pid another process took over is not waited for.
+function waitForEarlierRuns({ manifestPath, id, me, ancestors, ignore, confirm, ...options }) {
+  const genuine = new Map();
+  const pending = () => {
+    const runs = earlierRunsChoosing(manifestPath, id, me, { exclude: ancestors, ignore });
+    const unseen = runs.filter(record => !genuine.has(record.pid));
+    if (unseen.length) {
+      let kept = unseen;
+      try { if (typeof confirm === 'function') kept = confirm(unseen) || unseen; } catch (_) {}
+      for (const record of unseen) genuine.set(record.pid, kept.includes(record));
+    }
+    return runs.filter(record => genuine.get(record.pid) !== false);
+  };
+  return waitWhile(pending, options);
 }
 
 module.exports = { SCHEMA, DIR_NAME, CHAIN_ENV, ORIGIN_ENV, OVERRIDE_ENV, recordDir, pidAlive, ancestorChain, sleepSync, liveRecords, earlierRunsChoosing, runsRunning, open, then, waitWhile, waitForEarlierRuns };

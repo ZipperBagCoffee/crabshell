@@ -70,6 +70,10 @@ function resourceDecision(payload, projectDir) {
     if (override && override.all) return null;
     const skipped = override && override.pids ? override.pids : new Set();
 
+    // Matched from the files alone first: a command that is no declaration costs no git process.
+    const fileRoots = overlap.rootFinder(null);
+    const matchedHere = declarations.filter(item => segments.some(segment => overlap.matcher(null, fileRoots(cwd))(item, segment)));
+    if (matchedHere.length === 0) return null;
     const roots = resources.worktrees(root);
     const here = overlap.rootFinder(roots)(cwd);
     const matches = overlap.matcher(roots, here);
@@ -92,7 +96,12 @@ function resourceDecision(payload, projectDir) {
       const resource = resources.resourceOf(manifest, name);
       if (!resource) continue;
       let holders = overlap.holdersOf(manifest, name, { scopeRoots: resource.scope === 'repo' ? roots : [here], runs });
-      if (holders.some(holder => holder.pid)) holders = holders.filter(holder => !holder.pid || resources.stillHolding(holder, listProcesses()));
+      // Before refusing, each holder is checked against the processes (a pid taken over by
+      // another process holds nothing).
+      if (holders.length) {
+        holders = holders.filter(holder => (holder.run ? overlap.runStillLive(holder.run, listProcesses())
+          : !holder.pid || resources.stillHolding(holder, listProcesses())));
+      }
       holders = holders.filter(holder => !skipped.has(holder.pid || (holder.run && holder.run.pid)));
       if (holders.length === 0) continue;
       const text = `\`${command}\` uses \`${name}\`, held by ${describeHolder(holders[0])}, which is still running.`;

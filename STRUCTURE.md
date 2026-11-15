@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.177.0)
+# Crabshell Plugin Structure (v21.177.1)
 
-**Version**: 21.177.0 | **Author**: ZipperBagCoffee | **License**: MIT
+**Version**: 21.177.1 | **Author**: ZipperBagCoffee | **License**: MIT
 
 ## Overview
 
@@ -513,6 +513,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.177.1 | runner `overlap.js`, `run-record.js`, `resources.js`, `main.js`; `scripts/core/resource-guard.js`, `overlap-guard.js`, `pending-inputs.js`; tests `_test-runner-overlap.js`, `_test-overlap-guard.js`, `_test-overlap-resources.js` |
 | 21.177.0 | runner `run-record.js`, `command-match.js`, `resources.js`, `overlap.js`, `store.js`, `main.js`, `select.js`, `schedule.js`, `settings.js`, `manifest.js`; `scripts/core/overlap-guard.js`, `resource-guard.js`, `pending-inputs.js`, `overlap-text.js`, `command-observation.js`, `rerun-guard.js`; adapters; tests `_test-runner-overlap.js`, `_test-overlap-guard.js`, `_test-overlap-resources.js`, `_test-pending-inputs.js`, `_test-command-match.js` |
 | 21.176.0 | `scripts/web-guard.js` `signedInServers`/`keyInConfig`/`serverStates`; test `_test-web-guard.js` |
 | 21.175.0 | `scripts/core/rules-text.js` Personal data rule; `CLAUDE.md` rules block |

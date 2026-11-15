@@ -1,5 +1,13 @@
 # Changelog
 
+## [21.177.1] - 2026-11-14
+
+### fix: three overlaps 21.177.0's checks did not exercise (D175_T005)
+
+- A `timing` check of one run no longer waits for another run that is only waiting for it: a run counts as heavy work only while it is executing a check. Before, the two runs waited for each other until `resourceWaitSeconds` and the timing check failed.
+- Hook cost: 21.177.0 expanded discovery entries in each overlap guard on every shell call, even in projects that declare none of the D175 fields (a 100-file discovery manifest: median 116.2 ms per shell call against 103.1 ms in 21.176.0), and `resource-guard` ran git before knowing the command was declared. Now a manifest without those fields is not expanded and a command is matched from the files before any git or process list (same project: 95.8 ms). 21.177.0's note that such a project "costs one manifest read" was measured before the guards were wired, on a project without a manifest.
+- A run record whose pid another process took over (the record's start time differs from that process's) is no longer waited for or refused on; the process list is read only when a wait or refusal is about to happen.
+
 ## [21.177.0] - 2026-11-14
 
 ### feat: overlapping work no longer wastes check runs (D175)

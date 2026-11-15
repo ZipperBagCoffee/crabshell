@@ -43,14 +43,8 @@ function relativeInside(root, file) {
   return relative.replace(/\\/g, '/');
 }
 
-// The nearest folder at or above dir holding a `.git` entry, as git itself finds a worktree:
-// { root, linked } (linked: a .git file — a linked worktree), or null outside git.
-function gitEntryAbove(dir) {
-  for (let current = path.resolve(dir); ; current = path.dirname(current)) {
-    try { return { root: current, linked: fs.statSync(path.join(current, '.git')).isFile() }; } catch (_) {}
-    if (path.dirname(current) === current) return null;
-  }
-}
+// The nearest folder at or above dir holding a `.git` entry (runner/resources.js, files only).
+const gitEntryAbove = dir => runner('resources').gitEntryAbove(dir);
 
 // The nearest folder from dir up to root that holds the manifest, or null.
 function manifestFolderAbove(dir, root) {
@@ -93,9 +87,12 @@ function pendingChanges(here, there) {
 // The declarations whose command makes files: check entries (discovered ones expanded) and
 // launches, each with `outputs`.
 function producersOf(manifest, projectRoot, patternList) {
-  let entries = Array.isArray(manifest.entries) ? manifest.entries : [];
-  try { entries = runner('manifest').expandEntries(manifest, projectRoot); } catch (_) {}
+  const raw = Array.isArray(manifest.entries) ? manifest.entries : [];
   const launches = Array.isArray(manifest.launches) ? manifest.launches : [];
+  // No declaration makes files: nothing to expand (discovery walks the files on every shell call).
+  if (![...raw, ...launches].some(item => item && patternList(item.outputs).length > 0)) return [];
+  let entries = raw;
+  try { entries = runner('manifest').expandEntries(manifest, projectRoot); } catch (_) {}
   return [...entries.filter(entry => entry && entry.type !== 'manual'), ...launches]
     .filter(item => item && typeof item === 'object' && item.command && patternList(item.outputs).length > 0);
 }
