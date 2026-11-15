@@ -57,4 +57,4 @@ function rerunDecision(payload, projectDir) {
   }
 }
 
-module.exports = { rerunDecision };
+module.exports = { rerunDecision, localTime };

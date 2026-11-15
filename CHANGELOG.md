@@ -1,5 +1,15 @@
 # Changelog
 
+## [21.177.0] - 2026-11-14
+
+### feat: overlapping work no longer wastes check runs (D175)
+
+- No declaration needed (every project): each runner run publishes which checks it may execute and which it runs now (`.runs/<pid>.json` beside the manifest). A check an earlier live run also chose waits for that run and reuses its pass when the inputs are the same; runs that chose different checks never wait for each other; past `resourceWaitSeconds` (default 600) it runs here. Writing `test-map.json`, a run merges with what another run wrote meanwhile (a new `writeId` per write tells that apart from the snapshot time) instead of overwriting it. Measured: two overlapping runs of the same three checks executed them 6 times, now 3; two runs of different checks lost one pass (the next `--changed` ran it again), now none.
+- New PreToolUse guards (Claude and Codex): `core/overlap-guard.js` refuses to start by hand a check a live run is running now; `core/resource-guard.js` judges declared `resources` (held by a live run's check that `uses` it, or by the live pid in its `lockFile`), `timing` commands beside heavy work (a live run anywhere, a held resource, a running declared `heavy` command, a `timingCompetitors` program) and heavy work beside a running measurement; `core/pending-inputs.js` warns (or, with `pendingInputs: "refuse"`, refuses) when a command that makes files (`outputs`) runs while another git worktree has changes to its inputs. Overrides: `CRABSHELL_OVERLAP=1`, or `CRABSHELL_OVERLAP=pid:<pids>` to skip only those processes. A project without these declarations costs one manifest read.
+- New manifest settings: `resources` (`lockFile`, `scope`, `onHeld`, `pidKey`, `staleAfterSeconds`), `launches` (commands that are not checks), `timingCompetitors`, `resourceWaitSeconds`, `pendingInputs`; entry `uses`, `heavy`, `timing`, `whenArgs`. Within a run, checks that share a resource take turns and a `timing` check runs alone.
+- Runner modules `run-record.js`, `command-match.js` (shell commands read as words: pipes, redirections, PowerShell `&`, `cd`; `programName` now lives here), `resources.js`, `overlap.js`.
+- Why: a peer session reported a recording that failed at once beside its own job holding the engine lock, a timing measurement taken beside heavy work (garbage numbers), and a sealed recording remade right before its inputs changed in another worktree; memory rules had not stopped any of them.
+
 ## [21.176.0] - 2026-11-14
 
 ### feat: web-guard says what each search server runs on (D174)

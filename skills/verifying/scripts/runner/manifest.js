@@ -103,6 +103,9 @@ const SETTING_KINDS = {
 const ENTRY_SETTINGS = {
   inputs: 'paths', outputs: 'paths', slow: 'flag', exclusive: 'flag', group: 'name', reportScope: 'paths', gate: 'flag',
   reuse: 'other', always: 'other', coveredBy: 'other', reuseExclude: 'other', timeout: 'other',
+  // D175: the declared resources the check uses, whether it is heavy work, whether it measures
+  // time, and the arguments that must be present for those to apply.
+  uses: 'names', heavy: 'flag', timing: 'flag', whenArgs: 'names',
 };
 
 // label: "manifest" or "<entry id>:"; pathLabel: the prefix of a path field's own checks.

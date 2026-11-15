@@ -44,6 +44,14 @@ Each record (`test-map.json`, schema 4) keeps the check's input kind, its input 
 
 A record of another schema counts as missing, so every check runs once after a schema change. The schema is raised by hand when the runner starts recording more of what a check reads. New checks always run; removed entries need no run.
 
+## Overlapping runs
+
+Since v21.177.0 (D175), with no declaration: each run publishes which checks it may execute and which it runs now in `.runs/<pid>.json` beside the manifest (the folder ignores itself for git; a file whose process is gone is removed by whoever reads it).
+- A check that an earlier live run of the project also chose waits for that run, printing `[VERIFY] Waiting for V12: run pid 4242 (started …) chose it too.`, then reuses its pass when the inputs are the same (`Passed in run pid 4242 with the same inputs`) or runs. Runs that chose different checks never wait for each other; past `resourceWaitSeconds` the check runs here (`Stopped waiting for V12 after 600s …`).
+- Writing `test-map.json`, a run that sees another run wrote it since it read it merges instead of overwriting: the checks it executed keep its records, the others keep the newer ones, the run logs are joined.
+- Before a shell command runs, PreToolUse refuses to start by hand a check a live run is running now (its result will be in the record) and gives one line when another run is started.
+- A run nested in a check of another run (`CRABSHELL_RUN_CHAIN`) never waits for its ancestors. `CRABSHELL_OVERLAP=1` before the command skips all of it. Declared resources and timing: [manifest entries](manifest-entries.md).
+
 ## Output and saved results
 
 Default stdout shows a one-line verdict: executed and reused counts, `N covered by <id>` (or `N covered by other checks` for several covering IDs), manual checks waiting for a person, and elapsed seconds. Zero parts are omitted. Covered checks count as PASS, not as executed. Failures show their first failure line and last five stderr lines. Every chosen check runs even after a failure (v21.173.0): each failure is printed on stderr as `[VERIFY] FAIL <id> at <s>s — the run goes on.`, and a failing run ends with `[VERIFY] <n> failed: <ids> — after the fix, rerun only these: node <launcher> --failed; once they pass, run --changed once.` `--failed` runs only the checks whose last run failed (no reuse); with none it prints `No check failed in its last run.` An empty selection prints `No checks selected — nothing changed that a check reads (0.6s).` with the run's own time, the floor every change pays, and exits 0. When every check chosen for the changes is left out because it is heavy or flaky, the verdict says so and the lines below name them. `Verification Results: PASS: N / FAIL: N / Manual: N / Total: N` remains.

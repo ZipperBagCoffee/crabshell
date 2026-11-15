@@ -33,11 +33,19 @@ function defaultJobs() {
 // `jobs` every check may share; otherwise only a check its last run traced completely as
 // running on the runner's Node shares — a first run, declared inputs or another program runs alone.
 function runsAlone(entry, record, jobsDeclared) {
+  // D175: a check that measures time runs with nothing beside it.
+  if (entry.timing === true) return true;
   if (typeof entry.exclusive === 'boolean') return entry.exclusive;
   if (jobsDeclared) return false;
   // A check that reports what it used keeps the kind its trace gave it as `base` (D152).
   const traced = Boolean(record) && (record.kind === 'traced' || (record.kind === 'reported' && record.base === 'traced'));
   return !(traced && runsOnRunnerNode(entry.command));
+}
+
+// Whether two checks declare a resource in common (`uses`).
+function sharesResource(a, b) {
+  const uses = entry => (Array.isArray(entry && entry.uses) ? entry.uses : []);
+  return uses(a).some(name => uses(b).includes(name));
 }
 
 function runInOrder({ order, start, after }) {
@@ -61,6 +69,8 @@ async function runSideBySide({ order, entries, start, after, jobs, waitsFor,
     for (const other of running.keys()) {
       if (isExclusive(other)) return false;
       if (entry.group !== undefined && entries[other].group === entry.group) return false;
+      // D175: two checks that use the same declared resource take turns, like a group.
+      if (sharesResource(entry, entries[other])) return false;
     }
     return memoryAllows();
   };
@@ -110,4 +120,4 @@ function runLength(sideBySideMs, aloneMs, jobs) {
   return Math.max(...lanes) + aloneMs.reduce((sum, ms) => sum + ms, 0);
 }
 
-module.exports = { concurrencyLimit, defaultJobs, runsAlone, runInOrder, runSideBySide, runLength };
+module.exports = { concurrencyLimit, defaultJobs, runsAlone, sharesResource, runInOrder, runSideBySide, runLength };

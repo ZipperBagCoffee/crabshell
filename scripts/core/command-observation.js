@@ -8,6 +8,19 @@ const { readJsonOrDefault } = require('../utils');
 const { STORAGE_ROOT } = require('../constants');
 const { shellCommand } = require('./tool-shape');
 
+// A program's name as the shell finds it: its file name, without an extension the
+// system runs by itself (PATHEXT, where the system has one), case-folded where file
+// names ignore case. The runner keeps the same rule in runner/command-match.js: the runner
+// is installed into projects on its own, and hooks must work without the runner's modules
+// (fail-open), so each side holds it; _test-command-match.js checks they agree.
+function programName(token) {
+  let name = path.basename(String(token).replace(/\\/g, '/'));
+  const extension = path.extname(name).toLowerCase();
+  const runnable = String(process.env.PATHEXT || '').split(';').map(item => item.trim().toLowerCase()).filter(Boolean);
+  if (extension && runnable.includes(extension)) name = name.slice(0, -extension.length);
+  return process.platform === 'win32' ? name.toLowerCase() : name;
+}
+
 // Parse one invocation, never search quoted arguments for command names. Shell
 // composition needs per-process results, which a single tool result cannot prove.
 function commandTokens(command) {
@@ -65,17 +78,6 @@ function readManifest(projectDir) {
   if (!projectDir) return {};
   const manifest = readJson(manifestPath(projectDir));
   return manifest && typeof manifest === 'object' && !Array.isArray(manifest) ? manifest : {};
-}
-
-// A program's name as the shell finds it: its file name, without an extension the
-// system runs by itself (PATHEXT, where the system has one), case-folded where file
-// names ignore case.
-function programName(token) {
-  let name = path.basename(String(token).replace(/\\/g, '/'));
-  const extension = path.extname(name).toLowerCase();
-  const runnable = String(process.env.PATHEXT || '').split(';').map(item => item.trim().toLowerCase()).filter(Boolean);
-  if (extension && runnable.includes(extension)) name = name.slice(0, -extension.length);
-  return process.platform === 'win32' ? name.toLowerCase() : name;
 }
 
 // The project's declared wrappers (manifest `wrappers`: a command string or a token list each).
@@ -512,5 +514,6 @@ module.exports = {
   unwrappedDeclaration,
   checkKeyForCommand,
   isRequiredCheck,
+  programName,
   responseText,
 };

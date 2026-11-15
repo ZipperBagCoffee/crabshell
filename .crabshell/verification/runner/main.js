@@ -13,7 +13,8 @@ const { validateManifestSettings } = require('./settings');
 const { copyNotices } = require('./test-hygiene');
 const { hashBuffer, runsOnRunnerNode } = require('./fingerprint');
 const { TRACER_SOURCE, insideRoot, readTrace, readDeep, filesUnder, readChildren, incompleteChildren, contractPaths } = require('./trace');
-const { mapPath, writeMap } = require('./store');
+const { mapPath, writeMap, readMap, currentRecords } = require('./store');
+const runRecord = require('./run-record');
 const { selectionView } = require('./project-state');
 const { patternList, inputPatterns, matchesInput, filesMatching, inputSet, fingerprintOf, planRun, coverable, gitChangedFiles, medianDuration, declarationKey, crabshellState, DECISION_CHANGED, currentHead, reasonGroup,
   recordKind, inputsUnknown, reportScope, scopeKey, inScope, keyIdentity, knownItems, reportedInputs, refreshedItemHashes,
@@ -40,15 +41,20 @@ const DEFAULT_MIN_FREE_MEMORY_MB = 2048;
 const DEFAULT_START_SPACING_MS = 250;
 // Runs kept in the record map (for the count of runs since the last commit).
 const RUN_LOG_LIMIT = 50;
+// D175_T001: how long a check waits for an earlier run that chose it (manifest `resourceWaitSeconds`).
+const DEFAULT_RESOURCE_WAIT_SECONDS = 600;
 
-// Continue with fn once a value is ready: now, or when its promise settles.
-const then = (value, fn) => (value && typeof value.then === 'function' ? value.then(fn) : fn(value));
+// Continue with fn once a value is ready: now, or when its promise settles (run-record.js).
+const { then } = runRecord;
+const { runnerWaits } = require('./overlap');
 
 // Top-level manifest fields the runner reads.
 // options.layout (or options.launcherDir) says where the launcher sits; the launcher
 // passes its own folder.
 function main(argv = process.argv.slice(2), options = {}) {
   const started = process.hrtime.bigint();
+  // D175_T001: a record map written after this moment was written by another run.
+  const startedAtMs = Date.now();
   const layout = options.layout || runnerLayout(options.launcherDir || path.join(__dirname, '..'));
   const args = parseArgs(argv);
   const failRunner = (id, error) => printResults([
@@ -577,23 +583,95 @@ function main(argv = process.argv.slice(2), options = {}) {
     return [...new Set(files)].filter(file => outputs.some(pattern => underPattern(pattern, file)));
   };
   const elapsedMs = () => Math.round(Number(process.hrtime.bigint() - started) / 1e6);
+  // D175_T001: this run's public record (run-record.js) — the checks it chose and the ones it
+  // runs now. A check an earlier run chose waits for that run, then reuses its pass when the
+  // inputs are the same; two runs that chose different checks never wait for each other.
+  // Only the checks this run may execute are published as chosen: a check it will reuse is not
+  // something a later run should wait for.
+  const run = runRecord.open({ manifestPath, root: projectRoot, args: argv, selected: entries.filter(entry => !canReuse(entry)).map(entry => entry.id) });
+  const waitLimitMs = 1000 * (typeof manifest.resourceWaitSeconds === 'number' && manifest.resourceWaitSeconds >= 0
+    ? manifest.resourceWaitSeconds : DEFAULT_RESOURCE_WAIT_SECONDS);
+  const overlapAllowed = process.env[runRecord.OVERRIDE_ENV] === '1';
+  // The checks this run executed: their records win when the map is merged (store.js writeMap).
+  const executed = new Set();
+  // Runs this run stopped waiting for once: it does not wait for them again.
+  const gaveUpOn = new Set();
+  // The records another run wrote after this run read the map (null when none did). The map
+  // is read again only when its size or time changed, and only when written after this run began.
+  let mapStamp = null;
+  let mapSeen = null;
+  const recordsWrittenSince = () => {
+    let stat;
+    try { stat = fs.statSync(mapPath(manifestPath)); } catch (_) { return null; }
+    if (stat.mtimeMs < startedAtMs) return null;
+    const stamp = `${stat.size}:${stat.mtimeMs}`;
+    if (stamp !== mapStamp) {
+      mapStamp = stamp;
+      const map = readMap(manifestPath);
+      mapSeen = map && currentRecords(map) && map.writeId !== (previousMap ? previousMap.writeId : undefined) ? map.entries : null;
+    }
+    return mapSeen;
+  };
+  // Another run's pass with the same inputs, judged as the hooks judge a record
+  // (project-state entryUpToDate); null when there is none or this run must execute. A check
+  // a check of this run covers is left to the covering rule (decide).
+  const reuseFromOtherRun = (entry, earlier) => {
+    if (!args.reuse || named || comparedWithHead(entry) || coveringIndex(entry) !== undefined) return null;
+    const fresh = recordsWrittenSince();
+    const record = fresh && fresh[entry.id];
+    if (!record || record === records[entry.id]) return null;
+    let judged;
+    try {
+      judged = planRun({ entries: [entry], records: { ...records, [entry.id]: record }, olderRecords: false, ctx, reuse: true, gates: expanded });
+    } catch (_) { return null; }
+    if (judged.selected.length || judged.awaitingGate.includes(entry.id)) return null;
+    records[entry.id] = record;
+    run.skip(entry.id);
+    return { id: entry.id, type: entry.type, status: 'PASS', reused: true, durationMs: 0,
+      message: `Passed in ${earlier ? `run pid ${earlier.pid}` : 'another run'} with the same inputs`, output: '', error: null, failureClass: null };
+  };
+  // D175_T002: what this check must wait for before it starts (declared resources it uses, or
+  // heavy work beside a time measurement), and the resources one wait already gave up on.
+  const freeAt = runnerWaits({ manifest, manifestPath, projectRoot, run, entries, sync: jobs <= 1, waitLimitMs });
   const startOne = (index, runFn) => {
     const entry = entries[index];
     // Judged before the run: a check may write its own inputs.
     sameInputs.set(index, args.changed && failedOnSameInputs(entry));
     const decided = decide(entry, index);
-    if (decided) return decided;
-    // D167: when it ran (milliseconds from the run's start, all its attempts) and which checks of
-    // this run it waited for, so a person can find the run's longest chain in last-run.json.
-    const startMs = elapsedMs();
-    const waitedFor = waitsOn(index).map(at => entries[at].id);
-    return then(attempts(entry, index, runFn), outcome => {
-      const result = complete(entry, index, outcome);
-      Object.assign(result, { startMs, endMs: elapsedMs() }, waitedFor.length ? { waitedFor } : {});
-      // Its readers, which waited for it, see what it wrote.
-      const written = readFrom(entry);
-      if (written.length) forgetFiles(ctx, written);
-      return result;
+    if (decided) { run.skip(entry.id); return decided; }
+    const begin = () => {
+      // D167: when it ran (milliseconds from the run's start, all its attempts) and which checks of
+      // this run it waited for, so a person can find the run's longest chain in last-run.json.
+      const startMs = elapsedMs();
+      const waitedFor = waitsOn(index).map(at => entries[at].id);
+      run.start(entry.id, { uses: entry.uses, timing: entry.timing, heavy: entry.heavy });
+      executed.add(entry.id);
+      return then(attempts(entry, index, runFn), outcome => {
+        run.finish(entry.id);
+        const result = complete(entry, index, outcome);
+        Object.assign(result, { startMs, endMs: elapsedMs() }, waitedFor.length ? { waitedFor } : {});
+        // Its readers, which waited for it, see what it wrote.
+        const written = readFrom(entry);
+        if (written.length) forgetFiles(ctx, written);
+        return result;
+      });
+    };
+    // Declared resources and timing, then the check itself.
+    const whenFree = () => then(freeAt(entry), blocked => (blocked
+      ? { id: entry.id, type: entry.type, status: 'FAIL', durationMs: 0, output: '', error: blocked, failureClass: classify(blocked, '') }
+      : begin()));
+    if (overlapAllowed) return begin();
+    const waited = runRecord.waitForEarlierRuns({ manifestPath, id: entry.id, me: run.record, ancestors: run.ancestors, ignore: gaveUpOn,
+      timeoutMs: waitLimitMs, sync: jobs <= 1,
+      onWait: other => console.error(`[VERIFY] Waiting for ${entry.id}: run pid ${other.pid} (started ${other.startedAt}) chose it too.`) });
+    return then(waited, ({ waitedFor: earlier, timedOut }) => {
+      if (timedOut) {
+        gaveUpOn.add(earlier.pid);
+        console.error(`[VERIFY] Stopped waiting for ${entry.id} after ${waitLimitMs / 1000}s (run pid ${earlier.pid}); running it here.`);
+        return whenFree();
+      }
+      // Waited, or an earlier run that chose it ended meanwhile: its pass may serve.
+      return reuseFromOtherRun(entry, earlier) || whenFree();
     });
   };
   const after = {
@@ -606,11 +684,19 @@ function main(argv = process.argv.slice(2), options = {}) {
     },
   };
   // D143 §4: `jobs` above 1 runs checks side by side (schedule.js); otherwise one at a time.
-  const scheduled = jobs > 1
-    ? runSideBySide({ order: executionOrder, entries, after, jobs, memoryAllows, isExclusive, startSpacingMs,
-      waitsFor: waitsOn,
-      start: index => startOne(index, attempt => runEntryAsync(entries[index], observe(entries[index], index, attempt))) })
-    : runInOrder({ order: executionOrder, after, start: index => startOne(index, attempt => runEntry(entries[index], observe(entries[index], index, attempt))) });
+  // The run's record is removed however the run ends (D175_T001).
+  let scheduled;
+  try {
+    scheduled = jobs > 1
+      ? runSideBySide({ order: executionOrder, entries, after, jobs, memoryAllows, isExclusive, startSpacingMs,
+        waitsFor: waitsOn,
+        start: index => startOne(index, attempt => runEntryAsync(entries[index], observe(entries[index], index, attempt))) })
+      : runInOrder({ order: executionOrder, after, start: index => startOne(index, attempt => runEntry(entries[index], observe(entries[index], index, attempt))) });
+  } catch (error) {
+    run.close();
+    throw error;
+  }
+  if (scheduled && typeof scheduled.then === 'function') scheduled = scheduled.catch(error => { run.close(); throw error; });
   const conclude = () => {
   const failBefore = args.failBefore && !named
     ? failBeforeChecks({ entries, results, records, changedFiles: changedList, expanded, projectRoot, manifestPath, layout })
@@ -709,7 +795,8 @@ function main(argv = process.argv.slice(2), options = {}) {
     const inputHashes = refreshedItemHashes(records[id], ctx);
     if (inputHashes) records[id] = { ...records[id], inputHashes };
   }
-  writeMap({ manifestPath, startedAt, snapshot: snapshot.serialize(), records, ids: expanded.map(entry => entry.id), runs: runs.slice(-RUN_LOG_LIMIT) });
+  writeMap({ manifestPath, startedAt, snapshot: snapshot.serialize(), records, ids: expanded.map(entry => entry.id), runs: runs.slice(-RUN_LOG_LIMIT),
+    previousRecords, readWriteId: previousMap ? previousMap.writeId : undefined, runLimit: RUN_LOG_LIMIT, executed });
   // D170: while the failures are being fixed, only they run again; the wider run comes once, after.
   if (failedIds.size) console.error(`[VERIFY] ${failedIds.size} failed: ${[...failedIds].join(', ')} — after the fix, rerun only these: ${runnerCommand('--failed')}; once they pass, run --changed once.`);
   if (traceDir) { try { fs.rmSync(traceDir, { recursive: true, force: true }); } catch (_) {} }
@@ -758,7 +845,11 @@ function main(argv = process.argv.slice(2), options = {}) {
   results.push(...failBefore);
   return printResults(results, { args, started, resultsPath: layout.resultsPath, plan, selected: entries.length, failBefore, stillFailing, notices, runLine });
   };
-  return then(scheduled, conclude);
+  // The record goes after the map is written, so a run waiting for this one reads its passes.
+  const concludeAndClose = value => {
+    try { return conclude(value); } finally { run.close(); }
+  };
+  return then(scheduled, concludeAndClose);
 }
 
 // "N with changed inputs, M new, …; R reused" for the summary line.

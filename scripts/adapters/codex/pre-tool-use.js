@@ -37,6 +37,31 @@ const CHECKS = [
     },
   },
   {
+    // D175_T001: a check a live runner run is running now is not started again by hand.
+    name: 'overlap-guard',
+    accepts: isShell,
+    when: allowed,
+    run: (payload, projectDir) => {
+      const decision = require('../../core/overlap-guard').overlapDecision(withCommand(payload), projectDir);
+      if (!decision) return null;
+      return decision.reason ? { reason: decision.reason } : { context: decision.context };
+    },
+  },
+  {
+    // D175_T002: a declared resource held elsewhere, or timing work beside heavy work.
+    name: 'resource-guard',
+    accepts: isShell,
+    when: allowed,
+    run: (payload, projectDir) => require('../../core/resource-guard').resourceDecision(withCommand(payload), projectDir),
+  },
+  {
+    // D175_T003: a command that makes files while another worktree changes its inputs.
+    name: 'pending-inputs',
+    accepts: isShell,
+    when: allowed,
+    run: (payload, projectDir) => require('../../core/pending-inputs').pendingInputsDecision(withCommand(payload), projectDir),
+  },
+  {
     name: 'verification-gate',
     accepts: isShell,
     when: allowed,

@@ -36,6 +36,31 @@ const CHECKS = [
       return decision.reason ? { reason: decision.reason, log: `[RERUN_GUARD] answered from the runner record: ${decision.entryId}` } : { context: decision.context };
     },
   },
+  {
+    // D175_T001: a check a live runner run is running now is not started again by hand.
+    name: 'overlap-guard',
+    accepts: isShellCall,
+    when: allowed,
+    run: (payload, projectDir) => {
+      const decision = require('../../core/overlap-guard').overlapDecision(payload, projectDir);
+      if (!decision) return null;
+      return decision.reason ? { reason: decision.reason, log: `[OVERLAP_GUARD] check running in a live run: ${decision.entryId}` } : { context: decision.context };
+    },
+  },
+  {
+    // D175_T002: a declared resource held elsewhere, or timing work beside heavy work.
+    name: 'resource-guard',
+    accepts: isShellCall,
+    when: allowed,
+    run: (payload, projectDir) => require('../../core/resource-guard').resourceDecision(payload, projectDir),
+  },
+  {
+    // D175_T003: a command that makes files while another worktree changes its inputs.
+    name: 'pending-inputs',
+    accepts: isShellCall,
+    when: allowed,
+    run: (payload, projectDir) => require('../../core/pending-inputs').pendingInputsDecision(payload, projectDir),
+  },
   { name: 'completion-controller', accepts: isShellCall, when: allowed, run: controllerResult },
   {
     // D151_T002: before a commit, one line when files changed since the checks last passed.

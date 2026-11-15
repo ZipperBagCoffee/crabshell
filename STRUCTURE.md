@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.176.0)
+# Crabshell Plugin Structure (v21.177.0)
 
-**Version**: 21.176.0 | **Author**: ZipperBagCoffee | **License**: MIT
+**Version**: 21.177.0 | **Author**: ZipperBagCoffee | **License**: MIT
 
 ## Overview
 
@@ -125,6 +125,10 @@ crabshell/
 │   ├── core/dispatch.js                     # One check runner for Claude and Codex hooks: lazy load and try per check (v21.153.0)
 │   ├── core/project-state.js                # The runner's project view for hooks, loaded on first use; null = no judgment (v21.153.0)
 │   ├── core/rerun-guard.js                  # A hand rerun of a check that passed on the same files is answered from its record (v21.153.0)
+│   ├── core/overlap-guard.js                # A check a live runner run is running now is not started again by hand (v21.177.0)
+│   ├── core/resource-guard.js               # Declared resources held elsewhere; timing beside heavy work and the reverse (v21.177.0)
+│   ├── core/pending-inputs.js               # A command that makes files while another worktree changes its inputs (v21.177.0)
+│   ├── core/overlap-text.js                 # The override syntax and JSON reading the three overlap guards share (v21.177.0)
 │   ├── core/declaration-guidance.js         # Hints to declare inputs/slow/outputs and repeated undeclared commands; a declared check run by hand → run it through the runner (v21.153.0, v21.158.0)
 │   ├── core/commit-reminder.js              # A git commit with files changed since the checks last passed gets one reminder to run --changed (v21.158.0)
 │   ├── core/rules-text.js                   # RULES and the CLAUDE.md sync wrapper, so load-memory does not load the prompt hook (v21.158.0)
@@ -181,6 +185,11 @@ crabshell/
 │   ├── _test-runner-fingerprint.js          # A check reruns only when its fingerprint is not among its passes (v21.153.0)
 │   ├── _test-runner-trace.js                # Traced vs unknown inputs: what the tracer saw across child processes (v21.153.0)
 │   ├── _test-runner-wide-selection.js       # The wide-selection notice: what pulled in most checks (v21.174.0)
+│   ├── _test-runner-overlap.js              # Overlapping runner runs: one execution per check, no lost pass, resource and timing waits (v21.177.0)
+│   ├── _test-overlap-guard.js               # A running check started by hand is refused, in pipe/PowerShell/cd forms (v21.177.0)
+│   ├── _test-overlap-resources.js           # Lock holders, process list, settings, and the resource/timing hook in a two-worktree repo (v21.177.0)
+│   ├── _test-pending-inputs.js              # Inputs of a file-making command changed in another worktree (v21.177.0)
+│   ├── _test-command-match.js               # Shell commands read as words and matched against declarations (v21.177.0)
 │   ├── _test-runner-policy.js               # Retries, heavy checks, order, every check runs after a failure, --failed (v21.173.0), parallel jobs (v21.153.0)
 │   ├── _test-runner-any-project.js          # Non-Node (Python) checks with inputs, slow, and a folder without git (v21.153.0)
 │   ├── _test-runner-state-warning.js        # A check reading Crabshell state is named; outside-snapshot inputs judged by time (v21.153.0)
@@ -252,7 +261,7 @@ crabshell/
 │   ├── (light-workflow retired v21.112.0 — one-pass work records via hotfix)
 │   ├── verifying/SKILL.md            # /crabshell:verifying (schema-v2 behavioral verification; Step 2a wiring inventory v21.121.0)
 │   │   ├── scripts/run-verify.js      # Launcher of the portable verification runner (v21.106.0; split into runner/ v21.153.0)
-│   │   ├── scripts/runner/            # Runner modules: manifest, fingerprint, snapshot, ignored, select, schedule, execute, contract, trace, store, output, install, project-state (v21.153.0); settings (manifest run settings), test-hygiene (copy detector), routine (risk paths, flaky quarantine), recheck (forbidden-file re-check), replay (--replay) (v21.158.0); used-report (reports of what a check used, `itemIdentity`, `{cases}`) (v21.159.0); wide-selection (what pulled in most checks) (v21.174.0)
+│   │   ├── scripts/runner/            # Runner modules: manifest, fingerprint, snapshot, ignored, select, schedule, execute, contract, trace, store, output, install, project-state (v21.153.0); settings (manifest run settings), test-hygiene (copy detector), routine (risk paths, flaky quarantine), recheck (forbidden-file re-check), replay (--replay) (v21.158.0); used-report (reports of what a check used, `itemIdentity`, `{cases}`) (v21.159.0); wide-selection (what pulled in most checks) (v21.174.0); run-record (live runs in `.runs/`), command-match (shell commands as words), resources (lock files, processes, worktrees), overlap (who holds what, what spoils a measurement, the runner's waits) (v21.177.0)
 │   │   ├── scripts/released-launchers.json # Every launcher Crabshell released (LF sha256), built by scripts/build-released-launchers.js (v21.153.0)
 │   │   ├── scripts/check-pipeline-wiring.js # Pipeline wiring probe: discover / check --contract (v21.121.0)
 │   │   └── references/                # wiring-inventory, manifest-entries (v21.132.0); fail-before (v21.142.0); runner-reuse-output (v21.146.0); select-by-use (checks that report what they used, v21.159.0); check-cost (making each check cheaper, v21.163.0)
@@ -504,6 +513,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.177.0 | runner `run-record.js`, `command-match.js`, `resources.js`, `overlap.js`, `store.js`, `main.js`, `select.js`, `schedule.js`, `settings.js`, `manifest.js`; `scripts/core/overlap-guard.js`, `resource-guard.js`, `pending-inputs.js`, `overlap-text.js`, `command-observation.js`, `rerun-guard.js`; adapters; tests `_test-runner-overlap.js`, `_test-overlap-guard.js`, `_test-overlap-resources.js`, `_test-pending-inputs.js`, `_test-command-match.js` |
 | 21.176.0 | `scripts/web-guard.js` `signedInServers`/`keyInConfig`/`serverStates`; test `_test-web-guard.js` |
 | 21.175.0 | `scripts/core/rules-text.js` Personal data rule; `CLAUDE.md` rules block |
 | 21.174.0 | `scripts/web-guard.js` plugin MCP servers; runner `wide-selection.js`, `main.js`, `output.js`, `settings.js`, `select.js` `fromChanges`/`projectReasonKind`; tests `_test-web-guard.js`, `_test-runner-wide-selection.js` |

@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.176.0)
+# Crabshell Architecture (v21.177.0)
 
 ## Overview
 
@@ -394,6 +394,7 @@ Regressing retains document-cycle continuation but has no parallel-worker count 
 | `core/post-compact-effects.js` | shared library | Post-compaction effects: compaction log and regressing-state note; Claude runs it at SessionStart(compact), Codex from its PostCompact hook |
 | `core/first-turn-context.js`, `core/memory-context.js`, `core/workflow-context.js` | shared libraries | Shared compact turn contract, memory with preserving legacy-description copy, and restart-safe workflow context |
 | `core/compaction-context.js`, `core/subagent-context.js` | shared libraries | Recovery context and bounded task-specific child context for both hosts |
+| `core/overlap-guard.js`, `core/resource-guard.js`, `core/pending-inputs.js` (+ `core/overlap-text.js`) | PreToolUse (Claude, Codex) | Overlapping work (v21.177.0): a check a live runner run is running now; a declared resource held elsewhere; a `timing` command beside heavy work or heavy work beside a measurement; a command that makes files while another worktree changes its inputs. Judgments shared with the runner in `runner/overlap.js`; fail-open; `CRABSHELL_OVERLAP=1` / `pid:<pids>` |
 | `core/command-observation.js`, `core/completion-control.js`, `core/project-state.js`, `core/rerun-guard.js`, `core/declaration-guidance.js` | shared libraries | Declared checks only (manifest `tools`, entries, `wrappers`, environment prefixes) and host-specific results; current-content parent evidence (identity compared only when both sides are known); the runner's project view for hooks, loaded on first use (no runner modules → no judgment: blocking checks do not block, evidence is none); a hand rerun of a check that passed on the same files answered from its record; hints to declare `inputs`/`slow`/`outputs` and repeated undeclared commands (v21.153.0) |
 | `core/support-state.js` | shared library | Derive the seven live doctor states without a version compatibility table |
 | `adapters/codex/*` | Codex native lifecycle | Normalize native lifecycle/Interrupt payloads and emit Codex-native results without Claude exit-code semantics |
@@ -561,6 +562,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.177.0 | Runner `run-record.js` (live runs in `.runs/`), `command-match.js` (shell commands as words; `programName` moved here), `resources.js` (lock files, processes, worktrees), `overlap.js` (who holds a resource, what spoils a measurement, the runner's waits); `store.js` `writeMap` merges under a short lock using `writeId`; `main.js` waits per check and reuses another run's pass; `schedule.js` `sharesResource`, timing runs alone; hooks `core/overlap-guard.js`, `core/resource-guard.js`, `core/pending-inputs.js`, `core/overlap-text.js` |
 | 21.176.0 | `web-guard.js` reads the credential store's `mcpOAuth` names (token presence only) and each server's key settings to label the block message |
 | 21.175.0 | `core/rules-text.js` RULES gains the Personal data line (ADDITIONAL RULES) |
 | 21.174.0 | `web-guard.js` `pluginServers()`/`enabledPluginKeys()` add enabled plugins' MCP servers as Claude Code loads them, servers Claude Code does not start are left out, `searchRank()` takes an exact `searchTools` name first, `serverInToolName()` matches the same server only; runner `wide-selection.js` `wideSelection()` |

@@ -65,7 +65,9 @@ function crabshellState({ projectRoot, layout }) {
 }
 
 function exclusion({ projectRoot, layout, manifestPath, manifest }) {
-  const own = [layout.storageDir ? null : path.join(path.dirname(path.dirname(manifestPath)), 'memory'), layout.moduleDir]
+  // The runs' own records (run-record.js, D175_T001) change with every run; never inputs.
+  const own = [layout.storageDir ? null : path.join(path.dirname(path.dirname(manifestPath)), 'memory'), layout.moduleDir,
+    require('./run-record').recordDir(manifestPath)]
     .filter(Boolean).map(folder => insideRoot(projectRoot, folder)).filter(Boolean).map(folder => `${folder}/`);
   const crabshellOwn = crabshellState({ projectRoot, layout });
   const ownFilePrefixes = [mapPath(manifestPath), layout.resultsPath, path.join(layout.launcherDir, require('./ignored').RECORD_FILE)]
