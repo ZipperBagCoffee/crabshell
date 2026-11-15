@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.177.2)
+# Crabshell Architecture (v21.177.3)
 
 ## Overview
 
@@ -562,6 +562,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.177.3 | Docs only: `skills/verifying/SKILL.md` (routine-update paragraph, `slow` field), `references/check-cost.md`, USER-MANUAL — the slow tier runs at the release or milestone close the project's rules name, not at every commit |
 | 21.177.2 | `run-record.js` `earlierRunsChoosing`/`waitForEarlierRuns` `runningOnly` for runs that cannot reuse (`main.js` `usesOthersPass`); `manifest.js` discovery copies `uses`/`heavy`/`timing`/`whenArgs` |
 | 21.177.1 | `runner/overlap.js`: a run counts as heavy only while executing a check, `runStillLive` (pid start time against the run record), `declarationsOf` skips expansion without D175 fields, `rootFinder(null)` finds worktree roots from the files; `run-record.js` `waitForEarlierRuns` `confirm`; `resources.js` `gitEntryAbove`; hooks match from the files before any git or process list |
 | 21.177.0 | Runner `run-record.js` (live runs in `.runs/`), `command-match.js` (shell commands as words; `programName` moved here), `resources.js` (lock files, processes, worktrees), `overlap.js` (who holds a resource, what spoils a measurement, the runner's waits); `store.js` `writeMap` merges under a short lock using `writeId`; `main.js` waits per check and reuses another run's pass; `schedule.js` `sharesResource`, timing runs alone; hooks `core/overlap-guard.js`, `core/resource-guard.js`, `core/pending-inputs.js`, `core/overlap-text.js` |

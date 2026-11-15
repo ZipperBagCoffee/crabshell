@@ -43,7 +43,7 @@ Without `jobs` in the manifest, the runner runs a check alone unless its last ru
 
 ## ④ Heavy by nature: `slow`
 
-When the work itself is long, mark the entry `slow: true`; the verifying skill lists the kinds. Routine runs leave it out unless a `riskPaths` file and the check's own inputs changed ([manifest fields](manifest-entries.md)). It also runs with `--slow`, on a full run the user asked for, and at the release step.
+When the work itself is long, mark the entry `slow: true`; the verifying skill lists the kinds. Routine runs leave it out unless a `riskPaths` file and the check's own inputs changed ([manifest fields](manifest-entries.md)). It runs with `--slow` at the release or milestone close the project's rules name (not at every commit), and on a full run the user asked for.
 
 ## Measure the change
 

@@ -123,7 +123,7 @@ node .crabshell/verification/run-verify.js --failed   # only checks whose last r
 node .crabshell/verification/run-verify.js            # selects every check, only when requested
 ```
 
-For routine updates, run `--changed` once after the last edit. Run every check only when the user asks. If a full run seems needed, ask first and say why. A release runs `--changed --slow`, which keeps passes. After a failing run (every chosen check runs; all failures are listed), fix, rerun `--failed` until those pass, then run `--changed` once. Run a long `--changed` in the background: results are written only when the run ends.
+For routine updates, run `--changed` once after the last edit. Run every check only when the user asks. If a full run seems needed, ask first and say why. Run `--changed --slow` (keeps passes) only at the release or milestone close the project's rules name, not at every commit. After a failing run (every chosen check runs; all failures are listed), fix, rerun `--failed` until those pass, then run `--changed` once. Run a long `--changed` in the background: results are written only when the run ends.
 
 A hand rerun of a declared check on the files it last passed with is blocked and answered from its record. Put `CRABSHELL_RERUN=1` before the command to run it anyway. After a hand run, Crabshell hints once each when the entry needs `inputs`, `slow` or `outputs`.
 
@@ -132,7 +132,7 @@ A hand rerun of a declared check on the files it last passed with is blocked and
 **Entry fields that keep routine runs short.**
 - `inputs: ["src/game/**", "tools/check_x.py"]` — the files, folders (ending in `/`) or globs a check reads. Required when the Node tracer cannot see the check and the check does not report what it used. Without it, the check's inputs are unknown and any project change reruns it. Declared inputs enter its fingerprint and are recorded like traced files.
 - `outputs: ["build/"]` — files the check writes. They are its products, not its inputs. A check whose recorded inputs include one waits for the writer when the writer runs, and is then reused if the content is what it passed with.
-- `slow: true` — a check too long for every change, such as a real install. A median pass time over `slowAfterSeconds` makes a check slow without the flag. `--changed` skips them and prints `Slow checks not run: … — run them with: node .crabshell/verification/run-verify.js --slow`. They run with `--slow`, on a full run the user asked for, and at the project's release step.
+- `slow: true` — a check too long for every change, such as a real install. A median pass time over `slowAfterSeconds` makes a check slow without the flag. `--changed` skips them and names them in `Slow checks not run: …`. They run with `--slow` at the project's release or milestone close, and on a full run the user asked for.
 
 `--changed` chooses by content, not Git. A check reruns only when its fingerprint is not among those it passed with. The fingerprint covers run fields, program, runner, platform and input contents. So a check reruns when it is new, failed last time, has `always: true` or `reuse: false`, or its inputs changed. Unknown inputs mean the whole project. A changed file that no check reads or declares runs the declared-input checks once. A record of another schema counts as none. Crabshell's storage (`.crabshell/` outside the verification folder) is never snapshotted. Records: [manifest changes](references/runner-reuse-output.md#manifest-changes-and-records).
 

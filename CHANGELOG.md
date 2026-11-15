@@ -1,5 +1,12 @@
 # Changelog
 
+## [21.177.3] - 2026-11-15
+
+### docs: the slow tier runs at the release or milestone close the project's rules name, not at every commit (D176)
+
+- The verifying skill said "A release runs `--changed --slow`". In a project whose rules make every commit a release (the version rises with every commit), an agent read that as the slow tier on every commit. The skill, `references/check-cost.md` and the user manual now say: run `--changed --slow` only at the release or milestone close the project's rules name, not at every commit.
+- Checked by behavior, one run each: a fresh agent given only the skill and a project whose rules make every commit a release chose `--changed --slow` with the old sentence and `--changed` with the new one. With a release checklist it still chose `--changed --slow`. A project that raises its version on every commit but closes milestones by a separate procedure already chose `--changed` with the old sentence.
+
 ## [21.177.2] - 2026-11-14
 
 ### fix: a run by name no longer waits out an earlier run; discovered checks keep their overlap fields (D175_T005)
