@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.177.3)
+# Crabshell Architecture (v21.178.0)
 
 ## Overview
 
@@ -281,6 +281,7 @@ Claude `PostToolUseFailure` is wired to both verification-state and parent-evide
        ├─> Bound identical actual failures, then require a concrete report instead of looping
        ├─> Preserve active D/P/T/W workflow continuation
        └─> Claude Stop checks in the same process: doc-watchdog stopReason, sycophancy-guard stopReason (restored v21.166.0; scope retired v21.113.0)
+       └─> then best-answer stopStep: "Is that your best?" once per prompt when nothing blocked (v21.178.0)
 
 4. PostToolUse (all tools) — one process: adapters/claude/post-tool-use.js (v21.125.0)
    ├─> counter check
@@ -406,6 +407,7 @@ Regressing retains document-cycle continuation but has no parallel-worker count 
 | `_test-cross-platform-native-hosts.js` | release smoke | Isolated Windows/Linux Claude Code CLI and Codex CLI install/activation matrix; app reported separately |
 | `skills/verifying/scripts/run-verify.js`, `skills/verifying/scripts/runner/` | verification source | A small launcher and the runner modules (v21.153.0): manifest and its settings tables, fingerprint (entry run fields, program, decision code without comment lines, platform, input contents; since v21.159.0 the decision code is `contract.js`, `execute.js` and the tracer source only), snapshot (one walk; git-ignored folders skipped via a kept list, `ignored.js`), select (pass history, change reasons; record kinds `reported`, `traced`, `declared`, `project` since v21.159.0), schedule (order, retries, `jobs`), store (`test-map.json` schema 4 since v21.159.0), trace (NODE_OPTIONS tracer across child processes), used-report (a check's report of what it used through `CRABSHELL_USED_REPORT`, the project's `itemIdentity` command, `{cases}`; v21.159.0), output, install (copy with temp file + rename) |
 | `.crabshell/verification/run-verify.js`, `.crabshell/verification/runner/` | project runner copy | Copied from the skill runner; kept current at each session start (`core/runner-sync.js`: changed modules copied, a released launcher replaced — the list is `skills/verifying/scripts/released-launchers.json`, built by `scripts/build-released-launchers.js` — an edited launcher kept and named once); stdout text is diagnostic, not a pass oracle |
+| `best-answer.js` | Stop (in completion-controller) | v21.178.0 (D177): answers sent without the review the user kept asking for by hand ("그게 최선임?"). Once per prompt, interactive Claude only; deferred while another Stop check blocks; the other checks run once more after it. |
 | `sycophancy-guard.js` | Stop, PreToolUse (file writes) | Restored v21.166.0 (D162): agreement phrases outside code and quotes, with no tool call earlier in the current turn (`core/transcript.js` `currentTurn`), are sent back once at Stop and block a file write. |
 | (deleted v21.130.0) | — | `pressure-guard.js`, `scope-guard.js` (unwired v21.113.0, I083 R4/R5) and `regressing-loop-guard.js` (unwired v21.107.0) were removed with their tests; git history keeps them. Regressing continuation is goal-driven (v21.110.0) with `completion-controller.js` bounded continuation. |
 | `skill-tracker.js` | PostToolUse (Skill) via `post-tool-use.js` (inline since v21.125.0) | Set the calling session's skill flag on Skill tool calls (no timer; cleared on compaction and SessionEnd; payloads without a session id use the legacy 15-minute project flag) |
@@ -562,6 +564,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.178.0 | `scripts/best-answer.js` (question, settings, per-session prompt state in `best-answer.json`); `completion-controller.js` Stop: other checks first, question once per prompt as `additionalContext`, deferred while another check blocks, other checks run once more after it |
 | 21.177.3 | Docs only: `skills/verifying/SKILL.md` (routine-update paragraph, `slow` field), `references/check-cost.md`, USER-MANUAL — the slow tier runs at the release or milestone close the project's rules name, not at every commit |
 | 21.177.2 | `run-record.js` `earlierRunsChoosing`/`waitForEarlierRuns` `runningOnly` for runs that cannot reuse (`main.js` `usesOthersPass`); `manifest.js` discovery copies `uses`/`heavy`/`timing`/`whenArgs` |
 | 21.177.1 | `runner/overlap.js`: a run counts as heavy only while executing a check, `runStillLive` (pid start time against the run record), `declarationsOf` skips expansion without D175 fields, `rootFinder(null)` finds worktree roots from the files; `run-record.js` `waitForEarlierRuns` `confirm`; `resources.js` `gitEntryAbove`; hooks match from the files before any git or process list |

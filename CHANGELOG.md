@@ -1,5 +1,15 @@
 # Changelog
 
+## [21.178.0] - 2026-11-19
+
+### feat: after every answer, Claude is asked once "Is that your best?" (D177)
+
+- At the main agent's Stop, completion-controller asks the question the user kept typing by hand: find what the user would point at (a source not opened, a guess stated as fact, a shortcut, a hardcoded value, a requested item left out, wording longer or harder than the reader needs), change only with evidence from the turn, fix the answer and not the work, or say in one line that it stands and what was checked. It arrives as Stop `additionalContext` ("Stop hook feedback"), not as a hook error.
+- Once per user prompt (`prompt_id`). When another Stop check blocks, the question waits for the next Stop instead of joining a different instruction. After the question, the other Stop checks run once more on the revised answer: `stop_hook_active` stays true even past tool calls (measured), which would otherwise switch them off.
+- Claude interactive sessions only: not SubagentStop, not Codex, and not `claude -p` or the Agent SDK (entrypoint `sdk-*`), where a second message would replace the answer the caller reads. Settings in `.crabshell/memory/config.json`: `bestAnswer.ask` (default true), `bestAnswer.skipEntrypoints` (default `["sdk"]`). New module `scripts/best-answer.js`, state in `.crabshell/memory/best-answer.json`.
+- Measured with the development plugin in `claude -p` (entrypoint check lifted): the question was asked once and the run took 7.7–8.0 s against 5.2–5.5 s without it on a one-line answer; with another check blocking first, the question came at the next Stop. Not yet tried by a person in an interactive session.
+- Not in this release: hiding the first answer until the review (the `MessageDisplay` hook). Never observed interactively, it would stay hidden after Esc or an API error, and it hides progress lines.
+
 ## [21.177.3] - 2026-11-15
 
 ### docs: the slow tier runs at the release or milestone close the project's rules name, not at every commit (D176)

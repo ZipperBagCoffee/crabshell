@@ -7,6 +7,7 @@ const { decideStop, noteSubagentStop, recordParentObservation, prepareParentChec
 const { commandObservation } = require('./core/command-observation');
 const { contentIdentity } = require('./core/project-state');
 const { isFileWrite, shellCommand } = require('./core/tool-shape');
+const bestAnswer = require('./best-answer');
 
 if (process.env.CRABSHELL_BACKGROUND === '1') process.exit(0);
 
@@ -72,10 +73,16 @@ function handlePayload(payload, options = {}) {
     return { eventName, result: noteSubagentStop(projectDir, payload) };
   }
   if (eventName !== 'Stop') return { eventName, result: { action: 'allow', reason: 'unsupported-event' } };
-  const shared = decideStop(projectDir, payload);
-  const legacyReasons = options.host === 'claude' ? legacyClaudeStopReasons(payload, projectDir) : [];
+  // D177 (Claude only): the other checks first; "Is that your best?" once per prompt when
+  // none of them blocks, else at the next Stop. After the question, the checks run once more.
+  const claude = options.host === 'claude';
+  const checked = claude && attempt(() => bestAnswer.othersMayRun(payload, projectDir), false)
+    ? { ...payload, stop_hook_active: false } : payload;
+  const shared = decideStop(projectDir, checked);
+  const legacyReasons = claude ? legacyClaudeStopReasons(checked, projectDir) : [];
   const reasons = [shared.action === 'block' ? shared.reason : '', ...legacyReasons].filter(Boolean);
-  if (reasons.length === 0) return { eventName, result: shared };
+  const question = claude ? attempt(() => bestAnswer.stopStep(payload, projectDir, reasons.length > 0)) : null;
+  if (reasons.length === 0) return { eventName, result: question ? { ...shared, question } : shared };
   return { eventName, result: { ...shared, action: 'block', reason: reasons.join('\n\n') } };
 }
 
@@ -85,6 +92,8 @@ async function main(options = {}) {
   const handled = handlePayload(payload, options);
   if (handled.eventName !== 'Stop' || handled.result.action !== 'block') {
     const output = {};
+    // D177: the question continues the turn as Stop hook feedback, not as a hook error.
+    if (handled.eventName === 'Stop' && handled.result.question) output.hookSpecificOutput = { hookEventName: 'Stop', additionalContext: handled.result.question };
     if (handled.result.systemMessage) output.systemMessage = handled.result.systemMessage;
     // Codex adds PostToolUse hookSpecificOutput.additionalContext to the model's context.
     if (handled.context && handled.eventName === 'PostToolUse') output.hookSpecificOutput = { hookEventName: 'PostToolUse', additionalContext: handled.context };

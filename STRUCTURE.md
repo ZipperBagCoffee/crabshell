@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.177.3)
+# Crabshell Plugin Structure (v21.178.0)
 
-**Version**: 21.177.3 | **Author**: ZipperBagCoffee | **License**: MIT
+**Version**: 21.178.0 | **Author**: ZipperBagCoffee | **License**: MIT
 
 ## Overview
 
@@ -103,6 +103,7 @@ crabshell/
 │   ├── regressing-guard.js                  # PreToolUse regressing skill enforcement (v19.23.0)
 │   ├── path-guard.js                        # Path guard entry: blocks Bash writes into another project's .crabshell, notices reads, logbook Edit/shrink block (v19.31.0, v20.6.0, v21.125.0)
 │   ├── web-guard.js                         # PreToolUse WebFetch/WebSearch guard — raw-fetch redirect, conditional WebSearch block, block/warn/off modes (v21.114.0, I084); WebSearch as last resort after every search MCP in the turn (v21.166.0)
+│   ├── best-answer.js                       # Stop: "Is that your best?" once per prompt, interactive Claude only (v21.178.0)
 │   ├── sycophancy-guard.js                  # Stop + PreToolUse file writes: agreement with nothing checked in the turn is sent back / blocked (restored v21.166.0)
 │   ├── core/path-policy.js                  # Host-neutral memory path policy (v21.104.0)
 │   ├── core/shell-writes.js                 # Static Bash analysis: .crabshell paths named and whether written (v21.125.0)
@@ -170,6 +171,7 @@ crabshell/
 │   ├── verification-sequence.js             # PostToolUse state tracker + PreToolUse commit/edit gate (v21.0.0)
 │   ├── skill-tracker.js                     # Per-session skill flag setter, run inline by the PostToolUse dispatcher (v19.33.0, v21.124.0, v21.125.0)
 │   ├── _test-path-guard.js                  # Path-guard unit tests + shell var resolution tests (v20.0.0, v21.8.0)
+│   ├── _test-best-answer.js                 # Question once per prompt, deferral, other checks after it, settings, -p skip (v21.178.0)
 │   ├── _test-sycophancy-guard.js            # Restored sycophancy guard: Stop send-back, write block, exemptions (v21.166.0)
 │   ├── _test-web-guard.js                   # Web-guard subprocess + unit tests — block/warn/off, MCP detection, plugin servers (v21.174.0), fail-open (v21.114.0)
 │   ├── _test-verification-sequence.js       # Verification-sequence unit/integration tests (v21.0.0)
@@ -480,6 +482,7 @@ L1 generation:
    └─> completion-controller.js (single Stop owner, v21.107.0)
        ├─> decideStop — blocks stop on execution-authorized turns while a D/P/T or W workflow (incl. regressing-state.json) is active; parent-evidence gate; bounded identical-failure reporting
        └─> validators in the same process: doc-watchdog stopReason, sycophancy-guard stopReason (restored v21.166.0); scope validator remains deleted
+       └─> then best-answer stopStep (v21.178.0)
    Note: regressing continuation is goal-driven from v21.110.0 — the regressing skill emits a `/goal` handoff (host goal mode: Claude Code 2.1.139+, Codex CLI 0.128.0+); regressing-loop-guard.js is retired from wiring and kept as a compatibility/test source.
 
 4. PostToolUse (.*) and PostToolUseFailure (Bash) — one process: adapters/claude/post-tool-use.js (v21.125.0)
@@ -513,6 +516,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.178.0 | `scripts/best-answer.js` (new), `scripts/completion-controller.js`; test `_test-best-answer.js` |
 | 21.177.3 | skill `skills/verifying/SKILL.md`; reference `skills/verifying/references/check-cost.md`; `USER-MANUAL.md` |
 | 21.177.2 | runner `run-record.js`, `main.js`, `manifest.js`; tests `_test-runner-overlap.js`, `_test-overlap-resources.js`; references `manifest-entries.md`, `runner-reuse-output.md` |
 | 21.177.1 | runner `overlap.js`, `run-record.js`, `resources.js`, `main.js`; `scripts/core/resource-guard.js`, `overlap-guard.js`, `pending-inputs.js`; tests `_test-runner-overlap.js`, `_test-overlap-guard.js`, `_test-overlap-resources.js` |
