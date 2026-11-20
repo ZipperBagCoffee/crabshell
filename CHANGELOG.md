@@ -1,5 +1,12 @@
 # Changelog
 
+## [21.178.1] - 2026-11-19
+
+### fix: the user-wide config turns "Is that your best?" off in every project (D177)
+
+- `bestAnswer` is read from `~/.crabshell/config.json` too, with the project's `.crabshell/memory/config.json` over it key by key: one line turns the question off everywhere, and a project can turn it back on. 21.178.0 read only the project file, while the manual offers both.
+- Measured with the development plugin in `claude -p`: after the question, the other Stop checks judged the revised answer (sycophancy-guard sent back an answer that agreed with nothing checked) and the turn ended after that one extra run. Stop `additionalContext` needs Claude Code 2.1.163 or later; what an older host does with it was not tried.
+
 ## [21.178.0] - 2026-11-19
 
 ### feat: after every answer, Claude is asked once "Is that your best?" (D177)

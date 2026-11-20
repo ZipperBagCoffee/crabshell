@@ -13,6 +13,11 @@ const { QUESTION, statePath } = require('./best-answer');
 
 const base = fs.mkdtempSync(path.join(os.tmpdir(), 'crabshell-best-answer-'));
 const savedEntry = process.env.CLAUDE_CODE_ENTRYPOINT;
+const savedHome = { HOME: process.env.HOME, USERPROFILE: process.env.USERPROFILE };
+const home = path.join(base, 'home'); // the user-wide ~/.crabshell/config.json lives here
+fs.mkdirSync(path.join(home, '.crabshell'), { recursive: true });
+process.env.HOME = home;
+process.env.USERPROFILE = home;
 process.env.CLAUDE_CODE_ENTRYPOINT = 'cli'; // an interactive session
 let passed = 0;
 let failed = 0;
@@ -148,6 +153,16 @@ try {
     } finally { process.env.CLAUDE_CODE_ENTRYPOINT = 'cli'; }
   });
 
+  check('the user-wide config turns it off everywhere; a project setting wins over it', () => {
+    const globalFile = path.join(home, '.crabshell', 'config.json');
+    fs.writeFileSync(globalFile, JSON.stringify({ bestAnswer: { ask: false } }));
+    try {
+      assert.equal(stop(project(), { prompt_id: 'p1' }).question, undefined);
+      const back = project(JSON.stringify({ bestAnswer: { ask: true } }));
+      assert.equal(stop(back, { prompt_id: 'p1' }).question, QUESTION);
+    } finally { fs.rmSync(globalFile, { force: true }); }
+  });
+
   check('sessions keep their own prompt state', () => {
     const dir = project();
     stop(dir, { prompt_id: 'p1' });
@@ -156,6 +171,7 @@ try {
   });
 } finally {
   if (savedEntry === undefined) delete process.env.CLAUDE_CODE_ENTRYPOINT; else process.env.CLAUDE_CODE_ENTRYPOINT = savedEntry;
+  for (const [key, value] of Object.entries(savedHome)) { if (value === undefined) delete process.env[key]; else process.env[key] = value; }
   fs.rmSync(base, { recursive: true, force: true });
 }
 

@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.178.0)
+# Crabshell Plugin Structure (v21.178.1)
 
-**Version**: 21.178.0 | **Author**: ZipperBagCoffee | **License**: MIT
+**Version**: 21.178.1 | **Author**: ZipperBagCoffee | **License**: MIT
 
 ## Overview
 
@@ -516,6 +516,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.178.1 | `scripts/best-answer.js`; test `_test-best-answer.js` |
 | 21.178.0 | `scripts/best-answer.js` (new), `scripts/completion-controller.js`; test `_test-best-answer.js` |
 | 21.177.3 | skill `skills/verifying/SKILL.md`; reference `skills/verifying/references/check-cost.md`; `USER-MANUAL.md` |
 | 21.177.2 | runner `run-record.js`, `main.js`, `manifest.js`; tests `_test-runner-overlap.js`, `_test-overlap-resources.js`; references `manifest-entries.md`, `runner-reuse-output.md` |

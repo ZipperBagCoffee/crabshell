@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.178.0)
+# Crabshell Architecture (v21.178.1)
 
 ## Overview
 
@@ -564,6 +564,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.178.1 | `best-answer.js` `settingsOf`: `~/.crabshell/config.json` `bestAnswer` under the project's, key by key |
 | 21.178.0 | `scripts/best-answer.js` (question, settings, per-session prompt state in `best-answer.json`); `completion-controller.js` Stop: other checks first, question once per prompt as `additionalContext`, deferred while another check blocks, other checks run once more after it |
 | 21.177.3 | Docs only: `skills/verifying/SKILL.md` (routine-update paragraph, `slow` field), `references/check-cost.md`, USER-MANUAL — the slow tier runs at the release or milestone close the project's rules name, not at every commit |
 | 21.177.2 | `run-record.js` `earlierRunsChoosing`/`waitForEarlierRuns` `runningOnly` for runs that cannot reuse (`main.js` `usesOthersPass`); `manifest.js` discovery copies `uses`/`heavy`/`timing`/`whenArgs` |

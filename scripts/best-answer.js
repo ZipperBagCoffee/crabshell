@@ -5,9 +5,10 @@
 // at; this asks after the answer exists and presumes a defect. Once per user prompt
 // (prompt_id); deferred while another Stop check blocks; Claude only.
 
+const os = require('os');
 const path = require('path');
 const { getStorageRoot, readJsonOrDefault, writeJson } = require('./utils');
-const { SESSION_STATE_MAX_AGE_MS } = require('./constants');
+const { SESSION_STATE_MAX_AGE_MS, STORAGE_ROOT } = require('./constants');
 const { withStateLock } = require('./core/state-lock');
 
 const QUESTION = 'Is that your best? Find what the user would point at if they asked that: '
@@ -30,14 +31,21 @@ function memoryDir(projectDir) {
 // D177). There a second message would replace the answer the caller reads.
 const DEFAULT_SKIP_ENTRYPOINTS = ['sdk'];
 
-function settingsOf(projectDir) {
-  const config = readJsonOrDefault(path.join(memoryDir(projectDir), 'config.json'), {}) || {};
+function bestAnswerIn(file) {
+  const config = readJsonOrDefault(file, {}) || {};
   return config && typeof config.bestAnswer === 'object' && config.bestAnswer ? config.bestAnswer : {};
 }
 
-// On unless the project sets bestAnswer.ask to false in .crabshell/memory/config.json
-// (the file web-guard reads), or the run's entrypoint starts with one of
-// bestAnswer.skipEntrypoints (default ["sdk"]); an unreadable file keeps the defaults.
+// The user-wide ~/.crabshell/config.json first, the project's .crabshell/memory/config.json
+// over it key by key, so one line turns it off in every project and a project can differ.
+function settingsOf(projectDir) {
+  return { ...bestAnswerIn(path.join(os.homedir(), STORAGE_ROOT, 'config.json')),
+    ...bestAnswerIn(path.join(memoryDir(projectDir), 'config.json')) };
+}
+
+// On unless bestAnswer.ask is false (user-wide or project config), or the run's entrypoint
+// starts with one of bestAnswer.skipEntrypoints (default ["sdk"]); an unreadable file keeps
+// the defaults.
 function enabled(projectDir, env = process.env) {
   const settings = settingsOf(projectDir);
   if (settings.ask === false) return false;

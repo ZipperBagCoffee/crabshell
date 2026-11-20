@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.178.0)
+# Crabshell User Manual (v21.178.1)
 
 ## Why Do You Need This?
 
@@ -378,7 +378,7 @@ The plugin uses two injection mechanisms:
 | `memoryRotation.thresholdTokens` | 25000 | Token threshold for logbook.md rotation (with 0.95 safety margin) |
 | `memoryRotation.carryoverTokens` | 2500 | Tokens to keep as carryover after rotation (with 0.95 safety margin) |
 | `searchTools` | built-in list | Search MCP servers web-guard recognizes, matched as whole words of a server name, in the order it asks for them (since v21.172.0). Unset: exa, tavily, brave, serper, perplexity, jina, firecrawl, kagi, searxng, duckduckgo, ddg, websearch, web-search |
-| `bestAnswer.ask` | `true` | After each prompt's answer, ask Claude once "Is that your best?" at Stop (v21.178.0). `false` turns it off |
+| `bestAnswer.ask` | `true` | After each prompt's answer, ask Claude once "Is that your best?" at Stop (v21.178.0). `false` turns it off. Read from `~/.crabshell/config.json` and the project file; the project's keys win (v21.178.1) |
 | `bestAnswer.skipEntrypoints` | `["sdk"]` | Runs whose `CLAUDE_CODE_ENTRYPOINT` starts with one of these are not asked (`claude -p` and the Agent SDK report `sdk-cli`, `sdk-ts`, …; an interactive session reports `cli`). `[]` asks everywhere |
 | `webGuard` | "block" | Web guard mode: `block` (WebFetch blocked, WebSearch blocked only when a search MCP is configured), `warn` (never blocks, injects verification warnings), `off` (guard disabled) (v21.114.0) |
 
