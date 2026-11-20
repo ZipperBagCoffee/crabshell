@@ -73,7 +73,7 @@ function handlePayload(payload, options = {}) {
     return { eventName, result: noteSubagentStop(projectDir, payload) };
   }
   if (eventName !== 'Stop') return { eventName, result: { action: 'allow', reason: 'unsupported-event' } };
-  // D177 (Claude only): the other checks first; "Is that your best?" once per prompt when
+  // D177 (Claude only): the other checks first; the best-answer question once per prompt when
   // none of them blocks, else at the next Stop. After the question, the checks run once more.
   const claude = options.host === 'claude';
   const checked = claude && attempt(() => bestAnswer.othersMayRun(payload, projectDir), false)

@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.178.1)
+# Crabshell Architecture (v21.178.2)
 
 ## Overview
 
@@ -281,7 +281,7 @@ Claude `PostToolUseFailure` is wired to both verification-state and parent-evide
        ├─> Bound identical actual failures, then require a concrete report instead of looping
        ├─> Preserve active D/P/T/W workflow continuation
        └─> Claude Stop checks in the same process: doc-watchdog stopReason, sycophancy-guard stopReason (restored v21.166.0; scope retired v21.113.0)
-       └─> then best-answer stopStep: "Is that your best?" once per prompt when nothing blocked (v21.178.0)
+       └─> then best-answer stopStep: the best-answer question once per prompt when nothing blocked (v21.178.0; two lines since v21.178.2)
 
 4. PostToolUse (all tools) — one process: adapters/claude/post-tool-use.js (v21.125.0)
    ├─> counter check
@@ -564,6 +564,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.178.2 | `best-answer.js` QUESTION: two lines (best answer, concise); `shared-context.js` checklist defines both |
 | 21.178.1 | `best-answer.js` `settingsOf`: `~/.crabshell/config.json` `bestAnswer` under the project's, key by key |
 | 21.178.0 | `scripts/best-answer.js` (question, settings, per-session prompt state in `best-answer.json`); `completion-controller.js` Stop: other checks first, question once per prompt as `additionalContext`, deferred while another check blocks, other checks run once more after it |
 | 21.177.3 | Docs only: `skills/verifying/SKILL.md` (routine-update paragraph, `slow` field), `references/check-cost.md`, USER-MANUAL — the slow tier runs at the release or milestone close the project's rules name, not at every commit |

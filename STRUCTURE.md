@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.178.1)
+# Crabshell Plugin Structure (v21.178.2)
 
-**Version**: 21.178.1 | **Author**: ZipperBagCoffee | **License**: MIT
+**Version**: 21.178.2 | **Author**: ZipperBagCoffee | **License**: MIT
 
 ## Overview
 
@@ -103,7 +103,7 @@ crabshell/
 │   ├── regressing-guard.js                  # PreToolUse regressing skill enforcement (v19.23.0)
 │   ├── path-guard.js                        # Path guard entry: blocks Bash writes into another project's .crabshell, notices reads, logbook Edit/shrink block (v19.31.0, v20.6.0, v21.125.0)
 │   ├── web-guard.js                         # PreToolUse WebFetch/WebSearch guard — raw-fetch redirect, conditional WebSearch block, block/warn/off modes (v21.114.0, I084); WebSearch as last resort after every search MCP in the turn (v21.166.0)
-│   ├── best-answer.js                       # Stop: "Is that your best?" once per prompt, interactive Claude only (v21.178.0)
+│   ├── best-answer.js                       # Stop: best-answer question once per prompt, interactive Claude only (v21.178.0)
 │   ├── sycophancy-guard.js                  # Stop + PreToolUse file writes: agreement with nothing checked in the turn is sent back / blocked (restored v21.166.0)
 │   ├── core/path-policy.js                  # Host-neutral memory path policy (v21.104.0)
 │   ├── core/shell-writes.js                 # Static Bash analysis: .crabshell paths named and whether written (v21.125.0)
@@ -516,6 +516,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.178.2 | `scripts/best-answer.js`, `scripts/completion-controller.js`, `scripts/shared-context.js`; tests `_test-best-answer.js`, `_test-rule-wording.js` |
 | 21.178.1 | `scripts/best-answer.js`; test `_test-best-answer.js` |
 | 21.178.0 | `scripts/best-answer.js` (new), `scripts/completion-controller.js`; test `_test-best-answer.js` |
 | 21.177.3 | skill `skills/verifying/SKILL.md`; reference `skills/verifying/references/check-cost.md`; `USER-MANUAL.md` |

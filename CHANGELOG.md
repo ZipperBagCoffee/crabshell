@@ -1,5 +1,13 @@
 # Changelog
 
+## [21.178.2] - 2026-11-20
+
+### fix: after every answer the Stop question is two short lines, and the per-turn checklist defines both words (D177)
+
+- The question asked once per prompt at Stop is now "Is this your best answer?" and "Is the answer concise?". The five-sentence question was too long to read after every answer.
+- The per-turn checklist defines the two words: a best answer is one a second thought would not change; concise is so plain even a caveman understands it. The line stays inside the checklist's 2,700-character budget. It replaces "Is it simple and clear — only what the reader needs, nothing they must ask back about?".
+- Dropped from the Stop question: the list of defects to look for, the evidence requirement, "fix the answer, not the work" and the one-line reply format. The other Stop checks (sycophancy-guard included) still run on the revised answer. The effect of the shorter text was not measured.
+
 ## [21.178.1] - 2026-11-19
 
 ### fix: the user-wide config turns "Is that your best?" off in every project (D177)

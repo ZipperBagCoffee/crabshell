@@ -54,7 +54,7 @@ const consecutive = (text, labels) => {
 
 // The order the user set (v21.136.0, v21.138.0, v21.141.0): Common Sense right after Be Logical,
 // Take Pride and Depth after it; on the checklist, the questions asked before every answer
-// (D150, D167: the request, best, finished in one go, simple and clear) right after common sense
+// (D150, D167, D177: the request, best, finished in one go, concise) right after common sense
 // and the coding line after it (D144, D146).
 report.check('W2 the principles run Be Logical, Common Sense, Take Pride, Depth on consecutive lines',
   consecutive(RULES, ['- **Be Logical**:', '- **Common Sense**:', '- **Take Pride**:', '- **Depth**:']));

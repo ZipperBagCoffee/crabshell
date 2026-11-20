@@ -1,5 +1,5 @@
 'use strict';
-// D177: "Is that your best?" once per user prompt at the main agent's Stop, through
+// D177: the best-answer question once per user prompt at the main agent's Stop, through
 // completion-controller: asked when no other check blocks, deferred to the next Stop when
 // one does, other checks run once more after the question, off by config, Claude only.
 
@@ -95,7 +95,7 @@ try {
     const dir = project();
     const first = stop(dir, { prompt_id: 'p2' }, AGREES);
     assert.equal(first.action, 'block');
-    assert(!String(first.reason).includes('Is that your best?'), 'question must not join another block');
+    assert(!String(first.reason).includes(QUESTION), 'question must not join another block');
     const second = stop(dir, { prompt_id: 'p2', stop_hook_active: true });
     assert.equal(second.question, QUESTION);
     const third = stop(dir, { prompt_id: 'p2', stop_hook_active: true }, AGREES);

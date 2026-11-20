@@ -1,8 +1,9 @@
 'use strict';
 
-// D177: after every main-agent answer, ask once "Is that your best?" — the question the
-// user kept typing by hand. A rule read before the answer is written has no draft to aim
-// at; this asks after the answer exists and presumes a defect. Once per user prompt
+// D177: after every main-agent answer, ask once whether it is the best answer and concise —
+// the question the user kept typing by hand. The per-turn checklist (shared-context.js)
+// defines both words. A rule read before the answer is written has no draft to aim
+// at; this asks after the answer exists. Once per user prompt
 // (prompt_id); deferred while another Stop check blocks; Claude only.
 
 const os = require('os');
@@ -11,13 +12,8 @@ const { getStorageRoot, readJsonOrDefault, writeJson } = require('./utils');
 const { SESSION_STATE_MAX_AGE_MS, STORAGE_ROOT } = require('./constants');
 const { withStateLock } = require('./core/state-lock');
 
-const QUESTION = 'Is that your best? Find what the user would point at if they asked that: '
-  + 'a source you did not open, a guess stated as fact, a shortcut, a hardcoded value, a requested item left out, '
-  + 'wording longer or harder than the reader needs. '
-  + 'A change needs evidence from this turn — a tool result, a file line, or a requirement the first answer missed; '
-  + 'never reverse or soften a claim without it. '
-  + 'Fix the answer, not the work: start no edit or command the user has not authorized, and keep any question you asked the user. '
-  + 'If you change it, give the corrected answer; if nothing changes, say in one line that it stands and what you checked.';
+const QUESTION = 'Is this your best answer?\n'
+  + 'Is the answer concise?';
 
 const STATE_FILE = 'best-answer.json';
 const LEGACY_SESSION = '_';
