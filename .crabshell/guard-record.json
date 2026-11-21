@@ -731,13 +731,13 @@
           "date": "2026-11-08",
           "text": "With the guard unwired and deleted, the model again agreed with the user's pushback without checking.",
           "source": "D162"
+        },
+        {
+          "date": "2026-11-20",
+          "text": "Of 7 recorded blocks, 5 were false alarms (a factual 'matches' after a scheduled task, a skill notice or a language request); removed and replaced by the best-answer question's 'agree without checking?' item.",
+          "source": "D179"
         }
       ],
-      "keep": {
-        "words": "The user named it one of the two most useful guards",
-        "date": "2026-11-20",
-        "ref": "D178"
-      },
       "history": [
         {
           "version": "v19.29.0",
@@ -773,6 +773,11 @@
           "version": "v21.166.0",
           "change": "restored",
           "ref": "efed6fa"
+        },
+        {
+          "version": "v21.180.0",
+          "change": "deleted",
+          "ref": "D179"
         }
       ]
     },
@@ -1398,6 +1403,11 @@
           "version": "v21.178.2",
           "change": "changed",
           "ref": "658d9f3"
+        },
+        {
+          "version": "v21.180.0",
+          "change": "changed",
+          "ref": "D179"
         }
       ]
     },

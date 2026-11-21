@@ -10,6 +10,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const { handlePayload } = require('./completion-controller');
 const { QUESTION, statePath } = require('./best-answer');
+const control = require('./core/completion-control');
 
 const base = fs.mkdtempSync(path.join(os.tmpdir(), 'crabshell-best-answer-'));
 const savedEntry = process.env.CLAUDE_CODE_ENTRYPOINT;
@@ -34,20 +35,32 @@ function project(config) {
   return dir;
 }
 let transcripts = 0;
-function transcript(answer) {
+function transcript(answer, prompt = '이거 어떻게 돼?') {
   const file = path.join(base, `t${++transcripts}.jsonl`);
   const lines = [
-    { type: 'user', origin: { kind: 'human' }, message: { role: 'user', content: '이거 어떻게 돼?' } },
+    { type: 'user', origin: { kind: 'human' }, message: { role: 'user', content: prompt } },
     { type: 'assistant', message: { content: [{ type: 'text', text: answer }] } },
   ];
   fs.writeFileSync(file, lines.map(line => JSON.stringify(line)).join('\n') + '\n');
   return file;
 }
 const PLAIN = '이건 설정 파일이에요.';
-const AGREES = '맞아요, 제가 틀렸어요.'; // sycophancy-guard blocks this when no tool ran
-function stop(dir, extra = {}, answer = PLAIN, host = 'claude') {
+const EXECUTE = 'Implement the active ticket.';
+// A real Stop block from completion-controller: an authorized request while a regressing
+// workflow is still active (fixture as in _test-cross-runtime-parent-completion.js).
+function activeWorkflow(dir, promptId) {
+  const storage = path.join(dir, '.crabshell');
+  for (const sub of ['discussion', 'plan', 'ticket', 'memory']) fs.mkdirSync(path.join(storage, sub), { recursive: true });
+  fs.writeFileSync(path.join(storage, 'discussion', 'D777-fixture.md'), '---\nid: D777\nstatus: open\n---\n# D777\n');
+  fs.writeFileSync(path.join(storage, 'plan', 'P777-fixture.md'), '---\nid: P777\nstatus: in-progress\n---\n## Acceptance Criteria\n- fixture\n');
+  fs.writeFileSync(path.join(storage, 'ticket', 'P777_T001-fixture.md'), '---\nid: P777_T001\nstatus: in-progress\n---\n## Acceptance Criteria\n- fixture\n\n## Log\n- fixture active\n');
+  fs.writeFileSync(path.join(storage, 'memory', 'regressing-state.json'), JSON.stringify({ active: true, phase: 'execution',
+    discussion: 'D777', planId: 'P777', ticketIds: ['P777_T001'], lastUpdatedAt: new Date().toISOString() }));
+  control.noteExecutionAuthorization(dir, { session_id: 's1', prompt_id: promptId, prompt: EXECUTE });
+}
+function stop(dir, extra = {}, answer = PLAIN, host = 'claude', prompt) {
   const payload = { hook_event_name: 'Stop', session_id: 's1', stop_hook_active: false,
-    transcript_path: transcript(answer), last_assistant_message: answer, ...extra };
+    transcript_path: transcript(answer, prompt), last_assistant_message: answer, ...extra };
   return handlePayload(payload, { host, projectDir: dir }).result;
 }
 
@@ -74,11 +87,12 @@ try {
 
   check('AC2: after the question, the next Stop asks nothing and the other checks run once more', () => {
     const dir = project();
-    stop(dir, { prompt_id: 'p1' });
-    const second = stop(dir, { prompt_id: 'p1', stop_hook_active: true }, AGREES);
-    assert.equal(second.action, 'block', 'sycophancy-guard should judge the revised answer');
+    assert.equal(stop(dir, { prompt_id: 'p1' }, PLAIN, 'claude', EXECUTE).question, QUESTION);
+    activeWorkflow(dir, 'p1');
+    const second = stop(dir, { prompt_id: 'p1', stop_hook_active: true }, PLAIN, 'claude', EXECUTE);
+    assert.equal(second.action, 'block', 'the other Stop checks should judge the revised answer');
     assert.equal(second.question, undefined);
-    const third = stop(dir, { prompt_id: 'p1', stop_hook_active: true }, AGREES);
+    const third = stop(dir, { prompt_id: 'p1', stop_hook_active: true }, PLAIN, 'claude', EXECUTE);
     assert.notEqual(third.action, 'block');
     assert.equal(third.question, undefined);
   });
@@ -93,14 +107,22 @@ try {
 
   check('AC3: when another check blocks, the question waits for the next Stop, then nothing more', () => {
     const dir = project();
-    const first = stop(dir, { prompt_id: 'p2' }, AGREES);
+    activeWorkflow(dir, 'p2');
+    const first = stop(dir, { prompt_id: 'p2' }, PLAIN, 'claude', EXECUTE);
     assert.equal(first.action, 'block');
     assert(!String(first.reason).includes(QUESTION), 'question must not join another block');
-    const second = stop(dir, { prompt_id: 'p2', stop_hook_active: true });
+    const second = stop(dir, { prompt_id: 'p2', stop_hook_active: true }, PLAIN, 'claude', EXECUTE);
     assert.equal(second.question, QUESTION);
-    const third = stop(dir, { prompt_id: 'p2', stop_hook_active: true }, AGREES);
+    const third = stop(dir, { prompt_id: 'p2', stop_hook_active: true }, PLAIN, 'claude', EXECUTE);
     assert.notEqual(third.action, 'block');
     assert.equal(third.question, undefined);
+  });
+
+  check('D179: an answer that agrees with nothing checked is not blocked; it gets the question', () => {
+    const dir = project();
+    const result = stop(dir, { prompt_id: 'p1' }, '맞아요, 제가 틀렸어요.', 'claude', '그거 틀렸잖아');
+    assert.notEqual(result.action, 'block');
+    assert.equal(result.question, QUESTION);
   });
 
   check('a new prompt is asked again', () => {

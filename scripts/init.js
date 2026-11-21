@@ -110,7 +110,7 @@ This directory is managed by the **crabshell** plugin. Do not edit files here ma
 ## What is Crabshell?
 Claude Code plugin with three pillars:
 1. **Session memory** — Auto-saves context across sessions (delta extraction, Haiku summarization, token-based rotation)
-2. **Behavioral correction** — Injects verification-first rules and interference pattern detection every prompt. Guard hooks block sycophancy, overcorrection, and shortcuts at runtime
+2. **Behavioral correction** — Injects verification-first rules and interference pattern detection every prompt. Guard hooks block overcorrection and shortcuts at runtime
 3. **Structured workflows** — D/P/T/I document system with skills for planning, investigating, and iterative improvement
 
 ## Available Skills

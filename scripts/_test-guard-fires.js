@@ -10,6 +10,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { recordFires, firesFile, firstWords, DEFAULTS } = require('./core/guard-fires');
+const control = require('./core/completion-control');
 
 const SCRIPTS = __dirname;
 const CLAUDE_PRE = path.join(SCRIPTS, 'adapters', 'claude', 'pre-tool-use.js');
@@ -68,10 +69,24 @@ function transcript(lines) {
 const human = text => ({ type: 'user', origin: { kind: 'human' }, message: { role: 'user', content: text } });
 const said = (text, model) => ({ type: 'assistant', message: { ...(model ? { model } : {}), content: [{ type: 'text', text }] } });
 
-function stopPayload(answer, extra = {}) {
+const EXECUTE = 'Implement the active ticket.';
+function stopPayload(answer, extra = {}, prompt = '그거 틀렸잖아') {
   return { hook_event_name: 'Stop', session_id: 'sess-1', stop_hook_active: false,
-    transcript_path: transcript([human('그거 틀렸잖아'), said(answer)]), last_assistant_message: answer, ...extra };
+    transcript_path: transcript([human(prompt), said(answer)]), last_assistant_message: answer, ...extra };
 }
+// A real Stop block from completion-controller: an authorized request while a regressing
+// workflow is still active (fixture as in _test-cross-runtime-parent-completion.js).
+function activeWorkflow(dir, promptId) {
+  const storage = path.join(dir, '.crabshell');
+  for (const sub of ['discussion', 'plan', 'ticket', 'memory']) fs.mkdirSync(path.join(storage, sub), { recursive: true });
+  fs.writeFileSync(path.join(storage, 'discussion', 'D777-fixture.md'), '---\nid: D777\nstatus: open\n---\n# D777\n');
+  fs.writeFileSync(path.join(storage, 'plan', 'P777-fixture.md'), '---\nid: P777\nstatus: in-progress\n---\n## Acceptance Criteria\n- fixture\n');
+  fs.writeFileSync(path.join(storage, 'ticket', 'P777_T001-fixture.md'), '---\nid: P777_T001\nstatus: in-progress\n---\n## Acceptance Criteria\n- fixture\n\n## Log\n- fixture active\n');
+  fs.writeFileSync(path.join(storage, 'memory', 'regressing-state.json'), JSON.stringify({ active: true, phase: 'execution',
+    discussion: 'D777', planId: 'P777', ticketIds: ['P777_T001'], lastUpdatedAt: new Date().toISOString() }));
+  control.noteExecutionAuthorization(dir, { session_id: 'sess-1', prompt_id: promptId, prompt: EXECUTE });
+}
+const blockedStop = (dir, promptId) => run(CONTROLLER, stopPayload('끝났어요.', { prompt_id: promptId }, EXECUTE), dir);
 
 try {
   check('AC1: a Claude PreToolUse deny leaves one block line named by its check', () => {
@@ -92,27 +107,30 @@ try {
     assert.equal(line.model, null, 'no model in the payload and no transcript');
   });
 
-  check('AC2: a Stop block names sycophancy-guard; the deferred question is not recorded; a sent question is', () => {
+  check('AC2: a Stop block names the check that blocked; the deferred question is not recorded; a sent question is', () => {
     const dir = project();
-    const blocked = run(CONTROLLER, stopPayload('맞아요, 제가 틀렸어요.', { prompt_id: 'p1' }), dir);
+    activeWorkflow(dir, 'p1');
+    const blocked = blockedStop(dir, 'p1');
     assert.equal(blocked.status, 2, blocked.stdout);
     assert.equal(JSON.parse(blocked.stdout.trim()).decision, 'block');
-    assert.deepEqual(fires(dir).map(line => [line.guard, line.kind]), [['sycophancy-guard', 'block']]);
+    assert.deepEqual(fires(dir).map(line => [line.guard, line.kind]), [['completion-controller', 'block']]);
     const asked = run(CONTROLLER, stopPayload('이건 설정 파일이에요.', { prompt_id: 'p2' }), dir);
     assert.equal(asked.status, 0);
     assert(JSON.parse(asked.stdout.trim()).hookSpecificOutput.additionalContext, asked.stdout);
-    assert.deepEqual(fires(dir).map(line => [line.guard, line.kind]), [['sycophancy-guard', 'block'], ['best-answer', 'notice']]);
+    assert.deepEqual(fires(dir).map(line => [line.guard, line.kind]), [['completion-controller', 'block'], ['best-answer', 'notice']]);
   });
 
-  check('AC2: the same block after the question shares the first key (a repeat, not a new incident)', () => {
+  check('AC2: the same block in one prompt shares the first key (a repeat, not a new incident)', () => {
     const dir = project();
-    run(CONTROLLER, stopPayload('맞아요, 제가 틀렸어요.', { prompt_id: 'p1' }), dir);
-    run(CONTROLLER, stopPayload('맞아요, 제가 틀렸어요.', { prompt_id: 'p1' }), dir);
-    const keys = fires(dir).filter(line => line.guard === 'sycophancy-guard').map(line => line.key);
+    activeWorkflow(dir, 'p1');
+    blockedStop(dir, 'p1');
+    blockedStop(dir, 'p1');
+    const keys = fires(dir).filter(line => line.guard === 'completion-controller').map(line => line.key);
     assert.equal(keys.length, 2);
     assert.equal(keys[0], keys[1]);
-    run(CONTROLLER, stopPayload('맞아요, 제가 틀렸어요.', { prompt_id: 'p9' }), dir);
-    const third = fires(dir).filter(line => line.guard === 'sycophancy-guard').map(line => line.key)[2];
+    activeWorkflow(dir, 'p9');
+    blockedStop(dir, 'p9');
+    const third = fires(dir).filter(line => line.guard === 'completion-controller').map(line => line.key)[2];
     assert.notEqual(third, keys[0], 'the same block in another prompt is another incident');
   });
 
@@ -120,11 +138,13 @@ try {
     const dir = project();
     const logs = path.join(dir, '.crabshell', 'memory', 'logs');
     fs.writeFileSync(logs, 'not a folder');
+    activeWorkflow(dir, 'p1');
     const unwritable = run(CLAUDE_PRE, denyPayload(dir), dir);
-    const stopUnwritable = run(CONTROLLER, stopPayload('맞아요, 제가 틀렸어요.', { prompt_id: 'p1' }), dir);
+    const stopUnwritable = blockedStop(dir, 'p1');
     fs.unlinkSync(logs);
     const writable = run(CLAUDE_PRE, denyPayload(dir), dir);
-    const stopWritable = run(CONTROLLER, stopPayload('맞아요, 제가 틀렸어요.', { prompt_id: 'p1' }), dir);
+    const stopWritable = blockedStop(dir, 'p1');
+    assert.equal(JSON.parse(stopWritable.stdout.trim()).decision, 'block');
     assert.equal(unwritable.stdout, writable.stdout);
     assert.equal(unwritable.status, writable.status);
     assert.equal(stopUnwritable.stdout, stopWritable.stdout);
@@ -154,6 +174,15 @@ try {
     assert.deepEqual(lines.map(line => [line.host, line.kind]), [['codex', 'block']]);
     assert.equal(lines[0].model, fixture.model);
     assert.equal(fs.existsSync(other), false);
+  });
+
+  check('D179: a file edit right after agreeing with nothing checked is not denied', () => {
+    const dir = project();
+    const file = transcript([human('이거 고쳐'), said('맞아요, 고칠게요.')]);
+    const target = fwd(path.join(dir, 'src', 'x.js'));
+    const result = run(CLAUDE_PRE, { hook_event_name: 'PreToolUse', session_id: 'sess-1', tool_name: 'Edit', transcript_path: file,
+      tool_input: { file_path: target, old_string: 'a', new_string: 'b' } }, dir);
+    assert(!/"permissionDecision":"deny"/.test(result.stdout), result.stdout);
   });
 
   check('AC6: a call no guard answers leaves no file', () => {

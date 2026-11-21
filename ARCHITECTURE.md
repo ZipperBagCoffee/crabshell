@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.179.0)
+# Crabshell Architecture (v21.180.0)
 
 ## Overview
 
@@ -175,7 +175,7 @@ Codex marketplace -> installed cache -> .codex-plugin/plugin.json
 - Every Codex hook command resolves its adapter inside a Promise fail-open boundary; synchronous module-load errors and rejected adapter `main()` calls are absorbed with exit 0.
 - SessionStart reads shared memory/workflow context; `getProjectMemoryPath()` may copy a legacy-only description into `.crabshell/project.md` without deleting or overwriting existing files. Explicit memory and document skills execute from installed launchers against the active project. Document launchers require absolute `--project-dir`. Claude's automatic SessionEnd transcript/delta save remains Claude-only.
 - One shared completion state owner requires parent-executed command evidence after a child claim, rejects ambiguous/false-done evidence, and bounds identical automatic failures. Claude retains the doc-watchdog Stop check behind `completion-controller.js`; the behavioral sycophancy/scope checks are unwired. Codex emits the native block decision through its adapter.
-- The pressure counters were removed in v21.172.0 (nothing read them); behavioral pressure/scope hooks, fixed-count, role-collapse, and behavior-verifier surfaces remain retired from both runtimes. Claude's sycophancy guard was restored in v21.166.0 (Stop send-back and file-write block for agreement with nothing checked in the turn).
+- The pressure counters were removed in v21.172.0 (nothing read them); behavioral pressure/scope hooks, fixed-count, role-collapse, and behavior-verifier surfaces remain retired from both runtimes. Claude's sycophancy guard was restored in v21.166.0 (Stop send-back and file-write block for agreement with nothing checked in the turn) and removed again in v21.180.0 (D179, false alarms); the best-answer question asks "agree without checking?" instead.
 - `codex-doctor.js` probes both CLIs and derives installed, activated, trusted, behavior-verified, degraded, drifted, and unsupported states. Codex desktop app remains a separate unexercised row.
 - `scripts/install-codex.js` remains a legacy/development bridge and is not part of the native default path.
 
@@ -271,7 +271,7 @@ Claude `PostToolUseFailure` is wired to both verification-state and parent-evide
    │   ├─> (git commit no longer denied since v21.153.0)
    │   └─> Record the start of a declared check
    ├─> doc-watchdog gate (Write|Edit) — soft notice when in-project code edits >= 5 without a D/P/T doc update (regressing only)
-   (pressure-guard unwired from PreToolUse in v21.113.0 — I083 R4/R5; deleted v21.130.0; sycophancy-guard restored for file writes v21.166.0)
+   (pressure-guard unwired from PreToolUse in v21.113.0 — I083 R4/R5; deleted v21.130.0; sycophancy-guard restored for file writes v21.166.0, removed v21.180.0)
    Read|Grep|Glob have no PreToolUse hook since v21.125.0; the other-project notice comes from PostToolUse.
 
 3.5. Stop / SubagentStop — v21.107.0 single owner
@@ -280,8 +280,8 @@ Claude `PostToolUseFailure` is wired to both verification-state and parent-evide
        ├─> Require decisive parent command evidence recorded by PostToolUse
        ├─> Bound identical actual failures, then require a concrete report instead of looping
        ├─> Preserve active D/P/T/W workflow continuation
-       └─> Claude Stop checks in the same process: doc-watchdog stopReason, sycophancy-guard stopReason (restored v21.166.0; scope retired v21.113.0)
-       └─> then best-answer stopStep: the best-answer question once per prompt when nothing blocked (v21.178.0; two lines since v21.178.2)
+       └─> Claude Stop checks in the same process: doc-watchdog stopReason (sycophancy-guard restored v21.166.0, removed v21.180.0; scope retired v21.113.0)
+       └─> then best-answer stopStep: the best-answer question once per prompt when nothing blocked (v21.178.0; one four-item line since v21.180.0)
        └─> after the output: core/guard-fires records what was sent — each blocking check by name, the question as a best-answer notice (v21.179.0)
 
    Guard fire record (v21.179.0): core/dispatch.js runChecks keeps collected.fired ({guard: check.name, channel, text}) and writes nothing;
@@ -414,7 +414,7 @@ Regressing retains document-cycle continuation but has no parallel-worker count 
 | `skills/verifying/scripts/run-verify.js`, `skills/verifying/scripts/runner/` | verification source | A small launcher and the runner modules (v21.153.0): manifest and its settings tables, fingerprint (entry run fields, program, decision code without comment lines, platform, input contents; since v21.159.0 the decision code is `contract.js`, `execute.js` and the tracer source only), snapshot (one walk; git-ignored folders skipped via a kept list, `ignored.js`), select (pass history, change reasons; record kinds `reported`, `traced`, `declared`, `project` since v21.159.0), schedule (order, retries, `jobs`), store (`test-map.json` schema 4 since v21.159.0), trace (NODE_OPTIONS tracer across child processes), used-report (a check's report of what it used through `CRABSHELL_USED_REPORT`, the project's `itemIdentity` command, `{cases}`; v21.159.0), output, install (copy with temp file + rename) |
 | `.crabshell/verification/run-verify.js`, `.crabshell/verification/runner/` | project runner copy | Copied from the skill runner; kept current at each session start (`core/runner-sync.js`: changed modules copied, a released launcher replaced — the list is `skills/verifying/scripts/released-launchers.json`, built by `scripts/build-released-launchers.js` — an edited launcher kept and named once); stdout text is diagnostic, not a pass oracle |
 | `best-answer.js` | Stop (in completion-controller) | v21.178.0 (D177): answers sent without the review the user kept asking for by hand ("그게 최선임?"). Once per prompt, interactive Claude only; deferred while another Stop check blocks; the other checks run once more after it. |
-| `sycophancy-guard.js` | Stop, PreToolUse (file writes) | Restored v21.166.0 (D162): agreement phrases outside code and quotes, with no tool call earlier in the current turn (`core/transcript.js` `currentTurn`), are sent back once at Stop and block a file write. |
+| `sycophancy-guard.js` | — | Removed v21.180.0 (D179): its keyword blocks were mostly false alarms; the best-answer question asks "agree without checking?" instead. |
 | (deleted v21.130.0) | — | `pressure-guard.js`, `scope-guard.js` (unwired v21.113.0, I083 R4/R5) and `regressing-loop-guard.js` (unwired v21.107.0) were removed with their tests; git history keeps them. Regressing continuation is goal-driven (v21.110.0) with `completion-controller.js` bounded continuation. |
 | `skill-tracker.js` | PostToolUse (Skill) via `post-tool-use.js` (inline since v21.125.0) | Set the calling session's skill flag on Skill tool calls (no timer; cleared on compaction and SessionEnd; payloads without a session id use the legacy 15-minute project flag) |
 | `regressing-state.js` | (library) | Phase tracker: getState, buildReminder, detectSkillCall, advancePhase |
@@ -550,7 +550,7 @@ Separated from memory-index.json to eliminate Write race condition during delta 
 
 ### Stop Hook Text Block Gap
 - The Stop hook's `stop_response` field contains only the **last text block** of multi-block responses. When Claude produces text, then calls a tool, then produces more text, only the final text block is visible to the Stop hook.
-- **Impact on sycophancy detection**: Sycophancy patterns in early text blocks (before tool calls) are invisible to the Stop hook. A response that agrees without evidence in block 1, calls Write in block 2, and writes a summary in block 3 would only have block 3 checked by the Stop hook.
+- **Impact on sycophancy detection** (historical; sycophancy-guard was removed in v21.180.0): Sycophancy patterns in early text blocks (before tool calls) are invisible to the Stop hook. A response that agrees without evidence in block 1, calls Write in block 2, and writes a summary in block 3 would only have block 3 checked by the Stop hook.
 - **Partial mitigation (historical, before v21.113.0)**: The PreToolUse layer of `sycophancy-guard.js` parsed mid-turn transcript text before each Write|Edit call. This catches sycophancy that precedes file writes, but only for Write|Edit — not for Read, Grep, Glob, or Bash tool calls.
 - **Since v21.166.0**: the restored guard reads the whole current turn from the transcript (`currentTurn`), so agreement in an early text block counts at Stop too, and any tool call earlier in the turn counts as the check.
 
@@ -570,6 +570,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.180.0 | `best-answer.js` QUESTION: one four-item line; `sycophancy-guard.js` removed (Stop and PreToolUse); tests use a completion-controller workflow block |
 | 21.179.0 | `core/guard-fires.js` (new): fire record after each hook output; `core/dispatch.js` `collected.fired`; Claude/Codex adapters and `completion-controller.js` record what they sent (`claudeStopBlocks`, `blockedBy`); `transcript-utils.js` `lastAssistantModel`; `scripts/guard-record.js` (new) |
 | 21.178.2 | `best-answer.js` QUESTION: two lines (best answer, concise); `shared-context.js` checklist defines both |
 | 21.178.1 | `best-answer.js` `settingsOf`: `~/.crabshell/config.json` `bestAnswer` under the project's, key by key |

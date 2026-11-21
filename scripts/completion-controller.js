@@ -19,11 +19,11 @@ const AFTER_RUN_HINT = 'declaration-after';
 if (process.env.CRABSHELL_BACKGROUND === '1') process.exit(0);
 
 // Claude-only Stop checks, run in this process; one check's failure skips only that
-// check. sycophancy-guard left Stop dispatch in v21.113.0 and came back in v21.166.0
-// (D162: agreeing without checking anything in the turn); scope-guard stays deleted.
+// check. sycophancy-guard was removed in v21.180.0 (D179: most of its keyword blocks were
+// false alarms; the best-answer question asks "agree without checking?" instead);
+// scope-guard stays deleted.
 const CLAUDE_STOP_CHECKS = [
   ['doc-watchdog', (payload, projectDir) => require('./doc-watchdog').stopReason(payload, projectDir)],
-  ['sycophancy-guard', payload => require('./sycophancy-guard').stopReason(payload)],
 ];
 
 // [{ guard, text }]: each Stop check that blocks, by name (D178 records which one blocked).

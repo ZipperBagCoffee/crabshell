@@ -12,8 +12,7 @@ const { getStorageRoot, readJsonOrDefault, writeJson } = require('./utils');
 const { SESSION_STATE_MAX_AGE_MS, STORAGE_ROOT } = require('./constants');
 const { withStateLock } = require('./core/state-lock');
 
-const QUESTION = 'Is this your best answer?\n'
-  + 'Is the answer concise?';
+const QUESTION = 'Is your answer 1) best? 2) concise? 3) agree without checking? 4) cutting corners?';
 
 const STATE_FILE = 'best-answer.json';
 const LEGACY_SESSION = '_';

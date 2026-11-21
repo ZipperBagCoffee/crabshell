@@ -1,5 +1,13 @@
 # Changelog
 
+## [21.180.0] - 2026-11-20
+
+### feat: the question after every answer is one four-item line, and the sycophancy guard is removed (D179)
+
+- The best-answer question is now "Is your answer 1) best? 2) concise? 3) agree without checking? 4) cutting corners?", the four items the user chose ("lazy?" became "cutting corners?"). It is still asked once per prompt, waits while another Stop check blocks, and the other Stop checks run once more after it.
+- sycophancy-guard is removed from Stop and from file writes (`scripts/sycophancy-guard.js` and its test deleted). Of 7 blocks found in the session records, 2 caught agreement with a person's pushback and 5 were false alarms: a factual "맞습니다" after a scheduled task, a skill notice or a language request. The third item of the question asks instead; a question cannot block, so the guard comes back from git history if unchecked agreement returns.
+- Tests that used sycophancy-guard as an example Stop block now use completion-controller's block for an authorized request while a workflow is still active.
+
 ## [21.179.0] - 2026-11-20
 
 ### feat: every guard block and notice is recorded with the guard's name and the model, and a guard record says why each guard exists (D178)

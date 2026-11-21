@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.179.0)
+# Crabshell Plugin Structure (v21.180.0)
 
-**Version**: 21.179.0 | **Author**: ZipperBagCoffee | **License**: MIT
+**Version**: 21.180.0 | **Author**: ZipperBagCoffee | **License**: MIT
 
 ## Overview
 
@@ -105,7 +105,6 @@ crabshell/
 │   ├── web-guard.js                         # PreToolUse WebFetch/WebSearch guard — raw-fetch redirect, conditional WebSearch block, block/warn/off modes (v21.114.0, I084); WebSearch as last resort after every search MCP in the turn (v21.166.0)
 │   ├── best-answer.js                       # Stop: best-answer question once per prompt, interactive Claude only (v21.178.0)
 │   ├── guard-record.js                      # Development tool: guard record backfill, summary, check (v21.179.0)
-│   ├── sycophancy-guard.js                  # Stop + PreToolUse file writes: agreement with nothing checked in the turn is sent back / blocked (restored v21.166.0)
 │   ├── core/path-policy.js                  # Host-neutral memory path policy (v21.104.0)
 │   ├── core/shell-writes.js                 # Static Bash analysis: .crabshell paths named and whether written (v21.125.0)
 │   ├── core/post-compact-effects.js         # Compaction log and regressing-state note; Claude SessionStart(compact), Codex PostCompact (v21.125.0)
@@ -176,7 +175,6 @@ crabshell/
 │   ├── _test-best-answer.js                 # Question once per prompt, deferral, other checks after it, settings, -p skip (v21.178.0)
 │   ├── _test-guard-fires.js                 # Fire record from real hook processes, fail-open, rotation, keys, model (v21.179.0)
 │   ├── _test-guard-record.js                # Transcript backfill, summary lines, wired-guard check (v21.179.0)
-│   ├── _test-sycophancy-guard.js            # Restored sycophancy guard: Stop send-back, write block, exemptions (v21.166.0)
 │   ├── _test-web-guard.js                   # Web-guard subprocess + unit tests — block/warn/off, MCP detection, plugin servers (v21.174.0), fail-open (v21.114.0)
 │   ├── _test-verification-sequence.js       # Verification-sequence unit/integration tests (v21.0.0)
 │   ├── _test-log-guard.js                   # Log-guard unit/integration tests (v21.4.0, v21.11.0)
@@ -480,12 +478,12 @@ L1 generation:
    ├─> log-guard (Write|Edit) — block a ticket marked done/verified while its result sections are still template text
    ├─> verification gate (Bash) — block git commit while source edits lack a passing declared check; record a declared check's start
    └─> doc-watchdog gate (Write|Edit) — soft notice when in-project code edits >= 5 without a D/P/T doc update during regressing
-   (pressure-guard unwired v21.113.0 — I083 R4/R5, deleted v21.130.0; sycophancy-guard restored for file writes v21.166.0; Read|Grep|Glob have no PreToolUse hook since v21.125.0)
+   (pressure-guard unwired v21.113.0 — I083 R4/R5, deleted v21.130.0; sycophancy-guard restored for file writes v21.166.0, removed v21.180.0; Read|Grep|Glob have no PreToolUse hook since v21.125.0)
 
 3.5. Stop
    └─> completion-controller.js (single Stop owner, v21.107.0)
        ├─> decideStop — blocks stop on execution-authorized turns while a D/P/T or W workflow (incl. regressing-state.json) is active; parent-evidence gate; bounded identical-failure reporting
-       └─> validators in the same process: doc-watchdog stopReason, sycophancy-guard stopReason (restored v21.166.0); scope validator remains deleted
+       └─> validators in the same process: doc-watchdog stopReason (sycophancy-guard removed v21.180.0); scope validator remains deleted
        └─> then best-answer stopStep (v21.178.0)
    Note: regressing continuation is goal-driven from v21.110.0 — the regressing skill emits a `/goal` handoff (host goal mode: Claude Code 2.1.139+, Codex CLI 0.128.0+); regressing-loop-guard.js is retired from wiring and kept as a compatibility/test source.
 
@@ -520,6 +518,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.180.0 | `scripts/best-answer.js`, `scripts/completion-controller.js`, `scripts/adapters/claude/pre-tool-use.js`, `scripts/init.js`; removed `scripts/sycophancy-guard.js`, `scripts/_test-sycophancy-guard.js`; tests `_test-best-answer.js`, `_test-guard-fires.js`, `_test-guard-record.js` |
 | 21.179.0 | `scripts/core/guard-fires.js`, `scripts/guard-record.js` (new); `scripts/core/dispatch.js`, `scripts/adapters/claude/dispatch.js`, `scripts/adapters/claude/pre-tool-use.js`, `scripts/adapters/claude/post-tool-use.js`, `scripts/adapters/codex/pre-tool-use.js`, `scripts/completion-controller.js`, `scripts/transcript-utils.js`; `.crabshell/guard-record.json`; tests `_test-guard-fires.js`, `_test-guard-record.js` |
 | 21.178.2 | `scripts/best-answer.js`, `scripts/completion-controller.js`, `scripts/shared-context.js`; tests `_test-best-answer.js`, `_test-rule-wording.js` |
 | 21.178.1 | `scripts/best-answer.js`; test `_test-best-answer.js` |

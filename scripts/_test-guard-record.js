@@ -118,12 +118,13 @@ try {
 
   check('AC4: --check names each wired guard missing from the record and exits 1; a full record exits 0', () => {
     const wired = wiredNames();
-    assert(wired.includes('sycophancy-guard') && wired.includes('best-answer') && wired.includes('inject-rules'), wired.join(','));
+    assert(wired.includes('web-guard') && wired.includes('best-answer') && wired.includes('inject-rules'), wired.join(','));
+    assert(!wired.includes('sycophancy-guard'), 'a removed guard is not wired');
     assert(!wired.includes('pre-tool-use') && !wired.includes('post-tool-use'), 'dispatchers are expanded, not listed');
     const missing = run(['--check', '--project-dir', project]);
     assert.equal(missing.status, 1);
     assert(missing.stdout.includes('not in the record: best-answer'), missing.stdout);
-    assert(!missing.stdout.includes('not in the record: sycophancy-guard'), missing.stdout);
+    assert(missing.stdout.includes('not in the record: web-guard'), missing.stdout);
     fs.writeFileSync(path.join(project, '.crabshell', 'guard-record.json'), JSON.stringify({ guards: wired.map(guard => ({ guard })) }));
     const full = run(['--check', '--project-dir', project]);
     assert.equal(full.status, 0, full.stdout);
