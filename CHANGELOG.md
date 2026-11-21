@@ -1,5 +1,14 @@
 # Changelog
 
+## [21.179.0] - 2026-11-20
+
+### feat: every guard block and notice is recorded with the guard's name and the model, and a guard record says why each guard exists (D178)
+
+- Hooks write one line per block or notice they actually sent to `.crabshell/memory/logs/guard-fires.jsonl`: the guard's name, event, tool, session, model (from the hook input, else the last assistant message in the last 64 KB of the session transcript), the first words of the message with absolute paths masked, and a key shared by the same block for one tool call or one prompt (a Stop re-run after the best-answer question is a repeat, not a new incident). The line is written after the hook's output and every error is swallowed: a test runs the real hooks with the log folder unwritable and gets the same stdout and exit code. At `guardFires.maxBytes` (default 524288) the file becomes `.1`.
+- `scripts/guard-record.js`, a development tool no hook runs: `--backfill` scans Claude session transcripts in parallel for past blocks (Stop `hook_blocking_error` attachments and `PreToolUse:<tool> hook error:` tool results) with the model that was answering and what it did next; `--summary` prints, per guard, why it exists, the keep decision, predicted catches, blocks and notices per model, what the model did after a block, reviewed verdicts, misses and history; `--check` names wired guards missing from the record.
+- `.crabshell/guard-record.json` (tracked) holds why each of 30 guards exists or existed, what it should catch, known misses and history, from git, the changelog and the D documents; every cited commit and document was checked to exist. sycophancy-guard and web-guard carry the user's keep decision. Measured here: 1,455 transcripts, 366 past blocks, 31–36 s, peak memory 256 MB.
+- This repository's model-upgrade audit rule now reads the record: predictions are written before a guard change is measured, a model change starts from `--summary`, and a guard that never fired is not removal evidence by itself.
+
 ## [21.178.2] - 2026-11-20
 
 ### fix: after every answer the Stop question is two short lines, and the per-turn checklist defines both words (D177)

@@ -9,7 +9,9 @@
 // `accepts` reads the payload's shape (core/tool-shape: a shell call, a file write);
 // `tools` names tools only where the name itself is the policy (web-guard); `when` sees
 // what earlier checks returned (a check after a deny can stand down). A check returns
-// null, or any of { reason, context, systemMessage, log }.
+// null, or any of { reason, context, systemMessage, log }. What a check sent is also kept in
+// collected.fired ({ guard, channel, text }) so the adapter can record it after its output
+// (D178, core/guard-fires); nothing here writes a file.
 // The host reads stdout as one JSON object; any other line in front of it turns the
 // whole output into plain text and drops the decision and context. While checks run,
 // whatever a module prints to stdout goes to stderr instead.
@@ -29,8 +31,10 @@ function appliesTo(check, hookData) {
   return true;
 }
 
+const FIRED_CHANNELS = ['reason', 'context', 'systemMessage'];
+
 async function runChecks(checks, hookData, projectDir) {
-  const collected = { reasons: [], contexts: [], systemMessages: [], logs: [] };
+  const collected = { reasons: [], contexts: [], systemMessages: [], logs: [], fired: [] };
   await withStdoutToStderr(async () => {
     for (const check of checks) {
       try {
@@ -42,6 +46,9 @@ async function runChecks(checks, hookData, projectDir) {
         if (result.context) collected.contexts.push(result.context);
         if (result.systemMessage) collected.systemMessages.push(result.systemMessage);
         if (result.log) collected.logs.push(result.log);
+        for (const channel of FIRED_CHANNELS) {
+          if (result[channel]) collected.fired.push({ guard: check.name, channel, text: result[channel] });
+        }
       } catch (error) {
         collected.logs.push(`[CRABSHELL] ${check.name} skipped: ${error && error.message}`);
       }

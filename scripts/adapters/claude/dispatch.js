@@ -18,10 +18,17 @@ function hostOutput(eventName, collected) {
   return Object.keys(output).length ? output : null;
 }
 
-function emit(eventName, collected) {
+// source: { payload, projectDir } — after the output, what it carried is recorded (D178);
+// Claude's output carries every reason, context and systemMessage the checks returned.
+function emit(eventName, collected, source = {}) {
   if (collected.logs.length) process.stderr.write(collected.logs.join('\n') + '\n');
   const output = hostOutput(eventName, collected);
   if (output) process.stdout.write(JSON.stringify(output) + '\n');
+  if (!output || !source.projectDir) return;
+  try {
+    require('../../core/guard-fires').recordFires(source.projectDir,
+      { host: 'claude', event: eventName, fired: collected.fired, payload: source.payload });
+  } catch {} // Recording never changes the hook's result.
 }
 
 module.exports = { emit, hostOutput };

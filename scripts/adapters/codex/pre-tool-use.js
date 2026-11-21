@@ -105,10 +105,22 @@ async function main() {
   if (collected.logs.length) process.stderr.write(collected.logs.join('\n') + '\n');
   if (collected.reasons.length) {
     console.log(JSON.stringify(denyOutput(collected.reasons.join('\n\n'))));
+    recordSent(normalized.projectDir, collected, 'reason', payload);
     return;
   }
   // Codex adds PreToolUse hookSpecificOutput.additionalContext to the model's context.
-  if (collected.contexts.length) console.log(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', additionalContext: collected.contexts.join('\n') } }));
+  if (collected.contexts.length) {
+    console.log(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', additionalContext: collected.contexts.join('\n') } }));
+    recordSent(normalized.projectDir, collected, 'context', payload);
+  }
+}
+
+// After the output, only the channel Codex was sent is recorded (D178): a deny carries no context.
+function recordSent(projectDir, collected, channel, payload) {
+  try {
+    require('../../core/guard-fires').recordFires(projectDir,
+      { host: 'codex', event: 'PreToolUse', fired: collected.fired.filter(item => item.channel === channel), payload });
+  } catch {} // Recording never changes the hook's result.
 }
 
 if (require.main === module) {

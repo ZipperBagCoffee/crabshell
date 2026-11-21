@@ -8,6 +8,13 @@ const { commandObservation } = require('./core/command-observation');
 const { contentIdentity } = require('./core/project-state');
 const { isFileWrite, shellCommand } = require('./core/tool-shape');
 const bestAnswer = require('./best-answer');
+const path = require('path');
+
+// Names in the guard-fire record (D178): this controller and the best-answer module by their
+// file names; the after-run hint by the name its Claude check carries (adapters/claude/post-tool-use.js).
+const SELF = path.basename(__filename, '.js');
+const BEST_ANSWER = path.basename(require.resolve('./best-answer'), '.js');
+const AFTER_RUN_HINT = 'declaration-after';
 
 if (process.env.CRABSHELL_BACKGROUND === '1') process.exit(0);
 
@@ -19,18 +26,23 @@ const CLAUDE_STOP_CHECKS = [
   ['sycophancy-guard', payload => require('./sycophancy-guard').stopReason(payload)],
 ];
 
-function legacyClaudeStopReasons(payload, projectDir = getProjectDir()) {
+// [{ guard, text }]: each Stop check that blocks, by name (D178 records which one blocked).
+function claudeStopBlocks(payload, projectDir = getProjectDir()) {
   if (payload.stop_hook_active === true) return [];
-  const reasons = [];
+  const blocks = [];
   for (const [name, check] of CLAUDE_STOP_CHECKS) {
     try {
       const reason = check(payload, projectDir);
-      if (reason) reasons.push(reason);
+      if (reason) blocks.push({ guard: name, text: reason });
     } catch (error) {
       process.stderr.write(`[CRABSHELL] ${name} Stop check skipped: ${error.message}\n`);
     }
   }
-  return reasons;
+  return blocks;
+}
+
+function legacyClaudeStopReasons(payload, projectDir = getProjectDir()) {
+  return claudeStopBlocks(payload, projectDir).map(block => block.text);
 }
 
 // One feature's failure leaves the others running (D143_T018: hooks are fail-open).
@@ -41,9 +53,13 @@ function attempt(feature, fallback = null) {
   }
 }
 
+function projectDirFor(payload, options = {}) {
+  return options.projectDir || (options.host === 'codex' ? findProjectRoot(payload?.cwd) : getProjectDir());
+}
+
 function handlePayload(payload, options = {}) {
   const eventName = payload?.hook_event_name;
-  const projectDir = options.projectDir || (options.host === 'codex' ? findProjectRoot(payload?.cwd) : getProjectDir());
+  const projectDir = projectDirFor(payload, options);
   if (eventName === 'Interrupt' || payload.is_interrupt === true || payload.tool_response?.interrupted === true) {
     return { eventName, result: interruptWork(projectDir, payload) };
   }
@@ -79,11 +95,20 @@ function handlePayload(payload, options = {}) {
   const checked = claude && attempt(() => bestAnswer.othersMayRun(payload, projectDir), false)
     ? { ...payload, stop_hook_active: false } : payload;
   const shared = decideStop(projectDir, checked);
-  const legacyReasons = claude ? legacyClaudeStopReasons(checked, projectDir) : [];
-  const reasons = [shared.action === 'block' ? shared.reason : '', ...legacyReasons].filter(Boolean);
+  const blockedBy = [shared.action === 'block' ? { guard: SELF, text: shared.reason } : null,
+    ...(claude ? claudeStopBlocks(checked, projectDir) : [])].filter(block => block && block.text);
+  const reasons = blockedBy.map(block => block.text);
   const question = claude ? attempt(() => bestAnswer.stopStep(payload, projectDir, reasons.length > 0)) : null;
   if (reasons.length === 0) return { eventName, result: question ? { ...shared, question } : shared };
-  return { eventName, result: { ...shared, action: 'block', reason: reasons.join('\n\n') } };
+  return { eventName, result: { ...shared, action: 'block', reason: reasons.join('\n\n'), blockedBy } };
+}
+
+// What main actually sent, after it was sent (D178). handlePayload stays free of file writes.
+function recordSent(handled, payload, options, sent) {
+  try {
+    require('./core/guard-fires').recordFires(projectDirFor(payload, options),
+      { host: options.host || 'claude', event: handled.eventName, fired: sent, payload });
+  } catch {} // Recording never changes the hook's result.
 }
 
 async function main(options = {}) {
@@ -97,15 +122,28 @@ async function main(options = {}) {
     if (handled.result.systemMessage) output.systemMessage = handled.result.systemMessage;
     // Codex adds PostToolUse hookSpecificOutput.additionalContext to the model's context.
     if (handled.context && handled.eventName === 'PostToolUse') output.hookSpecificOutput = { hookEventName: 'PostToolUse', additionalContext: handled.context };
-    if (Object.keys(output).length) process.stdout.write(JSON.stringify(output) + '\n');
+    if (Object.keys(output).length) {
+      process.stdout.write(JSON.stringify(output) + '\n');
+      const sent = [];
+      if (output.hookSpecificOutput && handled.eventName === 'Stop') sent.push({ guard: BEST_ANSWER, channel: 'context', text: handled.result.question });
+      if (output.hookSpecificOutput && handled.eventName === 'PostToolUse') sent.push({ guard: AFTER_RUN_HINT, channel: 'context', text: handled.context });
+      if (output.systemMessage) sent.push({ guard: SELF, channel: 'systemMessage', text: output.systemMessage });
+      recordSent(handled, payload, options, sent);
+    }
     return;
   }
   process.stdout.write(JSON.stringify({ decision: 'block', reason: handled.result.reason }) + '\n');
   if (options.host === 'claude') process.exitCode = 2;
+  recordSent(handled, payload, options, (handled.result.blockedBy || []).map(block => ({ ...block, channel: 'reason' })));
 }
 
 if (require.main === module) {
   main({ host: 'claude' }).catch(() => {});
 }
 
-module.exports = { handlePayload, legacyClaudeStopReasons, main };
+const STOP_CHECK_NAMES = CLAUDE_STOP_CHECKS.map(([name]) => name);
+
+// Every name this controller writes into the guard-fire record besides the Stop checks.
+const RECORDED_NAMES = [SELF, BEST_ANSWER, AFTER_RUN_HINT];
+
+module.exports = { handlePayload, claudeStopBlocks, legacyClaudeStopReasons, main, STOP_CHECK_NAMES, RECORDED_NAMES };

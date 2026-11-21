@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.178.2)
+# Crabshell Architecture (v21.179.0)
 
 ## Overview
 
@@ -282,6 +282,12 @@ Claude `PostToolUseFailure` is wired to both verification-state and parent-evide
        ├─> Preserve active D/P/T/W workflow continuation
        └─> Claude Stop checks in the same process: doc-watchdog stopReason, sycophancy-guard stopReason (restored v21.166.0; scope retired v21.113.0)
        └─> then best-answer stopStep: the best-answer question once per prompt when nothing blocked (v21.178.0; two lines since v21.178.2)
+       └─> after the output: core/guard-fires records what was sent — each blocking check by name, the question as a best-answer notice (v21.179.0)
+
+   Guard fire record (v21.179.0): core/dispatch.js runChecks keeps collected.fired ({guard: check.name, channel, text}) and writes nothing;
+   the host adapters (adapters/claude/dispatch.js emit, adapters/codex/pre-tool-use.js) and completion-controller main call
+   core/guard-fires recordFires after their stdout write, with only the channels actually sent. One JSON line per item in
+   .crabshell/memory/logs/guard-fires.jsonl; errors swallowed; scripts/guard-record.js reads it with the transcript backfill.
 
 4. PostToolUse (all tools) — one process: adapters/claude/post-tool-use.js (v21.125.0)
    ├─> counter check
@@ -564,6 +570,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.179.0 | `core/guard-fires.js` (new): fire record after each hook output; `core/dispatch.js` `collected.fired`; Claude/Codex adapters and `completion-controller.js` record what they sent (`claudeStopBlocks`, `blockedBy`); `transcript-utils.js` `lastAssistantModel`; `scripts/guard-record.js` (new) |
 | 21.178.2 | `best-answer.js` QUESTION: two lines (best answer, concise); `shared-context.js` checklist defines both |
 | 21.178.1 | `best-answer.js` `settingsOf`: `~/.crabshell/config.json` `bestAnswer` under the project's, key by key |
 | 21.178.0 | `scripts/best-answer.js` (question, settings, per-session prompt state in `best-answer.json`); `completion-controller.js` Stop: other checks first, question once per prompt as `additionalContext`, deferred while another check blocks, other checks run once more after it |

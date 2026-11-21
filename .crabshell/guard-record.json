@@ -1,0 +1,1940 @@
+{
+  "schemaVersion": 1,
+  "note": "D178: hand-written guard record. Fires are counted by scripts/guard-record.js --summary, never stored here.",
+  "guards": [
+    {
+      "guard": "path-guard",
+      "kind": "guard",
+      "why": [
+        {
+          "version": "v19.31.0",
+          "ref": "D028",
+          "text": "After compaction the model read and wrote another folder's memory path instead of this project's, and the project-root anchor injected every prompt did not stop it."
+        },
+        {
+          "version": "v20.3.0",
+          "ref": "cad82ba",
+          "text": "Editing the append-only memory file in place instead of appending to it."
+        },
+        {
+          "version": "v21.38.0",
+          "ref": "I047",
+          "text": "Writing the document skill flag file directly to unlock the document guard without running a skill."
+        },
+        {
+          "version": "v21.125.0",
+          "ref": "D119",
+          "text": "Bash commands that would write into another project's .crabshell folder (reads are no longer blocked)."
+        }
+      ],
+      "predicts": [
+        {
+          "case": "A Bash redirect, tee, rm or sed -i aimed at another project's .crabshell path is blocked.",
+          "source": "_test-path-guard.js: \"Bash write: redirect to wrong path (block)\""
+        },
+        {
+          "case": "Code passed to node -e that writes another project's .crabshell path is blocked.",
+          "source": "_test-path-guard.js: \"Bash write: node -e writeFileSync to wrong path (block)\""
+        },
+        {
+          "case": "A tee aimed at another project's .crabshell path is blocked.",
+          "source": "_test-path-guard.js: \"Bash write: tee to wrong path (block)\""
+        },
+        {
+          "case": "A Write or Edit call on the skill flag file is blocked.",
+          "source": "_test-path-guard.js: \"Write: skill-active.json (block)\""
+        }
+      ],
+      "misses": [
+        {
+          "date": "2026-09-24",
+          "text": "As of v21.125.0, Write/Edit tool calls into another project's .crabshell folder were not checked; a static read of core/path-policy.js on 2026-11-20 shows file-write tools still checked only for the logbook and the skill flag.",
+          "source": "CHANGELOG v21.125.0 Remaining limits"
+        },
+        {
+          "date": "2026-09-24",
+          "text": "A target built by an earlier command (a cd into another folder followed by rm, or a path joined in code) cannot be resolved by the guard.",
+          "source": "CHANGELOG v21.125.0 Remaining limits"
+        },
+        {
+          "date": "2026-09-24",
+          "text": "As of v21.125.0 the PowerShell tool was not guarded.",
+          "source": "CHANGELOG v21.125.0 Remaining limits"
+        }
+      ],
+      "history": [
+        {
+          "version": "v19.31.0",
+          "change": "added",
+          "ref": "43ec44c"
+        },
+        {
+          "version": "v20.0.0",
+          "change": "changed",
+          "ref": "a8361c2"
+        },
+        {
+          "version": "v20.3.0",
+          "change": "changed",
+          "ref": "cad82ba"
+        },
+        {
+          "version": "v21.8.0",
+          "change": "changed",
+          "ref": "5c8b866"
+        },
+        {
+          "version": "v21.38.0",
+          "change": "changed",
+          "ref": "e40724c"
+        },
+        {
+          "version": "v21.106.0",
+          "change": "changed",
+          "ref": "036eb17"
+        },
+        {
+          "version": "v21.125.0",
+          "change": "changed",
+          "ref": "D119"
+        },
+        {
+          "version": "I047",
+          "change": "audit baseline: keep, load-bearing",
+          "ref": "I047 AG2"
+        }
+      ]
+    },
+    {
+      "guard": "rerun-guard",
+      "kind": "guard",
+      "why": [
+        {
+          "version": "v21.153.0",
+          "ref": "D143",
+          "text": "Running by hand a declared check that already passed on the same inputs, which turned one changed line into hours of repeated checking."
+        }
+      ],
+      "predicts": [
+        {
+          "case": "A manifest entry that passed with the same inputs is answered from the runner record before any start is recorded.",
+          "source": "_test-declared-commands.js: \"a manifest entry passed with the same inputs is answered from the record, before any start is recorded\""
+        },
+        {
+          "case": "The Codex adapter answers such a rerun from the record the same way.",
+          "source": "_test-declared-commands.js: \"Codex answers from the record the same way\""
+        },
+        {
+          "case": "An undeclared wrapper in front of a declared check gets a one-line hint instead of a block.",
+          "source": "_test-declared-commands.js: \"an undeclared wrapper before a declared check gets a one-line hint and is not blocked\""
+        }
+      ],
+      "misses": [
+        {
+          "date": "2026-11-15",
+          "text": "Commands run inside a script file (powershell -File) are invisible to the guards that match declared commands, so a rerun wrapped that way is not seen.",
+          "source": "D176"
+        }
+      ],
+      "history": [
+        {
+          "version": "v21.153.0",
+          "change": "added",
+          "ref": "60851de"
+        }
+      ]
+    },
+    {
+      "guard": "overlap-guard",
+      "kind": "guard",
+      "why": [
+        {
+          "version": "v21.177.0",
+          "ref": "D175",
+          "text": "Starting by hand a check that a live runner run is executing right now, so the same check runs twice at once."
+        }
+      ],
+      "predicts": [
+        {
+          "case": "A check started by hand behind a pipe while a live run executes it is refused.",
+          "source": "_test-overlap-guard.js: \"a running check started by hand behind a pipe is refused\""
+        },
+        {
+          "case": "The PowerShell call-operator form of the same command is refused.",
+          "source": "_test-overlap-guard.js: \"PowerShell call-operator form is refused\""
+        },
+        {
+          "case": "A cd before the command is followed to the same check.",
+          "source": "_test-overlap-guard.js: \"a cd first is followed to the same check\""
+        },
+        {
+          "case": "The Codex adapter refuses it too.",
+          "source": "_test-overlap-guard.js: \"the Codex adapter refuses it too\""
+        }
+      ],
+      "misses": [
+        {
+          "date": "2026-11-15",
+          "text": "Commands run inside a script file are invisible to the guards that match declared commands.",
+          "source": "D176"
+        }
+      ],
+      "history": [
+        {
+          "version": "v21.177.0",
+          "change": "added",
+          "ref": "341574f"
+        },
+        {
+          "version": "v21.177.1",
+          "change": "changed",
+          "ref": "5bdd477"
+        }
+      ]
+    },
+    {
+      "guard": "resource-guard",
+      "kind": "guard",
+      "why": [
+        {
+          "version": "v21.177.0",
+          "ref": "D175",
+          "text": "A launch that fails at once because another job already holds a declared lock, and a timing measurement taken beside heavy work that produces unusable numbers."
+        }
+      ],
+      "predicts": [
+        {
+          "case": "A launch that uses a resource held by a live runner check is refused.",
+          "source": "_test-overlap-resources.js: \"a runner check using the resource refuses a launch that uses it\""
+        },
+        {
+          "case": "A live process named in the resource lock file refuses the launch and is named.",
+          "source": "_test-overlap-resources.js: \"a live lock holder refuses the launch and is named\""
+        },
+        {
+          "case": "A time measurement is refused while a runner run executes in another worktree.",
+          "source": "_test-overlap-resources.js: \"a runner run in another worktree refuses a time measurement\""
+        },
+        {
+          "case": "Heavy work is refused while a declared measurement runs.",
+          "source": "_test-overlap-resources.js: \"heavy work is refused while a declared measurement runs\""
+        }
+      ],
+      "misses": [
+        {
+          "date": "2026-11-14",
+          "text": "Conflicts between commands that run outside the runner and write no lock file are not detected.",
+          "source": "D175"
+        },
+        {
+          "date": "2026-11-14",
+          "text": "Heavy work started later during a measurement without a declaration is not detected.",
+          "source": "D175"
+        },
+        {
+          "date": "2026-11-15",
+          "text": "Commands run inside a script file are invisible to the guards that match declared commands.",
+          "source": "D176"
+        }
+      ],
+      "history": [
+        {
+          "version": "v21.177.0",
+          "change": "added",
+          "ref": "341574f"
+        },
+        {
+          "version": "v21.177.1",
+          "change": "changed",
+          "ref": "5bdd477"
+        }
+      ]
+    },
+    {
+      "guard": "pending-inputs",
+      "kind": "guard",
+      "why": [
+        {
+          "version": "v21.177.0",
+          "ref": "D175",
+          "text": "Remaking a sealed output while another git worktree has uncommitted or unmerged changes to its inputs, so the output goes stale at once."
+        }
+      ],
+      "predicts": [
+        {
+          "case": "By default a command that makes declared outputs gets a warning, not a refusal, when another worktree changed its inputs.",
+          "source": "_test-pending-inputs.js: \"AC1: warns, not refuses, by default\""
+        },
+        {
+          "case": "With pendingInputs set to refuse, the same command is refused.",
+          "source": "_test-pending-inputs.js: AC1 label 'pendingInputs \"refuse\" refuses'"
+        },
+        {
+          "case": "A changed script named on the command line is caught as an input.",
+          "source": "_test-pending-inputs.js: \"AC3: a changed script named on the command line is caught\""
+        },
+        {
+          "case": "A commit in the other worktree that this worktree lacks is reported as committed there.",
+          "source": "_test-pending-inputs.js: AC2 label 'a commit there that this worktree lacks is \"committed there\"'"
+        }
+      ],
+      "misses": [
+        {
+          "date": "2026-11-14",
+          "text": "Changes in a worktree that does not exist yet cannot be seen.",
+          "source": "D175"
+        },
+        {
+          "date": "2026-11-15",
+          "text": "Commands run inside a script file are invisible to the guards that match declared commands.",
+          "source": "D176"
+        }
+      ],
+      "history": [
+        {
+          "version": "v21.177.0",
+          "change": "added",
+          "ref": "341574f"
+        },
+        {
+          "version": "v21.177.1",
+          "change": "changed",
+          "ref": "5bdd477"
+        }
+      ]
+    },
+    {
+      "guard": "verification-gate",
+      "kind": "guard",
+      "why": [
+        {
+          "version": "v21.0.0",
+          "ref": "D052",
+          "text": "Committing after editing source files without running tests (the original commit gate)."
+        },
+        {
+          "version": "v21.153.0",
+          "ref": "D143",
+          "text": "The gate itself forced a check before every commit; since then it only records that a declared check started, as pending completion evidence."
+        }
+      ],
+      "predicts": [
+        {
+          "case": "A declared check starting is recorded as pending.",
+          "source": "_test-verification-sequence.js: \"Gate: a declared check starting is recorded as pending\""
+        },
+        {
+          "case": "File edits pass through with exit 0 and write nothing.",
+          "source": "_test-verification-sequence.js: \"Gate: edits pass through with exit 0 and write nothing\""
+        }
+      ],
+      "misses": [
+        {
+          "date": "2026-09-24",
+          "text": "Before v21.124.0 another session's Read could clear this session's unverified edit from the record.",
+          "source": "CHANGELOG v21.124.0"
+        }
+      ],
+      "history": [
+        {
+          "version": "v21.0.0",
+          "change": "added",
+          "ref": "a21fc07"
+        },
+        {
+          "version": "v21.124.0",
+          "change": "changed",
+          "ref": "052ada6"
+        },
+        {
+          "version": "v21.125.0",
+          "change": "changed",
+          "ref": "4ff58ed"
+        },
+        {
+          "version": "v21.153.0",
+          "change": "changed",
+          "ref": "D143"
+        },
+        {
+          "version": "I047",
+          "change": "audit baseline: keep, deterministic; audit on the next model change",
+          "ref": "I047 AG2"
+        }
+      ]
+    },
+    {
+      "guard": "completion-controller",
+      "kind": "guard",
+      "why": [
+        {
+          "version": "v21.107.0",
+          "ref": "D111",
+          "text": "Ending a turn with authorized work unfinished, or taking a worker's done report as completion evidence; one bounded Stop/SubagentStop owner replaced four separate Stop hooks."
+        },
+        {
+          "version": "v21.178.0",
+          "ref": "D177",
+          "text": "It also became the place where the per-prompt best-answer question runs after the other Stop checks."
+        },
+        {
+          "version": "v21.107.0",
+          "ref": "D111",
+          "text": "A turn ending while workflow work is still due, or a child's completion claim being accepted without parent-run evidence; the shared decision both hosts use."
+        }
+      ],
+      "predicts": [
+        {
+          "case": "A child agent's false done claim is rejected by the same parent-run failure on Claude and Codex.",
+          "source": "_test-cross-runtime-parent-completion.js: \"child false-done is rejected by the same parent-executed failure on both hosts\""
+        },
+        {
+          "case": "A question or synthetic hook text cannot authorize continuation.",
+          "source": "_test-cross-runtime-parent-completion.js: \"question and synthetic hook text cannot authorize continuation\""
+        },
+        {
+          "case": "An execution request alone keeps the demand to continue unfinished work.",
+          "source": "_test-stop-latest-user.js: \"an execution request alone keeps the continue demand (unchanged)\""
+        },
+        {
+          "case": "Identical direct failures reach the same bounded report state on both hosts.",
+          "source": "_test-cross-runtime-parent-completion.js: \"identical direct failures reach the same bounded report state on both hosts\""
+        },
+        {
+          "case": "Parent evidence cannot be recorded before a child claim by reordering events.",
+          "source": "_test-cross-runtime-parent-completion.js: \"wrong-order mutation cannot record parent evidence before a child claim\""
+        },
+        {
+          "case": "A different passing check cannot erase an unresolved failed check.",
+          "source": "_test-native-result-evidence.js: \"a different passing check cannot erase an unresolved failed check\""
+        }
+      ],
+      "misses": [
+        {
+          "date": "2026-11-19",
+          "text": "The older Stop checks are skipped whenever stop_hook_active is true, so an answer written after a block is not checked again (best-answer re-runs them only once, after its own question).",
+          "source": "D177"
+        },
+        {
+          "date": "2026-09-24",
+          "text": "A subagent's own check run still counts as parent evidence.",
+          "source": "CHANGELOG v21.124.0 Remaining limits"
+        },
+        {
+          "date": "2026-09-24",
+          "text": "Before v21.124.0 another session's prompt erased a pending child claim.",
+          "source": "CHANGELOG v21.124.0"
+        },
+        {
+          "date": "2026-11-07",
+          "text": "A missing fingerprint compared equal to another missing fingerprint, so absent evidence counted as current.",
+          "source": "D143"
+        }
+      ],
+      "history": [
+        {
+          "version": "v21.107.0",
+          "change": "added",
+          "ref": "9ceb35e"
+        },
+        {
+          "version": "v21.110.0",
+          "change": "changed",
+          "ref": "3a4f604"
+        },
+        {
+          "version": "v21.113.0",
+          "change": "changed",
+          "ref": "24b7801"
+        },
+        {
+          "version": "v21.125.0",
+          "change": "changed",
+          "ref": "4ff58ed"
+        },
+        {
+          "version": "v21.154.0",
+          "change": "changed",
+          "ref": "D147"
+        },
+        {
+          "version": "v21.166.0",
+          "change": "changed",
+          "ref": "D162"
+        },
+        {
+          "version": "v21.178.0",
+          "change": "changed",
+          "ref": "D177"
+        },
+        {
+          "version": "v21.107.0",
+          "change": "added",
+          "ref": "9ceb35e"
+        },
+        {
+          "version": "v21.124.0",
+          "change": "changed",
+          "ref": "052ada6"
+        },
+        {
+          "version": "v21.153.0",
+          "change": "changed",
+          "ref": "D143"
+        },
+        {
+          "version": "v21.154.0",
+          "change": "changed",
+          "ref": "D147"
+        }
+      ]
+    },
+    {
+      "guard": "commit-reminder",
+      "kind": "guard",
+      "why": [
+        {
+          "version": "v21.158.0",
+          "ref": "D151",
+          "text": "Committing with files changed since the checks last passed without running the changed-file check, after the blocking commit gate was removed."
+        }
+      ],
+      "predicts": [
+        {
+          "case": "A commit after files changed since the checks passed gets one reminder; right after a check run or for a change no check reads, none.",
+          "source": "_test-declaration-guidance.js: \"a commit after files changed since the checks passed gets one reminder; right after a check run, none; a change no check reads, no\""
+        }
+      ],
+      "misses": [],
+      "history": [
+        {
+          "version": "v21.158.0",
+          "change": "added",
+          "ref": "56c0998"
+        },
+        {
+          "version": "v21.162.0",
+          "change": "changed",
+          "ref": "D155"
+        }
+      ]
+    },
+    {
+      "guard": "declaration-before",
+      "kind": "recorder",
+      "why": [
+        {
+          "version": "v21.153.0",
+          "ref": "D143",
+          "text": "Records the project files before an allowed declared run so the after-run hint can name the files that run wrote."
+        }
+      ],
+      "predicts": [
+        {
+          "case": "A rerun blocked by its record leaves no before-run record.",
+          "source": "_test-declaration-guidance.js: \"a rerun blocked by its record leaves no before-run record\""
+        }
+      ],
+      "misses": [],
+      "history": [
+        {
+          "version": "v21.153.0",
+          "change": "added",
+          "ref": "60851de"
+        }
+      ]
+    },
+    {
+      "guard": "declaration-after",
+      "kind": "recorder",
+      "why": [
+        {
+          "version": "v21.153.0",
+          "ref": "D143",
+          "text": "Running the same check by hand again and again instead of declaring it (inputs, slow, outputs) in the manifest."
+        },
+        {
+          "version": "v21.158.0",
+          "ref": "56c0998",
+          "text": "A declared check run by hand, whose pass the runner does not record."
+        }
+      ],
+      "predicts": [
+        {
+          "case": "A non-Node entry run by hand gets the inputs hint once.",
+          "source": "_test-declaration-guidance.js: \"a non-Node entry run by hand gets the inputs hint once\""
+        },
+        {
+          "case": "An undeclared long command run twice on the same files gets one hint.",
+          "source": "_test-declaration-guidance.js: \"an undeclared long command run twice on the same files gets one hint; a file change or a short run gets none\""
+        },
+        {
+          "case": "A declared, fast, non-writing entry gets only the run-it-through-the-runner hint, once.",
+          "source": "_test-declaration-guidance.js: \"a declared, fast, non-writing entry gets only the run-it-through-the-runner hint, once\""
+        }
+      ],
+      "misses": [
+        {
+          "date": "2026-11-14",
+          "text": "Declaration hints shown after runs were not acted on, so protection that waited for projects to declare was rejected in favor of undeclared defaults.",
+          "source": "D175"
+        }
+      ],
+      "history": [
+        {
+          "version": "v21.153.0",
+          "change": "added",
+          "ref": "60851de"
+        },
+        {
+          "version": "v21.158.0",
+          "change": "changed",
+          "ref": "56c0998"
+        }
+      ]
+    },
+    {
+      "guard": "web-guard",
+      "kind": "guard",
+      "why": [
+        {
+          "version": "v21.114.0",
+          "ref": "I084",
+          "text": "Built-in WebFetch hands the model a small model's summary instead of the page, and WebSearch snippets with weak attribution get cited as evidence."
+        }
+      ],
+      "predicts": [
+        {
+          "case": "WebFetch is blocked by default with ready-to-run raw-source commands.",
+          "source": "_test-web-guard.js: \"WebFetch blocked by default\""
+        },
+        {
+          "case": "WebSearch is blocked with a redirect when a search MCP server is configured.",
+          "source": "_test-web-guard.js step 4: \"WebSearch WITH a search MCP configured -> blocked with redirect to that MCP\""
+        },
+        {
+          "case": "WebSearch is allowed with a warning when no search MCP server exists.",
+          "source": "_test-web-guard.js: \"WebSearch allowed+warned when no search MCP exists\""
+        }
+      ],
+      "misses": [
+        {
+          "date": "2026-11-14",
+          "text": "Search servers added by an enabled plugin were not seen, and a call to the plugin's server was counted as a call to a plain server of the same name.",
+          "source": "D171"
+        }
+      ],
+      "keep": {
+        "words": "The user named it one of the two most useful guards",
+        "date": "2026-11-20",
+        "ref": "D178"
+      },
+      "history": [
+        {
+          "version": "v21.114.0",
+          "change": "added",
+          "ref": "be0b69c"
+        },
+        {
+          "version": "v21.125.0",
+          "change": "changed",
+          "ref": "4ff58ed"
+        },
+        {
+          "version": "v21.165.0",
+          "change": "changed",
+          "ref": "D159"
+        },
+        {
+          "version": "v21.166.0",
+          "change": "changed",
+          "ref": "D161"
+        },
+        {
+          "version": "v21.172.0",
+          "change": "changed",
+          "ref": "D169"
+        },
+        {
+          "version": "v21.174.0",
+          "change": "changed",
+          "ref": "D171"
+        },
+        {
+          "version": "v21.176.0",
+          "change": "changed",
+          "ref": "D174"
+        }
+      ]
+    },
+    {
+      "guard": "sycophancy-guard",
+      "kind": "guard",
+      "why": [
+        {
+          "version": "v19.29.0",
+          "ref": "D026",
+          "text": "Agreeing with the user without verification, a trained behavior that prompt-level rules did not suppress."
+        },
+        {
+          "version": "v20.7.0",
+          "ref": "D051",
+          "text": "Short agreements and agreement followed by a tool call in the same turn, which the Stop-only check missed."
+        },
+        {
+          "version": "v21.166.0",
+          "ref": "D162",
+          "text": "Agreeing with the user's pushback without checking anything in the turn, which came back after the guard was removed."
+        }
+      ],
+      "predicts": [
+        {
+          "case": "At Stop, an answer that agrees while nothing was checked in the turn is sent back once.",
+          "source": "_test-sycophancy-guard.js: \"Stop sends back an answer that agrees when nothing was checked in the turn\""
+        },
+        {
+          "case": "A file write right after unchecked agreement is blocked; after a check it passes.",
+          "source": "_test-sycophancy-guard.js: \"a file write right after unchecked agreement is blocked; after a check it passes\""
+        },
+        {
+          "case": "The Claude PreToolUse dispatcher denies that write.",
+          "source": "_test-sycophancy-guard.js: \"the PreToolUse dispatch denies that write\""
+        }
+      ],
+      "misses": [
+        {
+          "date": "2026-03-28",
+          "text": "Agreement text followed by a tool call in the same turn escaped the Stop-only check (seen in another project).",
+          "source": "I027"
+        },
+        {
+          "date": "2026-03-28",
+          "text": "A 100-character exemption let most real blind agreements, which are short, pass unchecked.",
+          "source": "D051"
+        },
+        {
+          "date": "2026-04-05",
+          "text": "The visible phrase list is bypassed by agreement wording outside it, and prose evidence markers could be forged.",
+          "source": "I047"
+        },
+        {
+          "date": "2026-04-05",
+          "text": "A blocked Stop is skipped on the retry (stop_hook_active), which leaves one unchecked response.",
+          "source": "I047"
+        },
+        {
+          "date": "2026-11-08",
+          "text": "After v21.81.0 the Stop path only wrote a stderr note that no model read, so it did nothing.",
+          "source": "D162"
+        },
+        {
+          "date": "2026-11-08",
+          "text": "With the guard unwired and deleted, the model again agreed with the user's pushback without checking.",
+          "source": "D162"
+        }
+      ],
+      "keep": {
+        "words": "The user named it one of the two most useful guards",
+        "date": "2026-11-20",
+        "ref": "D178"
+      },
+      "history": [
+        {
+          "version": "v19.29.0",
+          "change": "added",
+          "ref": "60abdc0"
+        },
+        {
+          "version": "v20.7.0",
+          "change": "changed",
+          "ref": "9e75988"
+        },
+        {
+          "version": "v21.81.0",
+          "change": "changed",
+          "ref": "a3dfac8"
+        },
+        {
+          "version": "v21.91.0",
+          "change": "changed",
+          "ref": "5be0a8b"
+        },
+        {
+          "version": "v21.113.0",
+          "change": "unwired",
+          "ref": "24b7801"
+        },
+        {
+          "version": "v21.130.0",
+          "change": "deleted",
+          "ref": "4d760c6"
+        },
+        {
+          "version": "v21.166.0",
+          "change": "restored",
+          "ref": "efed6fa"
+        }
+      ]
+    },
+    {
+      "guard": "regressing-guard",
+      "kind": "guard",
+      "why": [
+        {
+          "version": "v19.24.0",
+          "ref": "D023",
+          "text": "Writing plan or ticket documents in a regressing phase that does not allow them, which prompt-level instructions alone did not prevent."
+        },
+        {
+          "version": "v21.41.0",
+          "ref": "fd7b29c",
+          "text": "Writing tickets while the plan document's agent sections (analysis, review, intent check) are still empty."
+        }
+      ],
+      "predicts": [
+        {
+          "case": "A plan document write in the planning phase is blocked.",
+          "source": "_test-regressing-guard.js TC2: \"Planning phase + plan doc write → exit 2\""
+        },
+        {
+          "case": "A ticket write while the plan document has empty agent sections is blocked.",
+          "source": "_test-regressing-guard.js TC4: \"Active regressing + ticket write + P doc with EMPTY sections → exit 2\""
+        },
+        {
+          "case": "A ticket write with only one plan section populated is still blocked.",
+          "source": "_test-regressing-guard-edge-cases.js: \"AC-6: only one section populated → exit 2 (partial empty still blocks)\""
+        }
+      ],
+      "misses": [
+        {
+          "date": "2026-09-24",
+          "text": "Before v21.130.0 tickets with a discussion parent (D###_T###) were skipped without an error.",
+          "source": "CHANGELOG v21.130.0"
+        },
+        {
+          "date": "2026-09-24",
+          "text": "For discussion-based regressing cycles no hook enforces the plan-quality gate; it is only the skill's rule.",
+          "source": "CHANGELOG v21.130.0"
+        }
+      ],
+      "history": [
+        {
+          "version": "v19.24.0",
+          "change": "added",
+          "ref": "b1b86ad"
+        },
+        {
+          "version": "v19.38.0",
+          "change": "changed",
+          "ref": "52bcf1c"
+        },
+        {
+          "version": "v20.1.0",
+          "change": "changed",
+          "ref": "d3ded35"
+        },
+        {
+          "version": "v21.41.0",
+          "change": "changed",
+          "ref": "fd7b29c"
+        },
+        {
+          "version": "v21.86.0",
+          "change": "changed",
+          "ref": "b09a1e2"
+        },
+        {
+          "version": "v21.130.0",
+          "change": "changed",
+          "ref": "4d760c6"
+        },
+        {
+          "version": "I047",
+          "change": "audit baseline: narrow scope, merger candidate",
+          "ref": "I047 AG2"
+        }
+      ]
+    },
+    {
+      "guard": "docs-guard",
+      "kind": "guard",
+      "why": [
+        {
+          "version": "v19.33.0",
+          "ref": "D030",
+          "text": "After compaction the model wrote D/P/T/I documents directly from memory without invoking the document skill."
+        },
+        {
+          "version": "v21.31.0",
+          "ref": "D067",
+          "text": "Investigation documents written without a Constraints section, skipping the constraint step."
+        },
+        {
+          "version": "v21.153.0",
+          "ref": "D145",
+          "text": "A discussion plan reaching its first ticket without its design lines."
+        }
+      ],
+      "predicts": [
+        {
+          "case": "An edit to an investigation document with no active skill is blocked.",
+          "source": "_test-docs-guard.js: \"TC5e: Edit investigation/I001-test.md + NO skill-active → block (exit 2)\""
+        },
+        {
+          "case": "An edit to an investigation document without a Constraints section is blocked.",
+          "source": "_test-docs-guard.js: \"TC2: Edit I doc WITHOUT ## Constraints + active skill → block (exit 2)\""
+        },
+        {
+          "case": "A discussion edit during active regressing outside the discussing skill is blocked.",
+          "source": "_test-docs-guard.js: \"TC_D3: Discussion Edit + regressing active=true → block (exit 2)\""
+        }
+      ],
+      "misses": [
+        {
+          "date": "2026-04-05",
+          "text": "Writing the skill flag file directly bypassed the whole guard in one step (closed in v21.38.0 by path-guard).",
+          "source": "I047"
+        },
+        {
+          "date": "2026-09-24",
+          "text": "A test that loaded a migration script rewrote 277 project documents; writes made by a script, not a Write/Edit call, are not seen.",
+          "source": "feedback_require_cli_scripts.md"
+        }
+      ],
+      "history": [
+        {
+          "version": "v19.33.0",
+          "change": "added",
+          "ref": "ba02414"
+        },
+        {
+          "version": "v21.31.0",
+          "change": "changed",
+          "ref": "bb36424"
+        },
+        {
+          "version": "v21.37.0",
+          "change": "changed",
+          "ref": "D070"
+        },
+        {
+          "version": "v21.44.0",
+          "change": "changed",
+          "ref": "b7377d5"
+        },
+        {
+          "version": "v21.59.0",
+          "change": "changed",
+          "ref": "330814b"
+        },
+        {
+          "version": "v21.75.0",
+          "change": "changed",
+          "ref": "4c179c5"
+        },
+        {
+          "version": "v21.124.0",
+          "change": "changed",
+          "ref": "052ada6"
+        },
+        {
+          "version": "v21.144.0",
+          "change": "changed",
+          "ref": "0eb8cfc"
+        },
+        {
+          "version": "v21.153.0",
+          "change": "changed",
+          "ref": "D145"
+        },
+        {
+          "version": "I047",
+          "change": "audit baseline: keep, deterministic; audit on the next model change",
+          "ref": "I047 AG2"
+        }
+      ]
+    },
+    {
+      "guard": "log-guard",
+      "kind": "guard",
+      "why": [
+        {
+          "version": "v21.4.0",
+          "ref": "I033",
+          "text": "Marking a document done, verified or concluded in INDEX.md without log entries in the document itself."
+        },
+        {
+          "version": "v21.11.0",
+          "ref": "dcbc31e",
+          "text": "Closing a ticket while its result sections still hold pending placeholders."
+        }
+      ],
+      "predicts": [
+        {
+          "case": "Moving a ticket from done to verified while Final Verification is still template text is blocked.",
+          "source": "_test-log-guard.js: \"Terminal transition: done→verified while Final Verification is still template → BLOCK\""
+        },
+        {
+          "case": "An active skill flag does not bypass the check.",
+          "source": "_test-log-guard.js: \"EC-10: No skill-active bypass — blocks regardless of skill state\""
+        }
+      ],
+      "misses": [
+        {
+          "date": "2026-03-29",
+          "text": "A rubber-stamp log entry passes: the guard checks that entries exist, not their quality.",
+          "source": "I033"
+        },
+        {
+          "date": "2026-09-24",
+          "text": "The work-log check did not parse wikilink INDEX rows until v21.131.0.",
+          "source": "CHANGELOG v21.130.0"
+        },
+        {
+          "date": "2026-09-24",
+          "text": "Before v21.130.0 tickets with a discussion parent were skipped without an error.",
+          "source": "CHANGELOG v21.130.0"
+        }
+      ],
+      "history": [
+        {
+          "version": "v21.4.0",
+          "change": "added",
+          "ref": "b4c4afe"
+        },
+        {
+          "version": "v21.11.0",
+          "change": "changed",
+          "ref": "dcbc31e"
+        },
+        {
+          "version": "v21.75.0",
+          "change": "changed",
+          "ref": "4c179c5"
+        },
+        {
+          "version": "v21.130.0",
+          "change": "changed",
+          "ref": "4d760c6"
+        },
+        {
+          "version": "v21.131.0",
+          "change": "changed",
+          "ref": "72b40ee"
+        },
+        {
+          "version": "v21.144.0",
+          "change": "changed",
+          "ref": "0eb8cfc"
+        },
+        {
+          "version": "I047",
+          "change": "audit baseline: keep, deterministic; audit on the next model change",
+          "ref": "I047 AG2"
+        }
+      ]
+    },
+    {
+      "guard": "doc-watchdog",
+      "kind": "guard",
+      "why": [
+        {
+          "version": "v21.18.0",
+          "ref": "D061",
+          "text": "Code edited repeatedly during regressing while the ticket and other workflow documents were never updated (omission)."
+        }
+      ],
+      "predicts": [
+        {
+          "case": "At the edit threshold during active regressing, the next edit gets a warning in additionalContext.",
+          "source": "_test-doc-watchdog.js: \"gate: at threshold + regressing active → exit 0 with additionalContext in stdout\""
+        },
+        {
+          "case": "Stop is blocked when regressing is active and the ticket has only its Created log entry.",
+          "source": "_test-doc-watchdog.js: 'stop: regressing + ticket with only \"Created\" log entry → exit 2 block'"
+        },
+        {
+          "case": "An unfinished ticket with no log entry after the code edit is named.",
+          "source": "_test-doc-watchdog.js: \"T004: an unfinished ticket with several log entries but none after the code edit is named\""
+        }
+      ],
+      "misses": [
+        {
+          "date": "2026-04-05",
+          "text": "Outside regressing the watchdog does nothing, so document omissions there are not caught.",
+          "source": "I047"
+        },
+        {
+          "date": "2026-09-24",
+          "text": "Before v21.125.0 its five-edit warning did not reach the model.",
+          "source": "CHANGELOG v21.125.0"
+        }
+      ],
+      "history": [
+        {
+          "version": "v21.18.0",
+          "change": "added",
+          "ref": "4155613"
+        },
+        {
+          "version": "v21.21.0",
+          "change": "changed",
+          "ref": "146c865"
+        },
+        {
+          "version": "v21.107.0",
+          "change": "changed",
+          "ref": "9ceb35e"
+        },
+        {
+          "version": "v21.125.0",
+          "change": "changed",
+          "ref": "4ff58ed"
+        },
+        {
+          "version": "v21.154.0",
+          "change": "changed",
+          "ref": "D147"
+        },
+        {
+          "version": "I047",
+          "change": "audit baseline: keep, deterministic; audit on the next model change",
+          "ref": "I047 AG2"
+        }
+      ]
+    },
+    {
+      "guard": "counter",
+      "kind": "recorder",
+      "why": [
+        {
+          "version": "v3.0.0",
+          "ref": "580a705",
+          "text": "Memory going unsaved during a long session; a tool-call counter triggers periodic saves and memory delta extraction."
+        }
+      ],
+      "predicts": [
+        {
+          "case": "At the save interval the counter triggers a save and resets to 0.",
+          "source": "_test-counter.js: \"SUBPROCESS check: at interval counter resets to 0\""
+        },
+        {
+          "case": "A corrupted counter file is recovered by the next check.",
+          "source": "_test-counter.js: \"EDGE: corrupted counter.json recovered by check\""
+        },
+        {
+          "case": "A transcript smaller than the stored offset resets the offset to 0.",
+          "source": "_test-counter.js: \"OFFSET EDGE: file truncated smaller than previous offset resets to 0\""
+        }
+      ],
+      "misses": [
+        {
+          "date": "2026-04-05",
+          "text": "check() kept running after failing to acquire the index lock, risking a race.",
+          "source": "I047"
+        },
+        {
+          "date": "2026-04-11",
+          "text": "Agent-count tracking checked the wrong tool name, so its count file was never created until v21.55.0.",
+          "source": "CHANGELOG v21.55.0"
+        },
+        {
+          "date": "2026-04-20",
+          "text": "counter.js wrote the shared memory index without taking the index lock, unlike inject-rules and load-memory.",
+          "source": "I058"
+        },
+        {
+          "date": "2026-09-24",
+          "text": "Incremental L1 refinement dropped the first new transcript line at a line boundary, losing one line per save until v21.124.0.",
+          "source": "CHANGELOG v21.124.0"
+        }
+      ],
+      "history": [
+        {
+          "version": "v3.0.0",
+          "change": "added",
+          "ref": "580a705"
+        },
+        {
+          "version": "v19.50.0",
+          "change": "changed",
+          "ref": "D038"
+        },
+        {
+          "version": "v20.5.0",
+          "change": "changed",
+          "ref": "8b720fe"
+        },
+        {
+          "version": "v21.38.0",
+          "change": "changed",
+          "ref": "e40724c"
+        },
+        {
+          "version": "v21.73.0",
+          "change": "changed",
+          "ref": "f915a20"
+        },
+        {
+          "version": "v21.124.0",
+          "change": "changed",
+          "ref": "052ada6"
+        },
+        {
+          "version": "v21.125.0",
+          "change": "changed",
+          "ref": "4ff58ed"
+        },
+        {
+          "version": "v21.172.0",
+          "change": "changed",
+          "ref": "D169"
+        }
+      ]
+    },
+    {
+      "guard": "verification-record",
+      "kind": "recorder",
+      "why": [
+        {
+          "version": "v21.0.0",
+          "ref": "D052",
+          "text": "A declared check's result going unrecorded, leaving completion and commit decisions without evidence of a passing run."
+        }
+      ],
+      "predicts": [
+        {
+          "case": "A declared check without a real exit code and success evidence records no pass.",
+          "source": "_test-verification-sequence.js: \"A declared check without a result records no pass: real exit and success evidence are required\""
+        },
+        {
+          "case": "A pass after a failure replaces it as the last check.",
+          "source": "_test-verification-sequence.js: \"A pass after a failure replaces it as the last check\""
+        },
+        {
+          "case": "A check started in the background is not recorded as passing.",
+          "source": "_test-session-isolation.js: \"S7 a check started in the background is not recorded as passing\""
+        }
+      ],
+      "misses": [],
+      "history": [
+        {
+          "version": "v21.0.0",
+          "change": "added",
+          "ref": "a21fc07"
+        },
+        {
+          "version": "v21.124.0",
+          "change": "changed",
+          "ref": "052ada6"
+        },
+        {
+          "version": "v21.125.0",
+          "change": "changed",
+          "ref": "4ff58ed"
+        },
+        {
+          "version": "v21.153.0",
+          "change": "changed",
+          "ref": "D143"
+        }
+      ]
+    },
+    {
+      "guard": "skill-tracker",
+      "kind": "recorder",
+      "why": [
+        {
+          "version": "v19.33.0",
+          "ref": "D030",
+          "text": "Sets the document skill flag when a document skill runs, so docs-guard can tell skill-driven document writes from direct ones."
+        }
+      ],
+      "predicts": [
+        {
+          "case": "Another session's first prompt does not remove this session's skill flag.",
+          "source": "_test-session-isolation.js: \"S13 (E1) B's first prompt does not remove A's skill flag\""
+        },
+        {
+          "case": "Only the shared skill-flag module reads, writes or clears the flag.",
+          "source": "_test-single-source.js: \"S6 only core/skill-flag.js reads, writes, or clears the skill flag\""
+        }
+      ],
+      "misses": [
+        {
+          "date": "2026-04-05",
+          "text": "The skill flag expired after 5 minutes with no refresh, so long skills lost it.",
+          "source": "I047"
+        },
+        {
+          "date": "2026-09-24",
+          "text": "Run as an async hook, the flag could be set only after the next tool call had already been checked (fixed in v21.125.0).",
+          "source": "CHANGELOG v21.125.0"
+        }
+      ],
+      "history": [
+        {
+          "version": "v19.33.0",
+          "change": "added",
+          "ref": "ba02414"
+        },
+        {
+          "version": "v19.34.0",
+          "change": "changed",
+          "ref": "8b3bdf7"
+        },
+        {
+          "version": "v19.40.0",
+          "change": "changed",
+          "ref": "6ff2b46"
+        },
+        {
+          "version": "v21.21.0",
+          "change": "changed",
+          "ref": "146c865"
+        },
+        {
+          "version": "v21.44.0",
+          "change": "changed",
+          "ref": "b7377d5"
+        },
+        {
+          "version": "v21.75.1",
+          "change": "changed",
+          "ref": "3b1db3e"
+        },
+        {
+          "version": "v21.124.0",
+          "change": "changed",
+          "ref": "052ada6"
+        },
+        {
+          "version": "v21.125.0",
+          "change": "changed",
+          "ref": "4ff58ed"
+        }
+      ]
+    },
+    {
+      "guard": "path-advisory",
+      "kind": "guard",
+      "why": [
+        {
+          "version": "v21.125.0",
+          "ref": "D119",
+          "text": "Taking another project's .crabshell memory for this project's memory after reading it; reads are allowed and get a notice instead of a block."
+        }
+      ],
+      "predicts": [
+        {
+          "case": "A Read of another project's .crabshell path is allowed with a notice.",
+          "source": "_test-path-guard.js: \"Read: wrong forward slash path (read — allow + advisory)\""
+        },
+        {
+          "case": "A Grep on another project's .crabshell path is allowed with a notice.",
+          "source": "_test-path-guard.js: \"Grep: wrong path (read — allow + advisory)\""
+        },
+        {
+          "case": "A Bash cat of another project's .crabshell path is allowed with a notice.",
+          "source": "_test-path-guard.js: \"Bash: cat of wrong path (read — allow + advisory)\""
+        }
+      ],
+      "misses": [
+        {
+          "date": "2026-09-24",
+          "text": "Read, Grep and Glob have no PreToolUse hook, so the notice arrives only after the read.",
+          "source": "CHANGELOG v21.125.0"
+        }
+      ],
+      "history": [
+        {
+          "version": "v21.125.0",
+          "change": "added",
+          "ref": "4ff58ed"
+        }
+      ]
+    },
+    {
+      "guard": "best-answer",
+      "kind": "guard",
+      "why": [
+        {
+          "version": "v21.178.0",
+          "ref": "D177",
+          "text": "Answers whose gaps were fixed only after the user asked by hand whether it was the best answer; the per-turn checklist line, injected before the answer, did not stop this."
+        }
+      ],
+      "predicts": [
+        {
+          "case": "The first Stop of a prompt with no other check blocking carries the question.",
+          "source": "_test-best-answer.js: \"AC1: the first Stop of a prompt, no other check blocking, carries the question\""
+        },
+        {
+          "case": "When another check blocks, the question waits for the next Stop, then nothing more.",
+          "source": "_test-best-answer.js: \"AC3: when another check blocks, the question waits for the next Stop, then nothing more\""
+        },
+        {
+          "case": "SubagentStop and the Codex host get no question.",
+          "source": "_test-best-answer.js: \"AC5: SubagentStop and the Codex host get no question\""
+        },
+        {
+          "case": "A non-interactive SDK run gets no question unless skipEntrypoints is emptied.",
+          "source": "_test-best-answer.js: \"a claude -p / Agent SDK run (entrypoint sdk-*) gets no question; skipEntrypoints [] asks there too\""
+        }
+      ],
+      "misses": [],
+      "history": [
+        {
+          "version": "v21.178.0",
+          "change": "added",
+          "ref": "7c981f1"
+        },
+        {
+          "version": "v21.178.1",
+          "change": "changed",
+          "ref": "0f46a45"
+        },
+        {
+          "version": "v21.178.2",
+          "change": "changed",
+          "ref": "658d9f3"
+        }
+      ]
+    },
+    {
+      "guard": "inject-rules",
+      "kind": "injector",
+      "why": [
+        {
+          "version": "v13.5.0",
+          "ref": "f657bf9",
+          "text": "Rules given only at session start lose effect during a session; critical rules are injected on every prompt."
+        },
+        {
+          "version": "v21.155.0",
+          "ref": "D148",
+          "text": "The rules block in CLAUDE.md going stale after a plugin update."
+        }
+      ],
+      "predicts": [
+        {
+          "case": "Re-syncing the rules block keeps the user's content below the end marker.",
+          "source": "_test-inject-rules.js: \"SYNC: preserves user content below end marker\""
+        },
+        {
+          "case": "Only words the user typed count for the emergency stop.",
+          "source": "_test-inject-rules.js: \"EMERGENCY: only the words the user typed count\""
+        },
+        {
+          "case": "An active regressing execution phase produces a reminder with its ticket ids.",
+          "source": "_test-inject-rules.js: \"REGRESSING: execution phase with ticketIds\""
+        }
+      ],
+      "misses": [
+        {
+          "date": "2026-03-25",
+          "text": "The project-root anchor injected on every prompt was ignored after compaction, which led to path-guard.",
+          "source": "D028"
+        },
+        {
+          "date": "2026-03-24",
+          "text": "Injected rules requiring several parallel work agents did not change the single-agent pattern.",
+          "source": "D026"
+        },
+        {
+          "date": "2026-08-05",
+          "text": "After the injected three-field ending was removed, replies grew long again; injected brevity text alone did not hold.",
+          "source": "feedback_short_replies_easy_line.md"
+        },
+        {
+          "date": "2026-11-07",
+          "text": "The CLAUDE.md rules block stayed stale after a plugin update because it was rewritten only on a session's first execution prompt.",
+          "source": "D148"
+        },
+        {
+          "date": "2026-11-14",
+          "text": "The injected per-turn best-answer checklist line was present, yet answers the user had to question kept recurring.",
+          "source": "D177"
+        }
+      ],
+      "history": [
+        {
+          "version": "v13.5.0",
+          "change": "added",
+          "ref": "f657bf9"
+        },
+        {
+          "version": "v19.24.0",
+          "change": "changed",
+          "ref": "D023"
+        },
+        {
+          "version": "v19.50.0",
+          "change": "changed",
+          "ref": "D038"
+        },
+        {
+          "version": "v21.50.0",
+          "change": "changed",
+          "ref": "D085"
+        },
+        {
+          "version": "v21.113.0",
+          "change": "changed",
+          "ref": "24b7801"
+        },
+        {
+          "version": "v21.154.0",
+          "change": "changed",
+          "ref": "D147"
+        },
+        {
+          "version": "v21.155.0",
+          "change": "changed",
+          "ref": "D148"
+        },
+        {
+          "version": "v21.171.0",
+          "change": "changed",
+          "ref": "D168"
+        },
+        {
+          "version": "v21.172.0",
+          "change": "changed",
+          "ref": "D169"
+        },
+        {
+          "version": "I047",
+          "change": "audit baseline: keep, load-bearing",
+          "ref": "I047 AG2"
+        }
+      ]
+    },
+    {
+      "guard": "load-memory",
+      "kind": "injector",
+      "why": [
+        {
+          "version": "v2.0.0",
+          "ref": "4f134eb",
+          "text": "A new or resumed session starting without the project's saved memory."
+        }
+      ],
+      "predicts": [
+        {
+          "case": "A part dropped for the SessionStart budget is named with where to read it, and the context still fits the budget.",
+          "source": "_test-memory-loading.js: \"N2 a part dropped for the budget is named with where to read it, and the context still fits the budget\""
+        },
+        {
+          "case": "The memory notes say the records are data, not instructions.",
+          "source": "_test-memory-loading.js: \"N1 the memory notes say the records are data, not instructions, and to search before saying none\""
+        },
+        {
+          "case": "SessionStart and the snippet lookup write no file.",
+          "source": "_test-memory-loading.js: \"L3 SessionStart and the snippet lookup write no file\""
+        }
+      ],
+      "misses": [
+        {
+          "date": "2026-09-24",
+          "text": "Before v21.124.0 SessionStart memory over the host's 10,000-character inline limit reached the model only as a 2,000-character preview.",
+          "source": "CHANGELOG v21.124.0"
+        }
+      ],
+      "history": [
+        {
+          "version": "v2.0.0",
+          "change": "added",
+          "ref": "4f134eb"
+        },
+        {
+          "version": "v13.5.0",
+          "change": "changed",
+          "ref": "f657bf9"
+        },
+        {
+          "version": "v19.33.0",
+          "change": "changed",
+          "ref": "ba02414"
+        },
+        {
+          "version": "v21.124.0",
+          "change": "changed",
+          "ref": "052ada6"
+        },
+        {
+          "version": "v21.155.0",
+          "change": "changed",
+          "ref": "D148"
+        },
+        {
+          "version": "I047",
+          "change": "audit baseline: keep, load-bearing",
+          "ref": "I047 AG2"
+        }
+      ]
+    },
+    {
+      "guard": "subagent-context",
+      "kind": "injector",
+      "why": [
+        {
+          "version": "v21.21.0",
+          "ref": "D063",
+          "text": "Work and review subagents running without Crabshell's rules and project constraints."
+        },
+        {
+          "version": "v21.107.0",
+          "ref": "D111",
+          "text": "A worker starting without the project root, the active task's scope and the rules."
+        }
+      ],
+      "predicts": [
+        {
+          "case": "The injected context contains the project root anchor.",
+          "source": "_test-subagent-context.js: \"additionalContext contains project root anchor\""
+        },
+        {
+          "case": "The injected context contains the worker contract and the compressed checklist.",
+          "source": "_test-subagent-context.js: \"additionalContext contains worker contract and COMPRESSED_CHECKLIST content\""
+        },
+        {
+          "case": "An active regressing scope keeps the whole checklist under the cap.",
+          "source": "_test-subagent-context.js: \"Active regressing scope keeps the whole checklist under the cap\""
+        },
+        {
+          "case": "Claude and Codex inject the same task-specific worker context.",
+          "source": "_test-cross-runtime-subagent-context.js: \"both hosts inject the exact same task-specific worker context\""
+        }
+      ],
+      "misses": [
+        {
+          "date": "2026-11-02",
+          "text": "During regressing the context passed the 6,000-character cap and the end of the checklist was cut off (6,412 characters measured).",
+          "source": "D137"
+        }
+      ],
+      "history": [
+        {
+          "version": "v21.21.0",
+          "change": "added",
+          "ref": "146c865"
+        },
+        {
+          "version": "v21.107.0",
+          "change": "changed",
+          "ref": "9ceb35e"
+        },
+        {
+          "version": "v21.148.0",
+          "change": "changed",
+          "ref": "D137"
+        }
+      ]
+    },
+    {
+      "guard": "verify-guard",
+      "kind": "guard",
+      "why": [
+        {
+          "version": "v19.34.0",
+          "ref": "D031",
+          "text": "Writing a ticket's Final Verification without running the verification tool."
+        }
+      ],
+      "predicts": [],
+      "misses": [
+        {
+          "date": "2026-03-28",
+          "text": "It covered 1 of 12 verification scenarios, and a not-applicable claim passed it.",
+          "source": "I025"
+        },
+        {
+          "date": "2026-04-05",
+          "text": "The \"Verification tool N/A\" string let any Final Verification through.",
+          "source": "I047"
+        },
+        {
+          "date": "2026-11-02",
+          "text": "When the changed-file selection took longer than its 60-second limit, the guard was killed and allowed the write.",
+          "source": "D137"
+        }
+      ],
+      "history": [
+        {
+          "version": "v19.34.0",
+          "change": "added",
+          "ref": "8b3bdf7"
+        },
+        {
+          "version": "v19.39.0",
+          "change": "changed",
+          "ref": "b48f367"
+        },
+        {
+          "version": "v20.3.0",
+          "change": "changed",
+          "ref": "cad82ba"
+        },
+        {
+          "version": "v21.16.0",
+          "change": "changed",
+          "ref": "D058"
+        },
+        {
+          "version": "v21.148.0",
+          "change": "changed",
+          "ref": "D137"
+        },
+        {
+          "version": "v21.153.0",
+          "change": "unwired",
+          "ref": "D143"
+        },
+        {
+          "version": "v21.171.0",
+          "change": "deleted",
+          "ref": "D168"
+        }
+      ]
+    },
+    {
+      "guard": "pressure-guard",
+      "kind": "guard",
+      "why": [
+        {
+          "version": "v19.50.0",
+          "ref": "D038",
+          "text": "Reasoning quality degrading as negative user feedback accumulates; at the top level direct edits were blocked and work had to be delegated."
+        }
+      ],
+      "predicts": [],
+      "misses": [
+        {
+          "date": "2026-04-11",
+          "text": "Levels 1 and 2 were text only and could be ignored, and level 3 did not block Skill, Agent or TaskCreate.",
+          "source": "D089"
+        }
+      ],
+      "history": [
+        {
+          "version": "v19.50.0",
+          "change": "added",
+          "ref": "ec5c17f"
+        },
+        {
+          "version": "v21.113.0",
+          "change": "unwired",
+          "ref": "24b7801"
+        },
+        {
+          "version": "v21.130.0",
+          "change": "deleted",
+          "ref": "4d760c6"
+        }
+      ]
+    },
+    {
+      "guard": "scope-guard",
+      "kind": "guard",
+      "why": [
+        {
+          "version": "v21.19.0",
+          "ref": "D062",
+          "text": "Delivering less than the user asked (fewer items than requested, or dropping part of \"both\"/\"all\" with a time excuse)."
+        }
+      ],
+      "predicts": [],
+      "misses": [],
+      "history": [
+        {
+          "version": "v21.19.0",
+          "change": "added",
+          "ref": "a1ee6b0"
+        },
+        {
+          "version": "v21.113.0",
+          "change": "unwired",
+          "ref": "24b7801"
+        },
+        {
+          "version": "v21.130.0",
+          "change": "deleted",
+          "ref": "4d760c6"
+        }
+      ]
+    },
+    {
+      "guard": "regressing-loop-guard",
+      "kind": "guard",
+      "why": [
+        {
+          "version": "v21.50.0",
+          "ref": "D085",
+          "text": "Stopping in the middle of an active regressing loop (renamed from completion-drive-guard, whose text patterns had too many false positives)."
+        },
+        {
+          "version": "v21.52.0",
+          "ref": "D086",
+          "text": "Running regressing with a single work agent despite the multi-agent default."
+        }
+      ],
+      "predicts": [],
+      "misses": [
+        {
+          "date": "2026-04-11",
+          "text": "Its agent-count check never fired until v21.55.0 because the counter looked for the wrong tool name.",
+          "source": "CHANGELOG v21.55.0"
+        }
+      ],
+      "history": [
+        {
+          "version": "v21.50.0",
+          "change": "added",
+          "ref": "94182ff"
+        },
+        {
+          "version": "v21.52.0",
+          "change": "changed",
+          "ref": "ba9b4bb"
+        },
+        {
+          "version": "v21.73.0",
+          "change": "changed",
+          "ref": "f915a20"
+        },
+        {
+          "version": "v21.103.0",
+          "change": "changed",
+          "ref": "ea99212"
+        },
+        {
+          "version": "v21.107.0",
+          "change": "unwired",
+          "ref": "9ceb35e"
+        },
+        {
+          "version": "v21.130.0",
+          "change": "deleted",
+          "ref": "4d760c6"
+        }
+      ]
+    },
+    {
+      "guard": "post-compact",
+      "kind": "recorder",
+      "why": [
+        {
+          "version": "v21.21.0",
+          "ref": "D063",
+          "text": "Memory and rules being lost after compaction; the hook logged the compaction and preserved regressing state."
+        }
+      ],
+      "predicts": [
+        {
+          "case": "A compaction log file is written.",
+          "source": "_test-post-compact.js: \"Writes compaction.log to .crabshell/memory/logs/\""
+        },
+        {
+          "case": "Active regressing state is logged.",
+          "source": "_test-post-compact.js: \"Logs active regressing state to stderr\""
+        }
+      ],
+      "misses": [
+        {
+          "date": "2026-04-05",
+          "text": "PostCompact output reaches no model, so the hook had no behavioral effect.",
+          "source": "I047"
+        },
+        {
+          "date": "2026-09-24",
+          "text": "The pre-compact and post-compact scripts still run their work when another script loads them.",
+          "source": "feedback_require_cli_scripts.md"
+        }
+      ],
+      "history": [
+        {
+          "version": "v21.21.0",
+          "change": "added",
+          "ref": "146c865"
+        },
+        {
+          "version": "v21.71.0",
+          "change": "changed",
+          "ref": "00c7048"
+        },
+        {
+          "version": "v21.125.0",
+          "change": "unwired",
+          "ref": "4ff58ed"
+        },
+        {
+          "version": "v21.172.0",
+          "change": "changed",
+          "ref": "D169"
+        }
+      ]
+    },
+    {
+      "guard": "feedback-pressure",
+      "kind": "recorder",
+      "why": [
+        {
+          "version": "v19.50.0",
+          "ref": "D038",
+          "text": "Tracked accumulating negative feedback so interventions could escalate before reasoning degraded."
+        }
+      ],
+      "predicts": [],
+      "misses": [
+        {
+          "date": "2026-04-20",
+          "text": "Two counters rose from the assistant's own wording at Stop without any user input, while only the user-driven level was checked.",
+          "source": "feedback_pressure_counter_audit_scope.md"
+        },
+        {
+          "date": "2026-04-20",
+          "text": "Concurrent hook writes lost counter increments (5 of 10 in a reproduction).",
+          "source": "I058"
+        }
+      ],
+      "history": [
+        {
+          "version": "v19.50.0",
+          "change": "added",
+          "ref": "ec5c17f"
+        },
+        {
+          "version": "v21.42.0",
+          "change": "changed",
+          "ref": "67a6e6f"
+        },
+        {
+          "version": "v21.47.0",
+          "change": "changed",
+          "ref": "aa0c319"
+        },
+        {
+          "version": "v21.77.0",
+          "change": "changed",
+          "ref": "D100"
+        },
+        {
+          "version": "v21.113.0",
+          "change": "changed",
+          "ref": "24b7801"
+        },
+        {
+          "version": "v21.171.0",
+          "change": "changed",
+          "ref": "D168"
+        },
+        {
+          "version": "v21.172.0",
+          "change": "deleted",
+          "ref": "aeb4940"
+        }
+      ]
+    }
+  ]
+}

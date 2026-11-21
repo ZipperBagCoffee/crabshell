@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.178.2)
+# Crabshell Plugin Structure (v21.179.0)
 
-**Version**: 21.178.2 | **Author**: ZipperBagCoffee | **License**: MIT
+**Version**: 21.179.0 | **Author**: ZipperBagCoffee | **License**: MIT
 
 ## Overview
 
@@ -104,6 +104,7 @@ crabshell/
 │   ├── path-guard.js                        # Path guard entry: blocks Bash writes into another project's .crabshell, notices reads, logbook Edit/shrink block (v19.31.0, v20.6.0, v21.125.0)
 │   ├── web-guard.js                         # PreToolUse WebFetch/WebSearch guard — raw-fetch redirect, conditional WebSearch block, block/warn/off modes (v21.114.0, I084); WebSearch as last resort after every search MCP in the turn (v21.166.0)
 │   ├── best-answer.js                       # Stop: best-answer question once per prompt, interactive Claude only (v21.178.0)
+│   ├── guard-record.js                      # Development tool: guard record backfill, summary, check (v21.179.0)
 │   ├── sycophancy-guard.js                  # Stop + PreToolUse file writes: agreement with nothing checked in the turn is sent back / blocked (restored v21.166.0)
 │   ├── core/path-policy.js                  # Host-neutral memory path policy (v21.104.0)
 │   ├── core/shell-writes.js                 # Static Bash analysis: .crabshell paths named and whether written (v21.125.0)
@@ -124,6 +125,7 @@ crabshell/
 │   ├── core/completion-control.js           # Current-content parent evidence; identities compared only when both are known (v21.153.0)
 │   ├── core/tool-shape.js                   # Shell calls and file writes known by payload shape, whatever the tool is named (v21.153.0)
 │   ├── core/dispatch.js                     # One check runner for Claude and Codex hooks: lazy load and try per check (v21.153.0)
+│   ├── core/guard-fires.js                  # One line per guard block or notice a hook sent, after the output (v21.179.0)
 │   ├── core/project-state.js                # The runner's project view for hooks, loaded on first use; null = no judgment (v21.153.0)
 │   ├── core/rerun-guard.js                  # A hand rerun of a check that passed on the same files is answered from its record (v21.153.0)
 │   ├── core/overlap-guard.js                # A check a live runner run is running now is not started again by hand (v21.177.0)
@@ -172,6 +174,8 @@ crabshell/
 │   ├── skill-tracker.js                     # Per-session skill flag setter, run inline by the PostToolUse dispatcher (v19.33.0, v21.124.0, v21.125.0)
 │   ├── _test-path-guard.js                  # Path-guard unit tests + shell var resolution tests (v20.0.0, v21.8.0)
 │   ├── _test-best-answer.js                 # Question once per prompt, deferral, other checks after it, settings, -p skip (v21.178.0)
+│   ├── _test-guard-fires.js                 # Fire record from real hook processes, fail-open, rotation, keys, model (v21.179.0)
+│   ├── _test-guard-record.js                # Transcript backfill, summary lines, wired-guard check (v21.179.0)
 │   ├── _test-sycophancy-guard.js            # Restored sycophancy guard: Stop send-back, write block, exemptions (v21.166.0)
 │   ├── _test-web-guard.js                   # Web-guard subprocess + unit tests — block/warn/off, MCP detection, plugin servers (v21.174.0), fail-open (v21.114.0)
 │   ├── _test-verification-sequence.js       # Verification-sequence unit/integration tests (v21.0.0)
@@ -516,6 +520,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.179.0 | `scripts/core/guard-fires.js`, `scripts/guard-record.js` (new); `scripts/core/dispatch.js`, `scripts/adapters/claude/dispatch.js`, `scripts/adapters/claude/pre-tool-use.js`, `scripts/adapters/claude/post-tool-use.js`, `scripts/adapters/codex/pre-tool-use.js`, `scripts/completion-controller.js`, `scripts/transcript-utils.js`; `.crabshell/guard-record.json`; tests `_test-guard-fires.js`, `_test-guard-record.js` |
 | 21.178.2 | `scripts/best-answer.js`, `scripts/completion-controller.js`, `scripts/shared-context.js`; tests `_test-best-answer.js`, `_test-rule-wording.js` |
 | 21.178.1 | `scripts/best-answer.js`; test `_test-best-answer.js` |
 | 21.178.0 | `scripts/best-answer.js` (new), `scripts/completion-controller.js`; test `_test-best-answer.js` |

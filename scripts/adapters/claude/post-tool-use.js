@@ -76,7 +76,7 @@ async function main() {
   const projectDir = require('../../utils').getProjectDir();
   const failure = payload.hook_event_name === 'PostToolUseFailure';
   const collected = await runChecks(failure ? FAILURE_CHECKS : POST_CHECKS, payload, projectDir);
-  emit(failure ? 'PostToolUseFailure' : 'PostToolUse', collected);
+  emit(failure ? 'PostToolUseFailure' : 'PostToolUse', collected, { payload, projectDir });
 }
 
 if (require.main === module) {

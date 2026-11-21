@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.178.2)
+# Crabshell User Manual (v21.179.0)
 
 ## Why Do You Need This?
 
@@ -261,7 +261,7 @@ The plugin uses Claude Code hooks to run automatically:
 | `PreToolUse` | `adapters/claude/pre-tool-use.js` | Before every tool except Read, Grep and Glob (since v21.153.0) | One process runs every guard in order, each loaded in its own try/catch (a failing guard is skipped; the check runner is `core/dispatch.js`, shared with Codex). Guards are routed by the call's shape — a shell call or a file write — whatever the tool is named (v21.153.0): rerun guard (a declared check run by hand on the files it last passed with is answered from its record; `CRABSHELL_RERUN=1` runs it anyway), completion-controller check preparation, path-guard, web-guard, regressing-guard, docs-guard, log-guard, verification gate (records declared check starts; it no longer blocks `git commit`), the before-run look for declaration hints (since v21.158.0 also: a declared check run by hand is told once to run through the runner so its pass is kept), a commit reminder (v21.158.0: one notice when a `git commit` follows changes the checks have not passed on; never blocks), doc-watchdog notice. A check that records a start stands down after a deny. Denies with exit 0 + `permissionDecision: "deny"` listing every reason (v21.125.0) |
 | `PostToolUse` | `adapters/claude/post-tool-use.js` | After every tool use | One process: counter (auto-save + delta extraction at interval), verification record, completion-controller evidence (shell calls and file writes), declaration hints after a hand-run check (`inputs`, `slow`, `outputs`; an undeclared long command run twice on the same files — v21.153.0), doc-watchdog edit count (file writes), skill flag (Skill, set before the next tool call), and a notice when a read reaches another project's `.crabshell` (v21.125.0) |
 | `PostToolUseFailure` | `adapters/claude/post-tool-use.js` | After a failed call of every tool except Read, Grep and Glob | Verification record + completion-controller for shell calls: records failure/interruption and invalidates prior success; Stop remains the blocking boundary |
-| `Stop`, `SubagentStop` | `completion-controller.js` | Child/parent completion boundary | One state owner: child claim is not proof; requires parent evidence, bounds identical failures, preserves workflow continuation, and runs the retained doc-watchdog Stop check in the same process (sycophancy/scope/pressure guards unwired v21.113.0). Since v21.154.0 a question or reprimand from the user after the request ends the turn without a continue demand; the authorization stays. Since v21.178.0, when nothing blocks, an interactive Claude session is asked once per prompt whether the answer is its best and concise (Stop hook feedback); see `best-answer.js` |
+| `Stop`, `SubagentStop` | `completion-controller.js` | Child/parent completion boundary | One state owner: child claim is not proof; requires parent evidence, bounds identical failures, preserves workflow continuation, and runs the retained doc-watchdog Stop check in the same process (sycophancy/scope/pressure guards unwired v21.113.0). Since v21.154.0 a question or reprimand from the user after the request ends the turn without a continue demand; the authorization stays. Since v21.178.0, when nothing blocks, an interactive Claude session is asked once per prompt whether the answer is its best and concise (Stop hook feedback); see `best-answer.js`. Since v21.179.0 every block and notice a hook sends is recorded after the output; see Guard fire record |
 | `SubagentStart` | `subagent-context.js` | When subagent spawns | Injects project concept, COMPRESSED_CHECKLIST, regressing state, and project root anchor into subagent context |
 | `SessionEnd` | `counter.js final` | Execution-authorized session ends | Creates final L1 backup and extracts remaining delta; question-only sessions remain read-only |
 
@@ -327,6 +327,12 @@ For Codex, shared path policy, completion control and the edit/commit verificati
 
 ---
 
+### Guard fire record (v21.179.0)
+
+Every block or notice a hook actually sends adds one line to `.crabshell/memory/logs/guard-fires.jsonl`: the guard's name, the event and tool, the session, the model, the first words of the message (absolute paths masked) and a key that is the same for one tool call or one prompt. The line is written after the hook's output, so recording never changes or delays a block; any error is ignored. The file is local (`.crabshell/`).
+
+`node scripts/guard-record.js` (in the plugin repository) reads it: `--backfill` finds past blocks in Claude session transcripts (`~/.claude/projects`, or `--transcripts <dir>`), `--summary` prints each guard's reason, keep decision, predicted catches, blocks and notices per model and what the model did after a block, and `--check` names wired guards missing from `.crabshell/guard-record.json`. Unnamed past blocks are matched to guards by prefixes in `.crabshell/memory/guard-fires/groups.json`; verdicts go in `.crabshell/memory/guard-fires/reviewed.jsonl` (`{key, verdict: caught|false-alarm|unclear, note}`).
+
 ## CLAUDE.md Integration
 
 The plugin automatically manages a rules section in your project's `CLAUDE.md`:
@@ -379,6 +385,9 @@ The plugin uses two injection mechanisms:
 | `memoryRotation.carryoverTokens` | 2500 | Tokens to keep as carryover after rotation (with 0.95 safety margin) |
 | `searchTools` | built-in list | Search MCP servers web-guard recognizes, matched as whole words of a server name, in the order it asks for them (since v21.172.0). Unset: exa, tavily, brave, serper, perplexity, jina, firecrawl, kagi, searxng, duckduckgo, ddg, websearch, web-search |
 | `bestAnswer.ask` | `true` | After each prompt's answer, ask Claude once at Stop whether the answer is its best and concise (v21.178.0). `false` turns it off. Read from `~/.crabshell/config.json` and the project file; the project's keys win (v21.178.1) |
+| `guardFires.maxBytes` | `524288` | Size at which `.crabshell/memory/logs/guard-fires.jsonl` becomes `guard-fires.jsonl.1` (one previous file is kept) (v21.179.0) |
+| `guardFires.reasonWords` | `6` | How many first words of a guard's message the fire record keeps; absolute paths are masked (v21.179.0) |
+| `guardFires.tailBytes` | `65536` | How much of the session transcript's end is read for the model name when the hook input has none (v21.179.0) |
 | `bestAnswer.skipEntrypoints` | `["sdk"]` | Runs whose `CLAUDE_CODE_ENTRYPOINT` starts with one of these are not asked (`claude -p` and the Agent SDK report `sdk-cli`, `sdk-ts`, …; an interactive session reports `cli`). `[]` asks everywhere |
 | `webGuard` | "block" | Web guard mode: `block` (WebFetch blocked, WebSearch blocked only when a search MCP is configured), `warn` (never blocks, injects verification warnings), `off` (guard disabled) (v21.114.0) |
 

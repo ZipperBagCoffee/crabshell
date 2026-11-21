@@ -1,5 +1,7 @@
 'use strict';
 
+const fs = require('fs');
+
 /**
  * Normalize a file path: backslash -> forward slash.
  */
@@ -52,4 +54,34 @@ function readStdin(timeoutMs = 500, options = {}) {
   });
 }
 
-module.exports = { readStdin, normalizePath };
+/**
+ * The model of the last assistant message in a Claude transcript (JSONL), reading only the
+ * last maxBytes of the file. Returns null when the file or a model is missing (D178).
+ */
+function lastAssistantModel(file, maxBytes = 65536) {
+  if (!file || typeof file !== 'string') return null;
+  let fd;
+  try {
+    fd = fs.openSync(file, 'r');
+    const size = fs.fstatSync(fd).size;
+    const length = Math.min(size, Math.max(0, maxBytes));
+    if (length === 0) return null;
+    const buffer = Buffer.alloc(length);
+    fs.readSync(fd, buffer, 0, length, size - length);
+    const lines = buffer.toString('utf8').split('\n');
+    for (let i = lines.length - 1; i >= 0; i--) {
+      if (!lines[i].includes('"assistant"')) continue;
+      let entry;
+      try { entry = JSON.parse(lines[i]); } catch { continue; } // the first line may be cut
+      const model = entry && entry.type === 'assistant' && entry.message && entry.message.model;
+      if (typeof model === 'string' && model && model !== '<synthetic>') return model;
+    }
+    return null;
+  } catch {
+    return null;
+  } finally {
+    if (fd !== undefined) { try { fs.closeSync(fd); } catch {} }
+  }
+}
+
+module.exports = { readStdin, normalizePath, lastAssistantModel };

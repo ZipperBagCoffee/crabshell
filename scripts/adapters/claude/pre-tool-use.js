@@ -126,7 +126,7 @@ async function main() {
   const payload = await readStdin();
   if (!payload || !payload.tool_name) return;
   const projectDir = require('../../utils').getProjectDir();
-  emit('PreToolUse', await runChecks(CHECKS, payload, projectDir));
+  emit('PreToolUse', await runChecks(CHECKS, payload, projectDir), { payload, projectDir });
 }
 
 if (require.main === module) {
