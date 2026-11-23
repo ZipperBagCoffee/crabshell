@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.180.0)
+# Crabshell Architecture (v21.180.1)
 
 ## Overview
 
@@ -15,7 +15,7 @@ Before claiming any result verified, Claude must:
 2. **Execute** — run code, trigger behavior, use tools
 3. **Compare** — prediction vs observation; the gap is where findings live
 
-The document record holds, per acceptance criterion, the command run or file read, its output line, and pass/fail; a behavior claim is backed by an execution result, a structure claim by what was read (v21.158.0, replacing the Prediction/Observation/Gap table). The chat report is `"M of N passed"` plus failed items — no table, no passing-item list, no raw observations (v21.115.0/.1, I085 — screen output only, verification depth unchanged). "File contains X" is never verification. "Can verify but didn't" is a violation.
+The document record holds, per acceptance criterion, the command run or file read, its output line, and pass/fail; a behavior claim is backed by an execution result, a structure claim by what was read (v21.158.0, replacing the Prediction/Observation/Gap table). The chat report says in plain words whether the checks passed and what failed (v21.180.1; it was `"M of N passed"`) — no table, no passing-item list, no raw observations (v21.115.0/.1, I085 — screen output only, verification depth unchanged). "File contains X" is never verification. "Can verify but didn't" is a violation.
 
 Observation resolution levels (v21.2.0): L1 (direct execution) > L2 (indirect execution) > L3 (structural check) > L4 (claim without evidence, prohibited). L3 alone is insufficient when L1 is possible.
 
@@ -570,6 +570,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.180.1 | `shared-context.js` COMPRESSED_CHECKLIST: concise = a plain summary of the point; `rules-text.js` RULES: "Summarize the point:"; chat check report in plain words instead of "M of N passed" |
 | 21.180.0 | `best-answer.js` QUESTION: one four-item line; `sycophancy-guard.js` removed (Stop and PreToolUse); tests use a completion-controller workflow block |
 | 21.179.0 | `core/guard-fires.js` (new): fire record after each hook output; `core/dispatch.js` `collected.fired`; Claude/Codex adapters and `completion-controller.js` record what they sent (`claudeStopBlocks`, `blockedBy`); `transcript-utils.js` `lastAssistantModel`; `scripts/guard-record.js` (new) |
 | 21.178.2 | `best-answer.js` QUESTION: two lines (best answer, concise); `shared-context.js` checklist defines both |

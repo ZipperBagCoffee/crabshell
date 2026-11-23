@@ -1,5 +1,13 @@
 # Changelog
 
+## [21.180.1] - 2026-11-22
+
+### fix: concise means a summary of the point (D180)
+
+- The per-turn checklist defines concise as "a plain summary of the point, details left out" instead of "so plain even a caveman understands it": answers listed details such as commit hashes and check counts instead of summarizing the point.
+- The rules' Simple Communication line starts "Summarize the point:" instead of "Keep it short:".
+- Check results in chat are reported as "passed or not, and what failed, in plain words" instead of "M of N passed", in the rules and in the checklist.
+
 ## [21.180.0] - 2026-11-20
 
 ### feat: the question after every answer is one four-item line, and the sycophancy guard is removed (D179)

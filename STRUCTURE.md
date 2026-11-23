@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.180.0)
+# Crabshell Plugin Structure (v21.180.1)
 
-**Version**: 21.180.0 | **Author**: ZipperBagCoffee | **License**: MIT
+**Version**: 21.180.1 | **Author**: ZipperBagCoffee | **License**: MIT
 
 ## Overview
 
@@ -382,7 +382,7 @@ UserPromptSubmit hook:
 - Inject critical rules every prompt via `additionalContext`
 - Append the `## Codex Delegation` guidance block (`CODEX_DELEGATION`) on Claude execution turns — /codex:rescue usage, model example, project-root launch, prompt-carried constraints, captured hook payload handoff, completion re-verification, and platform notes
 - `RULES` Simple Communication is a four-slot response contract (v21.115.0, I085): `[conclusion] → [evidence] → [critical exception] → [next action]` in the reader's words, first sentence is the direct answer, keep-vs-cut list on shortening, bullets only for 3+ parallel items with max 4 per group, one term unpacked per sentence (비유 금지), concrete over abstract, no self-coined acronyms, accuracy outranks brevity, banter never as padding; shortened 956 → 788 characters with every instruction kept (v21.159.0)
-- `RULES` VERIFICATION: after the last edit, run once the checks that touch what changed and read their output; unchanged inputs are not run again (v21.158.0); the chat report is `"M of N passed"` plus failed items, in plain words (v21.115.0/.1, I085); a check that reruns on changes it does not use, or spends its time starting, waiting or running alone, is a defect, fixed with the verifying skill (select-by-use, check-cost), never with a time target or a count cap (v21.159.0, v21.163.0)
+- `RULES` VERIFICATION: after the last edit, run once the checks that touch what changed and read their output; unchanged inputs are not run again (v21.158.0); the chat report says in plain words whether the checks passed and what failed (v21.180.1; `"M of N passed"` from v21.115.0/.1, I085); a check that reruns on changes it does not use, or spends its time starting, waiting or running alone, is a defect, fixed with the verifying skill (select-by-use, check-cost), never with a time target or a count cap (v21.159.0, v21.163.0)
 - Configurable frequency via `rulesInjectionFrequency`
 - Auto-sync rules to CLAUDE.md via `syncClaudeMdRules()` (marker-based; every execution prompt, and SessionStart through `load-memory.js`, when it differs; v21.155.0)
 - Detect pending delta / rotation → memory notice from `core/memory-notice.js` on the turn's first prompt: before other work on a work request or after a skipped save, otherwise answer first and run it in the same response; summarizers in the background (v21.156.0)
@@ -518,6 +518,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.180.1 | `scripts/shared-context.js`, `scripts/core/rules-text.js`, `CLAUDE.md`: concise defined as a plain summary of the point; chat check report in plain words |
 | 21.180.0 | `scripts/best-answer.js`, `scripts/completion-controller.js`, `scripts/adapters/claude/pre-tool-use.js`, `scripts/init.js`; removed `scripts/sycophancy-guard.js`, `scripts/_test-sycophancy-guard.js`; tests `_test-best-answer.js`, `_test-guard-fires.js`, `_test-guard-record.js` |
 | 21.179.0 | `scripts/core/guard-fires.js`, `scripts/guard-record.js` (new); `scripts/core/dispatch.js`, `scripts/adapters/claude/dispatch.js`, `scripts/adapters/claude/pre-tool-use.js`, `scripts/adapters/claude/post-tool-use.js`, `scripts/adapters/codex/pre-tool-use.js`, `scripts/completion-controller.js`, `scripts/transcript-utils.js`; `.crabshell/guard-record.json`; tests `_test-guard-fires.js`, `_test-guard-record.js` |
 | 21.178.2 | `scripts/best-answer.js`, `scripts/completion-controller.js`, `scripts/shared-context.js`; tests `_test-best-answer.js`, `_test-rule-wording.js` |
