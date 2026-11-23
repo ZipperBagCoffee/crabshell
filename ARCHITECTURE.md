@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.181.0)
+# Crabshell Architecture (v21.181.1)
 
 ## Overview
 
@@ -570,6 +570,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.181.1 | `best-answer.js` QUESTION: item 1 reads "not your best?" so all three good answers are no |
 | 21.181.0 | `best-answer.js` QUESTION: three yes/no checks (best, agree without checking, cutting corners), then a concise summary of the answer (fixed first when a check fails) |
 | 21.180.1 | `shared-context.js` COMPRESSED_CHECKLIST: concise = a plain summary of the point; `rules-text.js` RULES: "Summarize the point:"; chat check report in plain words instead of "M of N passed" |
 | 21.180.0 | `best-answer.js` QUESTION: one four-item line; `sycophancy-guard.js` removed (Stop and PreToolUse); tests use a completion-controller workflow block |

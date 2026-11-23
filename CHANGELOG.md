@@ -1,5 +1,11 @@
 # Changelog
 
+## [21.181.1] - 2026-11-22
+
+### fix: all three checks after every answer are fine when answered no (D182)
+
+- The best-answer question is now "Is your answer 1) not your best? 2) agree without checking? 3) cutting corners? Answer each yes or no. If all are no, summarize the answer concisely; otherwise fix it, then summarize.". Item 1 asked "best?", where yes was the good answer while items 2 and 3 wanted no; it now asks "not your best?", so "all no" means the answer is summarized as it is.
+
 ## [21.181.0] - 2026-11-22
 
 ### feat: the question after every answer asks for three yes/no checks, then a concise summary (D181)
