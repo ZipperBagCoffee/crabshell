@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.182.0)
+# Crabshell Architecture (v21.183.0)
 
 ## Overview
 
@@ -281,7 +281,7 @@ Claude `PostToolUseFailure` is wired to both verification-state and parent-evide
        ├─> Bound identical actual failures, then require a concrete report instead of looping
        ├─> Preserve active D/P/T/W workflow continuation
        └─> Claude Stop checks in the same process: doc-watchdog stopReason (sycophancy-guard restored v21.166.0, removed v21.180.0; scope retired v21.113.0)
-       └─> then best-answer stopStep: the best-answer question once per prompt when nothing blocked (v21.178.0; three yes/no checks, then a concise summary, since v21.181.0)
+       └─> then best-answer stopStep: the best-answer question once per prompt when nothing blocked (v21.178.0; yes/no checks, then a concise summary, since v21.181.0; "ad hoc?" added v21.183.0)
        └─> after the output: core/guard-fires records what was sent — each blocking check by name, the question as a best-answer notice (v21.179.0)
 
    Guard fire record (v21.179.0): core/dispatch.js runChecks keeps collected.fired ({guard: check.name, channel, text}) and writes nothing;
@@ -570,6 +570,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.183.0 | `best-answer.js` QUESTION: fourth check "ad hoc?" |
 | 21.182.0 | runner `broken-reports.js` `brokenReports()`/`brokenReportsLine()` in every run summary, `--explain` and `--dry-run`; `used-report.js` problems read "<reason>: <detail>"; `store.js` `writeMap` returns the records written |
 | 21.181.2 | `best-answer.js` QUESTION: "Answer each yes or no." dropped |
 | 21.181.1 | `best-answer.js` QUESTION: item 1 reads "not your best?" so all three good answers are no |

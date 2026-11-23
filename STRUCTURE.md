@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.182.0)
+# Crabshell Plugin Structure (v21.183.0)
 
-**Version**: 21.182.0 | **Author**: ZipperBagCoffee | **License**: MIT
+**Version**: 21.183.0 | **Author**: ZipperBagCoffee | **License**: MIT
 
 ## Overview
 
@@ -518,6 +518,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.183.0 | `scripts/best-answer.js` QUESTION: fourth check "ad hoc?" |
 | 21.182.0 | runner `broken-reports.js` (new), `used-report.js` `problem`/`problemReason`, `main.js`, `output.js`, `store.js` `writeMap` returns the records it wrote; test `_test-runner-policy.js` P21/P22 |
 | 21.181.2 | `scripts/best-answer.js` QUESTION: "Answer each yes or no." dropped |
 | 21.181.1 | `scripts/best-answer.js` QUESTION: all three checks are fine when answered no |

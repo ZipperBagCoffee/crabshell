@@ -1385,6 +1385,10 @@
         {
           "case": "A non-interactive SDK run gets no question unless skipEntrypoints is emptied.",
           "source": "_test-best-answer.js: \"a claude -p / Agent SDK run (entrypoint sdk-*) gets no question; skipEntrypoints [] asks there too\""
+        },
+        {
+          "case": "An answer fitted only to the case that was pointed out (ad hoc) is reworked toward the general rule after the question asks \"ad hoc?\".",
+          "source": "D184: not measured yet (needs sessions after Update now)"
         }
       ],
       "misses": [],
@@ -1408,6 +1412,26 @@
           "version": "v21.180.0",
           "change": "changed",
           "ref": "D179"
+        },
+        {
+          "version": "v21.181.0",
+          "change": "changed",
+          "ref": "69b9025"
+        },
+        {
+          "version": "v21.181.1",
+          "change": "changed",
+          "ref": "932b8e8"
+        },
+        {
+          "version": "v21.181.2",
+          "change": "changed",
+          "ref": "9d06de7"
+        },
+        {
+          "version": "v21.183.0",
+          "change": "changed",
+          "ref": "D184"
         }
       ]
     },

@@ -1,5 +1,11 @@
 # Changelog
 
+## [21.183.0] - 2026-11-23
+
+### feat: the question after every answer also asks "ad hoc?" (D184)
+
+- The best-answer question is now "Is your answer 1) not your best? 2) agree without checking? 3) cutting corners? 4) ad hoc? If all are no, summarize the answer concisely; otherwise fix it, then summarize.". "Ad hoc" is a fix fitted only to the case that was pointed out instead of the general rule. A good answer is still "no" on every item; when it is asked and how often is unchanged.
+
 ## [21.182.0] - 2026-11-23
 
 ### feat: every check run names the checks whose used-input reports were broken (D183)
