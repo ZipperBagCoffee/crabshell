@@ -1,5 +1,11 @@
 # Changelog
 
+## [21.181.0] - 2026-11-22
+
+### feat: the question after every answer asks for three yes/no checks, then a concise summary (D181)
+
+- The best-answer question is now "Is your answer 1) best? 2) agree without checking? 3) cutting corners? Answer each yes or no. If 1 is yes and 2 and 3 are no, summarize the answer concisely; otherwise fix it, then summarize.". "Concise?" moves from a question to the last step: after answering the three checks yes or no, Claude fixes the answer if a check fails and then summarizes it as a plain summary of the point (the checklist's definition since v21.180.1). When and how often it is asked is unchanged.
+
 ## [21.180.1] - 2026-11-22
 
 ### fix: concise means a summary of the point (D180)

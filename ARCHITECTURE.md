@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.180.1)
+# Crabshell Architecture (v21.181.0)
 
 ## Overview
 
@@ -281,7 +281,7 @@ Claude `PostToolUseFailure` is wired to both verification-state and parent-evide
        ├─> Bound identical actual failures, then require a concrete report instead of looping
        ├─> Preserve active D/P/T/W workflow continuation
        └─> Claude Stop checks in the same process: doc-watchdog stopReason (sycophancy-guard restored v21.166.0, removed v21.180.0; scope retired v21.113.0)
-       └─> then best-answer stopStep: the best-answer question once per prompt when nothing blocked (v21.178.0; one four-item line since v21.180.0)
+       └─> then best-answer stopStep: the best-answer question once per prompt when nothing blocked (v21.178.0; three yes/no checks, then a concise summary, since v21.181.0)
        └─> after the output: core/guard-fires records what was sent — each blocking check by name, the question as a best-answer notice (v21.179.0)
 
    Guard fire record (v21.179.0): core/dispatch.js runChecks keeps collected.fired ({guard: check.name, channel, text}) and writes nothing;
@@ -570,6 +570,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.181.0 | `best-answer.js` QUESTION: three yes/no checks (best, agree without checking, cutting corners), then a concise summary of the answer (fixed first when a check fails) |
 | 21.180.1 | `shared-context.js` COMPRESSED_CHECKLIST: concise = a plain summary of the point; `rules-text.js` RULES: "Summarize the point:"; chat check report in plain words instead of "M of N passed" |
 | 21.180.0 | `best-answer.js` QUESTION: one four-item line; `sycophancy-guard.js` removed (Stop and PreToolUse); tests use a completion-controller workflow block |
 | 21.179.0 | `core/guard-fires.js` (new): fire record after each hook output; `core/dispatch.js` `collected.fired`; Claude/Codex adapters and `completion-controller.js` record what they sent (`claudeStopBlocks`, `blockedBy`); `transcript-utils.js` `lastAssistantModel`; `scripts/guard-record.js` (new) |

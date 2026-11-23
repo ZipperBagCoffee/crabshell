@@ -1,7 +1,7 @@
 'use strict';
 
-// D177: after every main-agent answer, ask once whether it is the best answer and concise —
-// the question the user kept typing by hand. The per-turn checklist (shared-context.js)
+// D177: after every main-agent answer, ask once whether it is the best answer — the
+// question the user kept typing by hand — three yes/no checks, then (D181) a concise summary of the answer. The per-turn checklist (shared-context.js)
 // defines both words. A rule read before the answer is written has no draft to aim
 // at; this asks after the answer exists. Once per user prompt
 // (prompt_id); deferred while another Stop check blocks; Claude only.
@@ -12,7 +12,7 @@ const { getStorageRoot, readJsonOrDefault, writeJson } = require('./utils');
 const { SESSION_STATE_MAX_AGE_MS, STORAGE_ROOT } = require('./constants');
 const { withStateLock } = require('./core/state-lock');
 
-const QUESTION = 'Is your answer 1) best? 2) concise? 3) agree without checking? 4) cutting corners?';
+const QUESTION = 'Is your answer 1) best? 2) agree without checking? 3) cutting corners? Answer each yes or no. If 1 is yes and 2 and 3 are no, summarize the answer concisely; otherwise fix it, then summarize.';
 
 const STATE_FILE = 'best-answer.json';
 const LEGACY_SESSION = '_';

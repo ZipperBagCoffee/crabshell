@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.180.1)
+# Crabshell User Manual (v21.181.0)
 
 ## Why Do You Need This?
 
@@ -318,7 +318,7 @@ Guards run inside the Claude PreToolUse, PostToolUse and Stop hooks (one process
 | `doc-watchdog.js` | Document update omissions during regressing (edits inside the project only; any non-prose file counts as code, v21.125.0): soft notice when 5+ code edits without D/P/T document update; at Stop, in this session's execution turn only, names the unfinished workflow tickets (status from the ticket INDEX) that were not updated after this session's last code edit — tickets this session wrote first; the edit record is per session, so another session's edits or workflow never trigger it (v21.154.0) |
 | `skill-tracker.js` | Supporting guard: sets the calling session's skill flag when a Skill tool call is detected, so `docs-guard` knows that session's document writes are authorized; another session's flag never counts |
 | `regressing-guard.js` | Phase-based write restrictions during active regressing sessions — blocks out-of-phase edits to plan/ticket documents |
-| `best-answer.js` | Answers sent without the review the user kept asking for by hand. Since v21.178.0, at the first Stop of each prompt where no other check blocks, Claude is asked one line (this wording since v21.180.0): "Is your answer 1) best? 2) concise? 3) agree without checking? 4) cutting corners?"; the per-turn checklist defines best and concise. Deferred to the next Stop while another check blocks; the other Stop checks run once more on the revised answer. Interactive Claude only (not SubagentStop, Codex, `claude -p` or the Agent SDK). Settings: `bestAnswer.ask`, `bestAnswer.skipEntrypoints`. |
+| `best-answer.js` | Answers sent without the review the user kept asking for by hand. Since v21.178.0, at the first Stop of each prompt where no other check blocks, Claude is asked one line (this wording since v21.181.0): "Is your answer 1) best? 2) agree without checking? 3) cutting corners? Answer each yes or no. If 1 is yes and 2 and 3 are no, summarize the answer concisely; otherwise fix it, then summarize."; the per-turn checklist defines best and concise. Deferred to the next Stop while another check blocks; the other Stop checks run once more on the revised answer. Interactive Claude only (not SubagentStop, Codex, `claude -p` or the Agent SDK). Settings: `bestAnswer.ask`, `bestAnswer.skipEntrypoints`. |
 | `sycophancy-guard.js` | Removed in v21.180.0 (D179): most of its keyword blocks were false alarms (5 of 7 recorded); the best-answer question's "agree without checking?" asks instead. Restore it from git history if unchecked agreement comes back. |
 | (deleted v21.130.0) | `pressure-guard.js`, `scope-guard.js` (retired v21.113.0) and `regressing-loop-guard.js` were removed with their tests; `completion-controller.js` is the sole Stop owner and regressing continuation is goal-driven (v21.110.0) |
 
@@ -384,7 +384,7 @@ The plugin uses two injection mechanisms:
 | `memoryRotation.thresholdTokens` | 25000 | Token threshold for logbook.md rotation (with 0.95 safety margin) |
 | `memoryRotation.carryoverTokens` | 2500 | Tokens to keep as carryover after rotation (with 0.95 safety margin) |
 | `searchTools` | built-in list | Search MCP servers web-guard recognizes, matched as whole words of a server name, in the order it asks for them (since v21.172.0). Unset: exa, tavily, brave, serper, perplexity, jina, firecrawl, kagi, searxng, duckduckgo, ddg, websearch, web-search |
-| `bestAnswer.ask` | `true` | After each prompt's answer, ask Claude once at Stop the four-item question: best, concise, agreed without checking, cutting corners (v21.178.0; four items since v21.180.0). `false` turns it off. Read from `~/.crabshell/config.json` and the project file; the project's keys win (v21.178.1) |
+| `bestAnswer.ask` | `true` | After each prompt's answer, ask Claude once at Stop to answer yes or no whether the answer is best, agreed without checking or cutting corners, then to summarize it concisely (fixing it first when a check fails) (v21.178.0; this form since v21.181.0). `false` turns it off. Read from `~/.crabshell/config.json` and the project file; the project's keys win (v21.178.1) |
 | `guardFires.maxBytes` | `524288` | Size at which `.crabshell/memory/logs/guard-fires.jsonl` becomes `guard-fires.jsonl.1` (one previous file is kept) (v21.179.0) |
 | `guardFires.reasonWords` | `6` | How many first words of a guard's message the fire record keeps; absolute paths are masked (v21.179.0) |
 | `guardFires.tailBytes` | `65536` | How much of the session transcript's end is read for the model name when the hook input has none (v21.179.0) |

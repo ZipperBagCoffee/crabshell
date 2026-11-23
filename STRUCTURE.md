@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.180.1)
+# Crabshell Plugin Structure (v21.181.0)
 
-**Version**: 21.180.1 | **Author**: ZipperBagCoffee | **License**: MIT
+**Version**: 21.181.0 | **Author**: ZipperBagCoffee | **License**: MIT
 
 ## Overview
 
@@ -518,6 +518,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.181.0 | `scripts/best-answer.js` QUESTION: three yes/no checks, then a concise summary |
 | 21.180.1 | `scripts/shared-context.js`, `scripts/core/rules-text.js`, `CLAUDE.md`: concise defined as a plain summary of the point; chat check report in plain words |
 | 21.180.0 | `scripts/best-answer.js`, `scripts/completion-controller.js`, `scripts/adapters/claude/pre-tool-use.js`, `scripts/init.js`; removed `scripts/sycophancy-guard.js`, `scripts/_test-sycophancy-guard.js`; tests `_test-best-answer.js`, `_test-guard-fires.js`, `_test-guard-record.js` |
 | 21.179.0 | `scripts/core/guard-fires.js`, `scripts/guard-record.js` (new); `scripts/core/dispatch.js`, `scripts/adapters/claude/dispatch.js`, `scripts/adapters/claude/pre-tool-use.js`, `scripts/adapters/claude/post-tool-use.js`, `scripts/adapters/codex/pre-tool-use.js`, `scripts/completion-controller.js`, `scripts/transcript-utils.js`; `.crabshell/guard-record.json`; tests `_test-guard-fires.js`, `_test-guard-record.js` |
