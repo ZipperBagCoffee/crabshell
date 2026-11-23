@@ -1,5 +1,11 @@
 # Changelog
 
+## [21.181.2] - 2026-11-22
+
+### fix: the question after every answer drops "Answer each yes or no." (D182)
+
+- The best-answer question is now "Is your answer 1) not your best? 2) agree without checking? 3) cutting corners? If all are no, summarize the answer concisely; otherwise fix it, then summarize.". "If all are no" already asks for a yes or no on each item.
+
 ## [21.181.1] - 2026-11-22
 
 ### fix: all three checks after every answer are fine when answered no (D182)

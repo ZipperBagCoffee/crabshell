@@ -12,7 +12,7 @@ const { getStorageRoot, readJsonOrDefault, writeJson } = require('./utils');
 const { SESSION_STATE_MAX_AGE_MS, STORAGE_ROOT } = require('./constants');
 const { withStateLock } = require('./core/state-lock');
 
-const QUESTION = 'Is your answer 1) not your best? 2) agree without checking? 3) cutting corners? Answer each yes or no. If all are no, summarize the answer concisely; otherwise fix it, then summarize.';
+const QUESTION = 'Is your answer 1) not your best? 2) agree without checking? 3) cutting corners? If all are no, summarize the answer concisely; otherwise fix it, then summarize.';
 
 const STATE_FILE = 'best-answer.json';
 const LEGACY_SESSION = '_';

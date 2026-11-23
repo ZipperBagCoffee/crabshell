@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.181.1)
+# Crabshell Plugin Structure (v21.181.2)
 
-**Version**: 21.181.1 | **Author**: ZipperBagCoffee | **License**: MIT
+**Version**: 21.181.2 | **Author**: ZipperBagCoffee | **License**: MIT
 
 ## Overview
 
@@ -518,6 +518,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.181.2 | `scripts/best-answer.js` QUESTION: "Answer each yes or no." dropped |
 | 21.181.1 | `scripts/best-answer.js` QUESTION: all three checks are fine when answered no |
 | 21.181.0 | `scripts/best-answer.js` QUESTION: three yes/no checks, then a concise summary |
 | 21.180.1 | `scripts/shared-context.js`, `scripts/core/rules-text.js`, `CLAUDE.md`: concise defined as a plain summary of the point; chat check report in plain words |
