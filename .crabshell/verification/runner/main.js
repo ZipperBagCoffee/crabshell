@@ -19,7 +19,7 @@ const { selectionView } = require('./project-state');
 const { patternList, inputPatterns, matchesInput, filesMatching, inputSet, fingerprintOf, planRun, coverable, gitChangedFiles, medianDuration, declarationKey, crabshellState, DECISION_CHANGED, currentHead, reasonGroup,
   recordKind, inputsUnknown, reportScope, scopeKey, inScope, keyIdentity, knownItems, reportedInputs, refreshedItemHashes,
   underPattern, readersOf, forgetFiles, reasonAfterWriters, isFailing } = require('./select');
-const { readReport, hasCases, pathOf, isItemKey } = require('./used-report');
+const { readReport, hasCases, pathOf, isItemKey, problem } = require('./used-report');
 const { routineChoice, quarantineMark, markHolds } = require('./routine');
 const { forbiddenOnly, recheckForbidden, clearedNotice } = require('./recheck');
 const { runEntry, runEntryAsync } = require('./execute');
@@ -29,6 +29,7 @@ const { failBeforeTargets, failBeforeExemptions, matchingExemption, failBeforeCh
 const { printResults } = require('./output');
 const { classify } = require('./classify');
 const { wideSelection, wideSelectionLine } = require('./wide-selection');
+const { brokenReports, brokenReportsLine } = require('./broken-reports');
 
 const DEFAULT_PASS_HISTORY = 10;
 // A failure on inputs a check passed with runs once more by default (Rare).
@@ -299,6 +300,9 @@ function main(argv = process.argv.slice(2), options = {}) {
     plan.full = plan.selected.length === total && total > 0;
     plan.reason = summaryReason(plan, planned);
     plan.unknownInputs = planned.unknownInputs;
+    // D183: checks whose last report was broken, chosen as without a report.
+    const broken = brokenReports({ ids: expanded.map(entry => entry.id), records: previousRecords });
+    if (broken) plan.brokenReports = broken;
     if (planned.awaitingGate.length) plan.awaitingGate = { gates: planned.gatesPending, checks: planned.awaitingGate };
     // Every input that differs for each check it would run (D164), and the reused checks that
     // would wait for the checks writing what they read.
@@ -329,6 +333,7 @@ function main(argv = process.argv.slice(2), options = {}) {
       if (plan.quarantined && plan.quarantined.length) console.log(`Left out as flaky: ${plan.quarantined.map(item => `${item.id} (until ${item.test} changes)`).join(', ')}`);
       if (plan.selected.some(id => planned.reasons[id] === DECISION_CHANGED)) console.log("The runner's decision code changed: every non-slow check runs once; slow checks wait for --slow.");
       if (plan.wideSelection) console.log(wideSelectionLine(plan.wideSelection));
+      if (plan.brokenReports) console.log(brokenReportsLine(plan.brokenReports));
       return 0;
     }
     console.log(JSON.stringify(plan, null, 2));
@@ -447,7 +452,7 @@ function main(argv = process.argv.slice(2), options = {}) {
     if (!report) return null;
     if (report.problem) { record.reportProblem = report.problem; return null; }
     const scope = reportScope(entry);
-    if (scope.length === 0) { record.reportProblem = 'no reportScope or inputs: the report decides nothing'; return null; }
+    if (scope.length === 0) { record.reportProblem = problem('no reportScope or inputs, so the report decides nothing'); return null; }
     const withCases = hasCases(entry);
     const passed = result.status === 'PASS';
     if (!passed && !(withCases && [...report.results.values()].includes('fail'))) return null;
@@ -802,7 +807,7 @@ function main(argv = process.argv.slice(2), options = {}) {
     const inputHashes = refreshedItemHashes(records[id], ctx);
     if (inputHashes) records[id] = { ...records[id], inputHashes };
   }
-  writeMap({ manifestPath, startedAt, snapshot: snapshot.serialize(), records, ids: expanded.map(entry => entry.id), runs: runs.slice(-RUN_LOG_LIMIT),
+  const written = writeMap({ manifestPath, startedAt, snapshot: snapshot.serialize(), records, ids: expanded.map(entry => entry.id), runs: runs.slice(-RUN_LOG_LIMIT),
     previousRecords, readWriteId: previousMap ? previousMap.writeId : undefined, runLimit: RUN_LOG_LIMIT, executed });
   // D170: while the failures are being fixed, only they run again; the wider run comes once, after.
   if (failedIds.size) console.error(`[VERIFY] ${failedIds.size} failed: ${[...failedIds].join(', ')} — after the fix, rerun only these: ${runnerCommand('--failed')}; once they pass, run --changed once.`);
@@ -850,7 +855,9 @@ function main(argv = process.argv.slice(2), options = {}) {
     if (declared.length) notices.push(`Files another check wrote in this run, read by checks not yet known to read them (their passes were not recorded): ${list(declared.map(file => `${file} (from ${writerOf(file).id})`))} — those checks run once more and from then on wait for their writer.`);
   }
   results.push(...failBefore);
-  return printResults(results, { args, started, resultsPath: layout.resultsPath, plan, selected: entries.length, failBefore, stillFailing, notices, runLine });
+  // D183: counted from the records the map now holds (another run's included).
+  const broken = brokenReports({ ids: expanded.map(entry => entry.id), records: written || records });
+  return printResults(results, { args, started, resultsPath: layout.resultsPath, plan, selected: entries.length, failBefore, stillFailing, notices, runLine, brokenReports: broken });
   };
   // The record goes after the map is written, so a run waiting for this one reads its passes.
   const concludeAndClose = value => {

@@ -1,5 +1,14 @@
 # Changelog
 
+## [21.182.0] - 2026-11-23
+
+### feat: every check run names the checks whose used-input reports were broken (D183)
+
+- A check whose last `CRABSHELL_USED_REPORT` report the runner could not use is chosen as if it had not reported, so it can rerun on every change; until now the reason sat only in its record (`reportProblem` in `test-map.json`). Every run's summary (`--changed`, full, by id, `--failed`) and `--explain` now print `Broken reports: N of T checks last wrote a report the runner could not use, … Reasons: <reason> (<count>, such as <check>), …` while such a check exists, and `--dry-run` gives `brokenReports`. Failing checks are left out (they run again anyway). The line changes nothing about which checks run.
+- Report problems read "<reason>: <detail>", and a reported path is now named as outside the project (or inside .git), not there before or after the run, or a folder where a file is needed; older records group under their older wording.
+- The verifying skill's select-by-use: a project's own selector prints the same line, and a check that starts an app gives it a fresh user folder of its own so the app does not read what the user installed.
+- Updating reruns no check: the runner's decision code is unchanged.
+
 ## [21.181.2] - 2026-11-22
 
 ### fix: the question after every answer drops "Answer each yes or no." (D182)

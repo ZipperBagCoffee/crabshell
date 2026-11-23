@@ -539,28 +539,66 @@ try {
     // Predicted: [] (AC1, and AC6: O does not read data/two.kv yet is not run for it), [W], [F].
     check('P21 a check that reports the files it used reruns only when one of them changes; a folder it reports reruns it when a file is added there',
       first.status === 0 && sorted(first) === 'F,O,W' && record(dir, 'W').kind === 'reported' && record(dir, 'F').files.includes('data/')
+      && !first.stdout.includes('Broken reports') && !('brokenReports' in dryRun(dir, 'p21'))
       && unused.status === 0 && sorted(unused) === '' && used.status === 0 && sorted(used) === 'W' && added.status === 0 && sorted(added) === 'F',
       `first=[${first.ran}] unused=[${unused.ran}] used=[${used.ran}] added=[${added.ran}] W=${JSON.stringify(record(dir, 'W'))}`);
   });
 
-  if (hasPython) attempt('P22 a broken report (no done line, empty, a path outside the project) or none chooses the check as before', () => {
-    const dir = project('p22', [pyEntry('B1'), pyEntry('B2'), pyEntry('B3'), pyEntry('B4')], {
+  if (hasPython) attempt('P22 a broken report (no done line, empty, a path outside the project or not there, a folder for a file) or none chooses the check as before; every summary names the broken ones by reason until they are fixed', () => {
+    const entries = ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7'].map(id => pyEntry(id));
+    const dir = project('p22', entries, {
       'tools/store.py': store,
       'tools/b1.py': pyCheck('B1', "whole('data/one.kv')"),
       'tools/b2.py': pyCheck('B2', `open(os.environ['${REPORT_ENV}'], 'a').close()`),
       'tools/b3.py': pyCheck('B3', "whole('../outside.kv')\ndone()"),
       'tools/b4.py': pyCheck('B4', ''),
+      'tools/b5.py': pyCheck('B5', "whole('data/missing.kv')\ndone()"),
+      'tools/b6.py': pyCheck('B6', "line('item', 'data/', 'x', 'abc')\ndone()"),
+      'tools/b7.py': pyCheck('B7', "whole('data/one.kv')\nsys.exit(1)"),
       'data/one.kv': 'one\n', 'data/two.kv': 'two\n',
     });
+    const brokenLine = r => (r.stdout.split(/\r?\n/).find(text => text.startsWith('Broken reports: ')) || null);
+    const named = plan => (plan.brokenReports ? plan.brokenReports.reasons.map(item => `${item.reason}=${item.checks}:${item.example}`).sort().join('; ') : 'none');
     const first = run(dir, 'p22');
     write(dir, 'data/two.kv', 'two edited\n');
     const after = run(dir, 'p22', ['--changed']);
-    const kinds = ['B1', 'B2', 'B3', 'B4'].map(id => record(dir, id).kind).join(',');
-    const problems = ['B1', 'B2', 'B3'].filter(id => record(dir, id).reportProblem).length;
-    // Predicted: all four run again (each declares data/), all recorded as declared.
-    check('P22 a broken report (no done line, empty, a path outside the project) or none chooses the check as before',
-      first.status === 0 && after.status === 0 && sorted(after) === 'B1,B2,B3,B4' && kinds === 'declared,declared,declared,declared' && problems === 3,
-      `after=[${after.ran}] kinds=${kinds} problems=${problems} ${show(after)}`);
+    const kinds = ['B1', 'B2', 'B3', 'B4', 'B5', 'B6'].map(id => record(dir, id).kind).join(',');
+    const reasons = ['B1', 'B2', 'B3', 'B4', 'B5', 'B6'].map(id => `${id}=${String(record(dir, id).reportProblem).split(': ')[0]}`).join('; ');
+    const explained = run(dir, 'p22', ['--changed', '--explain']);
+    const planned = dryRun(dir, 'p22');
+    // Predicted: all run again (each declares data/), all recorded as declared, each with its
+    // own reason; B7 fails, so it is not counted; the full run, --changed and --explain print
+    // the same line and --dry-run names the same reasons.
+    check('P22 a broken report (no done line, empty, a path outside the project or not there, a folder for a file) or none chooses the check as before',
+      first.status === 1 && after.status === 1 && sorted(after) === 'B1,B2,B3,B4,B5,B6,B7' && kinds === 'declared,declared,declared,declared,declared,declared'
+      && reasons === 'B1=no done line at the end; B2=empty report; B3=path outside the project or inside .git; B4=undefined; B5=path not there before or after the run; B6=folder where a file is needed',
+      `after=[${after.ran}] kinds=${kinds} reasons=${reasons} ${show(after)}`);
+    check('P22 every summary names the broken reports by reason; a failing check is not counted',
+      /^Broken reports: 5 of 7 checks /.test(String(brokenLine(first))) && brokenLine(after) === brokenLine(first) && brokenLine(explained) === brokenLine(first)
+      && named(planned) === 'empty report=1:B2; folder where a file is needed=1:B6; no done line at the end=1:B1; path not there before or after the run=1:B5; path outside the project or inside .git=1:B3',
+      `first=${brokenLine(first)} explain=${brokenLine(explained)} dry=${named(planned)}`);
+    // B1 fixed, B3 left out of the manifest: --dry-run drops B3 at once, the run drops B1.
+    write(dir, 'tools/b1.py', pyCheck('B1', "whole('data/one.kv')\ndone()"));
+    setManifest(dir, manifest => { manifest.entries = manifest.entries.filter(item => item.id !== 'B3'); });
+    const beforeFix = dryRun(dir, 'p22');
+    const fixed = run(dir, 'p22', ['--changed']);
+    const afterFix = dryRun(dir, 'p22');
+    // Records from an older runner: one reason however many paths; a record whose reason is
+    // not text is skipped.
+    const mapFile = path.join(dir, '.crabshell', 'verification', 'test-map.json');
+    const map = JSON.parse(fs.readFileSync(mapFile, 'utf8'));
+    map.entries.B2.reportProblem = 'not a file or folder of the project: /x/a.pck';
+    map.entries.B5.reportProblem = 'not a file or folder of the project: /x/b.pck';
+    map.entries.B1.reportProblem = 'writer w1 began 2 time(s) and finished fewer';
+    map.entries.B6.reportProblem = 42;
+    fs.writeFileSync(mapFile, JSON.stringify(map));
+    const older = dryRun(dir, 'p22');
+    check('P22 a fixed report and a check left out of the manifest leave the line; older records group by reason',
+      named(beforeFix) === 'empty report=1:B2; folder where a file is needed=1:B6; no done line at the end=1:B1; path not there before or after the run=1:B5'
+      && /^Broken reports: 3 of 6 checks /.test(String(brokenLine(fixed))) && record(dir, 'B1').kind === 'reported'
+      && named(afterFix) === 'empty report=1:B2; folder where a file is needed=1:B6; path not there before or after the run=1:B5'
+      && named(older) === 'a writer began more often than it finished=1:B1; not a file or folder of the project=2:B2',
+      `beforeFix=${named(beforeFix)} fixed=${brokenLine(fixed)} afterFix=${named(afterFix)} older=${named(older)}`);
   });
 
   if (hasPython) attempt('P23 an item report reruns a check when its item or the rest of its file changes, not another item; without itemIdentity the file counts', () => {

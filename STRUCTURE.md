@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.181.2)
+# Crabshell Plugin Structure (v21.182.0)
 
-**Version**: 21.181.2 | **Author**: ZipperBagCoffee | **License**: MIT
+**Version**: 21.182.0 | **Author**: ZipperBagCoffee | **License**: MIT
 
 ## Overview
 
@@ -265,7 +265,7 @@ crabshell/
 │   ├── (light-workflow retired v21.112.0 — one-pass work records via hotfix)
 │   ├── verifying/SKILL.md            # /crabshell:verifying (schema-v2 behavioral verification; Step 2a wiring inventory v21.121.0)
 │   │   ├── scripts/run-verify.js      # Launcher of the portable verification runner (v21.106.0; split into runner/ v21.153.0)
-│   │   ├── scripts/runner/            # Runner modules: manifest, fingerprint, snapshot, ignored, select, schedule, execute, contract, trace, store, output, install, project-state (v21.153.0); settings (manifest run settings), test-hygiene (copy detector), routine (risk paths, flaky quarantine), recheck (forbidden-file re-check), replay (--replay) (v21.158.0); used-report (reports of what a check used, `itemIdentity`, `{cases}`) (v21.159.0); wide-selection (what pulled in most checks) (v21.174.0); run-record (live runs in `.runs/`), command-match (shell commands as words), resources (lock files, processes, worktrees), overlap (who holds what, what spoils a measurement, the runner's waits) (v21.177.0)
+│   │   ├── scripts/runner/            # Runner modules: manifest, fingerprint, snapshot, ignored, select, schedule, execute, contract, trace, store, output, install, project-state (v21.153.0); settings (manifest run settings), test-hygiene (copy detector), routine (risk paths, flaky quarantine), recheck (forbidden-file re-check), replay (--replay) (v21.158.0); used-report (reports of what a check used, `itemIdentity`, `{cases}`) (v21.159.0); wide-selection (what pulled in most checks) (v21.174.0); broken-reports (checks whose report the runner could not use) (v21.182.0); run-record (live runs in `.runs/`), command-match (shell commands as words), resources (lock files, processes, worktrees), overlap (who holds what, what spoils a measurement, the runner's waits) (v21.177.0)
 │   │   ├── scripts/released-launchers.json # Every launcher Crabshell released (LF sha256), built by scripts/build-released-launchers.js (v21.153.0)
 │   │   ├── scripts/check-pipeline-wiring.js # Pipeline wiring probe: discover / check --contract (v21.121.0)
 │   │   └── references/                # wiring-inventory, manifest-entries (v21.132.0); fail-before (v21.142.0); runner-reuse-output (v21.146.0); select-by-use (checks that report what they used, v21.159.0); check-cost (making each check cheaper, v21.163.0)
@@ -518,6 +518,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.182.0 | runner `broken-reports.js` (new), `used-report.js` `problem`/`problemReason`, `main.js`, `output.js`, `store.js` `writeMap` returns the records it wrote; test `_test-runner-policy.js` P21/P22 |
 | 21.181.2 | `scripts/best-answer.js` QUESTION: "Answer each yes or no." dropped |
 | 21.181.1 | `scripts/best-answer.js` QUESTION: all three checks are fine when answered no |
 | 21.181.0 | `scripts/best-answer.js` QUESTION: three yes/no checks, then a concise summary |

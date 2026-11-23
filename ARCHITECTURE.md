@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.181.2)
+# Crabshell Architecture (v21.182.0)
 
 ## Overview
 
@@ -570,6 +570,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.182.0 | runner `broken-reports.js` `brokenReports()`/`brokenReportsLine()` in every run summary, `--explain` and `--dry-run`; `used-report.js` problems read "<reason>: <detail>"; `store.js` `writeMap` returns the records written |
 | 21.181.2 | `best-answer.js` QUESTION: "Answer each yes or no." dropped |
 | 21.181.1 | `best-answer.js` QUESTION: item 1 reads "not your best?" so all three good answers are no |
 | 21.181.0 | `best-answer.js` QUESTION: three yes/no checks (best, agree without checking, cutting corners), then a concise summary of the answer (fixed first when a check fails) |

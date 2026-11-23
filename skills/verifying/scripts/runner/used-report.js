@@ -87,6 +87,19 @@ function projectPath(projectRoot, value, exists = null) {
   return !exists || exists(key, absolute) ? key : null;
 }
 
+// Why a report is broken: "<reason>" or "<reason>: <detail>". The reason names the kind of
+// break and holds no ": "; the run summary counts checks by it (broken-reports.js).
+const problem = (reason, detail) => (detail === undefined ? reason : `${reason}: ${detail}`);
+// The reason of a recorded problem (null for anything but text). Records from runners before
+// 21.182.0 hold the older wording; the one older message with its detail first is read as its
+// reason.
+function problemReason(text) {
+  if (typeof text !== 'string' || !text) return null;
+  if (/^writer .+ began \d+ time\(s\) and finished fewer$/.test(text)) return 'a writer began more often than it finished';
+  const cut = text.indexOf(': ');
+  return cut === -1 ? text : text.slice(0, cut);
+}
+
 // A check's report: null when it wrote none; { problem } when it is broken (then the check
 // is chosen as if it had not reported); otherwise every use (path, item or null,
 // fingerprint, case or null) and each case's result. inSnapshot(key): whether the runner's
@@ -95,10 +108,18 @@ function readReport(file, projectRoot, inSnapshot = () => false) {
   let text;
   try { text = fs.readFileSync(file, 'utf8'); } catch (_) { return null; }
   const lines = splitLines(text);
-  if (lines.length === 0) return { problem: 'the report is empty' };
+  if (lines.length === 0) return { problem: problem('empty report') };
   const exists = (key, absolute) => {
     if (inSnapshot(key)) return true;
     try { return fs.statSync(absolute).isDirectory() === key.endsWith('/'); } catch (_) { return false; }
+  };
+  // A reported path as an input key, or why it cannot be one.
+  const inputKey = (value, needsFile) => {
+    const key = projectPath(projectRoot, value);
+    if (!key) return { problem: problem('path outside the project or inside .git', value) };
+    if (!exists(key, path.join(projectRoot, key))) return { problem: problem('path not there before or after the run', value) };
+    if (needsFile && key.endsWith('/')) return { problem: problem('folder where a file is needed', value) };
+    return { key };
   };
   const uses = [];
   const results = new Map();
@@ -108,7 +129,7 @@ function readReport(file, projectRoot, inSnapshot = () => false) {
   const count = (map, writer) => map.set(writer, (map.get(writer) || 0) + 1);
   for (const line of lines) {
     const fields = line.split('\t').map(unescapeField);
-    if (fields.some(field => field === null)) return { problem: `a field has a bad % escape or holds the item separator: ${line}` };
+    if (fields.some(field => field === null)) return { problem: problem('bad % escape or a NUL character', line) };
     const [kind, ...rest] = fields;
     if (kind === 'begin' && rest.length === 1 && rest[0]) { count(begun, rest[0]); continue; }
     if (kind === 'done' && rest.length <= 1) { count(finished, rest[0] || ''); continue; }
@@ -117,31 +138,31 @@ function readReport(file, projectRoot, inSnapshot = () => false) {
       if (results.get(rest[0]) !== 'fail') results.set(rest[0], rest[1]);
       continue;
     }
-    if (kind === 'file' && (rest.length === 1 || rest.length === 2)) {
-      const key = projectPath(projectRoot, rest[0], exists);
-      if (!key) return { problem: `not a file or folder of the project: ${rest[0]}` };
+    if (kind === 'file' && (rest.length === 1 || rest.length === 2) && rest[0]) {
+      const { key, problem: broken } = inputKey(rest[0], false);
+      if (broken) return { problem: broken };
       uses.push({ path: key, item: null, fingerprint: null, case: rest[1] || null });
       continue;
     }
-    if (kind === 'rest' && (rest.length === 1 || rest.length === 2)) {
-      const key = projectPath(projectRoot, rest[0], exists);
-      if (!key || key.endsWith('/')) return { problem: `not a file of the project: ${rest[0]}` };
+    if (kind === 'rest' && (rest.length === 1 || rest.length === 2) && rest[0]) {
+      const { key, problem: broken } = inputKey(rest[0], true);
+      if (broken) return { problem: broken };
       uses.push({ path: key, item: '', fingerprint: undefined, case: rest[1] || null });
       continue;
     }
-    if (kind === 'item' && (rest.length === 3 || rest.length === 4) && rest[1]) {
-      const key = projectPath(projectRoot, rest[0], exists);
-      if (!key || key.endsWith('/')) return { problem: `not a file of the project: ${rest[0]}` };
+    if (kind === 'item' && (rest.length === 3 || rest.length === 4) && rest[0] && rest[1]) {
+      const { key, problem: broken } = inputKey(rest[0], true);
+      if (broken) return { problem: broken };
       uses.push({ path: key, item: rest[1], fingerprint: rest[2], case: rest[3] || null });
       continue;
     }
-    return { problem: `not a report line: ${line}` };
+    return { problem: problem('not a report line', line) };
   }
-  if (!/^done(\t|$)/.test(lines[lines.length - 1])) return { problem: 'the last line is not done (a writer did not finish)' };
+  if (!/^done(\t|$)/.test(lines[lines.length - 1])) return { problem: problem('no done line at the end') };
   const unfinished = [...begun].find(([writer, times]) => (finished.get(writer) || 0) < times);
-  if (unfinished) return { problem: `writer ${unfinished[0]} began ${unfinished[1]} time(s) and finished fewer` };
+  if (unfinished) return { problem: problem('a writer began more often than it finished', `${unfinished[0]} (began ${unfinished[1]})`) };
   // A report that names nothing the check used says nothing it could be chosen by.
-  if (uses.length === 0 && results.size === 0) return { problem: 'the report names nothing the check used' };
+  if (uses.length === 0 && results.size === 0) return { problem: problem('names nothing the check used') };
   return { uses, results };
 }
 
@@ -203,4 +224,5 @@ module.exports = {
   REPORT_ENV, CASES_PLACEHOLDER, NO_ITEM, ITEM_SEPARATOR,
   itemKey, restKey, isItemKey, pathOf, itemOf, describeKey,
   escapeField, unescapeField, formatLine, readReport, parseIdentity, runItemIdentity, hasCases, expandCases,
+  problem, problemReason,
 };

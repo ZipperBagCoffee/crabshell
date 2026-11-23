@@ -4,8 +4,9 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const { wideSelectionLine } = require('./wide-selection');
+const { brokenReportsLine } = require('./broken-reports');
 
-function printResults(results, { args, started, resultsPath, plan = null, selected = results.length, failBefore = [], stillFailing = [], notices = [], runLine = null }) {
+function printResults(results, { args, started, resultsPath, plan = null, selected = results.length, failBefore = [], stillFailing = [], notices = [], runLine = null, brokenReports = null }) {
   const fullPath = resultsPath;
   const json = JSON.stringify(results, null, 2);
   const save = process.env.CRABSHELL_VERIFY_JSON !== '1' && !args.guardRun && results.length > 0;
@@ -61,6 +62,8 @@ function printResults(results, { args, started, resultsPath, plan = null, select
   if (plan) console.log(`\nChanged-files run: ${Array.isArray(plan.selected) ? plan.selected.length : selected} of ${plan.total} checks (${plan.full ? 'all — ' : ''}${plan.reason})`);
   // D171: the changes pulled in most checks; what pulled the most.
   if (plan && plan.wideSelection) console.log(wideSelectionLine(plan.wideSelection));
+  // D183: on every run, while a check's last report was broken.
+  if (brokenReports) console.log(brokenReportsLine(brokenReports));
   if (stillFailing.length) console.log(`Still failing on the inputs they failed with last time: ${stillFailing.join(', ')}`);
   for (const notice of notices) console.log(notice);
   // D151_T006: heavy checks a changed risk path brought in; quarantined flaky checks.

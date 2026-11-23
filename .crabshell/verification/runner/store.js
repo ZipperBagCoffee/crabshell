@@ -111,6 +111,7 @@ function mergeWithDisk({ disk, readWriteId, entries, records, previousRecords, e
 // this run, and the snapshot taken before it. With previousRecords (the records this run
 // read at its start), readWriteId (that map's writeId) and executed (the checks this run
 // ran), a map another run wrote meanwhile is merged under a short lock instead of overwritten.
+// Returns the records it wrote, or null when it could not write the map.
 function writeMap({ manifestPath, startedAt, snapshot, records, ids, runs = null, previousRecords = null, readWriteId, runLimit, executed = new Set() }) {
   const target = mapPath(manifestPath);
   const lock = `${target}.lock`;
@@ -133,8 +134,10 @@ function writeMap({ manifestPath, startedAt, snapshot, records, ids, runs = null
     const temporary = `${target}.${process.pid}.tmp`;
     fs.writeFileSync(temporary, JSON.stringify(map) + '\n');
     fs.renameSync(temporary, target);
+    return entries;
   } catch (error) {
     console.error(`[VERIFY] WARN: load map not written: ${error.message}`);
+    return null;
   } finally {
     if (locked) releaseLock(lock);
   }
