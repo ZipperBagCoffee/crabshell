@@ -172,7 +172,8 @@ try{
     fs.writeFileSync(worker,`const c=require(${JSON.stringify(path.join(__dirname,'core/completion-control'))});const p=JSON.parse(process.argv[2]);c.prepareParentCheck(p.cwd,{...p,hook_event_name:'PreToolUse'});c.recordParentObservation(p.cwd,p,{host:'claude'});`);
     const payloads=commands.map((command,i)=>({...base,tool_use_id:'parallel-'+i,tool_input:{command}}));
     const dispatch=`const {spawn}=require('child_process');for(const p of ${JSON.stringify(payloads)}){const c=spawn(process.execPath,[${JSON.stringify(worker)},JSON.stringify(p)],{env:process.env,windowsHide:true});c.stdout.resume();c.stderr.pipe(process.stderr);c.on('close',code=>{if(code!==0)process.exitCode=1;});}`;
-    const result=require('child_process').spawnSync(process.execPath,['-e',dispatch],{encoding:'utf8',windowsHide:true,timeout:10000});
+    // The timeout only stops a hang; each writer's own lock wait ends far sooner (D185).
+    const result=require('child_process').spawnSync(process.execPath,['-e',dispatch],{encoding:'utf8',windowsHide:true,timeout:60000});
     assert.strictEqual(result.status,0,result.stderr);
     assert.strictEqual(Object.keys(state(ctx).checkHistory.results).length,commands.length);
     assert.strictEqual(Object.keys(state(ctx).checkHistory.pending).length,0);

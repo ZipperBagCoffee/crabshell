@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.183.1)
+# Crabshell Architecture (v21.183.2)
 
 ## Overview
 
@@ -197,7 +197,7 @@ Both completion adapters receive `Bash|Write|Edit`; the Codex adapter normalizes
 
 Claude `PostToolUseFailure` is wired to both verification-state and parent-evidence recording. Its captured failure is a top-level `error` with `is_interrupt`; success remains a different envelope. Codex `PostToolUse.tool_response` is output text in the captured CLI. `host-tool-result.js` reads a bounded transcript tail and requires a matching command ID, session, turn and project cwd before using `exit_code`. Unsupported/missing/ambiguous records remain inconclusive.
 
-`check-history.js` distinguishes a duplicate notification from a new invocation, preserves independent failed checks, and rejects late superseded results. `state-lock.js` serializes state writes. An ordinary non-check shell event does not scan all source files. Content hashes, not size/mtime, still govern decisive validation. Codex `Interrupt`, Claude interruption results and recognized explicit stop requests suspend owned work and invalidate that session's own check results (v21.124.0: another session's passing check on the shared tree stays valid). The bounded `recovery` projection in existing completion state is read at SessionStart and compaction; it carries excerpts and historical evidence, never fresh permission or proof of current success. No new SessionEnd summarization is required.
+`check-history.js` distinguishes a duplicate notification from a new invocation, preserves independent failed checks, and rejects late superseded results. `state-lock.js` serializes state writes; since v21.183.2 a writer waits while the lock keeps changing hands (up to 3 s per holder, 7 s per process) and a lock file Windows is still deleting (EPERM) counts as the lock changing hands, so writers queued behind others are no longer dropped. An ordinary non-check shell event does not scan all source files. Content hashes, not size/mtime, still govern decisive validation. Codex `Interrupt`, Claude interruption results and recognized explicit stop requests suspend owned work and invalidate that session's own check results (v21.124.0: another session's passing check on the shared tree stays valid). The bounded `recovery` projection in existing completion state is read at SessionStart and compaction; it carries excerpts and historical evidence, never fresh permission or proof of current success. No new SessionEnd summarization is required.
 
 ## Memory Hierarchy (v13.0.0+)
 
@@ -570,6 +570,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.183.2 | `core/file-lock.js` `_acquireFileLock`: refusals other than EEXIST retried (lock file being deleted = changing hands, none there = ends after 250 ms), `perHolder`/`maxWaitMs`, one read per look, a takeover gets its write; `core/state-lock.js` `createStateLock` (3 s per holder, 7 s per process); tests `_test-multisession-memory.js` M17–M22, `_test-native-result-evidence.js` hang guard 60 s |
 | 21.183.1 | `best-answer.js` QUESTION item 4 "ad hoc, not thought through?"; `shared-context.js` checklist defines ad hoc; `_test-rule-wording.js` W7 budget 2,825 |
 | 21.183.0 | `best-answer.js` QUESTION: fourth check "ad hoc?" |
 | 21.182.0 | runner `broken-reports.js` `brokenReports()`/`brokenReportsLine()` in every run summary, `--explain` and `--dry-run`; `used-report.js` problems read "<reason>: <detail>"; `store.js` `writeMap` returns the records written |

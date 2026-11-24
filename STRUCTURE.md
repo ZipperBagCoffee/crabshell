@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.183.1)
+# Crabshell Plugin Structure (v21.183.2)
 
-**Version**: 21.183.1 | **Author**: ZipperBagCoffee | **License**: MIT
+**Version**: 21.183.2 | **Author**: ZipperBagCoffee | **License**: MIT
 
 ## Overview
 
@@ -138,7 +138,7 @@ crabshell/
 │   ├── core/limits.js                       # Time limits: skill-active TTL, regressing staleness, run snapshot age (from constants, v21.158.0)
 │   ├── core/memory-budgets.js               # Memory size budgets and archive timestamps (from constants, v21.158.0)
 │   ├── core/memory-index-file.js            # Memory index read/update, token estimates, L1 timestamps (from utils, v21.158.0)
-│   ├── core/file-lock.js                    # The memory index lock (from utils, v21.158.0)
+│   ├── core/file-lock.js                    # Owner-token file lock: memory index lock (from utils, v21.158.0); per-holder wait and refusal retry (v21.183.2)
 │   ├── core/transcript.js                   # Transcript path and last user message (from transcript-utils, v21.158.0)
 │   ├── core/regressing-phase.js             # Regressing skill-call detection and phase advance (from regressing-state, v21.158.0)
 │   ├── core/regressing-reminder.js          # The regressing reminder for UserPromptSubmit (from regressing-state, v21.158.0)
@@ -147,7 +147,7 @@ crabshell/
 │   ├── core/runner-sync.js                  # Session start keeps the project's runner copy current (v21.153.0)
 │   ├── core/host-tool-result.js             # Bind native Codex completion records to the hook invocation
 │   ├── core/check-history.js                # Per-check ordering, duplicate and late-result handling
-│   ├── core/state-lock.js                   # Serialize verification/completion state writers
+│   ├── core/state-lock.js                   # Serialize verification/completion state writers (3 s per holder, 7 s per process, v21.183.2)
 │   ├── core/hook-capture.js                 # Optional raw inputs and separate capture metadata
 │   ├── core/delta-transaction.js            # Fixed input, retry-aware finalization and owned-file cleanup
 │   ├── core/memory-lock.js                  # Shared index/rotation locks; tryWithMemoryIndex/tryWithMemoryRotation skip when busy (v21.127.0)
@@ -518,6 +518,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.183.2 | `scripts/core/file-lock.js`, `scripts/core/state-lock.js`; tests `_test-multisession-memory.js` (M17–M22), `_test-native-result-evidence.js` |
 | 21.183.1 | `scripts/best-answer.js` QUESTION item 4, `scripts/shared-context.js` checklist ad hoc definition; test `_test-rule-wording.js` W7 |
 | 21.183.0 | `scripts/best-answer.js` QUESTION: fourth check "ad hoc?" |
 | 21.182.0 | runner `broken-reports.js` (new), `used-report.js` `problem`/`problemReason`, `main.js`, `output.js`, `store.js` `writeMap` returns the records it wrote; test `_test-runner-policy.js` P21/P22 |

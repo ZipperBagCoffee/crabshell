@@ -1,5 +1,15 @@
 # Changelog
 
+## [21.183.2] - 2026-11-23
+
+### fix: check results recorded at the same moment are no longer dropped while the lock changes hands (D185)
+
+- Hooks record each check result under a file lock (`scripts/core/state-lock.js`). With the CPU at 100%, writers started together dropped their results ("Verification state is busy; no result was recorded."): every dropped writer had met EPERM, which Windows gives while another process is still deleting the lock file, and gave up at once; the others had only one second in all.
+- A refusal other than "already exists" while the lock file is still there now counts as the lock changing hands; one while no lock file is there (a read-only folder, say) ends the wait after 250 ms and is named in the message.
+- The state lock waits while the lock keeps changing hands: a writer gives up when one holder keeps it 3 s (one hold took up to 1.3 s at 100% CPU) or when its process has waited 7 s in all, so a hook's two lock waits still end inside Codex's 10-second hook limit. Waiters read the lock once per look, and a takeover of a dead owner's lock gets its write even at the deadline.
+- Measured at 100% CPU: four writers at once all keep their results (V061 passes); eight at once need about 10 s of turns, so about half still give up at the 7-second budget.
+- Tests: `_test-multisession-memory.js` M17–M22 replace the file system for one lock path in-process, so no timing between processes decides them; `_test-native-result-evidence.js`'s timeout is a 60-second hang guard.
+
 ## [21.183.1] - 2026-11-23
 
 ### fix: "ad hoc" means not thought through, and the checklist defines it (D184)

@@ -286,5 +286,58 @@ const setMtime = (file, ms) => fs.utimesSync(file, new Date(ms), new Date(ms));
   })));
   const holders = race.filter(r => r.got && r.still).length;
   report.check('M11 two takeovers of one dead owner\'s lock leave exactly one holder', holders === 1 && race.filter(r => r.got).length === 1, JSON.stringify(race));
+
+  // M17-M21 (D185): lock waits when the lock write is refused. The file system is replaced
+  // in this process for one lock path, so no timing between processes decides a result.
+  const lock = require(LOCK_MODULE);
+  const { createStateLock } = require(path.join(__dirname, 'core', 'state-lock.js'));
+  const refusedDir = h.memoryPath(h.makeProject(root, 'm17-lock-refusal'));
+  // write: how the lock write is refused (a code per call, or null to let it through);
+  // read: the owner token a waiter reads from the lock (undefined: the real file).
+  const withLockFs = (lockPath, { write, read }, run) => {
+    const realWrite = fs.writeFileSync, realRead = fs.readFileSync;
+    let writes = 0, reads = 0;
+    fs.writeFileSync = function (file, ...rest) {
+      const code = file === lockPath ? write(writes++) : null;
+      if (code) { const error = new Error(code); error.code = code; throw error; }
+      return realWrite.call(this, file, ...rest);
+    };
+    fs.readFileSync = function (file, ...rest) {
+      if (file === lockPath && read) return read(reads++);
+      return realRead.call(this, file, ...rest);
+    };
+    try { return { result: run(), writes }; } finally { fs.writeFileSync = realWrite; fs.readFileSync = realRead; }
+  };
+  const lockAt = name => path.join(refusedDir, name);
+  // M17: Windows answers EPERM while another process deletes the lock file; that is retried.
+  const once = withLockFs(lockAt('m17.lock'), { write: n => (n === 0 ? 'EPERM' : null) }, () => lock.acquireFileLock(lockAt('m17.lock'), 2000));
+  if (once.result.acquired) lock.releaseFileLock(lockAt('m17.lock'));
+  report.check('M17 a lock write refused once with EPERM is retried and the lock is taken', once.result.acquired === true && once.writes === 2, JSON.stringify(once));
+  // M18: a refusal that lasts while no lock file is there (a read-only folder) ends the wait early and is named.
+  const always = withLockFs(lockAt('m18.lock'), { write: () => 'EACCES' }, () => lock.acquireFileLock(lockAt('m18.lock'), 8000));
+  report.check('M18 a lasting refusal with no lock file there ends the wait before the deadline and names the error', always.result.acquired === false && always.result.error === 'EACCES' && always.result.waitMs < 8000, JSON.stringify(always.result));
+  // M22: a lock file being deleted (EPERM on write and on stat) is a lock changing hands: the wait goes on.
+  const realStat = fs.statSync;
+  const m22Path = lockAt('m22.lock');
+  fs.statSync = function (file, ...rest) {
+    if (file === m22Path) { const error = new Error('EPERM'); error.code = 'EPERM'; throw error; }
+    return realStat.call(this, file, ...rest);
+  };
+  let m22;
+  try { m22 = withLockFs(m22Path, { write: () => 'EPERM' }, () => lock.acquireFileLock(m22Path, 1000)); } finally { fs.statSync = realStat; }
+  report.check('M22 a lock file being deleted keeps the writer waiting to its deadline', m22.result.acquired === false && m22.result.contended === true && m22.result.waitMs >= 1000, JSON.stringify(m22.result));
+  // M19: owners that change at every look keep a per-holder wait going until the whole-wait cap.
+  const moving = { write: () => 'EEXIST', read: n => `${process.pid}:owner-${n}` };
+  const m19 = withLockFs(lockAt('m19.lock'), moving, () => lock.acquireFileLock(lockAt('m19.lock'), 300, { perHolder: true, maxWaitMs: 1500 }));
+  report.check('M19 owners that keep changing hold a writer past its per-holder wait, up to the cap', m19.result.acquired === false && m19.result.waitMs >= 1500, JSON.stringify(m19.result));
+  // M20: one owner that keeps the lock ends the per-holder wait long before the cap.
+  const m20 = withLockFs(lockAt('m20.lock'), { write: () => 'EEXIST', read: () => `${process.pid}:one-owner` }, () => lock.acquireFileLock(lockAt('m20.lock'), 300, { perHolder: true, maxWaitMs: 8000 }));
+  report.check('M20 one owner that keeps the lock ends a per-holder wait before the cap', m20.result.acquired === false && m20.result.waitMs >= 300 && m20.result.waitMs < 8000, JSON.stringify(m20.result));
+  // M21: one process's waits share one budget, so a second state lock after a spent budget ends at once.
+  const stateFile = path.join(refusedDir, 'm21-state.json');
+  const budgeted = createStateLock({ holderWaitMs: 300, budgetMs: 1000 });
+  const timed = () => { const begin = Date.now(); let threw = false; try { budgeted(stateFile, () => null); } catch { threw = true; } return { threw, ms: Date.now() - begin }; };
+  const m21 = withLockFs(stateFile + '.lock', moving, () => [timed(), timed()]);
+  report.check('M21 waits in one process share one budget: the second lock after a spent budget ends at once', m21.result[0].threw && m21.result[0].ms >= 1000 && m21.result[1].threw && m21.result[1].ms < 1000, JSON.stringify(m21.result));
   report.finish();
 })();

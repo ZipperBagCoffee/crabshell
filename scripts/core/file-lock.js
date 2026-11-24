@@ -8,6 +8,9 @@ const { readJsonOrDefault, writeJson } = require('../utils');
 // Lock settings
 const LOCK_STALE_MS = 60000;  // 60 seconds
 const LOCK_WAIT_MS = 250;     // how long a hook waits for a live lock holder before skipping
+// A refusal other than "already exists" that lasts this long while no lock file is there is
+// not a lock being deleted (a read-only folder, say): the wait ends instead of using all of its time (D185).
+const REFUSAL_RETRY_MS = 250;
 
 // File lock with an owner token. The lock file holds "<pid>:<token>"; only the
 // holder whose token is on disk may delete it, so a holder that outlived the
@@ -20,15 +23,23 @@ function _sleepMs(ms) {
 
 const STEAL_STALE_MS = 10000;
 
-// The lock content when its owner is gone (process no longer exists, or the
-// lock is older than LOCK_STALE_MS); null while a live owner holds it.
-function _staleLockContent(lockPath) {
-  let content = '', stat;
-  try { content = fs.readFileSync(lockPath, 'utf8'); stat = fs.statSync(lockPath); } catch { return null; }
-  if (Date.now() - stat.mtimeMs > LOCK_STALE_MS) return content;
+// One look at the lock: its content (null when unreadable) and whether its owner is gone
+// (process no longer exists, or the lock is older than LOCK_STALE_MS). One read per look, so
+// waiters keep the file open as little as possible (on Windows an open handle keeps a deleted
+// lock file in the way of the next owner, D185).
+function _inspectLock(lockPath) {
+  let content = null, stat;
+  try { content = fs.readFileSync(lockPath, 'utf8'); stat = fs.statSync(lockPath); } catch { return { content, stale: false }; }
+  if (Date.now() - stat.mtimeMs > LOCK_STALE_MS) return { content, stale: true };
   const pid = Number.parseInt(content.split(':')[0], 10);
-  if (!Number.isInteger(pid) || pid <= 0 || pid === process.pid) return null;
-  try { process.kill(pid, 0); return null; } catch (error) { return error.code === 'ESRCH' ? content : null; }
+  if (!Number.isInteger(pid) || pid <= 0 || pid === process.pid) return { content, stale: false };
+  try { process.kill(pid, 0); return { content, stale: false }; } catch (error) { return { content, stale: error.code === 'ESRCH' }; }
+}
+
+// The lock content when its owner is gone; null while a live owner holds it.
+function _staleLockContent(lockPath) {
+  const look = _inspectLock(lockPath);
+  return look.stale ? look.content : null;
 }
 
 // Remove a dead owner's lock. Takeovers are serialized by a short secondary lock,
@@ -52,23 +63,46 @@ function _stealStaleLock(lockPath, staleContent) {
   finally { try { fs.unlinkSync(stealPath); } catch {} }
 }
 
-// Returns { acquired, contended, waitMs }. Waits up to waitMs for a live holder;
+// Returns { acquired, contended, waitMs, error }. Waits up to waitMs for a live holder;
 // every path, including a takeover that cannot remove the lock, respects the deadline.
-function _acquireFileLock(lockPath, waitMs = LOCK_WAIT_MS) {
+// A refusal other than EEXIST while the lock file is still there is the lock changing hands
+// (Windows answers EPERM while it is being deleted, and keeps doing so while other waiters
+// still have it open, D185); a refusal while no lock file is there that lasts
+// REFUSAL_RETRY_MS (a read-only folder, say) ends the wait early. `error` names the last
+// refusal. options.perHolder: the wait restarts whenever the lock changes hands (its content
+// changes or it is gone), so a writer queued behind others that keep finishing is not
+// dropped; options.maxWaitMs bounds the whole wait (perHolder without it waits waitMs in all).
+function _acquireFileLock(lockPath, waitMs = LOCK_WAIT_MS, options = {}) {
   const start = Date.now();
   const token = `${process.pid}:${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
-  let contended = false;
+  const maxWaitMs = Number.isFinite(options.maxWaitMs) ? options.maxWaitMs : waitMs;
+  let contended = false, refusedSince = null, since = start, holder;
   for (let attempt = 0; ; attempt++) {
     try {
       fs.writeFileSync(lockPath, token, { flag: 'wx' });
       _heldLocks.set(lockPath, { token, acquiredAt: Date.now() });
       return { acquired: true, contended, waitMs: Date.now() - start };
     } catch (error) {
-      if (error.code !== 'EEXIST') return { acquired: false, contended, waitMs: Date.now() - start };
-      contended = true;
-      const stale = _staleLockContent(lockPath);
-      const stolen = stale !== null && _stealStaleLock(lockPath, stale);
-      if (Date.now() - start >= waitMs) return { acquired: false, contended, waitMs: Date.now() - start };
+      let stolen = false, seen = null;
+      if (error.code === 'EEXIST') {
+        refusedSince = null;
+        contended = true;
+        const look = _inspectLock(lockPath);
+        seen = look.content;
+        stolen = look.stale && _stealStaleLock(lockPath, look.content);
+      } else {
+        // A lock file being deleted still answers stat (EPERM); one that is not there says ENOENT.
+        let present = true;
+        try { fs.statSync(lockPath); } catch (statError) { present = statError.code !== 'ENOENT'; }
+        if (present) { contended = true; refusedSince = null; }
+        else if (refusedSince === null) refusedSince = Date.now();
+      }
+      const now = Date.now();
+      if (options.perHolder && (attempt === 0 || seen !== holder)) { holder = seen; since = now; }
+      const refusedAlone = refusedSince !== null && now - refusedSince >= Math.min(waitMs, REFUSAL_RETRY_MS);
+      const capped = options.perHolder && now - start >= maxWaitMs;
+      // A takeover that just removed a dead owner's lock gets its one write attempt.
+      if (!stolen && (refusedAlone || capped || now - since >= waitMs)) return { acquired: false, contended, waitMs: now - start, error: error.code || 'UNKNOWN' };
       if (!stolen) _sleepMs(Math.min(10 + attempt * 5, 40));
     }
   }
