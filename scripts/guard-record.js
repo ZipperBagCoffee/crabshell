@@ -246,6 +246,8 @@ function wiredNames() {
   };
   addChecks('./adapters/claude/pre-tool-use', ['CHECKS']);
   addChecks('./adapters/claude/post-tool-use', ['POST_CHECKS', 'FAILURE_CHECKS']);
+  addChecks('./adapters/claude/post-tool-batch', ['CHECKS']);
+  addChecks('./adapters/claude/prompt-expansion', ['CHECKS']);
   addChecks('./adapters/codex/pre-tool-use', ['CHECKS']);
   const controller = require('./completion-controller');
   for (const name of [...controller.STOP_CHECK_NAMES, ...controller.RECORDED_NAMES]) names.add(name);

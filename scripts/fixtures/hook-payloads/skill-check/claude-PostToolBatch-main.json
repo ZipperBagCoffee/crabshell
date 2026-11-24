@@ -1,0 +1,23 @@
+{
+  "session_id": "00000000-1111-4222-8333-444444444444",
+  "transcript_path": "C:\\Users\\user\\.claude\\projects\\C--Users-user-project\\00000000-1111-4222-8333-444444444444.jsonl",
+  "cwd": "C:\\Users\\user\\project",
+  "prompt_id": "4163f7df-6551-4520-a9ac-0f012876f35a",
+  "permission_mode": "default",
+  "effort": {
+    "level": "xhigh"
+  },
+  "hook_event_name": "PostToolBatch",
+  "tool_calls": [
+    {
+      "tool_name": "Agent",
+      "tool_input": {
+        "description": "Run echo command",
+        "prompt": "Run the shell command echo sub-hello and report the output.",
+        "subagent_type": "Explore"
+      },
+      "tool_use_id": "toolu_cc_eef63283f50d4d6797bba8e3680dc86e",
+      "tool_response": "sub-hello"
+    }
+  ]
+}

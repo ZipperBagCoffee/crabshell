@@ -33,6 +33,9 @@ for (const tool of ['Read', 'Grep', 'Glob']) {
   const count = perTool(tool);
   report.check(`W2 one ${tool} call starts at most 1 synchronous hook process`, count <= 1, `count=${count}`);
 }
+// W6 (D186): the batch hook runs once per batch of tool calls, so it adds one process at most.
+const batchCount = (claude.PostToolBatch || []).reduce((sum, entry) => sum + (entry.hooks || []).filter(hook => hook.type === 'command' && hook.async !== true).length, 0);
+report.check('W6 one batch of tool calls starts at most 1 synchronous hook process', batchCount <= 1, `count=${batchCount}`);
 const stopCount = (claude.Stop || []).reduce((sum, entry) => sum + (entry.hooks || []).length, 0);
 report.check('W3 Stop runs one hook process', stopCount === 1, `count=${stopCount}`);
 

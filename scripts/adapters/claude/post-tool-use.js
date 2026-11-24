@@ -53,6 +53,12 @@ const POST_CHECKS = [
     },
   },
   {
+    // D186: a skill opened in this prompt, read by the skill check after the batch.
+    name: 'skill-check-record',
+    tools: ['Skill'],
+    run: (payload, projectDir) => { require('../../skill-check').recordToolSkill(payload, projectDir); return null; },
+  },
+  {
     // Reading another project's .crabshell is allowed; the model is told after the read.
     // A read = a call with a path that is neither a shell call nor a write (a shell
     // read was already advised before it ran).

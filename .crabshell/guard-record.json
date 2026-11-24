@@ -1389,6 +1389,10 @@
         {
           "case": "An answer fitted only to the case in front of it (ad hoc, not thought through to the cause and the rule for every such case) is reworked toward that rule after the question asks \"ad hoc, not thought through?\".",
           "source": "D184: not measured yet (needs sessions after Update now)"
+        },
+        {
+          "case": "An answer given without opening a skill that covers the task (no tool call, so the batch check never ran) is reworked after the question asks \"skipped a skill that covers it?\".",
+          "source": "D186: not measured yet (needs sessions after Update now)"
         }
       ],
       "misses": [],
@@ -1437,6 +1441,11 @@
           "version": "v21.183.1",
           "change": "changed",
           "ref": "D184"
+        },
+        {
+          "version": "v21.184.0",
+          "change": "changed",
+          "ref": "D186"
         }
       ]
     },
@@ -1972,6 +1981,99 @@
           "version": "v21.172.0",
           "change": "deleted",
           "ref": "aeb4940"
+        }
+      ]
+    },
+    {
+      "guard": "skill-check",
+      "kind": "guard",
+      "why": [
+        {
+          "version": "v21.184.0",
+          "ref": "D186",
+          "text": "Work started without opening the installed skill that covers it; the per-turn checklist line \"Skills: before any task …\" is read before the task is understood and did not stop this (user: 「스킬 좀 적극 활용하라고」, 「매번 말해야해 무슨스킬써야하는지?」)."
+        }
+      ],
+      "predicts": [
+        {
+          "case": "The first batch of tool calls in a prompt with no skill opened gets one reminder; later batches of that prompt get none; the next prompt gets it again.",
+          "source": "_test-skill-check.js: \"S1 first batch of a prompt with no skill opened gets the reminder\""
+        },
+        {
+          "case": "A skill opened in the prompt (Skill call at PostToolUse, typed /skill, or a Skill call inside the batch) means no reminder.",
+          "source": "_test-skill-check.js: \"S2 a Skill call inside the batch itself (Code Mode script) counts\""
+        },
+        {
+          "case": "A subagent batch gets no reminder and does not use up the main agent's check.",
+          "source": "_test-skill-check.js: \"S3 the main batch of the same prompt still gets the reminder (subagent batch and skill ignored)\""
+        },
+        {
+          "case": "After the reminder the model opens the skill that covers the task, or says none applies, before doing the work.",
+          "source": "D186: not measured yet (needs sessions after Update now)"
+        }
+      ],
+      "misses": [
+        {
+          "date": "2026-11-23",
+          "text": "A housekeeping skill opened in the first batch (for example memory-delta after a hook notice) counts as opened, so that prompt gets no reminder; the Stop question's item 5 still asks.",
+          "source": "D186 Plan, Risks"
+        }
+      ],
+      "history": [
+        {
+          "version": "v21.184.0",
+          "change": "added",
+          "ref": "D186"
+        }
+      ]
+    },
+    {
+      "guard": "skill-check-record",
+      "kind": "recorder",
+      "why": [
+        {
+          "version": "v21.184.0",
+          "ref": "D186",
+          "text": "Records each Skill call of the main agent per prompt (PostToolUse, Code Mode inner calls included) so skill-check sees skills opened in earlier batches."
+        }
+      ],
+      "predicts": [
+        {
+          "case": "A Skill call recorded at PostToolUse means the batch after it gets no reminder.",
+          "source": "_test-skill-check.js: \"S4 post-tool-use process records the Skill call; the batch then prints nothing\""
+        }
+      ],
+      "misses": [],
+      "history": [
+        {
+          "version": "v21.184.0",
+          "change": "added",
+          "ref": "D186"
+        }
+      ]
+    },
+    {
+      "guard": "skill-check-expansion",
+      "kind": "recorder",
+      "why": [
+        {
+          "version": "v21.184.0",
+          "ref": "D186",
+          "text": "Records a /command the user typed (UserPromptExpansion, which a typed skill takes instead of the Skill tool) so skill-check counts it as opened."
+        }
+      ],
+      "predicts": [
+        {
+          "case": "A typed /skill in the prompt means the first batch gets no reminder.",
+          "source": "_test-skill-check.js: \"S4 prompt-expansion process records the typed skill; the batch then prints nothing\""
+        }
+      ],
+      "misses": [],
+      "history": [
+        {
+          "version": "v21.184.0",
+          "change": "added",
+          "ref": "D186"
         }
       ]
     }

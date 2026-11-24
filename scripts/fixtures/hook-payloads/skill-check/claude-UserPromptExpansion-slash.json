@@ -1,0 +1,13 @@
+{
+  "session_id": "00000000-1111-4222-8333-444444444444",
+  "transcript_path": "C:\\Users\\user\\.claude\\projects\\C--Users-user-project\\00000000-1111-4222-8333-444444444444.jsonl",
+  "cwd": "C:\\Users\\user\\project",
+  "prompt_id": "6ee9cb2f-0704-4dc0-a4e6-1280cd8bc2a9",
+  "permission_mode": "default",
+  "hook_event_name": "UserPromptExpansion",
+  "expansion_type": "slash_command",
+  "command_name": "caveman:caveman-help",
+  "command_args": "",
+  "command_source": "plugin",
+  "prompt": "/caveman:caveman-help"
+}

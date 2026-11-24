@@ -1,5 +1,17 @@
 # Changelog
 
+## [21.184.0] - 2026-11-23
+
+### feat: the model is asked whether it opened the skill that covers the task (D186)
+
+- After the first batch of tool calls in a user prompt, when no skill was opened in that prompt, the main agent is told once: "[CRABSHELL] No skill opened for this prompt yet. If an installed skill covers this task, open it before the work; if none does, go on." The working model decides whether a skill covers the task; the hook only knows whether one was opened. The per-turn checklist line "Skills: before any task …" is read before the task is understood and did not stop work that skipped its skill.
+- New Claude hooks: `PostToolBatch` (`scripts/adapters/claude/post-tool-batch.js`, once per batch, before the next model call) and `UserPromptExpansion` (`scripts/adapters/claude/prompt-expansion.js`, a /command the user typed). The PostToolUse process records each Skill call of the main agent (`skill-check-record`). State: `.crabshell/memory/session-state/<sid8>/skill-check.json`. Logic: `scripts/skill-check.js`.
+- A skill counts as opened through a Skill call (calls inside a Code Mode script included), a typed /skill, or a Skill call in the batch. Subagents are skipped and do not use up the main agent's check. Claude only.
+- Why after the batch, not before the first call: measured in Code Mode, a script's inner calls reach PreToolUse one by one, so a Skill call later in the same script is not seen yet; PreToolUse context reaches the model with the tool result anyway, so asking earlier gains nothing. `PostToolBatch` lists every call of the batch (measured: the script's Bash and Skill calls).
+- The best-answer question adds a fifth check: "Is your answer 1) not your best? 2) agree without checking? 3) cutting corners? 4) ad hoc, not thought through? 5) skipped a skill that covers it? If all are no, summarize the answer concisely; otherwise fix it, then summarize." This also covers answers that use no tool, where no batch runs.
+- Each batch of tool calls starts one more hook process (measured: 115 ms for a 5 MB batch, Node start included). `_test-hook-wiring-cost.js` W6 keeps it to one process per batch.
+- Tests: `_test-skill-check.js` (new) uses payloads captured from Claude Code 2.1.331 (`scripts/fixtures/hook-payloads/skill-check/`, path and session values made generic) and runs the adapters as real processes.
+
 ## [21.183.2] - 2026-11-23
 
 ### fix: check results recorded at the same moment are no longer dropped while the lock changes hands (D185)

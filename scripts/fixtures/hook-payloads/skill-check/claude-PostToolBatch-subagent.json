@@ -1,0 +1,23 @@
+{
+  "session_id": "00000000-1111-4222-8333-444444444444",
+  "transcript_path": "C:\\Users\\user\\.claude\\projects\\C--Users-user-project\\00000000-1111-4222-8333-444444444444.jsonl",
+  "cwd": "C:\\Users\\user\\project",
+  "prompt_id": "4163f7df-6551-4520-a9ac-0f012876f35a",
+  "permission_mode": "default",
+  "agent_id": "a50df9bd2fe69765c",
+  "agent_type": "Explore",
+  "effort": {
+    "level": "xhigh"
+  },
+  "hook_event_name": "PostToolBatch",
+  "tool_calls": [
+    {
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "echo sub-hello"
+      },
+      "tool_use_id": "toolu_cc_4fe2ded5a0434c3fbdd073238a202299",
+      "tool_response": "sub-hello"
+    }
+  ]
+}

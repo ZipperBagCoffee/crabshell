@@ -12,6 +12,13 @@
       "args": []
     },
     {
+      "id": "userpromptexpansion:prompt-expansion",
+      "event": "UserPromptExpansion",
+      "matcher": "",
+      "script": "scripts/adapters/claude/prompt-expansion.js",
+      "args": []
+    },
+    {
       "id": "sessionstart:load-memory",
       "event": "SessionStart",
       "matcher": null,
@@ -30,6 +37,13 @@
       "event": "PostToolUseFailure",
       "matcher": "^(?!(?:Read|Grep|Glob)$).*",
       "script": "scripts/adapters/claude/post-tool-use.js",
+      "args": []
+    },
+    {
+      "id": "posttoolbatch:post-tool-batch",
+      "event": "PostToolBatch",
+      "matcher": null,
+      "script": "scripts/adapters/claude/post-tool-batch.js",
       "args": []
     },
     {

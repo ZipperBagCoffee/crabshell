@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.183.2)
+# Crabshell Plugin Structure (v21.184.0)
 
-**Version**: 21.183.2 | **Author**: ZipperBagCoffee | **License**: MIT
+**Version**: 21.184.0 | **Author**: ZipperBagCoffee | **License**: MIT
 
 ## Overview
 
@@ -158,7 +158,7 @@ crabshell/
 │   ├── core/recovery-context.js             # Bounded historical request/check/pause context
 │   ├── core/support-state.js                # Seven-state live doctor model
 │   ├── adapters/codex/                      # Native synchronous lifecycle and Interrupt adapters
-│   ├── adapters/claude/                     # One process per Claude event: pre-tool-use.js, post-tool-use.js, dispatch.js (v21.125.0)
+│   ├── adapters/claude/                     # One process per Claude event: pre-tool-use.js, post-tool-use.js, dispatch.js (v21.125.0); post-tool-batch.js, prompt-expansion.js (v21.184.0)
 │   ├── completion-controller.js             # Single Claude Stop/SubagentStop owner retaining existing guards
 │   ├── codex-doctor.js                      # Cross-runtime source/cache/hook/trust/behavior/drift diagnostics
 │   ├── codex-memory.js                      # Manual Codex memory load/save/search/status
@@ -171,8 +171,10 @@ crabshell/
 │   ├── log-guard.js                         # PreToolUse ticket status check — done/verified need filled result sections (v21.131.0; Intent Fidelity v21.135.0)
 │   ├── verification-sequence.js             # PostToolUse state tracker + PreToolUse commit/edit gate (v21.0.0)
 │   ├── skill-tracker.js                     # Per-session skill flag setter, run inline by the PostToolUse dispatcher (v19.33.0, v21.124.0, v21.125.0)
+│   ├── skill-check.js                       # After the first batch of a prompt with no skill opened: one reminder (PostToolBatch, v21.184.0)
 │   ├── _test-path-guard.js                  # Path-guard unit tests + shell var resolution tests (v20.0.0, v21.8.0)
 │   ├── _test-best-answer.js                 # Question once per prompt, deferral, other checks after it, settings, -p skip (v21.178.0)
+│   ├── _test-skill-check.js                 # Reminder once per prompt, opened-skill records, subagents skipped, real payloads (v21.184.0)
 │   ├── _test-guard-fires.js                 # Fire record from real hook processes, fail-open, rotation, keys, model (v21.179.0)
 │   ├── _test-guard-record.js                # Transcript backfill, summary lines, wired-guard check (v21.179.0)
 │   ├── _test-web-guard.js                   # Web-guard subprocess + unit tests — block/warn/off, MCP detection, plugin servers (v21.174.0), fail-open (v21.114.0)
@@ -495,9 +497,14 @@ L1 generation:
    ├─> verification record — track source edits and test runs (v21.0.0)
    ├─> completion-controller (Bash|Write|Edit) — declared result evidence and content-change invalidation
    ├─> skill-tracker (Skill) — set this session's skill flag inline (cleared on compaction and SessionEnd)
+   ├─> skill-check record (Skill) — the skill opened in this prompt, for the batch check (v21.184.0)
    ├─> doc-watchdog record (Write|Edit) — track in-project code edits and D/P/T doc edits
    └─> path notice (Read|Grep|Glob) — reading another project's .crabshell
    PostToolUseFailure runs only verification record + completion-controller.
+
+4.5. PostToolBatch — one process: adapters/claude/post-tool-batch.js (v21.184.0)
+   └─> skill-check — the prompt's first batch, main agent, no skill opened in the prompt → one reminder (additionalContext)
+   UserPromptExpansion → adapters/claude/prompt-expansion.js records a typed /command for the same check
 
 5-6. Compaction — no Claude PreCompact/PostCompact hooks since v21.125.0 (their output reaches no model)
    └─> SessionStart source "compact" → load-memory.js → core/post-compact-effects.js (compaction log)
@@ -518,6 +525,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.184.0 | `scripts/skill-check.js`, `scripts/adapters/claude/post-tool-batch.js`, `scripts/adapters/claude/prompt-expansion.js` (new); `scripts/adapters/claude/post-tool-use.js`, `hooks/hooks.json`, `scripts/best-answer.js` QUESTION item 5, `scripts/guard-record.js`; tests `_test-skill-check.js` (new, fixtures `scripts/fixtures/hook-payloads/skill-check/`), `_test-hook-wiring-cost.js` W6 |
 | 21.183.2 | `scripts/core/file-lock.js`, `scripts/core/state-lock.js`; tests `_test-multisession-memory.js` (M17–M22), `_test-native-result-evidence.js` |
 | 21.183.1 | `scripts/best-answer.js` QUESTION item 4, `scripts/shared-context.js` checklist ad hoc definition; test `_test-rule-wording.js` W7 |
 | 21.183.0 | `scripts/best-answer.js` QUESTION: fourth check "ad hoc?" |

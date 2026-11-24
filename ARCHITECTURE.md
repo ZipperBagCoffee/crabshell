@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.183.2)
+# Crabshell Architecture (v21.184.0)
 
 ## Overview
 
@@ -52,11 +52,11 @@ Two meta-principles guide Claude's approach to obstacles:
 |  +---------------+  +-------------------+  | verification gate·watchdog·  ||
 |  | Stop/SubStop  |  | PostToolUse(.*) + |  |                              ||
 |  | completion-   |  | PostToolUseFailure|  +------------------------------+|
-|  | controller    |  | adapters/claude/  |  +------------+                  |
-|  | (doc-watchdog |  | post-tool-use     |  | SessionEnd |                  |
-|  |  in-process)  |  | counter·record·   |  | counter    |                  |
-|  |               |  | skill·watchdog    |  |  final     |                  |
-|  +-------+-------+  +--------+----------+  +-----+------+                  |
+|  | controller    |  | adapters/claude/  |  +------------+  +--------------+|
+|  | (doc-watchdog |  | post-tool-use     |  | SessionEnd |  | PostToolBatch||
+|  |  in-process)  |  | counter·record·   |  | counter    |  | skill-check  ||
+|  |               |  | skill·watchdog    |  |  final     |  |              ||
+|  +-------+-------+  +--------+----------+  +-----+------+  +--------+-----+|
 +----------+-+------------------------+----------------+--------------+-----+
              |                        |                |              |
              v                        v                v              v
@@ -281,7 +281,7 @@ Claude `PostToolUseFailure` is wired to both verification-state and parent-evide
        ├─> Bound identical actual failures, then require a concrete report instead of looping
        ├─> Preserve active D/P/T/W workflow continuation
        └─> Claude Stop checks in the same process: doc-watchdog stopReason (sycophancy-guard restored v21.166.0, removed v21.180.0; scope retired v21.113.0)
-       └─> then best-answer stopStep: the best-answer question once per prompt when nothing blocked (v21.178.0; yes/no checks, then a concise summary, since v21.181.0; "ad hoc, not thought through?" since v21.183.1, defined in the checklist)
+       └─> then best-answer stopStep: the best-answer question once per prompt when nothing blocked (v21.178.0; yes/no checks, then a concise summary, since v21.181.0; "ad hoc, not thought through?" since v21.183.1, defined in the checklist; "skipped a skill that covers it?" since v21.184.0)
        └─> after the output: core/guard-fires records what was sent — each blocking check by name, the question as a best-answer notice (v21.179.0)
 
    Guard fire record (v21.179.0): core/dispatch.js runChecks keeps collected.fired ({guard: check.name, channel, text}) and writes nothing;
@@ -301,11 +301,17 @@ Claude `PostToolUseFailure` is wired to both verification-state and parent-evide
    ├─> completion-controller (Bash|Write|Edit) — declared evidence and content invalidation
    ├─> doc-watchdog record (Write|Edit) — in-project code edits (increment) and D/P/T doc edits (reset) in this session's session-state record (v21.154.0)
    ├─> skill-tracker (Skill) — set this session's skill flag before the next tool call (was an async hook)
+   ├─> skill-check record (Skill) — the skill opened in this prompt, read by the batch check (v21.184.0)
    └─> path notice (Read|Grep|Glob) — reading another project's .crabshell: additionalContext says it is not this project's
 
 4.5. PostToolUseFailure (Claude Bash) — same process script
    └─> verification record + completion-controller
        └─> Record failure/interruption; commit and Stop remain the decision points
+
+4.6. PostToolBatch (Claude) — one process: adapters/claude/post-tool-batch.js (v21.184.0)
+   └─> skill-check — the prompt's first batch, main agent only: no skill opened in the prompt (Skill call recorded at PostToolUse,
+       a typed /skill recorded at UserPromptExpansion by adapters/claude/prompt-expansion.js, or a Skill call in the batch)
+       → additionalContext reminder once; state in session-state/<sid8>/skill-check.json
 
 5. SessionEnd
    └─> counter.js final
@@ -416,6 +422,7 @@ Regressing retains document-cycle continuation but has no parallel-worker count 
 | `best-answer.js` | Stop (in completion-controller) | v21.178.0 (D177): answers sent without the review the user kept asking for by hand ("그게 최선임?"). Once per prompt, interactive Claude only; deferred while another Stop check blocks; the other checks run once more after it. |
 | `sycophancy-guard.js` | — | Removed v21.180.0 (D179): its keyword blocks were mostly false alarms; the best-answer question asks "agree without checking?" instead. |
 | (deleted v21.130.0) | — | `pressure-guard.js`, `scope-guard.js` (unwired v21.113.0, I083 R4/R5) and `regressing-loop-guard.js` (unwired v21.107.0) were removed with their tests; git history keeps them. Regressing continuation is goal-driven (v21.110.0) with `completion-controller.js` bounded continuation. |
+| `skill-check.js` | PostToolBatch via `adapters/claude/post-tool-batch.js`; records from PostToolUse (Skill) and UserPromptExpansion (v21.184.0) | After the first batch of a prompt with no skill opened, one reminder to the main agent to open the skill that covers the task |
 | `skill-tracker.js` | PostToolUse (Skill) via `post-tool-use.js` (inline since v21.125.0) | Set the calling session's skill flag on Skill tool calls (no timer; cleared on compaction and SessionEnd; payloads without a session id use the legacy 15-minute project flag) |
 | `regressing-state.js` | (library) | Phase tracker: getState, buildReminder, detectSkillCall, advancePhase |
 | `extract-delta.js` | (library) | L1 delta extraction, timestamp watermarks, temp file management |
@@ -570,6 +577,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.184.0 | `skill-check.js` (new): `batchReminder`, `recordToolSkill`, `noteExpansion`; adapters `adapters/claude/post-tool-batch.js`, `adapters/claude/prompt-expansion.js` (new); `post-tool-use.js` `skill-check-record`; `hooks.json` PostToolBatch, UserPromptExpansion; `best-answer.js` QUESTION item 5; `guard-record.js` reads the new adapters' checks; tests `_test-skill-check.js`, `_test-hook-wiring-cost.js` W6 |
 | 21.183.2 | `core/file-lock.js` `_acquireFileLock`: refusals other than EEXIST retried (lock file being deleted = changing hands, none there = ends after 250 ms), `perHolder`/`maxWaitMs`, one read per look, a takeover gets its write; `core/state-lock.js` `createStateLock` (3 s per holder, 7 s per process); tests `_test-multisession-memory.js` M17–M22, `_test-native-result-evidence.js` hang guard 60 s |
 | 21.183.1 | `best-answer.js` QUESTION item 4 "ad hoc, not thought through?"; `shared-context.js` checklist defines ad hoc; `_test-rule-wording.js` W7 budget 2,825 |
 | 21.183.0 | `best-answer.js` QUESTION: fourth check "ad hoc?" |
