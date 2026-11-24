@@ -1387,7 +1387,7 @@
           "source": "_test-best-answer.js: \"a claude -p / Agent SDK run (entrypoint sdk-*) gets no question; skipEntrypoints [] asks there too\""
         },
         {
-          "case": "An answer fitted only to the case that was pointed out (ad hoc) is reworked toward the general rule after the question asks \"ad hoc?\".",
+          "case": "An answer fitted only to the case in front of it (ad hoc, not thought through to the cause and the rule for every such case) is reworked toward that rule after the question asks \"ad hoc, not thought through?\".",
           "source": "D184: not measured yet (needs sessions after Update now)"
         }
       ],
@@ -1430,6 +1430,11 @@
         },
         {
           "version": "v21.183.0",
+          "change": "changed",
+          "ref": "D184"
+        },
+        {
+          "version": "v21.183.1",
           "change": "changed",
           "ref": "D184"
         }

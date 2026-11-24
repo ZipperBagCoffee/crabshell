@@ -1,5 +1,12 @@
 # Changelog
 
+## [21.183.1] - 2026-11-23
+
+### fix: "ad hoc" means not thought through, and the checklist defines it (D184)
+
+- The best-answer question's fourth item is now "ad hoc, not thought through?": "Is your answer 1) not your best? 2) agree without checking? 3) cutting corners? 4) ad hoc, not thought through? If all are no, summarize the answer concisely; otherwise fix it, then summarize.". The user asked to also ask whether the answer was thought through deeply and said the two should be alike; they are one check, so the question stays four items.
+- The per-turn checklist defines it next to best and concise: "Is it thought through — to the cause and the rule for every such case, not ad hoc (fitted only to the case in front of you)?". The checklist's size budget grows by that sentence (2,700 → 2,825 characters), as for other rules the user asked for.
+
 ## [21.183.0] - 2026-11-23
 
 ### feat: the question after every answer also asks "ad hoc?" (D184)
