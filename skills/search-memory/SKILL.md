@@ -20,10 +20,11 @@ Usage: `/crabshell:search-memory [query]`
 # Include L1 raw sessions (slower but thorough)
 "{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" search-memory "query" --deep --project-dir="{PROJECT_DIR}"
 
-# Filter by type
-"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" search-memory --type=decision --project-dir="{PROJECT_DIR}"
-"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" search-memory --type=theme --project-dir="{PROJECT_DIR}"
-"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" search-memory --type=issue --project-dir="{PROJECT_DIR}"
+# Match with a regular expression
+"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" search-memory "pattern" --regex --project-dir="{PROJECT_DIR}"
+
+# Tune L1 context window and match limit per source
+"{NODE_PATH}" "{SCRIPTS_PATH}/counter.js" search-memory "query" --deep --context=2 --limit=10 --project-dir="{PROJECT_DIR}"
 ```
 
-The search covers the L1, L2 and L3 memory layers. Use `--deep` for a thorough search of L1 sessions.
+The search covers `logbook.md` and the L2/L3 memory layers. Add `--deep` to include L1 sessions, `--regex` for regular expression matching, `--context=N` for L1 surrounding entries (default 2), and `--limit=N` to cap matches per source (default 20).
