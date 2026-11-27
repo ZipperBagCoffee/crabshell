@@ -10,6 +10,8 @@ async function main() {
   // The project's runner copy follows the installed plugin (D143_T016).
   let notices = [];
   try { notices = [require('../../core/runner-sync').runnerSyncNotice(normalized.projectDir)]; } catch {}
+  // D187_T004: a session started with guards switched off says so in one line.
+  try { notices.push(require('../../core/guards-off').guardsOffNotice()); } catch {}
   const context = buildMemoryContext(normalized.projectDir, { source: normalized.source, sessionId: normalized.hookData.session_id, notices });
   process.stdout.write(JSON.stringify(createSessionStartOutput(context)) + '\n');
 }

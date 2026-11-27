@@ -49,6 +49,12 @@ function writeFile(filePath, content) {
 }
 
 function writeJson(filePath, data) {
+  // A value read from a file a newer Crabshell wrote is never written back (state-file.js).
+  const blocked = require('./core/state-file').writeBlock(data);
+  if (blocked) {
+    try { process.stderr.write(`${filePath} was written by a newer Crabshell (version ${blocked.version}); not overwritten — update the plugin\n`); } catch (_) {}
+    return;
+  }
   ensureDir(path.dirname(filePath));
   const content = JSON.stringify(data, null, 2);
   // Per-process temp name: a shared "<file>.tmp" let concurrent hook instances

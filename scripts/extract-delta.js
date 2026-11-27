@@ -5,6 +5,7 @@ const path = require('path');
 const { getProjectDir, getStorageRoot, readJsonOrDefault, writeJson } = require('./utils');
 const { readIndexSafe, estimateTokens, extractTailByTokens } = require('./core/memory-index-file');
 const { SESSIONS_DIR, MEMORY_DIR, MEMORY_FILE, INDEX_FILE, DELTA_TEMP_FILE } = require('./constants');
+const { keepLast, marker } = require('./core/cut');
 const { HAIKU_SAFE_TOKENS, FIRST_RUN_MAX_ENTRIES, DELTA_OUTPUT_TRUNCATE } = require('./core/memory-budgets');
 const { withMemoryIndex, readMemoryIndex } = require('./core/memory-lock');
 const { preparedInputExists } = require('./core/delta-transaction');
@@ -101,7 +102,8 @@ function extractDeltaUnlocked(sessionId) {
 
     // First run handling: limit to recent entries
     if (firstRun && delta.length > FIRST_RUN_MAX_ENTRIES) {
-      delta.splice(0, delta.length - FIRST_RUN_MAX_ENTRIES);
+      const kept = keepLast(delta, FIRST_RUN_MAX_ENTRIES, { label: 'earlier entries left out' });
+      delta.splice(0, delta.length, ...kept);
     }
 
     if (delta.length === 0) {
@@ -120,8 +122,10 @@ function extractDeltaUnlocked(sessionId) {
     const totalContent = fs.readFileSync(deltaPath, 'utf8');
     const tokens = estimateTokens(totalContent);
     if (tokens > HAIKU_SAFE_TOKENS) {
-      const truncated = extractTailByTokens(totalContent, HAIKU_SAFE_TOKENS);
-      fs.writeFileSync(deltaPath, truncated);
+      const kept = extractTailByTokens(totalContent, HAIKU_SAFE_TOKENS);
+      const droppedChars = totalContent.length - kept.length;
+      const note = droppedChars > 0 ? marker(droppedChars, 'chars of older delta left out') + '\n' : '';
+      fs.writeFileSync(deltaPath, note + kept);
     }
 
     // Record logbook.md mtime + pendingLastProcessedTs for L1-based timestamp

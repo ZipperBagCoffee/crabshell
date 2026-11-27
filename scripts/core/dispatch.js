@@ -11,7 +11,8 @@
 // what earlier checks returned (a check after a deny can stand down). A check returns
 // null, or any of { reason, context, systemMessage, log }. What a check sent is also kept in
 // collected.fired ({ guard, channel, text }) so the adapter can record it after its output
-// (D178, core/guard-fires); nothing here writes a file.
+// (D178, core/guard-fires); nothing here writes a file. A check named in CRABSHELL_GUARDS_OFF
+// is skipped (D187_T004, core/guards-off).
 // The host reads stdout as one JSON object; any other line in front of it turns the
 // whole output into plain text and drops the decision and context. While checks run,
 // whatever a module prints to stdout goes to stderr instead.
@@ -31,13 +32,18 @@ function appliesTo(check, hookData) {
   return true;
 }
 
+const { guardsOff } = require('./guards-off');
+
 const FIRED_CHANNELS = ['reason', 'context', 'systemMessage'];
 
-async function runChecks(checks, hookData, projectDir) {
+// options.env: where the switch is read (the process's environment unless given).
+async function runChecks(checks, hookData, projectDir, options = {}) {
   const collected = { reasons: [], contexts: [], systemMessages: [], logs: [], fired: [] };
+  const off = guardsOff(options.env || process.env);
   await withStdoutToStderr(async () => {
     for (const check of checks) {
       try {
+        if (off.includes(check.name)) continue;
         if (!appliesTo(check, hookData)) continue;
         if (check.when && !check.when(collected)) continue;
         const result = await check.run(hookData, projectDir);

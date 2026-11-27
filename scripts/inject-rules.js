@@ -14,6 +14,8 @@ const { getRegressingState } = require('./regressing-state');
 const { buildRegressingReminder } = require('./core/regressing-reminder');
 const { TICKET_DIR, REGRESSING_STATE_FILE, MEMORY_DIR, MEMORY_FILE, INDEX_FILE } = require('./constants');
 const { recentLogbookHeadings } = require('./core/memory-context');
+const { keepHead, marker } = require('./core/cut');
+const { SNIPPET_MAX_SECTIONS, SNIPPET_CAP_CHARS } = require('./core/memory-budgets');
 const { readStdin } = require('./transcript-utils');
 const { COMPRESSED_CHECKLIST: COMPRESSED_CHECKLIST_SHARED } = require('./shared-context');
 const {
@@ -189,33 +191,43 @@ function getRelevantMemorySnippets(projectDir, userPrompt) {
   });
 
   // Filter sections with score > 0 and sort descending
-  const matched = scored
+  const allMatched = scored
     .filter(s => s.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 3);
+    .sort((a, b) => b.score - a.score);
+  const matched = allMatched.slice(0, SNIPPET_MAX_SECTIONS);
 
   if (matched.length === 0) return null;
 
-  // Build result with 2000 char cap
-  let result = '\n## Relevant Memory Snippets\n';
-  let charCount = result.length;
-  const CAP = 2000;
-
-  for (const section of matched) {
-    const snippet = `### ${section.heading}\n${section.body}\n\n`;
-    if (charCount + snippet.length > CAP) {
-      // Truncate to fit within cap
-      const remaining = CAP - charCount;
-      if (remaining > 50) {
-        result += snippet.slice(0, remaining - 4) + '...\n';
+  // Build the result within the cap. A snippet cut to fit carries its own marker;
+  // matching sections never reached are counted in one closing "more snippets" line.
+  const heading = '\n## Relevant Memory Snippets\n';
+  const MIN_SNIPPET_ROOM = 50;
+  const moreLine = count => marker(count, 'more snippets') + '\n';
+  const build = cap => {
+    let out = heading;
+    let started = 0;
+    for (const section of matched) {
+      const snippet = `### ${section.heading}\n${section.body}\n\n`;
+      if (out.length + snippet.length > cap) {
+        const room = cap - out.length;
+        if (room > MIN_SNIPPET_ROOM) {
+          out += keepHead(snippet.trimEnd(), room - 1) + '\n';
+          started++;
+        }
+        break;
       }
-      break;
+      out += snippet;
+      started++;
     }
-    result += snippet;
-    charCount += snippet.length;
+    return { out, left: allMatched.length - started };
+  };
+  let built = build(SNIPPET_CAP_CHARS);
+  if (built.left > 0) {
+    // The closing line is paid for from the cap: leave room for it before cutting.
+    built = build(SNIPPET_CAP_CHARS - moreLine(allMatched.length).length);
+    if (built.left > 0) built.out += moreLine(built.left);
   }
-
-  return result;
+  return built.out;
 }
 
 /**

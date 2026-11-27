@@ -5,8 +5,9 @@ const crypto = require('crypto');
 const fs = require('fs');
 const { wideSelectionLine } = require('./wide-selection');
 const { brokenReportsLine } = require('./broken-reports');
+const { standingApprovalLines } = require('./dropped-checks');
 
-function printResults(results, { args, started, resultsPath, plan = null, selected = results.length, failBefore = [], stillFailing = [], notices = [], runLine = null, brokenReports = null }) {
+function printResults(results, { args, started, resultsPath, plan = null, selected = results.length, failBefore = [], stillFailing = [], notices = [], runLine = null, brokenReports = null, approvedDrops = [], approvals = null }) {
   const fullPath = resultsPath;
   const json = JSON.stringify(results, null, 2);
   const save = process.env.CRABSHELL_VERIFY_JSON !== '1' && !args.guardRun && results.length > 0;
@@ -66,11 +67,14 @@ function printResults(results, { args, started, resultsPath, plan = null, select
   if (brokenReports) console.log(brokenReportsLine(brokenReports));
   if (stillFailing.length) console.log(`Still failing on the inputs they failed with last time: ${stillFailing.join(', ')}`);
   for (const notice of notices) console.log(notice);
+  for (const approval of approvedDrops) console.log(`Approved drops: ${approval.id} (${approval.items.join('; ')}) — ${approval.reason}`);
+  for (const line of standingApprovalLines(approvals, approvedDrops)) console.log(line);
+  for (const item of plan && plan.quarantineExpired || []) console.log(`${item.id}: ${item.reason}`);
   // D151_T006: heavy checks a changed risk path brought in; quarantined flaky checks.
   if (plan && plan.riskIncluded) console.log(`Heavy checks run because ${plan.riskIncluded.file} changed (riskPaths): ${plan.riskIncluded.ids.join(', ')}`);
   if (plan && Array.isArray(plan.quarantined) && plan.quarantined.length > 0) {
     const names = plan.quarantined.map(item => `${item.id} (${item.test})`);
-    console.log(`Left out as flaky (failed, then passed on the same inputs): ${names.join(', ')} — each runs again once its test file changes; by name, --slow and a full run still run it.`);
+    console.log(`Left out as flaky (failed, then passed on the same inputs): ${names.join(', ')} — each runs again once its test file changes or quarantineDays expires; by name, --slow and a full run still run it.`);
   }
   if (plan && Array.isArray(plan.slowSkipped) && plan.slowSkipped.length > 0) {
     const states = plan.slowStates || {};

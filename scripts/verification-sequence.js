@@ -8,8 +8,9 @@ const fs = require('fs');
 if (process.env.CRABSHELL_BACKGROUND === '1') { process.exit(0); }
 
 const { readStdin } = require('./transcript-utils');
-const { getProjectDir, readJsonOrDefault, writeJson } = require('./utils');
+const { getProjectDir, writeJson } = require('./utils');
 const { STORAGE_ROOT } = require('./constants');
+const { readState } = require('./core/state-file');
 const { commandObservation, checkKeyForCommand } = require('./core/command-observation');
 const { startCheck, recordCheck, currentCheck } = require('./core/check-history');
 const { withStateLock } = require('./core/state-lock');
@@ -36,7 +37,7 @@ function getStatePath(projectDir) {
 
 function loadState(projectDir) {
   const statePath = getStatePath(projectDir);
-  return readJsonOrDefault(statePath, { ...DEFAULT_STATE });
+  return readState(statePath, { defaults: { ...DEFAULT_STATE } }).value;
 }
 
 function saveState(projectDir, state) {

@@ -11,6 +11,7 @@ const {
   writeJson,
 } = require('../utils');
 const { tryWithMemoryIndex } = require('./memory-lock');
+const { readIndexWithStatus } = require('./memory-index-file');
 const { clearLegacySkillFlag } = require('./skill-flag');
 const {
   DELTA_TEMP_FILE,
@@ -101,7 +102,12 @@ function runExecutionLifecycle(projectDir, hookData = {}, options = {}) {
   try {
     const outcome = tryWithMemoryIndex(memoryDir, () => {
       const indexPath = path.join(memoryDir, INDEX_FILE);
-      const index = readJsonOrDefault(indexPath, {});
+      const { value: index, status: indexStatus } = readIndexWithStatus(indexPath);
+      // An index that could not be read says nothing about the queue: keep delta_temp.txt.
+      if (indexStatus === 'corrupt' || indexStatus === 'newer') {
+        result.diagnostics.push(`memory index is ${indexStatus}, keeping the delta queue`);
+        return;
+      }
       // Under the index lock: extraction sets deltaReady in the same lock hold as
       // its append, so a queue without the flag here is a real leftover.
       try {

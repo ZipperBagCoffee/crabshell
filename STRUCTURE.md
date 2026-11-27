@@ -1,6 +1,6 @@
-# Crabshell Plugin Structure (v21.184.0)
+# Crabshell Plugin Structure (v21.185.0)
 
-**Version**: 21.184.0 | **Author**: ZipperBagCoffee | **License**: MIT
+**Version**: 21.185.0 | **Author**: ZipperBagCoffee | **License**: MIT
 
 ## Overview
 
@@ -105,6 +105,8 @@ crabshell/
 │   ├── web-guard.js                         # PreToolUse WebFetch/WebSearch guard — raw-fetch redirect, conditional WebSearch block, block/warn/off modes (v21.114.0, I084); WebSearch as last resort after every search MCP in the turn (v21.166.0)
 │   ├── best-answer.js                       # Stop: best-answer question once per prompt, interactive Claude only (v21.178.0)
 │   ├── guard-record.js                      # Development tool: guard record backfill, summary, check (v21.179.0)
+│   ├── guard-experiment.js                  # Development tool: one guard on and off over scenario folders, judged from files, control scenario (v21.185.0)
+│   ├── fixtures/guard-experiments/          # Two seed scenarios: a self-verified fix and a control (tool proof only, v21.185.0)
 │   ├── core/path-policy.js                  # Host-neutral memory path policy (v21.104.0)
 │   ├── core/shell-writes.js                 # Static Bash analysis: .crabshell paths named and whether written (v21.125.0)
 │   ├── core/post-compact-effects.js         # Compaction log and regressing-state note; Claude SessionStart(compact), Codex PostCompact (v21.125.0)
@@ -148,6 +150,10 @@ crabshell/
 │   ├── core/host-tool-result.js             # Bind native Codex completion records to the hook invocation
 │   ├── core/check-history.js                # Per-check ordering, duplicate and late-result handling
 │   ├── core/state-lock.js                   # Serialize verification/completion state writers (3 s per holder, 7 s per process, v21.183.2)
+│   ├── core/cut.js                          # Cutting text or lists with a marker that says how much was cut (v21.185.0)
+│   ├── core/state-file.js                   # State JSON reads: corrupt original copied aside, newer-version file marked not to be overwritten (v21.185.0)
+│   ├── core/guards-off.js                   # CRABSHELL_GUARDS_OFF: guards switched off for a session (v21.185.0)
+│   ├── core/experiment-*.js                 # guard-experiment parts: scenarios, session, evidence, run, self-test (v21.185.0)
 │   ├── core/hook-capture.js                 # Optional raw inputs and separate capture metadata
 │   ├── core/delta-transaction.js            # Fixed input, retry-aware finalization and owned-file cleanup
 │   ├── core/memory-lock.js                  # Shared index/rotation locks; tryWithMemoryIndex/tryWithMemoryRotation skip when busy (v21.127.0)
@@ -175,6 +181,14 @@ crabshell/
 │   ├── _test-path-guard.js                  # Path-guard unit tests + shell var resolution tests (v20.0.0, v21.8.0)
 │   ├── _test-best-answer.js                 # Question once per prompt, deferral, other checks after it, settings, -p skip (v21.178.0)
 │   ├── _test-skill-check.js                 # Reminder once per prompt, opened-skill records, subagents skipped, real payloads (v21.184.0)
+│   ├── _test-runner-dropped-checks.js       # Removed and weakened checks, exact-item approvals, quarantine expiry (v21.185.0)
+│   ├── _test-runner-committed.js            # Runner steps in a committed fixture: fail-before, manifest edits (split from _test-runner-reuse.js, v21.185.0)
+│   ├── _test-runner-coverage.js             # Runner coveredBy steps (split from _test-runner-reuse.js, v21.185.0)
+│   ├── testlib/runner-project.js            # Temporary project with the runner installed, shared by runner tests (v21.185.0)
+│   ├── _test-cut-markers.js                 # Markers at the limit, at limit+1, and at each cutting place of the memory path (v21.185.0)
+│   ├── _test-state-files.js                 # Corrupt copy, newer file not overwritten, delta queue kept, completion-control cuts (v21.185.0)
+│   ├── _test-guard-experiment.js            # Guard switch per name, self-test that fails on a broken harness (v21.185.0)
+│   ├── _test-doc-commands.js                # Options of documented node commands against the script's parser or source (v21.185.0)
 │   ├── _test-guard-fires.js                 # Fire record from real hook processes, fail-open, rotation, keys, model (v21.179.0)
 │   ├── _test-guard-record.js                # Transcript backfill, summary lines, wired-guard check (v21.179.0)
 │   ├── _test-web-guard.js                   # Web-guard subprocess + unit tests — block/warn/off, MCP detection, plugin servers (v21.174.0), fail-open (v21.114.0)
@@ -267,7 +281,7 @@ crabshell/
 │   ├── (light-workflow retired v21.112.0 — one-pass work records via hotfix)
 │   ├── verifying/SKILL.md            # /crabshell:verifying (schema-v2 behavioral verification; Step 2a wiring inventory v21.121.0)
 │   │   ├── scripts/run-verify.js      # Launcher of the portable verification runner (v21.106.0; split into runner/ v21.153.0)
-│   │   ├── scripts/runner/            # Runner modules: manifest, fingerprint, snapshot, ignored, select, schedule, execute, contract, trace, store, output, install, project-state (v21.153.0); settings (manifest run settings), test-hygiene (copy detector), routine (risk paths, flaky quarantine), recheck (forbidden-file re-check), replay (--replay) (v21.158.0); used-report (reports of what a check used, `itemIdentity`, `{cases}`) (v21.159.0); wide-selection (what pulled in most checks) (v21.174.0); broken-reports (checks whose report the runner could not use) (v21.182.0); run-record (live runs in `.runs/`), command-match (shell commands as words), resources (lock files, processes, worktrees), overlap (who holds what, what spoils a measurement, the runner's waits) (v21.177.0)
+│   │   ├── scripts/runner/            # Runner modules: manifest, fingerprint, snapshot, ignored, select, schedule, execute, contract, trace, store, output, install, project-state (v21.153.0); settings (manifest run settings), test-hygiene (copy detector), routine (risk paths, flaky quarantine), recheck (forbidden-file re-check), replay (--replay) (v21.158.0); used-report (reports of what a check used, `itemIdentity`, `{cases}`) (v21.159.0); wide-selection (what pulled in most checks) (v21.174.0); broken-reports (checks whose report the runner could not use) (v21.182.0); run-record (live runs in `.runs/`), command-match (shell commands as words), resources (lock files, processes, worktrees), overlap (who holds what, what spoils a measurement, the runner's waits) (v21.177.0); checked-names (names a check prints, `checkedPattern`), dropped-checks (removed and weakened checks, `dropped-checks.json`) (v21.185.0)
 │   │   ├── scripts/released-launchers.json # Every launcher Crabshell released (LF sha256), built by scripts/build-released-launchers.js (v21.153.0)
 │   │   ├── scripts/check-pipeline-wiring.js # Pipeline wiring probe: discover / check --contract (v21.121.0)
 │   │   └── references/                # wiring-inventory, manifest-entries (v21.132.0); fail-before (v21.142.0); runner-reuse-output (v21.146.0); select-by-use (checks that report what they used, v21.159.0); check-cost (making each check cheaper, v21.163.0)
@@ -525,6 +539,7 @@ L1 generation:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.185.0 | runner `checked-names.js`, `dropped-checks.js` (new), `main.js`, `store.js`, `select.js`, `routine.js`, `settings.js`, `output.js`; `scripts/core/cut.js`, `core/state-file.js`, `core/guards-off.js`, `core/experiment-*.js`, `scripts/guard-experiment.js`, `scripts/fixtures/guard-experiments/` (new); memory path (`refine-raw.js`, `extract-delta.js`, `core/memory-context.js`, `core/recovery-context.js`, `inject-rules.js`, `core/project-memory.js`, `codex-memory.js`, `memory-rotation.js`, `legacy-migration.js`, `core/memory-budgets.js`, `core/memory-index-file.js`); state readers (`utils.js` `writeJson`, `core/completion-control.js`, `best-answer.js`, `core/execution-lifecycle.js`, `verification-sequence.js`, `core/declaration-guidance.js`); `core/dispatch.js`, `completion-controller.js`, `load-memory.js`, `adapters/codex/session-start.js`, `guard-record.js`, `core/guard-fires.js`; tests `_test-runner-dropped-checks.js`, `_test-cut-markers.js`, `_test-state-files.js`, `_test-guard-experiment.js`, `_test-doc-commands.js`, `_test-runner-committed.js`, `_test-runner-coverage.js`, `testlib/runner-project.js` (new), `_test-runner-reuse.js` (split) |
 | 21.184.0 | `scripts/skill-check.js`, `scripts/adapters/claude/post-tool-batch.js`, `scripts/adapters/claude/prompt-expansion.js` (new); `scripts/adapters/claude/post-tool-use.js`, `hooks/hooks.json`, `scripts/best-answer.js` QUESTION item 5, `scripts/guard-record.js`; tests `_test-skill-check.js` (new, fixtures `scripts/fixtures/hook-payloads/skill-check/`), `_test-hook-wiring-cost.js` W6 |
 | 21.183.2 | `scripts/core/file-lock.js`, `scripts/core/state-lock.js`; tests `_test-multisession-memory.js` (M17–M22), `_test-native-result-evidence.js` |
 | 21.183.1 | `scripts/best-answer.js` QUESTION item 4, `scripts/shared-context.js` checklist ad hoc definition; test `_test-rule-wording.js` W7 |

@@ -5,6 +5,7 @@
 // does not rerun every check. The verifying skill must document every name (D145_T002).
 
 const { validateSettings } = require('./manifest');
+const { checkedRegex } = require('./checked-names');
 
 const MANIFEST_SETTINGS = {
   exclude: 'paths', wrappers: 'names', passHistory: 'count', jobs: 'count', retries: 'whole',
@@ -22,6 +23,7 @@ const MANIFEST_SETTINGS = {
   // D175_T003: what PreToolUse does when another worktree has changes to the inputs of a
   // command that makes files (`outputs`): warn (default) or refuse.
   pendingInputs: 'other',
+  checkedPattern: 'other', quarantineDays: 'count',
 };
 const MANIFEST_CHOICES = { pendingInputs: ['warn', 'refuse'] };
 
@@ -64,6 +66,10 @@ function validateOverlapSettings(manifest) {
 
 function validateManifestSettings(manifest) {
   validateSettings(manifest, MANIFEST_SETTINGS, 'manifest', 'manifest');
+  checkedRegex(manifest.checkedPattern, 'manifest checkedPattern');
+  for (const entry of Array.isArray(manifest.entries) ? manifest.entries : []) {
+    if (entry) checkedRegex(entry.checkedPattern, `${entry.id} checkedPattern`);
+  }
   validateOverlapSettings(manifest);
 }
 

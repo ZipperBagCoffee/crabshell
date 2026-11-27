@@ -2,7 +2,8 @@
   "schemaVersion": 2,
   "projectType": "Node.js CLI plugin with Claude and Codex adapters",
   "created": "2026-03-28T08:20:00Z",
-  "updated": "2026-09-24T11:13:02.427Z",
+  "updated": "2026-11-27T19:13:29.250Z",
+  "checkedPattern": "^PASS: (.+)$",
   "tools": {
     "build": null,
     "run": null,
@@ -579,6 +580,7 @@
     },
     {
       "id": "V060",
+      "checkedPattern": null,
       "ia": "In this repository's real records, a change to scripts/counter.js selects fewer than all checks but every test that names counter.js (run on a copy of the working tree)",
       "type": "structural",
       "command": {

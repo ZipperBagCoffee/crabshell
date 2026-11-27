@@ -8,6 +8,7 @@ const { commandObservation } = require('./core/command-observation');
 const { contentIdentity } = require('./core/project-state');
 const { isFileWrite, shellCommand } = require('./core/tool-shape');
 const bestAnswer = require('./best-answer');
+const { isGuardOff } = require('./core/guards-off');
 const path = require('path');
 
 // Names in the guard-fire record (D178): this controller and the best-answer module by their
@@ -15,6 +16,14 @@ const path = require('path');
 const SELF = path.basename(__filename, '.js');
 const BEST_ANSWER = path.basename(require.resolve('./best-answer'), '.js');
 const AFTER_RUN_HINT = 'declaration-after';
+// The Codex result recorder, by the name its Claude check carries (adapters/claude/post-tool-use.js).
+const VERIFICATION_RECORD = 'verification-record';
+
+// D187_T004: a name in CRABSHELL_GUARDS_OFF is skipped here as in core/dispatch.js; what the
+// skipped part would have decided is left undecided, and the other parts run as before.
+const on = name => !isGuardOff(name);
+const SKIPPED = Object.freeze({ recorded: false, reason: 'guard-off' });
+const ALLOWED = Object.freeze({ action: 'allow', reason: 'guard-off' });
 
 if (process.env.CRABSHELL_BACKGROUND === '1') process.exit(0);
 
@@ -31,6 +40,7 @@ function claudeStopBlocks(payload, projectDir = getProjectDir()) {
   if (payload.stop_hook_active === true) return [];
   const blocks = [];
   for (const [name, check] of CLAUDE_STOP_CHECKS) {
+    if (!on(name)) continue;
     try {
       const reason = check(payload, projectDir);
       if (reason) blocks.push({ guard: name, text: reason });
@@ -61,7 +71,7 @@ function handlePayload(payload, options = {}) {
   const eventName = payload?.hook_event_name;
   const projectDir = projectDirFor(payload, options);
   if (eventName === 'Interrupt' || payload.is_interrupt === true || payload.tool_response?.interrupted === true) {
-    return { eventName, result: interruptWork(projectDir, payload) };
+    return { eventName, result: on(SELF) ? interruptWork(projectDir, payload) : SKIPPED };
   }
   if (['PreToolUse', 'PostToolUse', 'PostToolUseFailure'].includes(eventName)) {
     // Shell calls and file writes are known by their shape (core/tool-shape), whatever
@@ -75,30 +85,33 @@ function handlePayload(payload, options = {}) {
       const evidence = { host: 'codex', observation: attempt(() => commandObservation(normalized, projectDir, { host: 'codex' })),
         getFingerprint: () => fingerprint ?? (fingerprint = contentIdentity(projectDir)) };
       // Only a declared check's result is recorded; an edit changes no record (D143_T013).
-      if (evidence.observation) {
+      if (evidence.observation && on(VERIFICATION_RECORD)) {
         attempt(() => require('./verification-sequence').recordVerification(normalized, projectDir, evidence));
       }
       // What to declare after a shell run (D143_T015), for the model's context.
-      const context = command ? attempt(() => require('./core/declaration-guidance').afterRun(normalized, projectDir, { host: 'codex' })) : null;
-      return { eventName, result: attempt(() => recordParentObservation(projectDir, normalized, evidence), { recorded: false, reason: 'skipped' }), context };
+      const context = command && on(AFTER_RUN_HINT) ? attempt(() => require('./core/declaration-guidance').afterRun(normalized, projectDir, { host: 'codex' })) : null;
+      const result = on(SELF) ? attempt(() => recordParentObservation(projectDir, normalized, evidence), { recorded: false, reason: 'skipped' }) : SKIPPED;
+      return { eventName, result, context };
     }
+    if (!on(SELF)) return { eventName, result: SKIPPED };
     return { eventName, result: eventName === 'PreToolUse' ? prepareParentCheck(projectDir, normalized)
       : recordParentObservation(projectDir, normalized, { host: options.host || 'claude' }) };
   }
   if (eventName === 'SubagentStop') {
-    return { eventName, result: noteSubagentStop(projectDir, payload) };
+    return { eventName, result: on(SELF) ? noteSubagentStop(projectDir, payload) : SKIPPED };
   }
   if (eventName !== 'Stop') return { eventName, result: { action: 'allow', reason: 'unsupported-event' } };
   // D177 (Claude only): the other checks first; the best-answer question once per prompt when
   // none of them blocks, else at the next Stop. After the question, the checks run once more.
   const claude = options.host === 'claude';
-  const checked = claude && attempt(() => bestAnswer.othersMayRun(payload, projectDir), false)
+  const asks = claude && on(BEST_ANSWER);
+  const checked = asks && attempt(() => bestAnswer.othersMayRun(payload, projectDir), false)
     ? { ...payload, stop_hook_active: false } : payload;
-  const shared = decideStop(projectDir, checked);
+  const shared = on(SELF) ? decideStop(projectDir, checked) : ALLOWED;
   const blockedBy = [shared.action === 'block' ? { guard: SELF, text: shared.reason } : null,
     ...(claude ? claudeStopBlocks(checked, projectDir) : [])].filter(block => block && block.text);
   const reasons = blockedBy.map(block => block.text);
-  const question = claude ? attempt(() => bestAnswer.stopStep(payload, projectDir, reasons.length > 0)) : null;
+  const question = asks ? attempt(() => bestAnswer.stopStep(payload, projectDir, reasons.length > 0)) : null;
   if (reasons.length === 0) return { eventName, result: question ? { ...shared, question } : shared };
   return { eventName, result: { ...shared, action: 'block', reason: reasons.join('\n\n'), blockedBy } };
 }

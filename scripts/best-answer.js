@@ -9,6 +9,7 @@
 const os = require('os');
 const path = require('path');
 const { getStorageRoot, readJsonOrDefault, writeJson } = require('./utils');
+const stateFile = require('./core/state-file');
 const { SESSION_STATE_MAX_AGE_MS, STORAGE_ROOT } = require('./constants');
 const { withStateLock } = require('./core/state-lock');
 
@@ -16,6 +17,7 @@ const QUESTION = 'Is your answer 1) not your best? 2) agree without checking? 3)
 
 const STATE_FILE = 'best-answer.json';
 const LEGACY_SESSION = '_';
+const STATE_VERSION = 1;
 
 function memoryDir(projectDir) {
   return path.join(getStorageRoot(projectDir), 'memory');
@@ -55,9 +57,11 @@ function statePath(projectDir) {
 }
 
 function readState(projectDir) {
-  const raw = readJsonOrDefault(statePath(projectDir), null);
-  return raw && typeof raw === 'object' && raw.sessions && typeof raw.sessions === 'object'
-    ? raw : { schemaVersion: 1, sessions: {} };
+  const { value: raw, status } = stateFile.readState(statePath(projectDir), { version: STATE_VERSION, versionField: 'schemaVersion' });
+  const fresh = { schemaVersion: STATE_VERSION, sessions: {} };
+  const shaped = raw && typeof raw === 'object' && raw.sessions && typeof raw.sessions === 'object';
+  if (status === 'newer') return shaped ? raw : stateFile.markNoWrite(fresh, stateFile.writeBlock(raw)); // never written back
+  return shaped ? raw : fresh;
 }
 
 const sessionOf = payload => (payload && payload.session_id) || LEGACY_SESSION;

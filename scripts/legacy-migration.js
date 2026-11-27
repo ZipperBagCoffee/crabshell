@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { ARCHIVE_PREFIX } = require('./constants');
 const { ROTATION_THRESHOLD_TOKENS, CARRYOVER_TOKENS } = require('./core/memory-budgets');
-const { estimateTokens, extractTailByTokens, updateIndex } = require('./core/memory-index-file');
+const { estimateTokens, extractTailByTokens, withCarryoverNote, updateIndex } = require('./core/memory-index-file');
 
 function parseDateSections(content) {
   const lines = content.split(/\r?\n/);
@@ -103,7 +103,7 @@ function splitLegacyMemory(memoryPath) {
 
   const lastChunk = chunks[chunks.length - 1];
   const lastChunkContent = lastChunk.sections.map(s => s.content).join('\n');
-  const newMemoryContent = extractTailByTokens(lastChunkContent, CARRYOVER_TOKENS);
+  const newMemoryContent = withCarryoverNote(lastChunkContent, extractTailByTokens(lastChunkContent, CARRYOVER_TOKENS));
   const tempPath = memoryPath + '.tmp';
   fs.writeFileSync(tempPath, newMemoryContent);
   fs.renameSync(tempPath, memoryPath);

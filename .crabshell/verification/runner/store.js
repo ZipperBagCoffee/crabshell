@@ -7,6 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const { SCHEMA_VERSION } = require('./fingerprint');
 const { pidAlive, sleepSync } = require('./run-record');
+const { collectRetired, removedChecks } = require('./dropped-checks');
 
 const MAP_FILE = 'test-map.json';
 // Tests that may pass on HEAD too (a refactor that keeps behavior), each with the
@@ -112,7 +113,7 @@ function mergeWithDisk({ disk, readWriteId, entries, records, previousRecords, e
 // read at its start), readWriteId (that map's writeId) and executed (the checks this run
 // ran), a map another run wrote meanwhile is merged under a short lock instead of overwritten.
 // Returns the records it wrote, or null when it could not write the map.
-function writeMap({ manifestPath, startedAt, snapshot, records, ids, runs = null, previousRecords = null, readWriteId, runLimit, executed = new Set() }) {
+function writeMap({ manifestPath, startedAt, snapshot, records, ids, runs = null, previousRecords = null, readWriteId, runLimit, executed = new Set(), retired = {}, approvals = {}, onDrops = () => {} }) {
   const target = mapPath(manifestPath);
   const lock = `${target}.lock`;
   const locked = previousRecords ? takeLock(lock) : false;
@@ -122,18 +123,22 @@ function writeMap({ manifestPath, startedAt, snapshot, records, ids, runs = null
     let createdAt = startedAt;
     let keptSnapshot = snapshot;
     let keptRuns = runs;
+    let dropped = collectRetired(ids, retired, previousRecords, records);
     if (locked) {
       const map = readMap(manifestPath);
+      dropped = collectRetired(ids, dropped, map && map.retired, map && map.entries);
       const disk = map && currentRecords(map) ? map : null;
       ({ entries, snapshot: keptSnapshot, createdAt, runs: keptRuns } = mergeWithDisk({ disk, readWriteId, entries, records,
         previousRecords, executed, ids, snapshot, startedAt, runs, runLimit }));
     }
-    const map = { schema: SCHEMA_VERSION, createdAt, writeId: newWriteId(), snapshot: keptSnapshot, entries };
+    const drops = removedChecks(dropped, approvals);
+    const map = { schema: SCHEMA_VERSION, createdAt, writeId: newWriteId(), snapshot: keptSnapshot, entries, retired: drops.retired };
     // D151_T002: the latest runs (the commit each ran on, checks run, milliseconds).
     if (Array.isArray(keptRuns)) map.runs = keptRuns;
     const temporary = `${target}.${process.pid}.tmp`;
     fs.writeFileSync(temporary, JSON.stringify(map) + '\n');
     fs.renameSync(temporary, target);
+    onDrops(drops);
     return entries;
   } catch (error) {
     console.error(`[VERIFY] WARN: load map not written: ${error.message}`);

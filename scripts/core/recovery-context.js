@@ -1,6 +1,8 @@
 'use strict';
 const path = require('path');
 const {getStorageRoot,readJsonOrDefault}=require('../utils');
+const {keepHead}=require('./cut');
+const {RECOVERY_CHECK_COMMAND_CHARS,RECOVERY_CONTEXT_CHARS}=require('./memory-budgets');
 
 // Only the given session's record is shown: another session's request is not this
 // session's work, and a new session (no record yet) gets no recovery text.
@@ -13,7 +15,7 @@ function buildRecoveryContext(projectDir, sessionId) {
   const verification=readJsonOrDefault(path.join(getStorageRoot(projectDir),'memory','verification-state.json'),null);
   const observed=verification && require('./check-history').currentCheck(verification);
   const check=record.lastCheck || (observed ? {
-    command: observed.command?.slice(0,400), passed: observed.passed,
+    command: observed.command && keepHead(observed.command,RECOVERY_CHECK_COMMAND_CHARS), passed: observed.passed,
     exitCode: observed.exitCode, observedAt: verification.lastUpdated,
   } : null);
   const output=[
@@ -26,6 +28,6 @@ function buildRecoveryContext(projectDir, sessionId) {
     check ? `Last observed check: ${check.command}; passed=${check.passed}; exit=${check.exitCode}; at=${check.observedAt}` : 'Last check: no current parent evidence recorded.',
     `Remaining: ${record.remaining}`,
   ];
-  return output.join('\n').slice(0,3500)+'\n';
+  return keepHead(output.join('\n'),RECOVERY_CONTEXT_CHARS,{lineBoundary:true})+'\n';
 }
 module.exports={buildRecoveryContext};

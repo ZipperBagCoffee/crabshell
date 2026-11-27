@@ -2,6 +2,7 @@
 // Which checks a run needs (D143, the Bazel rule): a check runs when its inputs changed
 // since it last passed, it failed last time, it is new, or it says reuse:false.
 // Otherwise its pass is reused. Git plays no part in choosing.
+const { contractReduced } = require('./dropped-checks');
 
 const crypto = require('crypto');
 const fs = require('fs');
@@ -432,6 +433,7 @@ function prepareItems(entries, records, ctx) {
 function coverable(entry, record) {
   if (!entry || typeof entry.coveredBy !== 'string' || entry.type === 'manual' || entry.discoveryError) return false;
   if (!record || record.lastFailedAt || !Array.isArray(record.files) || record.files.length === 0) return false;
+  if (contractReduced(entry, record)) return false;
   try { validateEntry(entry); } catch (_) { return false; }
   return true;
 }
@@ -464,6 +466,7 @@ function planRun({ entries, records, olderRecords, ctx, reuse, gates = null, eve
     else if (!reuse) reason = 'all checks requested (--no-reuse)';
     else if (!record) reason = olderRecords ? 'record from an older runner' : 'new check';
     else if (isFailing(record)) reason = 'failed in the last run';
+    else if (contractReduced(entry, record)) reason = 'contract items removed since the last pass';
     // The fingerprint is worked out only when a decision needs it: to compare with the
     // passes, or to tell a repeated failure from a new one.
     let fingerprint = null;
@@ -473,6 +476,7 @@ function planRun({ entries, records, olderRecords, ctx, reuse, gates = null, eve
     if (!reason) {
       if (!fingerprint) reason = 'an input could not be read';
       else if (!Array.isArray(record.passHistory) || !record.passHistory.includes(fingerprint)) reason = changeReason(set, record, ctx);
+      else if (entry.checkedPattern && Array.isArray(record.checkedNames) && fingerprint !== record.passHistory[0]) reason = 'checked names need a fresh pass on earlier inputs';
     }
     return { record, set, fingerprint, reason };
   };

@@ -9,7 +9,8 @@ const {
   INDEX_FILE,
   MEMORY_FILE,
 } = require('../constants');
-const { SESSION_START_MAX_CHARS } = require('./memory-budgets');
+const { SESSION_START_MAX_CHARS, UNREFLECTED_SCAN_ENTRIES, UNREFLECTED_TEXT_CHARS } = require('./memory-budgets');
+const { keepHead, keepTail, keepLast, marker } = require('./cut');
 const { DOC_TYPES } = require('./doc-types');
 const { getPostCompactWarning } = require('./first-turn-context');
 const { getProjectMemoryPath } = require('./project-memory');
@@ -29,7 +30,9 @@ const MEMORY_NOTES = `
 
 function getUnreflectedL1Content(l1Path, memoryContent) {
   try {
-    const lines = fs.readFileSync(l1Path, 'utf8').split(/\r?\n/).filter(line => line.trim()).slice(-50);
+    const allLines = fs.readFileSync(l1Path, 'utf8').split(/\r?\n/).filter(line => line.trim());
+    const lines = allLines.slice(-UNREFLECTED_SCAN_ENTRIES);
+    const unscanned = allLines.length - lines.length;
     const summary = [];
     for (const line of lines) {
       try {
@@ -39,11 +42,12 @@ function getUnreflectedL1Content(l1Path, memoryContent) {
           ? entry.text
           : entry.text.map(content => content.text || '').join('');
         if (text.length > 50 && !memoryContent.includes(text.substring(0, 50))) {
-          summary.push(text.substring(0, 200));
+          summary.push(keepHead(text, UNREFLECTED_TEXT_CHARS));
         }
       } catch {}
     }
-    return summary.length > 0 ? summary : null;
+    if (summary.length === 0) return null;
+    return unscanned > 0 ? [marker(unscanned, 'earlier entries not checked'), ...summary] : summary;
   } catch {
     return null;
   }
@@ -66,18 +70,19 @@ const KNOWLEDGE_DIR = DOC_TYPES.find(type => type.prefix === 'K').dir;
 // Logbook entry headings ("## 2026-09-24_0806 (local 09-24_0106)").
 const ENTRY_HEADING = /^## (\d{4}-\d{2}-\d{2}_\d{4}\b.*)$/gm;
 
-// Keep the end of the text, starting at a line boundary when one is available.
+// Keep the end of the text, starting at a line boundary when one is available;
+// a cut leaves a marker with the number of characters left out.
 function tailWithin(text, limit) {
-  if (text.length <= limit) return text;
-  const slice = text.slice(-limit);
-  const newline = slice.indexOf('\n');
-  return newline >= 0 && newline < slice.length - 1 ? slice.slice(newline + 1) : slice;
+  return keepTail(text, limit, { lineBoundary: true });
 }
 
 function headWithin(text, limit) {
-  if (text.length <= limit) return text;
-  const marker = '\n[... truncated for the SessionStart budget ...]';
-  return text.slice(0, Math.max(0, limit - marker.length)) + marker;
+  return keepHead(text, limit, { lineBoundary: true });
+}
+
+// The newest tailLines lines of the logbook; earlier lines become one marker line.
+function logbookTail(memoryContent, tailLines) {
+  return keepLast(String(memoryContent || '').split(/\r?\n/), tailLines, { label: 'earlier lines left out' }).join('\n');
 }
 
 function collectMemorySections(projectDir, options = {}) {
@@ -116,9 +121,7 @@ function collectMemorySections(projectDir, options = {}) {
   }
 
   if (memoryContent.trim()) {
-    const tailLines = Number(options.tailLines || DEFAULT_TAIL_LINES);
-    const lines = memoryContent.split(/\r?\n/);
-    parts.recent = lines.length > tailLines ? lines.slice(-tailLines).join('\n') : memoryContent;
+    parts.recent = logbookTail(memoryContent, Number(options.tailLines || DEFAULT_TAIL_LINES));
   }
 
   const mocDigest = readFileOrDefault(path.join(storageRoot, 'moc-digest.md'), '').trim();
@@ -168,9 +171,11 @@ function buildMemoryContext(projectDir, options = {}) {
   admit('workflow', workflowContext.trim());
   admit('recovery', recovery);
   const recentHeading = '## Recent Sessions (newest last)\n';
+  let recentLimit = 0;
   if (parts.recent) {
     const limit = Math.min(PART_CAPS.recent, remaining) - recentHeading.length;
     if (limit >= MIN_PART_CHARS) {
+      recentLimit = limit;
       admitted.recent = recentHeading + tailWithin(parts.recent, limit);
       remaining -= admitted.recent.length + 7;
     } else leftOut.push('recent');
@@ -194,8 +199,9 @@ function buildMemoryContext(projectDir, options = {}) {
   let output = render();
   const overflow = output.length - budget;
   if (overflow > 0 && admitted.recent) {
+    // Cut again from the logbook tail, not from the cut text, so the marker counts every dropped character.
     const body = admitted.recent.slice(recentHeading.length);
-    admitted.recent = recentHeading + tailWithin(body, Math.max(0, body.length - overflow - 1));
+    admitted.recent = recentHeading + tailWithin(parts.recent, Math.max(0, Math.min(recentLimit, body.length) - overflow - 1));
     output = render();
   }
   return output;
@@ -212,9 +218,7 @@ function loadedMemoryHeadings(context) {
 // they summarize this conversation, which is already in context.
 function recentLogbookHeadings(memoryContent, tailLines = DEFAULT_TAIL_LINES) {
   const text = String(memoryContent || '');
-  const lines = text.split(/\r?\n/);
-  const recent = lines.length > tailLines ? lines.slice(-tailLines).join('\n') : text;
-  return loadedMemoryHeadings(tailWithin(recent, PART_CAPS.recent));
+  return loadedMemoryHeadings(tailWithin(logbookTail(text, tailLines), PART_CAPS.recent));
 }
 
 function createSessionStartOutput(context) {

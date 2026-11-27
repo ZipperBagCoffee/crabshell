@@ -1,4 +1,4 @@
-# Crabshell Architecture (v21.184.0)
+# Crabshell Architecture (v21.185.0)
 
 ## Overview
 
@@ -577,6 +577,7 @@ Invariants of the one-process dispatchers:
 
 | Version | Key Changes |
 |---------|-------------|
+| 21.185.0 | Runner: `dropped-checks.js` (`collectRetired`, `removedChecks`, `weakenedCheck`, `contractItems`, `readApprovals`) and `checked-names.js` (`checkedNames`, `withCheckedPatterns`) (new); `store.js` `writeMap` keeps a removed passing check in `retired`; `main.js` appends `REMOVED:`/`WEAKENED:` failures and keeps the accepted baseline; `routine.js` `quarantineExpired` (`quarantineDays`, default 30). Memory: `core/cut.js` (`keepHead`, `keepTail`, `keepFirst`, `keepLast`, `marker`) used at the memory-path cuts the changelog lists; `core/memory-index-file.js` `withCarryoverNote`. State: `core/state-file.js` `readState` (ok, missing, corrupt, newer), `utils.js` `writeJson` refuses a value marked as read from a newer file, `readIndexWithStatus`. Guards: `core/guards-off.js`, skipped names in `core/dispatch.js` `runChecks` and `completion-controller.js`; `guard-experiment.js` with `core/experiment-*.js`. Tests `_test-runner-dropped-checks.js`, `_test-runner-reuse.js` split into `_test-runner-committed.js` and `_test-runner-coverage.js` (shared `testlib/runner-project.js`), `_test-cut-markers.js`, `_test-state-files.js`, `_test-guard-experiment.js`, `_test-doc-commands.js` |
 | 21.184.0 | `skill-check.js` (new): `batchReminder`, `recordToolSkill`, `noteExpansion`; adapters `adapters/claude/post-tool-batch.js`, `adapters/claude/prompt-expansion.js` (new); `post-tool-use.js` `skill-check-record`; `hooks.json` PostToolBatch, UserPromptExpansion; `best-answer.js` QUESTION item 5; `guard-record.js` reads the new adapters' checks; tests `_test-skill-check.js`, `_test-hook-wiring-cost.js` W6 |
 | 21.183.2 | `core/file-lock.js` `_acquireFileLock`: refusals other than EEXIST retried (lock file being deleted = changing hands, none there = ends after 250 ms), `perHolder`/`maxWaitMs`, one read per look, a takeover gets its write; `core/state-lock.js` `createStateLock` (3 s per holder, 7 s per process); tests `_test-multisession-memory.js` M17–M22, `_test-native-result-evidence.js` hang guard 60 s |
 | 21.183.1 | `best-answer.js` QUESTION item 4 "ad hoc, not thought through?"; `shared-context.js` checklist defines ad hoc; `_test-rule-wording.js` W7 budget 2,825 |

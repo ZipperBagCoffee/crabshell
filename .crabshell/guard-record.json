@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "note": "D178: hand-written guard record. Fires are counted by scripts/guard-record.js --summary, never stored here.",
+  "note": "D178: hand-written guard record. Fires are counted by scripts/guard-record.js --summary, never stored here. Since v21.185.0 (D187) a guard's effect is measured with scripts/guard-experiment.js, which runs scenarios with the guard on and with CRABSHELL_GUARDS_OFF=<name>.",
   "guards": [
     {
       "guard": "path-guard",

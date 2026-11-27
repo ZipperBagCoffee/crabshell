@@ -2,6 +2,11 @@ const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
 const { fileWrites, shellCommand, transcriptCall } = require('./core/tool-shape');
+const { keepHead, keepFirst } = require('./core/cut');
+const { L1_COMMAND_CHARS, L1_TOOL_OUTPUT_CHARS, L1_DIFF_LINES, L1_DIFF_CHARS } = require('./core/memory-budgets');
+
+// The first lines of one side of an edit, cut to the L1 diff size, saying what was left out.
+const diffSide = text => keepHead(keepFirst(text.split(/\r?\n/), L1_DIFF_LINES, { label: 'more lines' }).join('\n'), L1_DIFF_CHARS);
 
 // Types to completely remove
 const JUNK_TYPES = [
@@ -86,7 +91,7 @@ function processToolUse(wrapper, toolContent) {
   const call = transcriptCall(toolContent);
   const command = shellCommand(call);
   if (command) {
-    tool.cmd = command.substring(0, 200);
+    tool.cmd = keepHead(command, L1_COMMAND_CHARS);
     return tool;
   }
   const writes = fileWrites(call);
@@ -96,9 +101,7 @@ function processToolUse(wrapper, toolContent) {
     if (write.kind === 'edit') {
       // Create diff summary
       if (write.oldString && write.newString) {
-        const oldLines = write.oldString.split(/\r?\n/).slice(0, 3).join('\n');
-        const newLines = write.newString.split(/\r?\n/).slice(0, 3).join('\n');
-        tool.diff = `-${oldLines.substring(0, 100)}\n+${newLines.substring(0, 100)}`;
+        tool.diff = `-${diffSide(write.oldString)}\n+${diffSide(write.newString)}`;
       }
     } else if (typeof write.content === 'string') {
       tool.size = write.content.length;
@@ -144,13 +147,13 @@ function processToolResult(wrapper, resultContent) {
   if (resultContent.is_error) {
     result.result = 'error';
     const content = extractToolResultContent(resultContent.content);
-    result.output = content.substring(0, 200);
+    result.output = keepHead(content, L1_TOOL_OUTPUT_CHARS);
   } else {
     result.result = 'ok';
     // Brief output for context
     const content = extractToolResultContent(resultContent.content);
     if (content && content.length > 0) {
-      result.output = content.substring(0, 200);
+      result.output = keepHead(content, L1_TOOL_OUTPUT_CHARS);
     }
   }
 

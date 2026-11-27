@@ -6,6 +6,8 @@ const fs = require('fs');
 const path = require('path');
 
 const { ensureMemoryStructure } = require('./init');
+const { keepLast, marker } = require('./core/cut');
+const { CODEX_TAIL_LINES, CODEX_SUMMARY_COUNT, CODEX_SEARCH_LIMIT } = require('./core/memory-budgets');
 const { searchMemory } = require('./search');
 const {
   getProjectDir,
@@ -58,8 +60,7 @@ function readStdin() {
 }
 
 function tailLines(text, count) {
-  const lines = text.split(/\r?\n/);
-  return lines.slice(Math.max(0, lines.length - count)).join('\n').trim();
+  return keepLast(text.split(/\r?\n/), count, { label: 'earlier lines left out' }).join('\n').trim();
 }
 
 function ensure(projectDir) {
@@ -72,22 +73,26 @@ function ensure(projectDir) {
 function load(args) {
   const projectDir = projectDirFromArgs(args);
   const memoryDir = ensure(projectDir);
-  const tail = Number(args['tail-lines'] || 80);
+  const tail = Number(args['tail-lines'] || CODEX_TAIL_LINES);
   const sections = [];
 
   const projectText = readFileOrDefault(getProjectMemoryPath(projectDir), '').trim();
   if (projectText) sections.push(`## Project Memory\n${projectText}`);
 
   const index = readJsonOrDefault(path.join(memoryDir, INDEX_FILE), { rotatedFiles: [] });
-  const summaries = Array.isArray(index.rotatedFiles)
-    ? index.rotatedFiles.filter(x => x.summaryGenerated && x.summary).slice(-5)
+  const generated = Array.isArray(index.rotatedFiles)
+    ? index.rotatedFiles.filter(x => x.summaryGenerated && x.summary)
     : [];
-  const summaryText = summaries.map(entry => {
+  const summaries = generated.slice(-CODEX_SUMMARY_COUNT);
+  const earlierSummaries = generated.length - summaries.length;
+  const summaryLines = summaries.map(entry => {
     const summary = readJsonOrDefault(path.join(memoryDir, entry.summary), null);
     if (!summary) return null;
     if (summary.overallSummary) return `- ${entry.summary}: ${summary.overallSummary}`;
     return `- ${entry.summary}`;
-  }).filter(Boolean).join('\n');
+  }).filter(Boolean);
+  if (summaryLines.length && earlierSummaries > 0) summaryLines.unshift(marker(earlierSummaries, 'earlier summaries left out'));
+  const summaryText = summaryLines.join('\n');
   if (summaryText) sections.push(`## Rotated Memory Summaries\n${summaryText}`);
 
   const logbook = readFileOrDefault(path.join(memoryDir, MEMORY_FILE), '').trim();
@@ -141,11 +146,13 @@ function search(args) {
   }
   for (const group of results) {
     console.log(`\n## ${group.source}`);
-    for (const match of group.matches.slice(0, Number(args.limit || 20))) {
+    const limit = Number(args.limit || CODEX_SEARCH_LIMIT);
+    for (const match of group.matches.slice(0, limit)) {
       if (match.line) console.log(`- line ${match.line}: ${match.text}`);
       else if (match.file) console.log(`- ${match.file}: ${match.content || match.text || JSON.stringify(match.entry)}`);
       else console.log(`- ${JSON.stringify(match)}`);
     }
+    if (group.matches.length > limit) console.log(`- ${marker(group.matches.length - limit, 'more matches')}`);
   }
 }
 

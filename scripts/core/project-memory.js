@@ -5,6 +5,8 @@
 const fs = require('fs');
 const path = require('path');
 const { getStorageRoot } = require('../utils');
+const { keepHead, keepFirst } = require('./cut');
+const { PROJECT_CONCEPT_LINES, PROJECT_CONCEPT_CHARS, MODEL_ROUTING_CHARS } = require('./memory-budgets');
 
 /**
  * Resolves the shared project description, preserving legacy data on migration.
@@ -25,14 +27,17 @@ function getProjectMemoryPath(projectDir) {
 }
 
 /** Read the first maxLines/maxChars, or return an empty string when unavailable. */
-function readProjectConcept(projectDir, maxLines = 20, maxChars = 1000) {
+function readProjectConcept(projectDir, maxLines = PROJECT_CONCEPT_LINES, maxChars = PROJECT_CONCEPT_CHARS) {
   try {
     const projectMdPath = getProjectMemoryPath(projectDir);
     if (!fs.existsSync(projectMdPath)) return '';
     const content = fs.readFileSync(projectMdPath, 'utf8').trim();
     if (!content) return '';
-    const lines = content.split(/\r?\n/).slice(0, maxLines).join('\n');
-    return lines.substring(0, maxChars);
+    // Whole lines first (a line count cut is marked), then the character cap at a line end.
+    const allLines = content.split(/\r?\n/);
+    // The marker line counts toward maxLines, so the result never has more lines than asked.
+    const lines = (allLines.length > maxLines ? keepFirst(allLines, maxLines - 1, { label: 'more lines' }) : allLines).join('\n');
+    return keepHead(lines, maxChars, { lineBoundary: true });
   } catch (e) {
     return '';
   }
@@ -46,7 +51,7 @@ function readProjectConcept(projectDir, maxLines = 20, maxChars = 1000) {
  * @param {number} maxChars
  * @returns {string}
  */
-function readModelRouting(projectDir, maxChars = 300) {
+function readModelRouting(projectDir, maxChars = MODEL_ROUTING_CHARS) {
   try {
     const projectMdPath = getProjectMemoryPath(projectDir);
     if (!fs.existsSync(projectMdPath)) return '';
@@ -58,7 +63,7 @@ function readModelRouting(projectDir, maxChars = 300) {
     const section = afterHeader === -1
       ? content.substring(headerIndex)
       : content.substring(headerIndex, afterHeader);
-    return section.trim().substring(0, maxChars);
+    return keepHead(section.trim(), maxChars, { lineBoundary: true });
   } catch (e) {
     return '';
   }

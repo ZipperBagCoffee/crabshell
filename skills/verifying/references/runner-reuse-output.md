@@ -18,7 +18,7 @@ Never reuse failed or timed-out checks, manual entries, empty input records, `al
 
 An executed PASS clears a `check` mark. It clears a `fail-before` mark only when fail-before is enabled, the run is `--changed` with a known changed-file list, and either the entry is no longer a `failBeforeTargets()` target or its comparison passes. A hash-matched exemption counts as passing. The following keep the prior `lastFailedAt`, `lastFailedKind` and dependency `files`, and record no new pass: explicit-ID runs, full runs, `--no-fail-before` runs, unknown Git changes, and unresolved or manual comparisons. The latest execution duration can still be recorded.
 
-**Flaky and forbidden-file failures.** A check that fails and then passes on a retry with the same inputs is PASS, named flaky, and marked in its record (`quarantine`: its test file and that file's content hash). A routine `--changed` run leaves a marked check out and names it in one line until its test file's content changes. A run by id, `--slow` and a full run still run it. A check with a standing failure (`lastFailedAt`) is never left out.
+**Flaky and forbidden-file failures.** A check that fails and then passes on a retry with the same inputs is PASS, named flaky, and marked in its record (`quarantine`: `at`, its test file and that file's content hash). A routine `--changed` run leaves a marked check out and names it in one line until its test file's content changes or the mark is older than `quarantineDays` (positive whole days, default 30). Expiry forces an execution even with unchanged inputs and reports `flaky quarantine expired after N days` in `--explain` and the summary; a heavy check still waits for `--slow`. A successful execution clears the expired mark, while a new flaky retry renews it. A run by id, `--slow` and a full run still run it. A check with a standing failure (`lastFailedAt`) is never left out.
 
 A failure whose exit code and assertions passed, and whose only reason is a `contract.forbiddenChanges` path, runs once more instead of a retry. If that run passes without writing those paths, the result is PASS and a notice names the files: another process wrote them. Writes are judged by size and times, so a check that writes the same bytes each time is still caught. Otherwise the first FAIL stands. Neither outcome counts as flaky.
 
@@ -42,7 +42,30 @@ Each record (`test-map.json`, schema 4) keeps the check's input kind, its input 
 - `declared`: `inputs`, for a program the runner cannot trace. A traced check that starts such a program keeps its traced reads beside its `inputs`.
 - `project`: inputs unknown, so the whole project counts, for that check only.
 
-A record of another schema counts as missing, so every check runs once after a schema change. The schema is raised by hand when the runner starts recording more of what a check reads. New checks always run; removed entries need no run.
+A record of another schema counts as missing, so every check runs once after a schema change. The schema is raised by hand when the runner starts recording more of what a check reads. New checks always run; removed entries with passing history fail as described below.
+
+## Removed and weakened checks
+
+An ID with `passHistory` that disappears from the expanded manifest moves from `entries` to `retired` in `test-map.json`. This includes a discovered test whose file was deleted. Every execution, including by-ID and `--failed` runs, adds a `REMOVED:<id>` failure until the ID is restored or approved. Restoring it restores its accepted baseline. Renaming a check requires approving its old ID. Checks that never passed need no removal approval. The runner does not read Git: a check that is missing because another commit is checked out also reads as removed, and switching back restores it with its baseline.
+
+Each accepted execution saves `contractItems`: one recursively key-sorted JSON string per assertion, `forbid:<path>` per forbidden path, and `exitCode:<n>`. When `checkedPattern` is set, it also saves `checkedNames`: the distinct first captures from matching stdout lines. The setting is a regex string with exactly one capture, e.g. `"^PASS: (.+)$"`; explicit and discovery entries can override it, and `null` disables name comparison. There is no default pattern. Stderr is not collected. A check using it runs all its cases, because partial stdout cannot replace a whole-check name baseline.
+
+If a later executed pass omits an accepted item or name, `WEAKENED:<id>` lists the unapproved omissions. Like fail-before, this result is appended to the command results. The check record is failed (`lastFailedKind: "weakened"`), retains its pass fingerprints, `contractItems` and `checkedNames`, and is selected again by `--failed` or `--changed`. Older cached passes cannot bypass a reduced contract or name comparison on earlier inputs. Records missing either baseline field accept that field on the next executed pass without a weakening failure.
+
+Approve intentional drops in `dropped-checks.json`, beside the manifest:
+
+```json
+{
+  "old-id": { "reason": "Retired after replacement" },
+  "current-id": {
+    "contract": ["{\"kind\":\"fileExists\",\"path\":\"old-output.json\"}", "forbid:old-cache", "exitCode:0"],
+    "names": ["retired case"],
+    "reason": "These exact obligations were replaced"
+  }
+}
+```
+
+A reason-only approval clears a retired ID; `contract` and `names` authorize only those exact items, never the entire check. All missing items must be covered before a new baseline is accepted. Partial approvals leave the baseline unchanged. An approval applied in a run prints `Approved drops: <id> (<items>) — <reason>`. Every other approval in the file prints `Approval on file (dropped-checks.json): <id> (<items>) — <reason>` in every run and in `--explain`, for as long as it stays in the file: the file is one the working model can write, so a drop is guaranteed to show with its reason, not to have been approved by a person. Malformed JSON, invalid fields or a missing/blank reason fail as `RUNNER_DROPPED_CHECKS` before any check runs. Adding these baseline fields does not change the record schema or invalidate every project's passes.
 
 ## Overlapping runs
 

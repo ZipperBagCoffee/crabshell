@@ -2,7 +2,7 @@ const fs = require('fs');
 const { withMemoryIndex, tryWithMemoryRotation } = require('./core/memory-lock');
 const path = require('path');
 const { getProjectDir, getStorageRoot } = require('./utils');
-const { estimateTokensFromFile, extractTailByTokens, updateIndex } = require('./core/memory-index-file');
+const { estimateTokensFromFile, extractTailByTokens, withCarryoverNote, updateIndex } = require('./core/memory-index-file');
 const { MEMORY_DIR, ARCHIVE_PREFIX } = require('./constants');
 const { ROTATION_THRESHOLD_TOKENS, CARRYOVER_TOKENS, getTimestamp } = require('./core/memory-budgets');
 
@@ -30,7 +30,7 @@ function checkAndRotateUnlocked(memoryPath, config) {
     const rawCarryover = config.memoryRotation?.carryoverTokens;
     const carryoverTokens = rawCarryover ? Math.floor(rawCarryover * SAFETY_MARGIN) : CARRYOVER_TOKENS;
     const memoryContent = fs.readFileSync(memoryPath, 'utf8');
-    const carryoverContent = extractTailByTokens(memoryContent, carryoverTokens);
+    const carryoverContent = withCarryoverNote(memoryContent, extractTailByTokens(memoryContent, carryoverTokens), archiveName);
 
     const tempPath = memoryPath + '.tmp';
     fs.writeFileSync(tempPath, carryoverContent);

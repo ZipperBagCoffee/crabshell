@@ -4,7 +4,9 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { getLastUserMessage } = require('./transcript');
-const { getStorageRoot, readJsonOrDefault, writeJson } = require('../utils');
+const { getStorageRoot, writeJson } = require('../utils');
+const { readState, markNoWrite, writeBlock } = require('./state-file');
+const { keepHead } = require('./cut');
 const { SESSION_STATE_MAX_AGE_MS } = require('../constants');
 const { classifyUserIntent } = require('./turn-intent');
 const { turnId, sessionId } = require('./turn-id');
@@ -43,6 +45,7 @@ function statePath(projectDir) {
 // prompt, child report or Stop never replaces another session's authorization
 // or pending evidence. Payloads without a session id use the most recent entry.
 const LEGACY_SESSION = '_';
+const FILE_VERSION = 2;
 const MAX_SESSIONS = 32;
 
 // A payload (object) without a session id uses the legacy '_' entry, never another
@@ -54,8 +57,11 @@ function sessionOf(ref) {
 }
 
 function readFileState(projectDir) {
-  const raw = readJsonOrDefault(statePath(projectDir), null);
-  if (!raw || typeof raw !== 'object') return { schemaVersion: 2, sessions: {}, lastSessionId: null };
+  const { value: raw, status } = readState(statePath(projectDir), { version: FILE_VERSION, versionField: 'schemaVersion' });
+  const empty = { schemaVersion: FILE_VERSION, sessions: {}, lastSessionId: null };
+  // A newer file keeps its own shape on disk: the value stays marked so writeJson skips it.
+  if (status === 'newer') return raw.sessions && typeof raw.sessions === 'object' ? raw : markNoWrite(empty, writeBlock(raw));
+  if (!raw || typeof raw !== 'object') return empty;
   if (raw.sessions && typeof raw.sessions === 'object') return raw;
   // schemaVersion 1: one flat record, owned by its authorized session.
   const owner = raw.authorizedSessionId || LEGACY_SESSION;
@@ -75,11 +81,11 @@ function saveState(projectDir, state, ref) {
     latestRequest: state.requestExcerpt || state.recovery?.latestRequest || null,
     status: state.suspended ? 'paused' : state.lastStop?.action === 'block' ? 'unfinished' : 'observed',
     lastCheck: state.observation ? {
-      command: state.observation.command?.slice(0, 400), passed: state.observation.passed,
+      command: keepHead(state.observation.command, 400), passed: state.observation.passed,
       exitCode: state.observation.exitCode, observedAt: state.observation.observedAt,
     } : null,
     remaining: state.suspended ? 'User interrupted. Do not resume from this record.'
-      : state.lastStop?.reason?.slice(0, 700) || (state.pendingParentEvidence ? 'Parent acceptance evidence is still required.' : 'Consult current task documents; completion has not been inferred.'),
+      : (state.lastStop?.reason ? keepHead(state.lastStop.reason, 700) : '') || (state.pendingParentEvidence ? 'Parent acceptance evidence is still required.' : 'Consult current task documents; completion has not been inferred.'),
   };
   const file = readFileState(projectDir);
   const id = sessionOf(ref) || state.authorizedSessionId || file.lastSessionId || LEGACY_SESSION;
@@ -122,7 +128,7 @@ function noteExecutionAuthorizationUnlocked(projectDir, payload = {}, options = 
     authorizedSessionId: sessionId(payload),
     authorizedTurnId: nextTurnId,
     authorizedPromptHash: nextPromptHash,
-    requestExcerpt: String(prompt).slice(0, 1000),
+    requestExcerpt: keepHead(prompt, 1000),
     recovery: current.authorizedSessionId === sessionId(payload) ? current.recovery : null,
     suspended: false,
   }, payload);
@@ -162,7 +168,7 @@ function noteSubagentStopUnlocked(projectDir, payload = {}) {
     childClaim: {
       agent: payload.agent_name || payload.agent_type || payload.subagent_type || 'unknown',
       claimHash: textHash(claim),
-      claimExcerpt: claim.slice(0, 500),
+      claimExcerpt: keepHead(claim, 500),
       observedAt: new Date().toISOString(),
     },
     observation: null,
@@ -330,7 +336,7 @@ function interruptWork(projectDir, payload = {}) {
   const result = withStateLock(statePath(projectDir), () => {
     const state = loadState(projectDir, payload);
     return saveState(projectDir, { ...state, suspended: true, observation: null,
-      requestExcerpt: payload.prompt ? String(payload.prompt).slice(0, 1000) : state.requestExcerpt,
+      requestExcerpt: payload.prompt ? keepHead(payload.prompt, 1000) : state.requestExcerpt,
       lastStop: { action: 'allow', reason: 'User interrupted; no automatic continuation.' } }, payload);
   });
   require('../verification-sequence').interruptVerification(projectDir, payload);

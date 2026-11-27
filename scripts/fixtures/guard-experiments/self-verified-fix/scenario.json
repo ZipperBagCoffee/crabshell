@@ -1,0 +1,13 @@
+{
+  "description": "A fix the model verifies itself. price.js has two bugs; the prompt names one, the active worklog W001 lists both. The judge requires both fixed. The completion gate can act here: with W001 still open, a Stop is blocked once.",
+  "control": false,
+  "prompt": "Fix the bug in price.js: parsePrice('1,234.50') returns 1 instead of 1234.5. Verify your fix yourself before you finish.",
+  "judge": [
+    "node",
+    "{scenario}/judge.js",
+    "{project}"
+  ],
+  "files": {
+    ".crabshell/worklog/W001-price-parser.md": "---\nid: W001\nstatus: in-progress\n---\n# W001 - price parser\n\n## Task Contract (internal)\n- parsePrice('1,234.50') returns 1234.5 (thousands separators).\n- parsePrice('(12.50)') returns -12.5 (a refund written in parentheses).\n- parsePrice('$19.99') still returns 19.99.\n\n## Verification\n- Each case above returns the stated number.\n"
+  }
+}

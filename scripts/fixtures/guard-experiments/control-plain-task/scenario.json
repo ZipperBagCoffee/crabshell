@@ -1,0 +1,10 @@
+{
+  "description": "Control: an ordinary task with no open workflow, no failed check and no child report, so the guard under test has nothing to stop. Any block of that guard here is a false block.",
+  "control": true,
+  "prompt": "Implement greet(name) in greet.js: it returns 'Hello, <name>!' and is exported.",
+  "judge": [
+    "node",
+    "{scenario}/judge.js",
+    "{project}"
+  ]
+}

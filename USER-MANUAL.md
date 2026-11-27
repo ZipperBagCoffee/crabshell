@@ -1,4 +1,4 @@
-# Crabshell User Manual (v21.184.0)
+# Crabshell User Manual (v21.185.0)
 
 ## Why Do You Need This?
 
@@ -96,6 +96,8 @@ Both hosts copy the whole plugin folder into their plugin cache (Claude Code: `~
 └── sessions/            # Per-session records (auto)
     └── *.l1.jsonl       # L1 session transcripts (deduplicated)
 ```
+
+Since v21.185.0, text that is cut on its way into memory or into the model's context says so: `[… N chars cut]` where characters were dropped, `[… N more …]` or `[… N earlier … left out]` for lists. This covers commands and tool output in the L1 record, the queued delta, the SessionStart parts, the recovery record, memory snippets added to a prompt, and the logbook tail kept at rotation (its first line names the archive that holds the earlier part). A state file that cannot be parsed (`memory-index.json`, `completion-control.json`, `best-answer.json`, `verification-state.json`) is copied to `<name>.corrupt-<time>` before defaults replace it, and one written by a newer Crabshell is left as it is, with a line on stderr saying to update the plugin.
 
 ---
 
@@ -336,6 +338,18 @@ Every block or notice a hook actually sends adds one line to `.crabshell/memory/
 
 `node scripts/guard-record.js` (in the plugin repository) reads it: `--backfill` finds past blocks in Claude session transcripts (`~/.claude/projects`, or `--transcripts <dir>`), `--summary` prints each guard's reason, keep decision, predicted catches, blocks and notices per model and what the model did after a block, and `--check` names wired guards missing from `.crabshell/guard-record.json`. Unnamed past blocks are matched to guards by prefixes in `.crabshell/memory/guard-fires/groups.json`; verdicts go in `.crabshell/memory/guard-fires/reviewed.jsonl` (`{key, verdict: caught|false-alarm|unclear, note}`).
 
+### Guard on/off experiment (v21.185.0)
+
+`CRABSHELL_GUARDS_OFF=<name>[,<name>...]` in the environment a session starts with switches those guards off: a check with that name in the hook dispatchers (`core/dispatch.js`, both hosts) or in `completion-controller.js` is skipped as if it were not wired, and every other guard runs as before. The names are those of `.crabshell/guard-record.json`; the scripts a hook runs by themselves (`inject-rules`, `load-memory`, `subagent-context`) do not read the switch. A session started with it says so in one SessionStart line to the model, and on Claude Code the same line is shown to the person (`systemMessage`).
+
+`node scripts/guard-experiment.js --guard <name> --scenarios <dir> [--model <m>] [--json] [--out <file>]` (in the plugin repository) measures one guard. Each scenario folder holds `scenario.json` (`prompt`; `judge`, a command run on the finished project, where `{scenario}` and `{project}` name the two folders; optional `control`, `files` written into the project first, and session limits) and an optional `project/` folder. Each scenario runs twice as a `claude -p` session in a fresh temporary project: with the guard on, and with `CRABSHELL_GUARDS_OFF=<name>`. The sessions run unattended in permission mode `auto` (a scenario can name another mode or `allowedTools`), with your own settings, other plugins and global rules. The session loads this checkout with `--plugin-dir` and switches every installed copy of the plugin off with `--settings`. Each arm reports:
+
+- whether it is valid: only the development copy loaded, the off arm's SessionStart line, no line of the switched-off guard in the project's guard-fire log, and no call denied by a permission prompt nobody could answer;
+- the judge's verdict on the finished files (a failed judge is a missed failure; the judge never sees the model's answer);
+- the guard's blocks in a control scenario (false blocks), whether the session reached its end, its time and the model.
+
+The temporary projects and the host's record of their sessions (`claude purge`) are removed afterwards unless `--keep`. `--self-test` checks the tool without a model: a fake guard that always blocks must show as a false block in a control scenario, the verdict must follow the files and not the answer, and an arm that ran another plugin copy or let the switched-off guard fire must be invalid. The two seed scenarios in `scripts/fixtures/guard-experiments` prove that the tool runs; one run of them says nothing about any guard.
+
 ## CLAUDE.md Integration
 
 The plugin automatically manages a rules section in your project's `CLAUDE.md`:
@@ -443,6 +457,8 @@ A manifest that has its runner (`.crabshell/verification/run-verify.js`) counts 
 Claude's captured successful `PostToolUse` Bash object has no exit-code field. An explicit code overrides success inference; failure, interruption, and running indicators prevent it. Claude failures arrive as a top-level `error` plus `is_interrupt`. The captured Codex CLI PostToolUse contains only output text: `host-tool-result.js` obtains an explicit `exit_code` from the matching completed command in its transcript. Session, turn, command ID and cwd must agree; missing or conflicting evidence stays unconfirmed. Captures and provenance are under `scripts/fixtures/hook-payloads/native/`.
 
 Project content identity (completion evidence) is the runner's own view since v21.153.0: the same snapshot and exclusion rule as the runner (Crabshell's storage outside the verification folder, `exclude`, entry `outputs`, and — in a git work tree — git-ignored folders are left out), content hashes reused from a cache while a file's size and times are unchanged. Evidence recorded without a known identity is no evidence; a blocking check without the runner's judgment (its modules unavailable) does not block.
+
+Removed and weakened checks (v21.185.0): once a check has passed, deleting it — its manifest entry or a discovered test file — fails every run as `REMOVED:<id>`, and a later pass that drops something the last accepted pass had fails as `WEAKENED:<id>`: a contract item (an assertion, a forbidden path, the exit code) or, when the manifest declares `checkedPattern` (a regex with one capture such as `"^PASS: (.+)$"`; no default), a name the check used to print. The comparison is by item, not by count, and a weakened pass does not replace the accepted baseline. To approve a drop, write it with a reason in `dropped-checks.json` beside the manifest: `{ "<id>": { "reason": "…" } }` retires a removed check, `"contract": ["<item>"]` or `"names": ["<name>"]` approve exactly those items. An approval a run applies is printed as `Approved drops: <id> (<items>) — <reason>`, and every approval still in the file is listed in every run (`Approval on file …`); the file is one the working model can also write, so what is guaranteed is that a drop shows with its reason. The runner does not read Git: a check missing because another commit is checked out also reads as removed, and switching back restores it. A renamed discovered test file reads as the old id removed: approve the old id. Records from before v21.185.0 take their baseline on the next pass and fail nothing. A flaky check left out of `--changed` runs comes back after `quarantineDays` (default 30).
 
 ### Hook Input Capture and Recovery
 

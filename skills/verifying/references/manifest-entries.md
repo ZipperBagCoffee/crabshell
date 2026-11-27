@@ -75,7 +75,9 @@ Top-level run settings, all optional:
 - `memoryShare`: no further check starts while the share of memory in use is above it. No default.
 - `startSpacingMs`: side by side, the next check starts after a check finishes or after this pause, so the memory a started check takes is seen first. Default 250.
 - `copyLiteralMinChars`: the notices name a changed test that ran when it holds quoted prose of at least this many characters that is word for word in its own inputs. Quoted prose has four or more plain words that are at least half its tokens; a command, code or a path is not prose. Default 40. A rewording of that prose would break the test.
-- `retries`: a check that fails on inputs it once passed with runs again up to this many times. Default 1. A pass on retry counts as PASS and is named flaky. Later routine `--changed` runs leave it out until its test file changes; see [flaky and forbidden-file failures](runner-reuse-output.md#reuse-and-timing). A declared-input check that fails this way uses the whole project until its `inputs` change.
+- `retries`: a check that fails on inputs it once passed with runs again up to this many times. Default 1. A pass on retry counts as PASS and is named flaky. Later routine `--changed` runs leave it out until its test file changes or `quarantineDays` expires; see [flaky and forbidden-file failures](runner-reuse-output.md#reuse-and-timing). A declared-input check that fails this way uses the whole project until its `inputs` change.
+- `quarantineDays`: positive whole number of days, default 30. When the quarantine's `at` timestamp is older than this limit, `--changed` executes the check even on unchanged inputs and names `flaky quarantine expired after N days` in `--explain` and its summary. A successful execution clears the expired mark; another flaky retry starts a new one.
+- `checkedPattern`: regex source string with exactly one capture group, matched against each stdout line of a passing execution. The capture is the checked name; duplicates form one name. No default means no name comparison. An explicit or discovery entry can override the pattern; `null` disables it for that entry. Invalid patterns are manifest errors. For example, `"checkedPattern": "^PASS: (.+)$"` collects named PASS lines, not stderr. Checks using this pattern execute all their cases so the names describe the whole check.
 - `riskPaths`: files, folders or globs. A change to one of them brings the heavy checks whose own inputs changed into a routine `--changed` run, and the summary names the changed file. Heavy means `slow`, or a median pass time over `slowAfterSeconds`. No default: heavy checks wait for `--slow`.
 - `passHistory`: how many pass fingerprints and pass times each record keeps. Default 10.
 - `wideSelectionShare` and `wideSelectionMinChecks`: a routine `--changed` run where what changed or failed last time pulled in more than this share of all checks, and at least this many, prints `Wide selection: … Most checks pulled by: …` under its summary line, in `--explain` and as `wideSelection` in `--dry-run`. It names what pulled in the most checks: changed inputs, "unknown inputs (any project file)" for checks that use the whole project, or reason kinds such as `failed last time`. Checks chosen as new, after a runner change, for a changed entry or program, from an older record, or by `reuse:false`/`always` do not count. Defaults 0.5 and 10. The notice changes nothing about what runs.
@@ -95,6 +97,21 @@ When another check also executes this test, an explicit entry can declare `"cove
 A covered entry or discovered file must have no `contract.assertions`. Every exact path in its `contract.forbiddenChanges` must also be in the covering check's list. Otherwise the manifest error names both IDs. When coverage applies at run time: [runner reuse and output](runner-reuse-output.md#reuse-and-timing).
 
 A manifest edit reruns a check only when it changes that check's fingerprint: its run fields, or its inputs through `changed.global` and `exclude`. This includes edits already committed without a run: [manifest changes](runner-reuse-output.md#manifest-changes-and-records).
+
+Deleting a previously passing entry or discovered file fails with `REMOVED:<id>`. Shrinking its assertions, forbidden paths or exit-code obligation, or removing names collected by `checkedPattern`, fails with `WEAKENED:<id>` and preserves its previous baseline. Restore the check or approve the exact drop in `dropped-checks.json` beside the manifest:
+
+```json
+{
+  "old-id": { "reason": "Replaced by the new check; approve the old ID after a rename" },
+  "current-id": {
+    "contract": ["{\"kind\":\"fileExists\",\"path\":\"old-output.json\"}", "forbid:old-cache"],
+    "names": ["retired case"],
+    "reason": "These obligations moved to another check"
+  }
+}
+```
+
+Contract items are recursively key-sorted assertion JSON strings, `forbid:<path>`, and `exitCode:<n>`. A reason-only approval removes a retired ID; item lists approve only their named items. Every missing item must be approved before the next baseline is saved. An applied approval prints `Approved drops: <id> (<items>) — <reason>`; a malformed file fails as a runner error. Existing records without these baseline fields acquire them on their next executed pass without failing. [Record and output details](runner-reuse-output.md#removed-and-weakened-checks).
 
 ```json
 {

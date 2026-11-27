@@ -12,6 +12,7 @@ const path = require('path');
 const { STORAGE_ROOT, MEMORY_DIR } = require('../constants');
 const { RUN_SNAPSHOT_MAX_AGE_MS } = require('./limits');
 const { readJsonOrDefault, writeJson } = require('../utils');
+const { readState } = require('./state-file');
 const { shellCommand } = require('./tool-shape');
 const { findDeclaration, checkInvocation, isToolFailure } = require('./command-observation');
 
@@ -97,7 +98,7 @@ function writtenDuringRun(payload, projectDir, entry) {
 // entryIds: the manifest's entries now; ids it no longer has are dropped from the file.
 function writtenInTwoRuns(projectDir, entryId, written, entryIds) {
   const file = memoryFile(projectDir, 'output-candidates.json');
-  const stored = readJsonOrDefault(file, {}) || {};
+  const stored = readState(file, { defaults: {} }).value;
   const previous = Array.isArray(stored[entryId]) ? stored[entryId] : null;
   const candidates = Object.fromEntries(Object.entries(stored).filter(([id]) => entryIds.includes(id)));
   candidates[entryId] = written;
@@ -142,7 +143,7 @@ function repeatHint(command, payload, projectDir, durationMs) {
   const key = crypto.createHash('sha256').update(JSON.stringify({ tokens: invocation.tokens, cwd: path.resolve(invocation.cwd || projectDir) })).digest('hex').slice(0, 16);
   const identity = require('./project-state').contentIdentity(projectDir);
   const file = memoryFile(projectDir, 'command-repeats.json');
-  const repeats = readJsonOrDefault(file, { commands: {} }) || { commands: {} };
+  const repeats = readState(file, { defaults: { commands: {} } }).value;
   const commands = repeats.commands && typeof repeats.commands === 'object' ? repeats.commands : {};
   // An unknown project identity is never "the same files".
   const same = Boolean(commands[key]) && require('./project-state').sameIdentity(commands[key].identity, identity);
@@ -160,7 +161,7 @@ function repeatHint(command, payload, projectDir, durationMs) {
 function onlyNew(projectDir, hints) {
   if (!hints.length) return [];
   const file = memoryFile(projectDir, 'hook-hints.json');
-  const shown = readJsonOrDefault(file, { shown: [] }) || { shown: [] };
+  const shown = readState(file, { defaults: { shown: [] } }).value;
   const seen = new Set(Array.isArray(shown.shown) ? shown.shown : []);
   const fresh = hints.filter(hint => !seen.has(hint.key));
   if (fresh.length) writeJson(file, { shown: [...seen, ...fresh.map(hint => hint.key)].slice(-500) });

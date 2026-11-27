@@ -4,12 +4,14 @@
 //  - Heavy checks (select.isSlow) wait for --slow (D143), unless a changed file is under the
 //    manifest's `riskPaths` (D151_T006): then the heavy checks whose own inputs changed run.
 //  - A check that failed and then passed on the same inputs (flaky) is quarantined: left out
-//    and named until its test file's content differs from when it was quarantined. A check
+//    and named until its test file changes or its quarantine expires. A check
 //    with a standing failure is never left out — the failure reruns it until a pass.
 //  - A gate (D152 P11) is never left out: checks narrowed by their reports wait for it.
 
 const { patternList, matchesInput, isSlow } = require('./select');
 const { MISSING } = require('./snapshot');
+const DEFAULT_QUARANTINE_DAYS = 30;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 // A riskPaths pattern: a file, a glob, or a folder (with or without its trailing '/').
 function underRiskPath(pattern, file) {
@@ -45,15 +47,24 @@ function markHolds(mark, test, snapshot) {
     && testIdentity(test, snapshot) === mark.testHash;
 }
 
-function isQuarantined(record, snapshot) {
-  return Boolean(record && !record.lastFailedAt) && markHolds(record.quarantine, record.test, snapshot);
+function quarantineExpired(record, snapshot, quarantineDays = DEFAULT_QUARANTINE_DAYS) {
+  return Boolean(record && markHolds(record.quarantine, record.test, snapshot))
+    && Date.now() - Date.parse(record.quarantine.at) > quarantineDays * DAY_MS;
+}
+
+function isQuarantined(record, snapshot, quarantineDays = DEFAULT_QUARANTINE_DAYS) {
+  return Boolean(record && !record.lastFailedAt) && markHolds(record.quarantine, record.test, snapshot)
+    && Number.isFinite(Date.parse(record.quarantine.at)) && !quarantineExpired(record, snapshot, quarantineDays);
 }
 
 // The routine choice. selected: the ids planRun chose; records: the last run's records;
 // stateOf(id): how a heavy check's inputs stand, for its listing; inputsChanged(id): whether
 // its own inputs changed since it last passed. Returns the ids to run and what to name.
 function routineChoice({ entries, selected, records, manifest, snapshot, stateOf, inputsChanged }) {
-  const quarantined = entries.filter(entry => entry.gate !== true && isQuarantined(records[entry.id], snapshot))
+  const days = manifest.quarantineDays === undefined ? DEFAULT_QUARANTINE_DAYS : manifest.quarantineDays;
+  const expired = entries.filter(entry => quarantineExpired(records[entry.id], snapshot, days))
+    .map(entry => ({ id: entry.id, reason: `flaky quarantine expired after ${days} days` }));
+  const quarantined = entries.filter(entry => entry.gate !== true && isQuarantined(records[entry.id], snapshot, days))
     .map(entry => ({ id: entry.id, test: records[entry.id].test }));
   const sidelined = new Set(quarantined.map(item => item.id));
   const heavy = entries.filter(entry => entry.gate !== true && !sidelined.has(entry.id) && isSlow(entry, records[entry.id], manifest));
@@ -62,8 +73,10 @@ function routineChoice({ entries, selected, records, manifest, snapshot, stateOf
   const brought = new Set(riskFile ? changedHeavy.map(entry => entry.id) : []);
   const waiting = heavy.filter(entry => !brought.has(entry.id));
   for (const entry of waiting) sidelined.add(entry.id);
+  // A heavy check keeps waiting for --slow, which runs it whatever its quarantine says.
+  const returning = expired.filter(item => !sidelined.has(item.id));
   return {
-    selected: selected.filter(id => !sidelined.has(id)),
+    selected: [...new Set([...selected.filter(id => !sidelined.has(id)), ...returning.map(item => item.id)])],
     // Checks chosen for the changes that this rule leaves out (so an empty run is not
     // reported as "nothing changed").
     leftOut: selected.filter(id => sidelined.has(id)).length,
@@ -72,7 +85,8 @@ function routineChoice({ entries, selected, records, manifest, snapshot, stateOf
     slowHistory: waiting.map(entry => ({ id: entry.id, runs: (records[entry.id] || {}).runs || 0, lastFailure: (records[entry.id] || {}).lastFailure || null })),
     riskIncluded: riskFile ? { file: riskFile, ids: [...brought] } : null,
     quarantined,
+    quarantineExpired: returning,
   };
 }
 
-module.exports = { changedRiskFile, quarantineMark, markHolds, isQuarantined, routineChoice };
+module.exports = { changedRiskFile, quarantineMark, markHolds, quarantineExpired, isQuarantined, routineChoice };

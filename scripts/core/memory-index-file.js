@@ -7,6 +7,8 @@ const fs = require('fs');
 const path = require('path');
 const { INDEX_FILE, MEMORY_FILE, SUMMARY_SUFFIX } = require('../constants');
 const { writeJson } = require('../utils');
+const { marker } = require('./cut');
+const { readState, markNoWrite, writeBlock } = require('./state-file');
 
 // Default memory-index.json structure - prevents field loss on parse errors
 function getDefaultIndex() {
@@ -21,21 +23,24 @@ function getDefaultIndex() {
 
 // Safe index reader - ALWAYS returns complete structure, preserving existing values
 // Uses spread to auto-preserve new optional fields (deltaReady, pendingLastProcessedTs, etc.)
-function readIndexSafe(indexPath) {
+// A corrupt file is copied aside (state-file.js) and a newer-version file comes back marked
+// so it is not written over. readIndexWithStatus also says which case it was.
+function readIndexWithStatus(indexPath) {
   const defaults = getDefaultIndex();
-  try {
-    if (!fs.existsSync(indexPath)) return defaults;
-    const existing = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
-    return {
-      ...defaults,
-      ...existing,
-      // Array/object fields need safe validation
-      rotatedFiles: Array.isArray(existing.rotatedFiles) ? existing.rotatedFiles : defaults.rotatedFiles,
-      stats: existing.stats ?? defaults.stats,
-    };
-  } catch {
-    return defaults;
-  }
+  const { value: existing, status } = readState(indexPath, { version: defaults.version, defaults });
+  if (status !== 'ok' && status !== 'newer') return { value: defaults, status };
+  const merged = {
+    ...defaults,
+    ...existing,
+    // Array/object fields need safe validation
+    rotatedFiles: Array.isArray(existing.rotatedFiles) ? existing.rotatedFiles : defaults.rotatedFiles,
+    stats: existing.stats ?? defaults.stats,
+  };
+  return { value: status === 'newer' ? markNoWrite(merged, writeBlock(existing)) : merged, status };
+}
+
+function readIndexSafe(indexPath) {
+  return readIndexWithStatus(indexPath).value;
 }
 
 function getTimestamp() {
@@ -58,6 +63,15 @@ function extractTailByTokens(content, targetTokens) {
   return lines.slice(startIndex).join('\n');
 }
 
+// The kept tail of a logbook, led by a note of how much was left out and where
+// the earlier part lives (archiveName), so a reader knows the start is not the start.
+function withCarryoverNote(fullContent, keptTail, archiveName) {
+  const droppedChars = fullContent.length - keptTail.length;
+  if (droppedChars <= 0) return keptTail;
+  const where = archiveName ? 'chars of earlier logbook are in ' + archiveName : 'chars of earlier logbook left out';
+  return marker(droppedChars, where) + '\n' + keptTail;
+}
+
 function updateIndex(archivePath, tokens, memoryDir, dateRange) {
   const indexPath = path.join(memoryDir, INDEX_FILE);
   const index = readIndexSafe(indexPath);  // Use safe reader to preserve all fields
@@ -69,4 +83,4 @@ function updateIndex(archivePath, tokens, memoryDir, dateRange) {
   writeJson(indexPath, index);
 }
 
-module.exports = { getDefaultIndex, readIndexSafe, getTimestamp, estimateTokens, estimateTokensFromFile, extractTailByTokens, updateIndex };
+module.exports = { getDefaultIndex, readIndexSafe, readIndexWithStatus, getTimestamp, estimateTokens, estimateTokensFromFile, extractTailByTokens, withCarryoverNote, updateIndex };

@@ -57,6 +57,24 @@ function modelOf(payload, tailBytes) {
   return lastAssistantModel(payload.transcript_path, tailBytes);
 }
 
+// Each line on its own: a broken line is skipped, the others kept.
+function readJsonLines(file) {
+  let text;
+  try { text = fs.readFileSync(file, 'utf8'); } catch { return []; }
+  const items = [];
+  for (const line of text.split(/\r?\n/)) {
+    if (!line.trim()) continue;
+    try { items.push(JSON.parse(line)); } catch {}
+  }
+  return items;
+}
+
+// Every line a project's log holds, the kept previous file first.
+function readFires(projectDir) {
+  const file = firesFile(projectDir);
+  return [...readJsonLines(file + '.1'), ...readJsonLines(file)];
+}
+
 // One previous file is kept; the file never grows past maxBytes plus one write.
 function rotate(file, maxBytes) {
   try {
@@ -98,4 +116,4 @@ function recordFires(projectDir, { host, event, fired, payload } = {}) {
   }
 }
 
-module.exports = { DEFAULTS, FILE_NAME, firesFile, fireKey, firstWords, recordFires, settings };
+module.exports = { DEFAULTS, FILE_NAME, firesFile, fireKey, firstWords, readFires, readJsonLines, recordFires, settings };

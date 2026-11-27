@@ -16,7 +16,7 @@ const os = require('os');
 const path = require('path');
 const readline = require('readline');
 const { spawn } = require('child_process');
-const { fireKey, firstWords, settings, firesFile } = require('./core/guard-fires');
+const { fireKey, firstWords, settings, firesFile, readFires, readJsonLines: readJsonl } = require('./core/guard-fires');
 const { getStorageRoot, readJsonOrDefault, writeJson } = require('./utils');
 
 const RECORD_NAME = 'guard-record.json';
@@ -46,18 +46,6 @@ const recordPath = projectDir => path.join(getStorageRoot(projectDir), RECORD_NA
 const workPath = (projectDir, name) => path.join(getStorageRoot(projectDir), ...WORK_DIR, name);
 
 const readJson = (file, fallback) => readJsonOrDefault(file, fallback) || fallback;
-
-// Each line on its own: a broken line is skipped, the others kept.
-function readJsonl(file) {
-  let text;
-  try { text = fs.readFileSync(file, 'utf8'); } catch { return []; }
-  const items = [];
-  for (const line of text.split(/\r?\n/)) {
-    if (!line.trim()) continue;
-    try { items.push(JSON.parse(line)); } catch {}
-  }
-  return items;
-}
 
 // ---- transcripts --------------------------------------------------------------------
 
@@ -234,9 +222,9 @@ async function backfill(args) {
 
 // ---- wired guards -------------------------------------------------------------------
 
-// Names the hooks can write into the fire log: every check of the dispatchers, the Stop
-// checks and the controller's own names, and each other script hooks.json runs.
-function wiredNames() {
+// Every check of the dispatchers, the Stop checks and the controller's own names, with the
+// dispatcher modules they came from.
+function checkNames() {
   const names = new Set();
   const dispatchers = [];
   const addChecks = (modulePath, keys) => {
@@ -251,6 +239,18 @@ function wiredNames() {
   addChecks('./adapters/codex/pre-tool-use', ['CHECKS']);
   const controller = require('./completion-controller');
   for (const name of [...controller.STOP_CHECK_NAMES, ...controller.RECORDED_NAMES]) names.add(name);
+  return { names, dispatchers };
+}
+
+// The names CRABSHELL_GUARDS_OFF can switch off (core/guards-off, D187_T004): the checks only;
+// a script hooks.json runs by itself does not read the switch.
+function switchableNames() {
+  return [...checkNames().names].sort();
+}
+
+// Names the hooks can write into the fire log: the checks, and each other script hooks.json runs.
+function wiredNames() {
+  const { names, dispatchers } = checkNames();
   const hooks = readJson(path.join(__dirname, '..', 'hooks', 'hooks.json'), {});
   for (const groups of Object.values(hooks.hooks || {})) {
     for (const group of groups || []) {
@@ -285,7 +285,7 @@ function guardFor(fire, prefixes) {
 function collectFires(args) {
   const prefixes = (readJson(workPath(args.projectDir, 'groups.json'), {}).prefixes) || [];
   const liveLogs = new Set([args.projectDir, ...((readJson(workPath(args.projectDir, 'projects.json'), {}).liveLogs) || [])]);
-  const live = [...liveLogs].flatMap(dir => [...readJsonl(firesFile(dir) + '.1'), ...readJsonl(firesFile(dir))]);
+  const live = [...liveLogs].flatMap(dir => readFires(dir));
   const backfilled = readJsonl(workPath(args.projectDir, 'backfill.jsonl'));
   const nextByKey = new Map(backfilled.map(fire => [fire.key, fire.next]));
   const liveKeys = new Set(live.map(fire => fire.key));
@@ -390,4 +390,4 @@ if (require.main === module) {
     .catch(error => { process.stderr.write(`guard-record: ${error.message}\n`); process.exitCode = 2; });
 }
 
-module.exports = { blocksIn, listTranscripts, main, scanFile, wiredNames };
+module.exports = { RECORD_NAME, blocksIn, listTranscripts, main, recordPath, scanFile, switchableNames, wiredNames };

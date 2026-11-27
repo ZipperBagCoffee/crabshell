@@ -33,6 +33,8 @@ async function main(options = {}) {
   let notices = [];
   if (hookData.hook_event_name === 'SessionStart') {
     try { notices = [require('./core/runner-sync').runnerSyncNotice(projectDir)]; } catch {}
+    // D187_T004: a session started with guards switched off says so in one line.
+    try { notices.push(require('./core/guards-off').guardsOffNotice()); } catch {}
     // The managed rules block of an existing CLAUDE.md follows the installed
     // plugin as soon as a session starts (D148). Claude Code has already read
     // the file, so the new text applies from the next session. Only the block
@@ -51,6 +53,8 @@ async function main(options = {}) {
     notices,
   });
   const output = createSessionStartOutput(context);
+  // D187: guards switched off are shown to the person as well, not only told to the model.
+  try { const off = require('./core/guards-off').guardsOffNotice(); if (off && hookData.hook_event_name === 'SessionStart') output.systemMessage = off; } catch {}
   const nativeHook = options.nativeOutput === true || hookData.hook_event_name === 'SessionStart';
 
   if (options.emit !== false) {
